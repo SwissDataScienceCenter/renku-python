@@ -18,34 +18,8 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import Flask
-
-from renga import Renga
-
 
 def test_version():
     """Test version import."""
     from renga import __version__
     assert __version__
-
-
-def test_init():
-    """Test extension initialization."""
-    app = Flask('testapp')
-    ext = Renga(app)
-    assert 'renga' in app.extensions
-
-    app = Flask('testapp')
-    ext = Renga()
-    assert 'renga' not in app.extensions
-    ext.init_app(app)
-    assert 'renga' in app.extensions
-
-
-def test_view(app):
-    """Test view."""
-    Renga(app)
-    with app.test_client() as client:
-        res = client.get("/")
-        assert res.status_code == 200
-        assert 'Welcome to Renga' in str(res.data)

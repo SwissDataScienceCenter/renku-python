@@ -28,7 +28,6 @@ Renga.
    installation
    configuration
    usage
-   examplesapp
 
 
 API Reference
