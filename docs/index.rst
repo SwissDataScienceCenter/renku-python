@@ -19,7 +19,6 @@ renga-python.
    installation
    configuration
    usage
-   examplesapp
 
 
 API Reference

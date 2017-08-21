@@ -10,14 +10,8 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import Flask
-
-from renga import rengapython
-
 
 def test_version():
     """Test version import."""
     from renga import __version__
     assert __version__
-
-

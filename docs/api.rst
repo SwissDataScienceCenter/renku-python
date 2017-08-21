@@ -8,11 +8,5 @@
 API Docs
 ========
 
-.. automodule:: renga.ext
-   :members:
-
-Views
------
-
-.. automodule:: renga.views
+.. automodule:: renga
    :members:
