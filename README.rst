@@ -13,12 +13,12 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-=======
- Renga
-=======
+==============
+ Renga-Python
+==============
 
-.. image:: https://img.shields.io/travis/SwissDataScienceCenter/renga-python.svg
-        :target: https://travis-ci.org/SwissDataScienceCenter/renga-python
+.. image:: https://travis-ci.com/SwissDataScienceCenter/renga-python.svg?token=AuxHLdYP4GzNgGQfyxXT&branch=master
+    :target: https://travis-ci.com/SwissDataScienceCenter/renga-python
 
 .. image:: https://img.shields.io/coveralls/SwissDataScienceCenter/renga-python.svg
         :target: https://coveralls.io/r/SwissDataScienceCenter/renga-python
@@ -36,7 +36,15 @@ Python API and CLI for the Renga platform.
 
 *This is an experimental developer preview release.*
 
-TODO: Please provide feature overview of module
+This package provides the Python API and the associated
+command-line-interface to the Renga collaborative data science platform.
+
+Quick start by:
+
+::
+
+    $ pip install -e .[all]
+    $ renga --help
 
 Further documentation is available on
-https://renga.readthedocs.io/
+https://renga-python.readthedocs.io/
