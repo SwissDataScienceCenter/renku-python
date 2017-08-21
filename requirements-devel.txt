@@ -1,0 +1,13 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of SDSC Platform.
+# Copyright (C) 2017 Swiss Data Science Center.
+#
+# ADD LICENSE SHORT TEXT
+#
+#
+# TODO: Add development versions of some important dependencies here to get a
+#       warning when there are breaking upstream changes, e.g.:
+#
+#     -e git+git://github.com/mitsuhiko/werkzeug.git#egg=Werkzeug
+#     -e git+git://github.com/mitsuhiko/jinja2.git#egg=Jinja2
