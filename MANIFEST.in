@@ -27,3 +27,20 @@ include .editorconfig
 include .tx/config
 prune docs/_build
 recursive-include renga *.po *.pot *.mo
+
+# added by check_manifest.py
+include *.rst
+include *.sh
+include *.txt
+include LICENSE
+include babel.ini
+include pytest.ini
+recursive-include docs *.bat
+recursive-include docs *.py
+recursive-include docs *.rst
+recursive-include docs *.txt
+recursive-include docs Makefile
+recursive-include examples *.py
+recursive-include examples *.sh
+recursive-include renga *.html
+recursive-include tests *.py
