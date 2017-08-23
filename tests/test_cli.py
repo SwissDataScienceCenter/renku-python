@@ -31,14 +31,10 @@ def test_init():
     runner = CliRunner()
     with runner.isolated_filesystem():
         # 0. must autosync
-        with pytest.raises(RuntimeError):
-            runner.invoke(cli.init, ['--project', 'project'])
+        result = runner.invoke(cli.cli, ['init', '--project', 'project'])
+        assert result.exit_code == 2
 
         # 1. test projet directory creation
-        result = runner.invoke(cli.init,
-                               ['--autosync', '--project', 'test-project'])
+        result = runner.invoke(cli.cli, ['init', '--autosync', 'test-project'])
+        assert result.exit_code == 0
         assert os.stat('test-project')
-
-        with pytest.raises(FileExistsError):
-            runner.invoke(cli.init,
-                          ['--autosync', '--project', 'test-project'])
