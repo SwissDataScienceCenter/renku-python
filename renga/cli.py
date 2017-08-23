@@ -5,14 +5,13 @@
 #
 # ADD LICENSE SHORT TEXT
 #
-
 """CLI for the Renga platform."""
 
 import os
-from pkg_resources import iter_entry_points
 
 import click
 from click_plugins import with_plugins
+from pkg_resources import iter_entry_points
 
 
 @with_plugins(iter_entry_points('renga.cli'))
@@ -34,4 +33,5 @@ def init(project_name, autosync):
     try:
         os.mkdir(project_name)
     except FileExistsError:
-        raise click.UsageError('Directory {0} already exists'.format(project_name))
+        raise click.UsageError(
+            'Directory {0} already exists'.format(project_name))
