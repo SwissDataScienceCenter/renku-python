@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Python API and CLI for the Renga platform."""
 
 import os
@@ -52,10 +51,10 @@ setup_requires = [
 
 install_requires = [
     'Flask-BabelEx>=0.9.2',
+    'click>=6.7',
 ]
 
 packages = find_packages()
-
 
 # Get the version string. Cannot be done with import!
 g = {}
@@ -78,14 +77,8 @@ setup(
     include_package_data=True,
     platforms='any',
     entry_points={
-        # TODO once the platform layout is more complete
-        #
-        # 'invenio_base.apps': [
-        #     'renga = renga:Renga',
-        # ],
-        # 'invenio_i18n.translations': [
-        #     'messages = renga',
-        # ],
+        'console_scripts': ['renga=renga.cli:cli'],
+        'renga.cli': ['init=renga.cli:init'],
     },
     extras_require=extras_require,
     install_requires=install_requires,
@@ -102,5 +95,4 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Development Status :: 1 - Planning',
-    ],
-)
+    ], )
