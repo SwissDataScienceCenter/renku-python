@@ -15,6 +15,7 @@
 # limitations under the License.
 """Client for the renga-graph service."""
 
+import time
 
 import requests
 
@@ -75,7 +76,8 @@ class KnowledgeGraphClient(object):
                     properties.append({
                         'key':
                         '{named_type}_{key}'.format(
-                            named_type=named_type, key='_'.join(prop_names[1:])),
+                            named_type=named_type,
+                            key='_'.join(prop_names[1:])),
                         'data_type':
                         prop['data_type'],
                         'cardinality':
@@ -103,15 +105,14 @@ class KnowledgeGraphClient(object):
 
         return operation
 
-
-    def mutation(operations, wait_for_response=False, token=None):
+    def mutation(self, operations, wait_for_response=False, token=None):
         """
         Submit a mutation to the graph.
 
         If ``wait_for_response == True`` the return value is the reponse JSON,
         otherwise the mutation UUID is returned.
         """
-        knowledge_graph_url = current_app.config['KNOWLEDGE_GRAPH_URL']
+        knowledge_graph_url = self.platform_url
         headers = {'Authorization': token}
 
         response = requests.post(

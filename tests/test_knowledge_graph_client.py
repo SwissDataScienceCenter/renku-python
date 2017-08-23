@@ -117,15 +117,33 @@ def test_knowledge_graph_init(kg_requests):
 
 def test_knowledge_graph_deploy_context(kg_requests):
     """Test sending a deployment context to the KG."""
-
-    class Context(object):
-        pass
-
-    context = Context()
-    context.id = 1234
-    context.spec = {'image': 'hello-world', 'ports': '9999'}
-
     KGClient = knowledge_graph.KnowledgeGraphClient('http://localhost/api')
 
+    class Dummy(object):
+        pass
+
+    context = Dummy()
+    context.id = 1234
+    context.spec = {'image': 'hello-world', 'ports': '9999'}
     operation = KGClient.vertex_operation(context, 0, 'deployer:context')
-    assert operation
+    assert len(operation['element']['properties']) == 3
+
+    response = KGClient.mutation(
+        [
+            operation,
+        ], wait_for_response=True)
+
+
+def test_knowledge_graph_deploy_execution(kg_requests):
+    """Test sending a deployment context to the KG."""
+    KGClient = knowledge_graph.KnowledgeGraphClient('http://localhost/api')
+
+    class Dummy(object):
+        pass
+
+    execution = Dummy()
+    execution.id = 1234
+    execution.engine = 'docker'
+    execution.namespace = 'default'
+    operation = KGClient.vertex_operation(execution, 0, 'deployer:execution')
+    assert len(operation['element']['properties']) == 3
