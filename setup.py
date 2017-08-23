@@ -52,6 +52,7 @@ setup_requires = [
 install_requires = [
     'Flask-BabelEx>=0.9.2',
     'click>=6.7',
+    'click-plugins>=1.0.3'
 ]
 
 packages = find_packages()
