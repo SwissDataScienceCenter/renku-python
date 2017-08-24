@@ -101,6 +101,14 @@ def kg_requests(monkeypatch):
                     'data_type': 'string',
                     'cardinality': 'single'
                 }]
+            }, {
+                "name":
+                "project",
+                "properties": [{
+                    "name": "project_name",
+                    "data_type": "string",
+                    "cardinality": "single"
+                }]
             }], 200)
         else:
             return r_get(*args, **kwargs)
@@ -147,3 +155,16 @@ def test_knowledge_graph_deploy_execution(kg_requests):
     execution.namespace = 'default'
     operation = KGClient.vertex_operation(execution, 0, 'deployer:execution')
     assert len(operation['element']['properties']) == 3
+
+
+def test_knowledge_graph_add_project(kg_requests):
+    """Test sending a deployment context to the KG."""
+    KGClient = knowledge_graph.KnowledgeGraphClient('http://localhost/api')
+
+    class Dummy(object):
+        pass
+
+    project = Dummy()
+    project.name = 'MyProject'
+    operation = KGClient.vertex_operation(project, 0, 'project:project')
+    assert len(operation['element']['properties']) == 1

@@ -45,8 +45,8 @@ class KnowledgeGraphClient(object):
         """
         Serialize an object to KnowledgeGraph schema.
 
-        We iterate through the type definitions presented by the graph typesystem
-        to extract the pieces we need from the object.
+        We iterate through the type definitions presented
+        by the graph typesystem to extract the pieces we need from the object.
 
         TODO: use marshmallow or similar to serialize
         """
