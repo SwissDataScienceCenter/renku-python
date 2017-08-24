@@ -13,24 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Initialize a Renga project."""
-
-import os
+"""Versioning utilities."""
 
 import click
 
+from renga.version import __version__
 
-@click.command()
-@click.option('--autosync', is_flag=True)
-@click.argument('project_name', nargs=1)
-def init(project_name, autosync):
-    """Initialize a project."""
-    if not autosync:
-        raise click.UsageError('You must specify the --autosync option.')
 
-    # 1. create the directory
-    try:
-        os.mkdir(project_name)
-    except FileExistsError:
-        raise click.UsageError(
-            'Directory {0} already exists'.format(project_name))
+def print_version(ctx, param, value):
+    """Print version number."""
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(__version__)
+    ctx.exit()
