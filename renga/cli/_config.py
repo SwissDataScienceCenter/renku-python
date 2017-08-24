@@ -27,7 +27,7 @@ APP_NAME = 'Renga'
 
 def config_path():
     """Return config path."""
-    directory = click.get_app_dir(APP_NAME, force_posix=True)
+    directory = click.get_app_dir(APP_NAME)
     try:
         os.makedirs(directory)
     except OSError as e:
