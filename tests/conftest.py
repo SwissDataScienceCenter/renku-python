@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Pytest configuration."""
 
 from __future__ import absolute_import, print_function
@@ -22,11 +21,20 @@ import shutil
 import tempfile
 
 import pytest
+from click.testing import CliRunner
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def instance_path():
     """Temporary instance path."""
     path = tempfile.mkdtemp()
     yield path
     shutil.rmtree(path)
+
+
+@pytest.fixture()
+def runner():
+    """Create a runner on isolated filesystem."""
+    cli_runner = CliRunner()
+    with cli_runner.isolated_filesystem():
+        yield cli_runner

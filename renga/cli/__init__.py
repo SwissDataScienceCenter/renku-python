@@ -15,19 +15,11 @@
 # limitations under the License.
 """CLI for the Renga platform."""
 
-import errno
-import os
-from functools import update_wrapper
-
 import click
-import requests
-import yaml
 from click_plugins import with_plugins
-from openid_connect import OpenIDClient
 from pkg_resources import iter_entry_points
 
-from ._config import config_path, print_app_config_path, read_config, \
-    with_config, write_config
+from ._config import print_app_config_path, read_config
 from ._version import print_version
 
 
