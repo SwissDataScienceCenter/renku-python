@@ -51,8 +51,11 @@ setup_requires = [
 
 install_requires = [
     'Flask-BabelEx>=0.9.2',
+    'PyYAML>=3.12',
     'click>=6.7',
-    'click-plugins>=1.0.3'
+    'click-plugins>=1.0.3',
+    'openid-connect>=0.3.0',
+    'requests>=2.14.2',
 ]
 
 packages = find_packages()
@@ -79,7 +82,10 @@ setup(
     platforms='any',
     entry_points={
         'console_scripts': ['renga=renga.cli:cli'],
-        'renga.cli': ['init=renga.cli:init'],
+        'renga.cli': [
+            'login=renga.cli:login',
+            'init=renga.cli:init',
+        ],
     },
     extras_require=extras_require,
     install_requires=install_requires,
