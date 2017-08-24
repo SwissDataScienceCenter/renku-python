@@ -17,14 +17,15 @@
 
 import click
 import requests
-from openid_connect import OpenIDClient
 
 from ._config import config_path, with_config
 
 
 @click.command()
 @click.argument('endpoint', nargs=1)
-@click.option('--url', default='{endpoint}/auth/realms/Renga/')
+@click.option(
+    '--url',
+    default='{endpoint}/auth/realms/Renga/protocol/openid-connect/token')
 @click.option('--client-id', default='demo-client')
 @click.option('--username', prompt=True)
 @click.option('--password', prompt=True, hide_input=True)
@@ -32,9 +33,8 @@ from ._config import config_path, with_config
 def login(config, endpoint, url, client_id, username, password):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
-    client = OpenIDClient(url, client_id, None)
     response = requests.post(
-        client.token_endpoint,
+        url,
         data={
             'grant_type': 'password',
             'scope': ['offline_access', 'openid'],

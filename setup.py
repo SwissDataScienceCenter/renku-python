@@ -28,9 +28,10 @@ tests_require = [
     'isort>=4.2.2',
     'pydocstyle>=1.0.0',
     'pytest-cache>=1.0',
-    'pytest-cov>=1.8.0',
+    'pytest-cov>=2.5.1',
     'pytest-pep8>=1.0.6',
-    'pytest>=2.8.0',
+    'pytest>=3.2.1',
+    'responses>=0.7.0',
 ]
 
 extras_require = {
@@ -54,7 +55,6 @@ install_requires = [
     'PyYAML>=3.12',
     'click>=6.7',
     'click-plugins>=1.0.3',
-    'openid-connect>=0.3.0',
     'requests>=2.14.2',
 ]
 
