@@ -57,4 +57,13 @@ def with_config(f):
     def new_func(ctx, *args, **kwargs):
         result = ctx.invoke(f, ctx.obj['config'], *args, **kwargs)
         write_config(ctx.obj['config'])
+        return result
     return update_wrapper(new_func, f)
+
+
+def print_app_config_path(ctx, param, value):
+    """Print application config path."""
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(config_path())
+    ctx.exit()

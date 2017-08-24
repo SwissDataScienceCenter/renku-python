@@ -71,7 +71,7 @@ setup(
     version=version,
     description=__doc__,
     long_description=readme + '\n\n' + history,
-    keywords='SDSC TODO',
+    keywords='Renga CLI reproducible data science',
     license='Apache License 2.0',
     author='Swiss Data Science Center',
     author_email='contact@datascience.ch',
@@ -84,6 +84,7 @@ setup(
         'console_scripts': ['renga=renga.cli:cli'],
         'renga.cli': [
             'login=renga.cli.login:login',
+            'tokens=renga.cli.login:tokens',
             'init=renga.cli.init:init',
         ],
     },
