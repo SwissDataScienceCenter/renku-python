@@ -83,8 +83,8 @@ setup(
     entry_points={
         'console_scripts': ['renga=renga.cli:cli'],
         'renga.cli': [
-            'login=renga.cli:login',
-            'init=renga.cli:init',
+            'login=renga.cli.login:login',
+            'init=renga.cli.init:init',
         ],
     },
     extras_require=extras_require,
