@@ -15,10 +15,10 @@
 # limitations under the License.
 """Manage set of API endpoints."""
 
+import datetime
 import os
 
 import click
-import datetime
 
 from ._config import with_config
 
@@ -30,9 +30,24 @@ from ._config import with_config
 def endpoint(ctx, config, verbose):
     """Manage set of API endpoints."""
     if ctx.invoked_subcommand is None:
+        # TODO default_endpoint = config.get('core', {}).get('default')
         for endpoint, values in config.get('endpoints', {}).items():
+            # TODO is_default = default_endpoint == endpoint
             if not verbose:
                 click.echo(endpoint)
             else:
                 click.echo('{endpoint}\t{url}'.format(
                     endpoint=endpoint, url=values.get('url', '')))
+
+
+@endpoint.command(name='set-default')
+@click.argument('endpoint')
+@with_config
+@click.pass_context
+def set_default(ctx, config, endpoint):
+    """Set endpoint as default."""
+    if endpoint not in config.get('endpoints', {}):
+        click.UsageError('Unknown endpoint: {0}'.format(endpoint))
+
+    config.setdefault('core', {})
+    config['core']['default'] = endpoint

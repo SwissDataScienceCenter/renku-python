@@ -15,10 +15,10 @@
 # limitations under the License.
 """Manage notebooks."""
 
+import datetime
 import os
 
 import click
-import datetime
 
 from ._config import with_config
 

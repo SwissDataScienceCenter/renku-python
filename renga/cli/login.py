@@ -29,8 +29,9 @@ from ._config import config_path, with_config
 @click.option('--client-id', default='demo-client')
 @click.option('--username', prompt=True)
 @click.option('--password', prompt=True, hide_input=True)
+@click.option('--default', is_flag=True)
 @with_config
-def login(config, endpoint, url, client_id, username, password):
+def login(config, endpoint, url, client_id, username, password, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
     response = requests.post(
@@ -47,6 +48,10 @@ def login(config, endpoint, url, client_id, username, password):
     config['endpoints'].setdefault(endpoint, {})
     config['endpoints'][endpoint]['url'] = url
     config['endpoints'][endpoint]['token'] = data['refresh_token']
+
+    if len(config['endpoints']) == 1 and default:
+        config.setdefault('core', {})
+        config['core']['default'] = endpoint
 
     click.echo('Access token has been stored in: {0}'.format(config_path()))
 

@@ -15,10 +15,10 @@
 # limitations under the License.
 """Initialize a Renga project."""
 
+import datetime
 import os
 
 import click
-import datetime
 
 from ._config import create_project_config_path, get_project_config_path, \
     read_config, write_config
