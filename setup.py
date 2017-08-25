@@ -71,7 +71,7 @@ setup(
     version=version,
     description=__doc__,
     long_description=readme + '\n\n' + history,
-    keywords='Renga CLI reproducible data science',
+    keywords='Renga CLI',
     license='Apache License 2.0',
     author='Swiss Data Science Center',
     author_email='contact@datascience.ch',
