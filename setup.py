@@ -83,9 +83,12 @@ setup(
     entry_points={
         'console_scripts': ['renga=renga.cli:cli'],
         'renga.cli': [
-            'login=renga.cli.login:login',
-            'tokens=renga.cli.login:tokens',
+            'add=renga.cli.add:add',
+            'endpoint=renga.cli.endpoint:endpoint',
             'init=renga.cli.init:init',
+            'login=renga.cli.login:login',
+            'notebook=renga.cli.notebook:notebook',
+            'tokens=renga.cli.login:tokens',
         ],
     },
     extras_require=extras_require,

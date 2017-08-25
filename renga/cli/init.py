@@ -18,19 +18,34 @@
 import os
 
 import click
+import datetime
+
+from ._config import create_project_config_path, get_project_config_path, \
+    read_config, write_config
 
 
 @click.command()
+@click.argument(
+    'directory',
+    default='.',
+    type=click.Path(exists=True, writable=True, file_okay=False))
 @click.option('--autosync', is_flag=True)
-@click.argument('project_name', nargs=1)
-def init(project_name, autosync):
+def init(directory, autosync):
     """Initialize a project."""
     if not autosync:
         raise click.UsageError('You must specify the --autosync option.')
 
     # 1. create the directory
     try:
-        os.mkdir(project_name)
+        project_config_path = create_project_config_path(directory)
     except FileExistsError:
         raise click.UsageError(
-            'Directory {0} already exists'.format(project_name))
+            'Directory {0} is already initialized'.format(directory))
+
+    config = read_config(project_config_path)
+    config.setdefault('core', {})
+    config['core']['autosync'] = autosync
+    config['core'].setdefault('generated',
+                              datetime.datetime.utcnow().isoformat())
+
+    write_config(config, path=project_config_path)

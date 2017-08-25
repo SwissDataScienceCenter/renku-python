@@ -18,36 +18,42 @@
 import errno
 import os
 from functools import update_wrapper
+from pathlib import Path
 
 import click
 import yaml
 
 APP_NAME = 'Renga'
+"""Application name for storing configuration."""
+
+PROJECT_DIR = '.renga'
+"""Project directory name."""
 
 
-def config_path():
+def config_path(path=None):
     """Return config path."""
-    directory = click.get_app_dir(APP_NAME)
-    try:
-        os.makedirs(directory)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-    return os.path.join(directory, 'config.yml')
+    if path is None:
+        path = click.get_app_dir(APP_NAME)
+        try:
+            os.makedirs(path)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+    return os.path.join(path, 'config.yml')
 
 
-def read_config():
+def read_config(path=None):
     """Read Renga configuration."""
     try:
-        with open(config_path(), 'r') as configfile:
+        with open(config_path(path=path), 'r') as configfile:
             return yaml.load(configfile) or {}
     except FileNotFoundError:
         return {}
 
 
-def write_config(config):
+def write_config(config, path=None):
     """Write Renga configuration."""
-    with open(config_path(), 'w+') as configfile:
+    with open(config_path(path=path), 'w+') as configfile:
         yaml.dump(config, configfile, default_flow_style=False)
 
 
@@ -67,3 +73,32 @@ def print_app_config_path(ctx, param, value):
         return
     click.echo(config_path())
     ctx.exit()
+
+
+def create_project_config_path(path, mode=0o777, parents=False, exist_ok=False):
+    """Create new project configuration folder."""
+    project_path = Path(path).absolute().joinpath(PROJECT_DIR)
+    project_path.mkdir(mode=mode, parents=parents, exist_ok=exist_ok)
+    return str(project_path)
+
+
+def get_project_config_path(path):
+    """Return project configuration folder if exist."""
+    project_path = Path(path).absolute().joinpath(PROJECT_DIR)
+    if project_path.exists() and project_path.is_dir():
+        return str(project_path)
+
+
+def find_project_config_path(path=None):
+    """Find project config path."""
+    path = Path(path) if path else pathlib.Path.cwd()
+    abspath = path.absolute()
+
+    project_path = get_project_config_path(abspath)
+    if project_path:
+        return project_path
+
+    for parent in abspath.parents:
+        project_path = get_project_config_path(parent)
+        if project_path:
+            return project_path
