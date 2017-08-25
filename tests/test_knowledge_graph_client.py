@@ -15,106 +15,7 @@
 # limitations under the License.
 """Tests for the knowledge graph client."""
 
-import pytest
-import requests
-
-from renga.clients import knowledge_graph
-
-r_get = requests.get
-r_post = requests.post
-
-
-class Response(object):
-    """Fake response."""
-
-    def __init__(self, data, status_code):
-        """Initialize fake response object with a json."""
-        self.data = data
-        self.status_code = status_code
-
-    def json(self):
-        """Return json."""
-        return self.data
-
-
-@pytest.fixture()
-def kg_requests(monkeypatch):
-    """Monkeypatch requests to immitate the KnowledgeGraph."""
-    mutation_url = 'http://localhost/api/mutation/mutation'
-    named_type_url = 'http://localhost/api/types/management/named_type'
-
-    def kg_post(*args, **kwargs):
-        """Override requests.post for KG urls."""
-        if mutation_url in args[0]:
-            """Override /api/mutation/mutation."""
-            return Response({'uuid': '1234'}, 201)
-        else:
-            return r_post(*args, **kwargs)
-
-    def kg_get(*args, **kwargs):
-        """Overrides requests.get for KG URLs."""
-        if mutation_url in args[0]:
-            """Override /api/mutation/mutation/uuid."""
-            return Response({
-                'status': 'completed',
-                'response': {
-                    'event': {
-                        'status': 'success',
-                        'results': [{
-                            'id': 1234
-                        }]
-                    }
-                }
-            }, 200)
-
-        elif named_type_url in args[0]:
-            """Override /api/types/management/named_type."""
-            return Response([{
-                'name':
-                'context',
-                'properties': [{
-                    'name': 'context_id',
-                    'data_type': 'string',
-                    'cardinality': 'single'
-                }, {
-                    'name': 'context_spec_image',
-                    'data_type': 'string',
-                    'cardinality': 'single'
-                }, {
-                    'name': 'context_spec_ports',
-                    'data_type': 'string',
-                    'cardinality': 'single'
-                }]
-            }, {
-                'name':
-                'execution',
-                'properties': [{
-                    'name': 'execution_id',
-                    'data_type': 'string',
-                    'cardinality': 'single'
-                }, {
-                    'name': 'execution_engine',
-                    'data_type': 'string',
-                    'cardinality': 'single'
-                }, {
-                    'name': 'execution_namespace',
-                    'data_type': 'string',
-                    'cardinality': 'single'
-                }]
-            }, {
-                "name":
-                "project",
-                "properties": [{
-                    "name": "project_name",
-                    "data_type": "string",
-                    "cardinality": "single"
-                }]
-            }], 200)
-        else:
-            return r_get(*args, **kwargs)
-
-    monkeypatch.setattr(requests, 'get', kg_get)
-    monkeypatch.setattr(requests, 'post', kg_post)
+from renga.clients import knowledge_graph, projects
 
 
 def test_knowledge_graph_init(kg_requests):
@@ -136,10 +37,12 @@ def test_knowledge_graph_deploy_context(kg_requests):
     operation = KGClient.vertex_operation(context, 0, 'deployer:context')
     assert len(operation['element']['properties']) == 3
 
-    response = KGClient.mutation(
+    vertex_id = KGClient.mutation(
         [
             operation,
         ], wait_for_response=True)
+
+    assert vertex_id == 1234
 
 
 def test_knowledge_graph_deploy_execution(kg_requests):
@@ -156,6 +59,12 @@ def test_knowledge_graph_deploy_execution(kg_requests):
     operation = KGClient.vertex_operation(execution, 0, 'deployer:execution')
     assert len(operation['element']['properties']) == 3
 
+    vertex_id = KGClient.mutation(
+        [
+            operation,
+        ], wait_for_response=True)
+    assert vertex_id == 1234
+
 
 def test_knowledge_graph_add_project(kg_requests):
     """Test sending a deployment context to the KG."""
@@ -168,3 +77,19 @@ def test_knowledge_graph_add_project(kg_requests):
     project.name = 'MyProject'
     operation = KGClient.vertex_operation(project, 0, 'project:project')
     assert len(operation['element']['properties']) == 1
+
+    vertex_id = KGClient.mutation(
+        [
+            operation,
+        ], wait_for_response=True)
+    assert vertex_id == 1234
+
+
+def test_knowledge_graph_add_project(kg_requests):
+    """Test sending a deployment context to the KG."""
+    ProjectClient = projects.ProjectClient('http://localhost/api')
+
+    project = ProjectClient.create_project(name='My Project')
+
+    assert project.name == 'My Project'
+    assert project.vertex_id == 1234

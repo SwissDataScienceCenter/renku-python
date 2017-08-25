@@ -133,6 +133,10 @@ class KnowledgeGraphClient(object):
                 # sleep for 200 miliseconds
                 time.sleep(0.2)
 
-            return response
+            if response['response']['event']['status'] == 'success':
+                vertex_id = response['response']['event']['results'][0]['id']
+                return vertex_id
+            else:
+                raise RuntimeError('Adding vertex failed')
 
         return response.json()['uuid']
