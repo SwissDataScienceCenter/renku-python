@@ -61,8 +61,9 @@ def with_config(f):
     """Add config to function."""
     @click.pass_context
     def new_func(ctx, *args, **kwargs):
-        result = ctx.invoke(f, ctx.obj['config'], *args, **kwargs)
-        write_config(ctx.obj['config'])
+        config = ctx.obj['config'] = read_config()
+        result = ctx.invoke(f, config, *args, **kwargs)
+        write_config(config)
         return result
 
     return update_wrapper(new_func, f)

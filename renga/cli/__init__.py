@@ -19,7 +19,7 @@ import click
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
-from ._config import print_app_config_path, read_config
+from ._config import print_app_config_path
 from ._version import print_version
 
 
@@ -43,7 +43,5 @@ from ._version import print_version
     help=print_app_config_path.__doc__)
 @click.pass_context
 def cli(ctx):
-    """Base cli."""
-    ctx.obj = {
-        'config': read_config(),
-    }
+    """Check common Renga commands used in various situations."""
+    ctx.obj = {}
