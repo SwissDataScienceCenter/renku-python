@@ -47,7 +47,7 @@ def endpoint(ctx, config, verbose):
 def set_default(ctx, config, endpoint):
     """Set endpoint as default."""
     if endpoint not in config.get('endpoints', {}):
-        click.UsageError('Unknown endpoint: {0}'.format(endpoint))
+        raise click.UsageError('Unknown endpoint: {0}'.format(endpoint))
 
     config.setdefault('core', {})
     config['core']['default'] = endpoint

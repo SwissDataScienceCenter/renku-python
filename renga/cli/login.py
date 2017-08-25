@@ -19,6 +19,8 @@ import click
 import requests
 
 from ._config import config_path, with_config
+from ._token import exchange_token, offine_token_using_password, \
+    with_access_token
 
 
 @click.command()
@@ -34,20 +36,12 @@ from ._config import config_path, with_config
 def login(config, endpoint, url, client_id, username, password, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
-    response = requests.post(
-        url,
-        data={
-            'grant_type': 'password',
-            'scope': ['offline_access', 'openid'],
-            'client_id': client_id,
-            'username': username,
-            'password': password,
-        })
-    data = response.json()
+    data = offine_token_using_password(url, client_id, username, password)
     config.setdefault('endpoints', {})
     config['endpoints'].setdefault(endpoint, {})
-    config['endpoints'][endpoint]['url'] = url
+    config['endpoints'][endpoint]['client_id'] = client_id
     config['endpoints'][endpoint]['token'] = data['refresh_token']
+    config['endpoints'][endpoint]['url'] = url
 
     if len(config['endpoints']) == 1 and default:
         config.setdefault('core', {})
@@ -56,9 +50,24 @@ def login(config, endpoint, url, client_id, username, password, default):
     click.echo('Access token has been stored in: {0}'.format(config_path()))
 
 
-@click.command()
+@click.group(invoke_without_command=True)
 @with_config
-def tokens(config):
+@click.pass_context
+def tokens(ctx, config):
     """Print access tokens."""
-    for url, data in config.get('endpoints').items():
-        click.echo('{url}: {token}'.format(url=url, token=data['token']))
+    if ctx.invoked_subcommand is None:
+        for url, data in config.get('endpoints').items():
+            click.echo('{url}: {token}'.format(url=url, token=data['token']))
+
+
+@tokens.command()
+@click.argument('endpoint')
+@with_config
+@click.pass_context
+def access(ctx, config, endpoint):
+    """Try to get access token."""
+    if endpoint not in config.get('endpoints', {}):
+        raise click.UsageError('Unknown endpoint: {0}'.format(endpoint))
+
+    with with_access_token(config, endpoint) as access_token:
+        click.echo(access_token)

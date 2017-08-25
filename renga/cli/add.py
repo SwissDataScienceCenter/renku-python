@@ -27,6 +27,6 @@ from ._config import with_config
 @with_config
 @click.pass_context
 def add(ctx, config):
-    """Add file to the project."""
+    """Add a resource to the project."""
     click.secho('Not implemented', fg='red', err=True)
     ctx.exit(255)

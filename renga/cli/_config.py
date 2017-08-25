@@ -64,6 +64,7 @@ def with_config(f):
         result = ctx.invoke(f, ctx.obj['config'], *args, **kwargs)
         write_config(ctx.obj['config'])
         return result
+
     return update_wrapper(new_func, f)
 
 
@@ -75,7 +76,8 @@ def print_app_config_path(ctx, param, value):
     ctx.exit()
 
 
-def create_project_config_path(path, mode=0o777, parents=False, exist_ok=False):
+def create_project_config_path(path, mode=0o777, parents=False,
+                               exist_ok=False):
     """Create new project configuration folder."""
     project_path = Path(path).absolute().joinpath(PROJECT_DIR)
     project_path.mkdir(mode=mode, parents=parents, exist_ok=exist_ok)

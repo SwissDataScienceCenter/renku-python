@@ -67,10 +67,15 @@ def test_login(runner):
 def test_init(runner):
     """Test project initialization."""
     # 0. must autosync
-    result = runner.invoke(cli.cli, ['init', '--project', 'project'])
+    result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code == 2
 
-    # 1. test projet directory creation
+    # 1. the directory must exist
+    result = runner.invoke(cli.cli, ['init', '--autosync', 'test-project'])
+    assert result.exit_code == 2
+
+    # 2. test project directory creation
+    os.mkdir('test-project')
     result = runner.invoke(cli.cli, ['init', '--autosync', 'test-project'])
     assert result.exit_code == 0
-    assert os.stat('test-project')
+    assert os.stat(os.path.join('test-project', '.renga'))
