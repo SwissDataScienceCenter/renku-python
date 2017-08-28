@@ -62,7 +62,16 @@ def with_config(f):
     @click.pass_context
     def new_func(ctx, *args, **kwargs):
         config = ctx.obj['config'] = read_config()
+        project_config_path = get_project_config_path()
+        if project_config_path:
+            project_config = read_config(project_config_path)
+            config['project'] = project_config
         result = ctx.invoke(f, config, *args, **kwargs)
+        project_config = config.pop('project', None)
+        if project_config:
+            if not project_config_path:
+                raise RuntimeError('Invalid config update')
+            write_config(project_config, path=project_config_path)
         write_config(config)
         return result
 
@@ -85,9 +94,9 @@ def create_project_config_path(path, mode=0o777, parents=False,
     return str(project_path)
 
 
-def get_project_config_path(path):
+def get_project_config_path(path=None):
     """Return project configuration folder if exist."""
-    project_path = Path(path).absolute().joinpath(PROJECT_DIR)
+    project_path = Path(path or '.').absolute().joinpath(PROJECT_DIR)
     if project_path.exists() and project_path.is_dir():
         return str(project_path)
 

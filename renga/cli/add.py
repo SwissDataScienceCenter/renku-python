@@ -24,9 +24,17 @@ from ._config import with_config
 
 
 @click.command()
+@click.argument('pathspec')
 @with_config
 @click.pass_context
-def add(ctx, config):
+def add(ctx, config, pathspec):
     """Add a resource to the project."""
-    click.secho('Not implemented', fg='red', err=True)
-    ctx.exit(255)
+    config['project'].setdefault('resources', {})
+    resources = config['project']['resources']
+
+    if pathspec in resources:
+        raise click.UsageError('Resource already exists.')
+
+    config['project']['resources'][pathspec] = {
+        'added': datetime.datetime.utcnow().isoformat(),
+    }
