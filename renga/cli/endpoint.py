@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage set of API endpoints."""
+"""Manage set of platform API endpoints."""
 
 import datetime
 import os
@@ -28,7 +28,7 @@ from ._config import with_config
 @with_config
 @click.pass_context
 def endpoint(ctx, config, verbose):
-    """Manage set of API endpoints."""
+    """Manage set of platform API endpoints."""
     if ctx.invoked_subcommand is None:
         # TODO default_endpoint = config.get('core', {}).get('default')
         for endpoint, values in config.get('endpoints', {}).items():

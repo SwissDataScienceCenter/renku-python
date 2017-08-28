@@ -19,7 +19,7 @@ import click
 import requests
 
 from ._config import config_path, with_config
-from ._token import exchange_token, offine_token_using_password, \
+from ._token import exchange_token, offline_token_using_password, \
     with_access_token
 
 
@@ -36,7 +36,7 @@ from ._token import exchange_token, offine_token_using_password, \
 def login(config, endpoint, url, client_id, username, password, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
-    data = offine_token_using_password(url, client_id, username, password)
+    data = offline_token_using_password(url, client_id, username, password)
     config.setdefault('endpoints', {})
     config['endpoints'].setdefault(endpoint, {})
     config['endpoints'][endpoint]['client_id'] = client_id

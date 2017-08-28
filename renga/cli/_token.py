@@ -21,7 +21,8 @@ import click
 import requests
 
 
-def offine_token_using_password(token_endpoint, client_id, username, password):
+def offline_token_using_password(token_endpoint, client_id, username,
+                                 password):
     """Get offine token using password."""
     response = requests.post(
         token_endpoint,
@@ -40,9 +41,9 @@ def exchange_token(refresh_token, token_endpoint, client_id):
     response = requests.post(
         token_endpoint,
         data={
-            "grant_type": "refresh_token",
-            "client_id": client_id,
-            "refresh_token": refresh_token,
+            'grant_type': 'refresh_token',
+            'client_id': client_id,
+            'refresh_token': refresh_token,
         })
     return response.json()
 
