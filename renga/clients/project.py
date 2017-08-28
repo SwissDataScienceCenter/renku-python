@@ -16,16 +16,13 @@
 """Client for handling projects."""
 
 
-from . import knowledge_graph
+from werkzeug.utils import cached_property
 
+from ._datastructures import namedtuple
+from .graph.mutation import GraphMutationClient
 
-class Project(object):
-    """Renga platform project."""
-
-    def __init__(self, name, vertex_id=None):
-        """Initialize Project."""
-        self.name = name
-        self.vertex_id = vertex_id
+Project = namedtuple('Project', ['name', 'vertex_id'])
+"""Renga platform project."""
 
 
 class ProjectClient(object):
@@ -34,25 +31,18 @@ class ProjectClient(object):
     def __init__(self, platform_endpoint):
         """Initialize Project client."""
         self.platform_endpoint = platform_endpoint
-        self._KGCLient = None
 
-    @property
-    def KGClient(self):
-        if self._KGCLient is None:
-            self._KGCLient = knowledge_graph.KnowledgeGraphClient(
-                self.platform_endpoint)
-        return self._KGCLient
+    @cached_property
+    def _api(self):
+        """Return a graph mutation client."""
+        return GraphMutationClient(self.platform_endpoint)
 
-    def create_project(self, name):
+    def create(self, name):
         """Create a new project and register it on the knowledge graph."""
-        project = Project(name)
-
-        operation = self.KGClient.vertex_operation(
+        project = Project(name=name)
+        # Create new node
+        operation = self._api.vertex_operation(
             project, temp_id=0, named_type='project:project')
-
-        vertex_id = self.KGClient.mutation(
-            [
-                operation,
-            ], wait_for_response=True)
-
-        return Project(name=name, vertex_id=vertex_id)
+        # Get vertex id of the newly created project
+        return project._replace(vertex_id=self._api.mutation(
+            [operation], wait_for_response=True))

@@ -13,40 +13,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Client for the renga-graph service."""
+"""Client for the Renga graph mutation service."""
 
 import time
 
 import requests
+from werkzeug.utils import cached_property
 
-from renga.utils import join_url
+from renga.clients._datastructures import Endpoint, EndpointMixin
 
 
-class KnowledgeGraphClient(object):
-    """Knowledge graph client."""
+class GraphMutationClient(EndpointMixin):
+    """Client for handling graph mutations."""
 
-    type_mapping = {'string': str}
+    TYPE_MAPPING = {'string': str}
 
-    def __init__(self, platform_url):
-        """Initialize the KnowledgeGraphClient."""
-        self.platform_url = platform_url
-        self._named_types = None
+    mutation_url = Endpoint('/api/mutation/mutation')
+    mutation_status_url = Endpoint('/api/mutation/mutation/{uuid}')
+    named_type_url = Endpoint('/api/types/management/named_type')
 
-    @property
+    @cached_property
     def named_types(self):
         """Fetch named types from types service."""
-        if self._named_types is None:
-            self._named_types = requests.get(
-                join_url(self.platform_url,
-                         'types/management/named_type')).json()
-        return self._named_types
+        return requests.get(self.named_type_url).json()
 
     def vertex_operation(self, obj, temp_id, named_type):
-        """
-        Serialize an object to KnowledgeGraph schema.
+        """Serialize an object to GraphMutation schema.
 
-        We iterate through the type definitions presented
-        by the graph typesystem to extract the pieces we need from the object.
+        We iterate through the type definitions presented by the graph
+        typesystem to extract the pieces we need from the object.
 
         TODO: use marshmallow or similar to serialize
         """
@@ -70,7 +65,7 @@ class KnowledgeGraphClient(object):
                         continue
 
                     # map to correct type
-                    value = self.type_mapping[prop['data_type']](value)
+                    value = self.TYPE_MAPPING[prop['data_type']](value)
 
                     # append the property
                     properties.append({
@@ -105,33 +100,35 @@ class KnowledgeGraphClient(object):
 
         return operation
 
-    def mutation(self, operations, wait_for_response=False, token=None):
-        """
-        Submit a mutation to the graph.
+    def mutation(self,
+                 operations,
+                 wait_for_response=False,
+                 token=None,
+                 retries=10):
+        """Submit a mutation to the graph.
 
         If ``wait_for_response == True`` the return value is the reponse JSON,
         otherwise the mutation UUID is returned.
         """
-        knowledge_graph_url = self.platform_url
         headers = {'Authorization': token}
 
         response = requests.post(
-            join_url(knowledge_graph_url, '/mutation/mutation'),
+            self.mutation_url,
             json={'operations': operations},
             headers=headers, )
 
         uuid = response.json()['uuid']
 
         if wait_for_response:
-            completed = False
-            while not completed:
+            while retries:
                 response = requests.get(
-                    join_url(
-                        knowledge_graph_url,
-                        '/mutation/mutation/{uuid}'.format(uuid=uuid))).json()
+                    self.mutation_status_url.format(uuid=uuid)).json()
                 completed = response['status'] == 'completed'
+                if completed:
+                    break
                 # sleep for 200 miliseconds
                 time.sleep(0.2)
+                retries -= 1
 
             if response['response']['event']['status'] == 'success':
                 vertex_id = response['response']['event']['results'][0]['id']

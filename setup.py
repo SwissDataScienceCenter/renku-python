@@ -51,11 +51,11 @@ setup_requires = [
 ]
 
 install_requires = [
-    'Flask-BabelEx>=0.9.2',
     'PyYAML>=3.12',
     'click>=6.7',
     'click-plugins>=1.0.3',
     'requests>=2.14.2',
+    'werkzeug>=0.12',
 ]
 
 packages = find_packages()
