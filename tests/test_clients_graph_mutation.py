@@ -16,6 +16,7 @@
 """Tests for the knowledge graph client."""
 
 import pytest
+import responses
 
 from renga.clients.deployer import Context, Execution
 from renga.clients.project import Project
@@ -35,12 +36,86 @@ def project_client():
     return ProjectClient('http://localhost')
 
 
-def test_knowledge_graph_init(graph_mutation_client, kg_requests):
+@pytest.fixture()
+def graph_mutation_responses(graph_mutation_client):
+    """Monkeypatch requests to immitate the KnowledgeGraph."""
+    mutation_url = graph_mutation_client.mutation_url
+    named_type_url = graph_mutation_client.named_type_url
+
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+        rsps.add(
+            responses.POST, mutation_url, status=201, json={'uuid': '1234'})
+        rsps.add(
+            responses.GET,
+            mutation_url + '/1234',
+            status=200,
+            json={
+                'status': 'completed',
+                'response': {
+                    'event': {
+                        'status': 'success',
+                        'results': [{
+                            'id': 1234
+                        }]
+                    }
+                }
+            })
+        rsps.add(
+            responses.GET,
+            named_type_url,
+            status=200,
+            json=[{
+                'name':
+                'context',
+                'properties': [{
+                    'name': 'context_id',
+                    'data_type': 'string',
+                    'cardinality': 'single'
+                }, {
+                    'name': 'context_spec_image',
+                    'data_type': 'string',
+                    'cardinality': 'single'
+                }, {
+                    'name': 'context_spec_ports',
+                    'data_type': 'string',
+                    'cardinality': 'single'
+                }]
+            }, {
+                'name':
+                'execution',
+                'properties': [{
+                    'name': 'execution_id',
+                    'data_type': 'string',
+                    'cardinality': 'single'
+                }, {
+                    'name': 'execution_engine',
+                    'data_type': 'string',
+                    'cardinality': 'single'
+                }, {
+                    'name': 'execution_namespace',
+                    'data_type': 'string',
+                    'cardinality': 'single'
+                }]
+            }, {
+                "name":
+                "project",
+                "properties": [{
+                    "name": "project_name",
+                    "data_type": "string",
+                    "cardinality": "single"
+                }]
+            }])
+
+        yield rsps
+
+
+def test_knowledge_graph_init(graph_mutation_client, graph_mutation_responses):
     """Test knowldge graph client initialization."""
     return graph_mutation_client.named_types
 
 
-def test_knowledge_graph_deploy_context(graph_mutation_client, kg_requests):
+def test_knowledge_graph_deploy_context(graph_mutation_client,
+                                        graph_mutation_responses):
     """Test sending a deployment context to the KG."""
     context = Context(id=1234, spec={'image': 'hello-world', 'ports': '9999'})
     operation = graph_mutation_client.vertex_operation(context, 0,
@@ -53,7 +128,8 @@ def test_knowledge_graph_deploy_context(graph_mutation_client, kg_requests):
     assert vertex_id == 1234
 
 
-def test_knowledge_graph_deploy_execution(graph_mutation_client, kg_requests):
+def test_knowledge_graph_deploy_execution(graph_mutation_client,
+                                          graph_mutation_responses):
     """Test sending a deployment context to the KG."""
     execution = Execution(id=1234, engine='docker', namespace='default')
     operation = graph_mutation_client.vertex_operation(execution, 0,
@@ -65,7 +141,8 @@ def test_knowledge_graph_deploy_execution(graph_mutation_client, kg_requests):
     assert vertex_id == 1234
 
 
-def test_knowledge_graph_add_project(graph_mutation_client, kg_requests):
+def test_knowledge_graph_add_project(graph_mutation_client,
+                                     graph_mutation_responses):
     """Test sending a deployment context to the KG."""
     project = Project(name='MyProject')
     operation = graph_mutation_client.vertex_operation(project, 0,
@@ -78,7 +155,7 @@ def test_knowledge_graph_add_project(graph_mutation_client, kg_requests):
     assert vertex_id == 1234
 
 
-def test_knowledge_graph_add_project(project_client, kg_requests):
+def test_knowledge_graph_add_project(project_client, graph_mutation_responses):
     """Test sending a deployment context to the KG."""
     project = project_client.create(name='My Project')
 
