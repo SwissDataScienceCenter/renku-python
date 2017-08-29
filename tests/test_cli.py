@@ -37,23 +37,10 @@ def test_config_path(runner):
     assert APP_NAME.lower() in result.output.split('\n')[0].lower()
 
 
-@responses.activate
-def test_login(runner):
+def test_login(runner, auth_responses):
     """Test login."""
-
-    def request_callback(request):
-        return (200, {
-            'Content-Type': 'application/json'
-        }, '{"refresh_token": "demodemo"}')
-
-    responses.add_callback(
-        responses.POST,
-        'http://example.com/auth',
-        content_type='application/json',
-        callback=request_callback)
-
     result = runner.invoke(cli.cli, [
-        'login', 'http://example.com', '--url', 'http://example.com/auth',
+        'login', 'http://example.com',
         '--username', 'demo', '--password', 'demo'
     ])
     assert result.exit_code == 0
@@ -64,8 +51,14 @@ def test_login(runner):
     assert 'http://example.com: demodemo' in result.output.split('\n')
 
 
-def test_init(runner):
+def test_init(runner, graph_mutation_responses):
     """Test project initialization."""
+    result = runner.invoke(cli.cli, [
+        'login', 'http://example.com', '--username', 'demo', '--password',
+        'demo'
+    ])
+
+    assert result.exit_code == 0
     # 0. must autosync
     result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code == 2

@@ -21,7 +21,14 @@ import os
 import click
 
 from ._config import create_project_config_path, get_project_config_path, \
-    read_config, write_config
+    read_config, with_config, write_config
+
+
+def validate_name(ctx, param, value):
+    """Validate a project name."""
+    if not value:
+        value = os.path.basename(ctx.params['directory'].rstrip(os.path.sep))
+    return value
 
 
 @click.command()
@@ -30,7 +37,9 @@ from ._config import create_project_config_path, get_project_config_path, \
     default='.',
     type=click.Path(exists=True, writable=True, file_okay=False))
 @click.option('--autosync', is_flag=True)
-def init(directory, autosync):
+@click.option('--name', callback=validate_name)
+@with_config
+def init(config, directory, autosync, name):
     """Initialize a project."""
     if not autosync:
         raise click.UsageError('You must specify the --autosync option.')
@@ -42,10 +51,22 @@ def init(directory, autosync):
         raise click.UsageError(
             'Directory {0} is already initialized'.format(directory))
 
-    config = read_config(project_config_path)
-    config.setdefault('core', {})
-    config['core']['autosync'] = autosync
-    config['core'].setdefault('generated',
-                              datetime.datetime.utcnow().isoformat())
+    project_config = read_config(project_config_path)
+    project_config.setdefault('core', {})
+    project_config['core']['autosync'] = autosync
+    project_config['core']['name'] = name
+    project_config['core'].setdefault('generated',
+                                      datetime.datetime.utcnow().isoformat())
 
-    write_config(config, path=project_config_path)
+    if autosync:
+        from renga.clients.project import ProjectClient
+
+        endpoint = config['core']['default']
+        # FIXME add Authorization header
+        project_client = ProjectClient(endpoint)
+        project = project_client.create(name=name)
+        project_config.setdefault('endpoints', {})
+        project_config['endpoints'].setdefault(endpoint, {})
+        project_config['endpoints'][endpoint]['vertex_id'] = project.vertex_id
+
+    write_config(project_config, path=project_config_path)

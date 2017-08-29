@@ -43,7 +43,7 @@ def login(config, endpoint, url, client_id, username, password, default):
     config['endpoints'][endpoint]['token'] = data['refresh_token']
     config['endpoints'][endpoint]['url'] = url
 
-    if len(config['endpoints']) == 1 and default:
+    if len(config['endpoints']) == 1 or default:
         config.setdefault('core', {})
         config['core']['default'] = endpoint
 

@@ -26,8 +26,7 @@ from ._config import with_config
 @click.command()
 @click.argument('pathspec')
 @with_config
-@click.pass_context
-def add(ctx, config, pathspec):
+def add(config, pathspec):
     """Add a resource to the project."""
     config['project'].setdefault('resources', {})
     resources = config['project']['resources']
@@ -35,6 +34,15 @@ def add(ctx, config, pathspec):
     if pathspec in resources:
         raise click.UsageError('Resource already exists.')
 
-    config['project']['resources'][pathspec] = {
+    resource = {
         'added': datetime.datetime.utcnow().isoformat(),
     }
+
+    autosync = config['project']['core']['autosync']
+    if autosync:
+        endpoint = config['core']['default']
+        resource.setdefault('endpoints', {})
+        # FIXME add file to storage service
+        resource['endpoints'][endpoint] = {'vertex_id': None}
+
+    config['project']['resources'][pathspec] = resource

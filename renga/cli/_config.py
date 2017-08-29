@@ -33,10 +33,10 @@ PROJECT_DIR = '.renga'
 def config_path(path=None):
     """Return config path."""
     if path is None:
-        path = click.get_app_dir(APP_NAME)
+        path = os.environ.get('RENGA_CONFIG', click.get_app_dir(APP_NAME))
         try:
             os.makedirs(path)
-        except OSError as e:
+        except OSError as e:  # pragma: no cover
             if e.errno != errno.EEXIST:
                 raise
     return os.path.join(path, 'config.yml')
@@ -59,6 +59,8 @@ def write_config(config, path=None):
 
 def with_config(f):
     """Add config to function."""
+    # keep it.
+
     @click.pass_context
     def new_func(ctx, *args, **kwargs):
         config = ctx.obj['config'] = read_config()
