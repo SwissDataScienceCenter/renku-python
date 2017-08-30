@@ -21,12 +21,13 @@ import os
 import click
 
 from ._config import with_config
+from ._options import option_endpoint
 
 
 @click.command()
 @click.argument('pathspec')
 @with_config
-def add(config, pathspec):
+def add(config, pathspec, endpoint):
     """Add a resource to the project."""
     config['project'].setdefault('resources', {})
     resources = config['project']['resources']
@@ -40,7 +41,6 @@ def add(config, pathspec):
 
     autosync = config['project']['core']['autosync']
     if autosync:
-        endpoint = config['core']['default']
         resource.setdefault('endpoints', {})
         # FIXME add file to storage service
         resource['endpoints'][endpoint] = {'vertex_id': None}

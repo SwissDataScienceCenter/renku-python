@@ -86,6 +86,7 @@ setup(
             'add=renga.cli.add:add',
             'endpoint=renga.cli.endpoint:endpoint',
             'init=renga.cli.init:init',
+            'io=renga.cli.io:storage',
             'login=renga.cli.login:login',
             'notebook=renga.cli.notebook:notebook',
             'tokens=renga.cli.login:tokens',

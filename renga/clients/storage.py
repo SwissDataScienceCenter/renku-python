@@ -29,16 +29,51 @@ CreateBucket = namedtuple(
     default_values={'request_type': 'create_bucket'})
 """Storage create bucket request."""
 
+CreateFile = namedtuple(
+    'CreateBucket', ['name', 'backend', 'request_type'],
+    default_values={'request_type': 'create_bucket'})
+"""Storage create bucket request."""
+
 
 class StorageClient(EndpointMixin):
     """Client for handling storage."""
 
+    backends_url = Endpoint('/api/storage/io/backends')
     create_bucket_url = Endpoint('/api/storage/authorize/create_bucket')
     create_file_url = Endpoint('/api/storage/authorize/create_file')
     read_file_url = Endpoint('/api/storage/authorize/read_file')
     io_write_url = Endpoint('/api/storage/io/write')
     io_read_url = Endpoint('/api/storage/io/read')
 
-    def create_bucket(self, bucket, access_token):
+    def __init__(self, endpoint, access_token=None):
+        EndpointMixin.__init__(self, endpoint)
+        self.access_token = access_token
+
+    @property
+    def _headers(self):
+        """Return default headers."""
+        return {'Authorization': 'Bearer {0}'.format(self.access_token)}
+
+    @cached_property
+    def backends(self):
+        """Return list of all available backends."""
+        resp = requests.get(
+            self.backends_url,
+            headers=self._headers, )
+        return resp.json()
+
+    def create_bucket(self, bucket):
         """Create a bucket."""
+        if bucket.backend not in self.backends:
+            raise ValueError(
+                'Unsupported bucket backend {0}'.format(bucket.backend))
+
+        resp = requests.post(
+            self.create_bucket_url,
+            headers=self._headers,
+            json=bucket._asdict()).json()
+        return resp['id']
+
+    def create_file(self, file_):
+        """Create a file."""
         pass
