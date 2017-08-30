@@ -19,8 +19,11 @@ import datetime
 import os
 
 import click
+import json
 
 from ._config import with_config
+from ._token import with_access_token
+from renga.clients.deployer import DeployerClient
 
 
 @click.group(invoke_without_command=True)
@@ -29,5 +32,73 @@ from ._config import with_config
 def notebook(ctx, config):
     """Manage notebooks."""
     if ctx.invoked_subcommand is None:
-        click.secho('Not implemented', fg='red', err=True)
-        ctx.exit(255)
+        click.echo('Listing all running notebooks:')
+        ctx.invoke(show, all=True)
+
+
+@notebook.command()
+@with_config
+@click.option('--all', is_flag=True)
+def show(config, all):
+    """Show running notebooks."""
+    endpoint = config['core']['default']
+    deployer_client = DeployerClient(endpoint)
+
+    project_config = config.get('project', {})
+
+    project_vertex_id = project_config.get('endpoints', {}).get(
+        endpoint, {}).get('vertex_id')
+
+    contexts = []
+    with with_access_token(config, endpoint) as token:
+        for context in deployer_client.list_contexts(token):
+            if 'jupyter' in context['spec']['image']:
+                # if we are inside a project, only show project notebooks
+                labels = context['spec'].get('labels', {})
+
+                if (project_vertex_id == labels.get('renga.project.vertex_id',
+                                                    0)) or all:
+                    contexts.append(context)
+
+        for context in contexts:
+            for execution in deployer_client.list_executions(
+                    context['identifier'], token):
+
+                ports = deployer_client.get_ports(
+                    context['identifier'], execution['identifier'], token)
+                click.echo('http://{0}:{1}'.format(ports[0]['host'], ports[0][
+                    'exposed']))
+
+
+@notebook.command()
+@with_config
+@click.option('--engine', default='docker')
+def launch(config, engine):
+    """Launch a new notebook."""
+    endpoint = config['core']['default']
+    deployer_client = DeployerClient(endpoint)
+
+    project_config = config.get('project', {})
+
+    project_vertex_id = project_config.get('endpoints', {}).get(
+        endpoint, {}).get('vertex_id')
+
+    spec = {
+        'image':
+        'jupyter/minimal-notebook',
+        'ports': ['8888'],
+        'command':
+        "start-notebook.sh --NotebookApp.password='sha1:d9fb32fb1c07:520b857f8e4e6859e02d66bcf3770cf58c810079'"
+    }
+
+    if project_vertex_id:
+        spec['labels'] = {'renga.project.vertex_id': project_vertex_id}
+
+    with with_access_token(config, endpoint) as token:
+        context = deployer_client.create_context(spec, token)
+        execution = deployer_client.create_execution(context['identifier'],
+                                                     engine, token)
+        ports = deployer_client.get_ports(context['identifier'],
+                                          execution['identifier'], token)
+        click.echo(
+            'http://{0}:{1}'.format(ports[0]['host'], ports[0]['exposed']))

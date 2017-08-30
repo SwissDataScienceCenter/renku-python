@@ -47,7 +47,7 @@ class DeployerClient(EndpointMixin):
             self.contexts_endpoint,
             headers={'Authorization': 'Bearer {0}'.format(access_token)})
 
-        return return_response(r, ok_code=200, return_json=True)
+        return return_response(r, ok_code=200, return_json=True)['contexts']
 
     def create_context(self, spec, access_token):
         """Create a new deployment context."""
@@ -64,7 +64,7 @@ class DeployerClient(EndpointMixin):
             self.executions_endpoint.format(context_id),
             headers={'Authorization': 'Bearer {0}'.format(access_token)})
 
-        return return_response(r, ok_code=200, return_json=True)
+        return return_response(r, ok_code=200, return_json=True)['executions']
 
     def create_execution(self, context_id, engine, access_token):
         """Create an execution of a context on a given engine."""
@@ -93,8 +93,8 @@ class DeployerClient(EndpointMixin):
 
     def get_ports(self, context_id, execution_id, access_token):
         """Retrieve port mappings for an execution."""
-        r = request.get(
+        r = requests.get(
             self.execution_ports_endpoint.format(context_id, execution_id),
             headers={'Authorization': 'Bearer {0}'.format(access_token)})
 
-        return return_response(r, ok_code=200, return_json=True)
+        return return_response(r, ok_code=200, return_json=True)['ports']

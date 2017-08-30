@@ -26,7 +26,7 @@ from renga.clients.deployer import DeployerClient
 @with_config
 @click.pass_context
 def contexts(ctx, config):
-    """List all current contexts."""
+    """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
         endpoint = config['core']['default']
         deployer_client = DeployerClient(endpoint)
@@ -34,3 +34,39 @@ def contexts(ctx, config):
         with with_access_token(config, endpoint) as token:
             for context in deployer_client.list_contexts(token)['contexts']:
                 click.echo(json.dumps(context))
+
+
+@click.group()
+@with_config
+@click.pass_context
+def executions(ctx, config):
+    """Manage executions."""
+    pass
+
+
+@executions.command()
+@click.argument('context_id')
+@with_config
+def show(config, context_id):
+    """Show the executions of a context."""
+    endpoint = config['core']['default']
+    deployer_client = DeployerClient(endpoint)
+
+    with with_access_token(config, endpoint) as token:
+        for execution in deployer_client.list_executions(context_id,
+                                                         token)['executions']:
+            click.echo(json.dumps(execution))
+
+
+@executions.command()
+@click.argument('context_id')
+@click.argument('execution_id')
+@with_config
+def ports(config, context_id, execution_id):
+    """Show the executions of a context."""
+    endpoint = config['core']['default']
+    deployer_client = DeployerClient(endpoint)
+
+    with with_access_token(config, endpoint) as token:
+        click.echo(deployer_client.get_ports(context_id, execution_id, token))
+

@@ -90,7 +90,8 @@ setup(
             'login=renga.cli.login:login',
             'notebook=renga.cli.notebook:notebook',
             'tokens=renga.cli.login:tokens',
-            'contexts=renga.cli.deployments:contexts'
+            'contexts=renga.cli.deployments:contexts',
+            'executions=renga.cli.deployments:executions',
         ],
     },
     extras_require=extras_require,
