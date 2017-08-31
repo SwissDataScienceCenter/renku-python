@@ -15,13 +15,15 @@
 # limitations under the License.
 """Interact with the deployment service."""
 
-import click
 import json
+
+import click
+
+from renga.clients.deployer import DeployerClient
+from renga.cli._options import option_endpoint
 
 from ._config import with_config
 from ._token import with_access_token
-from renga.clients.deployer import DeployerClient
-from renga.cli._options import option_endpoint
 
 
 @click.group(invoke_without_command=True)
@@ -39,11 +41,8 @@ def contexts(ctx, config, endpoint):
 
 
 @click.group()
-@with_config
-@click.pass_context
 def executions(ctx, config):
     """Manage executions."""
-    pass
 
 
 @executions.command()
@@ -71,4 +70,3 @@ def ports(config, context_id, execution_id, endpoint):
 
     with with_access_token(config, endpoint) as token:
         click.echo(deployer_client.get_ports(context_id, execution_id, token))
-
