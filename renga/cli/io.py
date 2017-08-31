@@ -67,6 +67,10 @@ def create(config, name, backend, endpoint):
         config['project']['endpoints'][endpoint].setdefault('buckets', {})
         config['project']['endpoints'][endpoint]['buckets'][bucket_id] = name
 
+        # Set default bucket
+        config['project']['endpoints'][endpoint].setdefault(
+            'default_bucket', bucket_id)
+
         click.echo(bucket_id)
 
 
@@ -75,7 +79,7 @@ def create(config, name, backend, endpoint):
 @with_config
 def list(config, endpoint):
     """List buckets."""
-    buckets = config['project']['endpoints'][endpoint].get('buckets', {}).get(name)
+    buckets = config['project']['endpoints'][endpoint].get('buckets', {})
 
     if buckets is None:
         raise click.ClickException('No registered buckets')

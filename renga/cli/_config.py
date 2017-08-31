@@ -63,7 +63,14 @@ def with_config(f):
 
     @click.pass_context
     def new_func(ctx, *args, **kwargs):
-        config = ctx.obj['config'] = read_config()
+        if ctx.obj is None:
+            ctx.obj = {}
+
+        if 'config' in ctx.obj:
+            config = ctx.obj['config']
+        else:
+            config = ctx.obj['config'] = read_config()
+
         project_config_path = get_project_config_path()
         if project_config_path:
             project_config = read_config(project_config_path)

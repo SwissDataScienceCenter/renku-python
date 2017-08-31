@@ -30,8 +30,8 @@ CreateBucket = namedtuple(
 """Storage create bucket request."""
 
 CreateFile = namedtuple(
-    'CreateBucket', ['name', 'backend', 'request_type'],
-    default_values={'request_type': 'create_bucket'})
+    'CreateFile', ['bucket_id', 'file_name', 'request_type'],
+    default_values={'request_type': 'create_file'})
 """Storage create bucket request."""
 
 
@@ -46,6 +46,7 @@ class StorageClient(EndpointMixin):
     io_read_url = Endpoint('/api/storage/io/read')
 
     def __init__(self, endpoint, access_token=None):
+        """Create a storage client."""
         EndpointMixin.__init__(self, endpoint)
         self.access_token = access_token
 
@@ -76,4 +77,8 @@ class StorageClient(EndpointMixin):
 
     def create_file(self, file_):
         """Create a file."""
-        pass
+        resp = requests.post(
+            self.create_file_url,
+            headers=self._headers,
+            json=file_._asdict()).json()
+        return resp

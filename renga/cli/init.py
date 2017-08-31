@@ -35,11 +35,13 @@ def validate_name(ctx, param, value):
 @click.argument(
     'directory',
     default='.',
-    type=click.Path(exists=True, writable=True, file_okay=False))
+    type=click.Path(
+        exists=True, writable=True, file_okay=False, resolve_path=True))
 @click.option('--autosync', is_flag=True)
 @click.option('--name', callback=validate_name)
+@click.option('--force', is_flag=True)
 @with_config
-def init(config, directory, autosync, name):
+def init(config, directory, autosync, name, force):
     """Initialize a project."""
     if not autosync:
         raise click.UsageError('You must specify the --autosync option.')
@@ -47,9 +49,11 @@ def init(config, directory, autosync, name):
     # 1. create the directory
     try:
         project_config_path = create_project_config_path(directory)
-    except FileExistsError:
-        raise click.UsageError(
-            'Directory {0} is already initialized'.format(directory))
+    except FileExistsError as e:
+        if not force:
+            raise click.UsageError(
+                'Directory {0} is already initialized'.format(directory))
+        project_config_path = e.filename
 
     project_config = read_config(project_config_path)
     project_config.setdefault('core', {})

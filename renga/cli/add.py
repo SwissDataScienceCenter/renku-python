@@ -20,17 +20,23 @@ import os
 
 import click
 
+from renga.clients.storage import CreateFile, StorageClient
+
 from ._config import with_config
 from ._options import option_endpoint
+from ._token import with_access_token
 
 
 @click.command()
 @click.argument('pathspec')
+@option_endpoint
 @with_config
 def add(config, pathspec, endpoint):
     """Add a resource to the project."""
     config['project'].setdefault('resources', {})
     resources = config['project']['resources']
+
+    # TODO check that the pathspec is relative to project directory
 
     if pathspec in resources:
         raise click.UsageError('Resource already exists.')
@@ -41,8 +47,20 @@ def add(config, pathspec, endpoint):
 
     autosync = config['project']['core']['autosync']
     if autosync:
+        bucket_id = config['project']['endpoints'][endpoint]['default_bucket']
         resource.setdefault('endpoints', {})
-        # FIXME add file to storage service
-        resource['endpoints'][endpoint] = {'vertex_id': None}
+
+        with with_access_token(config, endpoint) as access_token:
+            client = StorageClient(
+                endpoint=endpoint, access_token=access_token)
+            file_ = client.create_file(CreateFile(
+                bucket_id=bucket_id,
+                file_name=pathspec,
+            ))
+
+            resource['endpoints'][endpoint] = {
+                'vertex_id': file_['id'],
+                'access_token': file_['access_token'],
+            }
 
     config['project']['resources'][pathspec] = resource

@@ -21,6 +21,7 @@ import os
 import click
 
 from ._config import with_config
+from ._options import argument_endpoint
 
 
 @click.group(invoke_without_command=True)
@@ -41,13 +42,10 @@ def endpoint(ctx, config, verbose):
 
 
 @endpoint.command(name='set-default')
-@click.argument('endpoint')
+@argument_endpoint
 @with_config
 @click.pass_context
 def set_default(ctx, config, endpoint):
     """Set endpoint as default."""
-    if endpoint not in config.get('endpoints', {}):
-        raise click.UsageError('Unknown endpoint: {0}'.format(endpoint))
-
     config.setdefault('core', {})
     config['core']['default'] = endpoint
