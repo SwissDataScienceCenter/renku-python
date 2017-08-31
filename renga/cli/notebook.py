@@ -23,6 +23,7 @@ import json
 
 from ._config import with_config
 from ._token import with_access_token
+from renga.cli._options import option_endpoint
 from renga.clients.deployer import DeployerClient
 
 
@@ -38,10 +39,10 @@ def notebook(ctx, config):
 
 @notebook.command()
 @with_config
+@option_endpoint
 @click.option('--all', is_flag=True)
-def show(config, all):
+def show(config, all, endpoint):
     """Show running notebooks."""
-    endpoint = config['core']['default']
     deployer_client = DeployerClient(endpoint)
 
     project_config = config.get('project', {})
@@ -72,10 +73,10 @@ def show(config, all):
 
 @notebook.command()
 @with_config
+@option_endpoint
 @click.option('--engine', default='docker')
-def launch(config, engine):
+def launch(config, engine, endpoint):
     """Launch a new notebook."""
-    endpoint = config['core']['default']
     deployer_client = DeployerClient(endpoint)
 
     project_config = config.get('project', {})

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # Copyright 2017 Swiss Data Science Center
 #
@@ -20,15 +21,16 @@ import json
 from ._config import with_config
 from ._token import with_access_token
 from renga.clients.deployer import DeployerClient
+from renga.cli._options import option_endpoint
 
 
 @click.group(invoke_without_command=True)
 @with_config
+@option_endpoint
 @click.pass_context
-def contexts(ctx, config):
+def contexts(ctx, config, endpoint):
     """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
-        endpoint = config['core']['default']
         deployer_client = DeployerClient(endpoint)
 
         with with_access_token(config, endpoint) as token:
@@ -47,9 +49,9 @@ def executions(ctx, config):
 @executions.command()
 @click.argument('context_id')
 @with_config
-def show(config, context_id):
+@option_endpoint
+def show(config, context_id, endpoint):
     """Show the executions of a context."""
-    endpoint = config['core']['default']
     deployer_client = DeployerClient(endpoint)
 
     with with_access_token(config, endpoint) as token:
@@ -62,9 +64,9 @@ def show(config, context_id):
 @click.argument('context_id')
 @click.argument('execution_id')
 @with_config
-def ports(config, context_id, execution_id):
-    """Show the executions of a context."""
-    endpoint = config['core']['default']
+@option_endpoint
+def ports(config, context_id, execution_id, endpoint):
+    """Show the port and host mapping of an execution."""
     deployer_client = DeployerClient(endpoint)
 
     with with_access_token(config, endpoint) as token:
