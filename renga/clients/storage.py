@@ -20,7 +20,8 @@ import time
 import requests
 from werkzeug.utils import cached_property
 
-from renga.clients._datastructures import Endpoint, EndpointMixin
+from renga.clients._datastructures import AccessTokenMixin, Endpoint, \
+    EndpointMixin
 
 from ._datastructures import namedtuple
 
@@ -35,7 +36,7 @@ CreateFile = namedtuple(
 """Storage create bucket request."""
 
 
-class StorageClient(EndpointMixin):
+class StorageClient(EndpointMixin, AccessTokenMixin):
     """Client for handling storage."""
 
     backends_url = Endpoint('/api/storage/io/backends')
@@ -48,19 +49,14 @@ class StorageClient(EndpointMixin):
     def __init__(self, endpoint, access_token=None):
         """Create a storage client."""
         EndpointMixin.__init__(self, endpoint)
-        self.access_token = access_token
-
-    @property
-    def _headers(self):
-        """Return default headers."""
-        return {'Authorization': 'Bearer {0}'.format(self.access_token)}
+        AccessTokenMixin.__init__(self, access_token)
 
     @cached_property
     def backends(self):
         """Return list of all available backends."""
         resp = requests.get(
             self.backends_url,
-            headers=self._headers, )
+            headers=self.headers, )
         return resp.json()
 
     def create_bucket(self, bucket):
@@ -71,14 +67,13 @@ class StorageClient(EndpointMixin):
 
         resp = requests.post(
             self.create_bucket_url,
-            headers=self._headers,
+            headers=self.headers,
             json=bucket._asdict()).json()
         return resp['id']
 
     def create_file(self, file_):
         """Create a file."""
         resp = requests.post(
-            self.create_file_url,
-            headers=self._headers,
+            self.create_file_url, headers=self.headers,
             json=file_._asdict()).json()
         return resp
