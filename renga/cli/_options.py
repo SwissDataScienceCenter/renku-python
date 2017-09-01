@@ -18,8 +18,8 @@
 import click
 
 
-def validate_endpoint(ctx, param, value):
-    """Validate endpoint."""
+def default_endpoint(ctx, param, value):
+    """Return default endpoint if specified."""
     if ctx.resilient_parsing:
         return
 
@@ -34,6 +34,13 @@ def validate_endpoint(ctx, param, value):
             raise click.UsageError('No default endpoint found.')
     else:
         endpoint = value
+
+    return endpoint
+
+
+def validate_endpoint(ctx, param, value):
+    """Validate endpoint."""
+    endpoint = default_endpoint(ctx, param, value)
 
     if endpoint not in config.get('endpoints', {}):
         raise click.UsageError('Unknown endpoint: {0}'.format(endpoint))
