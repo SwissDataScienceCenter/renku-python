@@ -28,19 +28,19 @@ from ._token import with_access_token
 
 @click.group(invoke_without_command=True)
 @option_endpoint
-@click.pass_context
 @with_config
+@click.pass_context
 def contexts(ctx, config, endpoint):
     """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
         with with_access_token(config, endpoint) as access_token:
             deployer_client = DeployerClient(endpoint, access_token)
-            for context in deployer_client.list_contexts()['contexts']:
+            for context in deployer_client.list_contexts():
                 click.echo(json.dumps(context))
 
 
 @click.group()
-def executions(ctx, config):
+def executions():
     """Manage executions."""
 
 
@@ -52,8 +52,7 @@ def show(config, context_id, endpoint):
     """Show the executions of a context."""
     with with_access_token(config, endpoint) as access_token:
         deployer_client = DeployerClient(endpoint, access_token)
-        for execution in deployer_client.list_executions(context_id)[
-                'executions']:
+        for execution in deployer_client.list_executions(context_id):
             click.echo(json.dumps(execution))
 
 

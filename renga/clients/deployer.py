@@ -66,7 +66,8 @@ class DeployerClient(EndpointMixin, AccessTokenMixin):
     def list_executions(self, context_id):
         """List all executions of a given context."""
         r = requests.get(
-            self.executions_endpoint.format(context_id), headers=self.headers)
+            self.executions_endpoint.format(context_id=context_id),
+            headers=self.headers)
 
         return return_response(r, ok_code=200, return_json=True)['executions']
 
@@ -82,7 +83,8 @@ class DeployerClient(EndpointMixin, AccessTokenMixin):
     def delete_execution(self, context_id, execution_id):
         """Delete an execution."""
         r = requests.delete(
-            self.execution_endpoint.format(context_id, execution_id),
+            self.execution_endpoint.format(
+                context_id=context_id, execution_id=execution_id),
             headers=self.headers)
 
         return return_response(r, ok_code=200)
