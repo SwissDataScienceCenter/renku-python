@@ -20,7 +20,7 @@ import time
 import requests
 from werkzeug.utils import cached_property
 
-from renga.clients._datastructures import AccessTokenMixin, Endpoint, \
+from renga.client._datastructures import AccessTokenMixin, Endpoint, \
     EndpointMixin
 
 from ._datastructures import namedtuple

@@ -17,5 +17,10 @@
 Configuration
 =============
 
-.. automodule:: renga.config
-   :members:
+There is possibility to configure the Renga client using environmental
+variables.
+
+.. autofunction:: renga.from_env
+
+Alternatively, use ``renga`` command line interface to manage multiple
+configurations.

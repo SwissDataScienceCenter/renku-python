@@ -17,8 +17,8 @@
 
 import pytest
 
-from renga.clients.deployer import Context, Execution
-from renga.clients.project import Project
+from renga.client.deployer import Context, Execution
+from renga.client.project import Project
 
 
 def test_knowledge_graph_init(graph_mutation_client, graph_mutation_responses):
