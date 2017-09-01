@@ -19,12 +19,13 @@ import click
 import requests
 
 from ._config import config_path, with_config
+from ._options import argument_endpoint
 from ._token import exchange_token, offline_token_using_password, \
     with_access_token
 
 
 @click.command()
-@click.argument('endpoint', nargs=1)
+@argument_endpoint
 @click.option(
     '--url',
     default='{endpoint}/auth/realms/Renga/protocol/openid-connect/token')

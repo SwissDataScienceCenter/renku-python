@@ -26,9 +26,12 @@ def validate_endpoint(ctx, param, value):
     config = ctx.obj['config']
 
     if value is None:
-        default_endpoint = config['core']['default']
+        default_endpoint = config.get('core', {}).get('default')
         endpoint = config.get('project', {}).get('core', {}).get(
             'default', default_endpoint)
+
+        if endpoint is None:
+            raise click.UsageError('No default endpoint found.')
     else:
         endpoint = value
 
@@ -40,7 +43,7 @@ def validate_endpoint(ctx, param, value):
 
 argument_endpoint = click.argument(
     'endpoint',
-    default=None,
+    required=False,
     callback=validate_endpoint, )
 option_endpoint = click.option(
     '--endpoint',
