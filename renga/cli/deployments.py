@@ -19,8 +19,8 @@ import json
 
 import click
 
-from renga.clients.deployer import DeployerClient
 from renga.cli._options import option_endpoint
+from renga.clients.deployer import DeployerClient
 
 from ._config import with_config
 from ._token import with_access_token
@@ -33,10 +33,9 @@ from ._token import with_access_token
 def contexts(ctx, config, endpoint):
     """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
-        deployer_client = DeployerClient(endpoint)
-
-        with with_access_token(config, endpoint) as token:
-            for context in deployer_client.list_contexts(token)['contexts']:
+        with with_access_token(config, endpoint) as access_token:
+            deployer_client = DeployerClient(endpoint, access_token)
+            for context in deployer_client.list_contexts()['contexts']:
                 click.echo(json.dumps(context))
 
 
@@ -51,11 +50,9 @@ def executions(ctx, config):
 @option_endpoint
 def show(config, context_id, endpoint):
     """Show the executions of a context."""
-    deployer_client = DeployerClient(endpoint)
-
-    with with_access_token(config, endpoint) as token:
-        for execution in deployer_client.list_executions(context_id,
-                                                         token)['executions']:
+    with with_access_token(config, endpoint) as access_token:
+        deployer_client = DeployerClient(endpoint, access_token)
+        for execution in deployer_client.list_executions(context_id)['executions']:
             click.echo(json.dumps(execution))
 
 
@@ -66,7 +63,6 @@ def show(config, context_id, endpoint):
 @option_endpoint
 def ports(config, context_id, execution_id, endpoint):
     """Show the port and host mapping of an execution."""
-    deployer_client = DeployerClient(endpoint)
-
-    with with_access_token(config, endpoint) as token:
-        click.echo(deployer_client.get_ports(context_id, execution_id, token))
+    with with_access_token(config, endpoint) as access_token:
+        deployer_client = DeployerClient(endpoint, access_token)
+        click.echo(deployer_client.get_ports(context_id, execution_id))

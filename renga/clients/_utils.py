@@ -18,7 +18,6 @@
 
 def return_response(response, ok_code, return_json=False):
     """Return boolean or response json if ok_code in response."""
-
     if response.status_code == ok_code:
         if return_json:
             return response.json()

@@ -17,10 +17,11 @@
 
 import requests
 
+from renga.clients._datastructures import AccessTokenMixin, Endpoint, \
+    EndpointMixin
+
 from ._datastructures import namedtuple
 from ._utils import return_response
-
-from renga.clients._datastructures import Endpoint, EndpointMixin
 
 Context = namedtuple('Context', ['id', 'spec'])
 """Deployer execution context."""
@@ -29,48 +30,51 @@ Execution = namedtuple('Execution', ['id', 'engine', 'namespace'])
 """Deployer execution object."""
 
 
-class DeployerClient(EndpointMixin):
+class DeployerClient(EndpointMixin, AccessTokenMixin):
     """Client for the deployer service."""
 
     contexts_endpoint = Endpoint('/api/deployer/contexts')
-    context_endpoint = Endpoint('/api/deployer/contexts/{}')
-    executions_endpoint = Endpoint('/api/deployer/contexts/{}/executions')
-    execution_endpoint = Endpoint('/api/deployer/contexts/{0}/executions/{1}')
-    execution_logs_endpoint = Endpoint('/api/deployer/'
-                                       'contexts/{0}/executions/{1}/logs')
-    execution_ports_endpoint = Endpoint('/api/deployer/'
-                                        'contexts/{0}/executions/{1}/ports')
+    context_endpoint = Endpoint('/api/deployer/contexts/{context_id}')
+    executions_endpoint = Endpoint(
+        '/api/deployer/contexts/{context_id}/executions')
+    execution_endpoint = Endpoint(
+        '/api/deployer/contexts/{context_id}/executions'
+        '/{execution_id}')
+    execution_logs_endpoint = Endpoint('/api/deployer/contexts/{context_id}'
+                                       '/executions/{execution_id}/logs')
+    execution_ports_endpoint = Endpoint('/api/deployer/contexts/{context_id}'
+                                        '/executions/{execution_id}/ports')
 
-    def list_contexts(self, access_token):
+    def __init__(self, endpoint, access_token):
+        """Create a storage client."""
+        EndpointMixin.__init__(self, endpoint)
+        AccessTokenMixin.__init__(self, access_token)
+
+    def list_contexts(self):
         """List all known contexts."""
-        r = requests.get(
-            self.contexts_endpoint,
-            headers={'Authorization': 'Bearer {0}'.format(access_token)})
+        r = requests.get(self.contexts_endpoint, headers=self.headers)
 
         return return_response(r, ok_code=200, return_json=True)['contexts']
 
-    def create_context(self, spec, access_token):
+    def create_context(self, spec):
         """Create a new deployment context."""
         r = requests.post(
-            self.contexts_endpoint,
-            headers={'Authorization': 'Bearer {0}'.format(access_token)},
-            json=spec)
+            self.contexts_endpoint, headers=self.headers, json=spec)
 
         return return_response(r, ok_code=201, return_json=True)
 
-    def list_executions(self, context_id, access_token):
+    def list_executions(self, context_id):
         """List all executions of a given context."""
         r = requests.get(
-            self.executions_endpoint.format(context_id),
-            headers={'Authorization': 'Bearer {0}'.format(access_token)})
+            self.executions_endpoint.format(context_id), headers=self.headers)
 
         return return_response(r, ok_code=200, return_json=True)['executions']
 
-    def create_execution(self, context_id, engine, access_token):
+    def create_execution(self, context_id, engine):
         """Create an execution of a context on a given engine."""
         r = requests.post(
-            self.executions_endpoint.format(context_id),
-            headers={'Authorization': 'Bearer {0}'.format(access_token)},
+            self.executions_endpoint.format(context_id=context_id),
+            headers=self.headers,
             json={'engine': engine})
 
         return return_response(r, ok_code=201, return_json=True)
@@ -79,22 +83,24 @@ class DeployerClient(EndpointMixin):
         """Delete an execution."""
         r = requests.delete(
             self.execution_endpoint.format(context_id, execution_id),
-            headers={'Authorization': 'Bearer {0}'.format(access_token)})
+            headers=self.headers)
 
         return return_response(r, ok_code=200)
 
     def get_logs(self, context_id, execution_id, access_token):
         """Retrieve logs of an execution."""
         r = request.get(
-            self.execution_logs_endpoint.format(context_id, execution_id),
-            headers={'Authorization': 'Bearer {0}'.format(access_token)})
+            self.execution_logs_endpoint.format(
+                context_id=context_id, execution_id=execution_id),
+            headers=self.headers)
 
         return return_response(r, ok_code=200, return_json=True)
 
-    def get_ports(self, context_id, execution_id, access_token):
+    def get_ports(self, context_id, execution_id):
         """Retrieve port mappings for an execution."""
         r = requests.get(
-            self.execution_ports_endpoint.format(context_id, execution_id),
-            headers={'Authorization': 'Bearer {0}'.format(access_token)})
+            self.execution_ports_endpoint.format(
+                context_id=context_id, execution_id=execution_id),
+            headers=self.headers)
 
         return return_response(r, ok_code=200, return_json=True)['ports']

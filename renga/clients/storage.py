@@ -46,7 +46,7 @@ class StorageClient(EndpointMixin, AccessTokenMixin):
     io_write_url = Endpoint('/api/storage/io/write')
     io_read_url = Endpoint('/api/storage/io/read')
 
-    def __init__(self, endpoint, access_token=None):
+    def __init__(self, endpoint, access_token):
         """Create a storage client."""
         EndpointMixin.__init__(self, endpoint)
         AccessTokenMixin.__init__(self, access_token)
