@@ -17,6 +17,7 @@
 
 import os
 
+import requests
 from werkzeug.utils import cached_property
 
 from renga.client._datastructures import AccessTokenMixin, EndpointMixin
@@ -66,7 +67,8 @@ class RengaClient(EndpointMixin, AccessTokenMixin):
     def deployer(self):
         """Return a deployer client."""
         from .deployer import DeployerClient
-        return DeployerClient(self.endpoint, self.access_token)
+        return DeployerClient(self.endpoint + '/api/deployer',
+                              self.access_token)
 
     @cached_property
     def project(self):
@@ -78,7 +80,15 @@ class RengaClient(EndpointMixin, AccessTokenMixin):
     def storage(self):
         """Return a deployer client."""
         from .storage import StorageClient
-        return StorageClient(self.endpoint, self.access_token)
+        return StorageClient(self.endpoint + '/api/storage', self.access_token)
+
+    def swagger(self):
+        """Return Swagger definition for all services."""
+        specs = (requests.get(service.endpoint + '/swagger.json').json()
+                 for service in (self.deployer, self.storage))
+        spec = merge(*specs)
+        # TODO add title and other spec details
+        return spec
 
 
 from_env = RengaClient.from_env

@@ -20,7 +20,8 @@ import os
 
 import click
 
-from renga.client.storage import CreateFile, StorageClient
+from renga.client import RengaClient
+from renga.client.storage import CreateFile
 
 from ._config import with_config
 from ._options import option_endpoint
@@ -51,9 +52,9 @@ def add(config, pathspec, endpoint):
         resource.setdefault('endpoints', {})
 
         with with_access_token(config, endpoint) as access_token:
-            client = StorageClient(
+            client = RengaClient(
                 endpoint=endpoint, access_token=access_token)
-            file_ = client.create_file(CreateFile(
+            file_ = client.storage.create_file(CreateFile(
                 bucket_id=bucket_id,
                 file_name=pathspec,
             ))

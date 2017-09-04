@@ -18,7 +18,8 @@
 import click
 import requests
 
-from renga.client.storage import CreateBucket, StorageClient
+from renga.client import RengaClient
+from renga.client.storage import CreateBucket
 
 from ._config import config_path, with_config
 from ._options import option_endpoint
@@ -41,8 +42,8 @@ def storage(ctx, config):
 def backends(config, endpoint):
     """List all available storage backends."""
     with with_access_token(config, endpoint) as access_token:
-        client = StorageClient(endpoint=endpoint, access_token=access_token)
-        for backend in client.backends:
+        client = RengaClient(endpoint=endpoint, access_token=access_token)
+        for backend in client.storage.backends:
             click.echo(backend)
 
 
@@ -59,8 +60,8 @@ def bucket():
 def create(config, name, backend, endpoint):
     """Create new bucket."""
     with with_access_token(config, endpoint) as access_token:
-        client = StorageClient(endpoint=endpoint, access_token=access_token)
-        bucket_id = client.create_bucket(
+        client = RengaClient(endpoint=endpoint, access_token=access_token)
+        bucket_id = client.storage.create_bucket(
             CreateBucket(name=name, backend=backend))
 
         config['project']['endpoints'].setdefault(endpoint, {})

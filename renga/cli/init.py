@@ -20,6 +20,8 @@ import os
 
 import click
 
+from renga.client import RengaClient
+
 from ._config import create_project_config_path, get_project_config_path, \
     read_config, with_config, write_config
 
@@ -63,11 +65,9 @@ def init(config, directory, autosync, name, force):
                                       datetime.datetime.utcnow().isoformat())
 
     if autosync:
-        from renga.client.project import ProjectClient
-
         endpoint = config['core']['default']
         # FIXME add Authorization header
-        project_client = ProjectClient(endpoint)
+        project_client = RengaClient(endpoint).project
         project = project_client.create(name=name)
         project_config.setdefault('endpoints', {})
         project_config['endpoints'].setdefault(endpoint, {})

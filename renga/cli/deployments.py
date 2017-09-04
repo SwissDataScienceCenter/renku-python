@@ -20,7 +20,7 @@ import json
 import click
 
 from renga.cli._options import option_endpoint
-from renga.client.deployer import DeployerClient
+from renga.client import RengaClient
 
 from ._config import with_config
 from ._token import with_access_token
@@ -34,7 +34,7 @@ def contexts(ctx, config, endpoint):
     """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
         with with_access_token(config, endpoint) as access_token:
-            deployer_client = DeployerClient(endpoint, access_token)
+            deployer_client = RengaClient(endpoint, access_token).deployer
             for context in deployer_client.list_contexts():
                 click.echo(json.dumps(context))
 
@@ -51,7 +51,7 @@ def executions():
 def show(config, context_id, endpoint):
     """Show the executions of a context."""
     with with_access_token(config, endpoint) as access_token:
-        deployer_client = DeployerClient(endpoint, access_token)
+        deployer_client = RengaClient(endpoint, access_token).deployer
         for execution in deployer_client.list_executions(context_id):
             click.echo(json.dumps(execution))
 
@@ -64,5 +64,5 @@ def show(config, context_id, endpoint):
 def ports(config, context_id, execution_id, endpoint):
     """Show the port and host mapping of an execution."""
     with with_access_token(config, endpoint) as access_token:
-        deployer_client = DeployerClient(endpoint, access_token)
+        deployer_client = RengaClient(endpoint, access_token).deployer
         click.echo(deployer_client.get_ports(context_id, execution_id))

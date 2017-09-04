@@ -39,12 +39,12 @@ CreateFile = namedtuple(
 class StorageClient(EndpointMixin, AccessTokenMixin):
     """Client for handling storage."""
 
-    backends_url = Endpoint('/api/storage/io/backends')
-    create_bucket_url = Endpoint('/api/storage/authorize/create_bucket')
-    create_file_url = Endpoint('/api/storage/authorize/create_file')
-    read_file_url = Endpoint('/api/storage/authorize/read_file')
-    io_write_url = Endpoint('/api/storage/io/write')
-    io_read_url = Endpoint('/api/storage/io/read')
+    backends_url = Endpoint('/io/backends')
+    create_bucket_url = Endpoint('/authorize/create_bucket')
+    create_file_url = Endpoint('/authorize/create_file')
+    read_file_url = Endpoint('/authorize/read_file')
+    io_write_url = Endpoint('/io/write')
+    io_read_url = Endpoint('/io/read')
 
     def __init__(self, endpoint, access_token):
         """Create a storage client."""

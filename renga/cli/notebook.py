@@ -22,7 +22,7 @@ import os
 import click
 
 from renga.cli._options import option_endpoint
-from renga.client.deployer import DeployerClient
+from renga.client import RengaClient
 
 from ._config import with_config
 from ._token import with_access_token
@@ -50,7 +50,7 @@ def show(config, all, endpoint):
 
     contexts = []
     with with_access_token(config, endpoint) as access_token:
-        deployer_client = DeployerClient(endpoint, access_token)
+        deployer_client = RengaClient(endpoint, access_token).deployer
 
         for context in deployer_client.list_contexts():
             if 'jupyter' in context['spec']['image']:
@@ -94,7 +94,7 @@ def launch(config, engine, endpoint):
         spec['labels'] = {'renga.project.vertex_id': project_vertex_id}
 
     with with_access_token(config, endpoint) as access_token:
-        deployer_client = DeployerClient(endpoint, access_token)
+        deployer_client = RengaClient(endpoint, access_token).deployer
         context = deployer_client.create_context(spec)
         execution = deployer_client.create_execution(context['identifier'],
                                                      engine)

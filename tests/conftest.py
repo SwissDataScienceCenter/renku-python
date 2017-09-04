@@ -46,6 +46,13 @@ def runner(instance_path, monkeypatch):
 
 
 @pytest.fixture(scope='session')
+def renga_client():
+    """Return a graph mutation client."""
+    from renga.client import RengaClient
+    return RengaClient('http://example.com')
+
+
+@pytest.fixture(scope='session')
 def graph_mutation_client():
     """Return a graph mutation client."""
     from renga.client.graph.mutation import GraphMutationClient
@@ -53,10 +60,9 @@ def graph_mutation_client():
 
 
 @pytest.fixture(scope='session')
-def project_client():
+def project_client(renga_client):
     """Return a project client."""
-    from renga.client.project import ProjectClient
-    return ProjectClient('http://example.com')
+    return renga_client.project
 
 
 @pytest.fixture()
