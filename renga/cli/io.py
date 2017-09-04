@@ -18,7 +18,7 @@
 import click
 import requests
 
-from renga.clients.storage import CreateBucket, StorageClient
+from renga.client.storage import CreateBucket, StorageClient
 
 from ._config import config_path, with_config
 from ._options import option_endpoint

@@ -20,7 +20,7 @@ import time
 import requests
 from werkzeug.utils import cached_property
 
-from renga.clients._datastructures import Endpoint, EndpointMixin
+from renga.client._datastructures import Endpoint, EndpointMixin
 
 
 class GraphMutationClient(EndpointMixin):

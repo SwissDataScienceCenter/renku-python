@@ -20,7 +20,7 @@ import os
 
 import click
 
-from renga.clients.storage import CreateFile, StorageClient
+from renga.client.storage import CreateFile, StorageClient
 
 from ._config import with_config
 from ._options import option_endpoint

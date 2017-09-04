@@ -18,6 +18,11 @@
 
 from __future__ import absolute_import, print_function
 
+from .client import RengaClient, from_env
 from .version import __version__
 
-__all__ = ('__version__',)
+__all__ = (
+    'RengaClient',
+    '__version__',
+    'from_env',
+)

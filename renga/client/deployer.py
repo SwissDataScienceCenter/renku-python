@@ -17,7 +17,7 @@
 
 import requests
 
-from renga.clients._datastructures import AccessTokenMixin, Endpoint, \
+from renga.client._datastructures import AccessTokenMixin, Endpoint, \
     EndpointMixin
 
 from ._datastructures import namedtuple

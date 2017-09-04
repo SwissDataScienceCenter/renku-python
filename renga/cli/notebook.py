@@ -22,7 +22,7 @@ import os
 import click
 
 from renga.cli._options import option_endpoint
-from renga.clients.deployer import DeployerClient
+from renga.client.deployer import DeployerClient
 
 from ._config import with_config
 from ._token import with_access_token

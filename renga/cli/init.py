@@ -63,7 +63,7 @@ def init(config, directory, autosync, name, force):
                                       datetime.datetime.utcnow().isoformat())
 
     if autosync:
-        from renga.clients.project import ProjectClient
+        from renga.client.project import ProjectClient
 
         endpoint = config['core']['default']
         # FIXME add Authorization header
