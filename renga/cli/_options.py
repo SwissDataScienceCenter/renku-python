@@ -40,6 +40,8 @@ def default_endpoint(ctx, param, value):
 
 def validate_endpoint(ctx, param, value):
     """Validate endpoint."""
+    config = ctx.obj['config']
+
     endpoint = default_endpoint(ctx, param, value)
 
     if endpoint not in config.get('endpoints', {}):
