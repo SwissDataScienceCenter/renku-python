@@ -21,6 +21,7 @@ import requests
 from werkzeug.utils import cached_property
 
 from renga.client._datastructures import Endpoint, EndpointMixin
+from renga.client.authorization import AuthorizationClient
 
 
 class GraphMutationClient(EndpointMixin):
@@ -32,10 +33,18 @@ class GraphMutationClient(EndpointMixin):
     mutation_status_url = Endpoint('/api/mutation/mutation/{uuid}')
     named_type_url = Endpoint('/api/types/management/named_type')
 
+    def __init__(self, endpoint, authorization_client=None):
+        """Create a new instance of graph mutation client."""
+        EndpointMixin.__init__(self, endpoint)
+        self.authorization = authorization_client or AuthorizationClient(
+            endpoint)
+
     @cached_property
     def named_types(self):
         """Fetch named types from types service."""
-        return requests.get(self.named_type_url).json()
+        return requests.get(
+            self.named_type_url,
+            headers=self.authorization.service_headers).json()
 
     def vertex_operation(self, obj, temp_id, named_type):
         """Serialize an object to GraphMutation schema.
@@ -103,19 +112,16 @@ class GraphMutationClient(EndpointMixin):
     def mutation(self,
                  operations,
                  wait_for_response=False,
-                 token=None,
                  retries=10):
         """Submit a mutation to the graph.
 
         If ``wait_for_response == True`` the return value is the reponse JSON,
         otherwise the mutation UUID is returned.
         """
-        headers = {'Authorization': token}
-
         response = requests.post(
             self.mutation_url,
             json={'operations': operations},
-            headers=headers, )
+            headers=self.authorization.service_headers)
 
         uuid = response.json()['uuid']
 

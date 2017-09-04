@@ -56,7 +56,28 @@ def renga_client():
 def graph_mutation_client():
     """Return a graph mutation client."""
     from renga.client.graph.mutation import GraphMutationClient
-    return GraphMutationClient('http://example.com')
+    client = GraphMutationClient('http://example.com')
+
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def request_callback(request):
+            return (200, {
+                'Content-Type': 'application/json'
+            }, '{"access_token": "servicetoken"}')
+
+        rsps.add_callback(
+            responses.POST,
+            'http://example.com/auth/realms/Renga/protocol/openid-connect'
+            '/token',
+            content_type='application/json',
+            callback=request_callback)
+
+        client.authorization.authorize_service(
+            audience='renga-services',
+            client_id='renga-services-client-id',
+            client_secret='renga-services-client-secret',
+        )
+    return client
 
 
 @pytest.fixture(scope='session')
