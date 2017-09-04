@@ -68,3 +68,15 @@ deploy:
     python: "2.7"
     repo: SwissDataScienceCenter/renga-python
     condition: $DEPLOY = true
+
+deploy:
+  provider: pypi
+  user: sdsc-org
+  password:
+      secure: "JLTZfEimVbSs8vPK6DcTAy6Yy6cPJMq/6TuRYIgGRIT1Qj0S7D3Pgg2IqImTEan7Udy8cvqRu9wFzaqAwWwufVWyMtiItmm1I3+PhjVUJ9N3fWrr6JsDTnpi1jYHeo8kfu9l89rMSXfof6AjgwcEkx4LEz6S2ChaXsNbwZ7C1O6aXSMsr6vSf3IPxWvAG5cQv/rFwN83CvTwh42QlTt0Vnb+CuPOFXX6sXfCZaOSwBU2liKuVHHQvZ6rghsBom3DTOMKAMmWTAu383wpCLAxFudB6KNlD0QeEEBROBJOkxq/TxJNVea/PPgYEa8TNFISJ6pC+zFzOnGtu7PjinNkXXw7en3hpNj0y7mWm8PliOytBZfno5lCUWQL6tZ1uxbH0SM+VzHCcS+7YCkJc/R0azns1qeQ5nsOVxeZRmxaD1MQfKgUpdecpRf809Cf+mPey4miEql6JrRt2wKeTvR6Nq4BMgASz2xIDKmXpoBhfD0v3+E4lr3s4qbXYUIeBjw6vceWOZ4kCwQ74ft45P9SE8BB/+SUEAlCpakrIjdKO/jR75c1hgQg0WtpCqDp02LrHp65wMbJ0l/K4Xjf6iy3B9z/D5IOKx3tOwA1aiypYRrXOwN2Ly4ucsC1nOR2lmnMWkxA0yTUPeXpB4BD+e70+FazXXz7OfpD6imuvqFB6n8="
+  distributions: "sdist bdist_wheel"
+  on:
+    tags: true
+    python: "3.6"
+    repo: SwissDataScienceCenter/renga-python
+    condition: $DEPLOY = true
