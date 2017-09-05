@@ -71,10 +71,11 @@ class RengaClient(EndpointMixin, AccessTokenMixin):
                               self.access_token)
 
     @cached_property
-    def project(self):
+    def projects(self):
         """Return a deployer client."""
-        from .project import ProjectClient
-        return ProjectClient(self.endpoint)
+        from .projects import ProjectsClient
+        return ProjectsClient(self.endpoint + '/api/projects',
+                              self.access_token)
 
     @cached_property
     def storage(self):

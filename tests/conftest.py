@@ -75,15 +75,14 @@ def graph_mutation_client():
         client.authorization.authorize_service(
             audience='renga-services',
             client_id='renga-services-client-id',
-            client_secret='renga-services-client-secret',
-        )
+            client_secret='renga-services-client-secret', )
     return client
 
 
 @pytest.fixture(scope='session')
-def project_client(renga_client):
+def projects_client(renga_client):
     """Return a project client."""
-    return renga_client.project
+    return renga_client.projects
 
 
 @pytest.fixture()
@@ -92,9 +91,11 @@ def auth_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
         def request_callback(request):
-            return (200, {
-                'Content-Type': 'application/json'
-            }, '{"refresh_token": "demodemo"}')
+            return (
+                200,
+                {'Content-Type': 'application/json'},
+                '{"refresh_token": "demodemo", "access_token": "accessdemo"}'
+            )
 
         rsps.add_callback(
             responses.POST,
@@ -174,4 +175,17 @@ def graph_mutation_responses(auth_responses, graph_mutation_client):
             }]
         }])
 
+    yield rsps
+
+
+@pytest.fixture()
+def projects_responses(auth_responses, projects_client):
+    """Monkeypatch requests to immitate the projects service."""
+    rsps = auth_responses
+    rsps.add(
+        responses.POST,
+        projects_client.projects_url,
+        status=201,
+        json={'name': 'test-project',
+              'identifier': '1234'})
     yield rsps

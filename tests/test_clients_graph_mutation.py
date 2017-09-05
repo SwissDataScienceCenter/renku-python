@@ -18,7 +18,7 @@
 import pytest
 
 from renga.client.deployer import Context, Execution
-from renga.client.project import Project
+from renga.client.projects import CreateProject, Project
 
 
 def test_knowledge_graph_init(graph_mutation_client, graph_mutation_responses):
@@ -56,7 +56,7 @@ def test_knowledge_graph_deploy_execution(graph_mutation_client,
 def test_knowledge_graph_add_project(graph_mutation_client,
                                      graph_mutation_responses):
     """Test sending a deployment context to the KG."""
-    project = Project(name='MyProject')
+    project = CreateProject(name='MyProject')
     operation = graph_mutation_client.vertex_operation(project, 0,
                                                        'project:project')
     assert len(operation['element']['properties']) == 1
@@ -67,10 +67,10 @@ def test_knowledge_graph_add_project(graph_mutation_client,
     assert vertex_id == 1234
 
 
-def test_knowledge_graph_add_project(project_client, graph_mutation_responses):
+def test_knowledge_graph_add_project(projects_client, projects_responses):
     """Test sending a deployment context to the KG."""
-    project = project_client.create(name='test-project')
+    project = projects_client.create(CreateProject(name='test-project'))
 
     assert isinstance(project, Project)
     assert project.name == 'test-project'
-    assert project.vertex_id == 1234
+    assert project.identifier == '1234'

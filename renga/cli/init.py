@@ -24,6 +24,8 @@ from renga.client import RengaClient
 
 from ._config import create_project_config_path, get_project_config_path, \
     read_config, with_config, write_config
+from ._options import option_endpoint
+from ._token import with_access_token
 
 
 def validate_name(ctx, param, value):
@@ -42,8 +44,9 @@ def validate_name(ctx, param, value):
 @click.option('--autosync', is_flag=True)
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True)
+@option_endpoint
 @with_config
-def init(config, directory, autosync, name, force):
+def init(config, directory, autosync, name, force, endpoint):
     """Initialize a project."""
     if not autosync:
         raise click.UsageError('You must specify the --autosync option.')
@@ -65,12 +68,14 @@ def init(config, directory, autosync, name, force):
                                       datetime.datetime.utcnow().isoformat())
 
     if autosync:
-        endpoint = config['core']['default']
-        # FIXME add Authorization header
-        project_client = RengaClient(endpoint).project
-        project = project_client.create(name=name)
-        project_config.setdefault('endpoints', {})
-        project_config['endpoints'].setdefault(endpoint, {})
-        project_config['endpoints'][endpoint]['vertex_id'] = project.vertex_id
+        from renga.client.projects import CreateProject
+
+        with with_access_token(config, endpoint) as access_token:
+            project_client = RengaClient(endpoint, access_token).projects
+            project = project_client.create(CreateProject(name=name))
+            project_config.setdefault('endpoints', {})
+            project_config['endpoints'].setdefault(endpoint, {})
+            project_config['endpoints'][endpoint][
+                'vertex_id'] = project.identifier
 
     write_config(project_config, path=project_config_path)

@@ -51,7 +51,7 @@ def test_login(runner, auth_responses):
     assert 'http://example.com: demodemo' in result.output.split('\n')
 
 
-def test_init(runner, graph_mutation_responses):
+def test_init(runner, auth_responses, projects_responses):
     """Test project initialization."""
     result = runner.invoke(cli.cli, [
         'login', 'http://example.com', '--username', 'demo', '--password',
