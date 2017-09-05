@@ -33,16 +33,15 @@ Execution = namedtuple('Execution', ['id', 'engine', 'namespace'])
 class DeployerClient(EndpointMixin, AccessTokenMixin):
     """Client for the deployer service."""
 
-    contexts_endpoint = Endpoint('/api/deployer/contexts')
-    context_endpoint = Endpoint('/api/deployer/contexts/{context_id}')
+    contexts_endpoint = Endpoint('/contexts')
+    context_endpoint = Endpoint('/contexts/{context_id}')
     executions_endpoint = Endpoint(
-        '/api/deployer/contexts/{context_id}/executions')
+        '/contexts/{context_id}/executions')
     execution_endpoint = Endpoint(
-        '/api/deployer/contexts/{context_id}/executions'
-        '/{execution_id}')
-    execution_logs_endpoint = Endpoint('/api/deployer/contexts/{context_id}'
+        '/contexts/{context_id}/executions/{execution_id}')
+    execution_logs_endpoint = Endpoint('/contexts/{context_id}'
                                        '/executions/{execution_id}/logs')
-    execution_ports_endpoint = Endpoint('/api/deployer/contexts/{context_id}'
+    execution_ports_endpoint = Endpoint('/contexts/{context_id}'
                                         '/executions/{execution_id}/ports')
 
     def __init__(self, endpoint, access_token):
