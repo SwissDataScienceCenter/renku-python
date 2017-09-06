@@ -31,7 +31,7 @@ from ._token import exchange_token, offline_token_using_password, \
 @with_config
 @click.pass_context
 def storage(ctx, config):
-    """Print access tokens."""
+    """Manage storage."""
     if ctx.invoked_subcommand is None:
         click.echo('Try --help')
 

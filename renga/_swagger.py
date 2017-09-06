@@ -18,16 +18,47 @@
 
 def merge(*specs):
     """Merge paths and definitions from given specifications."""
-    composed = {'paths': {}, 'definitions': {}}
+    composed = {
+        'definitions': {},
+        'paths': {},
+        'schemes': [],
+        'securityDefinitions': {},
+        'tags': [],
+    }
 
     for definition in specs:
+        # combine only v2 schemas
+        composed.setdefault('swagger', definition['swagger'])
+        assert composed['swagger'] == definition['swagger']
+
+        # extend tags
+        composed['tags'].extend(definition.get('tags', []))
+
+        # schemes
+        composed['schemes'] = list(
+            set(composed['schemes'] + definition.get('schemes', [])))
+
         # combines paths
         for key, path in definition['paths'].items():
             composed['paths'][definition['basePath'] + key] = path
 
         # combines definitions
-        for key, defs in definition['definitions'].items():
+        for key, defs in definition.get('definitions', {}).items():
             assert key not in composed['definitions']
             composed['definitions'][key] = defs
+
+        for key, defs in definition.get('securityDefinitions', {}).items():
+            if key in composed['securityDefinitions']:
+                security_defs = composed['securityDefinitions'][key]
+                same_keys = ('authorizationUrl', 'type', 'flow')
+                for check_key in same_keys:
+                    assert security_defs[check_key] == defs[
+                        check_key], check_key
+                assert not set(security_defs['scopes'].keys()) & set(
+                    defs['scopes'].keys()), check_key
+                composed['securityDefinitions'][key]['scopes'].update(
+                    **defs['scopes'])
+            else:
+                composed['securityDefinitions'][key] = defs
 
     return composed

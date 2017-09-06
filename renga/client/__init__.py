@@ -20,6 +20,7 @@ import os
 import requests
 from werkzeug.utils import cached_property
 
+from renga._swagger import merge
 from renga.client._datastructures import AccessTokenMixin, EndpointMixin
 
 
@@ -85,9 +86,13 @@ class RengaClient(EndpointMixin, AccessTokenMixin):
 
     def swagger(self):
         """Return Swagger definition for all services."""
-        specs = (requests.get(service.endpoint + '/swagger.json').json()
-                 for service in (self.deployer, self.storage))
+        specs = (requests.get(endpoint + '/swagger.json').json()
+                 for endpoint in (self.deployer.endpoint,
+                                  self.storage.endpoint,
+                                  self.projects.endpoint,
+                                  self.endpoint + '/api/explorer'))
         spec = merge(*specs)
+        spec['host'] = self.endpoint
         # TODO add title and other spec details
         return spec
 
