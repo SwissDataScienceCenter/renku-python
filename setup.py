@@ -83,15 +83,17 @@ setup(
     entry_points={
         'console_scripts': ['renga=renga.cli:cli'],
         'renga.cli': [
+            # Please keep the items sorted.
             'add=renga.cli.add:add',
+            'contexts=renga.cli.deployments:contexts',
             'endpoint=renga.cli.endpoint:endpoint',
+            'executions=renga.cli.deployments:executions',
             'init=renga.cli.init:init',
             'io=renga.cli.io:storage',
             'login=renga.cli.login:login',
             'notebook=renga.cli.notebook:notebook',
+            'schema=renga.cli.schema:schema',
             'tokens=renga.cli.login:tokens',
-            'contexts=renga.cli.deployments:contexts',
-            'executions=renga.cli.deployments:executions',
         ],
     },
     extras_require=extras_require,
