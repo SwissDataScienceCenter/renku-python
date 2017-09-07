@@ -38,7 +38,7 @@ Project = namedtuple(
 class ProjectsClient(EndpointMixin, AccessTokenMixin):
     """Client for handling projects."""
 
-    projects_url = Endpoint('/')
+    projects_url = Endpoint('')
     project_url = Endpoint('/{project_id}')
 
     def __init__(self, endpoint, access_token):
