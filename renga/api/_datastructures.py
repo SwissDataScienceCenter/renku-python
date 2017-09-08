@@ -38,14 +38,21 @@ namedtuple = namedtuple_with_defaults
 class AccessTokenMixin(object):
     """Store access token and provide _headers property."""
 
-    def __init__(self, access_token):
+    def __init__(self, access_token=None):
         """Store access token."""
-        self.access_token = access_token
+        self._session = {
+            'access_token': access_token,
+        }
 
     @property
     def headers(self):
         """Return default headers."""
         return {'Authorization': 'Bearer {0}'.format(self.access_token)}
+
+    @property
+    def access_token(self):
+        """Return access token from a session."""
+        return self._session.get('access_token')
 
 
 class EndpointMixin(object):

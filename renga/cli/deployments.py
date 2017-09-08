@@ -36,9 +36,9 @@ def contexts(ctx, config, endpoint):
     """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
         with with_access_token(config, endpoint) as access_token:
-            deployer_client = RengaClient(endpoint, access_token).deployer
-            for context in deployer_client.list_contexts():
-                click.echo(json.dumps(context))
+            client = RengaClient(endpoint, access_token=access_token)
+            for context in client.contexts:
+                click.echo(context)
 
 
 @click.group()

@@ -15,12 +15,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Version information for Renga.
+"""Model objects used in Python SDK."""
 
-This file is imported by ``renga.__init__``,
-and parsed by ``setup.py``.
-"""
+from ._datastructures import Collection, Model
 
-from __future__ import absolute_import, print_function
-
-__version__ = '0.1.0.dev20170906'
+__all__ = ('Collection', 'Model')

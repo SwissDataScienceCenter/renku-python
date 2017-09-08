@@ -19,16 +19,13 @@
 
 import pytest
 
-from renga.client.deployer import Context, Execution
-from renga.client.projects import CreateProject, Project
 
-
-def test_knowledge_graph_init(graph_mutation_client, graph_mutation_responses):
+def _test_knowledge_graph_init(graph_mutation_client, graph_mutation_responses):
     """Test knowldge graph client initialization."""
     return graph_mutation_client.named_types
 
 
-def test_knowledge_graph_deploy_context(graph_mutation_client,
+def _test_knowledge_graph_deploy_context(graph_mutation_client,
                                         graph_mutation_responses):
     """Test sending a deployment context to the KG."""
     context = Context(id=1234, spec={'image': 'hello-world', 'ports': '9999'})
@@ -42,7 +39,7 @@ def test_knowledge_graph_deploy_context(graph_mutation_client,
     assert vertex_id == 1234
 
 
-def test_knowledge_graph_deploy_execution(graph_mutation_client,
+def _test_knowledge_graph_deploy_execution(graph_mutation_client,
                                           graph_mutation_responses):
     """Test sending a deployment context to the KG."""
     execution = Execution(id=1234, engine='docker', namespace='default')
@@ -55,7 +52,7 @@ def test_knowledge_graph_deploy_execution(graph_mutation_client,
     assert vertex_id == 1234
 
 
-def test_knowledge_graph_add_project(graph_mutation_client,
+def _test_knowledge_graph_add_project(graph_mutation_client,
                                      graph_mutation_responses):
     """Test sending a deployment context to the KG."""
     project = CreateProject(name='MyProject')
@@ -69,7 +66,7 @@ def test_knowledge_graph_add_project(graph_mutation_client,
     assert vertex_id == 1234
 
 
-def test_knowledge_graph_add_project(projects_client, projects_responses):
+def _test_knowledge_graph_add_project(projects_client, projects_responses):
     """Test sending a deployment context to the KG."""
     project = projects_client.create(CreateProject(name='test-project'))
 

@@ -22,7 +22,7 @@ import os
 
 import click
 
-from renga.client import RengaClient
+from renga import RengaClient
 
 from ._config import create_project_config_path, get_project_config_path, \
     read_config, with_config, write_config
@@ -70,14 +70,12 @@ def init(config, directory, autosync, name, force, endpoint):
                                       datetime.datetime.utcnow().isoformat())
 
     if autosync:
-        from renga.client.projects import CreateProject
-
         with with_access_token(config, endpoint) as access_token:
-            project_client = RengaClient(endpoint, access_token).projects
-            project = project_client.create(CreateProject(name=name))
+            client = RengaClient(endpoint, access_token=access_token)
+            project = client.projects.create(name=name)
             project_config.setdefault('endpoints', {})
             project_config['endpoints'].setdefault(endpoint, {})
             project_config['endpoints'][endpoint][
-                'vertex_id'] = project.identifier
+                'vertex_id'] = project.id
 
     write_config(project_config, path=project_config_path)

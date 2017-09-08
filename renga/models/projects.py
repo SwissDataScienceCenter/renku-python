@@ -15,12 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Version information for Renga.
+"""Model objects representing projects."""
 
-This file is imported by ``renga.__init__``,
-and parsed by ``setup.py``.
-"""
+from ._datastructures import Collection, Model
 
-from __future__ import absolute_import, print_function
 
-__version__ = '0.1.0.dev20170906'
+class Project(Model):
+    """Represent a project."""
+
+    @property
+    def name(self):
+        """The name of the project."""
+        return self._response.get('name')
+
+
+class ProjectsCollection(Collection):
+    """Represent projects on the server."""
+
+    class Meta:
+        """Information about individual projects."""
+
+        model = Project
+
+    def create(self, name=None, **kwargs):
+        """Create new project."""
+        data = self._client.api.create_project({'name': name})
+        return self.Meta.model(data, client=self._client, collection=self)

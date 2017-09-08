@@ -51,7 +51,7 @@ def runner(instance_path, monkeypatch):
 def renga_client():
     """Return a graph mutation client."""
     from renga.client import RengaClient
-    return RengaClient('http://example.com')
+    return RengaClient('http://example.com', access_token='accessdemo')
 
 
 @pytest.fixture(scope='session')
@@ -81,23 +81,15 @@ def graph_mutation_client():
     return client
 
 
-@pytest.fixture(scope='session')
-def projects_client(renga_client):
-    """Return a project client."""
-    return renga_client.projects
-
-
 @pytest.fixture()
 def auth_responses():
     """Authentication responses."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
         def request_callback(request):
-            return (
-                200,
-                {'Content-Type': 'application/json'},
-                '{"refresh_token": "demodemo", "access_token": "accessdemo"}'
-            )
+            return (200, {
+                'Content-Type': 'application/json'
+            }, '{"refresh_token": "demodemo", "access_token": "accessdemo"}')
 
         rsps.add_callback(
             responses.POST,
@@ -181,13 +173,55 @@ def graph_mutation_responses(auth_responses, graph_mutation_client):
 
 
 @pytest.fixture()
-def projects_responses(auth_responses, projects_client):
+def projects_responses(auth_responses, renga_client):
     """Monkeypatch requests to immitate the projects service."""
     rsps = auth_responses
     rsps.add(
         responses.POST,
-        projects_client.projects_url,
+        renga_client.api._url('/api/projects'),
         status=201,
         json={'name': 'test-project',
               'identifier': '1234'})
+    yield rsps
+
+
+@pytest.fixture()
+def deployer_responses(auth_responses, renga_client):
+    """Monkeypatch requests to immitate the deployer service."""
+    rsps = auth_responses
+    rsps.add(
+        responses.POST,
+        renga_client.api._url('/api/deployer/contexts'),
+        status=201,
+        json={
+            'identifier': 'abcd',
+            'spec': {
+                'image': 'hello-world',
+            }
+        })
+    yield rsps
+
+
+@pytest.fixture()
+def storage_responses(auth_responses, renga_client):
+    """Monkeypatch requests to immitate the storage service."""
+    rsps = auth_responses
+    rsps.add(
+        responses.POST,
+        renga_client.api._url('/api/storage/authorize/create_bucket'),
+        status=201,
+        json={
+            'id': 1234,
+            'name': 'hello',
+            'backend': 'local',
+        })
+
+    rsps.add(
+        responses.POST,
+        renga_client.api._url('/api/storage/authorize/create_file'),
+        status=201,
+        json={
+            'id': 1234,
+            'access_token': 'accessfile_1234',
+        })
     yield rsps

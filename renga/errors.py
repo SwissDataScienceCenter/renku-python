@@ -15,12 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Version information for Renga.
+"""Renga exceptions."""
 
-This file is imported by ``renga.__init__``,
-and parsed by ``setup.py``.
-"""
+import requests
 
-from __future__ import absolute_import, print_function
 
-__version__ = '0.1.0.dev20170906'
+class RengaException(Exception):
+    """A base class for all Renga related exception.
+
+    You can catch all errors raised by Renga SDK by using
+    ``except RengaException:``.
+    """
+
+class APIError(requests.exceptions.HTTPError, RengaException):
+    """Catch HTTP errors from API calls."""
+
+    @classmethod
+    def from_http_exception(cls, e):
+        """Create ``APIError`` from ``requests.exception.HTTPError``."""
+        assert isinstance(e, requests.exceptions.HTTPError)
+        response = e.response
+        try:
+            message = response.json()['message']
+        except ValueError:
+            message = response.content.strip()
+
+        raise cls(message)

@@ -17,52 +17,21 @@
 # limitations under the License.
 """Client for deployer service."""
 
-import requests
 
-from renga.client._datastructures import AccessTokenMixin, Endpoint, \
-    EndpointMixin
+class ContextsApiMixin(object):
+    """Manage deployer contexts."""
 
-from ._datastructures import namedtuple
-from ._utils import return_response
-
-Context = namedtuple('Context', ['id', 'spec'])
-"""Deployer execution context."""
-
-Execution = namedtuple('Execution', ['id', 'engine', 'namespace'])
-"""Deployer execution object."""
-
-
-class DeployerClient(EndpointMixin, AccessTokenMixin):
-    """Client for the deployer service."""
-
-    contexts_endpoint = Endpoint('/contexts')
-    context_endpoint = Endpoint('/contexts/{context_id}')
-    executions_endpoint = Endpoint(
-        '/contexts/{context_id}/executions')
-    execution_endpoint = Endpoint(
-        '/contexts/{context_id}/executions/{execution_id}')
-    execution_logs_endpoint = Endpoint('/contexts/{context_id}'
-                                       '/executions/{execution_id}/logs')
-    execution_ports_endpoint = Endpoint('/contexts/{context_id}'
-                                        '/executions/{execution_id}/ports')
-
-    def __init__(self, endpoint, access_token):
-        """Create a storage client."""
-        EndpointMixin.__init__(self, endpoint)
-        AccessTokenMixin.__init__(self, access_token)
+    def create_context(self, spec):
+        """Create a new deployer context."""
+        resp = self.post(self._url('/api/deployer/contexts'), json=spec)
+        return resp.json()
 
     def list_contexts(self):
         """List all known contexts."""
-        r = requests.get(self.contexts_endpoint, headers=self.headers)
+        resp = self.get(self._url('/api/deployer/contexts'))
+        return resp.json()['contexts']
 
-        return return_response(r, ok_code=200, return_json=True)['contexts']
-
-    def create_context(self, spec):
-        """Create a new deployment context."""
-        r = requests.post(
-            self.contexts_endpoint, headers=self.headers, json=spec)
-
-        return return_response(r, ok_code=201, return_json=True)
+    # TODO fix everything from here down
 
     def list_executions(self, context_id):
         """List all executions of a given context."""

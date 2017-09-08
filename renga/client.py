@@ -15,18 +15,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renga platform python clients."""
+"""Python SDK client for Renga platform."""
 
 import os
 
-import requests
-from werkzeug.utils import cached_property
-
-from renga._swagger import merge
-from renga.client._datastructures import AccessTokenMixin, EndpointMixin
+from .api import APIClient
 
 
-class RengaClient(EndpointMixin, AccessTokenMixin):
+class RengaClient(object):
     """A client for communicating with a Renga platform.
 
     Example:
@@ -36,10 +32,9 @@ class RengaClient(EndpointMixin, AccessTokenMixin):
 
     """
 
-    def __init__(self, endpoint, access_token=None):
-        """Create a storage client."""
-        EndpointMixin.__init__(self, endpoint)
-        AccessTokenMixin.__init__(self, access_token)
+    def __init__(self, *args, **kwargs):
+        """Create a Renga API client."""
+        self.api = APIClient(*args, **kwargs)
 
     @classmethod
     def from_env(cls, environment=None):
@@ -66,37 +61,23 @@ class RengaClient(EndpointMixin, AccessTokenMixin):
         access_token = environment.get('RENGA_ACCESS_TOKEN')
         return cls(endpoint=endpoint, access_token=access_token)
 
-    @cached_property
-    def deployer(self):
-        """Return a deployer client."""
-        from .deployer import DeployerClient
-        return DeployerClient(self.endpoint + '/api/deployer',
-                              self.access_token)
+    @property
+    def contexts(self):
+        """Return a collection of deployer contexts."""
+        from .models.deployer import ContextsCollection
+        return ContextsCollection(client=self)
 
-    @cached_property
+    @property
     def projects(self):
-        """Return a deployer client."""
-        from .projects import ProjectsClient
-        return ProjectsClient(self.endpoint + '/api/projects',
-                              self.access_token)
+        """Return a collection of projects."""
+        from .models.projects import ProjectsCollection
+        return ProjectsCollection(client=self)
 
-    @cached_property
-    def storage(self):
-        """Return a deployer client."""
-        from .storage import StorageClient
-        return StorageClient(self.endpoint + '/api/storage', self.access_token)
-
-    def swagger(self):
-        """Return Swagger definition for all services."""
-        specs = (requests.get(endpoint + '/swagger.json').json()
-                 for endpoint in (self.deployer.endpoint,
-                                  self.storage.endpoint,
-                                  self.projects.endpoint,
-                                  self.endpoint + '/api/explorer'))
-        spec = merge(*specs)
-        spec['host'] = self.endpoint
-        # TODO add title and other spec details
-        return spec
+    @property
+    def buckets(self):
+        """Return a collection of projects."""
+        from .models.storage import BucketsCollection
+        return BucketsCollection(client=self)
 
 
 from_env = RengaClient.from_env
