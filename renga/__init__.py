@@ -20,10 +20,12 @@
 
 from __future__ import absolute_import, print_function
 
+from .api import APIClient
 from .client import RengaClient, from_env
 from .version import __version__
 
 __all__ = (
+    'APIClient',
     'RengaClient',
     '__version__',
     'from_env',

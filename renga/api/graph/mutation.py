@@ -19,29 +19,17 @@
 
 import time
 
-import requests
-from werkzeug.utils import cached_property
 
-from renga.client._datastructures import Endpoint, EndpointMixin
-from renga.client.authorization import AuthorizationClient
-
-
-class GraphMutationClient(EndpointMixin):
+class GraphMutationClient(object):
     """Client for handling graph mutations."""
 
     TYPE_MAPPING = {'string': str}
 
-    mutation_url = Endpoint('/api/mutation/mutation')
-    mutation_status_url = Endpoint('/api/mutation/mutation/{uuid}')
-    named_type_url = Endpoint('/api/types/management/named_type')
+    mutation_url = ('/api/mutation/mutation')
+    mutation_status_url = ('/api/mutation/mutation/{uuid}')
+    named_type_url = ('/api/types/management/named_type')
 
-    def __init__(self, endpoint, authorization_client=None):
-        """Create a new instance of graph mutation client."""
-        EndpointMixin.__init__(self, endpoint)
-        self.authorization = authorization_client or AuthorizationClient(
-            endpoint)
-
-    @cached_property
+    @property
     def named_types(self):
         """Fetch named types from types service."""
         return requests.get(

@@ -57,6 +57,7 @@ install_requires = [
     'click>=6.7',
     'click-plugins>=1.0.3',
     'requests>=2.14.2',
+    'requests-oauthlib>=0.8.0',
     'werkzeug>=0.12',
 ]
 

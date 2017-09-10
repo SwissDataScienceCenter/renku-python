@@ -23,21 +23,6 @@ import click
 import requests
 
 
-def offline_token_using_password(token_endpoint, client_id, username,
-                                 password):
-    """Get offine token using password."""
-    response = requests.post(
-        token_endpoint,
-        data={
-            'grant_type': 'password',
-            'scope': ['offline_access', 'openid'],
-            'client_id': client_id,
-            'username': username,
-            'password': password,
-        })
-    return response.json()
-
-
 def exchange_token(refresh_token, token_endpoint, client_id):
     """Exchange token for access token."""
     response = requests.post(
@@ -53,7 +38,7 @@ def exchange_token(refresh_token, token_endpoint, client_id):
 @contextmanager
 def with_access_token(config, endpoint):
     """Yield access token for endpoint in the config."""
-    token = config['endpoints'][endpoint]['token']
+    token = config['endpoints'][endpoint]['token']['refresh_token']
     url = config['endpoints'][endpoint]['url']
     client_id = config['endpoints'][endpoint]['client_id']
     data = exchange_token(token, url, client_id)

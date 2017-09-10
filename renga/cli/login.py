@@ -20,10 +20,12 @@
 import click
 import requests
 
+from renga import APIClient
+from renga.api.authorization import LegacyApplicationClient
+
 from ._config import config_path, with_config
 from ._options import default_endpoint
-from ._token import exchange_token, offline_token_using_password, \
-    with_access_token
+from ._token import exchange_token, with_access_token
 
 
 @click.command()
@@ -39,11 +41,20 @@ from ._token import exchange_token, offline_token_using_password, \
 def login(config, endpoint, url, client_id, username, password, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
-    data = offline_token_using_password(url, client_id, username, password)
+    scope = ['offline_access', 'openid']
+
+    api = APIClient(endpoint)
+    token = api.fetch_token(
+        url,
+        username=username,
+        password=password,
+        client_id=client_id,
+        scope=scope)
+
     config.setdefault('endpoints', {})
     config['endpoints'].setdefault(endpoint, {})
     config['endpoints'][endpoint]['client_id'] = client_id
-    config['endpoints'][endpoint]['token'] = data['refresh_token']
+    config['endpoints'][endpoint]['token'] = token
     config['endpoints'][endpoint]['url'] = url
 
     if len(config['endpoints']) == 1 or default:
@@ -60,7 +71,8 @@ def tokens(ctx, config):
     """Print access tokens."""
     if ctx.invoked_subcommand is None:
         for url, data in config.get('endpoints').items():
-            click.echo('{url}: {token}'.format(url=url, token=data['token']))
+            click.echo('{url}: {token}'.format(
+                url=url, token=data['token']['refresh_token']))
 
 
 @tokens.command()

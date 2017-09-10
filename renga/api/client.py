@@ -19,13 +19,14 @@
 
 import requests
 
+from .authorization import AuthorizationMixin
 from .deployer import ContextsApiMixin
 from .projects import ProjectsApiMixin
 from .storage import BucketsApiMixin, FilesApiMixin
 
 
 class APIClient(
-        requests.Session,
+        AuthorizationMixin,
         BucketsApiMixin,
         FilesApiMixin,
         ContextsApiMixin,
@@ -39,14 +40,14 @@ class APIClient(
 
     """
 
-    __attrs__ = requests.Session.__attrs__ + ['endpoint']
+    __attrs__ = requests.Session.__attrs__ + ['access_token', 'endpoint']
 
-    def __init__(self, endpoint, access_token=None):
+    def __init__(self, endpoint, access_token=None, **kwargs):
         """Create a storage client."""
-        super(APIClient, self).__init__()
+        super(APIClient, self).__init__(**kwargs)
         self.endpoint = endpoint
         if access_token:
-            self.headers['Authorization'] = 'Bearer {0}'.format(access_token)
+            self.access_token = access_token  # FIME temporary workaround
 
     def _url(self, url, *args, **kwargs):
         """Format url for endpoint."""

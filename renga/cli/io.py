@@ -21,12 +21,10 @@ import click
 import requests
 
 from renga.client import RengaClient
-from renga.client.storage import CreateBucket
 
 from ._config import config_path, with_config
 from ._options import option_endpoint
-from ._token import exchange_token, offline_token_using_password, \
-    with_access_token
+from ._token import exchange_token, with_access_token
 
 
 @click.group(name='io', invoke_without_command=True)
@@ -63,18 +61,17 @@ def create(config, name, backend, endpoint):
     """Create new bucket."""
     with with_access_token(config, endpoint) as access_token:
         client = RengaClient(endpoint=endpoint, access_token=access_token)
-        bucket_id = client.storage.create_bucket(
-            CreateBucket(name=name, backend=backend))
+        bucket = client.buckets.create(name=name, backend=backend)
 
         config['project']['endpoints'].setdefault(endpoint, {})
         config['project']['endpoints'][endpoint].setdefault('buckets', {})
-        config['project']['endpoints'][endpoint]['buckets'][bucket_id] = name
+        config['project']['endpoints'][endpoint]['buckets'][bucket.id] = name
 
         # Set default bucket
         config['project']['endpoints'][endpoint].setdefault(
-            'default_bucket', bucket_id)
+            'default_bucket', bucket.id)
 
-        click.echo(bucket_id)
+        click.echo(bucket.id)
 
 
 @bucket.command()

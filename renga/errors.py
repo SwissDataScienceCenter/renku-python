@@ -27,6 +27,7 @@ class RengaException(Exception):
     ``except RengaException:``.
     """
 
+
 class APIError(requests.exceptions.HTTPError, RengaException):
     """Catch HTTP errors from API calls."""
 

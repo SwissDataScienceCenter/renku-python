@@ -17,44 +17,45 @@
 # limitations under the License.
 """Authorization service."""
 
-import requests
+from oauthlib.oauth2 import LegacyApplicationClient as LAC
+from requests_oauthlib import OAuth2Session
 
-from renga.client._datastructures import Endpoint, EndpointMixin
+
+class LegacyApplicationClient(LAC):
+    """A public client using the password and username directly.
+
+    Provides defaults for simple usage with CLI.
+    """
+
+    def __init__(self, client_id, **kwargs):
+        """Define default scopes."""
+        kwargs.setdefault('scope', ['offline_access', 'openid'])
+        super().__init__(client_id, **kwargs)
 
 
-class AuthorizationClient(EndpointMixin):
+class AuthorizationMixin(OAuth2Session):
     """Client for managing authorization."""
 
-    authorization_url = Endpoint('/auth/realms/Renga/protocol/'
-                                 'openid-connect/auth')
-    token_url = Endpoint('/auth/realms/Renga/protocol/openid-connect/token')
+    TOKEN_URL = '{0}/auth/realms/Renga/protocol/openid-connect/token'
 
-    @property
-    def is_service_authorized(self):
-        """Return ``True`` if service authorization exists."""
-        return hasattr(self, '_service_authorization') \
-            and 'access_token' in self._service_authorization
+    def __init__(self, **kwargs):
+        """Define default client."""
+        kwargs.setdefault('client',
+                          LegacyApplicationClient(
+                              kwargs.get('client_id'),
+                              token=kwargs.get('token')))
+        super().__init__(**kwargs)
 
-    def authorize_service(self,
-                          audience=None,
-                          client_id=None,
-                          client_secret=None):
-        """Retrieve a service access token."""
-        response = requests.post(
-            self.token_url,
-            data={
-                'audience': audience,
-                'client_id': client_id,
-                'client_secret': client_secret,
-                'grant_type': 'client_credentials',
-            })
-        self._service_authorization = response.json()
-        return 'access_token' in self._service_authorization
+    def fetch_token(self, token_url=None, **kwargs):
+        """Set default ``token_url``."""
+        kwargs.setdefault('auth', lambda x: x)
+        token_url = token_url or self.TOKEN_URL.format(self.endpoint)
+        return super(AuthorizationMixin, self).fetch_token(token_url, **kwargs)
 
-    @property
-    def service_headers(self):
-        """Return service headers."""
-        return {
-            'Authorization':
-            'Bearer {0}'.format(self._service_authorization['access_token'])
-        }
+    def refresh_token(self, token_url=None, **kwargs):
+        """Set default ``token_url``."""
+        token_url = token_url or self.TOKEN_URL.format(self.endpoint)
+        kwargs.setdefault('client_id', self.client.client_id)
+        kwargs.setdefault('scope', self.client.scope)
+        return super(AuthorizationMixin, self).refresh_token(
+            token_url, **kwargs)

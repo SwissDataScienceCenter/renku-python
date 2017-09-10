@@ -25,16 +25,22 @@ class Bucket(Model):
 
     IDENTIFIER_KEY = 'id'
 
+    @property
+    def name(self):
+        """Return a bucket name."""
+        # FIXME make sure that bucket endpoint returns name
+        return self._response.get('name')
+
     def create_file(self, file_name=None):
         """Create an empty file in this bucket."""
         resp = self._client.api.create_file(
             bucket_id=self.id,
             file_name=file_name,
             request_type='create_file', )
-        access_token = resp.pop('access_token')
+        access_token = resp.get('access_token')
         client = self._client.__class__(
             self._client.api.endpoint, access_token=access_token)
-        return File({'id': resp['id']}, client=client, collection=self)
+        return File(resp, client=client, collection=self)
 
 
 class BucketsCollection(Collection):
@@ -50,8 +56,20 @@ class BucketsCollection(Collection):
         data = self._client.api.create_bucket(name=name, backend=backend)
         return self.Meta.model(data, client=self._client, collection=self)
 
+    def get(self, bucket_id):
+        """Return a bucket object."""
+        # FIXME it should check the bucket existence on server
+        return Bucket({'id': bucket_id}, client=self._client, collection=self)
+
 
 class File(Model):
     """Represent a file object."""
 
     IDENTIFIER_KEY = 'id'
+
+    @property
+    def access_token(self):
+        """Return an access token for file operation."""
+        # FIXME make sure that bucket endpoint returns name
+        return self._response.get('access_token',
+                                  self._client.api.access_token)
