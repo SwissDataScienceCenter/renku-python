@@ -52,9 +52,10 @@ def test_login(runner, auth_responses):
     assert result.exit_code == 0
     assert 'https://example.com: demodemo' in result.output.split('\n')
 
-    result = runner.invoke(cli.cli, ['tokens'])
+    result = runner.invoke(cli.cli, ['tokens', 'access'])
     assert result.exit_code == 0
-    assert 'https://example.com: demodemo' in result.output.split('\n')
+    assert 'accessdemo' in result.output.split('\n')
+
 
 def test_init(runner, auth_responses, projects_responses):
     """Test project initialization."""
@@ -77,3 +78,12 @@ def test_init(runner, auth_responses, projects_responses):
     result = runner.invoke(cli.cli, ['init', '--autosync', 'test-project'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('test-project', '.renga'))
+
+    # 3. test project init from directory
+    os.chdir('test-project')
+    result = runner.invoke(cli.cli, ['init', '--autosync'])
+    assert result.exit_code == 2
+
+    result = runner.invoke(cli.cli, ['init', '--autosync', '--force'])
+    assert result.exit_code == 0
+    assert os.stat(os.path.join('.renga'))
