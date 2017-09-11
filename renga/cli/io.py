@@ -20,11 +20,9 @@
 import click
 import requests
 
-from renga.client import RengaClient
-
+from ._client import from_config
 from ._config import config_path, with_config
 from ._options import option_endpoint
-from ._token import exchange_token, with_access_token
 
 
 @click.group(name='io', invoke_without_command=True)
@@ -41,10 +39,9 @@ def storage(ctx, config):
 @with_config
 def backends(config, endpoint):
     """List all available storage backends."""
-    with with_access_token(config, endpoint) as access_token:
-        client = RengaClient(endpoint=endpoint, access_token=access_token)
-        for backend in client.storage.backends:
-            click.echo(backend)
+    client = from_config(config, endpoint=endpoint)
+    for backend in client.buckets.backends:
+        click.echo(backend)
 
 
 @storage.group()
@@ -59,19 +56,18 @@ def bucket():
 @with_config
 def create(config, name, backend, endpoint):
     """Create new bucket."""
-    with with_access_token(config, endpoint) as access_token:
-        client = RengaClient(endpoint=endpoint, access_token=access_token)
-        bucket = client.buckets.create(name=name, backend=backend)
+    client = from_config(config, endpoint=endpoint)
+    bucket = client.buckets.create(name=name, backend=backend)
 
-        config['project']['endpoints'].setdefault(endpoint, {})
-        config['project']['endpoints'][endpoint].setdefault('buckets', {})
-        config['project']['endpoints'][endpoint]['buckets'][bucket.id] = name
+    config['project']['endpoints'].setdefault(endpoint, {})
+    config['project']['endpoints'][endpoint].setdefault('buckets', {})
+    config['project']['endpoints'][endpoint]['buckets'][bucket.id] = name
 
-        # Set default bucket
-        config['project']['endpoints'][endpoint].setdefault(
-            'default_bucket', bucket.id)
+    # Set default bucket
+    config['project']['endpoints'][endpoint].setdefault(
+        'default_bucket', bucket.id)
 
-        click.echo(bucket.id)
+    click.echo(bucket.id)
 
 
 @bucket.command()

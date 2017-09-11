@@ -17,15 +17,12 @@
 # limitations under the License.
 """Interact with the deployment service."""
 
-import json
-
 import click
 
 from renga.cli._options import option_endpoint
-from renga.client import RengaClient
 
+from ._client import from_config
 from ._config import with_config
-from ._token import with_access_token
 
 
 @click.group(invoke_without_command=True)
@@ -35,10 +32,9 @@ from ._token import with_access_token
 def contexts(ctx, config, endpoint):
     """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
-        with with_access_token(config, endpoint) as access_token:
-            client = RengaClient(endpoint, access_token=access_token)
-            for context in client.contexts:
-                click.echo(context)
+        client = from_config(config, endpoint=endpoint)
+        for context in client.contexts:
+            click.echo(context)
 
 
 @click.group()
@@ -52,10 +48,9 @@ def executions():
 @with_config
 def show(config, context_id, endpoint):
     """Show the executions of a context."""
-    with with_access_token(config, endpoint) as access_token:
-        deployer_client = RengaClient(endpoint, access_token).deployer
-        for execution in deployer_client.list_executions(context_id):
-            click.echo(json.dumps(execution))
+    client = from_config(config, endpoint=endpoint)
+    for execution in client.contexts[context_id].executions:
+        click.echo(execution)
 
 
 @executions.command()
@@ -65,6 +60,6 @@ def show(config, context_id, endpoint):
 @with_config
 def ports(config, context_id, execution_id, endpoint):
     """Show the port and host mapping of an execution."""
-    with with_access_token(config, endpoint) as access_token:
-        deployer_client = RengaClient(endpoint, access_token).deployer
-        click.echo(deployer_client.get_ports(context_id, execution_id))
+    client = from_config(config, endpoint=endpoint)
+    execution = client.contexts[context_id].executions[execution_id]
+    click.echo(execution.ports)

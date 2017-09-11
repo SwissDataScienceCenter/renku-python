@@ -20,6 +20,13 @@
 import click
 
 
+def default_endpoint_from_config(config):
+    """Return a default endpoint."""
+    default_endpoint = config.get('core', {}).get('default')
+    return config.get('project', {}).get('core', {}).get(
+        'default', default_endpoint)
+
+
 def default_endpoint(ctx, param, value):
     """Return default endpoint if specified."""
     if ctx.resilient_parsing:
@@ -28,9 +35,7 @@ def default_endpoint(ctx, param, value):
     config = ctx.obj['config']
 
     if value is None:
-        default_endpoint = config.get('core', {}).get('default')
-        endpoint = config.get('project', {}).get('core', {}).get(
-            'default', default_endpoint)
+        endpoint = default_endpoint_from_config(config)
 
         if endpoint is None:
             raise click.UsageError('No default endpoint found.')

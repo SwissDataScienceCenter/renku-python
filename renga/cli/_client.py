@@ -15,36 +15,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Perform token operations."""
+"""Client utilities."""
 
-from contextlib import contextmanager
+from renga import RengaClient
 
-import click
-import requests
-
-
-def exchange_token(refresh_token, token_endpoint, client_id):
-    """Exchange token for access token."""
-    response = requests.post(
-        token_endpoint,
-        data={
-            'grant_type': 'refresh_token',
-            'client_id': client_id,
-            'refresh_token': refresh_token,
-        })
-    return response.json()
+from ._options import default_endpoint_from_config
 
 
-@contextmanager
-def with_access_token(config, endpoint):
-    """Yield access token for endpoint in the config."""
-    token = config['endpoints'][endpoint]['token']['refresh_token']
+def from_config(config, endpoint=None):
+    """Create new client for endpoint in the config."""
+    endpoint = endpoint or default_endpoint_from_config(config)
+    token = config['endpoints'][endpoint]['token']
     url = config['endpoints'][endpoint]['url']
     client_id = config['endpoints'][endpoint]['client_id']
-    data = exchange_token(token, url, client_id)
 
-    if 'error' in data:
-        raise click.ClickException(
-            '{error_description} ({error})'.format(**data))
-
-    yield data['access_token']
+    return RengaClient(
+        endpoint, client_id=client_id, token=token, auto_refresh_url=url)

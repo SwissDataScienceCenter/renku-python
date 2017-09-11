@@ -24,10 +24,9 @@ import os
 import click
 
 from renga.cli._options import option_endpoint
-from renga.client import RengaClient
 
+from ._client import from_config
 from ._config import with_config
-from ._token import with_access_token
 
 
 @click.group(invoke_without_command=True)
@@ -51,26 +50,21 @@ def show(config, all, endpoint):
         endpoint, {}).get('vertex_id')
 
     contexts = []
-    with with_access_token(config, endpoint) as access_token:
-        deployer_client = RengaClient(endpoint, access_token).deployer
+    client = from_config(config, endpoint=endpoint)
+    for context in client.contexts:
+        if 'jupyter' in context.spec['image']:
+            # if we are inside a project, only show project notebooks
+            labels = context.spec.get('labels', {})
 
-        for context in deployer_client.list_contexts():
-            if 'jupyter' in context['spec']['image']:
-                # if we are inside a project, only show project notebooks
-                labels = context['spec'].get('labels', {})
+            if project_vertex_id == labels.get('renga.project.vertex_id',
+                                               0) or all:
+                contexts.append(context)
 
-                if project_vertex_id == labels.get('renga.project.vertex_id',
-                                                   0) or all:
-                    contexts.append(context)
-
-        for context in contexts:
-            for execution in deployer_client.list_executions(
-                    context['identifier']):
-
-                ports = deployer_client.get_ports(context['identifier'],
-                                                  execution['identifier'])
-                click.echo('http://{0}:{1}'.format(ports[0]['host'], ports[0][
-                    'exposed']))
+    for context in contexts:
+        for execution in context.executions:
+            ports = execution.ports
+            click.echo(
+                'http://{0}:{1}'.format(ports[0]['host'], ports[0]['exposed']))
 
 
 @notebook.command()
@@ -95,12 +89,9 @@ def launch(config, engine, endpoint):
     if project_vertex_id:
         spec['labels'] = {'renga.project.vertex_id': project_vertex_id}
 
-    with with_access_token(config, endpoint) as access_token:
-        deployer_client = RengaClient(endpoint, access_token).deployer
-        context = deployer_client.create_context(spec)
-        execution = deployer_client.create_execution(context['identifier'],
-                                                     engine)
-        ports = deployer_client.get_ports(context['identifier'],
-                                          execution['identifier'])
-        click.echo(
-            'http://{0}:{1}'.format(ports[0]['host'], ports[0]['exposed']))
+    client = from_config(config, endpoint=endpoint)
+    context = client.contexts.create(spec)
+    execution = context.run(engine=engine)
+    ports = execution.ports
+    click.echo(
+        'http://{0}:{1}'.format(ports[0]['host'], ports[0]['exposed']))

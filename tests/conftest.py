@@ -42,6 +42,7 @@ def runner(instance_path, monkeypatch):
     from renga.cli._config import PROJECT_DIR
     monkeypatch.setenv('RENGA_CONFIG', os.path.join(instance_path,
                                                     PROJECT_DIR))
+    monkeypatch.setenv('OAUTHLIB_INSECURE_TRANSPORT', 0)
     cli_runner = CliRunner()
     with cli_runner.isolated_filesystem():
         yield cli_runner

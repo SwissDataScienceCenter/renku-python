@@ -22,11 +22,9 @@ import os
 
 import click
 
-from renga.client import RengaClient
-
 from ._config import with_config
+from ._client import from_config
 from ._options import option_endpoint
-from ._token import with_access_token
 
 
 @click.command()
@@ -52,14 +50,13 @@ def add(config, pathspec, endpoint):
         bucket_id = config['project']['endpoints'][endpoint]['default_bucket']
         resource.setdefault('endpoints', {})
 
-        with with_access_token(config, endpoint) as access_token:
-            client = RengaClient(endpoint=endpoint, access_token=access_token)
-            bucket = client.buckets.get(bucket_id)
-            file_ = bucket.create_file(file_name=pathspec)
+        client = from_config(config, endpoint=endpoint)
+        bucket = client.buckets.get(bucket_id)
+        file_ = bucket.create_file(file_name=pathspec)
 
-            resource['endpoints'][endpoint] = {
-                'vertex_id': file_.id,
-                'access_token': file_.access_token,
-            }
+        resource['endpoints'][endpoint] = {
+            'vertex_id': file_.id,
+            'access_token': file_.access_token,
+        }
 
     config['project']['resources'][pathspec] = resource

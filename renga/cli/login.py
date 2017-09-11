@@ -24,8 +24,8 @@ from renga import APIClient
 from renga.api.authorization import LegacyApplicationClient
 
 from ._config import config_path, with_config
+from ._client import from_config
 from ._options import default_endpoint
-from ._token import exchange_token, with_access_token
 
 
 @click.command()
@@ -84,5 +84,5 @@ def access(ctx, config, endpoint):
     if endpoint not in config.get('endpoints', {}):
         raise click.UsageError('Unknown endpoint: {0}'.format(endpoint))
 
-    with with_access_token(config, endpoint) as access_token:
-        click.echo(access_token)
+    client = from_config(config, endpoint=endpoint)
+    click.echo(client.refresh_token()['access_token'])
