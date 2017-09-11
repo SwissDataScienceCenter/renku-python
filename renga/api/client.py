@@ -21,15 +21,16 @@ import requests
 
 from .authorization import AuthorizationMixin
 from .deployer import ContextsApiMixin
+from .explorer import ExplorerApiMixin
 from .projects import ProjectsApiMixin
 from .storage import BucketsApiMixin, FilesApiMixin
-
 
 class APIClient(
         AuthorizationMixin,
         BucketsApiMixin,
-        FilesApiMixin,
         ContextsApiMixin,
+        ExplorerApiMixin,
+        FilesApiMixin,
         ProjectsApiMixin, ):
     """A low-level client for communicating with a Renga Platform API.
 

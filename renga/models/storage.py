@@ -30,10 +30,20 @@ class Bucket(Model):
     IDENTIFIER_KEY = 'id'
 
     @property
+    def backend(self):
+        """Return the bucket backend."""
+        return self.properties.get('resource:bucket_backend')
+
+    @property
     def name(self):
         """Return a bucket name."""
         # FIXME make sure that bucket endpoint returns name
-        return self._response.get('name')
+        return self.properties.get('resource:bucket_name')
+
+    @property
+    def properties(self):
+        """Return the bucket metadata."""
+        return self._response.get('properties')
 
     def create_file(self, file_name=None):
         """Create an empty file in this bucket."""
@@ -63,7 +73,20 @@ class BucketsCollection(Collection):
     def get(self, bucket_id):
         """Return a bucket object."""
         # FIXME it should check the bucket existence on server
-        return Bucket({'id': bucket_id}, client=self._client, collection=self)
+        bucket = Bucket(
+            self._client.api.get_bucket(bucket_id),
+            client=self._client,
+            collection=self)
+
+        if not bucket.properties:
+            raise RuntimeError('Bucket not found') # FIXME: use a better error
+
+        return bucket
+
+    def __iter__(self):
+        """Iterate through all buckets as returned by the Explorer."""
+        for bucket in self._client.api.list_buckets():
+            yield Bucket(bucket, client=self._client, collection=self)
 
 
 class File(Model):

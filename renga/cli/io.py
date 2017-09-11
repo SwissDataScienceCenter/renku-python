@@ -45,11 +45,11 @@ def backends(config, endpoint):
 
 
 @storage.group()
-def bucket():
+def buckets():
     """Bucket manipulation."""
 
 
-@bucket.command()
+@buckets.command()
 @click.argument('name')
 @click.option('-b', '--backend', default='local')
 @option_endpoint
@@ -71,15 +71,38 @@ def create(config, name, backend, endpoint):
     click.echo(bucket.id)
 
 
-@bucket.command()
+@buckets.command()
+@click.argument('bucket_id', required=False, default=None, type=int)
+@click.option(
+    '-a', '--all', 'all_buckets', is_flag=True, help='Show all buckets.')
+@click.option('--sort-by', type=click.Choice(['id', 'name']), default='id')
 @option_endpoint
 @with_config
-def list(config, endpoint):
+def list(config, endpoint, bucket_id, all_buckets, sort_by):
     """List buckets."""
-    buckets = config['project']['endpoints'][endpoint].get('buckets', {})
+    client = from_config(config, endpoint=endpoint)
+    buckets = client.buckets
 
-    if buckets is None:
-        raise click.ClickException('No registered buckets')
+    if bucket_id:
+        filter_ids = [bucket_id]
+    else:
+        filter_ids = config['project']['endpoints'][endpoint].get(
+            'buckets', {}).keys()
 
-    for bucket_id, name in buckets.items():
-        click.echo('{0}\t{1}'.format(name, bucket_id))
+    # filter out non-project buckets if needed
+    if filter_ids and (not all_buckets):
+        filter_ids = set(filter_ids)
+        buckets = [bucket for bucket in buckets if bucket.id in filter_ids]
+
+    # sort if we have more than one
+    buckets = [bucket for bucket in buckets]
+    if len(buckets) > 1:
+        buckets.sort(key=lambda b: getattr(b, sort_by))
+
+    click.echo(
+        '{0:10}\t {1:20}\t {2:20}'.format('BUCKET ID', 'NAME', 'BACKEND'))
+
+    if buckets:
+        for bucket in buckets:
+            click.echo('{0:10}\t {1:20}\t {2}'.format(bucket.id, bucket.name,
+                                                      bucket.backend))
