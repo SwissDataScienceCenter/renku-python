@@ -23,8 +23,8 @@ import requests
 from renga import APIClient
 from renga.api.authorization import LegacyApplicationClient
 
-from ._config import config_path, with_config
 from ._client import from_config
+from ._config import config_path, with_config
 from ._options import argument_endpoint, default_endpoint
 
 

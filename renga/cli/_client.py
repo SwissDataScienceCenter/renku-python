@@ -37,4 +37,3 @@ def from_config(config, endpoint=None):
             'endpoints'][endpoint]['vertex_id']
 
     return client
-

@@ -22,8 +22,8 @@ import os
 
 import click
 
-from ._config import with_config
 from ._client import from_config
+from ._config import with_config
 from ._options import option_endpoint
 
 
