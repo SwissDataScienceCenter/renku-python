@@ -25,7 +25,7 @@ from renga.api.authorization import LegacyApplicationClient
 
 from ._config import config_path, with_config
 from ._client import from_config
-from ._options import default_endpoint
+from ._options import argument_endpoint, default_endpoint
 
 
 @click.command()
@@ -43,19 +43,21 @@ def login(config, endpoint, url, client_id, username, password, default):
     url = url.format(endpoint=endpoint, client_id=client_id)
     scope = ['offline_access', 'openid']
 
-    api = APIClient(endpoint)
-    token = api.fetch_token(
+    config.setdefault('endpoints', {})
+    config['endpoints'].setdefault(endpoint, {})
+    config['endpoints'][endpoint].setdefault('token', {})
+    config['endpoints'][endpoint]['client_id'] = client_id
+    config['endpoints'][endpoint]['url'] = url
+
+    client = from_config(config, endpoint=endpoint)
+    token = client.api.fetch_token(
         url,
         username=username,
         password=password,
         client_id=client_id,
         scope=scope)
 
-    config.setdefault('endpoints', {})
-    config['endpoints'].setdefault(endpoint, {})
-    config['endpoints'][endpoint]['client_id'] = client_id
-    config['endpoints'][endpoint]['token'] = token
-    config['endpoints'][endpoint]['url'] = url
+    config['endpoints'][endpoint]['token'] = dict(token)
 
     if len(config['endpoints']) == 1 or default:
         config.setdefault('core', {})
@@ -76,13 +78,10 @@ def tokens(ctx, config):
 
 
 @tokens.command()
-@click.argument('endpoint')
+@argument_endpoint
 @with_config
 @click.pass_context
 def access(ctx, config, endpoint):
     """Try to get access token."""
-    if endpoint not in config.get('endpoints', {}):
-        raise click.UsageError('Unknown endpoint: {0}'.format(endpoint))
-
     client = from_config(config, endpoint=endpoint)
-    click.echo(client.refresh_token()['access_token'])
+    click.echo(client.api.refresh_token()['access_token'])

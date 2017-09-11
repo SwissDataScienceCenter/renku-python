@@ -55,7 +55,6 @@ class AuthorizationMixin(OAuth2Session):
     def refresh_token(self, token_url=None, **kwargs):
         """Set default ``token_url``."""
         token_url = token_url or self.TOKEN_URL.format(self.endpoint)
-        kwargs.setdefault('client_id', self.client.client_id)
-        kwargs.setdefault('scope', self.client.scope)
+        kwargs.setdefault('client_id', self.client_id)
         return super(AuthorizationMixin, self).refresh_token(
             token_url, **kwargs)
