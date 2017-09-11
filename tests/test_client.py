@@ -58,3 +58,9 @@ def test_client_buckets(renga_client, storage_responses):
 
     file_ = bucket.create_file(file_name='hello')
     assert file_.id == 1234
+
+    with file_.open('w') as fp:
+        fp.write(b'hello world')
+
+    with file_.open('r') as fp:
+        assert fp.read() == b'hello world'

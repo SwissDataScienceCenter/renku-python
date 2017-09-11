@@ -19,6 +19,7 @@
 
 from __future__ import absolute_import, print_function
 
+import io
 import os
 import shutil
 import tempfile
@@ -222,4 +223,33 @@ def storage_responses(auth_responses, renga_client):
             'id': 1234,
             'access_token': 'accessfile_1234',
         })
+
+    rsps.add(
+        responses.POST,
+        renga_client.api._url('/api/storage/authorize/write'),
+        status=200,
+        json={
+            'access_token': 'writefile_1234',
+        })
+
+    rsps.add(
+        responses.POST,
+        renga_client.api._url('/api/storage/authorize/read'),
+        status=200,
+        json={
+            'access_token': 'readfile_1234',
+        })
+
+    rsps.add(
+        responses.POST,
+        renga_client.api._url('/api/storage/io/write'),
+        status=200,
+    )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/storage/io/read'),
+        status=200,
+        body=b'hello world',
+        stream=True,
+    )
     yield rsps

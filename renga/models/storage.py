@@ -17,6 +17,10 @@
 # limitations under the License.
 """Model objects representing buckets and file objects."""
 
+from contextlib import contextmanager
+
+from renga import errors
+
 from ._datastructures import Collection, Model
 
 
@@ -73,3 +77,49 @@ class File(Model):
         # FIXME make sure that bucket endpoint returns name
         return self._response.get('access_token',
                                   self._client.api.access_token)
+
+    @contextmanager
+    def open(self, mode='r'):
+        """Yield a file object."""
+        file_handle = {
+            'resource_id': self.id,
+            'request_type': FileHandle.REQUEST_TYPE[mode],
+        }
+        token = self._client.api.storage_authorize(**file_handle)
+        client = self._client.__class__(self._client.api.endpoint, token=token)
+        yield FileHandle(file_handle, client=client)
+
+
+class FileHandle(Model):
+    """Represent an open file handle."""
+
+    IDENTIFIER_KEY = 'resource_id'
+
+    REQUEST_TYPE = {
+        'r': 'read_file',
+        'w': 'write_file',
+    }
+
+    @property
+    def can_write(self):
+        """Check if the file handle is writable."""
+        return self._response['request_type'] == self.REQUEST_TYPE['w']
+
+    @property
+    def can_read(self):
+        """Check if the file handle is readable."""
+        return self._response['request_type'] == self.REQUEST_TYPE['r']
+
+    def write(self, data):
+        """Write data to the file."""
+        if not self.can_write:
+            raise error.InvalidFileOperation('File is not writable.')
+
+        self._client.api.storage_io_write(data)
+
+    def read(self, *args, **kwargs):
+        """Read data to the file."""
+        if not self.can_read:
+            raise error.InvalidFileOperation('File is not writable.')
+
+        return self._client.api.storage_io_read(*args, **kwargs)

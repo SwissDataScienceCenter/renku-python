@@ -42,3 +42,7 @@ class APIError(requests.exceptions.HTTPError, RengaException):
             message = response.content.strip()
 
         raise cls(message)
+
+
+class InvalidFileOperation(RengaException):
+    """Raise when trying to perfrom invalid file operation."""
