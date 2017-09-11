@@ -284,3 +284,84 @@ def storage_responses(auth_responses, renga_client):
         body=b'hello world',
         stream=True, )
     yield rsps
+
+
+@pytest.fixture()
+def explorer_responses(auth_responses, renga_client):
+    """Monkeypatch requests to immitate the explorer service."""
+    rsps = auth_responses
+    buckets = [{
+            "id":
+            1234,
+            "types": ["resource:bucket"],
+            "properties": [{
+                "key":
+                "resource:bucket_backend",
+                "data_type":
+                "string",
+                "cardinality":
+                "single",
+                "values": [{
+                    "key": "resource:bucket_backend",
+                    "data_type": "string",
+                    "value": "local",
+                    "properties": []
+                }]
+            }, {
+                "key":
+                "resource:bucket_name",
+                "data_type":
+                "string",
+                "cardinality":
+                "single",
+                "values": [{
+                    "key": "resource:bucket_name",
+                    "data_type": "string",
+                    "value": "bucket1",
+                    "properties": []
+                }]
+            }]
+        }, {
+            "id":
+            5678,
+            "types": ["resource:bucket"],
+            "properties": [{
+                "key":
+                "resource:bucket_backend",
+                "data_type":
+                "string",
+                "cardinality":
+                "single",
+                "values": [{
+                    "key": "resource:bucket_backend",
+                    "data_type": "string",
+                    "value": "local",
+                    "properties": []
+                }]
+            }, {
+                "key":
+                "resource:bucket_name",
+                "data_type":
+                "string",
+                "cardinality":
+                "single",
+                "values": [{
+                    "key": "resource:bucket_name",
+                    "data_type": "string",
+                    "value": "bucket2",
+                    "properties": []
+                }]
+            }]
+        }]
+
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/explorer/storage/bucket'),
+        status=200,
+        json=buckets)
+
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/explorer/storage/bucket/1234'),
+        status=200,
+        json=buckets[0])

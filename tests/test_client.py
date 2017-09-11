@@ -78,3 +78,12 @@ def test_client_buckets(renga_client, storage_responses):
 
     with file_.open('r') as fp:
         assert fp.read() == b'hello world'
+
+
+def test_bucket_listing(renga_client, explorer_responses):
+    """Test storage explorer client."""
+    buckets = [bucket for bucket in renga_client.buckets]
+    assert buckets[0].id == 1234
+    assert buckets[1].id == 5678
+
+    assert renga_client.buckets.get(1234).properties
