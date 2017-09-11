@@ -17,6 +17,8 @@
 # limitations under the License.
 """Model objects representing contexts and executions."""
 
+from werkzeug.datastructures import MultiDict
+
 from ._datastructures import Collection, Model
 
 
@@ -41,6 +43,13 @@ class Context(Model):
     def executions(self):
         """Return the collection of context executions."""
         return ExecutionsCollection(self.id, client=self._client)
+
+    @property
+    def lineage(self):
+        """Return the lineage of this context."""
+        return self._client.api.get_context_lineage(
+            _dict_from_labels(self.spec.get('labels')).get(
+                'renga.execution_context.vertex_id'))
 
 
 class ContextsCollection(Collection):
@@ -100,3 +109,10 @@ class ExecutionsCollection(Collection):
         """Return all contexts."""
         return (self.Meta.model(data, client=self._client, collection=self)
                 for data in self._client.api.list_executions(self.context_id))
+
+
+def _dict_from_labels(labels, separator='='):
+    """Create a multidict from label string."""
+    return MultiDict(((label[0].strip(), label[1].strip())
+                      for label in (raw.split(separator, 1)
+                                    for raw in labels)))

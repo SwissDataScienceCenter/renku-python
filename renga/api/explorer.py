@@ -29,7 +29,7 @@ class ExplorerApiMixin(object):
 
         # parse each bucket JSON and flatten
         if resp.status_code == 200:
-            buckets = [_flatten_bucket(bucket) for bucket in resp.json()]
+            buckets = [_flatten_vertex(bucket) for bucket in resp.json()]
             return buckets
         else:
             return []
@@ -40,15 +40,30 @@ class ExplorerApiMixin(object):
             self._url('/api/explorer/storage/bucket/{0}'.format(bucket_id)),
             headers=self.headers, )
         if resp.status_code == 200:
-            return _flatten_bucket(resp.json())
+            return _flatten_vertex(resp.json())
+        else:
+            return {}
+
+    def get_context_lineage(self, context_id):
+        """Retrieve all nodes connected to a context."""
+        resp = self.get(
+            self._url('/api/explorer/lineage/context/{0}'.format(context_id)),
+            headers=self.headers, )
+        if resp.status_code == 200:
+            vertices = []
+            edges = []
+            for p in resp.json():
+                vertices.append(_flatten_vertex(p['vertex']))
+                edges.append(p['edge'])
+            return vertices, edges
         else:
             return {}
 
 
-def _flatten_bucket(bucket_json):
+def _flatten_vertex(vertex_json):
     """Flatten the nested json structure returned by the Explorer."""
-    bucket = {'id': bucket_json['id'], 'properties': {}}
-    for prop in bucket_json['properties']:
+    vertex = {'id': vertex_json['id'], 'properties': {}}
+    for prop in vertex_json['properties']:
         if prop['cardinality'] == 'single':
             vals = prop['values'][0]['value']
         elif prop['cardinality'] == 'set':
@@ -57,5 +72,5 @@ def _flatten_bucket(bucket_json):
             vals = [v['value'] for v in prop['values']]
         else:
             raise RuntimeError('Undefined property cardinality')
-        bucket['properties'][prop['key']] = vals
-    return bucket
+        vertex['properties'][prop['key']] = vals
+    return vertex

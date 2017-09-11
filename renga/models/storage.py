@@ -85,8 +85,8 @@ class BucketsCollection(Collection):
 
     def __iter__(self):
         """Iterate through all buckets as returned by the Explorer."""
-        for bucket in self._client.api.list_buckets():
-            yield Bucket(bucket, client=self._client, collection=self)
+        return (self.Meta.model(data, client=self._client, collection=self)
+                for data in self._client.api.list_buckets())
 
 
 class File(Model):
