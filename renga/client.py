@@ -59,7 +59,7 @@ class RengaClient(object):
 
         endpoint = environment.get('RENGA_ENDPOINT')
         access_token = environment.get('RENGA_ACCESS_TOKEN')
-        return cls(endpoint=endpoint, access_token=access_token)
+        return cls(endpoint=endpoint, token={'access_token': access_token})
 
     @property
     def contexts(self):

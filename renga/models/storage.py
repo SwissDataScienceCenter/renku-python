@@ -79,7 +79,7 @@ class BucketsCollection(Collection):
             collection=self)
 
         if not bucket.properties:
-            raise RuntimeError('Bucket not found') # FIXME: use a better error
+            raise RuntimeError('Bucket not found')  # FIXME: use a better error
 
         return bucket
 
