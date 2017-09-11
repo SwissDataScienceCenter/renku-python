@@ -78,3 +78,4 @@ def init(config, directory, autosync, name, force, endpoint):
             'vertex_id'] = project.id
 
     write_config(project_config, path=project_config_path)
+    click.echo('Initialized empty project in {0}'.format(project_config_path))
