@@ -32,6 +32,16 @@ class Context(Model):
         """Specification of the execution context."""
         return self._response.get('spec', {})
 
+    def run(self, **kwargs):
+        """Execute the context."""
+        execution = self._client.api.create_execution(self.id, **kwargs)
+        return Execution(execution, client=self._client, collection=self)
+
+    @property
+    def executions(self):
+        """Return the collection of context executions."""
+        return ExecutionsCollection(self.id, client=self._client)
+
 
 class ContextsCollection(Collection):
     """Represent projects on the server."""
@@ -43,12 +53,50 @@ class ContextsCollection(Collection):
 
     def __iter__(self):
         """Return all contexts."""
-        return (
-            self.Meta.model(data, client=self._client, collection=self)
-            for data in self._client.api.list_contexts()
-        )
+        return (self.Meta.model(data, client=self._client, collection=self)
+                for data in self._client.api.list_contexts())
+
+    def __getitem__(self, context_id):
+        """Return the context definition."""
+        return self.Meta.model(
+            self._client.api.get_context(context_id),
+            client=self._client,
+            collection=self)
 
     def create(self, spec=None, **kwargs):
         """Create new project."""
         data = self._client.api.create_context(spec)
         return self.Meta.model(data, client=self._client, collection=self)
+
+
+class Execution(Model):
+    """Represent a context execution."""
+
+    @property
+    def engine(self):
+        """Return the execution engine."""
+        return self._response.get('engine', {})
+
+    @property
+    def ports(self):
+        """Return runtime port mapping."""
+        return self._client.api.execution_ports()
+
+
+class ExecutionsCollection(Collection):
+    """Represent projects on the server."""
+
+    class Meta:
+        """Information about individual projects."""
+
+        model = Execution
+
+    def __init__(self, context_id, **kwargs):
+        """Initialize the collection of context executions."""
+        super().__init__(**kwargs)
+        self.context_id = context_id
+
+    def __iter__(self):
+        """Return all contexts."""
+        return (self.Meta.model(data, client=self._client, collection=self)
+                for data in self._client.api.list_executions(self.context_id))

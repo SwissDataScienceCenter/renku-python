@@ -46,13 +46,27 @@ def test_client_projects(renga_client, projects_responses):
 def test_client_contexts(renga_client, deployer_responses):
     """Test client for managing contexts."""
     context = renga_client.contexts.create(image='hello-world')
-
     assert context.id == 'abcd'
     assert context.spec['image'] == 'hello-world'
 
+    assert context.id == renga_client.contexts['abcd'].id
+
+    contexts = list(renga_client.contexts)
+    assert contexts
+    assert contexts[0].id == 'abcd'
+    assert contexts[0].spec['image'] == 'hello-world'
+
+    execution = context.run(engine='docker')
+    assert execution.id == 'efgh'
+    assert execution.engine == 'docker'
+
+    executions = list(context.executions)
+    assert executions[0].id == 'efgh'
+    assert executions[0].engine == 'docker'
+
 
 def test_client_buckets(renga_client, storage_responses):
-    """Test client for managing contexts."""
+    """Test client for managing buckets and files."""
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 

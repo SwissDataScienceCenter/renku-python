@@ -189,15 +189,48 @@ def projects_responses(auth_responses, renga_client):
 @pytest.fixture()
 def deployer_responses(auth_responses, renga_client):
     """Monkeypatch requests to immitate the deployer service."""
+    context = {
+        'identifier': 'abcd',
+        'spec': {
+            'image': 'hello-world',
+        }
+    }
+    execution = {
+        'identifier': 'efgh',
+        'engine': 'docker',
+        'namespace': 'default',
+    }
+
     rsps = auth_responses
     rsps.add(
         responses.POST,
         renga_client.api._url('/api/deployer/contexts'),
         status=201,
-        json={'identifier': 'abcd',
-              'spec': {
-                  'image': 'hello-world',
-              }})
+        json=context, )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/deployer/contexts'),
+        status=200,
+        json={
+            'contexts': [context],
+        })
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/deployer/contexts/abcd'),
+        status=200,
+        json=context)
+    rsps.add(
+        responses.POST,
+        renga_client.api._url('/api/deployer/contexts/abcd/executions'),
+        status=201,
+        json=execution, )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/deployer/contexts/abcd/executions'),
+        status=200,
+        json={
+            'executions': [execution],
+        })
     yield rsps
 
 
@@ -243,13 +276,11 @@ def storage_responses(auth_responses, renga_client):
     rsps.add(
         responses.POST,
         renga_client.api._url('/api/storage/io/write'),
-        status=200,
-    )
+        status=200, )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/storage/io/read'),
         status=200,
         body=b'hello world',
-        stream=True,
-    )
+        stream=True, )
     yield rsps

@@ -26,29 +26,30 @@ class ContextsApiMixin(object):
         resp = self.post(self._url('/api/deployer/contexts'), json=spec)
         return resp.json()
 
+    def get_context(self, context_id):
+        """List all known contexts."""
+        resp = self.get(self._url('/api/deployer/contexts/{0}', context_id))
+        return resp.json()
+
     def list_contexts(self):
         """List all known contexts."""
         resp = self.get(self._url('/api/deployer/contexts'))
         return resp.json()['contexts']
 
-    # TODO fix everything from here down
-
     def list_executions(self, context_id):
         """List all executions of a given context."""
-        r = requests.get(
-            self.executions_endpoint.format(context_id=context_id),
-            headers=self.headers)
+        resp = self.get(
+            self._url('/api/deployer/contexts/{0}/executions', context_id))
+        return resp.json()['executions']
 
-        return return_response(r, ok_code=200, return_json=True)['executions']
-
-    def create_execution(self, context_id, engine):
+    def create_execution(self, context_id, **kwargs):
         """Create an execution of a context on a given engine."""
-        r = requests.post(
-            self.executions_endpoint.format(context_id=context_id),
-            headers=self.headers,
-            json={'engine': engine})
+        resp = self.post(
+            self._url('/api/deployer/contexts/{0}/executions', context_id),
+            json=kwargs)
+        return resp.json()
 
-        return return_response(r, ok_code=201, return_json=True)
+    # TODO fix everything from here down
 
     def delete_execution(self, context_id, execution_id):
         """Delete an execution."""
@@ -59,7 +60,7 @@ class ContextsApiMixin(object):
 
         return return_response(r, ok_code=200)
 
-    def get_logs(self, context_id, execution_id, access_token):
+    def execution_logs(self, context_id, execution_id):
         """Retrieve logs of an execution."""
         r = requests.get(
             self.execution_logs_endpoint.format(
@@ -68,7 +69,7 @@ class ContextsApiMixin(object):
 
         return return_response(r, ok_code=200, return_json=True)
 
-    def get_ports(self, context_id, execution_id):
+    def execution_ports(self, context_id, execution_id):
         """Retrieve port mappings for an execution."""
         r = requests.get(
             self.execution_ports_endpoint.format(
