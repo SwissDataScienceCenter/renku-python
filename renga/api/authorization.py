@@ -44,6 +44,13 @@ class AuthorizationMixin(OAuth2Session):
                           LegacyApplicationClient(
                               kwargs.get('client_id'),
                               token=kwargs.get('token')))
+
+        def token_updater(token):
+            """Automatic token updater."""
+            self.token = token
+
+        kwargs.setdefault('token_updater', token_updater)
+
         super().__init__(**kwargs)
 
     def fetch_token(self, token_url=None, **kwargs):
