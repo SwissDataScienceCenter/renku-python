@@ -42,7 +42,6 @@ def runner(instance_path, monkeypatch):
     from renga.cli._config import PROJECT_DIR
     monkeypatch.setenv('RENGA_CONFIG', os.path.join(instance_path,
                                                     PROJECT_DIR))
-    monkeypatch.setenv('OAUTHLIB_INSECURE_TRANSPORT', 0)
     cli_runner = CliRunner()
     with cli_runner.isolated_filesystem():
         yield cli_runner
@@ -52,14 +51,14 @@ def runner(instance_path, monkeypatch):
 def renga_client():
     """Return a graph mutation client."""
     from renga.client import RengaClient
-    return RengaClient('http://example.com', access_token='accessdemo')
+    return RengaClient('https://example.com', access_token='accessdemo')
 
 
 @pytest.fixture(scope='session')
 def graph_mutation_client():
     """Return a graph mutation client."""
     from renga.client.graph.mutation import GraphMutationClient
-    client = GraphMutationClient('http://example.com')
+    client = GraphMutationClient('https://example.com')
 
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
@@ -70,7 +69,7 @@ def graph_mutation_client():
 
         rsps.add_callback(
             responses.POST,
-            'http://example.com/auth/realms/Renga/protocol/openid-connect'
+            'https://example.com/auth/realms/Renga/protocol/openid-connect'
             '/token',
             content_type='application/json',
             callback=request_callback)
@@ -94,7 +93,7 @@ def auth_responses():
 
         rsps.add_callback(
             responses.POST,
-            'http://example.com/auth/realms/Renga/protocol/openid-connect'
+            'https://example.com/auth/realms/Renga/protocol/openid-connect'
             '/token',
             content_type='application/json',
             callback=request_callback)
@@ -194,12 +193,10 @@ def deployer_responses(auth_responses, renga_client):
         responses.POST,
         renga_client.api._url('/api/deployer/contexts'),
         status=201,
-        json={
-            'identifier': 'abcd',
-            'spec': {
-                'image': 'hello-world',
-            }
-        })
+        json={'identifier': 'abcd',
+              'spec': {
+                  'image': 'hello-world',
+              }})
     yield rsps
 
 

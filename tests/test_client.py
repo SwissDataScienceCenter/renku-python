@@ -27,7 +27,7 @@ def test_client(renga_client, monkeypatch):
     client = renga_client
     assert hasattr(client, 'api')
 
-    monkeypatch.setenv('RENGA_ENDPOINT', 'http://example.com')
+    monkeypatch.setenv('RENGA_ENDPOINT', 'https://example.com')
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', 'accessdemo')
 
     env_client = renga.from_env()

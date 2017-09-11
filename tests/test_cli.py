@@ -42,7 +42,7 @@ def test_config_path(runner):
 def test_login(runner, auth_responses):
     """Test login."""
     result = runner.invoke(cli.cli, [
-        'login', 'http://example.com',
+        'login', 'https://example.com',
         '--username', 'demo', '--password', 'demo'
     ])
     assert result.exit_code == 0
@@ -50,13 +50,16 @@ def test_login(runner, auth_responses):
 
     result = runner.invoke(cli.cli, ['tokens'])
     assert result.exit_code == 0
-    assert 'http://example.com: demodemo' in result.output.split('\n')
+    assert 'https://example.com: demodemo' in result.output.split('\n')
 
+    result = runner.invoke(cli.cli, ['tokens'])
+    assert result.exit_code == 0
+    assert 'https://example.com: demodemo' in result.output.split('\n')
 
 def test_init(runner, auth_responses, projects_responses):
     """Test project initialization."""
     result = runner.invoke(cli.cli, [
-        'login', 'http://example.com', '--username', 'demo', '--password',
+        'login', 'https://example.com', '--username', 'demo', '--password',
         'demo'
     ])
 
