@@ -61,7 +61,7 @@ class ContextsApiMixin(object):
 
     def get_logs(self, context_id, execution_id, access_token):
         """Retrieve logs of an execution."""
-        r = request.get(
+        r = requests.get(
             self.execution_logs_endpoint.format(
                 context_id=context_id, execution_id=execution_id),
             headers=self.headers)

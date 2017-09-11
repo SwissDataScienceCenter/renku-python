@@ -43,7 +43,12 @@ from ._version import print_version
     expose_value=False,
     is_eager=True,
     help=print_app_config_path.__doc__)
-@click.pass_context
+@click.option(
+    '--no-project',
+    is_flag=True,
+    default=False)
 @with_config
-def cli(ctx, config):
+@click.pass_context
+def cli(ctx, config, no_project):
     """Check common Renga commands used in various situations."""
+    ctx.obj['no_project'] = no_project

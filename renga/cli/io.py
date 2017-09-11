@@ -59,13 +59,14 @@ def create(config, name, backend, endpoint):
     client = from_config(config, endpoint=endpoint)
     bucket = client.buckets.create(name=name, backend=backend)
 
-    config['project']['endpoints'].setdefault(endpoint, {})
-    config['project']['endpoints'][endpoint].setdefault('buckets', {})
-    config['project']['endpoints'][endpoint]['buckets'][bucket.id] = name
+    if 'project' in config:
+        config['project']['endpoints'].setdefault(endpoint, {})
+        config['project']['endpoints'][endpoint].setdefault('buckets', {})
+        config['project']['endpoints'][endpoint]['buckets'][bucket.id] = name
 
-    # Set default bucket
-    config['project']['endpoints'][endpoint].setdefault(
-        'default_bucket', bucket.id)
+        # Set default bucket
+        config['project']['endpoints'][endpoint].setdefault(
+            'default_bucket', bucket.id)
 
     click.echo(bucket.id)
 

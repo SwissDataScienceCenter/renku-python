@@ -73,8 +73,10 @@ def with_config(f):
         else:
             config = ctx.obj['config'] = read_config()
 
+        project_enabled = not ctx.obj.get('no_project', False)
         project_config_path = get_project_config_path()
-        if project_config_path:
+
+        if project_enabled and project_config_path:
             project_config = read_config(project_config_path)
             config['project'] = project_config
         result = ctx.invoke(f, config, *args, **kwargs)
