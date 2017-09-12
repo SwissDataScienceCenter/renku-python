@@ -26,16 +26,64 @@ from ._client import from_config
 from ._config import with_config
 
 
-@click.group(invoke_without_command=True)
+@click.group()
+def contexts():
+    """Manage execution contexts."""
+
+
+@contexts.command()
 @option_endpoint
 @with_config
-@click.pass_context
-def contexts(ctx, config, endpoint):
-    """Manage execution contexts."""
-    if ctx.invoked_subcommand is None:
-        client = from_config(config, endpoint=endpoint)
-        contexts = client.contexts
-        click.echo(tabulate(contexts, headers=contexts.Meta.headers))
+def show(config, endpoint):
+    client = from_config(config, endpoint=endpoint)
+    contexts = client.contexts
+    click.echo(tabulate(contexts, headers=contexts.Meta.headers))
+
+
+@contexts.command()
+@click.argument('image')
+@click.option('--command', '-c', help='Command to run in the container.')
+@click.option(
+    '--labels', '-l', multiple=True, help='Labels to add to the container.')
+@click.option(
+    '--ports', '-p', multiple=True, help='Ports to expose in the container.')
+@option_endpoint
+@with_config
+def create(config, image, ports, command, labels, endpoint):
+    """Create an execution context."""
+    project_config = config.get('project', {})
+    project_vertex_id = project_config.get('endpoints', {}).get(
+        endpoint, {}).get('vertex_id')
+
+    client = from_config(config, endpoint=endpoint)
+
+    if project_vertex_id:
+        spec['labels'].append(
+            'renga.project.vertex_id={0}'.format(project_vertex_id))
+
+        client.api.headers['Renga-Projects-Project'] = project_vertex_id
+
+    spec = {
+        'command': command,
+        'image': image,
+        'labels': labels,
+        'ports': ports,
+    }
+
+    context = client.contexts.create(spec)
+    click.echo(context.id)
+
+
+@contexts.command()
+@click.argument('context-id')
+@click.argument('engine')
+@option_endpoint
+@with_config
+def run(config, context_id, engine, endpoint):
+    """Run an execution context."""
+    client = from_config(config, endpoint=endpoint)
+    execution = client.contexts[context_id].run(engine=engine)
+    click.echo(execution.id)
 
 
 @click.group()
