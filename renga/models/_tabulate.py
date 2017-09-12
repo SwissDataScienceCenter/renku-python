@@ -17,14 +17,12 @@
 # limitations under the License.
 """Print a collection as a table."""
 
-
 from operator import attrgetter
+
 from tabulate import tabulate as tblte
 
-def tabulate(collection, headers):
-    """Pretty-print a collection."""
-    table = [
-        attrgetter(*headers)(c) for c in collection
-    ]
-    return tblte(table, headers=[h.upper() for h in headers])
 
+def tabulate(collection, headers, **kwargs):
+    """Pretty-print a collection."""
+    table = [attrgetter(*headers)(c) for c in collection]
+    return tblte(table, headers=[h.upper() for h in headers], **kwargs)

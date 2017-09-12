@@ -21,6 +21,7 @@ import click
 
 from renga.cli._options import option_endpoint
 
+from ..models._tabulate import tabulate
 from ._client import from_config
 from ._config import with_config
 
@@ -33,8 +34,8 @@ def contexts(ctx, config, endpoint):
     """Manage execution contexts."""
     if ctx.invoked_subcommand is None:
         client = from_config(config, endpoint=endpoint)
-        for context in client.contexts:
-            click.echo(context)
+        contexts = client.contexts
+        click.echo(tabulate(contexts, headers=contexts.Meta.headers))
 
 
 @click.group()
@@ -49,8 +50,8 @@ def executions():
 def show(config, context_id, endpoint):
     """Show the executions of a context."""
     client = from_config(config, endpoint=endpoint)
-    for execution in client.contexts[context_id].executions:
-        click.echo(execution)
+    executions = client.contexts[context_id].executions
+    click.echo(tabulate(executions, headers=executions.Meta.headers))
 
 
 @executions.command()

@@ -18,7 +18,6 @@
 """Base classes for Model objects used in Python SDK."""
 
 
-
 class Model(object):
     """Abstract response of a single object."""
 

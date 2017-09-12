@@ -94,7 +94,7 @@ setup(
             'init=renga.cli.init:init',
             'io=renga.cli.io:storage',
             'login=renga.cli.login:login',
-            'notebook=renga.cli.notebook:notebook',
+            'notebooks=renga.cli.notebooks:notebooks',
             'tokens=renga.cli.login:tokens',
         ],
     },

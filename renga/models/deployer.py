@@ -34,6 +34,22 @@ class Context(Model):
         """Specification of the execution context."""
         return self._response.get('spec', {})
 
+    @property
+    def labels(self):
+        """Return the context labels."""
+        return _dict_from_labels(self.spec.get('labels', []))
+
+    @property
+    def image(self):
+        """Image used for the executions."""
+        return self.spec['image']
+
+    @property
+    def vertex_id(self):
+        """Graph vertex id."""
+        labels = self.spec.get('labels', {})
+        return self.labels.get('renga.execution_context.vertex_id')
+
     def run(self, **kwargs):
         """Execute the context."""
         execution = self._client.api.create_execution(self.id, **kwargs)
@@ -49,8 +65,7 @@ class Context(Model):
     def lineage(self):
         """Return the lineage of this context."""
         return self._client.api.get_context_lineage(
-            _dict_from_labels(self.spec.get('labels')).get(
-                'renga.execution_context.vertex_id'))
+            self.labels.get('renga.execution_context.vertex_id'))
 
 
 class ContextsCollection(Collection):
@@ -60,6 +75,8 @@ class ContextsCollection(Collection):
         """Information about individual projects."""
 
         model = Context
+
+        headers = ('id', 'vertex_id', 'image')
 
     def __iter__(self):
         """Return all contexts."""
@@ -97,6 +114,21 @@ class Execution(Model):
         """Return runtime port mapping."""
         return self._client.api.execution_ports(self.context_id, self.id)
 
+    @property
+    def url(self):
+        """Return a URL for accessing the running container."""
+        ports = self.ports
+        token = self.context.labels.get('renga.notebook.token', '')
+        if token:
+            token = '/?token={0}'.format(token)
+        return 'http://{host}:{exposed}{token}'.format(
+            token=token, **ports[0])
+
+    @property
+    def context(self):
+        """Return the related context."""
+        return self._client.contexts[self.context_id]
+
     def logs(self, **kwargs):
         """Get logs from this execution."""
         return self._client.api.execution_logs(self.context_id, self.id,
@@ -114,6 +146,8 @@ class ExecutionsCollection(Collection):
         """Information about individual projects."""
 
         model = Execution
+
+        headers = ('id', 'context_id', 'engine', 'ports')
 
     def __init__(self, context_id, **kwargs):
         """Initialize the collection of context executions."""

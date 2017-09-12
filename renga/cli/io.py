@@ -20,10 +20,11 @@
 import click
 import requests
 
+from ..models._tabulate import tabulate
 from ._client import from_config
 from ._config import config_path, with_config
 from ._options import option_endpoint
-from ..models._tabulate import tabulate
+
 
 @click.group(name='io', invoke_without_command=True)
 @with_config
@@ -113,4 +114,3 @@ def files(config, endpoint, bucket_id):
 
     if bucket.files:
         click.echo(tabulate(bucket.files, headers=bucket.files.Meta.headers))
-
