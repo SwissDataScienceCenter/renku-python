@@ -90,11 +90,25 @@ def test_client_buckets(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.create_file(file_name='hello')
+    file_ = bucket.files.create(file_name='hello')
     assert file_.id == 1234
 
     with file_.open('w') as fp:
         fp.write(b'hello world')
+
+    with file_.open('r') as fp:
+        assert fp.read() == b'hello world'
+
+
+def test_client_buckets_shortcut(renga_client, storage_responses):
+    """Test shortcut for creating file on a bucket."""
+    bucket = renga_client.buckets.create(name='world', backend='local')
+    assert bucket.id == 1234
+
+    with bucket.open('hello', 'w') as fp:
+        fp.write(b'hello world')
+
+    file_ = bucket.files[fp.id]
 
     with file_.open('r') as fp:
         assert fp.read() == b'hello world'

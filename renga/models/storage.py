@@ -50,18 +50,26 @@ class Bucket(Model):
         """Return all files in this bucket."""
         return FilesCollection(self.id, client=self._client)
 
-    def create_file(self, file_name=None):
+    @contextmanager
+    def open(self, file_name=None, mode='w'):
         """Create an empty file in this bucket."""
+        if mode != 'w':
+            raise NotImplemented('Only mode "w" is currently supported')
+
         resp = self._client.api.create_file(
             bucket_id=self.id,
             file_name=file_name,
             request_type='create_file', )
-        # FIXME: return FileHandle directly
-        # access_token = resp.get('access_token')
-        # client = self._client.__class__(
-        #     self._client.api.endpoint, token = {
-        #          'access_token': access_token})
-        return File(resp, client=self._client, collection=self)
+
+        access_token = resp.pop('access_token')
+        client = self._client.__class__(
+            self._client.api.endpoint, token={'access_token': access_token})
+
+        file_handle = {
+            'resource_id': resp['id'],
+            'request_type': FileHandle.REQUEST_TYPE[mode],
+        }
+        yield FileHandle(file_handle, client=self._client)
 
 
 class BucketsCollection(Collection):
@@ -142,12 +150,28 @@ class FilesCollection(Collection):
         self.id = bucket_id
         super().__init__(**kwargs)
 
+    def __getitem__(self, resource_id):
+        """Return a file object."""
+        # FIXME use explorer api
+        return self.Meta.model(
+            {
+                'id': resource_id,
+            }, client=self._client, collection=self)
+
     def __iter__(self):
         """Return all files in this bucket."""
         return [
-            File(f, client=self._client, collection=self)
+            self.Meta.model(f, client=self._client, collection=self)
             for f in self._client.api.get_bucket_files(self.id)
         ]
+
+    def create(self, file_name=None):
+        """Create an empty file in this bucket."""
+        resp = self._client.api.create_file(
+            bucket_id=self.id,
+            file_name=file_name,
+            request_type='create_file', )
+        return self.Meta.model(resp, client=self._client, collection=self)
 
 
 class FileHandle(Model):
