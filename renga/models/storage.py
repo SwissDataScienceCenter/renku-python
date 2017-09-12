@@ -147,6 +147,8 @@ class FilesCollection(Collection):
 
         model = File
 
+        headers = ('id', 'filename')
+
     def __init__(self, bucket_id, **kwargs):
         """Initialize collection of files in the bucket."""
         self.id = bucket_id
@@ -162,10 +164,10 @@ class FilesCollection(Collection):
 
     def __iter__(self):
         """Return all files in this bucket."""
-        return [
-            self.Meta.model(f, client=self._client, collection=self)
+        return (
+            File(f, client=self._client, collection=self)
             for f in self._client.api.get_bucket_files(self.id)
-        ]
+        )
 
     def create(self, file_name=None):
         """Create an empty file in this bucket."""
