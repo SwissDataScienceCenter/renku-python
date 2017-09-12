@@ -37,6 +37,7 @@ class Context(Model):
     def run(self, **kwargs):
         """Execute the context."""
         execution = self._client.api.create_execution(self.id, **kwargs)
+        execution['context_id'] = self.id
         return Execution(execution, client=self._client, collection=self)
 
     @property
@@ -82,6 +83,11 @@ class Execution(Model):
     """Represent a context execution."""
 
     @property
+    def context_id(self):
+        """Return the associated context id."""
+        return self._collection.id
+
+    @property
     def engine(self):
         """Return the execution engine."""
         return self._response.get('engine', {})
@@ -89,7 +95,16 @@ class Execution(Model):
     @property
     def ports(self):
         """Return runtime port mapping."""
-        return self._client.api.execution_ports()
+        return self._client.api.execution_ports(self.context_id, self.id)
+
+    def logs(self, **kwargs):
+        """Get logs from this execution."""
+        return self._client.api.execution_logs(self.context_id, self.id,
+                                               **kwargs)
+
+    def stop(self):
+        """Stop running execution."""
+        return self._client.api.stop_execution(self.context_id, self.id)
 
 
 class ExecutionsCollection(Collection):
@@ -103,12 +118,12 @@ class ExecutionsCollection(Collection):
     def __init__(self, context_id, **kwargs):
         """Initialize the collection of context executions."""
         super().__init__(**kwargs)
-        self.context_id = context_id
+        self.id = context_id
 
     def __iter__(self):
         """Return all contexts."""
         return (self.Meta.model(data, client=self._client, collection=self)
-                for data in self._client.api.list_executions(self.context_id))
+                for data in self._client.api.list_executions(self.id))
 
 
 def _dict_from_labels(labels, separator='='):

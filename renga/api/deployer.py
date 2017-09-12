@@ -49,31 +49,23 @@ class ContextsApiMixin(object):
             json=kwargs)
         return resp.json()
 
-    # TODO fix everything from here down
-
-    def delete_execution(self, context_id, execution_id):
-        """Delete an execution."""
-        r = requests.delete(
-            self.execution_endpoint.format(
-                context_id=context_id, execution_id=execution_id),
-            headers=self.headers)
-
-        return return_response(r, ok_code=200)
+    def stop_execution(self, context_id, execution_id):
+        """Stop a running execution."""
+        resp = self.delete(
+            self._url('/api/deployer/contexts/{0}/executions/{1}', context_id,
+                      execution_id))
+        return resp.status_code == 200
 
     def execution_logs(self, context_id, execution_id):
         """Retrieve logs of an execution."""
-        r = requests.get(
-            self.execution_logs_endpoint.format(
-                context_id=context_id, execution_id=execution_id),
-            headers=self.headers)
-
-        return return_response(r, ok_code=200, return_json=True)
+        resp = self.get(
+            self._url('/api/deployer/contexts/{0}/executions/{1}/logs',
+                      context_id, execution_id))
+        return resp.text
 
     def execution_ports(self, context_id, execution_id):
         """Retrieve port mappings for an execution."""
-        r = requests.get(
-            self.execution_ports_endpoint.format(
-                context_id=context_id, execution_id=execution_id),
-            headers=self.headers)
-
-        return return_response(r, ok_code=200, return_json=True)['ports']
+        resp = self.get(
+            self._url('/api/deployer/contexts/{0}/executions/{1}/ports',
+                      context_id, execution_id))
+        return resp.json()['ports']

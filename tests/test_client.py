@@ -76,6 +76,9 @@ def test_client_contexts(renga_client, deployer_responses):
     execution = context.run(engine='docker')
     assert execution.id == 'efgh'
     assert execution.engine == 'docker'
+    assert 'Hello world!' in execution.logs()
+    assert execution.ports == []
+    assert execution.stop()
 
     executions = list(context.executions)
     assert executions[0].id == 'efgh'

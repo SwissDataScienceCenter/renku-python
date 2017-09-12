@@ -233,6 +233,26 @@ def deployer_responses(auth_responses, renga_client):
         json={
             'executions': [execution],
         })
+    rsps.add(
+        responses.DELETE,
+        renga_client.api._url(
+            '/api/deployer/contexts/abcd/executions/efgh'),
+        status=200,
+        json=execution, )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url(
+            '/api/deployer/contexts/abcd/executions/efgh/logs'),
+        status=200,
+        body=b'Hello world!', )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url(
+            '/api/deployer/contexts/abcd/executions/efgh/ports'),
+        status=200,
+        json={
+            'ports': [],
+        })
     yield rsps
 
 
