@@ -99,13 +99,13 @@ def list(config, endpoint, bucket_id, all_buckets, sort_by):
     if len(buckets) > 1:
         buckets.sort(key=lambda b: getattr(b, sort_by))
 
-    click.echo(
-        '{0:>7}\t {1:20}\t {2:20}'.format('ID', 'NAME', 'BACKEND'))
+    click.echo('{0:>7}\t {1:20}\t {2:20}'.format('ID', 'NAME', 'BACKEND'))
 
     if buckets:
         for bucket in buckets:
             click.echo('{0:7}\t {1:20}\t {2}'.format(bucket.id, bucket.name,
-                                                      bucket.backend))
+                                                     bucket.backend))
+
 
 @buckets.command()
 @click.argument('bucket_id', required=True, type=int)
@@ -116,8 +116,7 @@ def files(config, endpoint, bucket_id):
     client = from_config(config, endpoint=endpoint)
     bucket = client.buckets.get(bucket_id)
 
-    click.echo(
-        '{0:7}\t {1:20}\t'.format('FILE ID', 'FILENAME'))
+    click.echo('{0:7}\t {1:20}\t'.format('FILE ID', 'FILENAME'))
 
     if bucket:
         for f in bucket.files:

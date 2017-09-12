@@ -298,7 +298,7 @@ def storage_responses(auth_responses, renga_client):
     rsps.add(
         responses.POST,
         renga_client.api._url('/api/storage/io/write'),
-        status=200, )
+        status=201, )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/storage/io/read'),

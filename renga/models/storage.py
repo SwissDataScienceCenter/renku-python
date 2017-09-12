@@ -48,10 +48,7 @@ class Bucket(Model):
     @property
     def files(self):
         """Return all files in this bucket."""
-        return [
-            File(f, client=self._client, collection=self)
-            for f in self._client.api.get_bucket_files(self.id)
-        ]
+        return FilesCollection(self.id, client=self._client)
 
     def create_file(self, file_name=None):
         """Create an empty file in this bucket."""
@@ -62,7 +59,8 @@ class Bucket(Model):
         # FIXME: return FileHandle directly
         # access_token = resp.get('access_token')
         # client = self._client.__class__(
-        #     self._client.api.endpoint, token = {'access_token': access_token})
+        #     self._client.api.endpoint, token = {
+        #          'access_token': access_token})
         return File(resp, client=self._client, collection=self)
 
 
@@ -70,7 +68,7 @@ class BucketsCollection(Collection):
     """Represent storage buckets on the server."""
 
     class Meta:
-        """Information about individual projects."""
+        """Information about individual buckets."""
 
         model = Bucket
 
@@ -129,6 +127,27 @@ class File(Model):
         token = self._client.api.storage_authorize(**file_handle)
         client = self._client.__class__(self._client.api.endpoint, token=token)
         yield FileHandle(file_handle, client=client)
+
+
+class FilesCollection(Collection):
+    """Represent files in a bucket on the server."""
+
+    class Meta:
+        """Information about individual files."""
+
+        model = File
+
+    def __init__(self, bucket_id, **kwargs):
+        """Initialize collection of files in the bucket."""
+        self.id = bucket_id
+        super().__init__(**kwargs)
+
+    def __iter__(self):
+        """Return all files in this bucket."""
+        return [
+            File(f, client=self._client, collection=self)
+            for f in self._client.api.get_bucket_files(self.id)
+        ]
 
 
 class FileHandle(Model):

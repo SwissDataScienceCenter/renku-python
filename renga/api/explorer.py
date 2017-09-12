@@ -64,7 +64,7 @@ class ExplorerApiMixin(object):
         if resp.status_code == 200:
             return [_flatten_vertex(vertex) for vertex in resp.json()]
         else:
-            return {}
+            return []
 
 
 def _flatten_vertex(vertex_json):
