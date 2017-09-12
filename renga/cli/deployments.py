@@ -34,7 +34,8 @@ def contexts():
 @contexts.command()
 @option_endpoint
 @with_config
-def show(config, endpoint):
+def list(config, endpoint):
+    """List all contexts."""
     client = from_config(config, endpoint=endpoint)
     contexts = client.contexts
     click.echo(tabulate(contexts, headers=contexts.Meta.headers))
