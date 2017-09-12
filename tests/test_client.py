@@ -27,12 +27,29 @@ def test_client(renga_client, monkeypatch):
     client = renga_client
     assert hasattr(client, 'api')
 
-    monkeypatch.setenv('RENGA_ENDPOINT', 'https://example.com')
-    monkeypatch.setenv('RENGA_ACCESS_TOKEN', 'accessdemo')
+    monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
+    monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
 
     env_client = renga.from_env()
     assert client.api.endpoint == env_client.api.endpoint
     assert client.api.headers == env_client.api.headers
+
+
+def test_auto_refresh(projects_responses):
+    """Test automatic token refresh."""
+    client = renga.RengaClient(
+        'https://example.com',
+        token={
+            'access_token': 'expired',
+            'expires_at': 1,
+            'refresh_token': 'refreshtoken',
+        }, )
+
+    url = 'https://example.com/api/projects'
+    data = b'{"name": "test-project"}'
+    response = client.api.request('POST', url, data=data)
+
+    assert client.api.token['access_token'] == 'accessdemo'
 
 
 def test_client_projects(renga_client, projects_responses):
@@ -86,4 +103,4 @@ def test_bucket_listing(renga_client, explorer_responses):
     assert buckets[0].id == 1234
     assert buckets[1].id == 5678
 
-    assert renga_client.buckets.get(1234).properties
+    assert renga_client.buckets[1234].id == 1234

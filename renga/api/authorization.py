@@ -46,10 +46,12 @@ class AuthorizationMixin(OAuth2Session):
                               token=kwargs.get('token')))
 
         def token_updater(token):
-            """Automatic token updater."""
-            self.token = token
+            """Dummy token updater."""
+            pass
 
         kwargs.setdefault('token_updater', token_updater)
+        kwargs.setdefault('auto_refresh_url',
+                          self.TOKEN_URL.format(self.endpoint))
 
         super().__init__(**kwargs)
 

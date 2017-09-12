@@ -70,7 +70,7 @@ class BucketsCollection(Collection):
         data = self._client.api.create_bucket(name=name, backend=backend)
         return self.Meta.model(data, client=self._client, collection=self)
 
-    def get(self, bucket_id):
+    def __getitem__(self, bucket_id):
         """Return a bucket object."""
         # FIXME it should check the bucket existence on server
         bucket = Bucket(
@@ -79,7 +79,7 @@ class BucketsCollection(Collection):
             collection=self)
 
         if not bucket.properties:
-            raise RuntimeError('Bucket not found')  # FIXME: use a better error
+            raise errors.NotFound('Bucket not found')
 
         return bucket
 

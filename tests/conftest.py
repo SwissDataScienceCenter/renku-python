@@ -52,7 +52,8 @@ def runner(instance_path, monkeypatch):
 def renga_client():
     """Return a graph mutation client."""
     from renga.client import RengaClient
-    return RengaClient('https://example.com', access_token='accessdemo')
+    return RengaClient(
+        'https://example.com', token={'access_token': 'accessdemo'})
 
 
 @pytest.fixture(scope='session')
@@ -90,7 +91,8 @@ def auth_responses():
         def request_callback(request):
             return (200, {
                 'Content-Type': 'application/json'
-            }, '{"refresh_token": "demodemo", "access_token": "accessdemo"}')
+            }, '{"refresh_token": "demodemo", "access_token": "accessdemo", '
+                    '"expires_at": 0}')
 
         rsps.add_callback(
             responses.POST,
@@ -291,68 +293,68 @@ def explorer_responses(auth_responses, renga_client):
     """Monkeypatch requests to immitate the explorer service."""
     rsps = auth_responses
     buckets = [{
-            "id":
-            1234,
-            "types": ["resource:bucket"],
-            "properties": [{
-                "key":
-                "resource:bucket_backend",
-                "data_type":
-                "string",
-                "cardinality":
-                "single",
-                "values": [{
-                    "key": "resource:bucket_backend",
-                    "data_type": "string",
-                    "value": "local",
-                    "properties": []
-                }]
-            }, {
-                "key":
-                "resource:bucket_name",
-                "data_type":
-                "string",
-                "cardinality":
-                "single",
-                "values": [{
-                    "key": "resource:bucket_name",
-                    "data_type": "string",
-                    "value": "bucket1",
-                    "properties": []
-                }]
+        "id":
+        1234,
+        "types": ["resource:bucket"],
+        "properties": [{
+            "key":
+            "resource:bucket_backend",
+            "data_type":
+            "string",
+            "cardinality":
+            "single",
+            "values": [{
+                "key": "resource:bucket_backend",
+                "data_type": "string",
+                "value": "local",
+                "properties": []
             }]
         }, {
-            "id":
-            5678,
-            "types": ["resource:bucket"],
-            "properties": [{
-                "key":
-                "resource:bucket_backend",
-                "data_type":
-                "string",
-                "cardinality":
-                "single",
-                "values": [{
-                    "key": "resource:bucket_backend",
-                    "data_type": "string",
-                    "value": "local",
-                    "properties": []
-                }]
-            }, {
-                "key":
-                "resource:bucket_name",
-                "data_type":
-                "string",
-                "cardinality":
-                "single",
-                "values": [{
-                    "key": "resource:bucket_name",
-                    "data_type": "string",
-                    "value": "bucket2",
-                    "properties": []
-                }]
+            "key":
+            "resource:bucket_name",
+            "data_type":
+            "string",
+            "cardinality":
+            "single",
+            "values": [{
+                "key": "resource:bucket_name",
+                "data_type": "string",
+                "value": "bucket1",
+                "properties": []
             }]
         }]
+    }, {
+        "id":
+        5678,
+        "types": ["resource:bucket"],
+        "properties": [{
+            "key":
+            "resource:bucket_backend",
+            "data_type":
+            "string",
+            "cardinality":
+            "single",
+            "values": [{
+                "key": "resource:bucket_backend",
+                "data_type": "string",
+                "value": "local",
+                "properties": []
+            }]
+        }, {
+            "key":
+            "resource:bucket_name",
+            "data_type":
+            "string",
+            "cardinality":
+            "single",
+            "values": [{
+                "key": "resource:bucket_name",
+                "data_type": "string",
+                "value": "bucket2",
+                "properties": []
+            }]
+        }]
+    }]
 
     rsps.add(
         responses.GET,

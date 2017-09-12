@@ -46,10 +46,13 @@ class APIClient(
 
     def __init__(self, endpoint, access_token=None, **kwargs):
         """Create a storage client."""
-        super(APIClient, self).__init__(**kwargs)
         self.endpoint = endpoint
+
+        super(APIClient, self).__init__(**kwargs)
+
         if access_token:
-            self.access_token = access_token  # FIME temporary workaround
+            # NOTE used by storage service
+            self.access_token = access_token
 
     def _url(self, url, *args, **kwargs):
         """Format url for endpoint."""

@@ -46,3 +46,7 @@ class APIError(requests.exceptions.HTTPError, RengaException):
 
 class InvalidFileOperation(RengaException):
     """Raise when trying to perfrom invalid file operation."""
+
+
+class NotFound(APIError):
+    """Raise when an API object is not found."""
