@@ -84,23 +84,18 @@ def list(config, endpoint, bucket_id, all_buckets, sort_by):
     client = from_config(config, endpoint=endpoint)
     buckets = client.buckets
     headers = buckets.Meta.headers
+    filter_ids = None
 
     if 'project' in config:
-        filter_ids = config['project']['endpoints'][endpoint].get(
-            'buckets', {}).keys()
+        filter_ids = set(
+            config['project']['endpoints'][endpoint].get('buckets', {}).keys())
 
     # filter out non-project buckets if needed
-    if filter_ids and (not all_buckets):
-        filter_ids = set(filter_ids)
-        buckets = filter(lambda bucket: bucket.id in filter_ids, buckets)
+    if filter_ids and not all_buckets:
+        buckets = (bucket for bucket in buckets if bucket.id in filter_ids)
 
-    # sort if we have more than one
-    buckets = [bucket for bucket in buckets]
-    if len(buckets) > 1:
-        buckets.sort(key=lambda b: getattr(b, sort_by))
-
-    if buckets:
-        click.echo(tabulate(buckets, headers=headers))
+    buckets = sorted(buckets, key=lambda b: getattr(b, sort_by))
+    click.echo(tabulate(buckets, headers=headers))
 
 
 @buckets.command()

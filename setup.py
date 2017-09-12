@@ -58,6 +58,7 @@ install_requires = [
     'click-plugins>=1.0.3',
     'requests>=2.14.2',
     'requests-oauthlib>=0.8.0',
+    'tabulate>=0.7.7',
     'werkzeug>=0.12',
 ]
 

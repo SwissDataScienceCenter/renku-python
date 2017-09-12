@@ -22,7 +22,7 @@ import os
 
 import click
 
-from renga import RengaClient
+from renga.client import RengaClient
 
 from ._client import from_config
 from ._config import create_project_config_path, get_project_config_path, \

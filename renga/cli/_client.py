@@ -17,7 +17,7 @@
 # limitations under the License.
 """Client utilities."""
 
-from renga import RengaClient
+from renga.client import RengaClient
 
 from ._config import get_project_config_path, read_config
 from ._options import default_endpoint_from_config
@@ -25,7 +25,7 @@ from ._options import default_endpoint_from_config
 
 def from_config(config=None, endpoint=None):
     """Create new client for endpoint in the config."""
-    if config is None
+    if config is None:
         config = read_config()
         project_config_path = get_project_config_path()
         if project_config_path:
