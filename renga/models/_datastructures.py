@@ -18,6 +18,7 @@
 """Base classes for Model objects used in Python SDK."""
 
 
+
 class Model(object):
     """Abstract response of a single object."""
 
@@ -43,6 +44,9 @@ class Collection(object):
 
         model = None
         """Define type of object this collection represents."""
+
+        headers = ('id')
+        """Which fields to use as headers when printing the collection."""
 
     def __init__(self, client=None):
         """Create representation of objects on the server."""

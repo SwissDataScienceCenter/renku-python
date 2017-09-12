@@ -80,6 +80,8 @@ class BucketsCollection(Collection):
 
         model = Bucket
 
+        headers = ('id', 'name', 'backend')
+
     def create(self, name=None, backend=None, **kwargs):
         """Create new project."""
         data = self._client.api.create_bucket(name=name, backend=backend)
