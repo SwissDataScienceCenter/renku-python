@@ -26,13 +26,9 @@ from ._config import config_path, with_config
 from ._options import option_endpoint
 
 
-@click.group(name='io', invoke_without_command=True)
-@with_config
-@click.pass_context
-def storage(ctx, config):
+@click.group(name='io')
+def storage():
     """Manage storage."""
-    if ctx.invoked_subcommand is None:
-        click.echo('Try --help')
 
 
 @storage.command()

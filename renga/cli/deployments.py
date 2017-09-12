@@ -45,9 +45,17 @@ def list(config, endpoint):
 @click.argument('image')
 @click.option('--command', '-c', help='Command to run in the container.')
 @click.option(
-    '--labels', '-l', multiple=True, help='Labels to add to the container.')
+    '--labels',
+    '-l',
+    default=[],
+    multiple=True,
+    help='Labels to add to the container.')
 @click.option(
-    '--ports', '-p', multiple=True, help='Ports to expose in the container.')
+    '--ports',
+    '-p',
+    default=[],
+    multiple=True,
+    help='Ports to expose in the container.')
 @option_endpoint
 @with_config
 def create(config, image, ports, command, labels, endpoint):
@@ -58,18 +66,18 @@ def create(config, image, ports, command, labels, endpoint):
 
     client = from_config(config, endpoint=endpoint)
 
+    spec = {
+        'command': command,
+        'image': image,
+        'labels': labels or [],
+        'ports': ports or [],
+    }
+
     if project_vertex_id:
         spec['labels'].append(
             'renga.project.vertex_id={0}'.format(project_vertex_id))
 
         client.api.headers['Renga-Projects-Project'] = project_vertex_id
-
-    spec = {
-        'command': command,
-        'image': image,
-        'labels': labels,
-        'ports': ports,
-    }
 
     context = client.contexts.create(spec)
     click.echo('context-id: {0}'.format(context.id))
@@ -93,11 +101,11 @@ def executions():
     """Manage executions."""
 
 
-@executions.command()
+@executions.command(name='list')
 @click.argument('context_id')
 @option_endpoint
 @with_config
-def show(config, context_id, endpoint):
+def list_executions(config, context_id, endpoint):
     """Show the executions of a context."""
     client = from_config(config, endpoint=endpoint)
     executions = client.contexts[context_id].executions
