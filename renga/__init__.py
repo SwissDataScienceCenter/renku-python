@@ -21,6 +21,7 @@
 from __future__ import absolute_import, print_function
 
 from .api import APIClient
+from .cli._client import from_config
 from .client import RengaClient, from_env
 from .version import __version__
 
@@ -28,5 +29,6 @@ __all__ = (
     'APIClient',
     'RengaClient',
     '__version__',
+    'from_config',
     'from_env',
 )
