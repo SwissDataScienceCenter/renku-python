@@ -64,8 +64,9 @@ class FilesApiMixin(object):
         """
         resp = self.post(
             self._url('/api/storage/io/write'),
-            data=data, )
-        assert resp.status_code == 200
+            data=data,
+            headers={'Content-Type': 'application/octet-stream'})
+        assert resp.status_code == 201
 
     def storage_io_read(self, *args, **kwargs):
         """Write data to the file.

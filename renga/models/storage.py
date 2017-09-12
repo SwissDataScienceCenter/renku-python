@@ -45,16 +45,25 @@ class Bucket(Model):
         """Return the bucket metadata."""
         return self._response.get('properties')
 
+    @property
+    def files(self):
+        """Return all files in this bucket."""
+        return [
+            File(f, client=self._client, collection=self)
+            for f in self._client.api.get_bucket_files(self.id)
+        ]
+
     def create_file(self, file_name=None):
         """Create an empty file in this bucket."""
         resp = self._client.api.create_file(
             bucket_id=self.id,
             file_name=file_name,
             request_type='create_file', )
-        access_token = resp.get('access_token')
-        client = self._client.__class__(
-            self._client.api.endpoint, access_token=access_token)
-        return File(resp, client=client, collection=self)
+        # FIXME: return FileHandle directly
+        # access_token = resp.get('access_token')
+        # client = self._client.__class__(
+        #     self._client.api.endpoint, token = {'access_token': access_token})
+        return File(resp, client=self._client, collection=self)
 
 
 class BucketsCollection(Collection):
@@ -77,7 +86,6 @@ class BucketsCollection(Collection):
             self._client.api.get_bucket(bucket_id),
             client=self._client,
             collection=self)
-
         if not bucket.properties:
             raise errors.NotFound('Bucket not found')
 
@@ -100,6 +108,16 @@ class File(Model):
         # FIXME make sure that bucket endpoint returns name
         return self._response.get('access_token',
                                   self._client.api.access_token)
+
+    @property
+    def properties(self):
+        """Properties of the file."""
+        return self._response.get('properties', {})
+
+    @property
+    def filename(self):
+        """Filename of the file."""
+        return self.properties.get('resource:file_name')
 
     @contextmanager
     def open(self, mode='r'):

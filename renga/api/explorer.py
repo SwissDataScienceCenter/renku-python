@@ -23,9 +23,7 @@ class ExplorerApiMixin(object):
 
     def list_buckets(self):
         """Return a list of buckets."""
-        resp = self.get(
-            self._url('/api/explorer/storage/bucket'),
-            headers=self.headers, )
+        resp = self.get(self._url('/api/explorer/storage/bucket'), )
 
         # parse each bucket JSON and flatten
         if resp.status_code == 200:
@@ -37,8 +35,7 @@ class ExplorerApiMixin(object):
     def get_bucket(self, bucket_id):
         """Retrieve a bucket using the Explorer."""
         resp = self.get(
-            self._url('/api/explorer/storage/bucket/{0}'.format(bucket_id)),
-            headers=self.headers, )
+            self._url('/api/explorer/storage/bucket/{0}'.format(bucket_id)), )
         if resp.status_code == 200:
             return _flatten_vertex(resp.json())
         else:
@@ -48,7 +45,7 @@ class ExplorerApiMixin(object):
         """Retrieve all nodes connected to a context."""
         resp = self.get(
             self._url('/api/explorer/lineage/context/{0}'.format(context_id)),
-            headers=self.headers, )
+        )
         if resp.status_code == 200:
             vertices = []
             edges = []
@@ -56,6 +53,16 @@ class ExplorerApiMixin(object):
                 vertices.append(_flatten_vertex(p['vertex']))
                 edges.append(p['edge'])
             return vertices, edges
+        else:
+            return {}
+
+    def get_bucket_files(self, bucket_id):
+        """Retrieve files stored in the bucket with bucket_id."""
+        resp = self.get(
+            self._url(
+                '/api/explorer/storage/bucket/{0}/files'.format(bucket_id)), )
+        if resp.status_code == 200:
+            return [_flatten_vertex(vertex) for vertex in resp.json()]
         else:
             return {}
 

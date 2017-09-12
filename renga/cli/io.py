@@ -100,9 +100,25 @@ def list(config, endpoint, bucket_id, all_buckets, sort_by):
         buckets.sort(key=lambda b: getattr(b, sort_by))
 
     click.echo(
-        '{0:10}\t {1:20}\t {2:20}'.format('BUCKET ID', 'NAME', 'BACKEND'))
+        '{0:>7}\t {1:20}\t {2:20}'.format('ID', 'NAME', 'BACKEND'))
 
     if buckets:
         for bucket in buckets:
-            click.echo('{0:10}\t {1:20}\t {2}'.format(bucket.id, bucket.name,
+            click.echo('{0:7}\t {1:20}\t {2}'.format(bucket.id, bucket.name,
                                                       bucket.backend))
+
+@buckets.command()
+@click.argument('bucket_id', required=True, type=int)
+@option_endpoint
+@with_config
+def files(config, endpoint, bucket_id):
+    """List files in a bucket."""
+    client = from_config(config, endpoint=endpoint)
+    bucket = client.buckets.get(bucket_id)
+
+    click.echo(
+        '{0:7}\t {1:20}\t'.format('FILE ID', 'FILENAME'))
+
+    if bucket:
+        for f in bucket.files:
+            click.echo('{0:7}\t {1:20}'.format(f.id, f.filename))
