@@ -72,7 +72,8 @@ def create(config, image, ports, command, labels, endpoint):
     }
 
     context = client.contexts.create(spec)
-    click.echo(context.id)
+    click.echo('context-id: {0}'.format(context.id))
+    return context
 
 
 @contexts.command()

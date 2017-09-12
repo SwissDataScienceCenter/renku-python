@@ -30,6 +30,7 @@ from ..models._tabulate import tabulate
 from ..models.deployer import _dict_from_labels
 from ._client import from_config
 from ._config import with_config
+from .deployments import create
 
 
 @click.group()
@@ -43,7 +44,7 @@ def notebooks(ctx, config):
 @option_endpoint
 @click.option('--all', is_flag=True)
 @with_config
-def show(config, all, endpoint):
+def list(config, all, endpoint):
     """Show running notebooks."""
     project_config = config.get('project', {})
     project_vertex_id = project_config.get('endpoints', {}).get(
@@ -65,35 +66,19 @@ def show(config, all, endpoint):
 
 
 @notebooks.command()
-@option_endpoint
 @click.option('--engine', default='docker')
-@with_config
-def launch(config, engine, endpoint):
+@click.pass_context
+def launch(ctx, engine):
     """Launch a new notebook."""
-    project_config = config.get('project', {})
-    project_vertex_id = project_config.get('endpoints', {}).get(
-        endpoint, {}).get('vertex_id')
-
     notebook_token = hexlify(os.urandom(24)).decode('ascii')
+    context = ctx.invoke(
+        create,
+        command="start-notebook.sh --NotebookApp.token={0}".format(
+            notebook_token),
+        ports=['8888'],
+        image='jupyter/minimal-notebook',
+        labels=['renga.notebook.token={0}'.format(notebook_token)])
 
-    spec = {
-        'image':
-        'jupyter/minimal-notebook',
-        'ports': ['8888'],
-        'command':
-        "start-notebook.sh --NotebookApp.token={0}".format(notebook_token),
-        'labels': ['renga.notebook.token={0}'.format(notebook_token)]
-    }
-
-    client = from_config(config, endpoint=endpoint)
-
-    if project_vertex_id:
-        spec['labels'].append(
-            'renga.project.vertex_id={0}'.format(project_vertex_id))
-
-        client.api.headers['Renga-Projects-Project'] = project_vertex_id
-
-    context = client.contexts.create(spec)
     execution = context.run(engine=engine)
-    ports = execution.ports
-    click.echo('http://{0}:{1}'.format(ports[0]['host'], ports[0]['exposed']))
+    click.echo('execution-id: {0}'.format(execution.id))
+    click.echo('Notebook URL: {0}'.format(execution.url))
