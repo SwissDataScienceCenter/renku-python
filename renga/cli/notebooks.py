@@ -67,10 +67,10 @@ def list(config, all, endpoint):
 
 @notebooks.command()
 @click.option('--engine', default='docker')
-@click.pass_context
 @option_endpoint
 @with_config
-def launch(config, ctx, engine, endpoint):
+@click.pass_context
+def launch(ctx, config, engine, endpoint):
     """Launch a new notebook."""
     notebook_token = hexlify(os.urandom(24)).decode('ascii')
     context = ctx.invoke(
