@@ -68,7 +68,9 @@ def list(config, all, endpoint):
 @notebooks.command()
 @click.option('--engine', default='docker')
 @click.pass_context
-def launch(ctx, engine):
+@option_endpoint
+@with_config
+def launch(config, ctx, engine, endpoint):
     """Launch a new notebook."""
     notebook_token = hexlify(os.urandom(24)).decode('ascii')
     context = ctx.invoke(
@@ -77,8 +79,8 @@ def launch(ctx, engine):
             notebook_token),
         ports=['8888'],
         image='jupyter/minimal-notebook',
-        labels=['renga.notebook.token={0}'.format(notebook_token)])
+        labels=['renga.notebook.token={0}'.format(notebook_token)],
+        endpoint=endpoint)
 
     execution = context.run(engine=engine)
-    click.echo('execution-id: {0}'.format(execution.id))
-    click.echo('Notebook URL: {0}'.format(execution.url))
+    click.echo(execution.url)
