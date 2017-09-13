@@ -59,6 +59,10 @@ def test_client_projects(renga_client, projects_responses):
     assert project.id == '1234'
     assert project.name == 'test-project'
 
+    projects = list(renga_client.projects)
+    assert projects[0].id == project.id
+    assert project.id == renga_client.projects[project.id].id
+
 
 def test_client_contexts(renga_client, deployer_responses):
     """Test client for managing contexts."""

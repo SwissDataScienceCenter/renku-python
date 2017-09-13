@@ -96,7 +96,7 @@ def test_storage_buckets(runner, storage_responses):
     result = runner.invoke(cli.cli, ['io', 'buckets', 'create'])
     assert result.exit_code == 2
 
-    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'hello'])
+    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'bucket1'])
     assert result.exit_code == 0
     assert '1234' in result.output
 
@@ -110,7 +110,7 @@ def test_storage_buckets_in_project(runner, projects_responses,
     result = runner.invoke(cli.cli, ['init', '--autosync'])
     assert result.exit_code == 0
 
-    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'hello'])
+    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'bucket1'])
     assert result.exit_code == 0
 
     result = runner.invoke(cli.cli, ['io', 'buckets', 'list'])
@@ -120,6 +120,9 @@ def test_storage_buckets_in_project(runner, projects_responses,
     result = runner.invoke(cli.cli, ['add', 'hello'])
     assert result.exit_code == 0
 
-    # result = runner.invoke(cli.cli, ['io', 'buckets', 'files', '1234'])
-    # assert result.exit_code == 0
-    # assert '1234' in result.output
+    result = runner.invoke(cli.cli, ['add', 'hello'])
+    assert result.exit_code == 2
+
+    result = runner.invoke(cli.cli, ['io', 'buckets', 'files', '1234'])
+    assert result.exit_code == 0
+    assert 'hello' in result.output

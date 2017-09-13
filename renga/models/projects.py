@@ -41,3 +41,17 @@ class ProjectsCollection(Collection):
         """Create new project."""
         data = self._client.api.create_project({'name': name})
         return self.Meta.model(data, client=self._client, collection=self)
+
+    def __getitem__(self, project_id):
+        """Get existing project by its id."""
+        return self.Meta.model(
+            self._client.api.get_project(project_id),
+            client=self._client,
+            collection=self)
+
+    def __iter__(self):
+        """Return all projects."""
+        return (
+            self.Meta.model(data, client=self._client, collection=self)
+            for data in self._client.api.list_projects()
+        )

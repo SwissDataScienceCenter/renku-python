@@ -192,12 +192,25 @@ def graph_mutation_responses(auth_responses, graph_mutation_client):
 def projects_responses(auth_responses, renga_client):
     """Monkeypatch requests to immitate the projects service."""
     rsps = auth_responses
+    project = {
+        'name': 'test-project',
+        'identifier': '1234',
+    }
     rsps.add(
         responses.POST,
         renga_client.api._url('/api/projects'),
         status=201,
-        json={'name': 'test-project',
-              'identifier': '1234'})
+        json=project, )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/projects'),
+        status=200,
+        json={'projects': [project]}, )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/projects/1234'),
+        status=200,
+        json=project, )
     yield rsps
 
 
@@ -404,3 +417,50 @@ def explorer_responses(auth_responses, renga_client):
         renga_client.api._url('/api/explorer/storage/bucket/1234'),
         status=200,
         json=buckets[0])
+
+    files = [{
+        'id':
+        9876,
+        'types': ['resource:file'],
+        'properties': [{
+            'key':
+            'resource:file_name',
+            'data_type':
+            'string',
+            'cardinality':
+            'single',
+            'values': [{
+                'parent': {
+                    'type': 'vertex',
+                    'id': 9876
+                },
+                'key': 'resource:file_name',
+                'data_type': 'string',
+                'value': 'hello',
+                'properties': []
+            }]
+        }, {
+            'key':
+            'resource:owner',
+            'data_type':
+            'string',
+            'cardinality':
+            'set',
+            'values': [{
+                'parent': {
+                    'type': 'vertex',
+                    'id': 9876
+                },
+                'key': 'resource:owner',
+                'data_type': 'string',
+                'value': 'e144b235-793b-4e2e-bb1f-1f8baccc321f',
+                'properties': []
+            }]
+        }]
+    }]
+
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/explorer/storage/bucket/1234/files'),
+        status=200,
+        json=files)

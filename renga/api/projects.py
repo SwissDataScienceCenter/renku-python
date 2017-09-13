@@ -24,13 +24,8 @@ class ProjectsApiMixin(object):
     def get_project(self, project_id):
         """Get existing project."""
         resp = self.get(self._url('/api/projects/{0}', project_id))
-        if resp.status == 200:
-            return Project(**resp.json())
-        elif resp.status == 400:
-            raise ValueError(project_id)
-        elif resp.status == 404:
-            raise KeyError(project_id)
-        raise RuntimeError(resp.status)
+        if resp.status_code == 200:
+            return resp.json()
 
     def list_projects(self):
         """Return an iterator for all projects."""
