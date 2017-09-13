@@ -15,11 +15,11 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-==============
- Renga-Python
-==============
+======================
+ Renga SDK for Python
+======================
 
-.. image:: https://travis-ci.org/SwissDataScienceCenter/renga-python.svg
+.. image:: https://img.shields.io/travis/SwissDataScienceCenter/renga-python.svg
    :target: https://travis-ci.org/SwissDataScienceCenter/renga-python
 
 .. image:: https://img.shields.io/coveralls/SwissDataScienceCenter/renga-python.svg
@@ -34,19 +34,40 @@
 .. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renga-python.svg
         :target: https://github.com/SwissDataScienceCenter/renga-python/blob/master/LICENSE
 
-Python API and CLI for the Renga platform.
+A Python library for the `Renga collaborative data science platform
+<https://github.com/SwissDataScienceCenter/renga>`_. It lets you perform any action with
+``renga`` command or from withing Python apps - create projects, manage
+buckets, track files, run containers, etc.
 
 **This is an experimental developer preview release.**
 
-This package provides the Python API and the associated
-command-line-interface to the Renga collaborative data science platform.
+Installation
+------------
 
-Quick start by:
+The latest release is available on PyPI and can be installed using
+``pip``:
 
 ::
 
-    $ pip install -e .[all]
-    $ renga --help
+    $ pip install renga
+
+The development version can be installed directly from the Git repository:
+
+::
+
+    $ pip install -e git+https://github.com/SwissDataScienceCenter/renga-python.git#egg=renga
+
+
+Usage
+-----
+
+Connect to Renga platform from Python using the configuration in your
+environment:
+
+::
+
+    import renga
+    client = renga.from_env()
 
 Further documentation is available on
 https://renga-python.readthedocs.io/
