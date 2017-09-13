@@ -91,6 +91,7 @@ setup(
             'add=renga.cli.add:add',
             'contexts=renga.cli.deployments:contexts',
             'endpoint=renga.cli.endpoint:endpoint',
+            'env=renga.cli.env:env',
             'executions=renga.cli.deployments:executions',
             'init=renga.cli.init:init',
             'io=renga.cli.io:storage',

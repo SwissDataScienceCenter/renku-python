@@ -58,6 +58,13 @@ def test_login(base_runner, auth_responses):
     assert 'accessdemo' in result.output.split('\n')
 
 
+def test_env(runner):
+    """Test client creation."""
+    result = runner.invoke(cli.cli, ['env'])
+    assert result.exit_code == 0
+    assert 'RENGA_ENDPOINT=https://example.com' in result.output
+
+
 def test_init(runner, auth_responses, projects_responses):
     """Test project initialization."""
     # 0. must autosync

@@ -61,6 +61,13 @@ The development version can be installed directly from the Git repository:
 Usage
 -----
 
+Start by login and configuring your shell:
+
+::
+
+   $ renga login http://localhost
+   $ eval "$(renga env)"
+
 Connect to Renga platform from Python using the configuration in your
 environment:
 
