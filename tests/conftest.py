@@ -38,7 +38,7 @@ def instance_path():
 
 
 @pytest.fixture()
-def runner(instance_path, monkeypatch):
+def base_runner(instance_path, monkeypatch):
     """Create a runner on isolated filesystem."""
     from renga.cli._config import PROJECT_DIR
     monkeypatch.setenv('RENGA_CONFIG', os.path.join(instance_path,
@@ -101,6 +101,19 @@ def auth_responses():
             content_type='application/json',
             callback=request_callback)
         yield rsps
+
+
+@pytest.fixture()
+def runner(base_runner, auth_responses):
+    """Return authenticated runner."""
+    from renga import cli
+
+    result = base_runner.invoke(cli.cli, [
+        'login', 'https://example.com', '--username', 'demo', '--password',
+        'demo'
+    ])
+    assert result.exit_code == 0
+    yield base_runner
 
 
 @pytest.fixture()
@@ -235,8 +248,7 @@ def deployer_responses(auth_responses, renga_client):
         })
     rsps.add(
         responses.DELETE,
-        renga_client.api._url(
-            '/api/deployer/contexts/abcd/executions/efgh'),
+        renga_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
         status=200,
         json=execution, )
     rsps.add(
@@ -305,6 +317,11 @@ def storage_responses(auth_responses, renga_client):
         status=200,
         body=b'hello world',
         stream=True, )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/storage/io/backends'),
+        status=200,
+        json=['local'], )
     yield rsps
 
 

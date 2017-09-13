@@ -27,23 +27,24 @@ from renga import __version__, cli
 from renga.cli._config import APP_NAME
 
 
-def test_version(runner):
+def test_version(base_runner):
     """Test cli version."""
-    result = runner.invoke(cli.cli, ['--version'])
+    result = base_runner.invoke(cli.cli, ['--version'])
     assert __version__ in result.output.split('\n')
 
 
-def test_config_path(runner):
+def test_config_path(base_runner):
     """Test config path."""
-    result = runner.invoke(cli.cli, ['--config-path'])
+    result = base_runner.invoke(cli.cli, ['--config-path'])
     assert APP_NAME.lower() in result.output.split('\n')[0].lower()
 
 
-def test_login(runner, auth_responses):
+def test_login(base_runner, auth_responses):
     """Test login."""
+    runner = base_runner
     result = runner.invoke(cli.cli, [
-        'login', 'https://example.com',
-        '--username', 'demo', '--password', 'demo'
+        'login', 'https://example.com', '--username', 'demo', '--password',
+        'demo'
     ])
     assert result.exit_code == 0
     assert 'stored' in result.output
@@ -59,12 +60,6 @@ def test_login(runner, auth_responses):
 
 def test_init(runner, auth_responses, projects_responses):
     """Test project initialization."""
-    result = runner.invoke(cli.cli, [
-        'login', 'https://example.com', '--username', 'demo', '--password',
-        'demo'
-    ])
-
-    assert result.exit_code == 0
     # 0. must autosync
     result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code == 2
@@ -87,3 +82,44 @@ def test_init(runner, auth_responses, projects_responses):
     result = runner.invoke(cli.cli, ['init', '--autosync', '--force'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.renga'))
+
+
+def test_storage_backends(runner, storage_responses):
+    """Test storage backends."""
+    result = runner.invoke(cli.cli, ['io', 'backends'])
+    assert result.exit_code == 0
+    assert 'local' in result.output
+
+
+def test_storage_buckets(runner, storage_responses):
+    """Test storage buckets."""
+    result = runner.invoke(cli.cli, ['io', 'buckets', 'create'])
+    assert result.exit_code == 2
+
+    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'hello'])
+    assert result.exit_code == 0
+    assert '1234' in result.output
+
+
+def test_storage_buckets_in_project(runner, projects_responses,
+                                    storage_responses, explorer_responses):
+    """Test bucket creation in the project directory."""
+    os.mkdir('test-project')
+    os.chdir('test-project')
+
+    result = runner.invoke(cli.cli, ['init', '--autosync'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'hello'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['io', 'buckets', 'list'])
+    assert result.exit_code == 0
+    assert '1234' in result.output
+
+    result = runner.invoke(cli.cli, ['add', 'hello'])
+    assert result.exit_code == 0
+
+    # result = runner.invoke(cli.cli, ['io', 'buckets', 'files', '1234'])
+    # assert result.exit_code == 0
+    # assert '1234' in result.output

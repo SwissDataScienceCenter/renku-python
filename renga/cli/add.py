@@ -51,8 +51,8 @@ def add(config, pathspec, endpoint):
         resource.setdefault('endpoints', {})
 
         client = from_config(config, endpoint=endpoint)
-        bucket = client.buckets.get(bucket_id)
-        file_ = bucket.create_file(file_name=pathspec)
+        bucket = client.buckets[bucket_id]
+        file_ = bucket.files.create(file_name=pathspec)
 
         resource['endpoints'][endpoint] = {
             'vertex_id': file_.id,

@@ -82,6 +82,11 @@ class BucketsCollection(Collection):
 
         headers = ('id', 'name', 'backend')
 
+    @property
+    def backends(self):
+        """Return list of enabled backends."""
+        return self._client.api.storage_info()
+
     def create(self, name=None, backend=None, **kwargs):
         """Create new project."""
         data = self._client.api.create_bucket(name=name, backend=backend)

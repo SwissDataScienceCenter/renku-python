@@ -47,13 +47,11 @@ def list(config, endpoint):
 @click.option(
     '--labels',
     '-l',
-    default=[],
     multiple=True,
     help='Labels to add to the container.')
 @click.option(
     '--ports',
     '-p',
-    default=[],
     multiple=True,
     help='Ports to expose in the container.')
 @option_endpoint
@@ -80,12 +78,12 @@ def create(config, image, ports, command, labels, endpoint):
         client.api.headers['Renga-Projects-Project'] = project_vertex_id
 
     context = client.contexts.create(spec)
-    click.echo('context-id: {0}'.format(context.id))
+    click.echo(context.id)
     return context
 
 
 @contexts.command()
-@click.argument('context-id')
+@click.argument('context_id')
 @click.argument('engine')
 @option_endpoint
 @with_config
