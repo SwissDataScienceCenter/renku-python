@@ -34,6 +34,10 @@ class Model(object):
         """The identifier of the object."""
         return self._response[self.IDENTIFIER_KEY]
 
+    def __str__(self):
+        """Format model."""
+        return '<{0.__class__.__name__} {0.id!r}>'.format(self)
+
 
 class Collection(object):
     """Abstract response of multiple objects."""
@@ -50,3 +54,9 @@ class Collection(object):
     def __init__(self, client=None):
         """Create representation of objects on the server."""
         self._client = client
+
+    def list(self):
+        """Return list if the collection is iterable."""
+        if not hasattr(self, '__iter__'):
+            raise NotImplemented('The collection is not iterable.')
+        return list(self)

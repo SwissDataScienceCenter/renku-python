@@ -56,10 +56,11 @@ def test_client_projects(renga_client, projects_responses):
     """Test client for managing projects."""
     project = renga_client.projects.create('test-project')
 
+    assert "<Project '1234'>" == str(project)
     assert project.id == '1234'
     assert project.name == 'test-project'
 
-    projects = list(renga_client.projects)
+    projects = renga_client.projects.list()
     assert projects[0].id == project.id
     assert project.id == renga_client.projects[project.id].id
 
@@ -72,7 +73,7 @@ def test_client_contexts(renga_client, deployer_responses):
 
     assert context.id == renga_client.contexts['abcd'].id
 
-    contexts = list(renga_client.contexts)
+    contexts = renga_client.contexts.list()
     assert contexts
     assert contexts[0].id == 'abcd'
     assert contexts[0].spec['image'] == 'hello-world'
@@ -84,7 +85,7 @@ def test_client_contexts(renga_client, deployer_responses):
     assert execution.ports == []
     assert execution.stop()
 
-    executions = list(context.executions)
+    executions = context.executions.list()
     assert executions[0].id == 'efgh'
     assert executions[0].engine == 'docker'
 
@@ -120,7 +121,7 @@ def test_client_buckets_shortcut(renga_client, storage_responses):
 
 def test_bucket_listing(renga_client, explorer_responses):
     """Test storage explorer client."""
-    buckets = [bucket for bucket in renga_client.buckets]
+    buckets = renga_client.buckets.list()
     assert buckets[0].id == 1234
     assert buckets[1].id == 5678
 
