@@ -54,6 +54,7 @@ class Context(Model):
         """Execute the context."""
         execution = self._client.api.create_execution(self.id, **kwargs)
         execution['context_id'] = self.id
+        import ipdb; ipdb.set_trace()
         return Execution(execution, client=self._client, collection=self)
 
     @property

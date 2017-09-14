@@ -72,15 +72,27 @@ def list(config, all, endpoint):
 @click.pass_context
 def launch(ctx, config, engine, endpoint):
     """Launch a new notebook."""
+    cfg = config.get('project',
+                            config)['endpoints'][endpoint]
+    context_id = cfg.get('notebook')
+
     notebook_token = hexlify(os.urandom(24)).decode('ascii')
-    context = ctx.invoke(
-        create,
-        command="start-notebook.sh --NotebookApp.token={0}".format(
-            notebook_token),
-        ports=['8888'],
-        image='jupyter/minimal-notebook',
-        labels=['renga.notebook.token={0}'.format(notebook_token)],
-        endpoint=endpoint)
+
+    if context_id:
+        client = from_config(config, endpoint=endpoint)
+        context = client.contexts[context_id]
+    else:
+        context = ctx.invoke(
+            create,
+            command="start-notebook.sh --NotebookApp.token={0}".format(
+                notebook_token),
+            ports=['8888'],
+            image='jupyter/minimal-notebook',
+            labels=['renga.notebook.token={0}'.format(notebook_token)],
+            endpoint=endpoint)
+        cfg = ctx.obj['config'].get('project',
+                            config)['endpoints'][endpoint]
+        cfg['notebook'] = context.id
 
     execution = context.run(engine=engine)
     click.echo(execution.url)
