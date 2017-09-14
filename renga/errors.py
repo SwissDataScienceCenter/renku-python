@@ -38,10 +38,32 @@ class APIError(requests.exceptions.HTTPError, RengaException):
         response = e.response
         try:
             message = response.json()['message']
-        except ValueError:
+        except (KeyError, ValueError):
             message = response.content.strip()
 
         raise cls(message)
+
+
+class UnexpectedStatusCode(APIError):
+    """Raise when the status code does not match specification."""
+
+    def __init__(self, response):
+        """Build custom message."""
+        super().__init__(
+            'Unexpected status code: {0}'.format(response.status_code),
+            response=response)
+
+    @classmethod
+    def return_or_raise(cls, response, expected_status_code):
+        """Check for ``expected_status_code``."""
+        try:
+            if response.status_code in expected_status_code:
+                return response
+        except TypeError:
+            if response.status_code == expected_status_code:
+                return response
+
+        raise cls(response)
 
 
 class InvalidFileOperation(RengaException):

@@ -65,6 +65,12 @@ def test_client_projects(renga_client, projects_responses):
     assert project.id == renga_client.projects[project.id].id
 
 
+def test_client_invalid_requests(renga_client, projects_responses):
+    """Test invalid client responses."""
+    with pytest.raises(renga.errors.RengaException):
+        renga_client.projects[0]
+
+
 def test_client_contexts(renga_client, deployer_responses):
     """Test client for managing contexts."""
     context = renga_client.contexts.create(image='hello-world')

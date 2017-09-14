@@ -211,6 +211,10 @@ def projects_responses(auth_responses, renga_client):
         renga_client.api._url('/api/projects/1234'),
         status=200,
         json=project, )
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/projects/0'),
+        status=404, )
     yield rsps
 
 

@@ -23,40 +23,41 @@ class ExplorerApiMixin(object):
 
     def list_buckets(self):
         """Return a list of buckets."""
-        resp = self.get(self._url('/api/explorer/storage/bucket'), )
+        resp = self.get(
+            self._url('/api/explorer/storage/bucket'),
+            expected_status_code=200)
 
         # parse each bucket JSON and flatten
-        if resp.status_code == 200:
-            buckets = [_flatten_vertex(bucket) for bucket in resp.json()]
-            return buckets
+        buckets = [_flatten_vertex(bucket) for bucket in resp.json()]
+        return buckets
 
     def get_bucket(self, bucket_id):
         """Retrieve a bucket using the Explorer."""
         resp = self.get(
-            self._url('/api/explorer/storage/bucket/{0}'.format(bucket_id)), )
-        if resp.status_code == 200:
-            return _flatten_vertex(resp.json())
+            self._url('/api/explorer/storage/bucket/{0}'.format(bucket_id)),
+            expected_status_code=200)
+        return _flatten_vertex(resp.json())
 
     def get_context_lineage(self, context_id):
         """Retrieve all nodes connected to a context."""
         resp = self.get(
             self._url('/api/explorer/lineage/context/{0}'.format(context_id)),
-        )
-        if resp.status_code == 200:
-            vertices = []
-            edges = []
-            for p in resp.json():
-                vertices.append(_flatten_vertex(p['vertex']))
-                edges.append(p['edge'])
-            return vertices, edges
+            expected_status_code=200)
+
+        vertices = []
+        edges = []
+        for p in resp.json():
+            vertices.append(_flatten_vertex(p['vertex']))
+            edges.append(p['edge'])
+        return vertices, edges
 
     def get_bucket_files(self, bucket_id):
         """Retrieve files stored in the bucket with bucket_id."""
         resp = self.get(
             self._url(
-                '/api/explorer/storage/bucket/{0}/files'.format(bucket_id)), )
-        if resp.status_code == 200:
-            return [_flatten_vertex(vertex) for vertex in resp.json()]
+                '/api/explorer/storage/bucket/{0}/files'.format(bucket_id)),
+            expected_status_code=200)
+        return [_flatten_vertex(vertex) for vertex in resp.json()]
 
 
 def _flatten_vertex(vertex_json):

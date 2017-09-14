@@ -51,10 +51,10 @@ class ContextsApiMixin(object):
 
     def stop_execution(self, context_id, execution_id):
         """Stop a running execution."""
-        resp = self.delete(
+        return self.delete(
             self._url('/api/deployer/contexts/{0}/executions/{1}', context_id,
-                      execution_id))
-        return resp.status_code == 200
+                      execution_id),
+            expected_status_code=200)
 
     def execution_logs(self, context_id, execution_id):
         """Retrieve logs of an execution."""

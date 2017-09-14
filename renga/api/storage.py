@@ -66,7 +66,6 @@ class FilesApiMixin(object):
             self._url('/api/storage/io/write'),
             data=data,
             headers={'Content-Type': 'application/octet-stream'})
-        assert 200 <= resp.status_code < 300
 
     def storage_io_read(self, *args, **kwargs):
         """Write data to the file.
