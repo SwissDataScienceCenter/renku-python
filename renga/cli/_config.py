@@ -86,7 +86,8 @@ def with_config(f):
                 raise RuntimeError('Invalid config update')
             write_config(project_config, path=project_config_path)
         write_config(config)
-        config['project'] = project_config
+        if project_config is not None:
+            config['project'] = project_config
         return result
 
     return update_wrapper(new_func, f)

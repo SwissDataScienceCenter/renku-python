@@ -69,7 +69,7 @@ class Bucket(Model):
             'resource_id': resp['id'],
             'request_type': FileHandle.REQUEST_TYPE[mode],
         }
-        yield FileHandle(file_handle, client=self._client)
+        yield FileHandle(file_handle, client=client)
 
 
 class BucketsCollection(Collection):
