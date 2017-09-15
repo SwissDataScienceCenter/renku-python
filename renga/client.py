@@ -28,7 +28,7 @@ class RengaClient(object):
     Example:
 
         >>> import renga
-        >>> client = renga.RengaClient('http://localhost', '** TOKEN **')
+        >>> client = renga.RengaClient('http://localhost')
 
     """
 
@@ -59,7 +59,14 @@ class RengaClient(object):
 
         endpoint = environment.get('RENGA_ENDPOINT', '')
         access_token = environment.get('RENGA_ACCESS_TOKEN')
-        return cls(endpoint=endpoint, token={'access_token': access_token})
+        client = cls(endpoint=endpoint, token={'access_token': access_token})
+
+        # FIXME temporary solution until the execution id is moved to the token
+        execution_id = environment.get('RENGA_VERTEX_ID')
+        if execution_id:
+            client.api.headers['Renga-Deployer-Execution'] = execution_id
+
+        return client
 
     @property
     def contexts(self):

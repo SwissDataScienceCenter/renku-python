@@ -63,19 +63,24 @@ class APIClient(
 
     __attrs__ = requests.Session.__attrs__ + ['access_token', 'endpoint']
 
-    def __init__(self, endpoint, access_token=None, **kwargs):
+    def __init__(self, endpoint=None, **kwargs):
         """Create a storage client."""
         self.endpoint = endpoint
-
-        if endpoint.startswith('http:'):
-            os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = 'FIXME'
-            warnings.warn('Using insecure trasnport protocol, use HTTPS')
-
         super(APIClient, self).__init__(**kwargs)
 
-        if access_token:
-            # NOTE used by storage service
-            self.access_token = access_token
+    @property
+    def endpoint(self):
+        """Return endpoint value."""
+        return getattr(self, '_endpoint', None)
+
+    @endpoint.setter
+    def endpoint(self, endpoint):
+        """Set and validate endpoint."""
+        self._endpoint = endpoint
+
+        if endpoint is not None and endpoint.startswith('http:'):
+            os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = 'FIXME'
+            warnings.warn('Using insecure trasnport protocol, use HTTPS')
 
     def _url(self, url, *args, **kwargs):
         """Format url for endpoint."""

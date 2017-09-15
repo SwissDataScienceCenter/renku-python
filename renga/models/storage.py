@@ -65,6 +65,11 @@ class Bucket(Model):
         client = self._client.__class__(
             self._client.api.endpoint, token={'access_token': access_token})
 
+        if 'Renga-Deployer-Execution' in self._client.api.headers:
+            client.api.headers[
+                'Renga-Deployer-Execution'] = self._client.api.headers[
+                    'Renga-Deployer-Execution']
+
         file_handle = {
             'resource_id': resp['id'],
             'request_type': FileHandle.REQUEST_TYPE[mode],
@@ -141,6 +146,11 @@ class File(Model):
         }
         token = self._client.api.storage_authorize(**file_handle)
         client = self._client.__class__(self._client.api.endpoint, token=token)
+        if 'Renga-Deployer-Execution' in self._client.api.headers:
+            client.api.headers[
+                'Renga-Deployer-Execution'] = self._client.api.headers[
+                    'Renga-Deployer-Execution']
+
         yield FileHandle(file_handle, client=client)
 
 
@@ -169,10 +179,8 @@ class FilesCollection(Collection):
 
     def __iter__(self):
         """Return all files in this bucket."""
-        return (
-            File(f, client=self._client, collection=self)
-            for f in self._client.api.get_bucket_files(self.id)
-        )
+        return (File(f, client=self._client, collection=self)
+                for f in self._client.api.get_bucket_files(self.id))
 
     def create(self, file_name=None):
         """Create an empty file in this bucket."""
