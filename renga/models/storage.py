@@ -19,6 +19,8 @@
 
 from contextlib import contextmanager
 
+import requests
+
 from renga import errors
 
 from ._datastructures import Collection, Model
@@ -183,6 +185,22 @@ class FileCollection(Collection):
             request_type='create_file', )
         return self.Meta.model(resp, client=self._client, collection=self)
 
+    def from_url(self, url, file_name=None):
+        """Create a file with data from the streamed GET response.
+
+        **Example**
+
+        >>> file_ = client.buckets[1234].files.from_url(
+        ...     'https://example.com/tests/data', file_name='hello')
+        >>> file_.open('r').read()
+        b'hello world'
+
+        """
+        file_object = self.create(file_name=file_name or url)
+        with file_object.open('w') as fp:
+            fp.from_url(url)
+        return file_object
+
 
 class FileHandle(Model):
     """An object exposing a pythonic file-oriented API.
@@ -221,6 +239,18 @@ class FileHandle(Model):
             raise error.InvalidFileOperation('File is not writable.')
 
         self._client.api.storage_io_write(data)
+
+    def from_url(self, url):
+        """Write data from the streamed GET response from the given URL.
+
+        **Example**
+
+        >>> with client.buckets[1234].files[1234].open('w') as fp:
+        >>>     fp.from_url('https://example.com/tests/data')
+
+        """
+        with requests.get(url, stream=True) as r:
+            self.write(r.raw)
 
     def read(self, *args, **kwargs):
         """Read data from the file."""

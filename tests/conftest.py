@@ -339,6 +339,12 @@ def storage_responses(auth_responses, renga_client):
         renga_client.api._url('/api/storage/io/backends'),
         status=200,
         json=['local'], )
+    rsps.add(
+        responses.GET,
+        'https://example.com/tests/data',
+        status=200,
+        body=b'hello world',
+        stream=True, )
     yield rsps
 
 
