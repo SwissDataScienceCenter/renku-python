@@ -36,7 +36,7 @@ class Model(object):
 
     def __str__(self):
         """Format model."""
-        return '<{0.__class__.__name__} {0.id!r}>'.format(self)
+        return "<{0.__class__.__name__} '{0.id!s}'>".format(self)
 
     __repr__ = __str__
 

@@ -162,7 +162,7 @@ class FileCollection(Collection):
     def __init__(self, bucket_id, **kwargs):
         """Initialize collection of files in the bucket."""
         self.id = bucket_id
-        super().__init__(**kwargs)
+        super(FileCollection, self).__init__(**kwargs)
 
     def __getitem__(self, resource_id):
         """Return a file object."""
@@ -246,11 +246,11 @@ class FileHandle(Model):
         **Example**
 
         >>> with client.buckets[1234].files[1234].open('w') as fp:
-        >>>     fp.from_url('https://example.com/tests/data')
+        ...     fp.from_url('https://example.com/tests/data')
 
         """
         with requests.get(url, stream=True) as r:
-            self.write(r.raw)
+            self.write(r.iter_content())
 
     def read(self, *args, **kwargs):
         """Read data from the file."""

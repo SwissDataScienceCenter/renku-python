@@ -151,7 +151,7 @@ class ExecutionCollection(Collection):
 
     def __init__(self, context_id, **kwargs):
         """Initialize the collection of context executions."""
-        super().__init__(**kwargs)
+        super(ExecutionCollection, self).__init__(**kwargs)
         self.id = context_id
 
     def __iter__(self):

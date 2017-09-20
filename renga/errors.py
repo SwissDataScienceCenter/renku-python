@@ -49,7 +49,7 @@ class UnexpectedStatusCode(APIError):
 
     def __init__(self, response):
         """Build custom message."""
-        super().__init__(
+        super(UnexpectedStatusCode, self).__init__(
             'Unexpected status code: {0}'.format(response.status_code),
             response=response)
 

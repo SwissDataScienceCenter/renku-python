@@ -35,10 +35,11 @@ env:
   # - REQUIREMENTS=devel
 
 python:
+  - "2.7"
+  - "3.5"
   - "3.6"
 
 before_install:
-  - "nvm install 6; nvm use 6"
   - "travis_retry pip install --upgrade pip setuptools py"
   - "travis_retry pip install twine wheel coveralls requirements-builder"
   - "requirements-builder -e all --level=min setup.py > .travis-lowest-requirements.txt"

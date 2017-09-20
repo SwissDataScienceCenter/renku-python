@@ -21,13 +21,18 @@ import errno
 import os
 from functools import update_wrapper
 
+import click
+import yaml
+
 try:
     from pathlib import Path
 except ImportError:  # pragma: no cover
     from pathlib2 import Path
 
-import click
-import yaml
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
 
 APP_NAME = 'Renga'
 """Application name for storing configuration."""

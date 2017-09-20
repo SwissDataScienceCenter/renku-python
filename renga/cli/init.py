@@ -55,12 +55,10 @@ def init(config, directory, autosync, name, force, endpoint):
 
     # 1. create the directory
     try:
-        project_config_path = create_project_config_path(directory)
-    except FileExistsError as e:
-        if not force:
-            raise click.UsageError(
-                'Directory {0} is already initialized'.format(directory))
-        project_config_path = e.filename
+        project_config_path = create_project_config_path(
+            directory, exist_ok=force)
+    except OSError as e:
+        raise click.UsageError(str(e))
 
     project_config = read_config(project_config_path)
     project_config.setdefault('core', {})
@@ -74,8 +72,7 @@ def init(config, directory, autosync, name, force, endpoint):
         project = client.projects.create(name=name)
         project_config.setdefault('endpoints', {})
         project_config['endpoints'].setdefault(endpoint, {})
-        project_config['endpoints'][endpoint][
-            'vertex_id'] = project.id
+        project_config['endpoints'][endpoint]['vertex_id'] = project.id
 
     write_config(project_config, path=project_config_path)
     click.echo('Initialized empty project in {0}'.format(project_config_path))

@@ -30,7 +30,7 @@ class LegacyApplicationClient(LAC):
     def __init__(self, client_id, **kwargs):
         """Define default scopes."""
         kwargs.setdefault('scope', ['offline_access', 'openid'])
-        super().__init__(client_id, **kwargs)
+        super(LegacyApplicationClient, self).__init__(client_id, **kwargs)
 
 
 class AuthorizationMixin(OAuth2Session):
@@ -53,7 +53,7 @@ class AuthorizationMixin(OAuth2Session):
         kwargs.setdefault('auto_refresh_url',
                           self.TOKEN_URL.format(self.endpoint))
 
-        super().__init__(**kwargs)
+        super(AuthorizationMixin, self).__init__(**kwargs)
 
     def fetch_token(self, token_url=None, **kwargs):
         """Set default ``token_url``."""
