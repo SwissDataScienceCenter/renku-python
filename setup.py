@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python API and CLI for the Renga platform."""
+"""Python SDK and CLI for the Renga platform."""
 
 import os
 
@@ -38,7 +38,7 @@ tests_require = [
 
 extras_require = {
     'docs': [
-        'Sphinx>=1.5.1',
+        'Sphinx>=1.6.3',
     ],
     'tests': tests_require,
 }

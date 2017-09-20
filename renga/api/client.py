@@ -61,7 +61,7 @@ class APIClient(
 
     """
 
-    __attrs__ = requests.Session.__attrs__ + ['access_token', 'endpoint']
+    __attrs__ = requests.Session.__attrs__ + ['endpoint']
 
     def __init__(self, endpoint=None, **kwargs):
         """Create a storage client."""

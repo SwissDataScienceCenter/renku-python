@@ -29,8 +29,18 @@ class Project(Model):
         return self._response.get('name')
 
 
-class ProjectsCollection(Collection):
-    """Represent projects on the server."""
+class ProjectCollection(Collection):
+    """Represent projects on the server.
+
+    **Example**
+
+    Create a project and check its name.
+
+    >>> project = client.projects.create(name='test-project')
+    >>> project.name
+    'test-project'
+
+    """
 
     class Meta:
         """Information about individual projects."""
@@ -38,7 +48,12 @@ class ProjectsCollection(Collection):
         model = Project
 
     def create(self, name=None, **kwargs):
-        """Create new project."""
+        """Create new project.
+
+        :param name: The name of the project.
+        :returns: An instance of newly create project.
+        :rtype: .Project
+        """
         data = self._client.api.create_project({'name': name})
         return self.Meta.model(data, client=self._client, collection=self)
 

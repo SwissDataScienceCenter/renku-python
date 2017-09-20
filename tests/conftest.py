@@ -48,7 +48,7 @@ def base_runner(instance_path, monkeypatch):
         yield cli_runner
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture()
 def renga_client():
     """Return a graph mutation client."""
     from renga.client import RengaClient
@@ -56,7 +56,7 @@ def renga_client():
         'https://example.com', token={'access_token': 'accessdemo'})
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture()
 def graph_mutation_client():
     """Return a graph mutation client."""
     from renga.client.graph.mutation import GraphMutationClient
@@ -468,3 +468,10 @@ def explorer_responses(auth_responses, renga_client):
         renga_client.api._url('/api/explorer/storage/bucket/1234/files'),
         status=200,
         json=files)
+
+
+@pytest.fixture(autouse=True)
+def add_client(doctest_namespace, renga_client, storage_responses,
+               explorer_responses, projects_responses):
+    """Add Renga client to doctest namespace."""
+    doctest_namespace['client'] = renga_client

@@ -15,8 +15,20 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+Projects
+========
 
-Usage
-=====
+.. py:module:: renga.models.projects
 
-.. automodule:: renga
+Manage projects on the server.
+
+.. autoclass:: ProjectCollection
+   :members:
+   :inherited-members:
+
+Project objects
+---------------
+
+.. autoclass:: Project()
+   :members:
+   :inherited-members:

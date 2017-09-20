@@ -31,26 +31,24 @@ class Bucket(Model):
 
     @property
     def backend(self):
-        """Return the bucket backend."""
-        return self.properties.get('resource:bucket_backend')
+        """The backend of this bucket."""
+        return self._properties.get('resource:bucket_backend')
 
     @property
     def name(self):
-        """Return a bucket name."""
-        # FIXME make sure that bucket endpoint returns name
-        return self.properties.get('resource:bucket_name')
+        """The bucket name."""
+        return self._properties.get('resource:bucket_name')
 
     @property
-    def properties(self):
-        """Return the bucket metadata."""
+    def _properties(self):
+        """The internal bucket properties."""
         return self._response.get('properties')
 
     @property
     def files(self):
-        """Return all files in this bucket."""
-        return FilesCollection(self.id, client=self._client)
+        """The :class:`~renga.models.storage.FileCollection` instance."""
+        return FileCollection(self.id, client=self._client)
 
-    @contextmanager
     def open(self, file_name=None, mode='w'):
         """Create an empty file in this bucket."""
         if mode != 'w':
@@ -74,10 +72,10 @@ class Bucket(Model):
             'resource_id': resp['id'],
             'request_type': FileHandle.REQUEST_TYPE[mode],
         }
-        yield FileHandle(file_handle, client=client)
+        return FileHandle(file_handle, client=client)
 
 
-class BucketsCollection(Collection):
+class BucketCollection(Collection):
     """Represent storage buckets on the server."""
 
     class Meta:
@@ -89,25 +87,21 @@ class BucketsCollection(Collection):
 
     @property
     def backends(self):
-        """Return list of enabled backends."""
+        """Return a list of the enabled backends."""
         return self._client.api.storage_info()
 
-    def create(self, name=None, backend=None, **kwargs):
-        """Create new project."""
+    def create(self, name=None, backend='local', **kwargs):
+        """Create new :class:`~renga.models.storage.Bucket` instance."""
         data = self._client.api.create_bucket(name=name, backend=backend)
         return self.Meta.model(data, client=self._client, collection=self)
 
     def __getitem__(self, bucket_id):
-        """Return a bucket object."""
+        """Find a bucket by its ``id``."""
         # FIXME it should check the bucket existence on server
-        bucket = Bucket(
+        return Bucket(
             self._client.api.get_bucket(bucket_id),
             client=self._client,
             collection=self)
-        if not bucket.properties:
-            raise errors.NotFound('Bucket not found')
-
-        return bucket
 
     def __iter__(self):
         """Iterate through all buckets as returned by the Explorer."""
@@ -122,24 +116,23 @@ class File(Model):
 
     @property
     def access_token(self):
-        """Return an access token for file operation."""
+        """The access token for performing file operations."""
         # FIXME make sure that bucket endpoint returns name
         return self._response.get('access_token',
                                   self._client.api.access_token)
 
     @property
-    def properties(self):
-        """Properties of the file."""
+    def _properties(self):
+        """The internal file properties."""
         return self._response.get('properties', {})
 
     @property
     def filename(self):
         """Filename of the file."""
-        return self.properties.get('resource:file_name')
+        return self._properties.get('resource:file_name')
 
-    @contextmanager
     def open(self, mode='r'):
-        """Yield a file object."""
+        """Return the :class:`~renga.models.storage.FileHandle` instance."""
         file_handle = {
             'resource_id': self.id,
             'request_type': FileHandle.REQUEST_TYPE[mode],
@@ -151,10 +144,10 @@ class File(Model):
                 'Renga-Deployer-Execution'] = self._client.api.headers[
                     'Renga-Deployer-Execution']
 
-        yield FileHandle(file_handle, client=client)
+        return FileHandle(file_handle, client=client)
 
 
-class FilesCollection(Collection):
+class FileCollection(Collection):
     """Represent files in a bucket on the server."""
 
     class Meta:
@@ -192,7 +185,11 @@ class FilesCollection(Collection):
 
 
 class FileHandle(Model):
-    """Represent an open file handle."""
+    """An object exposing a pythonic file-oriented API.
+
+    Depending on the bucket to which it belongs to, a file object can mediate
+    access to different storage backends (local, Swift, etc).
+    """
 
     IDENTIFIER_KEY = 'resource_id'
 
@@ -200,6 +197,13 @@ class FileHandle(Model):
         'r': 'read_file',
         'w': 'write_file',
     }
+
+    def __enter__(self):
+        """Simulate a context manager."""
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """Clean up the context if necessary."""
 
     @property
     def can_write(self):
@@ -219,7 +223,7 @@ class FileHandle(Model):
         self._client.api.storage_io_write(data)
 
     def read(self, *args, **kwargs):
-        """Read data to the file."""
+        """Read data from the file."""
         if not self.can_read:
             raise error.InvalidFileOperation('File is not writable.')
 

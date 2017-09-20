@@ -7,7 +7,7 @@ Renga v0.1.0 was released on TBD, 2017.
 About
 -----
 
-Python API and CLI for the Renga platform.
+Python SDK and CLI for the Renga platform.
 
 *This is an experimental developer preview release.*
 

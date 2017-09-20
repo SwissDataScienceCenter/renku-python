@@ -16,8 +16,33 @@
     limitations under the License.
 
 
-API Docs
-========
+Low-level API
+=============
 
-.. automodule:: renga
+This API is built on top of REST API endpoints exposed by Renga services.
+
+.. warning::
+
+   Renga services are currently in **beta preview** status and they are
+   subject to change in forseenable future.
+
+.. automodule:: renga.api
+   :members:
+
+Projects
+--------
+
+.. automodule:: renga.api.projects
+   :members:
+
+Storage
+-------
+
+.. automodule:: renga.api.storage
+   :members:
+
+Deployer
+--------
+
+.. automodule:: renga.api.deployer
    :members:

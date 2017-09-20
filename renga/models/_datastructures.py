@@ -38,6 +38,8 @@ class Model(object):
         """Format model."""
         return '<{0.__class__.__name__} {0.id!r}>'.format(self)
 
+    __repr__ = __str__
+
 
 class Collection(object):
     """Abstract response of multiple objects."""

@@ -27,10 +27,14 @@ recursive-include renga *.po *.pot *.mo
 include *.rst
 include *.sh
 include *.txt
+include .coveragerc
 include LICENSE
 include babel.ini
 include pytest.ini
 recursive-include docs *.bat
+recursive-include docs *.css
+recursive-include docs *.html
+recursive-include docs *.png
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs *.txt

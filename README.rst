@@ -15,9 +15,9 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-======================
- Renga SDK for Python
-======================
+==============================
+ Renga CLI and SDK for Python
+==============================
 
 .. image:: https://img.shields.io/travis/SwissDataScienceCenter/renga-python.svg
    :target: https://travis-ci.org/SwissDataScienceCenter/renga-python
@@ -66,15 +66,25 @@ Start by login and configuring your shell:
 ::
 
    $ renga login http://localhost
-   $ eval "$(renga env)"
 
-Connect to Renga platform from Python using the configuration in your
-environment:
+Connect to Renga platform from Python using the stored configuration:
 
 ::
 
     import renga
-    client = renga.from_env()
+    client = renga.from_config()
+
+The client can be also instantiated from environment variables.
+
+::
+
+   $ eval "$(renga env)"
+
+::
+
+   import renga
+   client = renga.from_env()
+
 
 Further documentation is available on
 https://renga-python.readthedocs.io/

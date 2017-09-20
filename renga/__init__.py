@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Python API and CLI for the Renga platform."""
+"""Python SDK and CLI for the Renga platform."""
 
 from __future__ import absolute_import, print_function
 

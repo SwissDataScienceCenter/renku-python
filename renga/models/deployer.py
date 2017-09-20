@@ -59,7 +59,7 @@ class Context(Model):
     @property
     def executions(self):
         """Return the collection of context executions."""
-        return ExecutionsCollection(self.id, client=self._client)
+        return ExecutionCollection(self.id, client=self._client)
 
     @property
     def lineage(self):
@@ -68,7 +68,7 @@ class Context(Model):
             self.labels.get('renga.execution_context.vertex_id'))
 
 
-class ContextsCollection(Collection):
+class ContextCollection(Collection):
     """Represent projects on the server."""
 
     class Meta:
@@ -139,7 +139,7 @@ class Execution(Model):
         return self._client.api.stop_execution(self.context_id, self.id)
 
 
-class ExecutionsCollection(Collection):
+class ExecutionCollection(Collection):
     """Represent projects on the server."""
 
     class Meta:

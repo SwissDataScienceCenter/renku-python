@@ -15,5 +15,36 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+Contexts and Executions
+=======================
 
-.. include:: ../INSTALL.rst
+.. py:module:: renga.models.deployer
+
+Manage contexts and executions on the server.
+
+Methods available on ``client.contexts``:
+
+.. autoclass:: ContextCollection
+   :members:
+   :inherited-members:
+
+Context objects
+---------------
+
+.. autoclass:: Context()
+   :members:
+   :inherited-members:
+
+Executions
+----------
+
+.. autoclass:: ExecutionCollection
+   :members:
+   :inherited-members:
+
+Execution objects
+-----------------
+
+.. autoclass:: Execution()
+   :members:
+   :inherited-members:

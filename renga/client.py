@@ -70,21 +70,30 @@ class RengaClient(object):
 
     @property
     def contexts(self):
-        """Return a collection of deployer contexts."""
-        from .models.deployer import ContextsCollection
-        return ContextsCollection(client=self)
+        """An object for managing contexts on the server.
+
+        See the :doc:`contexts documentation <contexts>` for full details.
+        """
+        from .models.deployer import ContextCollection
+        return ContextCollection(client=self)
 
     @property
     def projects(self):
-        """Return a collection of projects."""
-        from .models.projects import ProjectsCollection
-        return ProjectsCollection(client=self)
+        """An object for managing projects on the server.
+
+        See the :doc:`projects documentation <projects>` for full details.
+        """
+        from .models.projects import ProjectCollection
+        return ProjectCollection(client=self)
 
     @property
     def buckets(self):
-        """Return a collection of projects."""
-        from .models.storage import BucketsCollection
-        return BucketsCollection(client=self)
+        """An object for managing buckets on the server.
+
+        See the :doc:`buckets documentation <buckets>` for full details.
+        """
+        from .models.storage import BucketCollection
+        return BucketCollection(client=self)
 
 
 from_env = RengaClient.from_env

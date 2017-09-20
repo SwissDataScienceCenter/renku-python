@@ -136,12 +136,14 @@ html_theme_options = {
     'github_user': 'SwissDataScienceCenter',
     'github_repo': 'renga',
     'github_button': False,
-    'github_banner': True,
+    'github_banner': False,
     'show_powered_by': False,
     'extra_nav_links': {
         'renga@GitHub': 'https://github.com/SwissDataScienceCenter/renga-python',
         'renga@PyPI': 'https://pypi.python.org/pypi/renga/',
-    }
+    },
+    'font_family': 'Raleway,sans-serif',
+    'head_font_family': 'Raleway,sans-serif',
 }
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -169,12 +171,12 @@ html_theme_options = {
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = '_static/favicon.png'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

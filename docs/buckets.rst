@@ -15,14 +15,46 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+Buckets and Files
+=================
 
-Configuration
-=============
+.. py:module:: renga.models.storage
 
-There is possibility to configure the Renga client using environmental
-variables.
+Manage buckets and files on the server.
 
-.. autofunction:: renga.from_env
+.. autoclass:: BucketCollection
+   :members:
+   :inherited-members:
 
-Alternatively, use ``renga`` command line interface to manage multiple
-configurations.
+Bucket objects
+--------------
+
+.. autoclass:: Bucket()
+   :members:
+   :inherited-members:
+
+
+Files
+-----
+
+Manage files in the bucket.
+
+.. autoclass:: FileCollection
+   :members:
+   :inherited-members:
+
+
+File objects
+------------
+
+.. autoclass:: File()
+   :members:
+   :inherited-members:
+
+
+File handle objects
+-------------------
+
+.. autoclass:: FileHandle()
+   :members:
+   :inherited-members:

@@ -17,41 +17,51 @@
 
 
 .. include:: ../README.rst
+   :end-before: Usage
 
-User's Guide
-------------
+For more information about the Renga API `see its documentation
+<https://renga.readthedocs.org/latest/developer/index.html>`_.
 
-This part of the documentation will show you how to get started in using
-Renga.
+Getting started
+---------------
+
+To instantiate a Renga client from a running notebook on the platform, you
+can use :py:func:`~renga.client.from_env` helper function.
+
+.. code-block:: python
+
+   import renga
+   client = renga.from_env()
+
+You can now upload files to new bucket:
+
+.. code-block:: python
+
+   >>> bucket = client.buckets.create('first-bucket')
+   >>> with bucket.open('greeting.txt', 'w') as fp:
+   ...     fp.write('hello world')
+
+You can access files from a bucket:
+
+.. code-block:: python
+
+   >>> client.buckets.list()[0].files.list()[0].open('r').read()
+   b'hello world'
+
+
+For more details and examples have a look at :doc:`the reference
+<client>`.
+
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
 
-   installation
-   configuration
-   usage
-
-
-API Reference
--------------
-
-If you are looking for information on a specific function, class or method,
-this part of the documentation is for you.
-
-.. toctree::
-   :maxdepth: 2
-
+   client
+   projects
+   buckets
+   contexts
    api
-
-Additional Notes
-----------------
-
-Notes on how to contribute, legal information and changes are here for the
-interested.
-
-.. toctree::
-   :maxdepth: 1
-
    contributing
    changes
    license
