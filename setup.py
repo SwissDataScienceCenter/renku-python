@@ -37,6 +37,7 @@ tests_require = [
 ]
 
 extras_require = {
+    ':python_version<"3.6"': ['pathlib2>=2.3.0'],
     'docs': [
         'Sphinx>=1.6.3',
     ],
@@ -44,7 +45,9 @@ extras_require = {
 }
 
 extras_require['all'] = []
-for reqs in extras_require.values():
+for name, reqs in extras_require.items():
+    if name.startswith(':'):
+        continue
     extras_require['all'].extend(reqs)
 
 setup_requires = [

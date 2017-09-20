@@ -20,7 +20,11 @@
 import errno
 import os
 from functools import update_wrapper
-from pathlib import Path
+
+try:
+    from pathlib import Path
+except ImportError:  # pragma: no cover
+    from pathlib2 import Path
 
 import click
 import yaml
