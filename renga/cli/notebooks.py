@@ -25,6 +25,7 @@ from binascii import hexlify
 import click
 
 from renga.cli._options import option_endpoint
+from renga.errors import UnexpectedStatusCode
 
 from ..models._tabulate import tabulate
 from ..models.deployer import _dict_from_labels
@@ -73,14 +74,21 @@ def list(config, all, endpoint):
 def launch(ctx, config, engine, endpoint):
     """Launch a new notebook."""
     cfg = config.get('project', config)['endpoints'][endpoint]
-    context_id = cfg.get('notebook')
 
-    notebook_token = hexlify(os.urandom(24)).decode('ascii')
-
-    if context_id:
+    if 'notebook' in cfg:
         client = from_config(config, endpoint=endpoint)
-        context = client.contexts[context_id]
+        context_id = cfg['notebook']
+
+        try:
+            context = client.contexts[context_id]
+        except UnexpectedStatusCode as e:
+            context = None
     else:
+        context = None
+
+    if not context:
+        notebook_token = hexlify(os.urandom(24)).decode('ascii')
+
         context = ctx.invoke(
             create,
             command="start-notebook.sh --NotebookApp.token={0}".format(
