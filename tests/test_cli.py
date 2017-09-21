@@ -133,3 +133,30 @@ def test_storage_buckets_in_project(runner, projects_responses,
     result = runner.invoke(cli.cli, ['io', 'buckets', 'files', '1234'])
     assert result.exit_code == 0
     assert 'hello' in result.output
+
+
+def test_deployer(runner, deployer_responses):
+    """Test contexts and executions."""
+    result = runner.invoke(cli.cli, ['contexts', 'create', 'hello-world'])
+    assert result.exit_code == 0
+
+    context_id = result.output.strip()
+    assert context_id == 'abcd'
+
+    result = runner.invoke(cli.cli, ['contexts', 'list'])
+    assert result.exit_code == 0
+    assert context_id in result.output
+
+    result = runner.invoke(cli.cli, ['contexts', 'run', context_id, 'docker'])
+    assert result.exit_code == 0
+
+    execution_id = result.output.strip()
+    assert execution_id == 'efgh'
+
+    result = runner.invoke(cli.cli, ['executions', 'list', context_id])
+    assert result.exit_code == 0
+    assert context_id in result.output
+    assert execution_id in result.output
+
+    result = runner.invoke(cli.cli, ['executions', 'stop', context_id])
+    assert result.exit_code == 0

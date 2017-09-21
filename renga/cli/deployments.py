@@ -19,6 +19,7 @@
 
 import click
 
+from renga import errors
 from renga.cli._options import option_endpoint
 
 from ..models._tabulate import tabulate
@@ -97,6 +98,24 @@ def run(config, context_id, engine, endpoint):
 @click.group()
 def executions():
     """Manage executions."""
+
+
+@executions.command(name='stop')
+@click.argument('context_id')
+@option_endpoint
+@with_config
+def stop_executions(config, context_id, endpoint):
+    """Stop running executions."""
+    client = from_config(config, endpoint=endpoint)
+
+    for execution in client.contexts[context_id].executions:
+        try:
+            click.echo('Stopping execution {0.id} ... '.format(execution),
+                       nl=False)
+            execution.stop()
+            click.secho('OK', fg='green')
+        except errors.APIError:
+            click.secho('FAIL', fg='red')
 
 
 @executions.command(name='list')
