@@ -132,8 +132,9 @@ html_theme_options = {
     'description': 'Python API and CLI for the Renga platform.',
     'github_repo': 'renga-python',
     'extra_nav_links': {
-        'renga@GitHub': 'https://github.com/SwissDataScienceCenter/renga-python',
-        'renga@PyPI': 'https://pypi.python.org/pypi/renga/',
+        'renga-python@GitHub': 'https://github.com/SwissDataScienceCenter/renga-python',
+        'renga-python@PyPI': 'https://pypi.python.org/pypi/renga/',
+        'renga@GitHub': 'https://github.com/SwissDataScienceCenter/renga',
     },
 }
 

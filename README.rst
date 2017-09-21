@@ -31,6 +31,10 @@
 .. image:: https://img.shields.io/pypi/dm/renga.svg
    :target: https://pypi.python.org/pypi/renga
 
+.. image:: http://readthedocs.org/projects/renga-python/badge/?version=latest
+   :target: http://renga-python.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
 .. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renga-python.svg
         :target: https://github.com/SwissDataScienceCenter/renga-python/blob/master/LICENSE
 
