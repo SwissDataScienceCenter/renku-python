@@ -49,32 +49,7 @@ class Bucket(Model):
     @property
     def files(self):
         """The :class:`~renga.models.storage.FileCollection` instance."""
-        return FileCollection(self.id, client=self._client)
-
-    def open(self, file_name=None, mode='w'):
-        """Create an empty file in this bucket."""
-        if mode != 'w':
-            raise NotImplemented('Only mode "w" is currently supported')
-
-        resp = self._client.api.create_file(
-            bucket_id=self.id,
-            file_name=file_name,
-            request_type='create_file', )
-
-        access_token = resp.pop('access_token')
-        client = self._client.__class__(
-            self._client.api.endpoint, token={'access_token': access_token})
-
-        if 'Renga-Deployer-Execution' in self._client.api.headers:
-            client.api.headers[
-                'Renga-Deployer-Execution'] = self._client.api.headers[
-                    'Renga-Deployer-Execution']
-
-        file_handle = {
-            'resource_id': resp['id'],
-            'request_type': FileHandle.REQUEST_TYPE[mode],
-        }
-        return FileHandle(file_handle, client=client)
+        return FileCollection(self, client=self._client)
 
 
 class BucketCollection(Collection):
@@ -159,9 +134,9 @@ class FileCollection(Collection):
 
         headers = ('id', 'filename')
 
-    def __init__(self, bucket_id, **kwargs):
+    def __init__(self, bucket, **kwargs):
         """Initialize collection of files in the bucket."""
-        self.id = bucket_id
+        self.bucket = bucket
         super(FileCollection, self).__init__(**kwargs)
 
     def __getitem__(self, resource_id):
@@ -175,12 +150,37 @@ class FileCollection(Collection):
     def __iter__(self):
         """Return all files in this bucket."""
         return (File(f, client=self._client, collection=self)
-                for f in self._client.api.get_bucket_files(self.id))
+                for f in self._client.api.get_bucket_files(self.bucket.id))
+
+    def open(self, file_name=None, mode='w'):
+        """Create an empty file in this bucket."""
+        if mode != 'w':
+            raise NotImplemented('Only mode "w" is currently supported')
+
+        resp = self._client.api.create_file(
+            bucket_id=self.bucket.id,
+            file_name=file_name,
+            request_type='create_file', )
+
+        access_token = resp.pop('access_token')
+        client = self._client.__class__(
+            self._client.api.endpoint, token={'access_token': access_token})
+
+        if 'Renga-Deployer-Execution' in self._client.api.headers:
+            client.api.headers[
+                'Renga-Deployer-Execution'] = self._client.api.headers[
+                    'Renga-Deployer-Execution']
+
+        file_handle = {
+            'resource_id': resp['id'],
+            'request_type': FileHandle.REQUEST_TYPE[mode],
+        }
+        return FileHandle(file_handle, client=client)
 
     def create(self, file_name=None):
         """Create an empty file in this bucket."""
         resp = self._client.api.create_file(
-            bucket_id=self.id,
+            bucket_id=self.bucket.id,
             file_name=file_name,
             request_type='create_file', )
         return self.Meta.model(resp, client=self._client, collection=self)
@@ -196,10 +196,9 @@ class FileCollection(Collection):
         b'hello world'
 
         """
-        file_object = self.create(file_name=file_name or url)
-        with file_object.open('w') as fp:
+        with self.open(file_name=file_name or url, mode='w') as fp:
             fp.from_url(url)
-        return file_object
+        return self.__getitem__(fp.id)
 
 
 class FileHandle(Model):

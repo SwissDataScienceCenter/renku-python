@@ -116,7 +116,7 @@ def test_client_buckets_shortcut(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    with bucket.open('hello', 'w') as fp:
+    with bucket.files.open('hello', 'w') as fp:
         fp.write(b'hello world')
 
     file_ = bucket.files[fp.id]

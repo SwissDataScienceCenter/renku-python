@@ -38,7 +38,7 @@ You can now upload files to new bucket:
 .. code-block:: python
 
    >>> bucket = client.buckets.create('first-bucket')
-   >>> with bucket.open('greeting.txt', 'w') as fp:
+   >>> with bucket.files.open('greeting.txt', 'w') as fp:
    ...     fp.write('hello world')
 
 You can access files from a bucket:
