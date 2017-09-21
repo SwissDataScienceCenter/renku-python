@@ -25,9 +25,6 @@ import sys
 
 import sphinx.environment
 
-# Plug example application into module path
-sys.path.append('examples')
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -48,7 +45,7 @@ extensions = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+#templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -98,7 +95,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = []
+exclude_patterns = ['_build']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -116,7 +113,7 @@ exclude_patterns = []
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+#pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -129,21 +126,15 @@ todo_include_todos = False
 
 
 # -- Options for HTML output ----------------------------------------------
-html_theme = 'alabaster'
+html_theme = 'renga'
 
 html_theme_options = {
     'description': 'Python API and CLI for the Renga platform.',
-    'github_user': 'SwissDataScienceCenter',
-    'github_repo': 'renga',
-    'github_button': False,
-    'github_banner': False,
-    'show_powered_by': False,
+    'github_repo': 'renga-python',
     'extra_nav_links': {
         'renga@GitHub': 'https://github.com/SwissDataScienceCenter/renga-python',
         'renga@PyPI': 'https://pypi.python.org/pypi/renga/',
     },
-    'font_family': 'Raleway,sans-serif',
-    'head_font_family': 'Raleway,sans-serif',
 }
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -171,12 +162,12 @@ html_theme_options = {
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = '_static/favicon.png'
+#html_favicon = '_static/favicon.png'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

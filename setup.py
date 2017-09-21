@@ -33,6 +33,7 @@ tests_require = [
     'pytest-cov>=2.5.1',
     'pytest-pep8>=1.0.6',
     'pytest>=3.2.1',
+    'renga-sphinx-theme>=0.1.0',
     'responses>=0.7.0',
 ]
 
