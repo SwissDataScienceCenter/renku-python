@@ -28,7 +28,7 @@ from ._options import option_endpoint
 
 
 @click.command()
-@click.argument('pathspec')
+@click.argument('pathspec', type=click.File('rb'))
 @option_endpoint
 @with_config
 def add(config, pathspec, endpoint):
@@ -38,7 +38,7 @@ def add(config, pathspec, endpoint):
 
     # TODO check that the pathspec is relative to project directory
 
-    if pathspec in resources:
+    if pathspec.name in resources:
         raise click.UsageError('Resource already exists.')
 
     resource = {
@@ -52,11 +52,12 @@ def add(config, pathspec, endpoint):
 
         client = from_config(config, endpoint=endpoint)
         bucket = client.buckets[bucket_id]
-        file_ = bucket.files.create(file_name=pathspec)
+
+        with bucket.files.open(pathspec.name, 'w') as fp:
+            fp.write(pathspec)
 
         resource['endpoints'][endpoint] = {
-            'vertex_id': file_.id,
-            'access_token': file_.access_token,
+            'vertex_id': fp.id,
         }
 
-    config['project']['resources'][pathspec] = resource
+    config['project']['resources'][pathspec.name] = resource

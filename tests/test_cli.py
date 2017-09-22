@@ -124,6 +124,9 @@ def test_storage_buckets_in_project(runner, projects_responses,
     assert result.exit_code == 0
     assert '1234' in result.output
 
+    with open('hello', 'wb') as f:
+        f.write(b'hello world')
+
     result = runner.invoke(cli.cli, ['add', 'hello'])
     assert result.exit_code == 0
 
