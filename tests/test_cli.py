@@ -163,3 +163,28 @@ def test_deployer(runner, deployer_responses):
 
     result = runner.invoke(cli.cli, ['executions', 'stop', context_id])
     assert result.exit_code == 0
+
+
+def test_notebooks(runner, deployer_responses):
+    """Test contexts and executions."""
+    from renga.cli._config import read_config
+
+    config = read_config()
+    assert 'notebook' not in config['endpoints']['https://example.com']
+
+    result = runner.invoke(cli.cli, ['notebooks', 'launch'])
+    assert result.exit_code == 0
+
+    # The notebook context is filled
+    config = read_config()
+    assert 'abcd' == config['endpoints']['https://example.com']['notebook']
+
+    result = runner.invoke(cli.cli, ['notebooks', 'list'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['notebooks', 'launch'])
+    assert result.exit_code == 0
+
+    # The notebook context is reused
+    config = read_config()
+    assert 'abcd' == config['endpoints']['https://example.com']['notebook']

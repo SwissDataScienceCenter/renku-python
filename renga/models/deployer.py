@@ -19,6 +19,8 @@
 
 from werkzeug.datastructures import MultiDict
 
+from renga.errors import APIError
+
 from ._datastructures import Collection, Model
 
 
@@ -112,17 +114,21 @@ class Execution(Model):
     @property
     def ports(self):
         """Return runtime port mapping."""
-        return self._client.api.execution_ports(self.context_id, self.id)
+        try:
+            return self._client.api.execution_ports(self.context_id, self.id)
+        except APIError:
+            return None
 
     @property
     def url(self):
         """Return a URL for accessing the running container."""
         ports = self.ports
-        token = self.context.labels.get('renga.notebook.token', '')
-        if token:
-            token = '/?token={0}'.format(token)
-        return 'http://{host}:{exposed}{token}'.format(
-            token=token, **ports[0])
+        if ports:
+            token = self.context.labels.get('renga.notebook.token', '')
+            if token:
+                token = '/?token={0}'.format(token)
+            return 'http://{host}:{exposed}{token}'.format(
+                token=token, **ports[0])
 
     @property
     def context(self):

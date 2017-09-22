@@ -46,15 +46,9 @@ def list(config, endpoint):
 @click.argument('image')
 @click.option('--command', '-c', help='Command to run in the container.')
 @click.option(
-    '--labels',
-    '-l',
-    multiple=True,
-    help='Labels to add to the container.')
+    '--labels', '-l', multiple=True, help='Labels to add to the container.')
 @click.option(
-    '--ports',
-    '-p',
-    multiple=True,
-    help='Ports to expose in the container.')
+    '--ports', '-p', multiple=True, help='Ports to expose in the container.')
 @option_endpoint
 @with_config
 def create(config, image, ports, command, labels, endpoint):
@@ -101,21 +95,35 @@ def executions():
 
 
 @executions.command(name='stop')
-@click.argument('context_id')
+@click.argument('context_id', nargs=-1)
 @option_endpoint
+@click.option(
+    '--all-contexts', is_flag=True, help='Stop executions for all contexts.')
 @with_config
-def stop_executions(config, context_id, endpoint):
+def stop_executions(config, context_id, endpoint, all_contexts):
     """Stop running executions."""
     client = from_config(config, endpoint=endpoint)
 
-    for execution in client.contexts[context_id].executions:
-        try:
-            click.echo('Stopping execution {0.id} ... '.format(execution),
-                       nl=False)
-            execution.stop()
-            click.secho('OK', fg='green')
-        except errors.APIError:
-            click.secho('FAIL', fg='red')
+    if not bool(context_id) ^ all_contexts:
+        raise click.UsageError(
+            'Either specify context id or use --all-contexts')
+
+    if context_id:
+        contexts = (client.contexts[cid] for cid in context_id)
+    else:
+        contexts = client.contexts
+
+    for context in contexts:
+        for execution in context.executions:
+            try:
+                click.echo(
+                    'Stopping execution {0.id} on context {1.id} ... '.format(
+                        execution, context),
+                    nl=False)
+                execution.stop()
+                click.secho('OK', fg='green')
+            except errors.APIError:
+                click.secho('FAIL', fg='red')
 
 
 @executions.command(name='list')
