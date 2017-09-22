@@ -252,6 +252,10 @@ def deployer_responses(auth_responses, renga_client):
         status=200,
         json=context)
     rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/deployer/contexts/deadbeef'),
+        status=404)
+    rsps.add(
         responses.POST,
         renga_client.api._url('/api/deployer/contexts/abcd/executions'),
         status=201,

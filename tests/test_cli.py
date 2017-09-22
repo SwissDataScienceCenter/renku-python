@@ -24,7 +24,7 @@ import os
 import responses
 
 from renga import __version__, cli
-from renga.cli._config import APP_NAME
+from renga.cli._config import APP_NAME, read_config, write_config
 
 
 def test_version(base_runner):
@@ -166,9 +166,7 @@ def test_deployer(runner, deployer_responses):
 
 
 def test_notebooks(runner, deployer_responses):
-    """Test contexts and executions."""
-    from renga.cli._config import read_config
-
+    """Test notebook launch."""
     config = read_config()
     assert 'notebook' not in config['endpoints']['https://example.com']
 
@@ -186,5 +184,14 @@ def test_notebooks(runner, deployer_responses):
     assert result.exit_code == 0
 
     # The notebook context is reused
+    config = read_config()
+    assert 'abcd' == config['endpoints']['https://example.com']['notebook']
+
+    config['endpoints']['https://example.com']['notebook'] = 'deadbeef'
+    write_config(config)
+
+    result = runner.invoke(cli.cli, ['notebooks', 'launch'])
+    assert result.exit_code == 0
+
     config = read_config()
     assert 'abcd' == config['endpoints']['https://example.com']['notebook']

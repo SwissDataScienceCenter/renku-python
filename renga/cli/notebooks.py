@@ -24,8 +24,8 @@ from binascii import hexlify
 
 import click
 
+from renga import errors
 from renga.cli._options import option_endpoint
-from renga.errors import UnexpectedStatusCode
 
 from ..models._tabulate import tabulate
 from ..models.deployer import _dict_from_labels
@@ -81,7 +81,7 @@ def launch(ctx, config, engine, endpoint):
 
         try:
             context = client.contexts[context_id]
-        except UnexpectedStatusCode as e:
+        except errors.APIError:
             context = None
     else:
         context = None
