@@ -112,6 +112,11 @@ class Execution(Model):
         return self._response.get('engine', {})
 
     @property
+    def environment(self):
+        """Return the execution environment variables."""
+        return self._response.get('environment', {})
+
+    @property
     def ports(self):
         """Return runtime port mapping."""
         try:
@@ -125,10 +130,19 @@ class Execution(Model):
         ports = self.ports
         if ports:
             token = self.context.labels.get('renga.notebook.token', '')
+            try:
+                # FIXME use edge when defined
+                filename = self._client.buckets[int(
+                    self.environment['RENGA_BUCKET_ID'])].files[int(
+                        self.environment['RENGA_FILE_ID'])].filename
+                filename = 'notebooks/{0}'.format(filename)
+            except Exception:  # pragma: no cover
+                # TODO add logging
+                filename = ''
             if token:
-                token = '/?token={0}'.format(token)
-            return 'http://{host}:{exposed}{token}'.format(
-                token=token, **ports[0])
+                token = '?token={0}'.format(token)
+            return 'http://{host}:{exposed}/{filename}{token}'.format(
+                token=token, filename=filename, **ports[0])
 
     @property
     def context(self):

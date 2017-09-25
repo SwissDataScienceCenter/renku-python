@@ -59,5 +59,6 @@ def add(config, pathspec, endpoint):
         resource['endpoints'][endpoint] = {
             'vertex_id': fp.id,
         }
+        click.echo(fp.id)
 
     config['project']['resources'][pathspec.name] = resource

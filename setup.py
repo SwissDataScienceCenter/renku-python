@@ -42,6 +42,9 @@ extras_require = {
     'docs': [
         'Sphinx>=1.6.3',
     ],
+    'notebook': [
+        'jupyter>=1.0.0',
+    ],
     'tests': tests_require,
 }
 

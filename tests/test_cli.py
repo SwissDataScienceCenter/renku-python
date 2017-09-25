@@ -209,3 +209,18 @@ def test_notebooks(runner, deployer_responses):
     config = read_config()
     assert 'abcd' in config['endpoints']['https://example.com'][
         'notebooks'].values()
+
+
+def test_notebook_run(monkeypatch, renga_client, runner, storage_responses,
+                      deployer_responses):
+    """Test opening a notebook with various arguments."""
+    client = renga_client
+
+    monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
+    monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
+
+    result = runner.invoke(cli.cli, [
+        'notebooks', 'run', '--bucket', '1234', '--file', '9876', 'cat'
+    ])
+    assert result.exit_code == 0
+    assert 'hello\n' in result.output

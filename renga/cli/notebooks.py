@@ -24,6 +24,7 @@ from binascii import hexlify
 
 import click
 
+import renga
 from renga import errors
 from renga.cli._options import option_endpoint
 
@@ -70,12 +71,14 @@ def list(config, all, endpoint):
 @click.option('--engine', default='docker')
 @click.option(
     '--image',
-    default='jupyter/minimal-notebook:latest',
+    default='rengahub/minimal-notebook:latest',
     help='Notebook image to use.')
+@click.option('--bucket', type=int, envvar='RENGA_BUCKET_ID')
+@click.option('--file', type=int, envvar='RENGA_FILE_ID')
 @option_endpoint
 @with_config
 @click.pass_context
-def launch(ctx, config, engine, image, endpoint):
+def launch(ctx, config, engine, image, bucket, file, endpoint):
     """Launch a new notebook."""
     cfg = config.get('project', config)['endpoints'][endpoint]
     if ':' not in image:
@@ -97,8 +100,9 @@ def launch(ctx, config, engine, image, endpoint):
 
         context = ctx.invoke(
             create,
-            command="start-notebook.sh --NotebookApp.token={0}".format(
-                notebook_token),
+            command="start-notebook.sh --NotebookApp.token={0} "
+            "--NotebookApp.contents_manager_class="
+            "renga.notebook.RengaFileManager".format(notebook_token),
             ports=['8888'],
             image=image,
             labels=['renga.notebook.token={0}'.format(notebook_token)],
@@ -108,5 +112,37 @@ def launch(ctx, config, engine, image, endpoint):
         proj_notebooks[image] = context.id
         cfg['notebooks'] = proj_notebooks
 
-    execution = context.run(engine=engine)
+    execution = context.run(
+        engine=engine,
+        environment={
+            'RENGA_BUCKET_ID': str(bucket),
+            'RENGA_FILE_ID': str(file),
+        })
     click.echo(execution.url)
+
+
+@notebooks.command(context_settings={'ignore_unknown_options': True})
+@click.option('--bucket', type=int, envvar='RENGA_BUCKET_ID')
+@click.option('--file', type=int, envvar='RENGA_FILE_ID')
+@click.argument('notebook_args', nargs=-1, type=click.UNPROCESSED)
+def run(bucket, file, notebook_args):
+    """Open an existing Jupyter notebook."""
+    client = renga.from_env()
+
+    if notebook_args:
+        notebook = notebook_args[0]
+        notebook_args = notebook_args[1:]
+    else:
+        notebook = 'jupyter-notebook'
+
+    file_ = client.buckets[int(bucket)].files[int(file)]
+    click.echo(file_.filename)
+    with file_.open('r') as fp:
+        with open(file_.filename, 'wb') as code:
+            code.write(fp.read())
+
+    from subprocess import call
+    cmd = [notebook, file_.filename]
+    if notebook_args:
+        cmd.extend(notebook_args)
+    call(cmd)

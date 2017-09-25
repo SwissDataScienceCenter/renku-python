@@ -15,33 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Test Python SDK client."""
 
-# Check manifest will not automatically add these two files:
-include .dockerignore
-include .editorconfig
-include .tx/config
-prune docs/_build
-recursive-include renga *.po *.pot *.mo
+import pytest
 
-# added by check_manifest.py
-include *.rst
-include *.sh
-include *.txt
-include .coveragerc
-include LICENSE
-include Dockerfile
-include babel.ini
-include pytest.ini
-recursive-include .travis *.sh
-recursive-include docs *.bat
-recursive-include docs *.css
-recursive-include docs *.html
-recursive-include docs *.png
-recursive-include docs *.py
-recursive-include docs *.rst
-recursive-include docs *.txt
-recursive-include docs Makefile
-recursive-include examples *.py
-recursive-include examples *.sh
-recursive-include renga *.html
-recursive-include tests *.py
+from renga.notebook import RengaFileManager
+
+
+def test_file_manager(instance_path, renga_client, monkeypatch,
+                      storage_responses):
+    """Test file manager."""
+    client = renga_client
+
+    monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
+    monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
+    monkeypatch.setenv('RENGA_BUCKET_ID', '1234')
+    monkeypatch.setenv('RENGA_FILE_ID', '9876')
+
+    contents_manager = RengaFileManager(root_dir=instance_path)
+    contents_manager._save_notebook('hello', {})

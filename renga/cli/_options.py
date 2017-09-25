@@ -47,7 +47,10 @@ def default_endpoint(ctx, param, value):
 
 def validate_endpoint(ctx, param, value):
     """Validate endpoint."""
-    config = ctx.obj['config']
+    try:
+        config = ctx.obj['config']
+    except Exception:
+        return
 
     endpoint = default_endpoint(ctx, param, value)
 

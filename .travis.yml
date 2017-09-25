@@ -57,13 +57,21 @@ after_success:
   - coveralls
 
 deploy:
-  provider: pypi
+- provider: pypi
   user: sdsc-org
   password:
     secure: N+D2HRXjR+NlI8nQqC90LCSyGiSzPNTBXmsa+eyJ8JjXlrndyATDrTM5JGl8hBzBsMFGoVRQ7zYMu11hx9MlRR6hqPQxbnpgfuBhC+yr3Yy2eOzR8S/3YX6qCoLe4pXDCstQmZcpWu+M0vktlOMfCaLmvJdRotQrSwkkSj5XLWQUIn4QvAAT89RU/qf5eG4gK5MyGtev6B79UyABpg5i/okuLIiee2QDoVddWOOaLpGmtAXB8cqRqumB8J1p8F6an6uHpqYhaLHjFxgK/LuV9AWhWH4tjQxxsiYg1wbJR5vMxsxQSGUYsntLkQGaQjkTrLMLzdy5ZHTJavHvWTqPjpaeNVJt9yMWfvZZHdl+B17Q+3Mluhl7zYkV/mk85Xy8bAGT7+Rulz3s0NHlGf20HnbsexkgmcC7fJ8TcHu5/7bL4LkQ1Nm61tt2gkDoimpAFG+8sQQWBJkkx0qXjQUdWigHSzYc6qmeN7lKyalx/Psu1TtnGKSo77G9/HMMfR8u3lUelRBg0/ZFIru1vcbfas+yWntlmEuvVn9KOpyeTJk06r7Mkp9uhshsAy9/I21suF9+09Mb/P8qLpmZ1aELOEQ5PkTdojyb25R4hpVmrFVSiy9YMvAI3AAyH25DKiUOxGyn1PXIIiNH7MXN2lc+yuh8D74Mw1+Gj7b8RfSrJlM=
   distributions: "sdist bdist_wheel"
   on:
     tags: true
+    python: "3.6"
+    repo: SwissDataScienceCenter/renga-python
+    condition: $DEPLOY = true
+- provider: script
+  skip_cleanup: true
+  script: ./.travis/deploy-docker.sh
+  on:
+    branch: master
     python: "3.6"
     repo: SwissDataScienceCenter/renga-python
     condition: $DEPLOY = true
