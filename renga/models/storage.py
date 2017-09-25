@@ -139,13 +139,12 @@ class FileCollection(Collection):
         self.bucket = bucket
         super(FileCollection, self).__init__(**kwargs)
 
-    def __getitem__(self, resource_id):
+    def __getitem__(self, file_id):
         """Return a file object."""
-        # FIXME use explorer api
-        return self.Meta.model(
-            {
-                'id': resource_id,
-            }, client=self._client, collection=self)
+        return File(
+            self._client.api.get_file(file_id),
+            client=self._client,
+            collection=self)
 
     def __iter__(self):
         """Return all files in this bucket."""
@@ -183,7 +182,7 @@ class FileCollection(Collection):
             bucket_id=self.bucket.id,
             file_name=file_name,
             request_type='create_file', )
-        return self.Meta.model(resp, client=self._client, collection=self)
+        return self[resp['id']]
 
     def from_url(self, url, file_name=None):
         """Create a file with data from the streamed GET response.
@@ -244,7 +243,7 @@ class FileHandle(Model):
 
         **Example**
 
-        >>> with client.buckets[1234].files[1234].open('w') as fp:
+        >>> with client.buckets[1234].files[9876].open('w') as fp:
         ...     fp.from_url('https://example.com/tests/data')
 
         """

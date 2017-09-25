@@ -308,8 +308,8 @@ def storage_responses(auth_responses, renga_client):
         renga_client.api._url('/api/storage/authorize/create_file'),
         status=201,
         json={
-            'id': 1234,
-            'access_token': 'accessfile_1234',
+            'id': 9876,
+            'access_token': 'accessfile_9876',
         })
 
     rsps.add(
@@ -317,7 +317,7 @@ def storage_responses(auth_responses, renga_client):
         renga_client.api._url('/api/storage/authorize/write'),
         status=200,
         json={
-            'access_token': 'writefile_1234',
+            'access_token': 'writefile_9876',
         })
 
     rsps.add(
@@ -325,7 +325,7 @@ def storage_responses(auth_responses, renga_client):
         renga_client.api._url('/api/storage/authorize/read'),
         status=200,
         json={
-            'access_token': 'readfile_1234',
+            'access_token': 'readfile_9876',
         })
 
     rsps.add(
@@ -478,6 +478,13 @@ def explorer_responses(auth_responses, renga_client):
         renga_client.api._url('/api/explorer/storage/bucket/1234/files'),
         status=200,
         json=files)
+
+    rsps.add(
+        responses.GET,
+        renga_client.api._url('/api/explorer/storage/file/9876'),
+        status=200,
+        json={'data': files[0],
+              'bucket': buckets[0]})
 
 
 @pytest.fixture(autouse=True)
