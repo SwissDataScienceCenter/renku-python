@@ -168,14 +168,15 @@ def test_deployer(runner, deployer_responses):
 def test_notebooks(runner, deployer_responses):
     """Test notebook launch."""
     config = read_config()
-    assert 'notebook' not in config['endpoints']['https://example.com']
+    assert 'notebooks' not in config['endpoints']['https://example.com']
 
     result = runner.invoke(cli.cli, ['notebooks', 'launch'])
     assert result.exit_code == 0
 
     # The notebook context is filled
     config = read_config()
-    assert 'abcd' == config['endpoints']['https://example.com']['notebook']
+    assert 'abcd' in config['endpoints']['https://example.com'][
+        'notebooks'].values()
 
     result = runner.invoke(cli.cli, ['notebooks', 'list'])
     assert result.exit_code == 0
@@ -185,13 +186,26 @@ def test_notebooks(runner, deployer_responses):
 
     # The notebook context is reused
     config = read_config()
-    assert 'abcd' == config['endpoints']['https://example.com']['notebook']
+    assert 'my-image' not in config['endpoints']['https://example.com'][
+        'notebooks']
 
-    config['endpoints']['https://example.com']['notebook'] = 'deadbeef'
-    write_config(config)
-
-    result = runner.invoke(cli.cli, ['notebooks', 'launch'])
+    result = runner.invoke(cli.cli,
+                           ['notebooks', 'launch', '--image', 'my-image'])
     assert result.exit_code == 0
 
     config = read_config()
-    assert 'abcd' == config['endpoints']['https://example.com']['notebook']
+    assert 'my-image:latest' in config['endpoints']['https://example.com'][
+        'notebooks']
+
+    # Should fail on an unknown context
+    config['endpoints']['https://example.com']['notebooks'][
+        'my-image:latest'] = 'deadbeef'
+    write_config(config)
+
+    result = runner.invoke(cli.cli,
+                           ['notebooks', 'launch', '--image', 'my-image'])
+    assert result.exit_code == 0
+
+    config = read_config()
+    assert 'abcd' in config['endpoints']['https://example.com'][
+        'notebooks'].values()

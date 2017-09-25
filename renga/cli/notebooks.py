@@ -68,16 +68,22 @@ def list(config, all, endpoint):
 
 @notebooks.command()
 @click.option('--engine', default='docker')
+@click.option(
+    '--image',
+    default='jupyter/minimal-notebook:latest',
+    help='Notebook image to use.')
 @option_endpoint
 @with_config
 @click.pass_context
-def launch(ctx, config, engine, endpoint):
+def launch(ctx, config, engine, image, endpoint):
     """Launch a new notebook."""
     cfg = config.get('project', config)['endpoints'][endpoint]
+    if ':' not in image:
+        image += ':latest'
 
-    if 'notebook' in cfg:
+    if image in cfg.get('notebooks', {}):
         client = from_config(config, endpoint=endpoint)
-        context_id = cfg['notebook']
+        context_id = cfg['notebooks'][image]
 
         try:
             context = client.contexts[context_id]
@@ -94,11 +100,13 @@ def launch(ctx, config, engine, endpoint):
             command="start-notebook.sh --NotebookApp.token={0}".format(
                 notebook_token),
             ports=['8888'],
-            image='jupyter/minimal-notebook:latest',
+            image=image,
             labels=['renga.notebook.token={0}'.format(notebook_token)],
             endpoint=endpoint)
         cfg = ctx.obj['config'].get('project', config)['endpoints'][endpoint]
-        cfg['notebook'] = context.id
+        proj_notebooks = cfg.get('notebooks', {})
+        proj_notebooks[image] = context.id
+        cfg['notebooks'] = proj_notebooks
 
     execution = context.run(engine=engine)
     click.echo(execution.url)
