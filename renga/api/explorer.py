@@ -59,6 +59,14 @@ class ExplorerApiMixin(object):
             expected_status_code=200)
         return [_flatten_vertex(vertex) for vertex in resp.json()]
 
+    def get_file(self, file_id):
+        """Retrieve a file metadata using the Explorer."""
+        resp = self.get(
+            self._url('/api/explorer/storage/file/{0}'.format(file_id)),
+            expected_status_code=200)
+
+        return _flatten_vertex(resp.json()['data'])
+
 
 def _flatten_vertex(vertex_json):
     """Flatten the nested json structure returned by the Explorer."""

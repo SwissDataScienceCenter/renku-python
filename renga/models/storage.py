@@ -23,7 +23,7 @@ import requests
 
 from renga import errors
 
-from ._datastructures import Collection, Model
+from ._datastructures import Collection, LazyResponse, Model
 
 
 class Bucket(Model):
@@ -74,8 +74,7 @@ class BucketCollection(Collection):
 
     def __getitem__(self, bucket_id):
         """Find a bucket by its ``id``."""
-        # FIXME it should check the bucket existence on server
-        return Bucket(
+        return self.Meta.model(
             self._client.api.get_bucket(bucket_id),
             client=self._client,
             collection=self)
@@ -101,7 +100,7 @@ class File(Model):
     @property
     def _properties(self):
         """The internal file properties."""
-        return self._response.get('properties', {})
+        return self._response['properties']
 
     @property
     def filename(self):
@@ -139,17 +138,16 @@ class FileCollection(Collection):
         self.bucket = bucket
         super(FileCollection, self).__init__(**kwargs)
 
-    def __getitem__(self, resource_id):
+    def __getitem__(self, file_id):
         """Return a file object."""
-        # FIXME use explorer api
         return self.Meta.model(
-            {
-                'id': resource_id,
-            }, client=self._client, collection=self)
+            self._client.api.get_file(file_id),
+            client=self._client,
+            collection=self)
 
     def __iter__(self):
         """Return all files in this bucket."""
-        return (File(f, client=self._client, collection=self)
+        return (self.Meta.model(f, client=self._client, collection=self)
                 for f in self._client.api.get_bucket_files(self.bucket.id))
 
     def open(self, file_name=None, mode='w'):
@@ -183,7 +181,10 @@ class FileCollection(Collection):
             bucket_id=self.bucket.id,
             file_name=file_name,
             request_type='create_file', )
-        return self.Meta.model(resp, client=self._client, collection=self)
+        return self.Meta.model(
+            LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
+            client=self._client,
+            collection=self)
 
     def from_url(self, url, file_name=None):
         """Create a file with data from the streamed GET response.
@@ -244,7 +245,7 @@ class FileHandle(Model):
 
         **Example**
 
-        >>> with client.buckets[1234].files[1234].open('w') as fp:
+        >>> with client.buckets[1234].files[9876].open('w') as fp:
         ...     fp.from_url('https://example.com/tests/data')
 
         """

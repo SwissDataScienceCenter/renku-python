@@ -62,3 +62,24 @@ class Collection(object):
         if not hasattr(self, '__iter__'):
             raise NotImplemented('The collection is not iterable.')
         return list(self)
+
+
+class LazyResponse(dict):
+    """Lazy load object properties."""
+
+    def __init__(self, getter, *args, **kwargs):
+        """Initialize LazyRequest."""
+        self._getter = getter
+        self._called = False
+        super(LazyResponse, self).__init__(*args, **kwargs)
+
+    def __getitem__(self, key):
+        """Implement KeyError check."""
+        try:
+            return dict.__getitem__(self, key)
+        except KeyError:
+            if not self._called:
+                self.update(**self._getter())
+                self._called = True
+                return dict.__getitem__(self, key)
+            raise
