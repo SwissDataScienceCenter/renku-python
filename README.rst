@@ -43,6 +43,13 @@ A Python library for the `Renga collaborative data science platform
 ``renga`` command or from withing Python apps - create projects, manage
 buckets, track files, run containers, etc.
 
+
+**NOTE**:
+   ``renga-python`` is the python library for renga that provides an SDK and a 
+   command-line interface (CLI). It *does not* start the Renga platform itself - 
+   for that, refer to the Renga docs on `running the platform 
+   <https://renga.readthedocs.io/en/latest/user/setup.html>`_.
+
 **This is an experimental developer preview release.**
 
 Installation
