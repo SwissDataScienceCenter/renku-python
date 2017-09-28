@@ -45,7 +45,7 @@ buckets, track files, run containers, etc.
 
 
 **NOTE**:
-   ``renga-python`` is the python library for renga that provides an SDK and a 
+   ``renga-python`` is the python library for Renga that provides an SDK and a 
    command-line interface (CLI). It *does not* start the Renga platform itself - 
    for that, refer to the Renga docs on `running the platform 
    <https://renga.readthedocs.io/en/latest/user/setup.html>`_.
