@@ -80,7 +80,7 @@ class APIClient(
 
         if endpoint is not None and endpoint.startswith('http:'):
             os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = 'FIXME'
-            warnings.warn('Using insecure trasnport protocol, use HTTPS')
+            warnings.warn('Using insecure transport protocol, use HTTPS')
 
     def _url(self, url, *args, **kwargs):
         """Format url for endpoint."""
