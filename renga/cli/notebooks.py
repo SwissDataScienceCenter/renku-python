@@ -100,7 +100,9 @@ def launch(ctx, config, engine, image, bucket, file, endpoint):
 
         context = ctx.invoke(
             create,
-            command="start-notebook.sh --NotebookApp.token={0} "
+            command="start-notebook.sh "
+            "--NotebookApp.ip='*' "
+            "--NotebookApp.token={0} "
             "--NotebookApp.contents_manager_class="
             "renga.notebook.RengaFileManager".format(notebook_token),
             ports=['8888'],
