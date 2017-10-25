@@ -24,6 +24,8 @@ from functools import update_wrapper
 import click
 import yaml
 
+from ._options import Endpoint
+
 try:
     from pathlib import Path
 except ImportError:  # pragma: no cover
@@ -39,6 +41,10 @@ APP_NAME = 'Renga'
 
 PROJECT_DIR = '.renga'
 """Project directory name."""
+
+# Register Endpoint serializer
+yaml.add_representer(Endpoint,
+                     lambda dumper, data: dumper.represent_str(str(data)))
 
 
 def config_path(path=None):
