@@ -20,11 +20,28 @@
 import click
 
 
-def default_endpoint_from_config(config):
+class Endpoint(str):
+    """Track endpoint source."""
+
+    def __new__(cls, content, default=None, project=None, option=None):
+        """Set endpoint sources."""
+        endpoint = str.__new__(cls, content)
+        endpoint.default = default
+        endpoint.project = project
+        endpoint.option = option
+        return endpoint
+
+
+def default_endpoint_from_config(config, option=None):
     """Return a default endpoint."""
     default_endpoint = config.get('core', {}).get('default')
-    return config.get('project', {}).get('core', {}).get(
+    project_endpoint = config.get('project', {}).get('core', {}).get(
         'default', default_endpoint)
+    return Endpoint(
+        option or project_endpoint or default_endpoint,
+        default=default_endpoint,
+        project=project_endpoint,
+        option=option)
 
 
 def default_endpoint(ctx, param, value):
@@ -33,14 +50,10 @@ def default_endpoint(ctx, param, value):
         return
 
     config = ctx.obj['config']
+    endpoint = default_endpoint_from_config(config, option=value)
 
-    if value is None:
-        endpoint = default_endpoint_from_config(config)
-
-        if endpoint is None:
-            raise click.UsageError('No default endpoint found.')
-    else:
-        endpoint = value
+    if endpoint is None:
+        raise click.UsageError('No default endpoint found.')
 
     return endpoint
 

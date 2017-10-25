@@ -86,7 +86,9 @@ def test_init(runner, auth_responses, projects_responses):
     result = runner.invoke(cli.cli, ['init', '--autosync'])
     assert result.exit_code == 2
 
-    result = runner.invoke(cli.cli, ['init', '--autosync', '--force'])
+    result = runner.invoke(cli.cli, [
+        'init', '--autosync', '--force', '--endpoint', 'https://example.com'
+    ])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.renga'))
 

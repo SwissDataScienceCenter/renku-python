@@ -67,6 +67,9 @@ def init(config, directory, autosync, name, force, endpoint):
     project_config['core'].setdefault('generated',
                                       datetime.datetime.utcnow().isoformat())
 
+    if endpoint.option is not None:
+        project_config['core']['default'] = endpoint
+
     if autosync:
         client = from_config(config, endpoint=endpoint)
         project = client.projects.create(name=name)
