@@ -19,7 +19,10 @@
 notifications:
   email: false
 
-sudo: false
+sudo: required
+
+services:
+  - docker
 
 language: python
 
