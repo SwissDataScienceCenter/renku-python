@@ -27,8 +27,8 @@ from ._datastructures import Collection, Model
 from .storage import File
 
 
-class InputCollection(Collection):
-    """Represent inputs attached to a context."""
+class SlotCollection(Collection):
+    """Represent input and output slots attached to a context."""
 
     class Meta:
         """Information about individual inputs."""
@@ -37,17 +37,27 @@ class InputCollection(Collection):
 
         headers = ('id', 'filename')
 
-    def __init__(self, names, **kwargs):
+    @classmethod
+    def _from_labels(cls, labels, prefix='renga.context.inputs.', **kwargs):
+        """Build the collection from labels."""
+        names = {
+            key[len(prefix):]: value
+            for key, value in labels.items() if key.startswith(prefix)
+        }
+        return cls(names, **kwargs)
+
+    def __init__(self, names, env_tpl=None, **kwargs):
         """Initialize collection of context inputs."""
         self._names = names
-        super(InputCollection, self).__init__(**kwargs)
+        self._env_tpl = env_tpl or 'RENGA_CONTEXT_INPUTS_{0}'
+        super(SlotCollection, self).__init__(**kwargs)
 
     def __getitem__(self, name):
         """Return a file object."""
         file_id = self._names[name]
         if file_id is None:
             env = getattr(self._client, '_environment', os.environ)
-            file_id = env['RENGA_CONTEXT_INPUTS_{0}'.format(name.upper())]
+            file_id = env[self._env_tpl.format(name.upper())]
 
         return self.Meta.model(
             self._client.api.get_file(file_id),
@@ -75,13 +85,16 @@ class Context(Model):
     @property
     def inputs(self):
         """Return the context input objects."""
-        label_prefix = 'renga.context.inputs.'
-        names = {
-            key[len(label_prefix):]: value
-            for key, value in self.labels.items()
-            if key.startswith(label_prefix)
-        }
-        return InputCollection(names, client=self._client)
+        return SlotCollection._from_labels(self.labels, client=self._client)
+
+    @property
+    def outputs(self):
+        """Return the context output objects."""
+        return SlotCollection._from_labels(
+            self.labels,
+            prefix='renga.context.outputs.',
+            env_tpl='RENGA_CONTEXT_OUTPUTS_{0}',
+            client=self._client)
 
     @property
     def image(self):

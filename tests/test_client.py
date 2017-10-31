@@ -87,9 +87,15 @@ def test_client_contexts(renga_client, deployer_responses, storage_responses,
     with pytest.raises(KeyError):
         context.inputs['no_default']
 
-    monkeypatch.setenv('RENGA_CONTEXT_INPUTS_UNSET', '9876')
+    with pytest.raises(KeyError):
+        context.outputs['result']
+
+    monkeypatch.setenv('RENGA_CONTEXT_INPUTS_NO_DEFAULT', '9876')
     assert context.inputs['no_default'].id == 9876
     assert context.inputs['with_default'].id == 9876
+
+    monkeypatch.setenv('RENGA_CONTEXT_OUTPUTS_RESULT', '9876')
+    assert context.outputs['result'].id == 9876
 
     assert context.id == renga_client.contexts['abcd'].id
     assert context.id == renga_client.current_context.id

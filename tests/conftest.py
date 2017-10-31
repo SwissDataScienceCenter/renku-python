@@ -228,6 +228,7 @@ def deployer_responses(auth_responses, renga_client):
             'labels': [
                 'renga.context.inputs.no_default',
                 'renga.context.inputs.with_default=9876',
+                'renga.context.outputs.result',
             ],
         }
     }
