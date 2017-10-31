@@ -17,11 +17,42 @@
 # limitations under the License.
 """Model objects representing contexts and executions."""
 
+import os
+
 from werkzeug.datastructures import MultiDict
 
 from renga.errors import APIError
 
 from ._datastructures import Collection, Model
+from .storage import File
+
+
+class InputCollection(Collection):
+    """Represent inputs attached to a context."""
+
+    class Meta:
+        """Information about individual inputs."""
+
+        model = File
+
+        headers = ('id', 'filename')
+
+    def __init__(self, names, **kwargs):
+        """Initialize collection of context inputs."""
+        self._names = names
+        super(InputCollection, self).__init__(**kwargs)
+
+    def __getitem__(self, name):
+        """Return a file object."""
+        file_id = self._names[name]
+        if file_id is None:
+            env = getattr(self._client, '_environment', os.environ)
+            file_id = env['RENGA_CONTEXT_INPUTS_{0}'.format(name.upper())]
+
+        return self.Meta.model(
+            self._client.api.get_file(file_id),
+            client=self._client,
+            collection=self)
 
 
 class Context(Model):
@@ -40,6 +71,17 @@ class Context(Model):
     def labels(self):
         """Return the context labels."""
         return _dict_from_labels(self.spec.get('labels', []))
+
+    @property
+    def inputs(self):
+        """Return the context input objects."""
+        label_prefix = 'renga.context.inputs.'
+        names = {
+            key[len(label_prefix):]: value
+            for key, value in self.labels.items()
+            if key.startswith(label_prefix)
+        }
+        return InputCollection(names, client=self._client)
 
     @property
     def image(self):
@@ -182,6 +224,7 @@ class ExecutionCollection(Collection):
 
 def _dict_from_labels(labels, separator='='):
     """Create a multidict from label string."""
-    return MultiDict(((label[0].strip(), label[1].strip())
+    return MultiDict(((label[0].strip(), label[1].strip()
+                       if len(label) > 1 else None)
                       for label in (raw.split(separator, 1)
                                     for raw in labels)))

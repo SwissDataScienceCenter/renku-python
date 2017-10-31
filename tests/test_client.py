@@ -71,13 +71,28 @@ def test_client_invalid_requests(renga_client, projects_responses):
         renga_client.projects[0]
 
 
-def test_client_contexts(renga_client, deployer_responses):
+def test_client_contexts(renga_client, deployer_responses, storage_responses,
+                         monkeypatch):
     """Test client for managing contexts."""
+    monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
+
     context = renga_client.contexts.create(image='hello-world')
     assert context.id == 'abcd'
     assert context.spec['image'] == 'hello-world'
 
+    # TODO separate context.inputs to new test case
+    with pytest.raises(KeyError):
+        context.inputs['invalid']
+
+    with pytest.raises(KeyError):
+        context.inputs['no_default']
+
+    monkeypatch.setenv('RENGA_CONTEXT_INPUTS_UNSET', '9876')
+    assert context.inputs['no_default'].id == 9876
+    assert context.inputs['with_default'].id == 9876
+
     assert context.id == renga_client.contexts['abcd'].id
+    assert context.id == renga_client.current_context.id
 
     contexts = renga_client.contexts.list()
     assert contexts

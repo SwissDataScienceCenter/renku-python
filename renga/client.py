@@ -60,6 +60,7 @@ class RengaClient(object):
         endpoint = environment.get('RENGA_ENDPOINT', '')
         access_token = environment.get('RENGA_ACCESS_TOKEN')
         client = cls(endpoint=endpoint, token={'access_token': access_token})
+        client._environment = environment
 
         # FIXME temporary solution until the execution id is moved to the token
         execution_id = environment.get('RENGA_VERTEX_ID')
@@ -67,6 +68,20 @@ class RengaClient(object):
             client.api.headers['Renga-Deployer-Execution'] = execution_id
 
         return client
+
+    @property
+    def current_context(self):
+        """Return the current context as defined in the environment.
+
+        .. envvar:: RENGA_CONTEXT_ID
+
+            The context identifier used by the REST API.
+
+        See the :doc:`context object documentation <context-object>` for
+        full details.
+        """
+        env = getattr(self, '_environment', os.environ)
+        return self.contexts[env['RENGA_CONTEXT_ID']]
 
     @property
     def contexts(self):

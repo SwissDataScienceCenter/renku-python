@@ -225,6 +225,10 @@ def deployer_responses(auth_responses, renga_client):
         'identifier': 'abcd',
         'spec': {
             'image': 'hello-world',
+            'labels': [
+                'renga.context.inputs.no_default',
+                'renga.context.inputs.with_default=9876',
+            ],
         }
     }
     execution = {
