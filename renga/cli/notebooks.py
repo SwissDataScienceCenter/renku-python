@@ -158,14 +158,19 @@ def run(notebook_args):
     else:
         notebook = 'jupyter-notebook'
 
-    file_ = client.current_context.inputs['notebook']
-    click.echo(file_.filename)
-    with file_.open('r') as fp:
-        with open(file_.filename, 'wb') as code:
-            code.write(fp.read())
+    try:
+        file_ = client.current_context.inputs['notebook']
+        click.echo(file_.filename)
+        with file_.open('r') as fp:
+            with open(file_.filename, 'wb') as code:
+                code.write(fp.read())
 
-    from subprocess import call
-    cmd = [notebook, file_.filename]
+        cmd = [notebook, file_.filename]
+    except KeyError:
+        cmd = [notebook]
+
     if notebook_args:
         cmd.extend(notebook_args)
+
+    from subprocess import call
     call(cmd)
