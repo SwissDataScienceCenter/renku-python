@@ -220,9 +220,10 @@ def test_notebook_run(monkeypatch, renga_client, runner, storage_responses,
 
     monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
+    monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 
     result = runner.invoke(cli.cli, [
-        'notebooks', 'run', '--bucket', '1234', '--file', '9876', 'cat'
+        'notebooks', 'run', 'cat'
     ])
     assert result.exit_code == 0
     assert 'hello\n' in result.output

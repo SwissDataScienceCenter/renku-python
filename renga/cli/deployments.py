@@ -23,6 +23,7 @@ from renga import errors
 from renga.cli._options import option_endpoint
 
 from ..models._tabulate import tabulate
+from ..models.deployer import Context, _dict_from_labels
 from ._client import from_config
 from ._config import with_config
 
@@ -49,9 +50,11 @@ def list(config, endpoint):
     '--labels', '-l', multiple=True, help='Labels to add to the container.')
 @click.option(
     '--ports', '-p', multiple=True, help='Ports to expose in the container.')
+@click.option('--input', multiple=True, help='Named input context slots.')
+@click.option('--output', multiple=True, help='Named output context slots.')
 @option_endpoint
 @with_config
-def create(config, image, ports, command, labels, endpoint):
+def create(config, image, ports, command, labels, input, output, endpoint):
     """Create an execution context."""
     project_config = config.get('project', {})
     project_vertex_id = project_config.get('endpoints', {}).get(
@@ -59,20 +62,28 @@ def create(config, image, ports, command, labels, endpoint):
 
     client = from_config(config, endpoint=endpoint)
 
-    spec = {
-        'command': command,
-        'image': image,
-        'labels': labels or [],
-        'ports': ports or [],
-    }
+    context = Context({
+        'spec': {
+            'command': command,
+            'image': image,
+            'labels': labels or [],
+            'ports': ports or [],
+        }
+    })
+
+    for name, value in _dict_from_labels(input or []).items():
+        context.inputs[name] = value
+
+    for name, value in _dict_from_labels(output or []).items():
+        context.outputs[name] = value
 
     if project_vertex_id:
-        spec['labels'].append(
+        context.spec['labels'].append(
             'renga.project.vertex_id={0}'.format(project_vertex_id))
 
         client.api.headers['Renga-Projects-Project'] = project_vertex_id
 
-    context = client.contexts.create(spec)
+    context = client.contexts.create(context.spec)
     click.echo(context.id)
     return context
 

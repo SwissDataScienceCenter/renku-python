@@ -68,32 +68,43 @@ def list(config, all, endpoint):
 
 
 @notebooks.command()
+@click.option(
+    '--context', default=None, help='Use an existing notebook context.')
 @click.option('--engine', default='docker')
 @click.option(
     '--image',
     default='rengahub/minimal-notebook:latest',
     help='Notebook image to use.')
-@click.option('--bucket', type=int, envvar='RENGA_BUCKET_ID')
-@click.option('--file', type=int, envvar='RENGA_FILE_ID')
+@click.option('--input', multiple=True, help='Named input context slots.')
+@click.option('--output', multiple=True, help='Named output context slots.')
 @option_endpoint
 @with_config
 @click.pass_context
-def launch(ctx, config, engine, image, bucket, file, endpoint):
+def launch(ctx, config, context, engine, image, input, output, endpoint):
     """Launch a new notebook."""
     cfg = config.get('project', config)['endpoints'][endpoint]
     if ':' not in image:
         image += ':latest'
 
-    if image in cfg.get('notebooks', {}):
-        client = from_config(config, endpoint=endpoint)
-        context_id = cfg['notebooks'][image]
+    # Store defined inputs and outputs as a mapping.
+    inputs = {}
+    input = [i for i in input]
+    outputs = {}
+    output = [o for o in output]
 
-        try:
-            context = client.contexts[context_id]
-        except errors.APIError:
-            context = None
-    else:
-        context = None
+    for name, value in _dict_from_labels(input).items():
+        inputs[name] = value
+
+    if 'notebook' not in inputs:
+        input.append('notebook')
+
+    for name, value in _dict_from_labels(output).items():
+        outputs[name] = value
+    # end block of inputs and outputs handling.
+
+    if context is not None:
+        client = from_config(config, endpoint=endpoint)
+        context = client.contexts[context]
 
     if not context:
         notebook_token = hexlify(os.urandom(24)).decode('ascii')
@@ -108,26 +119,36 @@ def launch(ctx, config, engine, image, bucket, file, endpoint):
             ports=['8888'],
             image=image,
             labels=['renga.notebook.token={0}'.format(notebook_token)],
+            input=input,
+            output=output,
             endpoint=endpoint)
         cfg = ctx.obj['config'].get('project', config)['endpoints'][endpoint]
         proj_notebooks = cfg.get('notebooks', {})
         proj_notebooks[image] = context.id
         cfg['notebooks'] = proj_notebooks
 
+    environment = {}
+    context._client._environment = {}
+
+    for name, value in context.inputs._names.items():
+        if name in inputs and value != inputs[name]:
+            environment[context.inputs._env_tpl.format(name.upper())] = inputs[
+                name]
+
+    for name, value in context.outputs._names.items():
+        if name in outputs and value != outputs[name]:
+            environment[context.outputs._env_tpl.format(
+                name.upper())] = outputs[name]
+
     execution = context.run(
         engine=engine,
-        environment={
-            'RENGA_BUCKET_ID': str(bucket),
-            'RENGA_FILE_ID': str(file),
-        })
+        environment=environment, )
     click.echo(execution.url)
 
 
 @notebooks.command(context_settings={'ignore_unknown_options': True})
-@click.option('--bucket', type=int, envvar='RENGA_BUCKET_ID')
-@click.option('--file', type=int, envvar='RENGA_FILE_ID')
 @click.argument('notebook_args', nargs=-1, type=click.UNPROCESSED)
-def run(bucket, file, notebook_args):
+def run(notebook_args):
     """Open an existing Jupyter notebook."""
     client = renga.from_env()
 
@@ -137,7 +158,7 @@ def run(bucket, file, notebook_args):
     else:
         notebook = 'jupyter-notebook'
 
-    file_ = client.buckets[int(bucket)].files[int(file)]
+    file_ = client.current_context.inputs['notebook']
     click.echo(file_.filename)
     with file_.open('r') as fp:
         with open(file_.filename, 'wb') as code:

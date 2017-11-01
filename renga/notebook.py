@@ -40,11 +40,8 @@ class RengaFileManager(LargeFileManager):
         """Save a notebook to the storage service."""
         result = super(RengaFileManager, self)._save_notebook(os_path, nb)
 
-        bucket_id = os.environ.get('RENGA_BUCKET_ID')
-        file_id = os.environ.get('RENGA_FILE_ID')
-
-        with self._renga_client.buckets[int(bucket_id)].files[int(
-                file_id)].open('w') as fp:
+        with self._renga_client.current_context.inputs['notebook'].open(
+                'w') as fp:
             fp.write(nbformat.writes(nb, version=nbformat.NO_CONVERT))
 
         return result

@@ -23,14 +23,13 @@ from renga.notebook import RengaFileManager
 
 
 def test_file_manager(instance_path, renga_client, monkeypatch,
-                      storage_responses):
+                      deployer_responses, storage_responses):
     """Test file manager."""
     client = renga_client
 
     monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
-    monkeypatch.setenv('RENGA_BUCKET_ID', '1234')
-    monkeypatch.setenv('RENGA_FILE_ID', '9876')
+    monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 
     contents_manager = RengaFileManager(root_dir=instance_path)
     contents_manager._save_notebook('hello', {})

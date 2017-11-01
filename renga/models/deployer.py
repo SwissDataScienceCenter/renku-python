@@ -21,7 +21,7 @@ import os
 
 from werkzeug.datastructures import MultiDict
 
-from renga.errors import APIError
+from renga.errors import APIError, RengaException
 
 from ._datastructures import Collection, Model
 from .storage import File
@@ -37,32 +37,51 @@ class SlotCollection(Collection):
 
         headers = ('id', 'filename')
 
-    @classmethod
-    def _from_labels(cls, labels, prefix='renga.context.inputs.', **kwargs):
+    @property
+    def _names(self):
         """Build the collection from labels."""
-        names = {
-            key[len(prefix):]: value
-            for key, value in labels.items() if key.startswith(prefix)
+        return {
+            key[len(self._prefix):]: value
+            for key, value in self._context.labels.items()
+            if key.startswith(self._prefix)
         }
-        return cls(names, **kwargs)
 
-    def __init__(self, names, env_tpl=None, **kwargs):
+    def __init__(self, context, prefix=None, env_tpl=None, **kwargs):
         """Initialize collection of context inputs."""
-        self._names = names
+        self._context = context
+        self._prefix = prefix or 'renga.context.inputs.'
         self._env_tpl = env_tpl or 'RENGA_CONTEXT_INPUTS_{0}'
         super(SlotCollection, self).__init__(**kwargs)
 
+    def __contains__(self, name):
+        """Check if a name is defined."""
+        return name in self._names
+
     def __getitem__(self, name):
         """Return a file object."""
-        file_id = self._names[name]
+        env = getattr(self._client, '_environment', os.environ)
+        file_id = env.get(
+            self._env_tpl.format(name.upper()), self._names[name])
         if file_id is None:
-            env = getattr(self._client, '_environment', os.environ)
-            file_id = env[self._env_tpl.format(name.upper())]
+            raise KeyError(name)
 
         return self.Meta.model(
             self._client.api.get_file(file_id),
             client=self._client,
             collection=self)
+
+    def __setitem__(self, name, value):
+        """Set a file object reference."""
+        if name in self._names:
+            raise RengaException(
+                'Can not modify an existing slot "{0}"'.format(name))
+
+        if isinstance(value, self.Meta.model):
+            value = value.id
+
+        self._context.spec['labels'].append(
+            '{0}{1}{2}'.format(self._prefix, name, '={0}'.format(value)
+                               if value is not None else ''))
 
 
 class Context(Model):
@@ -75,23 +94,25 @@ class Context(Model):
     @property
     def spec(self):
         """Specification of the execution context."""
-        return self._response.get('spec', {})
+        self._response.setdefault('spec', {})
+        return self._response['spec']
 
     @property
     def labels(self):
         """Return the context labels."""
-        return _dict_from_labels(self.spec.get('labels', []))
+        self.spec.setdefault('labels', [])
+        return _dict_from_labels(self.spec['labels'])
 
     @property
     def inputs(self):
         """Return the context input objects."""
-        return SlotCollection._from_labels(self.labels, client=self._client)
+        return SlotCollection(self, client=self._client)
 
     @property
     def outputs(self):
         """Return the context output objects."""
-        return SlotCollection._from_labels(
-            self.labels,
+        return SlotCollection(
+            self,
             prefix='renga.context.outputs.',
             env_tpl='RENGA_CONTEXT_OUTPUTS_{0}',
             client=self._client)
@@ -187,13 +208,17 @@ class Execution(Model):
             token = self.context.labels.get('renga.notebook.token', '')
             try:
                 # FIXME use edge when defined
-                filename = self._client.buckets[int(
-                    self.environment['RENGA_BUCKET_ID'])].files[int(
-                        self.environment['RENGA_FILE_ID'])].filename
+                env = getattr(self._client, '_environment', os.environ)
+                self._client._environment = self.environment
+                filename = self._client.contexts[self.context_id].inputs[
+                    'notebook'].filename
                 filename = 'notebooks/{0}'.format(filename)
             except Exception:  # pragma: no cover
                 # TODO add logging
                 filename = ''
+            finally:
+                self._client._environment = env
+
             if token:
                 token = '?token={0}'.format(token)
             return 'http://{host}:{exposed}/{filename}{token}'.format(

@@ -226,6 +226,7 @@ def deployer_responses(auth_responses, renga_client):
         'spec': {
             'image': 'hello-world',
             'labels': [
+                'renga.context.inputs.notebook=9876',
                 'renga.context.inputs.no_default',
                 'renga.context.inputs.with_default=9876',
                 'renga.context.outputs.result',
