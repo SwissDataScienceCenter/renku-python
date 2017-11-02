@@ -220,6 +220,13 @@ def test_notebook_run(monkeypatch, renga_client, runner, storage_responses,
 
     monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
+
+    result = runner.invoke(cli.cli, [
+        'notebooks', 'run', 'echo', 'no-context'
+    ])
+    assert result.exit_code == 0
+    assert 'no-context\n' in result.output
+
     monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 
     result = runner.invoke(cli.cli, [

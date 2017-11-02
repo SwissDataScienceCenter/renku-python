@@ -20,6 +20,7 @@
 import datetime
 import json
 import os
+import sys
 from binascii import hexlify
 
 import click
@@ -172,5 +173,8 @@ def run(notebook_args):
     if notebook_args:
         cmd.extend(notebook_args)
 
-    from subprocess import call
-    call(cmd)
+    import subprocess
+    cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    for line in cmd.stdout:
+        click.echo(line, nl=False)
+    cmd.wait()
