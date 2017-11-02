@@ -97,7 +97,8 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
         inputs[name] = value
 
     if 'notebook' not in inputs:
-        input.append('notebook')
+        click.echo('Option "--input notebook[=ID]" is missing. '
+                   'The new notebook will not be tracked.')
 
     for name, value in _dict_from_labels(output).items():
         outputs[name] = value

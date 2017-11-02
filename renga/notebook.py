@@ -40,8 +40,11 @@ class RengaFileManager(LargeFileManager):
         """Save a notebook to the storage service."""
         result = super(RengaFileManager, self)._save_notebook(os_path, nb)
 
-        with self._renga_client.current_context.inputs['notebook'].open(
-                'w') as fp:
-            fp.write(nbformat.writes(nb, version=nbformat.NO_CONVERT))
+        try:
+            with self._renga_client.current_context.inputs['notebook'].open(
+                    'w') as fp:
+                fp.write(nbformat.writes(nb, version=nbformat.NO_CONVERT))
+        except KeyError:  # pragma: no cover
+            self.log.info('Notebook "{0}" is not tracked.'.format(os_path))
 
         return result
