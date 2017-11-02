@@ -19,7 +19,7 @@
 
 import pytest
 
-from renga.notebook import RengaFileManager
+from renga.notebook import RengaStorageManager
 
 
 def test_file_manager(instance_path, renga_client, monkeypatch,
@@ -31,5 +31,5 @@ def test_file_manager(instance_path, renga_client, monkeypatch,
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
     monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 
-    contents_manager = RengaFileManager(root_dir=instance_path)
-    contents_manager._save_notebook('hello', {})
+    contents_manager = RengaStorageManager()
+    contents_manager._save_notebook('current_context/inputs/notebook', {})

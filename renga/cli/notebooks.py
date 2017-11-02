@@ -96,10 +96,6 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
     for name, value in _dict_from_labels(input).items():
         inputs[name] = value
 
-    if 'notebook' not in inputs:
-        click.echo('Option "--input notebook[=ID]" is missing. '
-                   'The new notebook will not be tracked.')
-
     for name, value in _dict_from_labels(output).items():
         outputs[name] = value
     # end block of inputs and outputs handling.
@@ -117,7 +113,7 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
             "--NotebookApp.ip='*' "
             "--NotebookApp.token={0} "
             "--NotebookApp.contents_manager_class="
-            "renga.notebook.RengaFileManager".format(notebook_token),
+            "renga.notebook.RengaStorageManager".format(notebook_token),
             ports=['8888'],
             image=image,
             labels=['renga.notebook.token={0}'.format(notebook_token)],
@@ -142,40 +138,11 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
             environment[context.outputs._env_tpl.format(
                 name.upper())] = outputs[name]
 
+    if 'notebook' not in context.inputs._names:
+        click.echo('Option "--input notebook[=ID]" is missing. '
+                   'The new notebook will not be tracked.')
+
     execution = context.run(
         engine=engine,
         environment=environment, )
     click.echo(execution.url)
-
-
-@notebooks.command(context_settings={'ignore_unknown_options': True})
-@click.argument('notebook_args', nargs=-1, type=click.UNPROCESSED)
-def run(notebook_args):
-    """Open an existing Jupyter notebook."""
-    client = renga.from_env()
-
-    if notebook_args:
-        notebook = notebook_args[0]
-        notebook_args = notebook_args[1:]
-    else:
-        notebook = 'jupyter-notebook'
-
-    try:
-        file_ = client.current_context.inputs['notebook']
-        click.echo(file_.filename)
-        with file_.open('r') as fp:
-            with open(file_.filename, 'wb') as code:
-                code.write(fp.read())
-
-        cmd = [notebook, file_.filename]
-    except KeyError:
-        cmd = [notebook]
-
-    if notebook_args:
-        cmd.extend(notebook_args)
-
-    import subprocess
-    cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    for line in cmd.stdout:
-        click.echo(line, nl=False)
-    cmd.wait()

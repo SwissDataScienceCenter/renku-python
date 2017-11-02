@@ -71,10 +71,10 @@ def create(config, image, ports, command, labels, input, output, endpoint):
         }
     })
 
-    for name, value in _dict_from_labels(input or []).items():
+    for name, value in _dict_from_labels(input).items():
         context.inputs[name] = value
 
-    for name, value in _dict_from_labels(output or []).items():
+    for name, value in _dict_from_labels(output).items():
         context.outputs[name] = value
 
     if project_vertex_id:

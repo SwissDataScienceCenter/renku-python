@@ -72,7 +72,7 @@ class SlotCollection(Collection):
 
     def __setitem__(self, name, value):
         """Set a file object reference."""
-        if name in self._names:
+        if name in self:  # pragma: no cover
             raise RengaException(
                 'Can not modify an existing slot "{0}"'.format(name))
 
@@ -212,7 +212,7 @@ class Execution(Model):
                 self._client._environment = self.environment
                 filename = self._client.contexts[self.context_id].inputs[
                     'notebook'].filename
-                filename = 'notebooks/{0}'.format(filename)
+                filename = 'notebooks/current_context/inputs/notebook'
             except Exception:  # pragma: no cover
                 # TODO add logging
                 filename = ''

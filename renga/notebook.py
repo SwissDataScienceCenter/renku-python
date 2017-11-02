@@ -20,12 +20,14 @@
 from __future__ import absolute_import
 
 import codecs
+import collections
 import datetime
-import tempfile
 import os
+import tempfile
 
 import nbformat
 from notebook import notebookapp  # needed for translation setup
+from notebook.services.contents.filecheckpoints import GenericFileCheckpoints
 from notebook.services.contents.largefilemanager import LargeFileManager
 from notebook.services.contents.manager import ContentsManager
 from tornado import web
@@ -33,81 +35,151 @@ from tornado import web
 import renga
 
 
-class RengaFileManager(LargeFileManager):
-    """Upload a notebook changes to the storage service."""
-
-    def __init__(self, *args, **kwargs):
-        """Store API client."""
-        super(RengaFileManager, self).__init__(*args, **kwargs)
-        self._renga_client = renga.from_env()
-
-    def _save_notebook(self, os_path, nb):
-        """Save a notebook to the storage service."""
-        result = super(RengaFileManager, self)._save_notebook(os_path, nb)
-
-        try:
-            with self._renga_client.current_context.inputs['notebook'].open(
-                    'w') as fp:
-                fp.write(nbformat.writes(nb, version=nbformat.NO_CONVERT))
-        except KeyError:  # pragma: no cover
-            self.log.info('Notebook "{0}" is not tracked.'.format(os_path))
-
-        return result
-
-
-class RengaStorageManager(LargeFileManager):
+class RengaStorageManager(ContentsManager):  # pragma: no cover
     """Upload a notebook changes to the storage service."""
 
     def __init__(self, *args, **kwargs):
         """Store API client."""
         super(RengaStorageManager, self).__init__(*args, **kwargs)
         self._renga_client = renga.from_env()
+        self.checkpoints_kwargs['root_dir'] = '.checkpoints'
+
+    def _checkpoints_class_default(self):
+        return GenericFileCheckpoints
 
     def _save_notebook(self, path, nb):
         """Save a notebook to the storage service."""
-        print(path)
-        bucket_id, file_id = (int(i) for i in path.strip('/').split('/')[-2:])
-
-        bucket = self._renga_client.buckets[bucket_id]
-        file_ = bucket.files[file_id]
+        _, file_ = self._path_to_model(path)
 
         with file_.open('w') as fp:
             fp.write(nbformat.writes(nb, version=nbformat.NO_CONVERT))
 
-    def _bucket_to_model(self, bucket):
+    def _bucket_to_model(self, bucket, prefix=''):
         self.log.debug("_bucket_to_model: %s: %s", bucket, bucket.name)
         model = {
             'name': bucket.name,
-            'path': str(bucket.id),
-            'last_modified': datetime.datetime.utcnow(), # key.last_modified,  will be used in an HTTP header
-            'created': None, # key.last_modified,
+            'path': prefix + str(bucket.id),
+            'last_modified': datetime.datetime.utcnow(
+            ),  # key.last_modified,  will be used in an HTTP header
+            'created': None,  # key.last_modified,
             'type': 'directory',
             'content': [],
             'mimetype': None,
             'writable': bool(bucket.id),
-            'format': None,
+            'format': 'json',
         }
         return model
 
-    def _file_to_model(self, file_, bucket):
+    def _file_to_model(self, file_, prefix=''):
         self.log.debug("_file_to_model: %s: %s", file_, file_.filename)
         model = {
             'content': None,
             'name': file_.filename,
-            'path': str(bucket.id) + '/' + str(file_.id),
+            'path': prefix + str(file_.id),
             'last_modified': datetime.datetime.utcnow(),
             'created': None,
-            'type': 'notebook' if file_.filename.endswith('.ipynb') else 'file',
+            'type': 'notebook'
+            if file_.filename.endswith('.ipynb') else 'file',
             'mimetype': None,
             'writable': True,
             'format': None,
         }
         return model
 
+    def _path_to_model(self, path):
+        """Return a model based on the specified path."""
+        path = path.strip('/')
+        builder = collections.namedtuple('Path', 'id,name')
+        file_builder = collections.namedtuple('File', 'id,filename')
+
+        root = builder('', '')
+        sections = {
+            'buckets': builder('buckets', 'Buckets'),
+            'current_context': builder('current_context', 'Current Context'),
+        }
+
+        if not path:
+            model = self._bucket_to_model(root)
+            model['content'] = [
+                self._bucket_to_model(item) for item in sections.values()
+            ]
+            return model, root
+
+        items = path.split('/')
+        section, values = items[0], items[1:]
+
+        if section == 'buckets':
+            buckets = self._renga_client.buckets
+            if not values:
+                model = self._bucket_to_model(sections[section])
+                model['content'] = [
+                    self._bucket_to_model(bucket, prefix=section + '/')
+                    for bucket in buckets
+                ]
+                return model, sections[section]
+            elif len(values) == 1:
+                bucket = buckets[int(values[0])]
+                model = self._bucket_to_model(bucket, prefix=section + '/')
+                model['content'] = [
+                    self._file_to_model(
+                        file_, prefix=section + '/' + values[0] + '/')
+                    for file_ in bucket.files
+                ]
+                return model, bucket
+            elif len(values) == 2:
+                file_ = buckets[int(values[0])].files[int(values[1])]
+                model = self._file_to_model(
+                    file_, prefix=section + '/' + values[0] + '/')
+                return model, file_
+
+        elif section == 'current_context':
+            context = self._renga_client.current_context
+            context_sections = {
+                'inputs': builder('{0}/inputs'.format(section), 'Inputs'),
+                'outputs': builder('{0}/outputs'.format(section), 'Outputs'),
+            }
+            if not values:
+                model = self._bucket_to_model(
+                    sections[section], prefix=section + '/')
+                model['content'] = [
+                    self._bucket_to_model(context_section)
+                    for context_section in context_sections.values()
+                ]
+                return model, sections[section]
+            elif len(values) == 1:
+                key = values[0]
+                model = self._bucket_to_model(context_sections[key])
+                file_objects = getattr(context, key)
+                files = [file_objects[file_] for file_ in file_objects._names]
+
+                def build_file(file_key):
+                    """Build file object."""
+                    file_ = file_objects[file_key]
+                    return file_builder(file_key, '[{0}] {1}'.format(
+                        file_key, file_.filename))
+
+                model['content'] = [
+                    self._file_to_model(
+                        build_file(file_key), prefix=section + '/' + key + '/')
+                    for file_key in file_objects._names
+                ]
+                return model, context_sections[key]
+            elif len(values) == 2:
+                key = values[0]
+                file_ = getattr(context, key)[values[1]]
+                model = self._file_to_model(
+                    file_builder(values[1], file_.filename),
+                    prefix=section + '/' + key + '/')
+                return model, file_
+
+        raise ValueError(path)
+
     def is_hidden(self, path):
+        """Return true if the path is hidden."""
         return False
 
     def dir_exists(self, path):
+        """Check if the directory exists."""
         return True
         if path == '':
             return True
@@ -116,68 +188,68 @@ class RengaStorageManager(LargeFileManager):
         return path in self._renga_client.buckets
 
     def file_exists(self, path):
+        """Check if the file exists."""
         return True
 
     def exists(self, path):
+        """Check if the path exists."""
         return True
 
     def get(self, path, content=True, type=None, format=None):
         """Get buckets, files and their content."""
         self.log.debug('get: %s', locals())
 
-        if type == 'directory':
-            if path == '':
-                class Root:
-                    id = ''
-                    name = ''
+        model, obj = self._path_to_model(path)
+        if content and model['type'] == 'notebook':
+            with tempfile.NamedTemporaryFile() as t:
+                with obj.open('r') as f:
+                    import json
+                    data = json.dumps(json.loads(f.read().decode('utf-8')))
+                    # read with utf-8 encoding
+                    with codecs.open(t.name, mode='r', encoding='utf-8') as f:
+                        nb = nbformat.reads(data, as_version=4)
 
-                model = self._bucket_to_model(Root)
-                if content:
-                    model['content'] = [self._bucket_to_model(b) for b in self._renga_client.buckets]
-                    model['format'] = 'json'
-                return model
-            else:
-                path = int(path.strip('/'))
-                bucket = self._renga_client.buckets[path]
-                model = self._bucket_to_model(bucket)
-                model['content'] = [self._file_to_model(f, bucket) for f in bucket.files]
-                model['format'] = 'json'
-                return model
+            self.mark_trusted_cells(nb, path)
+            model['content'] = nb
+            model['format'] = 'json'
+            self.validate_notebook_model(model)
 
-        elif True:
-        # elif type == 'notebook' or (type is None and path.endswith('.ipynb')):
-            bucket_id, file_id = (int(i) for i in path.strip('/').split('/'))
+        return model
 
-            bucket = self._renga_client.buckets[bucket_id]
-            file_ = bucket.files[file_id]
-            model = self._file_to_model(file_, bucket)
-            if content:
-                with tempfile.NamedTemporaryFile() as t:
-                    with file_.open('r') as f:
-                        import json
-                        data = json.dumps(json.loads(f.read()))
-                        # read with utf-8 encoding
-                        with codecs.open(t.name, mode='r', encoding='utf-8') as f:
-                            nb = nbformat.reads(data, as_version=4)
+    def save(self, model, path):
+        """Save a model in the given path."""
+        self.log.debug('save: %s', locals())
 
-                self.mark_trusted_cells(nb, path)
-                model['content'] = nb
-                model['format'] = 'json'
-                self.validate_notebook_model(model)
-            return model
-        else: # assume that it is file
-            key = self._path_to_s3_key(path)
-            k = self.bucket.get_key(key)
+        if 'type' not in model:
+            raise web.HTTPError(400, u'No file type provided')
+        if 'content' not in model and model['type'] != 'directory':
+            raise web.HTTPError(400, u'No file content provided')
 
-            model = self._s3_key_file_to_model(k, timeformat=S3_TIMEFORMAT_GET_KEY)
+#        self.run_pre_save_hook(model=model, path=path)
 
-            if content:
-                try:
-                    model['content'] = k.get_contents_as_string()
-                except Exception as e:
-                    raise web.HTTPError(400, u"Unreadable file: %s %s" % (path, e))
+        if model['type'] == 'notebook':
+            nb = nbformat.from_dict(model['content'])
+            self.check_and_sign(nb, path)
+            self._save_notebook(path, nb)
+        elif model['type'] == 'file':
+            self._save_file(path, model['content'], model.get('format'))
+        elif model['type'] == 'directory':
+            pass  # keep symmetry with filemanager.save
+        else:
+            raise web.HTTPError(400,
+                                "Unhandled contents type: %s" % model['type'])
 
-                model['mimetype'] = 'text/plain'
-                model['format'] = 'text'
+        validation_message = None
+        if model['type'] == 'notebook':
+            self.validate_notebook_model(model)
+            validation_message = model.get('message', None)
 
-            return model
+        model = self.get(path, content=False, type=model['type'])
+        if validation_message:
+            model['message'] = validation_message
+
+#        self.run_post_save_hook(model=model, os_path=path)
+
+        model['content'] = None
+
+        return model
