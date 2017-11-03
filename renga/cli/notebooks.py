@@ -110,6 +110,7 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
         context = ctx.invoke(
             create,
             command="start-notebook.sh "
+            "--ContentsManager.untitled_notebook=notebook "
             "--NotebookApp.ip='*' "
             "--NotebookApp.token={0} "
             "--NotebookApp.contents_manager_class="
