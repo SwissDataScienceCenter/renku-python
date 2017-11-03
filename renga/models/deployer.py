@@ -55,7 +55,10 @@ class SlotCollection(Collection):
 
     def __contains__(self, name):
         """Check if a name is defined."""
-        return name in self._names
+        env = getattr(self._client, '_environment', os.environ)
+        file_id = env.get(
+            self._env_tpl.format(name.upper()), self._names[name])
+        return file_id is not None
 
     def __getitem__(self, name):
         """Return a file object."""
@@ -72,7 +75,7 @@ class SlotCollection(Collection):
 
     def __setitem__(self, name, value):
         """Set a file object reference."""
-        if name in self:  # pragma: no cover
+        if name in self._names:  # pragma: no cover
             raise RengaException(
                 'Can not modify an existing slot "{0}"'.format(name))
 

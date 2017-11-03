@@ -35,6 +35,51 @@ from tornado import web
 import renga
 
 
+class Path(object):
+    """Simple abstraction for path traversal."""
+
+    def __init__(self, path, obj=None, resolver=None):
+        """Store references to current path, object and getter."""
+        self._path = path
+        self._obj = obj
+        self._resolver = resolver
+
+    def __div__(self, path):
+        """Join path components."""
+        obj, resolver = self._resolver(self._obj, path)
+        return self.__class__(
+            self._path + '/' + path, obj=obj, resolver=resolver)
+
+    __truediv__ = __div__
+
+
+def _buckets_resolver(obj, path):  # pragma: no cover
+    """Resolve bucket paths."""
+    bucket = obj[int(path)]
+    return bucket, lambda obj, path: (obj.files[int(path)], None)
+
+
+def _current_context_resolver(obj, path):  # pragma: no cover
+    """Resolve current context paths."""
+    def _section_resolver(obj, path):
+        """Resolve inputs and outputs."""
+        return obj[path], None
+
+    sections = {'inputs': _section_resolver, 'outputs': _section_resolver}
+    assert path in sections
+    return getattr(obj, path), sections[path]
+
+
+def _section_resolver(obj, path):  # pragma: no cover
+    """Resolve top level paths."""
+    sections = {
+        'buckets': _buckets_resolver,
+        'current_context': _current_context_resolver
+    }
+    assert path in sections
+    return getattr(obj, path), sections[path]
+
+
 class RengaStorageManager(ContentsManager):  # pragma: no cover
     """Upload a notebook changes to the storage service."""
 
@@ -42,6 +87,7 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         """Store API client."""
         super(RengaStorageManager, self).__init__(*args, **kwargs)
         self._renga_client = renga.from_env()
+        self._path = Path('', self._renga_client, _section_resolver)
         self.checkpoints_kwargs['root_dir'] = '.checkpoints'
 
     def _checkpoints_class_default(self):
@@ -54,28 +100,129 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         with file_.open('w') as fp:
             fp.write(nbformat.writes(nb, version=nbformat.NO_CONVERT))
 
-    def _bucket_to_model(self, bucket, prefix=''):
-        self.log.debug("_bucket_to_model: %s: %s", bucket, bucket.name)
+    def _rengaclient_to_model(self, client, path=''):
+        content = [
+            {
+                'name': 'Buckets',
+                'path': 'buckets',
+                'type': 'directory'
+            },
+            {
+                'name': 'Current Context',
+                'path': 'current_context',
+                'type': 'directory'
+            },
+        ]
+        model = {
+            'name': 'Renga',
+            'path': '',
+            'last_modified': datetime.datetime.utcnow(),
+            'created': None,  # key.last_modified,
+            'content': content,
+            'type': 'directory',
+            'mimetype': None,
+            'writable': False,
+            'format': 'json',
+        }
+        return model
+
+    def _context_to_model(self, context, path=''):
+        content = [
+            {
+                'name': 'Inputs',
+                'path': '{0}/inputs'.format(path),
+                'type': 'directory'
+            },
+            {
+                'name': 'Outputs',
+                'path': '{0}/outputs'.format(path),
+                'type': 'directory'
+            },
+        ]
+        model = {
+            'name': 'Current Context',
+            'path': path,
+            'last_modified': datetime.datetime.utcnow(),
+            'created': None,  # key.last_modified,
+            'content': content,
+            'type': 'directory',
+            'mimetype': None,
+            'writable': False,
+            'format': 'json',
+        }
+        return model
+
+    def _slotcollection_to_model(self, collection, path=''):
+        name = path.split('/')[-1].capitalize()
+        content = []
+        for slot in collection._names.keys():
+            if slot in collection:
+                file_ = collection[slot]
+                content.append(
+                    self._file_to_model(
+                        file_,
+                        path=path + '/' + slot,
+                        name='[{0}] {1}'.format(slot, file_.filename)))
+
+        model = {
+            'name': name,
+            'path': path,
+            'last_modified': datetime.datetime.utcnow(),
+            'created': None,  # key.last_modified,
+            'type': 'directory',
+            'content': content,
+            'mimetype': None,
+            'writable': False,
+            'format': 'json',
+        }
+        return model
+
+    def _bucketcollection_to_model(self, collection, path=''):
+        content = [
+            self._bucket_to_model(
+                bucket, path=path + '/' + str(bucket.id), content=False)
+            for bucket in collection
+        ]
+        model = {
+            'name': 'Buckets',
+            'path': path,
+            'last_modified': datetime.datetime.utcnow(),
+            'created': None,  # key.last_modified,
+            'content': content,
+            'type': 'directory',
+            'mimetype': None,
+            'writable': False,
+            'format': 'json',
+        }
+        return model
+
+    def _bucket_to_model(self, bucket, path='', content=True):
+        if content:
+            content = [
+                self._file_to_model(file_, path=path + '/' + str(file_.id))
+                for file_ in bucket.files
+            ]
+        else:
+            content = []
         model = {
             'name': bucket.name,
-            'path': prefix + str(bucket.id),
+            'path': path,
             'last_modified': datetime.datetime.utcnow(
             ),  # key.last_modified,  will be used in an HTTP header
             'created': None,  # key.last_modified,
             'type': 'directory',
-            'content': [],
+            'content': content,
             'mimetype': None,
             'writable': bool(bucket.id),
             'format': 'json',
         }
         return model
 
-    def _file_to_model(self, file_, prefix=''):
-        self.log.debug("_file_to_model: %s: %s", file_, file_.filename)
+    def _file_to_model(self, file_, path='', name=None):
         model = {
             'content': None,
-            'name': file_.filename,
-            'path': prefix + str(file_.id),
+            'name': name or file_.filename,
+            'path': path,
             'last_modified': datetime.datetime.utcnow(),
             'created': None,
             'type': 'notebook'
@@ -89,90 +236,14 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
     def _path_to_model(self, path):
         """Return a model based on the specified path."""
         path = path.strip('/')
-        builder = collections.namedtuple('Path', 'id,name')
-        file_builder = collections.namedtuple('File', 'id,filename')
-
-        root = builder('', '')
-        sections = {
-            'buckets': builder('buckets', 'Buckets'),
-            'current_context': builder('current_context', 'Current Context'),
-        }
-
-        if not path:
-            model = self._bucket_to_model(root)
-            model['content'] = [
-                self._bucket_to_model(item) for item in sections.values()
-            ]
-            return model, root
-
-        items = path.split('/')
-        section, values = items[0], items[1:]
-
-        if section == 'buckets':
-            buckets = self._renga_client.buckets
-            if not values:
-                model = self._bucket_to_model(sections[section])
-                model['content'] = [
-                    self._bucket_to_model(bucket, prefix=section + '/')
-                    for bucket in buckets
-                ]
-                return model, sections[section]
-            elif len(values) == 1:
-                bucket = buckets[int(values[0])]
-                model = self._bucket_to_model(bucket, prefix=section + '/')
-                model['content'] = [
-                    self._file_to_model(
-                        file_, prefix=section + '/' + values[0] + '/')
-                    for file_ in bucket.files
-                ]
-                return model, bucket
-            elif len(values) == 2:
-                file_ = buckets[int(values[0])].files[int(values[1])]
-                model = self._file_to_model(
-                    file_, prefix=section + '/' + values[0] + '/')
-                return model, file_
-
-        elif section == 'current_context':
-            context = self._renga_client.current_context
-            context_sections = {
-                'inputs': builder('{0}/inputs'.format(section), 'Inputs'),
-                'outputs': builder('{0}/outputs'.format(section), 'Outputs'),
-            }
-            if not values:
-                model = self._bucket_to_model(
-                    sections[section], prefix=section + '/')
-                model['content'] = [
-                    self._bucket_to_model(context_section)
-                    for context_section in context_sections.values()
-                ]
-                return model, sections[section]
-            elif len(values) == 1:
-                key = values[0]
-                model = self._bucket_to_model(context_sections[key])
-                file_objects = getattr(context, key)
-                files = [file_objects[file_] for file_ in file_objects._names]
-
-                def build_file(file_key):
-                    """Build file object."""
-                    file_ = file_objects[file_key]
-                    return file_builder(file_key, '[{0}] {1}'.format(
-                        file_key, file_.filename))
-
-                model['content'] = [
-                    self._file_to_model(
-                        build_file(file_key), prefix=section + '/' + key + '/')
-                    for file_key in file_objects._names
-                ]
-                return model, context_sections[key]
-            elif len(values) == 2:
-                key = values[0]
-                file_ = getattr(context, key)[values[1]]
-                model = self._file_to_model(
-                    file_builder(values[1], file_.filename),
-                    prefix=section + '/' + key + '/')
-                return model, file_
-
-        raise ValueError(path)
+        resource = self._path
+        if path:
+            for section in path.split('/'):
+                resource = resource / section
+        obj = resource._obj
+        name = obj.__class__.__name__.lower()
+        return (getattr(self, '_{0}_to_model'.format(name))(obj, path=path),
+                obj)
 
     def is_hidden(self, path):
         """Return true if the path is hidden."""
