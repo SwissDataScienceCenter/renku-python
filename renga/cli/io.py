@@ -23,6 +23,7 @@ import requests
 from ..models._tabulate import tabulate
 from ._client import from_config
 from ._config import config_path, with_config
+from ._group import OptionalGroup
 from ._options import option_endpoint
 
 
@@ -41,9 +42,12 @@ def backends(config, endpoint):
         click.echo(backend)
 
 
-@storage.group()
-def buckets():
+@storage.group(cls=OptionalGroup)
+@click.argument('bucket_id', required=False)
+@click.pass_context
+def buckets(ctx, bucket_id):
     """Bucket manipulation."""
+    ctx.obj['bucket_id'] = int(bucket_id) if bucket_id else None
 
 
 @buckets.command()
@@ -69,13 +73,12 @@ def create(config, name, backend, endpoint):
 
 
 @buckets.command()
-@click.argument('bucket_id', required=False, default=None, type=int)
 @click.option(
     '-a', '--all', 'all_buckets', is_flag=True, help='Show all buckets.')
 @click.option('--sort-by', type=click.Choice(['id', 'name']), default='id')
 @option_endpoint
 @with_config
-def list(config, endpoint, bucket_id, all_buckets, sort_by):
+def list(config, endpoint, all_buckets, sort_by):
     """List buckets."""
     client = from_config(config, endpoint=endpoint)
     buckets = client.buckets
@@ -95,13 +98,40 @@ def list(config, endpoint, bucket_id, all_buckets, sort_by):
 
 
 @buckets.command()
-@click.argument('bucket_id', required=True, type=int)
 @option_endpoint
 @with_config
-def files(config, endpoint, bucket_id):
+@click.pass_context
+def files(ctx, config, endpoint):
     """List files in a bucket."""
+    bucket_id = ctx.obj.get('bucket_id')
+
+    if bucket_id is None:
+        raise click.MissingParameter(
+            'bucket has to be defined', ctx=ctx, param_hint='bucket')
+
     client = from_config(config, endpoint=endpoint)
     bucket = client.buckets[bucket_id]
 
     if bucket.files:
         click.echo(tabulate(bucket.files, headers=bucket.files.Meta.headers))
+
+
+@buckets.command()
+@click.argument('file_id', required=True, type=int)
+@click.argument('output', default='-', type=click.File('wb'))
+@option_endpoint
+@with_config
+@click.pass_context
+def download(ctx, config, file_id, output, endpoint):
+    """Download a file from a bucket."""
+    bucket_id = ctx.obj.get('bucket_id')
+
+    if bucket_id is None:
+        raise click.MissingParameter(
+            'bucket has to be defined', ctx=ctx, param_hint='bucket_id')
+
+    client = from_config(config, endpoint=endpoint)
+    file_ = client.buckets[bucket_id].files[file_id]
+
+    with file_.open('r') as fp:
+        output.write(fp.read())

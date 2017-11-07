@@ -141,14 +141,20 @@ def test_storage_buckets_in_project(runner, projects_responses,
         f.write(b'hello world')
 
     result = runner.invoke(cli.cli, ['add', 'hello'])
+    assert '9876' in result.output
     assert result.exit_code == 0
 
     result = runner.invoke(cli.cli, ['add', 'hello'])
     assert result.exit_code == 2
 
-    result = runner.invoke(cli.cli, ['io', 'buckets', 'files', '1234'])
+    result = runner.invoke(cli.cli, ['io', 'buckets', '1234', 'files'])
     assert result.exit_code == 0
     assert 'hello' in result.output
+
+    result = runner.invoke(cli.cli,
+                           ['io', 'buckets', '1234', 'download', '9876'])
+    assert result.exit_code == 0
+    assert 'hello world' in result.output
 
 
 def test_deployer(runner, deployer_responses):
