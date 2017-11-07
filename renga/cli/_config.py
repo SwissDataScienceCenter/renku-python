@@ -80,6 +80,10 @@ def with_config(f):
 
     @click.pass_context
     def new_func(ctx, *args, **kwargs):
+        # Invoked with custom config:
+        if 'config' in kwargs:
+            return ctx.invoke(f, *args, **kwargs)
+
         if ctx.obj is None:
             ctx.obj = {}
 

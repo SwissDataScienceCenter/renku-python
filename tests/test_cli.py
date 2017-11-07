@@ -93,6 +93,17 @@ def test_init(runner, auth_responses, projects_responses):
     assert os.stat(os.path.join('.renga'))
 
 
+def test_init_with_buckets(runner, auth_responses, projects_responses,
+                           storage_responses):
+    """Test project initialization with buckets."""
+    os.mkdir('test-project')
+    os.chdir('test-project')
+
+    result = runner.invoke(cli.cli, ['init', '--autosync', '--bucket'])
+    assert result.exit_code == 0
+    assert os.stat(os.path.join('.renga'))
+
+
 def test_storage_backends(runner, storage_responses):
     """Test storage backends."""
     result = runner.invoke(cli.cli, ['io', 'backends'])

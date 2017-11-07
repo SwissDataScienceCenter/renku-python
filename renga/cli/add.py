@@ -48,9 +48,8 @@ def add(config, pathspec, endpoint, bucket_id):
 
     autosync = config['project']['core']['autosync']
     if autosync:
-        bucket_id = (
-            bucket_id
-            or config['project']['endpoints'][endpoint]['default_bucket'])
+        bucket_id = bucket_id or \
+            config['project']['endpoints'][endpoint]['default_bucket']
         resource.setdefault('endpoints', {})
 
         client = from_config(config, endpoint=endpoint)

@@ -28,6 +28,7 @@ from ._client import from_config
 from ._config import create_project_config_path, get_project_config_path, \
     read_config, with_config, write_config
 from ._options import option_endpoint
+from .io import create
 
 
 def validate_name(ctx, param, value):
@@ -47,8 +48,13 @@ def validate_name(ctx, param, value):
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True)
 @option_endpoint
+@click.option(
+    '--bucket/--no-bucket',
+    default=False,
+    help='Initialize with/without new bucket')
 @with_config
-def init(config, directory, autosync, name, force, endpoint):
+@click.pass_context
+def init(ctx, config, directory, autosync, name, force, endpoint, bucket):
     """Initialize a project."""
     if not autosync:
         raise click.UsageError('You must specify the --autosync option.')
@@ -78,4 +84,15 @@ def init(config, directory, autosync, name, force, endpoint):
         project_config['endpoints'][endpoint]['vertex_id'] = project.id
 
     write_config(project_config, path=project_config_path)
+
+    if bucket:
+        config['project'] = project_config
+        ctx.invoke(
+            create.callback,
+            config=config,
+            name=name,
+            endpoint=endpoint,
+            backend='local')
+        del config['project']
+
     click.echo('Initialized empty project in {0}'.format(project_config_path))
