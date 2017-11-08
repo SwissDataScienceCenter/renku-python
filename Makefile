@@ -37,10 +37,10 @@ build/%: Dockerfile.template
 
 push-docker-images: $(ALL_STACKS:%=push/%)
 
-tag/%:
+tag/%: build/%
 	docker tag $(DOCKER_PREFIX)$(notdir $@):latest $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA)
 
-push/%: tag/% build/%
+push/%: tag/%
 	docker push $(DOCKER_PREFIX)$(notdir $@):latest
 	docker push $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA)
 
