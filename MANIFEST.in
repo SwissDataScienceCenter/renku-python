@@ -29,7 +29,8 @@ include *.sh
 include *.txt
 include .coveragerc
 include LICENSE
-include Dockerfile
+include Dockerfile*
+include Makefile
 include babel.ini
 include pytest.ini
 recursive-include .github CODEOWNERS

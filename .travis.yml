@@ -72,7 +72,7 @@ deploy:
     condition: $DEPLOY = true
 - provider: script
   skip_cleanup: true
-  script: ./.travis/deploy-docker.sh
+  script: make login push-docker-images
   on:
     branch: master
     python: "3.6"

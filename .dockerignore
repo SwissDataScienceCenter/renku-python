@@ -10,8 +10,10 @@
 .eggs
 
 .dockerignore
-Dockerfile
+Dockerfile*
 docker-compose.yml
 docker-compose-dev.yml
 
 Procfile*
+
+Makefile
