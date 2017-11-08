@@ -117,6 +117,36 @@ def files(ctx, config, endpoint):
 
 
 @buckets.command()
+@click.argument('input', default='-', type=click.File('wb'))
+@click.option('--name', default=None, type=click.STRING)
+@option_endpoint
+@with_config
+@click.pass_context
+def upload(ctx, config, input, name, endpoint):
+    """Create file from an input in the bucket."""
+    bucket_id = ctx.obj.get('bucket_id')
+
+    if bucket_id is None:
+        raise click.MissingParameter(
+            'bucket has to be defined', ctx=ctx, param_hint='bucket_id')
+
+    client = from_config(config, endpoint=endpoint)
+    bucket = client.buckets[bucket_id]
+    try:
+        name = name or input.name
+    except AttributeError:
+        raise click.MissingParameter(
+            'name has to be define when using STDIN',
+            ctx=ctx,
+            param_hint='name')
+
+    with bucket.files.open(name, 'w') as fp:
+        fp.write(input.read())
+
+    click.echo(fp.id)
+
+
+@buckets.command()
 @click.argument('file_id', required=True, type=int)
 @click.argument('output', default='-', type=click.File('wb'))
 @option_endpoint

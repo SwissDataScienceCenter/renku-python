@@ -73,7 +73,7 @@ Following the above example you can create a first bucket and upload a file.
 .. code-block:: console
 
    $ export BUCKET_ID=$(renga io buckets create first-bucket)
-   $ echo "hello world" | renga io buckets $BUCKET_ID create greeting.txt
+   $ echo "hello world" | renga io buckets $BUCKET_ID upload --name greeting.txt
    9876
 
 For more information about using `renga`, refer to the :doc:`Renga command

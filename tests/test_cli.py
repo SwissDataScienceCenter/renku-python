@@ -120,6 +120,20 @@ def test_storage_buckets(runner, storage_responses):
     assert result.exit_code == 0
     assert '1234' in result.output
 
+    result = runner.invoke(
+        cli.cli, ['io', 'buckets', 'upload'], input='hello world')
+    assert result.exit_code == 2
+
+    result = runner.invoke(
+        cli.cli, ['io', 'buckets', '1234', 'upload'], input='hello world')
+    assert result.exit_code == 2
+
+    result = runner.invoke(
+        cli.cli, ['io', 'buckets', '1234', 'upload', '--name', 'hello'],
+        input='hello world')
+    assert result.exit_code == 0
+    assert '9876' in result.output
+
 
 def test_storage_buckets_in_project(runner, projects_responses,
                                     storage_responses, explorer_responses):
