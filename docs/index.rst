@@ -52,6 +52,32 @@ You can access files from a bucket:
 For more details and examples have a look at :doc:`the reference
 <client>`.
 
+Use the Renga command line
+--------------------------
+
+Interaction with the platform can also take place via the command-line
+interface (CLI).
+
+First, you need to authenticate with an existing instance of Renga platform.
+The example shows case when you have the platform running on ``localhost``.
+
+.. code-block:: console
+
+   $ renga login http://localhost
+   Username: demo
+   Password: ****
+   Access token has been stored in: ...
+
+Following the above example you can create a first bucket and upload a file.
+
+.. code-block:: console
+
+   $ export BUCKET_ID=$(renga io buckets create first-bucket)
+   $ echo "hello world" | renga io buckets $BUCKET_ID create greeting.txt
+   9876
+
+For more information about using `renga`, refer to the :doc:`Renga command
+line <renga-command-line>` instructions.
 
 .. toctree::
    :hidden:
@@ -62,6 +88,7 @@ For more details and examples have a look at :doc:`the reference
    buckets
    contexts
    api
+   cli
    contributing
    changes
    license
