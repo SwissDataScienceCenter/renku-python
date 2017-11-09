@@ -21,6 +21,7 @@ from __future__ import absolute_import, print_function
 
 import os
 
+import pytest
 import responses
 
 from renga import __version__, cli
@@ -31,6 +32,14 @@ def test_version(base_runner):
     """Test cli version."""
     result = base_runner.invoke(cli.cli, ['--version'])
     assert __version__ in result.output.split('\n')
+
+
+@pytest.mark.parametrize('arg', (('help', ), ('-h', ), ('--help', )))
+def test_help(arg, base_runner):
+    """Test cli help."""
+    result = base_runner.invoke(cli.cli, [arg])
+    assert result.exit_code == 0
+    assert 'Show this message and exit.' in result.output
 
 
 def test_config_path(base_runner):

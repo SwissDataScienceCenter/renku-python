@@ -15,7 +15,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""CLI for the Renga platform."""
+"""The base command for interacting with the Renga platform.
+
+To list available commands, either run ``renga`` with no parameters or execute
+``renga help``:
+
+.. code-block:: console
+
+    $ renga help
+    Usage: renga [OPTIONS] COMMAND [ARGS]...
+
+    Check common Renga commands used in various situations.
+
+    Options:
+      --version      Print version number.
+      --config-path  Print application config path.
+      --no-project   Run command outside project context.
+      --help         Show this message and exit.
+
+    Commands:
+      # [...]
+
+"""
 
 import click
 from click_plugins import with_plugins
@@ -46,9 +67,17 @@ from ._version import print_version
 @click.option(
     '--no-project',
     is_flag=True,
-    default=False)
+    default=False,
+    help='Run command outside project context.')
 @with_config
 @click.pass_context
 def cli(ctx, config, no_project):
     """Check common Renga commands used in various situations."""
     ctx.obj['no_project'] = no_project
+
+
+@cli.command()
+@click.pass_context
+def help(ctx):
+    """Show help message and exit."""
+    click.echo(ctx.parent.get_help())
