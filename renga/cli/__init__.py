@@ -17,6 +17,9 @@
 # limitations under the License.
 """The base command for interacting with the Renga platform.
 
+``renga`` (base command)
+------------------------
+
 To list available commands, either run ``renga`` with no parameters or execute
 ``renga help``:
 

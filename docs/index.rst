@@ -77,7 +77,7 @@ Following the above example you can create a first bucket and upload a file.
    9876
 
 For more information about using `renga`, refer to the :doc:`Renga command
-line <renga-command-line>` instructions.
+line <cli>` instructions.
 
 .. toctree::
    :hidden:

@@ -46,21 +46,19 @@ def add(config, pathspec, endpoint, bucket_id):
         'added': datetime.datetime.utcnow().isoformat(),
     }
 
-    autosync = config['project']['core']['autosync']
-    if autosync:
-        bucket_id = bucket_id or \
-            config['project']['endpoints'][endpoint]['default_bucket']
-        resource.setdefault('endpoints', {})
+    bucket_id = bucket_id or \
+        config['project']['endpoints'][endpoint]['default_bucket']
+    resource.setdefault('endpoints', {})
 
-        client = from_config(config, endpoint=endpoint)
-        bucket = client.buckets[bucket_id]
+    client = from_config(config, endpoint=endpoint)
+    bucket = client.buckets[bucket_id]
 
-        with bucket.files.open(pathspec.name, 'w') as fp:
-            fp.write(pathspec)
+    with bucket.files.open(pathspec.name, 'w') as fp:
+        fp.write(pathspec)
 
-        resource['endpoints'][endpoint] = {
-            'vertex_id': fp.id,
-        }
-        click.echo(fp.id)
+    resource['endpoints'][endpoint] = {
+        'vertex_id': fp.id,
+    }
+    click.echo(fp.id)
 
     config['project']['resources'][pathspec.name] = resource

@@ -76,27 +76,23 @@ def test_env(runner):
 
 def test_init(runner, auth_responses, projects_responses):
     """Test project initialization."""
-    # 0. must autosync
-    result = runner.invoke(cli.cli, ['init'])
-    assert result.exit_code == 2
-
     # 1. the directory must exist
-    result = runner.invoke(cli.cli, ['init', '--autosync', 'test-project'])
+    result = runner.invoke(cli.cli, ['init', 'test-project'])
     assert result.exit_code == 2
 
     # 2. test project directory creation
     os.mkdir('test-project')
-    result = runner.invoke(cli.cli, ['init', '--autosync', 'test-project'])
+    result = runner.invoke(cli.cli, ['init', 'test-project'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('test-project', '.renga'))
 
     # 3. test project init from directory
     os.chdir('test-project')
-    result = runner.invoke(cli.cli, ['init', '--autosync'])
+    result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code == 2
 
     result = runner.invoke(cli.cli, [
-        'init', '--autosync', '--force', '--endpoint', 'https://example.com'
+        'init', '--force', '--endpoint', 'https://example.com'
     ])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.renga'))
@@ -108,7 +104,7 @@ def test_init_with_buckets(runner, auth_responses, projects_responses,
     os.mkdir('test-project')
     os.chdir('test-project')
 
-    result = runner.invoke(cli.cli, ['init', '--autosync', '--bucket'])
+    result = runner.invoke(cli.cli, ['init', '--bucket'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.renga'))
 
@@ -150,7 +146,7 @@ def test_storage_buckets_in_project(runner, projects_responses,
     os.mkdir('test-project')
     os.chdir('test-project')
 
-    result = runner.invoke(cli.cli, ['init', '--autosync'])
+    result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code == 0
 
     result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'bucket1'])

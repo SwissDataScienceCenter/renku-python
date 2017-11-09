@@ -44,7 +44,7 @@ def validate_name(ctx, param, value):
     default='.',
     type=click.Path(
         exists=True, writable=True, file_okay=False, resolve_path=True))
-@click.option('--autosync', is_flag=True)
+@click.option('--autosync', is_flag=True, help='DEPRECATED')
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True)
 @option_endpoint
@@ -56,9 +56,6 @@ def validate_name(ctx, param, value):
 @click.pass_context
 def init(ctx, config, directory, autosync, name, force, endpoint, bucket):
     """Initialize a project."""
-    if not autosync:
-        raise click.UsageError('You must specify the --autosync option.')
-
     # 1. create the directory
     try:
         project_config_path = create_project_config_path(
@@ -68,7 +65,6 @@ def init(ctx, config, directory, autosync, name, force, endpoint, bucket):
 
     project_config = read_config(project_config_path)
     project_config.setdefault('core', {})
-    project_config['core']['autosync'] = autosync
     project_config['core']['name'] = name
     project_config['core'].setdefault('generated',
                                       datetime.datetime.utcnow().isoformat())
@@ -76,12 +72,11 @@ def init(ctx, config, directory, autosync, name, force, endpoint, bucket):
     if endpoint.option is not None:
         project_config['core']['default'] = endpoint
 
-    if autosync:
-        client = from_config(config, endpoint=endpoint)
-        project = client.projects.create(name=name)
-        project_config.setdefault('endpoints', {})
-        project_config['endpoints'].setdefault(endpoint, {})
-        project_config['endpoints'][endpoint]['vertex_id'] = project.id
+    client = from_config(config, endpoint=endpoint)
+    project = client.projects.create(name=name)
+    project_config.setdefault('endpoints', {})
+    project_config['endpoints'].setdefault(endpoint, {})
+    project_config['endpoints'][endpoint]['vertex_id'] = project.id
 
     write_config(project_config, path=project_config_path)
 
