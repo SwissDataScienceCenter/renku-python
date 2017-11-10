@@ -39,6 +39,21 @@ To list available commands, either run ``renga`` with no parameters or execute
     Commands:
       # [...]
 
+Configuration files
+~~~~~~~~~~~~~~~~~~~
+
+Depending on your system, you may find the configuration files used by Renga
+command line in diferent folder. By default, the following rules are used:
+
+MacOS:
+  ``~/Library/Application Support/Renga``
+Unix:
+  ``~/.config/renga``
+Windows:
+  ``C:\\Users\\<user>\\AppData\\Roaming\\Renga``
+
+If in doubt where to look for the configuration file, you can display its path
+by running ``renga --config-path``.
 """
 
 import click

@@ -25,10 +25,8 @@ Renga Command Line
 ---------------
 
 .. automodule:: renga.cli.login
-   :members:
 
 ``renga init``
 --------------
 
 .. automodule:: renga.cli.init
-   :members:
