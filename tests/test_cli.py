@@ -60,6 +60,29 @@ def test_login(base_runner, auth_responses):
     assert result.exit_code == 0
     assert 'stored' in result.output
 
+    result = runner.invoke(
+        cli.cli, [
+            'login',
+            'https://example.com',
+            '--username',
+            'demo',
+        ],
+        input='demo')
+    assert result.exit_code == 0
+    assert 'stored' in result.output
+
+    result = runner.invoke(
+        cli.cli, [
+            'login',
+            'https://example.com',
+            '--username',
+            'demo',
+            '--password-stdin',
+        ],
+        input='demo')
+    assert result.exit_code == 0
+    assert 'stored' in result.output
+
     result = runner.invoke(cli.cli, ['tokens'])
     assert result.exit_code == 0
     assert 'https://example.com: demodemo' in result.output.split('\n')
@@ -93,9 +116,8 @@ def test_init(runner, auth_responses, projects_responses):
     result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code == 2
 
-    result = runner.invoke(cli.cli, [
-        'init', '--force', '--endpoint', 'https://example.com'
-    ])
+    result = runner.invoke(
+        cli.cli, ['init', '--force', '--endpoint', 'https://example.com'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.renga'))
 

@@ -44,6 +44,22 @@ def default_endpoint_from_config(config, option=None):
         option=option)
 
 
+def password_prompt(ctx, param, value):
+    """Prompt for password if ``--password-stdin`` is not used."""
+    if ctx.resilient_parsing:
+        return
+
+    if not value:
+        if 'password_stdin' in ctx.params:
+            with click.open_file('-') as fp:
+                value = fp.read().strip('\n')
+        else:
+            value = click.prompt('Password', hide_input=True)
+
+    click.echo(value)
+    return value
+
+
 def default_endpoint(ctx, param, value):
     """Return default endpoint if specified."""
     if ctx.resilient_parsing:

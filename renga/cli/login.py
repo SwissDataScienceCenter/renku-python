@@ -35,6 +35,21 @@ the platform endpoint.
 
     The warning will be shown when unsecure protocol is used.
 
+Non-interactive login
+~~~~~~~~~~~~~~~~~~~~~
+
+In some environments, you might need to run the ``renga login`` command
+non-interactively. Using ``--password-stdin`` flag, you can provide a password
+through STDIN, which also prevents the password from ending up in the shell’s
+history, or log-files.
+
+The following example reads a password from a file, and passes it to the
+``renga login`` command using STDIN:
+
+.. code-block:: console
+
+    $ cat ~/my_secret.txt | renga login --username demo --password-stdin
+
 """
 
 import click
@@ -45,7 +60,7 @@ from renga.api.authorization import LegacyApplicationClient
 
 from ._client import from_config
 from ._config import config_path, with_config
-from ._options import argument_endpoint, default_endpoint
+from ._options import argument_endpoint, default_endpoint, password_prompt
 
 
 @click.command()
@@ -55,11 +70,13 @@ from ._options import argument_endpoint, default_endpoint
     default='{endpoint}/auth/realms/Renga/protocol/openid-connect/token')
 @click.option('--client-id', default='demo-client')
 @click.option('--username', prompt=True)
-@click.option('--password', prompt=True, hide_input=True)
+@click.option('--password', callback=password_prompt)
+@click.option('--password-stdin', is_flag=True)
 @click.option('--default', is_flag=True)
 @with_config
 @click.pass_context
-def login(ctx, config, endpoint, url, client_id, username, password, default):
+def login(ctx, config, endpoint, url, client_id, username, password,
+          password_stdin, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
     scope = ['offline_access', 'openid']
