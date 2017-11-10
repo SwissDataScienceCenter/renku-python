@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The base command for interacting with the Renga platform.
+r"""The base command for interacting with the Renga platform.
 
 ``renga`` (base command)
 ------------------------
@@ -31,10 +31,11 @@ To list available commands, either run ``renga`` with no parameters or execute
     Check common Renga commands used in various situations.
 
     Options:
-      --version      Print version number.
-      --config-path  Print application config path.
-      --no-project   Run command outside project context.
-      --help         Show this message and exit.
+      --version          Print version number.
+      --config FILENAME  Location of client config files.
+      --config-path      Print application config path.
+      --no-project       Run command outside project context.
+      -h, --help         Show this message and exit.
 
     Commands:
       # [...]
@@ -54,19 +55,31 @@ Windows:
 
 If in doubt where to look for the configuration file, you can display its path
 by running ``renga --config-path``.
+
+You can specify a different location via the ``RENGA_CONFIG`` environment
+variable or the ``--config`` command line option. If both are specified, then
+the ``--config`` option value is used. For example:
+
+.. code-block: console
+
+    $ renga --config ~/.config/renga/ login
+
+Instructs Renga to store the configuration files in your ``~/.config/renga/``
+directory when running the ``login`` command.
 """
 
 import click
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
-from ._config import print_app_config_path, with_config
+from ._config import config_load, default_config_dir, print_app_config_path
 from ._version import print_version
 
 
 @with_plugins(iter_entry_points('renga.cli'))
 @click.group(context_settings={
     'auto_envvar_prefix': 'RENGA',
+    'help_option_names': ['-h', '--help'],
 })
 @click.option(
     '--version',
@@ -75,6 +88,14 @@ from ._version import print_version
     expose_value=False,
     is_eager=True,
     help=print_version.__doc__)
+@click.option(
+    '--config',
+    envvar='RENGA_CONFIG',
+    default=default_config_dir,
+    type=click.Path(),
+    callback=config_load,
+    expose_value=False,
+    help='Location of client config files.')
 @click.option(
     '--config-path',
     is_flag=True,
@@ -87,9 +108,8 @@ from ._version import print_version
     is_flag=True,
     default=False,
     help='Run command outside project context.')
-@with_config
 @click.pass_context
-def cli(ctx, config, no_project):
+def cli(ctx, no_project):
     """Check common Renga commands used in various situations."""
     ctx.obj['no_project'] = no_project
 

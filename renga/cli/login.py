@@ -15,7 +15,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Login to the Renga platform."""
+"""Login to the Renga platform.
+
+There is no central Renga instance, hence an platform URL **must** be
+specified. Please contact your institution administrator to obtain URL of
+a running platform and necessary credentials.
+
+Login to a self-hosted platform
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to login to a self-hosted platform you can specify this by adding
+the platform endpoint.
+
+.. code-block:: console
+
+    $ renga login http://localhost/
+
+.. note::
+
+    The warning will be shown when unsecure protocol is used.
+
+"""
 
 import click
 import requests
@@ -38,7 +58,8 @@ from ._options import argument_endpoint, default_endpoint
 @click.option('--password', prompt=True, hide_input=True)
 @click.option('--default', is_flag=True)
 @with_config
-def login(config, endpoint, url, client_id, username, password, default):
+@click.pass_context
+def login(ctx, config, endpoint, url, client_id, username, password, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
     scope = ['offline_access', 'openid']
@@ -63,7 +84,8 @@ def login(config, endpoint, url, client_id, username, password, default):
         config.setdefault('core', {})
         config['core']['default'] = endpoint
 
-    click.echo('Access token has been stored in: {0}'.format(config_path()))
+    click.echo('Access token has been stored in: {0}'.format(
+        config_path(ctx.obj['config_path'])))
 
 
 @click.group(invoke_without_command=True)

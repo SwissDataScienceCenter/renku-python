@@ -47,31 +47,46 @@ yaml.add_representer(Endpoint,
                      lambda dumper, data: dumper.represent_str(str(data)))
 
 
+def default_config_dir():
+    """Return default config directory."""
+    return click.get_app_dir(APP_NAME)
+
+
 def config_path(path=None):
     """Return config path."""
     if path is None:
-        path = os.environ.get('RENGA_CONFIG', click.get_app_dir(APP_NAME))
-        try:
-            os.makedirs(path)
-        except OSError as e:  # pragma: no cover
-            if e.errno != errno.EEXIST:
-                raise
+        path = default_config_dir()
+    try:
+        os.makedirs(path)
+    except OSError as e:  # pragma: no cover
+        if e.errno != errno.EEXIST:
+            raise
     return os.path.join(path, 'config.yml')
 
 
-def read_config(path=None):
+def read_config(path):
     """Read Renga configuration."""
     try:
-        with open(config_path(path=path), 'r') as configfile:
+        with open(config_path(path), 'r') as configfile:
             return yaml.load(configfile) or {}
     except FileNotFoundError:
         return {}
 
 
-def write_config(config, path=None):
+def write_config(config, path):
     """Write Renga configuration."""
-    with open(config_path(path=path), 'w+') as configfile:
+    with open(config_path(path), 'w+') as configfile:
         yaml.dump(config, configfile, default_flow_style=False)
+
+
+def config_load(ctx, param, value):
+    """Print application config path."""
+    if ctx.obj is None:
+        ctx.obj = {}
+
+    ctx.obj['config_path'] = value
+    ctx.obj['config'] = read_config(value)
+    return value
 
 
 def with_config(f):
@@ -87,10 +102,7 @@ def with_config(f):
         if ctx.obj is None:
             ctx.obj = {}
 
-        if 'config' in ctx.obj:
-            config = ctx.obj['config']
-        else:
-            config = ctx.obj['config'] = read_config()
+        config = ctx.obj['config']
 
         project_enabled = not ctx.obj.get('no_project', False)
         project_config_path = get_project_config_path()
@@ -104,7 +116,7 @@ def with_config(f):
             if not project_config_path:
                 raise RuntimeError('Invalid config update')
             write_config(project_config, path=project_config_path)
-        write_config(config)
+        write_config(config, path=ctx.obj['config_path'])
         if project_config is not None:
             config['project'] = project_config
         return result
@@ -116,7 +128,7 @@ def print_app_config_path(ctx, param, value):
     """Print application config path."""
     if not value or ctx.resilient_parsing:
         return
-    click.echo(config_path())
+    click.echo(config_path(os.environ.get('RENGA_CONFIG')))
     ctx.exit()
 
 

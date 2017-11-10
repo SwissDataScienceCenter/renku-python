@@ -30,3 +30,8 @@ Renga Command Line
 --------------
 
 .. automodule:: renga.cli.init
+
+``renga add``
+-------------
+
+.. automodule:: renga.cli.add

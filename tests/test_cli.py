@@ -25,7 +25,7 @@ import pytest
 import responses
 
 from renga import __version__, cli
-from renga.cli._config import APP_NAME, read_config, write_config
+from renga.cli._config import read_config, write_config
 
 
 def test_version(base_runner):
@@ -42,10 +42,12 @@ def test_help(arg, base_runner):
     assert 'Show this message and exit.' in result.output
 
 
-def test_config_path(base_runner):
+def test_config_path(instance_path, base_runner):
     """Test config path."""
     result = base_runner.invoke(cli.cli, ['--config-path'])
-    assert APP_NAME.lower() in result.output.split('\n')[0].lower()
+    output = result.output.split('\n')[0]
+    assert 'config.yml' in output
+    assert instance_path in output
 
 
 def test_login(base_runner, auth_responses):
@@ -205,14 +207,14 @@ def test_deployer(runner, deployer_responses):
 
 def test_notebooks(runner, deployer_responses):
     """Test notebook launch."""
-    config = read_config()
+    config = read_config(os.environ['RENGA_CONFIG'])
     assert 'notebooks' not in config['endpoints']['https://example.com']
 
     result = runner.invoke(cli.cli, ['notebooks', 'launch'])
     assert result.exit_code == 0
 
     # The notebook context is filled
-    config = read_config()
+    config = read_config(os.environ['RENGA_CONFIG'])
     assert 'abcd' in config['endpoints']['https://example.com'][
         'notebooks'].values()
 
@@ -223,7 +225,7 @@ def test_notebooks(runner, deployer_responses):
     assert result.exit_code == 0
 
     # The notebook context is reused
-    config = read_config()
+    config = read_config(os.environ['RENGA_CONFIG'])
     assert 'my-image' not in config['endpoints']['https://example.com'][
         'notebooks']
 
@@ -233,19 +235,19 @@ def test_notebooks(runner, deployer_responses):
     ])
     assert result.exit_code == 0
 
-    config = read_config()
+    config = read_config(os.environ['RENGA_CONFIG'])
     assert 'my-image:latest' in config['endpoints']['https://example.com'][
         'notebooks']
 
     # Should fail on an unknown context
     config['endpoints']['https://example.com']['notebooks'][
         'my-image:latest'] = 'deadbeef'
-    write_config(config)
+    write_config(config, path=os.environ['RENGA_CONFIG'])
 
     result = runner.invoke(cli.cli,
                            ['notebooks', 'launch', '--image', 'my-image'])
     assert result.exit_code == 0
 
-    config = read_config()
+    config = read_config(os.environ['RENGA_CONFIG'])
     assert 'abcd' in config['endpoints']['https://example.com'][
         'notebooks'].values()
