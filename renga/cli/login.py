@@ -40,7 +40,7 @@ Non-interactive login
 
 In some environments, you might need to run the ``renga login`` command
 non-interactively. Using ``--password-stdin`` flag, you can provide a password
-through STDIN, which also prevents the password from ending up in the shell’s
+through STDIN, which also prevents the password from ending up in the shell's
 history, or log-files.
 
 The following example reads a password from a file, and passes it to the

@@ -60,11 +60,11 @@ You can specify a different location via the ``RENGA_CONFIG`` environment
 variable or the ``--config`` command line option. If both are specified, then
 the ``--config`` option value is used. For example:
 
-.. code-block: console
+.. code-block:: console
 
-    $ renga --config ~/.config/renga/ login
+    $ renga --config ~/renga/config/ login
 
-Instructs Renga to store the configuration files in your ``~/.config/renga/``
+Instructs Renga to store the configuration files in your ``~/renga/config/``
 directory when running the ``login`` command.
 """
 
