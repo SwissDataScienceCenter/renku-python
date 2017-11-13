@@ -339,3 +339,28 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         model['content'] = None
 
         return model
+
+    def rename_file(self, old_path, path):
+        """Rename object from old_path with suffix of path."""
+        old_sections = old_path.split('/')
+        sections = path.split('/')
+
+        if old_sections[:-1] != sections[:-1]:
+            raise RuntimeError('Can not move file between buckets')
+
+        resource = self._resolve_path(old_path)
+        model = resource.to_model()
+
+        if model['type'] in {'notebook', 'file'}:
+            resource._obj.filename = sections[-1]
+
+        return resource.to_model()
+
+    def update(self, model, path):
+        """Update the file's path."""
+        path = path.strip('/')
+        new_path = model.get('path', path).strip('/')
+        if path != new_path:
+            # FIXME model = self.rename(path, new_path)
+            model = self.rename_file(path, new_path)
+        return model

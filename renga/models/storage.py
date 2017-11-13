@@ -107,6 +107,18 @@ class File(Model):
         """Filename of the file."""
         return self._properties.get('resource:file_name')
 
+    @filename.setter
+    def filename(self, value):
+        """Modify the filename value."""
+        labels = self._properties.get('resource:labels', [])
+        self._client.api.storage_file_metadata_replace(self.id, {
+            'file_name': value,
+            'labels': labels,
+        })
+
+        # Update if the service replace works
+        self._properties['resource:file_name'] = value
+
     def open(self, mode='r'):
         """Return the :class:`~renga.models.storage.FileHandle` instance."""
         file_handle = {

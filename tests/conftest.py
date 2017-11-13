@@ -20,6 +20,7 @@
 from __future__ import absolute_import, print_function
 
 import io
+import json
 import os
 import shutil
 import tempfile
@@ -224,7 +225,8 @@ def deployer_responses(auth_responses, renga_client):
     context = {
         'identifier': 'abcd',
         'spec': {
-            'image': 'hello-world',
+            'image':
+            'hello-world',
             'labels': [
                 'renga.context.inputs.notebook=9876',
                 'renga.context.inputs.no_default',
@@ -485,12 +487,25 @@ def explorer_responses(auth_responses, renga_client):
         status=200,
         json=files)
 
-    rsps.add(
+    rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/file/9876'),
-        status=200,
-        json={'data': files[0],
-              'bucket': buckets[0]})
+        callback=lambda request: (200, {}, json.dumps(
+            {'data': files[0], 'bucket': buckets[0]})),
+        content_type='application/json',
+    )
+
+    def rename_file(request):
+        """Rename a file."""
+        payload = json.loads(request.body.decode('utf-8'))
+        files[0]['properties'][0]['values'][0]['value'] = payload['file_name']
+        return (200, {}, '{}')
+
+    rsps.add_callback(
+        responses.PUT,
+        renga_client.api._url('/api/storage/file/9876'),
+        callback=rename_file,
+        content_type='application/json', )
 
 
 @pytest.fixture(autouse=True)

@@ -57,6 +57,13 @@ class FilesApiMixin(object):
                   'request_type': request_type})
         return resp.json()
 
+    def storage_file_metadata_replace(self, resource_id, data):
+        """Replace resource metadata."""
+        return self.put(
+            self._url('api/storage/file/{0}', resource_id),
+            json=data,
+        ).json()
+
     def storage_io_write(self, data):
         """Write data to the file.
 

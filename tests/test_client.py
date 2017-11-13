@@ -154,3 +154,19 @@ def test_bucket_listing(renga_client, explorer_responses):
     assert buckets[1].id == 5678
 
     assert renga_client.buckets[1234].id == 1234
+
+
+def test_file_renaming(renga_client, storage_responses):
+    """Test file renaming."""
+    bucket = renga_client.buckets.create(name='world', backend='local')
+    assert bucket.id == 1234
+
+    file_ = bucket.files.create(file_name='hello')
+    assert file_.id == 9876
+    assert file_.filename == 'hello'
+
+    file_.filename = 'hello-2'
+    assert file_.filename == 'hello-2'
+
+    file_ = bucket.files[9876]
+    assert file_.filename == 'hello-2'
