@@ -15,7 +15,45 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Initialize a Renga project."""
+"""Create an empty Renga project or reinitialize an existing one.
+
+Starting a Renga project
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you have an existing directory which you want to turn into a Renga project,
+you can type:
+
+.. code-block:: console
+
+    $ cd ~/my_project
+    $ renga init
+
+or:
+
+.. code-block:: console
+
+    $ renga init ~/my_project
+
+This creates a new subdirectory named ``.renga`` that contains all the
+necessary files for managing project configuration.
+
+Storing related data
+~~~~~~~~~~~~~~~~~~~~
+
+Each newly created project can get automatically created space (bucket) for its
+related data. This feature can be controlled with ``--bucket/--no-bucket``
+flag.
+
+At this point, nothing in your project directory is tracked yet. You can
+start tracking files by running:
+
+.. code-block:: console
+
+    $ touch input.csv
+    $ renga add input.csv
+
+You can learn more about this command in following section.
+"""
 
 import datetime
 import os
