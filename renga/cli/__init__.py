@@ -51,7 +51,7 @@ MacOS:
 Unix:
   ``~/.config/renga``
 Windows:
-  ``C:\\Users\\<user>\\AppData\\Roaming\\Renga``
+  ``C:\Users\<user>\AppData\Roaming\Renga``
 
 If in doubt where to look for the configuration file, you can display its path
 by running ``renga --config-path``.
