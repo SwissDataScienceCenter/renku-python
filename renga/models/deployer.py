@@ -47,7 +47,7 @@ class SlotCollection(Collection):
         }
 
     def __init__(self, context, prefix=None, env_tpl=None, **kwargs):
-        """Initialize collection of context inputs."""
+        """Initialize a collection of context inputs."""
         self._context = context
         self._prefix = prefix or 'renga.context.inputs.'
         self._env_tpl = env_tpl or 'RENGA_CONTEXT_INPUTS_{0}'
@@ -150,10 +150,10 @@ class Context(Model):
 
 
 class ContextCollection(Collection):
-    """Represent projects on the server."""
+    """Represent a collection of contexts."""
 
     class Meta:
-        """Information about individual projects."""
+        """Information about an individual context."""
 
         model = Context
 
@@ -172,7 +172,7 @@ class ContextCollection(Collection):
             collection=self)
 
     def create(self, spec=None, **kwargs):
-        """Create new project."""
+        """Create a new context."""
         data = self._client.api.create_context(spec)
         return self.Meta.model(data, client=self._client, collection=self)
 
@@ -238,15 +238,15 @@ class Execution(Model):
                                                **kwargs)
 
     def stop(self):
-        """Stop running execution."""
+        """Stop a running execution."""
         return self._client.api.stop_execution(self.context_id, self.id)
 
 
 class ExecutionCollection(Collection):
-    """Represent projects on the server."""
+    """Represent a collection of executions."""
 
     class Meta:
-        """Information about individual projects."""
+        """Information about an individual execution."""
 
         model = Execution
 
@@ -258,7 +258,7 @@ class ExecutionCollection(Collection):
         self.id = context_id
 
     def __iter__(self):
-        """Return all contexts."""
+        """Return all executions."""
         return (self.Meta.model(data, client=self._client, collection=self)
                 for data in self._client.api.list_executions(self.id))
 

@@ -35,24 +35,14 @@ or:
     $ renga init ~/my_project
 
 This creates a new subdirectory named ``.renga`` that contains all the
-necessary files for managing project configuration.
+necessary files for managing the project configuration.
 
 Storing related data
 ~~~~~~~~~~~~~~~~~~~~
 
-Each newly created project can get automatically created space (bucket) for its
-related data. This feature can be controlled with ``--bucket/--no-bucket``
-flag.
-
-At this point, nothing in your project directory is tracked yet. You can
-start tracking files by running:
-
-.. code-block:: console
-
-    $ touch input.csv
-    $ renga add input.csv
-
-You can learn more about this command in following section.
+Each newly created project can get an automatically created storage space
+(bucket) for its related data. This feature can be controlled with the
+``--bucket/--no-bucket`` flag.
 """
 
 import datetime
@@ -89,7 +79,7 @@ def validate_name(ctx, param, value):
 @click.option(
     '--bucket/--no-bucket',
     default=False,
-    help='Initialize with/without new bucket')
+    help='Initialize with/without a new bucket')
 @with_config
 @click.pass_context
 def init(ctx, config, directory, autosync, name, force, endpoint, bucket):

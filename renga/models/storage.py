@@ -68,7 +68,7 @@ class BucketCollection(Collection):
         return self._client.api.storage_info()
 
     def create(self, name=None, backend='local', **kwargs):
-        """Create new :class:`~renga.models.storage.Bucket` instance."""
+        """Create a new :class:`~renga.models.storage.Bucket` instance."""
         data = self._client.api.create_bucket(name=name, backend=backend)
         return self.Meta.model(data, client=self._client, collection=self)
 

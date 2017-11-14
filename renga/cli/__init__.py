@@ -20,8 +20,8 @@ r"""The base command for interacting with the Renga platform.
 ``renga`` (base command)
 ------------------------
 
-To list available commands, either run ``renga`` with no parameters or execute
-``renga help``:
+To list the available commands, either run ``renga`` with no parameters or
+execute ``renga help``:
 
 .. code-block:: console
 
@@ -44,7 +44,7 @@ Configuration files
 ~~~~~~~~~~~~~~~~~~~
 
 Depending on your system, you may find the configuration files used by Renga
-command line in diferent folder. By default, the following rules are used:
+command line in a different folder. By default, the following rules are used:
 
 MacOS:
   ``~/Library/Application Support/Renga``
@@ -64,7 +64,7 @@ the ``--config`` option value is used. For example:
 
     $ renga --config ~/renga/config/ login
 
-Instructs Renga to store the configuration files in your ``~/renga/config/``
+instructs Renga to store the configuration files in your ``~/renga/config/``
 directory when running the ``login`` command.
 """
 

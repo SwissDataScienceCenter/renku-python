@@ -24,7 +24,7 @@ class Model(object):
     IDENTIFIER_KEY = 'identifier'
 
     def __init__(self, response=None, client=None, collection=None):
-        """Create representation of object on the server."""
+        """Create a representation of an object on the server."""
         self._response = response if response is not None else {}
         self._client = client
         self._collection = collection
@@ -45,20 +45,20 @@ class Collection(object):
     """Abstract response of multiple objects."""
 
     class Meta:
-        """Store information about model."""
+        """Store information about the model."""
 
         model = None
-        """Define type of object this collection represents."""
+        """Define the type of object this collection represents."""
 
         headers = ('id')
         """Which fields to use as headers when printing the collection."""
 
     def __init__(self, client=None):
-        """Create representation of objects on the server."""
+        """Create a representation of objects on the server."""
         self._client = client
 
     def list(self):
-        """Return list if the collection is iterable."""
+        """Return a list if the collection is iterable."""
         if not hasattr(self, '__iter__'):
             raise NotImplemented('The collection is not iterable.')
         return list(self)

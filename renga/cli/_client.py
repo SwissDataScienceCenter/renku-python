@@ -24,7 +24,7 @@ from ._options import default_endpoint_from_config
 
 
 def from_config(config=None, endpoint=None):
-    """Create new client for endpoint in the config.
+    """Create a new client for endpoint in the config.
 
     Use ``renga`` command-line interface to manage multiple
     configurations.

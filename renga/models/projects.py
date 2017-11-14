@@ -48,17 +48,17 @@ class ProjectCollection(Collection):
         model = Project
 
     def create(self, name=None, **kwargs):
-        """Create new project.
+        """Create a new project.
 
         :param name: The name of the project.
-        :returns: An instance of newly create project.
+        :returns: An instance of the newly create project.
         :rtype: .Project
         """
         data = self._client.api.create_project({'name': name})
         return self.Meta.model(data, client=self._client, collection=self)
 
     def __getitem__(self, project_id):
-        """Get existing project by its id."""
+        """Get an existing project by its id."""
         return self.Meta.model(
             self._client.api.get_project(project_id),
             client=self._client,

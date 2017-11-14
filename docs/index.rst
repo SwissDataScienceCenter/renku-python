@@ -58,8 +58,9 @@ Use the Renga command line
 Interaction with the platform can also take place via the command-line
 interface (CLI).
 
-First, you need to authenticate with an existing instance of Renga platform.
-The example shows case when you have the platform running on ``localhost``.
+First, you need to authenticate with an existing instance of the Renga
+platform. The example shows a case when you have the platform running on
+``localhost``.
 
 .. code-block:: console
 

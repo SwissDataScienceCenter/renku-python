@@ -15,16 +15,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Login to the Renga platform.
+"""Logging in to the Renga platform.
 
-There is no central Renga instance, hence an platform URL **must** be
-specified. Please contact your institution administrator to obtain URL of
+There is no central Renga instance, hence a platform URL **must** be
+specified. Please contact your institution administrator to obtain the URL of
 a running platform and necessary credentials.
 
-Login to a self-hosted platform
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Log in to a self-hosted platform
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you want to login to a self-hosted platform you can specify this by adding
+If you want to log in to a self-hosted platform you can specify this by adding
 the platform endpoint.
 
 .. code-block:: console
@@ -33,18 +33,18 @@ the platform endpoint.
 
 .. note::
 
-    The warning will be shown when unsecure protocol is used.
+    The warning will be shown when an unsecure protocol is used.
 
 Non-interactive login
 ~~~~~~~~~~~~~~~~~~~~~
 
 In some environments, you might need to run the ``renga login`` command
-non-interactively. Using ``--password-stdin`` flag, you can provide a password
-through STDIN, which also prevents the password from ending up in the shell's
-history, or log-files.
+non-interactively. Using the ``--password-stdin`` flag, you can provide a
+password through ``STDIN``, which also prevents the password from ending up in
+the shell's history or log-files.
 
 The following example reads a password from a file, and passes it to the
-``renga login`` command using STDIN:
+``renga login`` command using ``STDIN``:
 
 .. code-block:: console
 
