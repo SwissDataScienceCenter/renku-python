@@ -395,8 +395,11 @@ def storage_responses(auth_responses, renga_client):
         if file_id in data:
             # Store old version
             version = file_version(file_id)
-            file_versions.append(version)
             data[version['id']] = data[file_id]
+        else:
+            version = file_version(file_id // 10)
+
+        file_versions.append(version)
 
         if hasattr(request.body, 'read'):
             body = request.body.read()

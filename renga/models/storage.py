@@ -89,6 +89,11 @@ class BucketCollection(Collection):
 class FileMixin(object):
     """Generic file mixin."""
 
+    @property
+    def _properties(self):
+        """The internal file properties."""
+        return self._response['properties']
+
     def open(self, mode='r'):
         """Return the :class:`~renga.models.storage.FileHandle` instance."""
         file_handle = {
@@ -116,11 +121,6 @@ class File(Model, FileMixin):
         # FIXME make sure that bucket endpoint returns name
         return self._response.get('access_token',
                                   self._client.api.access_token)
-
-    @property
-    def _properties(self):
-        """The internal file properties."""
-        return self._response['properties']
 
     @property
     def filename(self):
@@ -294,11 +294,6 @@ class FileVersion(Model, FileMixin):
     IDENTIFIER_KEY = 'id'
 
     @property
-    def _properties(self):
-        """The internal file properties."""
-        return self._response['properties']
-
-    @property
     def filename(self):
         """Filename of the file."""
         return self._properties.get('resource:file_name',
@@ -306,10 +301,10 @@ class FileVersion(Model, FileMixin):
 
     @property
     def created(self):
-        """Filename of the file."""
+        """Return file creation date and time."""
         return datetime.utcfromtimestamp(
             int(self._properties.get('system:creation_time')) //
-            1000).isoformat()  # thank you Java
+            1000)  # thank you Java
 
 
 class FileVersionCollection(Collection):
@@ -336,5 +331,8 @@ class FileVersionCollection(Collection):
 
     def __iter__(self):
         """Return all versions of this file."""
-        return (self.Meta.model(f, client=self._client, collection=self)
-                for f in self._client.api.get_file_versions(self.file.id))
+        return iter(sorted(
+            (self.Meta.model(data, client=self._client, collection=self)
+             for data in self._client.api.get_file_versions(self.file.id)),
+            key=lambda file_: file_.created,
+            reverse=True))

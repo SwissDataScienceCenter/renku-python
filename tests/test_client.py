@@ -183,11 +183,12 @@ def test_file_versioning(renga_client, storage_responses, explorer_responses):
 
     file_ = bucket.files[file_id]
 
-    assert file_.versions.list() == []
+    assert len(file_.versions.list()) == 1
 
     with file_.open('w') as fp:
         fp.write(b'hello second')
 
     file_ = bucket.files[file_id]
+    assert len(file_.versions.list()) == 2
     assert file_.versions.list()[-1].open('r').read() == b'hello world'
     assert file_.open('r').read() == b'hello second'

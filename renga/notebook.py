@@ -179,12 +179,14 @@ class Path(object):  # pragma: no cover
 
     def _file_to_model(self, name=None):
         type_ = 'notebook' if self._obj.filename.endswith('.ipynb') else 'file'
+        # FIME use file metadata when available
+        versions = self._obj.versions.list()
         model = {
             'content': None,
             'name': name or self._obj.filename,
             'path': self._path,
-            'last_modified': datetime.datetime.utcnow(),
-            'created': None,
+            'last_modified': versions[0].created if versions else None,
+            'created': versions[-1].created if versions else None,
             'type': type_,
             'mimetype': None,
             'writable': True,
