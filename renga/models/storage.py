@@ -18,6 +18,7 @@
 """Model objects representing buckets and file objects."""
 
 from contextlib import contextmanager
+from datetime import datetime
 
 import requests
 
@@ -85,7 +86,26 @@ class BucketCollection(Collection):
                 for data in self._client.api.list_buckets())
 
 
-class File(Model):
+class FileMixin(object):
+    """Generic file mixin."""
+
+    def open(self, mode='r'):
+        """Return the :class:`~renga.models.storage.FileHandle` instance."""
+        file_handle = {
+            'resource_id': self.id,
+            'request_type': FileHandle.REQUEST_TYPE[mode],
+        }
+        token = self._client.api.storage_authorize(**file_handle)
+        client = self._client.__class__(self._client.api.endpoint, token=token)
+        if 'Renga-Deployer-Execution' in self._client.api.headers:
+            client.api.headers[
+                'Renga-Deployer-Execution'] = self._client.api.headers[
+                    'Renga-Deployer-Execution']
+
+        return FileHandle(file_handle, client=client)
+
+
+class File(Model, FileMixin):
     """Represent a file object."""
 
     IDENTIFIER_KEY = 'id'
@@ -119,20 +139,14 @@ class File(Model):
         # Update if the service replace works
         self._properties['resource:file_name'] = value
 
-    def open(self, mode='r'):
-        """Return the :class:`~renga.models.storage.FileHandle` instance."""
-        file_handle = {
-            'resource_id': self.id,
-            'request_type': FileHandle.REQUEST_TYPE[mode],
-        }
-        token = self._client.api.storage_authorize(**file_handle)
-        client = self._client.__class__(self._client.api.endpoint, token=token)
-        if 'Renga-Deployer-Execution' in self._client.api.headers:
-            client.api.headers[
-                'Renga-Deployer-Execution'] = self._client.api.headers[
-                    'Renga-Deployer-Execution']
+    @property
+    def versions(self):
+        """An object for managing file versions.
 
-        return FileHandle(file_handle, client=client)
+        :return: The collection of file versions.
+        :rtype: renga.models.storage.FileVersionCollection
+        """
+        return FileVersionCollection(self, client=self._client)
 
 
 class FileCollection(Collection):
@@ -205,7 +219,9 @@ class FileCollection(Collection):
 
         >>> file_ = client.buckets[1234].files.from_url(
         ...     'https://example.com/tests/data', file_name='hello')
-        >>> file_.open('r').read()
+        >>> file_.id
+        9876
+        >>> client.buckets[1234].files[9876].open('r').read()
         b'hello world'
 
         """
@@ -270,3 +286,55 @@ class FileHandle(Model):
             raise error.InvalidFileOperation('File is not writable.')
 
         return self._client.api.storage_io_read(*args, **kwargs)
+
+
+class FileVersion(Model, FileMixin):
+    """Represent a file version object."""
+
+    IDENTIFIER_KEY = 'id'
+
+    @property
+    def _properties(self):
+        """The internal file properties."""
+        return self._response['properties']
+
+    @property
+    def filename(self):
+        """Filename of the file."""
+        return self._properties.get('resource:file_name',
+                                    self._collection.file.filename)
+
+    @property
+    def created(self):
+        """Filename of the file."""
+        return datetime.utcfromtimestamp(
+            int(self._properties.get('system:creation_time')) //
+            1000).isoformat()  # thank you Java
+
+
+class FileVersionCollection(Collection):
+    """Represent file versions of a file stored on the server."""
+
+    class Meta:
+        """Information about individual file versions."""
+
+        model = FileVersion
+
+        headers = ('id', 'filename', 'created')
+
+    def __init__(self, file_, **kwargs):
+        """Initialize a collection of file versions."""
+        self.file = file_
+        super(FileVersionCollection, self).__init__(**kwargs)
+
+    def __getitem__(self, file_id):
+        """Return a file object."""
+        return self.Meta.model(
+            self._client.api.get_file(file_id),
+            client=self._client,
+            collection=self)
+
+    def __iter__(self):
+        """Return all versions of this file."""
+        return (self.Meta.model(f, client=self._client, collection=self)
+                for f in self._client.api.get_file_versions(self.file.id))

@@ -67,6 +67,14 @@ class ExplorerApiMixin(object):
 
         return _flatten_vertex(resp.json()['data'])
 
+    def get_file_versions(self, file_id):
+        """Retrieve file versions for the given file identifer."""
+        resp = self.get(
+            self._url(
+                '/api/explorer/storage/file/{0}/versions'.format(file_id)),
+            expected_status_code=200)
+        return [_flatten_vertex(vertex) for vertex in resp.json()]
+
 
 def _flatten_vertex(vertex_json):
     """Flatten the nested json structure returned by the Explorer."""

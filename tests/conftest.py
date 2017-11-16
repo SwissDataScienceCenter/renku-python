@@ -24,6 +24,8 @@ import json
 import os
 import shutil
 import tempfile
+import time
+import types
 
 import pytest
 import responses
@@ -320,32 +322,110 @@ def storage_responses(auth_responses, renga_client):
             'access_token': 'accessfile_9876',
         })
 
-    rsps.add(
+    def authorize_io(request):
+        """Generate access token."""
+        data = json.loads(request.body.decode('utf-8'))
+        return (200, {}, json.dumps({
+            'access_token':
+            '{request_type}_{resource_id}'.format(**data)
+        }))
+
+    rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/write'),
-        status=200,
-        json={
-            'access_token': 'writefile_9876',
-        })
+        callback=authorize_io, )
 
-    rsps.add(
+    rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/read'),
-        status=200,
-        json={
-            'access_token': 'readfile_9876',
-        })
+        callback=authorize_io, )
 
-    rsps.add(
+    data = {}
+    file_versions = []
+
+    def file_version(file_id):
+        """Return new file version metadata."""
+        id_ = file_id * 10 + file_id % 10 - 1
+        return {
+            "id":
+            id_,
+            "types": ["resource:file_version"],
+            "properties": [{
+                "key":
+                "resource:owner",
+                "data_type":
+                "string",
+                "cardinality":
+                "set",
+                "values": [{
+                    "parent": {
+                        "type": "vertex",
+                        "id": id_,
+                    },
+                    "key": "resource:owner",
+                    "data_type": "string",
+                    "value": "e144b235-793b-4e2e-bb1f-1f8baccc321f",
+                    "properties": []
+                }]
+            }, {
+                "key":
+                "system:creation_time",
+                "data_type":
+                "long",
+                "cardinality":
+                "single",
+                "values": [{
+                    "parent": {
+                        "type": "vertex",
+                        "id": id_,
+                    },
+                    "key": "system:creation_time",
+                    "data_type": "long",
+                    "value": time.time() * 1000,
+                    "properties": []
+                }]
+            }]
+        }
+
+    def io_write(request):
+        """Store file data."""
+        file_id = int(
+            request.headers['Authorization'].split(' ')[1].split('_')[-1])
+
+        if file_id in data:
+            # Store old version
+            version = file_version(file_id)
+            file_versions.append(version)
+            data[version['id']] = data[file_id]
+
+        if hasattr(request.body, 'read'):
+            body = request.body.read()
+        elif isinstance(request.body, types.GeneratorType):
+            body = b''.join(request.body)
+        else:
+            body = request.body
+
+        data[file_id] = body
+        return (201, {}, 'ok')
+
+    def io_read(request):
+        """Read file data."""
+        try:
+            file_id = int(
+                request.headers['Authorization'].split(' ')[1].split('_')[-1])
+            return (200, {}, data[file_id])
+        except KeyError:
+            return (401, {}, '')
+
+    rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/io/write'),
-        status=201, )
-    rsps.add(
+        callback=io_write, )
+    rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/storage/io/read'),
-        status=200,
-        body=b'hello world',
-        stream=True, )
+        callback=io_read, )
+    rsps._matches[-1].stream = True
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/storage/io/backends'),
@@ -357,6 +437,13 @@ def storage_responses(auth_responses, renga_client):
         status=200,
         body=b'hello world',
         stream=True, )
+
+    rsps.add_callback(
+        responses.GET,
+        renga_client.api._url('/api/explorer/storage/file/9876/versions'),
+        callback=lambda request: (200, {}, json.dumps(file_versions)),
+        content_type='application/json', )
+
     yield rsps
 
 
@@ -506,6 +593,8 @@ def explorer_responses(auth_responses, renga_client):
         renga_client.api._url('/api/storage/file/9876'),
         callback=rename_file,
         content_type='application/json', )
+
+    return rsps
 
 
 @pytest.fixture(autouse=True)

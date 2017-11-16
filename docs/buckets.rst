@@ -58,3 +58,14 @@ File handle objects
 .. autoclass:: FileHandle()
    :members:
    :inherited-members:
+
+File versions
+-------------
+
+.. autoclass:: FileVersionCollection
+   :members:
+   :inherited-members:
+
+.. autoclass:: FileVersion
+   :members:
+   :inherited-members:

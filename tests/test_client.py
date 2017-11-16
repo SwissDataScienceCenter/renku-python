@@ -170,3 +170,24 @@ def test_file_renaming(renga_client, storage_responses):
 
     file_ = bucket.files[9876]
     assert file_.filename == 'hello-2'
+
+
+def test_file_versioning(renga_client, storage_responses, explorer_responses):
+    """Test shortcut for creating file on a bucket."""
+    bucket = renga_client.buckets.create(name='world', backend='local')
+    assert bucket.id == 1234
+
+    with bucket.files.open('hello', 'w') as fp:
+        fp.write(b'hello world')
+        file_id = fp.id
+
+    file_ = bucket.files[file_id]
+
+    assert file_.versions.list() == []
+
+    with file_.open('w') as fp:
+        fp.write(b'hello second')
+
+    file_ = bucket.files[file_id]
+    assert file_.versions.list()[-1].open('r').read() == b'hello world'
+    assert file_.open('r').read() == b'hello second'
