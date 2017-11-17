@@ -142,6 +142,9 @@ def test_storage_backends(runner, storage_responses):
 
 def test_storage_buckets(runner, storage_responses):
     """Test storage buckets."""
+    result = runner.invoke(cli.cli, ['io', 'buckets'])
+    assert result.exit_code == 0
+
     result = runner.invoke(cli.cli, ['io', 'buckets', 'create'])
     assert result.exit_code == 2
 
