@@ -210,7 +210,6 @@ def _current_context_resolver(obj, path):  # pragma: no cover
         return obj[path], None
 
     sections = {'inputs': _section_resolver, 'outputs': _section_resolver}
-    assert path in sections
     return getattr(obj, path), sections[path]
 
 
@@ -220,7 +219,6 @@ def _section_resolver(obj, path):  # pragma: no cover
         'buckets': _buckets_resolver,
         'current_context': _current_context_resolver
     }
-    assert path in sections
     return getattr(obj, path), sections[path]
 
 
@@ -278,7 +276,7 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         try:
             self._resolve_path(path)
             return True
-        except (KeyError, ValueError):
+        except (AttributeError, KeyError, ValueError):
             return False
 
     def get(self, path, content=True, type=None, format=None):
@@ -313,6 +311,11 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
 
             items = path.strip('/').split('/')
             resource = self._resolve_path('/'.join(items[:-1]))
+
+            if not hasattr(resource._obj, 'files'):
+                raise web.HTTPError(
+                    403, "Notebook can only be created in a bucket.")
+
             new_file = resource._obj.files.create(items[-1])
             path = (resource / str(new_file.id))._path
 
