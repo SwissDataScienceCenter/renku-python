@@ -310,8 +310,15 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
 
         if model['type'] == 'notebook':
             nb = nbformat.from_dict(model['content'])
+
+            items = path.strip('/').split('/')
+            resource = self._resolve_path('/'.join(items[:-1]))
+            new_file = resource._obj.files.create(items[-1])
+            path = (resource / str(new_file.id))._path
+
             self.check_and_sign(nb, path)
             self._save_notebook(path, nb)
+
         elif model['type'] == 'file':
             self._save_file(path, model['content'], model.get('format'))
         elif model['type'] == 'directory':
