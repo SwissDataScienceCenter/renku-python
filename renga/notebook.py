@@ -240,7 +240,9 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         file_ = self._resolve_path(path)._obj
 
         with file_.open('w') as fp:
-            fp.write(nbformat.writes(nb, version=nbformat.NO_CONVERT))
+            fp.write(
+                nbformat.writes(nb, version=nbformat.NO_CONVERT).encode(
+                    'utf-8'))
 
     def _resolve_path(self, path):
         """Return a resource based on the specified path."""
