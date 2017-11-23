@@ -126,24 +126,12 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
         proj_notebooks[image] = context.id
         cfg['notebooks'] = proj_notebooks
 
-    environment = {}
-    context._client._environment = {}
-
-    for name, value in context.inputs._names.items():
-        if name in inputs and value != inputs[name]:
-            environment[context.inputs._env_tpl.format(name.upper())] = inputs[
-                name]
-
-    for name, value in context.outputs._names.items():
-        if name in outputs and value != outputs[name]:
-            environment[context.outputs._env_tpl.format(
-                name.upper())] = outputs[name]
-
     if 'notebook' not in context.inputs._names:
         click.echo('Option "--input notebook[=ID]" is missing. '
                    'The new notebook will not be tracked.')
 
     execution = context.run(
         engine=engine,
-        environment=environment, )
+        inputs=inputs,
+        outputs=outputs, )
     click.echo(execution.url)

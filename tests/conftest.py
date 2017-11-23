@@ -313,14 +313,22 @@ def storage_responses(auth_responses, renga_client):
             'backend': 'local',
         })
 
-    rsps.add(
+    file_ = {'id': 9876}
+
+    def create_file(request):
+        """Create new file."""
+        file_id = file_['id']
+        file_['id'] -= 1
+        return (201, {}, json.dumps({
+            'id': file_id,
+            'access_token': 'accessfile_{0}'.format(file_id),
+        }))
+
+    rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/create_file'),
-        status=201,
-        json={
-            'id': 9876,
-            'access_token': 'accessfile_9876',
-        })
+        callback=create_file,
+    )
 
     def authorize_io(request):
         """Generate access token."""

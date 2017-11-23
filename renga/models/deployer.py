@@ -131,8 +131,57 @@ class Context(Model):
         labels = self.spec.get('labels', {})
         return self.labels.get('renga.execution_context.vertex_id')
 
-    def run(self, **kwargs):
-        """Execute the context."""
+    def run(self, inputs=None, outputs=None, **kwargs):
+        """Execute the context.
+
+        Optionally provide new values for input and output slots.  Following
+        example shows how to create new execution from the current context with
+        different files attached to input and output slots.
+
+        .. code-block:: python
+
+            execution = client.current_context.run(
+                engine='docker',
+                inputs={
+                    'notebook': client.buckets[1234].file[9876].clone(),
+                },
+                outputs={
+                    'plot': client.buckets[1234].create('plot.png'),
+                },
+            )
+            print(execution.url)
+
+        """
+        inputs = inputs or {}
+        outputs = outputs or {}
+
+        # Make sure that the given environment is updated.
+        kwargs.setdefault('environment', {})
+        environment = kwargs['environment']
+
+        client_environment = getattr(self._client, '_environment', os.environ)
+
+        def update_env(environment, slots, values):
+            """Update environment with values not used in slots."""
+            for name, value in slots._names.items():
+                new_value = values.get(name, value)
+
+                # Support identifier or a File instance.
+                if isinstance(new_value, File):
+                    new_value = new_value.id
+
+                # Update only if they are different.
+                if new_value != value:
+                    environment[self.inputs._env_tpl.format(
+                        name.upper())] = new_value
+
+        try:
+            self._client._environment = {}
+            update_env(environment, self.inputs, inputs)
+            update_env(environment, self.outputs, outputs)
+        finally:
+            self._client._environment = client_environment
+
         execution = self._client.api.create_execution(self.id, **kwargs)
         execution['context_id'] = self.id
         return Execution(execution, client=self._client, collection=self)

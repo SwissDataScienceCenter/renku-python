@@ -172,6 +172,24 @@ def test_file_renaming(renga_client, storage_responses):
     assert file_.filename == 'hello-2'
 
 
+def test_file_cloning(renga_client, storage_responses):
+    """Test file cloning."""
+    bucket = renga_client.buckets.create(name='world', backend='local')
+    assert bucket.id == 1234
+
+    file_ = bucket.files.create(file_name='hello')
+
+    with file_.open('w') as fp:
+        fp.write(b'hello world')
+
+    cloned_file = file_.clone()
+
+    assert file_.id != cloned_file.id
+
+    with cloned_file.open('r') as fp:
+        assert fp.read() == b'hello world'
+
+
 def test_file_versioning(renga_client, storage_responses, explorer_responses):
     """Test shortcut for creating file on a bucket."""
     bucket = renga_client.buckets.create(name='world', backend='local')

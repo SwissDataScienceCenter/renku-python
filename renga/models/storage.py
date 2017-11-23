@@ -139,6 +139,19 @@ class File(Model, FileMixin):
         # Update if the service replace works
         self._properties['resource:file_name'] = value
 
+    def clone(self, file_name=None):
+        """Create an instance of the file for independent version tracking."""
+        if not hasattr(self._collection, 'create'):  # pragma: no cover
+            raise NotImplemented(
+                'Only files accessed via bucket can be cloned.')
+
+        with self.open('r') as source:
+            file_name = file_name or 'clone_' + self.filename
+            cloned_file = self._collection.create(file_name)
+            with cloned_file.open('w') as dest:
+                dest.write(source.read())
+        return cloned_file
+
     @property
     def versions(self):
         """An object for managing file versions.
@@ -331,8 +344,9 @@ class FileVersionCollection(Collection):
 
     def __iter__(self):
         """Return all versions of this file."""
-        return iter(sorted(
-            (self.Meta.model(data, client=self._client, collection=self)
-             for data in self._client.api.get_file_versions(self.file.id)),
-            key=lambda file_: file_.created,
-            reverse=True))
+        return iter(
+            sorted(
+                (self.Meta.model(data, client=self._client, collection=self)
+                 for data in self._client.api.get_file_versions(self.file.id)),
+                key=lambda file_: file_.created,
+                reverse=True))
