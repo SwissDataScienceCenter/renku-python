@@ -122,7 +122,7 @@ def test_client_buckets(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(file_name='hello')
+    file_ = bucket.files.create(filename='hello')
     assert file_.id == 9876
     assert file_.filename == 'hello'
 
@@ -161,7 +161,7 @@ def test_file_renaming(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(file_name='hello')
+    file_ = bucket.files.create(filename='hello')
     assert file_.id == 9876
     assert file_.filename == 'hello'
 
@@ -177,7 +177,7 @@ def test_file_cloning(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(file_name='hello')
+    file_ = bucket.files.create(filename='hello')
 
     with file_.open('w') as fp:
         fp.write(b'hello world')

@@ -139,15 +139,15 @@ class File(Model, FileMixin):
         # Update if the service replace works
         self._properties['resource:file_name'] = value
 
-    def clone(self, file_name=None):
+    def clone(self, filename=None):
         """Create an instance of the file for independent version tracking."""
         if not hasattr(self._collection, 'create'):  # pragma: no cover
             raise NotImplemented(
                 'Only files accessed via bucket can be cloned.')
 
         with self.open('r') as source:
-            file_name = file_name or 'clone_' + self.filename
-            cloned_file = self._collection.create(file_name)
+            filename = filename or 'clone_' + self.filename
+            cloned_file = self._collection.create(filename)
             with cloned_file.open('w') as dest:
                 dest.write(source.read())
         return cloned_file
@@ -189,14 +189,14 @@ class FileCollection(Collection):
         return (self.Meta.model(f, client=self._client, collection=self)
                 for f in self._client.api.get_bucket_files(self.bucket.id))
 
-    def open(self, file_name=None, mode='w'):
+    def open(self, filename=None, mode='w'):
         """Create an empty file in this bucket."""
         if mode != 'w':
             raise NotImplemented('Only mode "w" is currently supported')
 
         resp = self._client.api.create_file(
             bucket_id=self.bucket.id,
-            file_name=file_name,
+            file_name=filename,
             request_type='create_file', )
 
         access_token = resp.pop('access_token')
@@ -214,31 +214,31 @@ class FileCollection(Collection):
         }
         return FileHandle(file_handle, client=client)
 
-    def create(self, file_name=None):
+    def create(self, filename=None):
         """Create an empty file in this bucket."""
         resp = self._client.api.create_file(
             bucket_id=self.bucket.id,
-            file_name=file_name,
+            file_name=filename,
             request_type='create_file', )
         return self.Meta.model(
             LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
             client=self._client,
             collection=self)
 
-    def from_url(self, url, file_name=None):
+    def from_url(self, url, filename=None):
         """Create a file with data from the streamed GET response.
 
         **Example**
 
         >>> file_ = client.buckets[1234].files.from_url(
-        ...     'https://example.com/tests/data', file_name='hello')
+        ...     'https://example.com/tests/data', filename='hello')
         >>> file_.id
         9876
         >>> client.buckets[1234].files[9876].open('r').read()
         b'hello world'
 
         """
-        with self.open(file_name=file_name or url, mode='w') as fp:
+        with self.open(filename=filename or url, mode='w') as fp:
             fp.from_url(url)
         return self.__getitem__(fp.id)
 
