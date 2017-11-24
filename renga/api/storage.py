@@ -57,12 +57,26 @@ class FilesApiMixin(object):
                   'request_type': request_type})
         return resp.json()
 
+    def storage_copy_file(self, resource_id=None, file_name=None, **kwargs):
+        """Request a file copy."""
+        assert resource_id
+        assert file_name
+        kwargs['resource_id'] = resource_id
+        kwargs['file_name'] = file_name
+        kwargs['request_type'] = 'copy_file'
+        resp = self.post(
+            self._url('/api/storage/authorize/copy_file'),
+            json={
+                key: value
+                for key, value in kwargs.items() if value is not None
+            }, )
+        return resp.json()
+
     def storage_file_metadata_replace(self, resource_id, data):
         """Replace resource metadata."""
         return self.put(
             self._url('/api/storage/file/{0}', resource_id),
-            json=data,
-        ).json()
+            json=data, ).json()
 
     def storage_io_write(self, data):
         """Write data to the file.

@@ -139,18 +139,16 @@ class File(Model, FileMixin):
         # Update if the service replace works
         self._properties['resource:file_name'] = value
 
-    def clone(self, filename=None):
+    def clone(self, filename=None, bucket=None):
         """Create an instance of the file for independent version tracking."""
-        if not hasattr(self._collection, 'create'):  # pragma: no cover
-            raise NotImplemented(
-                'Only files accessed via bucket can be cloned.')
-
-        with self.open('r') as source:
-            filename = filename or 'clone_' + self.filename
-            cloned_file = self._collection.create(filename)
-            with cloned_file.open('w') as dest:
-                dest.write(source.read())
-        return cloned_file
+        resp = self._client.api.storage_copy_file(
+            resource_id=self.id,
+            file_name=filename or 'clone_' + self.filename,
+            bucket_id=bucket.id if isinstance(bucket, Bucket) else bucket, )
+        return self.__class__(
+            LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
+            client=self._client,
+            collection=self._collection)
 
     @property
     def versions(self):

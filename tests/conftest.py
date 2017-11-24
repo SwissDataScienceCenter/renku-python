@@ -314,6 +314,8 @@ def storage_responses(auth_responses, renga_client):
         })
 
     file_ = {'id': 9876}
+    data = {}
+    file_versions = []
 
     def create_file(request):
         """Create new file."""
@@ -324,18 +326,34 @@ def storage_responses(auth_responses, renga_client):
             'access_token': 'accessfile_{0}'.format(file_id),
         }))
 
+    def copy_file(request):
+        """Copy a file."""
+        resp = json.loads(request.body.decode('utf-8'))
+        file_id = file_['id']
+        data[file_id] = data[resp['resource_id']]
+        file_['id'] -= 1
+        return (201, {}, json.dumps({
+            'id': file_id,
+        }))
+
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/create_file'),
         callback=create_file,
     )
 
+    rsps.add_callback(
+        responses.POST,
+        renga_client.api._url('/api/storage/authorize/copy_file'),
+        callback=copy_file,
+    )
+
     def authorize_io(request):
         """Generate access token."""
-        data = json.loads(request.body.decode('utf-8'))
+        resp = json.loads(request.body.decode('utf-8'))
         return (200, {}, json.dumps({
             'access_token':
-            '{request_type}_{resource_id}'.format(**data)
+            '{request_type}_{resource_id}'.format(**resp)
         }))
 
     rsps.add_callback(
@@ -347,9 +365,6 @@ def storage_responses(auth_responses, renga_client):
         responses.POST,
         renga_client.api._url('/api/storage/authorize/read'),
         callback=authorize_io, )
-
-    data = {}
-    file_versions = []
 
     def file_version(file_id):
         """Return new file version metadata."""
