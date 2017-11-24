@@ -18,6 +18,7 @@
 """Test Python SDK client."""
 
 import pytest
+from nbformat.notebooknode import from_dict
 
 from renga.notebook import RengaStorageManager
 
@@ -26,10 +27,26 @@ def test_file_manager(instance_path, renga_client, monkeypatch,
                       deployer_responses, storage_responses):
     """Test file manager."""
     client = renga_client
+    notebook = {
+        u'cells': [{
+            u'metadata': {u'trusted': False},
+            u'cell_type': u'code',
+            u'source': u'█',
+            u'execution_count': None,
+            u'outputs': []
+        }],
+        u'metadata': {},
+        u'nbformat': 4,
+        u'nbformat_minor': 2,
+    }
 
     monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
     monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 
     contents_manager = RengaStorageManager()
-    contents_manager._save_notebook('current_context/inputs/notebook', {})
+    contents_manager._save_notebook('current_context/inputs/notebook',
+                                    from_dict(notebook))
+
+    assert contents_manager.get('current_context/inputs/notebook')[
+        'content'] == notebook

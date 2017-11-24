@@ -122,9 +122,9 @@ def test_client_buckets(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(filename='hello')
+    file_ = bucket.files.create(filename='hello.ipynb')
     assert file_.id == 9876
-    assert file_.filename == 'hello'
+    assert file_.filename == 'hello.ipynb'
 
     with file_.open('w') as fp:
         fp.write(b'hello world')
@@ -161,9 +161,9 @@ def test_file_renaming(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(filename='hello')
+    file_ = bucket.files.create(filename='hello.ipynb')
     assert file_.id == 9876
-    assert file_.filename == 'hello'
+    assert file_.filename == 'hello.ipynb'
 
     file_.filename = 'hello-2'
     assert file_.filename == 'hello-2'
@@ -177,7 +177,7 @@ def test_file_cloning(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(filename='hello')
+    file_ = bucket.files.create(filename='hello.ipynb')
 
     with file_.open('w') as fp:
         fp.write(b'hello world')
@@ -195,7 +195,7 @@ def test_file_versioning(renga_client, storage_responses, explorer_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    with bucket.files.open('hello', 'w') as fp:
+    with bucket.files.open('hello.ipynb', 'w') as fp:
         fp.write(b'hello world')
         file_id = fp.id
 

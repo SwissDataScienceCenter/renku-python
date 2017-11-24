@@ -571,7 +571,7 @@ def explorer_responses(auth_responses, renga_client):
                 },
                 'key': 'resource:file_name',
                 'data_type': 'string',
-                'value': 'hello',
+                'value': 'hello.ipynb',
                 'properties': []
             }]
         }, {
