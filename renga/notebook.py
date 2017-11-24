@@ -35,7 +35,7 @@ from tornado import web
 import renga
 
 
-class Path(object):  # pragma: no cover
+class Path(object):
     """Simple abstraction for path traversal."""
 
     def __init__(self, path, obj=None, resolver=None):
@@ -195,13 +195,13 @@ class Path(object):  # pragma: no cover
         return model
 
 
-def _buckets_resolver(obj, path):  # pragma: no cover
+def _buckets_resolver(obj, path):
     """Resolve bucket paths."""
     bucket = obj[int(path)]
     return bucket, lambda obj, path: (obj.files[int(path)], None)
 
 
-def _current_context_resolver(obj, path):  # pragma: no cover
+def _current_context_resolver(obj, path):
     """Resolve current context paths."""
     # no epty line after dosstring: D202
 
@@ -213,7 +213,7 @@ def _current_context_resolver(obj, path):  # pragma: no cover
     return getattr(obj, path), sections[path]
 
 
-def _section_resolver(obj, path):  # pragma: no cover
+def _section_resolver(obj, path):
     """Resolve top level paths."""
     sections = {
         'buckets': _buckets_resolver,
@@ -222,7 +222,7 @@ def _section_resolver(obj, path):  # pragma: no cover
     return getattr(obj, path), sections[path]
 
 
-class RengaStorageManager(ContentsManager):  # pragma: no cover
+class RengaStorageManager(ContentsManager):
     """Upload a notebook changes to the storage service."""
 
     def __init__(self, *args, **kwargs):
@@ -232,7 +232,7 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         self._path = Path('', self._renga_client, _section_resolver)
         self.checkpoints_kwargs['root_dir'] = '.checkpoints'
 
-    def _checkpoints_class_default(self):
+    def _checkpoints_class_default(self):  # pragma: no cover
         return GenericFileCheckpoints
 
     def _save_notebook(self, path, nb):
@@ -244,6 +244,19 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
                 nbformat.writes(nb, version=nbformat.NO_CONVERT).encode(
                     'utf-8'))
 
+    def _save_file(self, path, content, format=None):
+        """Save a file to the storage service."""
+        if format != 'text':
+            raise TypeError('Can not save format: {}'.format(format))
+
+        file_ = self._resolve_path(path)._obj
+
+        with file_.open('w') as fp:
+            if isinstance(content, bytes):
+                fp.write(content)
+            else:
+                fp.write(content.encode('utf-8'))
+
     def _resolve_path(self, path):
         """Return a resource based on the specified path."""
         path = path.strip('/')
@@ -253,7 +266,7 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
                 resource = resource / section
         return resource
 
-    def is_hidden(self, path):
+    def is_hidden(self, path):  # pragma: no cover
         """Return true if the path is hidden."""
         return False
 
@@ -262,7 +275,7 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         try:
             self._resolve_path(path)
             return True
-        except KeyError:
+        except (AttributeError, KeyError, ValueError):
             return False
 
     def file_exists(self, path):
@@ -273,7 +286,7 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
         except (AttributeError, KeyError, ValueError):
             return False
 
-    def exists(self, path):
+    def exists(self, path):  # pragma: no cover
         """Check if the path exists."""
         try:
             self._resolve_path(path)
@@ -294,6 +307,12 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
             model['content'] = nb
             model['format'] = 'json'
             self.validate_notebook_model(model)
+        elif content and model['type'] == 'file':
+            with resource._obj.open('r') as f:
+                model['content'] = f.read().decode('utf-8')
+            model['format'] = 'text'
+        elif not content and model['type'] == 'directory':
+            model['format'] = format
 
         return model
 
@@ -326,20 +345,44 @@ class RengaStorageManager(ContentsManager):  # pragma: no cover
             self._save_notebook(path, nb)
 
         elif model['type'] == 'file':
+            if not self.file_exists(path):
+                items = path.strip('/').split('/')
+                resource = self._resolve_path('/'.join(items[:-1]))
+
+                if not hasattr(resource._obj, 'files'):
+                    raise web.HTTPError(
+                        403, "File can only be created in a bucket.")
+
+                new_file = resource._obj.files.create(items[-1])
+                path = (resource / str(new_file.id))._path
+
             self._save_file(path, model['content'], model.get('format'))
         elif model['type'] == 'directory':
-            pass  # keep symmetry with filemanager.save
+            if not self.dir_exists(path):
+                items = path.strip('/').split('/')
+                resource = self._resolve_path('/'.join(items[:-1]))
+
+                if not hasattr(resource._obj, 'create'):
+                    raise web.HTTPError(
+                        403, "Buckets can only be created from buckets view.")
+
+                new_directory = resource._obj.create(items[-1])
+                path = (resource / str(new_directory.id))._path
+            else:
+                raise NotImplemented('Can not rename buckets.')
+
+            model['format'] = None
         else:
             raise web.HTTPError(400,
                                 "Unhandled contents type: %s" % model['type'])
 
         validation_message = None
-        if model['type'] == 'notebook':
+        if model['type'] == 'notebook':  # pragma: no cover
             self.validate_notebook_model(model)
             validation_message = model.get('message', None)
 
         model = self.get(path, content=False, type=model['type'])
-        if validation_message:
+        if validation_message:  # pragma: no cover
             model['message'] = validation_message
 
 #        self.run_post_save_hook(model=model, os_path=path)

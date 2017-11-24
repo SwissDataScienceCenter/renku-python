@@ -322,8 +322,10 @@ def storage_responses(auth_responses, renga_client):
         file_id = file_['id']
         file_['id'] -= 1
         return (201, {}, json.dumps({
-            'id': file_id,
-            'access_token': 'accessfile_{0}'.format(file_id),
+            'id':
+            file_id,
+            'access_token':
+            'accessfile_{0}'.format(file_id),
         }))
 
     def copy_file(request):
@@ -339,14 +341,12 @@ def storage_responses(auth_responses, renga_client):
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/create_file'),
-        callback=create_file,
-    )
+        callback=create_file, )
 
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/copy_file'),
-        callback=copy_file,
-    )
+        callback=copy_file, )
 
     def authorize_io(request):
         """Generate access token."""
@@ -469,6 +469,11 @@ def storage_responses(auth_responses, renga_client):
         renga_client.api._url('/api/explorer/storage/file/9876/versions'),
         callback=lambda request: (200, {}, json.dumps(file_versions)),
         content_type='application/json', )
+    rsps.add_callback(
+        responses.GET,
+        renga_client.api._url('/api/explorer/storage/file/9875/versions'),
+        callback=lambda request: (200, {}, json.dumps([])),
+        content_type='application/json', )
 
     yield rsps
 
@@ -553,58 +558,73 @@ def explorer_responses(auth_responses, renga_client):
         status=200,
         json=buckets[0])
 
-    files = [{
-        'id':
-        9876,
-        'types': ['resource:file'],
-        'properties': [{
-            'key':
-            'resource:file_name',
-            'data_type':
-            'string',
-            'cardinality':
-            'single',
-            'values': [{
-                'parent': {
-                    'type': 'vertex',
-                    'id': 9876
-                },
-                'key': 'resource:file_name',
-                'data_type': 'string',
-                'value': 'hello.ipynb',
-                'properties': []
+    def new_file(id, name):
+        """Create new file."""
+        return {
+            'id':
+            id,
+            'types': ['resource:file'],
+            'properties': [{
+                'key':
+                'resource:file_name',
+                'data_type':
+                'string',
+                'cardinality':
+                'single',
+                'values': [{
+                    'parent': {
+                        'type': 'vertex',
+                        'id': id
+                    },
+                    'key': 'resource:file_name',
+                    'data_type': 'string',
+                    'value': name,
+                    'properties': []
+                }]
+            }, {
+                'key':
+                'resource:owner',
+                'data_type':
+                'string',
+                'cardinality':
+                'set',
+                'values': [{
+                    'parent': {
+                        'type': 'vertex',
+                        'id': id
+                    },
+                    'key': 'resource:owner',
+                    'data_type': 'string',
+                    'value': 'e144b235-793b-4e2e-bb1f-1f8baccc321f',
+                    'properties': []
+                }]
             }]
-        }, {
-            'key':
-            'resource:owner',
-            'data_type':
-            'string',
-            'cardinality':
-            'set',
-            'values': [{
-                'parent': {
-                    'type': 'vertex',
-                    'id': 9876
-                },
-                'key': 'resource:owner',
-                'data_type': 'string',
-                'value': 'e144b235-793b-4e2e-bb1f-1f8baccc321f',
-                'properties': []
-            }]
-        }]
-    }]
+        }
+
+    files = [
+        new_file(9876, 'hello.ipynb'),
+        new_file(9875, 'new_notebook.ipynb'),
+    ]
 
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/bucket/1234/files'),
         status=200,
-        json=files)
+        json=files[:1])
 
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/file/9876'),
         callback=lambda request: (200, {}, json.dumps(
             {'data': files[0], 'bucket': buckets[0]})),
+        content_type='application/json',
+    )
+
+    rsps.add_callback(
+        responses.GET,
+        renga_client.api._url('/api/explorer/storage/file/9875'),
+        callback=lambda request: (200, {}, json.dumps(
+            {'data': files[1], 'bucket': buckets[0]})),
         content_type='application/json',
     )
 

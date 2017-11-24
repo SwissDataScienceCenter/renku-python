@@ -17,6 +17,7 @@
 # limitations under the License.
 """Model objects representing buckets and file objects."""
 
+import os
 from contextlib import contextmanager
 from datetime import datetime
 
@@ -68,8 +69,23 @@ class BucketCollection(Collection):
         """Return a list of the enabled backends."""
         return self._client.api.storage_info()
 
-    def create(self, name=None, backend='local', **kwargs):
-        """Create a new :class:`~renga.models.storage.Bucket` instance."""
+    def create(self, name=None, backend=None, **kwargs):
+        """Create a new :class:`~renga.models.storage.Bucket` instance.
+
+        :param name: Bucket name.
+        :param backend: Name of backend used to store data in the bucket.
+                        Defaults to the :envvar:`RENGA_STORAGE_BUCKET_BACKEND`
+                        environment variable if it is defined otherwise
+                        uses the first item from
+                        :meth:`renga.models.storage.BucketCollection.backends`
+                        property.
+
+        .. envvar:: RENGA_STORAGE_BUCKET_BACKEND
+
+            The default backend for newly created buckets.
+        """
+        backend = backend or os.environ.get('RENGA_STORAGE_BUCKET_BACKEND',
+                                            self.backends[0])
         data = self._client.api.create_bucket(name=name, backend=backend)
         return self.Meta.model(data, client=self._client, collection=self)
 
