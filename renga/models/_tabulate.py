@@ -17,12 +17,22 @@
 # limitations under the License.
 """Print a collection as a table."""
 
+from datetime import datetime
 from operator import attrgetter
 
 from tabulate import tabulate as tblte
 
 
-def tabulate(collection, headers, **kwargs):
+def format_cell(cell, datetime_fmt=None):
+    """Format a cell."""
+    if datetime_fmt and isinstance(cell, datetime):
+        return cell.strftime(datetime_fmt)
+    return cell
+
+
+def tabulate(collection, headers, datetime_fmt='%Y-%m-%d %H:%M:%S',
+             **kwargs):
     """Pretty-print a collection."""
-    table = [attrgetter(*headers)(c) for c in collection]
+    table = [(format_cell(cell, datetime_fmt=datetime_fmt)
+              for cell in attrgetter(*headers)(c)) for c in collection]
     return tblte(table, headers=[h.upper() for h in headers], **kwargs)
