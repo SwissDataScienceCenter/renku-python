@@ -287,6 +287,11 @@ def deployer_responses(auth_responses, renga_client):
         json=execution, )
     rsps.add(
         responses.GET,
+        renga_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
+        status=200,
+        json=execution, )
+    rsps.add(
+        responses.GET,
         renga_client.api._url(
             '/api/deployer/contexts/abcd/executions/efgh/logs'),
         status=200,

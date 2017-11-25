@@ -335,6 +335,13 @@ class ExecutionCollection(Collection):
         return (self.Meta.model(data, client=self._client, collection=self)
                 for data in self._client.api.list_executions(self.id))
 
+    def __getitem__(self, execution_id):
+        """Return the execution definition."""
+        return self.Meta.model(
+            self._client.api.get_execution(self.id, execution_id),
+            client=self._client,
+            collection=self)
+
 
 def _dict_from_labels(labels, separator='='):
     """Create a multidict from label string."""

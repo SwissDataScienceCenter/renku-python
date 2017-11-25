@@ -69,3 +69,10 @@ class ContextsApiMixin(object):
             self._url('/api/deployer/contexts/{0}/executions/{1}/ports',
                       context_id, execution_id))
         return resp.json()['ports']
+
+    def get_execution(self, context_id, execution_id):
+        """Retrieve an execution."""
+        return self.get(
+            self._url('/api/deployer/contexts/{0}/executions/{1}', context_id,
+                      execution_id),
+            expected_status_code=200).json()

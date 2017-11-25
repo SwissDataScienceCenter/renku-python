@@ -158,3 +158,15 @@ def ports(config, context_id, execution_id, endpoint):
     client = from_config(config, endpoint=endpoint)
     execution = client.contexts[context_id].executions[execution_id]
     click.echo(execution.ports)
+
+
+@executions.command()
+@click.argument('context_id')
+@click.argument('execution_id')
+@option_endpoint
+@with_config
+def logs(config, context_id, execution_id, endpoint):
+    """Show the port and host mapping of an execution."""
+    client = from_config(config, endpoint=endpoint)
+    execution = client.contexts[context_id].executions[execution_id]
+    click.echo(execution.logs())
