@@ -43,9 +43,24 @@ class Bucket(Model):
         """The bucket name."""
         return self._properties.get('resource:bucket_name')
 
+    @name.setter
+    def name(self, value):
+        """Modify the name."""
+        # FIXME check when the API is fixed
+        self._client.api.storage_bucket_metadata_replace(
+            self.id, {
+                'file_name': value,
+            })
+
+        # Update if the service replace works
+        self._properties['resource:bucket_name'] = value
+
     @property
     def _properties(self):
         """The internal bucket properties."""
+        if self._response.get('properties') is None:
+            self._response = self._client.api.get_bucket(self.id)
+            assert self._response['properties']
         return self._response.get('properties')
 
     @property
@@ -71,6 +86,12 @@ class BucketCollection(Collection):
 
     def create(self, name=None, backend=None, **kwargs):
         """Create a new :class:`~renga.models.storage.Bucket` instance.
+
+        **Example**
+
+        >>> bucket = client.buckets.create('bucket1')
+        >>> bucket.name
+        'bucket1'
 
         :param name: Bucket name.
         :param backend: Name of backend used to store data in the bucket.
@@ -139,27 +160,27 @@ class File(Model, FileMixin):
                                   self._client.api.access_token)
 
     @property
-    def filename(self):
-        """Filename of the file."""
+    def name(self):
+        """Name of the file."""
         return self._properties.get('resource:file_name')
 
-    @filename.setter
-    def filename(self, value):
-        """Modify the filename value."""
-        labels = self._properties.get('resource:labels', [])
+    @name.setter
+    def name(self, value):
+        """Modify the name."""
         self._client.api.storage_file_metadata_replace(self.id, {
             'file_name': value,
-            'labels': labels,
         })
 
         # Update if the service replace works
         self._properties['resource:file_name'] = value
 
-    def clone(self, filename=None, bucket=None):
+    filename = name
+
+    def clone(self, name=None, filename=None, bucket=None):
         """Create an instance of the file for independent version tracking."""
         resp = self._client.api.storage_copy_file(
             resource_id=self.id,
-            file_name=filename or 'clone_' + self.filename,
+            file_name=name or filename or 'clone_' + self.name,
             bucket_id=bucket.id if isinstance(bucket, Bucket) else bucket, )
         return self.__class__(
             LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
@@ -184,7 +205,7 @@ class FileCollection(Collection):
 
         model = File
 
-        headers = ('id', 'filename')
+        headers = ('id', 'name')
 
     def __init__(self, bucket, **kwargs):
         """Initialize collection of files in the bucket."""
@@ -203,14 +224,14 @@ class FileCollection(Collection):
         return (self.Meta.model(f, client=self._client, collection=self)
                 for f in self._client.api.get_bucket_files(self.bucket.id))
 
-    def open(self, filename=None, mode='w'):
+    def open(self, name=None, filename=None, mode='w'):
         """Create an empty file in this bucket."""
         if mode != 'w':
             raise NotImplemented('Only mode "w" is currently supported')
 
         resp = self._client.api.create_file(
             bucket_id=self.bucket.id,
-            file_name=filename,
+            file_name=name or filename,
             request_type='create_file', )
 
         access_token = resp.pop('access_token')
@@ -228,31 +249,32 @@ class FileCollection(Collection):
         }
         return FileHandle(file_handle, client=client)
 
-    def create(self, filename=None):
+    def create(self, name=None, filename=None):
         """Create an empty file in this bucket."""
         resp = self._client.api.create_file(
             bucket_id=self.bucket.id,
-            file_name=filename,
+            file_name=name or filename,
             request_type='create_file', )
         return self.Meta.model(
             LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
             client=self._client,
             collection=self)
 
-    def from_url(self, url, filename=None):
+    def from_url(self, url, name=None, filename=None):
         """Create a file with data from the streamed GET response.
 
         **Example**
 
-        >>> file_ = client.buckets[1234].files.from_url(
-        ...     'https://example.com/tests/data', filename='hello')
+        >>> bucket = client.buckets.create('bucket1')
+        >>> file_ = bucket.files.from_url(
+        ...     'https://example.com/tests/data', name='hello')
         >>> file_.id
         9876
-        >>> client.buckets[1234].files[9876].open('r').read()
+        >>> client.buckets[bucket.id].files[file_.id].open('r').read()
         b'hello world'
 
         """
-        with self.open(filename=filename or url, mode='w') as fp:
+        with self.open(name=name or filename or url, mode='w') as fp:
             fp.from_url(url)
         return self.__getitem__(fp.id)
 
@@ -300,7 +322,8 @@ class FileHandle(Model):
 
         **Example**
 
-        >>> with client.buckets[1234].files[9876].open('w') as fp:
+        >>> file_ = client.buckets.create('bucket1').files.create('data')
+        >>> with file_.open('w') as fp:
         ...     fp.from_url('https://example.com/tests/data')
 
         """
@@ -321,10 +344,12 @@ class FileVersion(Model, FileMixin):
     IDENTIFIER_KEY = 'id'
 
     @property
-    def filename(self):
-        """Filename of the file."""
+    def name(self):
+        """Name of the file."""
         return self._properties.get('resource:file_name',
-                                    self._collection.file.filename)
+                                    self._collection.file.name)
+
+    filename = name
 
     @property
     def created(self):
@@ -342,7 +367,7 @@ class FileVersionCollection(Collection):
 
         model = FileVersion
 
-        headers = ('id', 'filename', 'created')
+        headers = ('id', 'name', 'created')
 
     def __init__(self, file_, **kwargs):
         """Initialize a collection of file versions."""

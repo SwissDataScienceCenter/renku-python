@@ -94,10 +94,15 @@ class APIClient(
 
     @check_status_code
     def post(self, *args, **kwargs):
-        """Perform the ``GET`` request and check its status code."""
+        """Perform the ``POST`` request and check its status code."""
         return super(APIClient, self).post(*args, **kwargs)
 
     @check_status_code
+    def put(self, *args, **kwargs):
+        """Perform the ``PUT`` request and check its status code."""
+        return super(APIClient, self).put(*args, **kwargs)
+
+    @check_status_code
     def delete(self, *args, **kwargs):
-        """Perform the ``GET`` request and check its status code."""
+        """Perform the ``DELETE`` request and check its status code."""
         return super(APIClient, self).delete(*args, **kwargs)

@@ -311,15 +311,58 @@ def deployer_responses(auth_responses, renga_client):
 def storage_responses(auth_responses, renga_client):
     """Monkeypatch requests to immitate the storage service."""
     rsps = auth_responses
-    rsps.add(
+
+    buckets = rsps.buckets = []
+    bucket_ = {'id': 1234}
+
+    def create_bucket(request):
+        """Create a new instance of bucket."""
+        resp = json.loads(request.body.decode('utf-8'))
+        id = bucket_['id']
+        bucket_['id'] += 4444
+        name = resp['name']
+        buckets.append({
+            "id":
+            id,
+            "types": ["resource:bucket"],
+            "properties": [{
+                "key":
+                "resource:bucket_backend",
+                "data_type":
+                "string",
+                "cardinality":
+                "single",
+                "values": [{
+                    "key": "resource:bucket_backend",
+                    "data_type": "string",
+                    "value": "local",
+                    "properties": []
+                }]
+            }, {
+                "key":
+                "resource:bucket_name",
+                "data_type":
+                "string",
+                "cardinality":
+                "single",
+                "values": [{
+                    "key": "resource:bucket_name",
+                    "data_type": "string",
+                    "value": name,
+                    "properties": []
+                }]
+            }]
+        })
+        return (201, {}, json.dumps({
+            'id': id,
+            'name': name,
+            'backend': 'local',
+        }))
+
+    rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/create_bucket'),
-        status=201,
-        json={
-            'id': 1234,
-            'name': 'hello',
-            'backend': 'local',
-        })
+        callback=create_bucket, )
 
     file_ = {'id': 9876}
     data = {}
@@ -490,81 +533,30 @@ def storage_responses(auth_responses, renga_client):
 def explorer_responses(auth_responses, renga_client):
     """Monkeypatch requests to immitate the explorer service."""
     rsps = auth_responses
-    buckets = [{
-        "id":
-        1234,
-        "types": ["resource:bucket"],
-        "properties": [{
-            "key":
-            "resource:bucket_backend",
-            "data_type":
-            "string",
-            "cardinality":
-            "single",
-            "values": [{
-                "key": "resource:bucket_backend",
-                "data_type": "string",
-                "value": "local",
-                "properties": []
-            }]
-        }, {
-            "key":
-            "resource:bucket_name",
-            "data_type":
-            "string",
-            "cardinality":
-            "single",
-            "values": [{
-                "key": "resource:bucket_name",
-                "data_type": "string",
-                "value": "bucket1",
-                "properties": []
-            }]
-        }]
-    }, {
-        "id":
-        5678,
-        "types": ["resource:bucket"],
-        "properties": [{
-            "key":
-            "resource:bucket_backend",
-            "data_type":
-            "string",
-            "cardinality":
-            "single",
-            "values": [{
-                "key": "resource:bucket_backend",
-                "data_type": "string",
-                "value": "local",
-                "properties": []
-            }]
-        }, {
-            "key":
-            "resource:bucket_name",
-            "data_type":
-            "string",
-            "cardinality":
-            "single",
-            "values": [{
-                "key": "resource:bucket_name",
-                "data_type": "string",
-                "value": "bucket2",
-                "properties": []
-            }]
-        }]
-    }]
+    buckets = rsps.buckets
 
-    rsps.add(
+    rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/bucket'),
-        status=200,
-        json=buckets)
+        callback=lambda request: (200, {}, json.dumps(buckets)), )
 
-    rsps.add(
+    def rename_bucket(request):
+        """Rename a bucket."""
+        payload = json.loads(request.body.decode('utf-8'))
+        buckets[0]['properties'][1]['values'][0]['value'] = payload[
+            'file_name']
+        return (200, {}, '{}')
+
+    rsps.add_callback(
+        responses.PUT,
+        renga_client.api._url('/api/storage/bucket/1234'),
+        callback=rename_bucket,
+        content_type='application/json', )
+
+    rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/bucket/1234'),
-        status=200,
-        json=buckets[0])
+        callback=lambda request: (200, {}, json.dumps(buckets[0])))
 
     def new_file(id, name):
         """Create new file."""

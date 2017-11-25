@@ -36,6 +36,13 @@ class BucketsApiMixin(object):
             self._url('/api/storage/authorize/create_bucket'), json=kwargs)
         return resp.json()
 
+    def storage_bucket_metadata_replace(self, resource_id, data):
+        """Replace resource metadata."""
+        return self.put(
+            self._url('/api/storage/bucket/{0}', resource_id),
+            json=data,
+            expected_status_code=200, ).json()
+
 
 class FilesApiMixin(object):
     """Client for handling file objects in a bucket."""
@@ -76,7 +83,8 @@ class FilesApiMixin(object):
         """Replace resource metadata."""
         return self.put(
             self._url('/api/storage/file/{0}', resource_id),
-            json=data, ).json()
+            json=data,
+            expected_status_code=200, ).json()
 
     def storage_io_write(self, data):
         """Write data to the file.

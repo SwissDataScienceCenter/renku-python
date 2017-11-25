@@ -77,6 +77,8 @@ def test_client_contexts(renga_client, deployer_responses, storage_responses,
     monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 
     context = renga_client.contexts.create(image='hello-world')
+    renga_client.buckets.create('hello')
+
     assert context.id == 'abcd'
     assert context.spec['image'] == 'hello-world'
 
@@ -121,10 +123,16 @@ def test_client_buckets(renga_client, storage_responses):
     """Test client for managing buckets and files."""
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
+    assert bucket.name == 'world'
 
-    file_ = bucket.files.create(filename='hello.ipynb')
+    bucket.name = 'Earth'
+
+    bucket = renga_client.buckets[1234]
+    assert bucket.name == 'Earth'
+
+    file_ = bucket.files.create(name='hello.ipynb')
     assert file_.id == 9876
-    assert file_.filename == 'hello.ipynb'
+    assert file_.name == 'hello.ipynb'
 
     with file_.open('w') as fp:
         fp.write(b'hello world')
@@ -149,11 +157,15 @@ def test_client_buckets_shortcut(renga_client, storage_responses):
 
 def test_bucket_listing(renga_client, explorer_responses):
     """Test storage explorer client."""
-    buckets = renga_client.buckets.list()
-    assert buckets[0].id == 1234
-    assert buckets[1].id == 5678
+    renga_client.buckets.create(name='first')
+    renga_client.buckets.create(name='second')
 
-    assert renga_client.buckets[1234].id == 1234
+    buckets = renga_client.buckets.list()
+
+    assert buckets[0].name == 'first'
+    assert buckets[1].name == 'second'
+
+    assert renga_client.buckets[buckets[0].id].id == buckets[0].id
 
 
 def test_file_renaming(renga_client, storage_responses):
@@ -161,15 +173,15 @@ def test_file_renaming(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(filename='hello.ipynb')
+    file_ = bucket.files.create(name='hello.ipynb')
     assert file_.id == 9876
-    assert file_.filename == 'hello.ipynb'
+    assert file_.name == 'hello.ipynb'
 
-    file_.filename = 'hello-2'
-    assert file_.filename == 'hello-2'
+    file_.name = 'hello-2'
+    assert file_.name == 'hello-2'
 
     file_ = bucket.files[9876]
-    assert file_.filename == 'hello-2'
+    assert file_.name == 'hello-2'
 
 
 def test_file_cloning(renga_client, storage_responses):
@@ -177,7 +189,7 @@ def test_file_cloning(renga_client, storage_responses):
     bucket = renga_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
-    file_ = bucket.files.create(filename='hello.ipynb')
+    file_ = bucket.files.create(name='hello.ipynb')
 
     with file_.open('w') as fp:
         fp.write(b'hello world')

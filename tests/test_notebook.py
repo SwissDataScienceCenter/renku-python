@@ -50,6 +50,7 @@ def test_file_manager_browse(instance_path, renga_client, monkeypatch,
                              deployer_responses, storage_responses, notebook):
     """Test browsing in file manager."""
     client = renga_client
+    client.buckets.create('bucket1')
 
     monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
@@ -73,6 +74,7 @@ def test_file_manager(instance_path, renga_client, monkeypatch,
                       deployer_responses, storage_responses, notebook):
     """Test file manager."""
     client = renga_client
+    client.buckets.create('bucket1')
 
     monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
     monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
