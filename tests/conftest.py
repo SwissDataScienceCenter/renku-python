@@ -235,12 +235,15 @@ def deployer_responses(auth_responses, renga_client):
                 'renga.context.inputs.with_default=9876',
                 'renga.context.outputs.result',
             ],
-        }
+        },
+        'created': '1984-01-01T00:00:00.0+00:00'
     }
     execution = {
         'identifier': 'efgh',
         'engine': 'docker',
         'namespace': 'default',
+        'created': '1984-01-01T00:00:00.0+00:00',
+        'state': 'running'
     }
 
     rsps = auth_responses

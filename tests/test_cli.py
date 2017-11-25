@@ -214,6 +214,7 @@ def test_deployer(runner, deployer_responses):
     result = runner.invoke(cli.cli, ['contexts', 'list'])
     assert result.exit_code == 0
     assert context_id in result.output
+    assert '1984-01-01 00:00:00+00:00' in result.output
 
     result = runner.invoke(cli.cli, ['contexts', 'run', context_id, 'docker'])
     assert result.exit_code == 0
@@ -223,8 +224,13 @@ def test_deployer(runner, deployer_responses):
 
     result = runner.invoke(cli.cli, ['executions', 'list', context_id])
     assert result.exit_code == 0
-    assert context_id in result.output
     assert execution_id in result.output
+    assert 'running' in result.output
+    assert '1984-01-01 00:00:00+00:00' in result.output
+
+    result = runner.invoke(cli.cli,
+                           ['executions', 'logs', context_id, execution_id])
+    assert 'Hello world' in result.output
 
     result = runner.invoke(cli.cli, ['executions', 'stop', context_id])
     assert result.exit_code == 0

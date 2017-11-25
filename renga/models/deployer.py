@@ -19,6 +19,7 @@
 
 import os
 
+from dateutil.parser import parse as dateparse
 from werkzeug.datastructures import MultiDict
 
 from renga.errors import APIError, RengaException
@@ -93,6 +94,12 @@ class Context(Model):
     def __str__(self):
         """Format context for console output."""
         return '{0.id} - {0.spec}'.format(self)
+
+    @property
+    def created(self):
+        """Return the creation timestamp."""
+        dt = self._response.get('created', None)
+        return dateparse(dt) if dt else dt
 
     @property
     def spec(self):
@@ -206,7 +213,7 @@ class ContextCollection(Collection):
 
         model = Context
 
-        headers = ('id', 'vertex_id', 'image')
+        headers = ('id', 'created', 'vertex_id', 'image')
 
     def __iter__(self):
         """Return all contexts."""
@@ -235,6 +242,12 @@ class Execution(Model):
         return self._collection.id
 
     @property
+    def created(self):
+        """Return the creation timestamp."""
+        dt = self._response.get('created', None)
+        return dateparse(dt) if dt else dt
+
+    @property
     def engine(self):
         """Return the execution engine."""
         return self._response.get('engine', {})
@@ -251,6 +264,11 @@ class Execution(Model):
             return self._client.api.execution_ports(self.context_id, self.id)
         except APIError:
             return None
+
+    @property
+    def state(self):
+        """Return the state of the execution."""
+        return self._response.get('state', '')
 
     @property
     def url(self):
@@ -299,7 +317,13 @@ class ExecutionCollection(Collection):
 
         model = Execution
 
-        headers = ('id', 'context_id', 'engine', 'ports')
+        headers = (
+            'id',
+            'created',
+            'engine',
+            'ports',
+            'url',
+            'state')
 
     def __init__(self, context_id, **kwargs):
         """Initialize the collection of context executions."""
