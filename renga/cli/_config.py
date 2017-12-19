@@ -64,7 +64,7 @@ def config_path(path=None):
     return os.path.join(path, 'config.yml')
 
 
-def read_config(path):
+def read_config(path=None):
     """Read Renga configuration."""
     try:
         with open(config_path(path), 'r') as configfile:
