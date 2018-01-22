@@ -34,7 +34,7 @@ execute ``renga help``:
       --version          Print version number.
       --config FILENAME  Location of client config files.
       --config-path      Print application config path.
-      --no-project       Run command outside project context.
+      --home <path>      Location of Renga working directory.
       -h, --help         Show this message and exit.
 
     Commands:
@@ -62,17 +62,18 @@ the ``--config`` option value is used. For example:
 
 .. code-block:: console
 
-    $ renga --config ~/renga/config/ login
+    $ renga --config ~/renga/config/ init
 
 instructs Renga to store the configuration files in your ``~/renga/config/``
-directory when running the ``login`` command.
+directory when running the ``init`` command.
 """
 
 import click
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
-from ._config import config_load, default_config_dir, print_app_config_path
+from ._config import RENGA_HOME, config_load, default_config_dir, \
+    print_app_config_path
 from ._version import print_version
 
 
@@ -93,7 +94,6 @@ from ._version import print_version
     envvar='RENGA_CONFIG',
     default=default_config_dir,
     type=click.Path(),
-    callback=config_load,
     expose_value=False,
     help='Location of client config files.')
 @click.option(
@@ -104,14 +104,15 @@ from ._version import print_version
     is_eager=True,
     help=print_app_config_path.__doc__)
 @click.option(
-    '--no-project',
-    is_flag=True,
-    default=False,
-    help='Run command outside project context.')
+    '--renga',
+    envvar='RENGA_HOME',
+    show_default=True,
+    metavar='<path>',
+    default=RENGA_HOME,
+    help='Location of Renga directory.')
 @click.pass_context
-def cli(ctx, no_project):
+def cli(ctx, renga):
     """Check common Renga commands used in various situations."""
-    ctx.obj['no_project'] = no_project
 
 
 @cli.command()

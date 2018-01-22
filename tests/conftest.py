@@ -43,9 +43,9 @@ def instance_path():
 @pytest.fixture()
 def base_runner(instance_path, monkeypatch):
     """Create a runner on isolated filesystem."""
-    from renga.cli._config import PROJECT_DIR
+    from renga.cli._config import RENGA_HOME
     monkeypatch.setenv('RENGA_CONFIG', os.path.join(instance_path,
-                                                    PROJECT_DIR))
+                                                    RENGA_HOME))
     cli_runner = CliRunner()
     with cli_runner.isolated_filesystem():
         yield cli_runner

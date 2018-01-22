@@ -39,7 +39,7 @@ except NameError:
 APP_NAME = 'Renga'
 """Application name for storing configuration."""
 
-PROJECT_DIR = '.renga'
+RENGA_HOME = '.renga'
 """Project directory name."""
 
 # Register Endpoint serializer
@@ -135,14 +135,15 @@ def print_app_config_path(ctx, param, value):
 def create_project_config_path(path, mode=0o777, parents=False,
                                exist_ok=False):
     """Create new project configuration folder."""
-    project_path = Path(path).absolute().joinpath(PROJECT_DIR)
+    # FIXME check default directory mode
+    project_path = Path(path).absolute().joinpath(RENGA_HOME)
     project_path.mkdir(mode=mode, parents=parents, exist_ok=exist_ok)
     return str(project_path)
 
 
 def get_project_config_path(path=None):
     """Return project configuration folder if exist."""
-    project_path = Path(path or '.').absolute().joinpath(PROJECT_DIR)
+    project_path = Path(path or '.').absolute().joinpath(RENGA_HOME)
     if project_path.exists() and project_path.is_dir():
         return str(project_path)
 

@@ -50,57 +50,10 @@ def test_config_path(instance_path, base_runner):
     assert instance_path in output
 
 
-def test_login(base_runner, auth_responses):
-    """Test login."""
-    runner = base_runner
-    result = runner.invoke(cli.cli, [
-        'login', 'https://example.com', '--username', 'demo', '--password',
-        'demo'
-    ])
-    assert result.exit_code == 0
-    assert 'stored' in result.output
-
-    result = runner.invoke(
-        cli.cli, [
-            'login',
-            'https://example.com',
-            '--username',
-            'demo',
-        ],
-        input='demo')
-    assert result.exit_code == 0
-    assert 'stored' in result.output
-
-    result = runner.invoke(
-        cli.cli, [
-            'login',
-            'https://example.com',
-            '--username',
-            'demo',
-            '--password-stdin',
-        ],
-        input='demo')
-    assert result.exit_code == 0
-    assert 'stored' in result.output
-
-    result = runner.invoke(cli.cli, ['tokens'])
-    assert result.exit_code == 0
-    assert 'https://example.com: demodemo' in result.output.split('\n')
-
-    result = runner.invoke(cli.cli, ['tokens', 'access'])
-    assert result.exit_code == 0
-    assert 'accessdemo' in result.output.split('\n')
-
-
-def test_env(runner):
-    """Test client creation."""
-    result = runner.invoke(cli.cli, ['env'])
-    assert result.exit_code == 0
-    assert 'RENGA_ENDPOINT=https://example.com' in result.output
-
-
-def test_init(runner, auth_responses, projects_responses):
+def test_init(base_runner):
     """Test project initialization."""
+    runner = base_runner
+
     # 1. the directory must exist
     result = runner.invoke(cli.cli, ['init', 'test-project'])
     assert result.exit_code == 2
@@ -109,176 +62,16 @@ def test_init(runner, auth_responses, projects_responses):
     os.mkdir('test-project')
     result = runner.invoke(cli.cli, ['init', 'test-project'])
     assert result.exit_code == 0
+    assert os.stat(os.path.join('test-project', '.git'))
     assert os.stat(os.path.join('test-project', '.renga'))
 
     # 3. test project init from directory
     os.chdir('test-project')
     result = runner.invoke(cli.cli, ['init'])
-    assert result.exit_code == 2
+    assert result.exit_code != 0
 
     result = runner.invoke(
-        cli.cli, ['init', '--force', '--endpoint', 'https://example.com'])
+        cli.cli, ['init', '--force'])
     assert result.exit_code == 0
+    assert os.stat(os.path.join('.git'))
     assert os.stat(os.path.join('.renga'))
-
-
-def test_init_with_buckets(runner, auth_responses, projects_responses,
-                           storage_responses):
-    """Test project initialization with buckets."""
-    os.mkdir('test-project')
-    os.chdir('test-project')
-
-    result = runner.invoke(cli.cli, ['init', '--bucket'])
-    assert result.exit_code == 0
-    assert os.stat(os.path.join('.renga'))
-
-
-def test_storage_backends(runner, storage_responses):
-    """Test storage backends."""
-    result = runner.invoke(cli.cli, ['io', 'backends'])
-    assert result.exit_code == 0
-    assert 'local' in result.output
-
-
-def test_storage_buckets(runner, storage_responses):
-    """Test storage buckets."""
-    result = runner.invoke(cli.cli, ['io', 'buckets'])
-    assert result.exit_code == 0
-
-    result = runner.invoke(cli.cli, ['io', 'buckets', 'create'])
-    assert result.exit_code == 2
-
-    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'bucket1'])
-    assert result.exit_code == 0
-    assert '1234' in result.output
-
-    result = runner.invoke(
-        cli.cli, ['io', 'buckets', 'upload'], input='hello world')
-    assert result.exit_code == 2
-
-    result = runner.invoke(
-        cli.cli, ['io', 'buckets', '1234', 'upload'], input='hello world')
-    assert result.exit_code == 2
-
-    result = runner.invoke(
-        cli.cli, ['io', 'buckets', '1234', 'upload', '--name', 'hello'],
-        input='hello world')
-    assert result.exit_code == 0
-    assert '9876' in result.output
-
-
-def test_storage_buckets_in_project(runner, projects_responses,
-                                    storage_responses, explorer_responses):
-    """Test bucket creation in the project directory."""
-    os.mkdir('test-project')
-    os.chdir('test-project')
-
-    result = runner.invoke(cli.cli, ['init'])
-    assert result.exit_code == 0
-
-    result = runner.invoke(cli.cli, ['io', 'buckets', 'create', 'bucket1'])
-    assert result.exit_code == 0
-
-    result = runner.invoke(cli.cli, ['io', 'buckets', 'list'])
-    assert result.exit_code == 0
-    assert '1234' in result.output
-
-    with open('hello', 'wb') as f:
-        f.write(b'hello world')
-
-    result = runner.invoke(cli.cli, ['add', 'hello'])
-    assert '9876' in result.output
-    assert result.exit_code == 0
-
-    result = runner.invoke(cli.cli, ['add', 'hello'])
-    assert result.exit_code == 2
-
-    result = runner.invoke(cli.cli, ['io', 'buckets', '1234', 'files'])
-    assert result.exit_code == 0
-    assert 'hello' in result.output
-
-    result = runner.invoke(cli.cli,
-                           ['io', 'buckets', '1234', 'download', '9876'])
-    assert result.exit_code == 0
-    assert 'hello world' in result.output
-
-
-def test_deployer(runner, deployer_responses):
-    """Test contexts and executions."""
-    result = runner.invoke(cli.cli, ['contexts', 'create', 'hello-world'])
-    assert result.exit_code == 0
-
-    context_id = result.output.strip()
-    assert context_id == 'abcd'
-
-    result = runner.invoke(cli.cli, ['contexts', 'list'])
-    assert result.exit_code == 0
-    assert context_id in result.output
-    assert '1984-01-01 00:00:00' in result.output
-
-    result = runner.invoke(cli.cli, ['contexts', 'run', context_id, 'docker'])
-    assert result.exit_code == 0
-
-    execution_id = result.output.strip()
-    assert execution_id == 'efgh'
-
-    result = runner.invoke(cli.cli, ['executions', 'list', context_id])
-    assert result.exit_code == 0
-    assert execution_id in result.output
-    assert 'running' in result.output
-    assert '1984-01-01 00:00:00' in result.output
-
-    result = runner.invoke(cli.cli,
-                           ['executions', 'logs', context_id, execution_id])
-    assert 'Hello world' in result.output
-
-    result = runner.invoke(cli.cli, ['executions', 'stop', context_id])
-    assert result.exit_code == 0
-
-
-def test_notebooks(runner, deployer_responses):
-    """Test notebook launch."""
-    config = read_config(os.environ['RENGA_CONFIG'])
-    assert 'notebooks' not in config['endpoints']['https://example.com']
-
-    result = runner.invoke(cli.cli, ['notebooks', 'launch'])
-    assert result.exit_code == 0
-
-    # The notebook context is filled
-    config = read_config(os.environ['RENGA_CONFIG'])
-    assert 'abcd' in config['endpoints']['https://example.com'][
-        'notebooks'].values()
-
-    result = runner.invoke(cli.cli, ['notebooks', 'list'])
-    assert result.exit_code == 0
-
-    result = runner.invoke(cli.cli, ['notebooks', 'launch'])
-    assert result.exit_code == 0
-
-    # The notebook context is reused
-    config = read_config(os.environ['RENGA_CONFIG'])
-    assert 'my-image' not in config['endpoints']['https://example.com'][
-        'notebooks']
-
-    result = runner.invoke(cli.cli, [
-        'notebooks', 'launch', '--image', 'my-image', '--input',
-        'notebook=9876', '--output', 'result'
-    ])
-    assert result.exit_code == 0
-
-    config = read_config(os.environ['RENGA_CONFIG'])
-    assert 'my-image:latest' in config['endpoints']['https://example.com'][
-        'notebooks']
-
-    # Should fail on an unknown context
-    config['endpoints']['https://example.com']['notebooks'][
-        'my-image:latest'] = 'deadbeef'
-    write_config(config, path=os.environ['RENGA_CONFIG'])
-
-    result = runner.invoke(cli.cli,
-                           ['notebooks', 'launch', '--image', 'my-image'])
-    assert result.exit_code == 0
-
-    config = read_config(os.environ['RENGA_CONFIG'])
-    assert 'abcd' in config['endpoints']['https://example.com'][
-        'notebooks'].values()
