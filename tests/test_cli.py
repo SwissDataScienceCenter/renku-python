@@ -70,8 +70,7 @@ def test_init(base_runner):
     result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code != 0
 
-    result = runner.invoke(
-        cli.cli, ['init', '--force'])
+    result = runner.invoke(cli.cli, ['init', '--force'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.git'))
     assert os.stat(os.path.join('.renga'))
@@ -99,3 +98,21 @@ def test_run_simple(runner):
     cmd = ['echo', 'test']
     result = runner.invoke(cli.cli, ['run'] + cmd)
     assert result.exit_code == 0
+
+
+def test_dataset_import(base_runner, sample_file, test_project):
+    """Test importing data into a dataset."""
+    runner = base_runner
+
+    os.mkdir('data')
+
+    # providing a bad data directory should fail
+    result = runner.invoke(cli.cli,
+                           ['import', 'file', 'dataset', '--datadir', 'bla'])
+    assert result.exit_code == 2
+
+    # import data
+    result = runner.invoke(cli.cli, ['import', str(sample_file), 'dataset'])
+    assert result.exit_code == 0
+    assert os.stat('data/dataset/sample_file')
+    assert os.stat('data/dataset/dataset.meta.json')

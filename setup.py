@@ -65,6 +65,7 @@ install_requires = [
     'click>=6.7',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
+    'marshmallow>=2.15.0',
     'requests-oauthlib>=0.8.0',
     'requests>=2.18.4',
     'tabulate>=0.7.7',
@@ -98,6 +99,7 @@ setup(
         'renga.cli': [
             # Please keep the items sorted.
             'deactivate=renga.cli.workon:deactivate',
+            'import=renga.cli.import:import_data',
             'init=renga.cli.init:init',
             'run=renga.cli.run:run',
             'workon=renga.cli.workon:workon',

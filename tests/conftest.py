@@ -650,3 +650,21 @@ def add_client(doctest_namespace, renga_client, storage_responses,
                explorer_responses, projects_responses):
     """Add Renga client to doctest namespace."""
     doctest_namespace['client'] = renga_client
+
+
+@pytest.fixture()
+def sample_file(tmpdir):
+    """Create a sample data file."""
+    p = tmpdir.mkdir('data').join('sample_file')
+    p.write('100101010110001')
+    return p
+
+
+@pytest.fixture()
+def test_project(base_runner):
+    """Create a test project."""
+    from renga import cli
+
+    os.mkdir('test-project')
+    os.chdir('test-project')
+    result = base_runner.invoke(cli.cli, ['init', '.'])
