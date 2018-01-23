@@ -17,13 +17,17 @@
 # limitations under the License.
 """Renga repository."""
 
+import datetime
 import os
+
+from contextlib import contextmanager
 
 import click
 import filelock
+import yaml
 from dulwich.repo import Repo as GitRepo
 
-from ._config import RENGA_HOME
+from ._config import RENGA_HOME, read_config, write_config
 from ._git import get_git_home
 
 try:
@@ -35,7 +39,7 @@ except ImportError:  # pragma: no cover
 class Repo(object):
     """Represent a Renga repository."""
 
-    CONFIG = 'config.yml'
+    METADATA = 'metadata.yml'
     """Default name of Renga config file."""
 
     LOCK_SUFFIX = '.lock'
@@ -72,9 +76,18 @@ class Repo(object):
             str(self.renga_path.with_suffix(self.LOCK_SUFFIX)))
 
     @property
-    def renga_config_path(self):
-        """Return a ``Path`` instance of Renga config file."""
-        return self.renga_path.joinpath(self.CONFIG)
+    def renga_metadata_path(self):
+        """Return a ``Path`` instance of Renga metadata file."""
+        return self.renga_path.joinpath(self.METADATA)
+
+    @contextmanager
+    def with_metadata(self):
+        """Yield a editable metadata object."""
+        with self.lock:
+            path = str(self.renga_metadata_path)
+            metadata = read_config(path)
+            yield metadata
+            write_config(metadata, path)
 
     def init(self, name=None, force=False):
         """Initialize a Renga repository."""
@@ -91,8 +104,11 @@ class Repo(object):
 
         git.set_description((name or path.name).encode('utf-8'))
 
-        with self.lock:
-            self.renga_config_path.touch()
+        with self.with_metadata() as metadata:
+            metadata.setdefault('core', {})
+            metadata['core']['name'] = name
+            metadata['core'].setdefault(
+                'created', datetime.datetime.now().isoformat())
 
         return str(path)
 
