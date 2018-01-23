@@ -107,14 +107,16 @@ def auth_responses():
 
 
 @pytest.fixture()
-def runner(base_runner, auth_responses):
-    """Return authenticated runner."""
+def runner(base_runner):
+    """Return runner with a new project."""
     from renga import cli
 
-    result = base_runner.invoke(cli.cli, [
-        'login', 'https://example.com', '--username', 'demo', '--password',
-        'demo'
-    ])
+    runner = base_runner
+
+    os.mkdir('test-project')
+    os.chdir('test-project')
+
+    result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code == 0
     yield base_runner
 

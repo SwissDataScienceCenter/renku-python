@@ -15,26 +15,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Activate environment for tracking work on a specific problem."""
+"""Track provenance of data created by executing programs."""
+
+import os
+
+from subprocess import call
 
 import click
+
+from dulwich import porcelain
+from werkzeug.utils import secure_filename
 
 from ._git import with_git, _safe_issue_checkout
 from ._repo import pass_repo
 
 
-@click.command()
-@click.argument('issue', type=click.INT)
+@click.command(context_settings=dict(
+    ignore_unknown_options=True,
+))
+@click.argument('cmd_args', nargs=-1, type=click.UNPROCESSED)
 @pass_repo
-@with_git(clean=True, up_to_date=True, commit=False)
-def workon(repo, issue):
+@with_git(clean=True, up_to_date=True, commit=True)
+def run(repo, cmd_args):
     """Activate environment for tracking work on a specific problem."""
-    _safe_issue_checkout(repo.git, issue=issue)
 
+    call(cmd_args, cwd=os.getcwd(), shell=True)
 
-@click.command()
-@pass_repo
-@with_git(clean=True, up_to_date=True, commit=False)
-def deactivate(repo):
-    """Deactivate environment for tracking work on a specific problem."""
-    _safe_issue_checkout(repo.git)
+    outputs = porcelain.status(repo.git)
+    click.echo(outputs)

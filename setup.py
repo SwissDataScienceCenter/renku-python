@@ -97,8 +97,9 @@ setup(
         'console_scripts': ['renga=renga.cli:cli'],
         'renga.cli': [
             # Please keep the items sorted.
-            'init=renga.cli.init:init',
             'deactivate=renga.cli.workon:deactivate',
+            'init=renga.cli.init:init',
+            'run=renga.cli.run:run',
             'workon=renga.cli.workon:workon',
         ],
     },
