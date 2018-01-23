@@ -38,14 +38,11 @@ This creates a new subdirectory named ``.renga`` that contains all the
 necessary files for managing the project configuration.
 """
 
-import datetime
 import os
 
 import click
 
-from ._client import from_config
-from ._config import create_project_config_path, get_project_config_path, \
-    read_config, with_config, write_config
+from ._git import set_git_home, with_git
 from ._repo import pass_repo
 
 
@@ -56,18 +53,25 @@ def validate_name(ctx, param, value):
     return value
 
 
+def store_directory(ctx, param, value):
+    """Store directory as a new Git home."""
+    set_git_home(value)
+    return value
+
+
 @click.command()
 @click.argument(
     'directory',
     default='.',
+    callback=store_directory,
     type=click.Path(
         exists=True, writable=True, file_okay=False, resolve_path=True))
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True)
 @pass_repo
+@with_git(clean=False)
 def init(repo, directory, name, force):
     """Initialize a project."""
-    repo.path = directory
     project_config_path = repo.init(name=name, force=force)
 
     click.echo('Initialized empty project in {0}'.format(project_config_path))

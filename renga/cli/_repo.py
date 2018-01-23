@@ -24,16 +24,12 @@ import filelock
 from dulwich.repo import Repo as GitRepo
 
 from ._config import RENGA_HOME
+from ._git import get_git_home
 
 try:
     from pathlib import Path
 except ImportError:  # pragma: no cover
     from pathlib2 import Path
-
-try:
-    FileNotFoundError
-except NameError:  # pragma: no cover
-    FileNotFoundError = IOError
 
 
 class Repo(object):
@@ -42,20 +38,17 @@ class Repo(object):
     CONFIG = 'config.yml'
     """Default name of Renga config file."""
 
+    LOCK_SUFFIX = '.lock'
+    """Default suffix for Renga lock file."""
+
     def __init__(self, renga=None):
         """Store core options."""
-        self.path = '.'
         self.renga_path = renga or RENGA_HOME
 
     @property
     def path(self):
         """Return a ``Path`` instance of this repository."""
-        return Path(self._path)
-
-    @path.setter
-    def path(self, value):
-        """Update path of this repository."""
-        self._path = value
+        return Path(get_git_home())
 
     @property
     def renga_path(self):
@@ -75,7 +68,8 @@ class Repo(object):
     @property
     def lock(self):
         """Create a Renga config lock."""
-        return filelock.FileLock(str(self.renga_path.with_suffix('.lock')))
+        return filelock.FileLock(
+            str(self.renga_path.with_suffix(self.LOCK_SUFFIX)))
 
     @property
     def renga_config_path(self):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -72,8 +72,9 @@ import click
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
-from ._config import RENGA_HOME, config_load, default_config_dir, \
+from ._config import RENGA_HOME, default_config_dir, \
     print_app_config_path
+from ._repo import get_git_home
 from ._version import print_version
 
 
