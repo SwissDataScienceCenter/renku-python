@@ -25,6 +25,7 @@ from contextlib import contextmanager
 
 import click
 
+from dulwich.repo import Repo
 from dulwich import porcelain as git
 
 
@@ -43,25 +44,51 @@ def get_git_home():
 
 
 @contextmanager
-def with_git(clean=True, commit=True):
+def with_git(clean=True, up_to_date=False, commit=True):
     """Perform Git checks and operations."""
     repo_path = get_git_home()
     current_dir = os.getcwd()
 
     if clean:  # pragma: no cover
         try:
-            raise NotImplemented()
             os.chdir(repo_path)
-            changed = git.status()
+            status = git.status()
+
+            if any(status.staged.values()):
+                raise RuntimeError('Uncommited changes')
+            elif status.unstaged:
+                raise RuntimeError('Modified files')
+
         finally:
             os.chdir(current_dir)
 
+    if up_to_date:
+        # TODO
+        pass
+
     yield
 
-    try:
-        os.chdir(repo_path)
-        git.add()
-        if commit:
-            git.commit(message=b' '.join((a.encode('utf-8') for a in sys.argv)))
-    finally:
-        os.chdir(current_dir)
+    if commit:
+        try:
+            os.chdir(repo_path)
+            git.add()
+            ref = git.commit(
+                message=b' '.join((a.encode('utf-8') for a in sys.argv)))
+            repo = Repo('.')
+            current_branch_ref = repo.refs.follow(b'HEAD')[0][1]
+            repo[current_branch_ref] = ref
+        finally:
+            os.chdir(current_dir)
+
+
+def _safe_issue_checkout(repo, issue=None):
+    """Safely checkout branch for the issue."""
+    branch = '{0}'.format(issue).encode('utf-8') if issue else b'master'
+    branch_ref = b'refs/heads/' + branch
+
+    if branch_ref in repo:
+        repo.reset_index(repo[branch_ref].tree)
+    else:
+        git.branch_create(repo, branch, objectish=b'refs/heads/master')
+
+    repo.refs.set_symbolic_ref(b'HEAD', branch_ref)

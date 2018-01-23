@@ -52,8 +52,11 @@ def default_config_dir():
     return click.get_app_dir(APP_NAME)
 
 
-def config_path(path=None):
+def config_path(path=None, final=False):
     """Return config path."""
+    if final and path:
+        return path
+
     if path is None:
         path = default_config_dir()
     try:
@@ -64,18 +67,18 @@ def config_path(path=None):
     return os.path.join(path, 'config.yml')
 
 
-def read_config(path=None):
+def read_config(path=None, final=False):
     """Read Renga configuration."""
     try:
-        with open(config_path(path), 'r') as configfile:
+        with open(config_path(path, final=final), 'r') as configfile:
             return yaml.load(configfile) or {}
     except FileNotFoundError:
         return {}
 
 
-def write_config(config, path):
+def write_config(config, path, final=False):
     """Write Renga configuration."""
-    with open(config_path(path), 'w+') as configfile:
+    with open(config_path(path, final=final), 'w+') as configfile:
         yaml.dump(config, configfile, default_flow_style=False)
 
 

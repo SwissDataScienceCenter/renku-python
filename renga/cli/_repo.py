@@ -55,6 +55,11 @@ class Repo(object):
         return Path(get_git_home())
 
     @property
+    def git(self):
+        """Return a Git repository."""
+        return GitRepo(str(self.path))
+
+    @property
     def renga_path(self):
         """Return a ``Path`` instance of Renga folder."""
         path = Path(self._renga_path)
@@ -85,9 +90,9 @@ class Repo(object):
         """Yield a editable metadata object."""
         with self.lock:
             path = str(self.renga_metadata_path)
-            metadata = read_config(path)
+            metadata = read_config(path, final=True)
             yield metadata
-            write_config(metadata, path)
+            write_config(metadata, path, final=True)
 
     def init(self, name=None, force=False):
         """Initialize a Renga repository."""
@@ -105,6 +110,8 @@ class Repo(object):
         git.set_description((name or path.name).encode('utf-8'))
 
         with self.with_metadata() as metadata:
+            metadata.setdefault('version', 1)
+            assert metadata['version'] == 1, 'Only version 1 is supported.'
             metadata.setdefault('core', {})
             metadata['core']['name'] = name
             metadata['core'].setdefault(

@@ -75,3 +75,28 @@ def test_init(base_runner):
     assert result.exit_code == 0
     assert os.stat(os.path.join('.git'))
     assert os.stat(os.path.join('.renga'))
+
+
+def test_workon(base_runner):
+    """Test switching branches."""
+    runner = base_runner
+
+    os.mkdir('test-project')
+    os.chdir('test-project')
+
+    result = runner.invoke(cli.cli, ['init'])
+    assert result.exit_code == 0
+
+    # Create first
+    result = runner.invoke(cli.cli, ['workon', '1'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['deactivate'])
+    assert result.exit_code == 0
+
+    # Enter existing
+    result = runner.invoke(cli.cli, ['workon', '1'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['deactivate'])
+    assert result.exit_code == 0
