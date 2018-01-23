@@ -25,7 +25,7 @@ from contextlib import contextmanager
 import click
 import filelock
 import yaml
-from dulwich.repo import Repo as GitRepo
+from git import Repo as GitRepo
 
 from ._config import RENGA_HOME, read_config, write_config
 from ._git import get_git_home
@@ -107,7 +107,7 @@ class Repo(object):
         else:
             git = GitRepo.init(str(path))
 
-        git.set_description((name or path.name).encode('utf-8'))
+        git.description = name or path.name
 
         with self.with_metadata() as metadata:
             metadata.setdefault('version', 1)

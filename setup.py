@@ -61,12 +61,12 @@ setup_requires = [
 
 install_requires = [
     'PyYAML>=3.12',
-    'click>=6.7',
     'click-plugins>=1.0.3',
-    'dulwich>=0.18.6',
+    'click>=6.7',
     'filelock>=3.0.0',
-    'requests>=2.18.4',
+    'gitpython>=2.1.8',
     'requests-oauthlib>=0.8.0',
+    'requests>=2.18.4',
     'tabulate>=0.7.7',
     'werkzeug>=0.12',
 ]

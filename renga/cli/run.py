@@ -23,7 +23,6 @@ from subprocess import call
 
 import click
 
-from dulwich import porcelain
 from werkzeug.utils import secure_filename
 
 from ._git import with_git, _safe_issue_checkout
@@ -38,8 +37,12 @@ from ._repo import pass_repo
 @with_git(clean=True, up_to_date=True, commit=True)
 def run(repo, cmd_args):
     """Activate environment for tracking work on a specific problem."""
+    click.echo('Command:' + str(cmd_args[0]))
+    click.echo('Args:' + str(cmd_args[1:]))
 
-    call(cmd_args, cwd=os.getcwd(), shell=True)
+    call(cmd_args, cwd=os.getcwd())
 
-    outputs = porcelain.status(repo.git)
-    click.echo(outputs)
+    outputs = repo.git.untracked_files
+    outputs += [item.a_path for item in repo.git.index.diff(None)]
+
+    click.echo('Outputs' + str(outputs))
