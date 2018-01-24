@@ -19,6 +19,7 @@
 
 import os
 import shutil
+import stat
 from contextlib import contextmanager
 
 import pytest
@@ -84,6 +85,9 @@ def test_data_import(scheme, path, error, tmpdir, sample_file,
         with open('data/dataset/sample_file') as f:
             assert f.read() == '1234'
 
+        # check that the imported file is read-only
+        assert not os.access('data/dataset/sample_file',
+                             stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         assert os.stat('data/dataset/dataset.meta.json')
 
 
@@ -97,7 +101,8 @@ def test_dataset_serialization(temp_dataset, sample_file):
     d_dict = d.to_dict()
 
     assert all([key in d_dict for key in ('name', 'identifier', 'files')])
-
+    assert not len(d_dict['files'])
     d.import_data(str(sample_file))
     d_dict = d.to_dict()
     assert all([key in d_dict for key in ('date_imported', 'imported_from')])
+    assert len(d_dict['files'])

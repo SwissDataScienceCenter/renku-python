@@ -20,6 +20,7 @@
 import json
 import os
 import shutil
+import stat
 import uuid
 from datetime import datetime
 from urllib import error, parse, request
@@ -98,9 +99,9 @@ class Dataset(object):
         if not isinstance(import_from, list):
             import_from = [import_from]
 
-        self.files = [
+        self.files.extend(
             self._import_from_url(self.path, url) for url in import_from
-        ]
+        )
         self.date_imported = datetime.now()
         self.commit()
 
@@ -138,11 +139,15 @@ class Dataset(object):
         elif u.scheme == 'http':
             try:
                 response = requests.get(url)
-                with open(dst, 'wb') as f:
-                    f.write(response.content)
+                dst.write_bytes(response.content)
             except error.HTTPError as e:  # pragma nocover
                 raise e
+
+        # make the imported file read-only
+        mode = dst.stat().st_mode & 0o777
+        dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
         return dst.absolute()
+
 
     @staticmethod
     def from_json(metadata_file):
