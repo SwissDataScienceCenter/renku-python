@@ -22,6 +22,7 @@ import shutil
 from contextlib import contextmanager
 
 import pytest
+import responses
 
 from renga.models import dataset
 
@@ -63,19 +64,26 @@ def test_dataset_creation(tmpdir):
         d2 = dataset.Dataset('dataset')
 
 
-@pytest.mark.parametrize('scheme, error', [('', None), ('file://', None),
-                                           ('http://', NotImplementedError)])
-def test_data_import(scheme, error, tmpdir, sample_file):
+@pytest.mark.parametrize('scheme, path, error',
+                         [('', 'temp', None), ('file://', 'temp', None),
+                          ('http://', 'example.com/sample_file',
+                           None), ('https://', None, NotImplementedError)])
+def test_data_import(scheme, path, error, tmpdir, sample_file,
+                     dataset_responses):
     """Test data import."""
     p = tmpdir.mkdir("project")
     os.chdir(p)
 
     with raises(error):
+        if path == 'temp':
+            path = str(sample_file)
         d = dataset.Dataset(
             'dataset',
             data_dir='./data',
-            import_from='{}{}'.format(scheme, str(sample_file)))
-        assert os.stat('data/dataset/sample_file')
+            import_from='{}{}'.format(scheme, path))
+        with open('data/dataset/sample_file') as f:
+            assert f.read() == '1234'
+
         assert os.stat('data/dataset/dataset.meta.json')
 
 
@@ -88,14 +96,8 @@ def test_dataset_serialization(temp_dataset, sample_file):
 
     d_dict = d.to_dict()
 
-    assert all([
-        key in d_dict
-        for key in ('name', 'identifier', 'files')
-    ])
+    assert all([key in d_dict for key in ('name', 'identifier', 'files')])
 
     d.import_data(str(sample_file))
     d_dict = d.to_dict()
-    assert all([
-        key in d_dict
-        for key in ('date_imported', 'imported_from')
-    ])
+    assert all([key in d_dict for key in ('date_imported', 'imported_from')])

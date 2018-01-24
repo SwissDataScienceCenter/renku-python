@@ -682,7 +682,7 @@ def add_client(doctest_namespace, renga_client, storage_responses,
 def sample_file(tmpdir):
     """Create a sample data file."""
     p = tmpdir.mkdir('data').join('sample_file')
-    p.write('100101010110001')
+    p.write('1234')
     return p
 
 
@@ -694,3 +694,20 @@ def test_project(base_runner):
     os.mkdir('test-project')
     os.chdir('test-project')
     result = base_runner.invoke(cli.cli, ['init', '.'])
+
+
+@pytest.fixture()
+def dataset_responses():
+    """Authentication responses."""
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def request_callback(request):
+            return (200, {
+                'Content-Type': 'application/text'
+            }, '1234')
+
+        rsps.add_callback(
+            responses.GET,
+            'http://example.com/sample_file',
+            callback=request_callback)
+        yield rsps

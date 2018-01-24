@@ -22,8 +22,9 @@ import os
 import shutil
 import uuid
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib import error, parse, request
 
+import requests
 from marshmallow import Schema, fields, post_load
 
 try:
@@ -50,7 +51,7 @@ class DatasetSchema(Schema):
 class Dataset(object):
     """Repesent a dataset."""
 
-    SUPPORTED_SCHEMES = ('', 'file')
+    SUPPORTED_SCHEMES = ('', 'file', 'http')
 
     def __init__(self,
                  name,
@@ -121,16 +122,27 @@ class Dataset(object):
     @staticmethod
     def _import_from_url(import_path, url):
         """Process an import from url and return the location on disk."""
-        u = urlparse(url)
+        u = parse.urlparse(url)
+
+        if u.scheme == '':
+            url = 'file://' + url
 
         if u.scheme not in Dataset.SUPPORTED_SCHEMES:
             raise NotImplementedError('{} URLs are not supported'.format(
                 u.scheme))
 
-        if u.scheme in ('', 'file'):
-            shutil.copy(u.path, import_path)
+        dst = import_path.joinpath(os.path.basename(url))
 
-        return import_path / Path(os.path.basename(u.path))
+        if u.scheme in ('', 'file'):
+            shutil.copy(u.path, dst)
+        elif u.scheme == 'http':
+            try:
+                response = requests.get(url)
+                with open(dst, 'wb') as f:
+                    f.write(response.content)
+            except error.HTTPError as e:  # pragma nocover
+                raise e
+        return dst.absolute()
 
     @staticmethod
     def from_json(metadata_file):
