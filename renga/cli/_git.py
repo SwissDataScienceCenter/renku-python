@@ -20,13 +20,10 @@
 
 import os
 import sys
-
 from contextlib import contextmanager
 
 import click
-
 from git import Repo
-
 
 GIT_KEY = 'renga.git'
 

@@ -72,8 +72,7 @@ import click
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
-from ._config import RENGA_HOME, default_config_dir, \
-    print_app_config_path
+from ._config import RENGA_HOME, default_config_dir, print_app_config_path
 from ._repo import get_git_home
 from ._version import print_version
 

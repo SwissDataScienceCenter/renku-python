@@ -19,7 +19,7 @@
 
 import click
 
-from ._git import with_git, _safe_issue_checkout
+from ._git import _safe_issue_checkout, with_git
 from ._repo import pass_repo
 
 

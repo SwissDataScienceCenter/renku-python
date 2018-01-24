@@ -18,14 +18,12 @@
 """Track provenance of data created by executing programs."""
 
 import os
-
 from subprocess import call
 
 import click
-
 from werkzeug.utils import secure_filename
 
-from ._git import with_git, _safe_issue_checkout
+from ._git import _safe_issue_checkout, with_git
 from ._repo import pass_repo
 
 
