@@ -26,13 +26,10 @@ import filelock
 import yaml
 from git import Repo as GitRepo
 
+from renga._compat import Path
+
 from ._config import RENGA_HOME, read_config, write_config
 from ._git import get_git_home
-
-try:
-    from pathlib import Path
-except ImportError:  # pragma: no cover
-    from pathlib2 import Path
 
 
 class Repo(object):

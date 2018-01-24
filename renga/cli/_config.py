@@ -24,17 +24,9 @@ from functools import update_wrapper
 import click
 import yaml
 
+from renga._compat import Path
+
 from ._options import Endpoint
-
-try:
-    from pathlib import Path
-except ImportError:  # pragma: no cover
-    from pathlib2 import Path
-
-try:
-    FileNotFoundError
-except NameError:
-    FileNotFoundError = IOError
 
 APP_NAME = 'Renga'
 """Application name for storing configuration."""

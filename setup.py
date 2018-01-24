@@ -61,8 +61,10 @@ setup_requires = [
 
 install_requires = [
     'PyYAML>=3.12',
+    'attrs>=17.4.0',
     'click-plugins>=1.0.3',
     'click>=6.7',
+    'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
     'marshmallow>=2.15.0',
