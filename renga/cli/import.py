@@ -43,4 +43,4 @@ def import_data(repo, name, url, datadir):
     except FileNotFoundError:
         raise UsageError('Please supply a valid data directory')
 
-    d = Dataset(name, repo=repo, import_from=url)
+    d = Dataset(name, repo=repo.git, import_from=url)

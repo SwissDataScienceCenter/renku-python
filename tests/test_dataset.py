@@ -44,21 +44,12 @@ def raises(error):
         return not_raises()
 
 
-@pytest.fixture()
-def temp_dataset(tmpdir):
-    """Create a dataset fixture."""
-    p = tmpdir.mkdir("project")
-    cwd = os.getcwd()
-    os.chdir(p)
-    return dataset.Dataset('dataset')
-
-
 def test_dataset_creation(tmpdir):
     """Test dataset directory tree creation."""
     p = tmpdir.mkdir("project")
     os.chdir(p)
     d = dataset.Dataset('dataset')
-    os.stat(p.join('data/dataset'))
+    assert os.stat(p.join('data/dataset'))
 
     # creating another dataset fails by default
     with pytest.raises(FileExistsError):
@@ -106,3 +97,19 @@ def test_dataset_serialization(temp_dataset, sample_file):
     d_dict = d.to_dict()
     assert all([key in d_dict for key in ('date_imported', 'imported_from')])
     assert len(d_dict['files'])
+
+
+def test_repo_commit(temp_dataset, sample_file):
+    """Test that files get commited to the git repository properly."""
+    from git import Repo
+    r = Repo('.')
+
+    temp_dataset.repo = r
+    temp_dataset.import_data(str(sample_file))
+    temp_dataset.write_metadata()
+    temp_dataset.commit_to_repo()
+    assert all([
+        f not in r.untracked_files
+        for f in
+        ['data/dataset/dataset.meta.json', 'data/dataset/sample_file']
+    ])

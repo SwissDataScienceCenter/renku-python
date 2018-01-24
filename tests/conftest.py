@@ -697,6 +697,13 @@ def test_project(base_runner):
 
 
 @pytest.fixture()
+def temp_dataset(test_project):
+    """Create a dataset fixture."""
+    from renga.models import dataset
+    return dataset.Dataset('dataset')
+
+
+@pytest.fixture()
 def dataset_responses():
     """Authentication responses."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:

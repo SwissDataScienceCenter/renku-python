@@ -68,7 +68,8 @@ class Dataset(object):
         if data_dir:
             self.data_dir = Path(data_dir)
         elif repo:
-            self.data_dir = repo.path.joinpath('data').absolute()
+            self.data_dir = Path(
+                os.path.dirname(repo.git_dir)).joinpath('data').absolute()
         else:
             self.data_dir = Path('./data').absolute()
 
@@ -87,7 +88,10 @@ class Dataset(object):
         if import_from:
             self.import_data()
 
-        self.commit()
+        self.write_metadata()
+
+        if repo:
+            self.commit_to_repo()
 
     def import_data(self, import_from=None, data_dir=None):
         """Import the data into the data directory."""
@@ -100,12 +104,11 @@ class Dataset(object):
             import_from = [import_from]
 
         self.files.extend(
-            self._import_from_url(self.path, url) for url in import_from
-        )
+            self._import_from_url(self.path, url) for url in import_from)
         self.date_imported = datetime.now()
-        self.commit()
+        self.write_metadata()
 
-    def commit(self):
+    def write_metadata(self):
         """Write the dataset metadata to disk."""
         with open(self.path.joinpath(self.name + '.meta.json'), 'w') as f:
             f.write(self.json)
@@ -148,9 +151,20 @@ class Dataset(object):
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
         return dst.absolute()
 
-
     @staticmethod
     def from_json(metadata_file):
         """Return a Dataset object deserialized from json on disk."""
         with open(metadata_file) as f:
             return DatasetSchema().load(json.load(f)).data
+
+    def commit_to_repo(self, message=None):
+        """Commit the dataset files to the git repository."""
+        repo = self.repo
+
+        repo.index.add([x.as_posix() for x in self.files +
+                       [self.path.joinpath(self.name + '.meta.json')]])
+
+        if not message:
+            message = "[renga] commiting changes to {} dataset".format(
+                self.name)
+        repo.index.commit(message)
