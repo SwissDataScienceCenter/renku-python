@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent a ``CommandLineTool`` from the Common Workflow Language."""
 
+import re
 import shlex
 
 import attr
@@ -58,19 +59,32 @@ class CommandLineTool(Process):
     @classmethod
     def from_args(cls, args, directory=None):
         """Return an instance guessed from arguments."""
+        baseCommand, detect = split_command_and_args(args)
         arguments = []
         inputs = []
-        for input_ in guess_inputs(directory, *args[1:]):
+        for input_ in guess_inputs(directory, *detect):
             if isinstance(input_, CommandLineBinding):
                 arguments.append(input_)
             else:
                 inputs.append(input_)
 
         return cls(
-            baseCommand=args[0],
+            baseCommand=baseCommand,
             arguments=arguments,
             inputs=inputs,
         )
+
+_RE_SUBCOMMAND = re.compile(r'^[A-Za-z]+(-[A-Za-z]+)?$')
+
+
+def split_command_and_args(arguments):
+    """Return tuple with command and args."""
+    cmd = [arguments[0]]
+    args = list(arguments[1:])
+    # TODO check that it's not an existing file just in case
+    while args and re.match(_RE_SUBCOMMAND, args[0]):
+        cmd.append(args.pop(0))
+    return cmd, args
 
 
 def guess_type(value, directory=None):
@@ -131,7 +145,7 @@ def guess_inputs(directory, *arguments):
                     default=default,
                     inputBinding=dict(
                         position=position,
-                        prefix=prefix,
+                        prefix=prefix + '=',
                         separate=False,
                     )
                 )

@@ -56,5 +56,20 @@ def test_03_input(instance_path):
 
     assert tool.inputs[2].default == 'whale.txt'
     assert tool.inputs[2].type == 'File'
-    assert tool.inputs[2].inputBinding.prefix == '--file'
+    assert tool.inputs[2].inputBinding.prefix == '--file='
     assert tool.inputs[2].inputBinding.separate is False
+
+
+def test_base_command_detection(instance_path):
+    """Test base command detection."""
+    whale = Path(instance_path) / 'hello.tar'
+    whale.touch()
+
+    tool = CommandLineTool.from_args(('tar', 'xf', 'hello.tar'),
+                                     directory=instance_path)
+
+    assert tool.baseCommand == ['tar', 'xf']
+    assert tool.inputs[0].default == 'hello.tar'
+    assert tool.inputs[0].type == 'File'
+    assert tool.inputs[0].inputBinding.prefix is None
+    assert tool.inputs[0].inputBinding.separate is True
