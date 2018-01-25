@@ -93,3 +93,18 @@ def test_04_output(instance_path):
 
     assert parameters[0][0].type == 'File'
     assert parameters[0][0].outputBinding.glob == 'hello.txt'
+
+
+def test_05_stdout(instance_path):
+    """Test stdout mapping."""
+    output = Path(instance_path) / 'output.txt'
+    output.touch()
+
+    factory = CommandLineToolFactory(
+        ('echo', 'Hello world!'),
+        directory=instance_path,
+        stdout='output.txt',
+    )
+
+    assert factory.stdout == 'output.txt'
+    assert factory.outputs[0].type == 'stdout'

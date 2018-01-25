@@ -18,6 +18,7 @@
 """Track provenance of data created by executing programs."""
 
 import os
+import sys
 from subprocess import call
 
 import click
@@ -32,7 +33,9 @@ from ._repo import pass_repo
 ))
 @click.argument('cmd_args', nargs=-1, type=click.UNPROCESSED)
 @pass_repo
-@with_git(clean=True, up_to_date=True, commit=True)
+@with_git(
+    clean=True, up_to_date=True, commit=True,
+    ignore_fileno=(sys.stdout.fileno(), sys.stderr.fileno()))
 def run(repo, cmd_args):
     """Activate environment for tracking work on a specific problem."""
     click.echo('Command:' + str(cmd_args[0]))

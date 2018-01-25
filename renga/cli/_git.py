@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 #
 # Copyright 2017 - Swiss Data Science Center (SDSC)
@@ -40,7 +39,7 @@ def get_git_home():
 
 
 @contextmanager
-def with_git(clean=True, up_to_date=False, commit=True):
+def with_git(clean=True, up_to_date=False, commit=True, ignore_fileno=None):
     """Perform Git checks and operations."""
     repo_path = get_git_home()
     current_dir = os.getcwd()
@@ -49,7 +48,18 @@ def with_git(clean=True, up_to_date=False, commit=True):
         try:
             os.chdir(repo_path)
             repo = Repo(repo_path)
-            if repo.is_dirty(untracked_files=True):
+
+            if ignore_fileno:
+                dirty_paths = repo.untracked_files + \
+                    [item.a_path for item in repo.index.diff(None)]
+
+                ignore_inos = {os.fstat(fileno).st_ino for fileno in ignore_fileno}
+                dirty_inos = {os.stat(path).st_ino for path in dirty_paths}
+
+                if dirty_inos - ignore_inos:
+                    raise RuntimeError('The repository is dirty.')
+
+            elif repo.is_dirty(untracked_files=True):
                 raise RuntimeError('The repository is dirty.')
 
         finally:

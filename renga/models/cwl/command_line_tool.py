@@ -88,6 +88,10 @@ class CommandLineToolFactory(object):
         converter=Path,
     )
 
+    stdin = attr.ib(default=None)  # null, str, Expression
+    stderr = attr.ib(default=None)  # null, str, Expression
+    stdout = attr.ib(default=None)  # null, str, Expression
+
     baseCommand = attr.ib(init=False)
     arguments = attr.ib(init=False)
     inputs = attr.ib(init=False)
@@ -99,6 +103,12 @@ class CommandLineToolFactory(object):
         self.arguments = []
         self.inputs = []
         self.outputs = []
+
+        if self.stdout and self.file_candidate(self.stdout):
+            self.outputs.append(CommandOutputParameter(
+                id='output_stdout',
+                type='stdout',
+            ))
 
         for input_ in self.guess_inputs(*detect):
             if isinstance(input_, CommandLineBinding):
