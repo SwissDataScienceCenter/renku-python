@@ -57,108 +57,171 @@ class CommandLineTool(Process):
         raise NotImplemented()
 
     @classmethod
-    def from_args(cls, args, directory=None):
+    def from_args(cls, command_line, directory=None):
         """Return an instance guessed from arguments."""
-        baseCommand, detect = split_command_and_args(args)
-        arguments = []
-        inputs = []
-        for input_ in guess_inputs(directory, *detect):
-            if isinstance(input_, CommandLineBinding):
-                arguments.append(input_)
-            else:
-                inputs.append(input_)
-
+        factory = CommandLineToolFactory(
+            command_line=command_line,
+            directory=directory or '.',
+        )
         return cls(
-            baseCommand=baseCommand,
-            arguments=arguments,
-            inputs=inputs,
+            baseCommand=factory.baseCommand,
+            arguments=factory.arguments,
+            inputs=factory.inputs,
+            outputs=factory.outputs,
         )
 
-_RE_SUBCOMMAND = re.compile(r'^[A-Za-z]+(-[A-Za-z]+)?$')
 
+@attr.s
+class CommandLineToolFactory(object):
+    """Command Line Tool Factory."""
 
-def split_command_and_args(arguments):
-    """Return tuple with command and args."""
-    cmd = [arguments[0]]
-    args = list(arguments[1:])
-    # TODO check that it's not an existing file just in case
-    while args and re.match(_RE_SUBCOMMAND, args[0]):
-        cmd.append(args.pop(0))
-    return cmd, args
+    _RE_SUBCOMMAND = re.compile(r'^[A-Za-z]+(-[A-Za-z]+)?$')
 
+    command_line = attr.ib(
+        converter=lambda cmd: list(cmd) if isinstance(
+            cmd, (list, tuple)) else shlex.split(cmd),
+    )
 
-def guess_type(value, directory=None):
-    """Return new value and CWL parameter type."""
-    try:
-        value = int(value)
-        return value, 'integer'
-    except ValueError:
-        pass
+    directory = attr.ib(
+        default='.',
+        converter=Path,
+    )
 
-    if directory:
-        directory = Path(directory)
+    baseCommand = attr.ib(init=False)
+    arguments = attr.ib(init=False)
+    inputs = attr.ib(init=False)
+    outputs = attr.ib(init=False)
 
-        if directory.exists():
-            candidate = Path(value)
+    def __attrs_post_init__(self):
+        """Derive basic informations."""
+        self.baseCommand, detect = self.split_command_and_args()
+        self.arguments = []
+        self.inputs = []
+        self.outputs = []
 
-            if not candidate.is_absolute():
-                candidate = directory / candidate
-
-            if candidate.exists():
-                try:
-                    # TODO return flag too if there `was_flag`
-                    return str(candidate.relative_to(directory)), 'File'
-                except ValueError:
-                    # The candidate points to a file outside the working
-                    # directory
-                    # TODO suggest that the file should be imported to the repo
-                    pass
-
-    return value, 'string'
-
-
-def guess_inputs(directory, *arguments):
-    """Yield tuples with ``Path`` instance and argument position."""
-    position = 0
-    prefix = None
-
-    for index, argument in enumerate(arguments):
-
-        if prefix:
-            if argument.startswith('-'):
-                position += 1
-                yield CommandLineBinding(
-                    position=position,
-                    prefix=prefix,
-                )
-                prefix = None
-
-        if argument.startswith('--'):
-            if '=' in argument:
-                prefix, default = argument.split('=', 1)
-                default, type = guess_type(default, directory=directory)
-
-                position += 1
-                yield CommandInputParameter(
-                    id='input_{0}'.format(position),
-                    type=type,
-                    default=default,
-                    inputBinding=dict(
-                        position=position,
-                        prefix=prefix + '=',
-                        separate=False,
-                    )
-                )
-                prefix = None
+        for input_ in self.guess_inputs(*detect):
+            if isinstance(input_, CommandLineBinding):
+                self.arguments.append(input_)
             else:
-                prefix = argument
+                self.inputs.append(input_)
 
-        elif argument.startswith('-'):
-            if len(argument) > 2:
-                # possibly a flag with value
-                prefix = argument[0:2]
-                default, type = guess_type(argument[2:], directory=directory)
+    @command_line.validator
+    def validate_command_line(self, attribute, value):
+        """Check the command line structure."""
+        if not value:
+            raise ValueError('Command line can not be empty.')
 
+    @directory.validator
+    def validate_path(self, attribute, value):
+        """Path must exists."""
+        if not value.exists():
+            raise ValueError('Directory must exist.')
+
+    def file_candidate(self, candidate):
+        """Return a path instance if it exists in current directory."""
+        candidate = Path(candidate)
+
+        if not candidate.is_absolute():
+            candidate = self.directory / candidate
+
+        if candidate.exists():
+            return candidate
+
+    def split_command_and_args(self):
+        """Return tuple with command and args from command line arguments."""
+        cmd = [self.command_line[0]]
+        args = list(self.command_line[1:])
+
+        while args and re.match(self._RE_SUBCOMMAND, args[0]) \
+                and not self.file_candidate(args[0]):
+            cmd.append(args.pop(0))
+
+        return cmd, args
+
+    def guess_type(self, value):
+        """Return new value and CWL parameter type."""
+        try:
+            value = int(value)
+            return value, 'integer'
+        except ValueError:
+            pass
+
+        candidate = self.file_candidate(value)
+        if candidate:
+            try:
+                return str(candidate.relative_to(self.directory)), 'File'
+            except ValueError:
+                # The candidate points to a file outside the working
+                # directory
+                # TODO suggest that the file should be imported to the repo
+                pass
+
+        return value, 'string'
+
+    def guess_inputs(self, *arguments):
+        """Yield tuples with ``Path`` instance and argument position."""
+        position = 0
+        prefix = None
+
+        for index, argument in enumerate(arguments):
+
+            if prefix:
+                if argument.startswith('-'):
+                    position += 1
+                    yield CommandLineBinding(
+                        position=position,
+                        prefix=prefix,
+                    )
+                    prefix = None
+
+            if argument.startswith('--'):
+                if '=' in argument:
+                    prefix, default = argument.split('=', 1)
+                    default, type = self.guess_type(default)
+                    # TODO can be output
+
+                    position += 1
+                    yield CommandInputParameter(
+                        id='input_{0}'.format(position),
+                        type=type,
+                        default=default,
+                        inputBinding=dict(
+                            position=position,
+                            prefix=prefix + '=',
+                            separate=False,
+                        )
+                    )
+                    prefix = None
+                else:
+                    prefix = argument
+
+            elif argument.startswith('-'):
+                if len(argument) > 2:
+                    # possibly a flag with value
+                    prefix = argument[0:2]
+                    default, type = self.guess_type(argument[2:])
+                    # TODO can be output
+
+                    position += 1
+                    yield CommandInputParameter(
+                        id='input_{0}'.format(position),
+                        type=type,
+                        default=default,
+                        inputBinding=dict(
+                            position=position,
+                            prefix=prefix,
+                            separate=not bool(argument[2:]),
+                        )
+                    )
+                    prefix = None
+                else:
+                    prefix = argument
+
+            else:
+                default, type = self.guess_type(argument)
+                # TODO can be output
+
+                # TODO there might be an array
                 position += 1
                 yield CommandInputParameter(
                     id='input_{0}'.format(position),
@@ -167,32 +230,13 @@ def guess_inputs(directory, *arguments):
                     inputBinding=dict(
                         position=position,
                         prefix=prefix,
-                        separate=not bool(argument[2:]),
                     )
                 )
                 prefix = None
-            else:
-                prefix = argument
 
-        else:
-            default, type = guess_type(argument, directory=directory)
-
-            # TODO there might be an array
+        if prefix:
             position += 1
-            yield CommandInputParameter(
-                id='input_{0}'.format(position),
-                type=type,
-                default=default,
-                inputBinding=dict(
-                    position=position,
-                    prefix=prefix,
-                )
+            yield CommandLineBinding(
+                position=position,
+                prefix=prefix,
             )
-            prefix = None
-
-    if prefix:
-        position += 1
-        yield CommandLineBinding(
-            position=position,
-            prefix=prefix,
-        )
