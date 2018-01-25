@@ -47,3 +47,28 @@ class CommandInputParameter(object):
         else data,
     )
     streamable = attr.ib(default=None)
+
+
+@attr.s
+class CommandOutputBinding(object):
+    """Define the binding behavior for outputs."""
+
+    glob = attr.ib(default=None)  # null, string, Expression, array[string]
+    # loadContents, outputEval
+
+
+@attr.s
+class CommandOutputParameter(object):
+    """An input parameter for a CommandLineTool."""
+
+    id = attr.ib()
+    type = attr.ib(default='string')
+    description = attr.ib(default=None)
+    format = attr.ib(default=None)
+    outputBinding = attr.ib(
+        default=None,
+        converter=lambda data: CommandOutputBinding(**data)
+        if not isinstance(data, CommandOutputBinding) and data is not None
+        else data,
+    )
+    streamable = attr.ib(default=None)

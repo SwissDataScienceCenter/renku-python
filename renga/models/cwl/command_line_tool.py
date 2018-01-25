@@ -24,7 +24,8 @@ import attr
 
 from renga._compat import Path
 
-from .parameter import CommandInputParameter, CommandLineBinding
+from .parameter import CommandInputParameter, CommandLineBinding, \
+    CommandOutputParameter
 from .process import Process
 
 
@@ -159,7 +160,7 @@ class CommandLineToolFactory(object):
         return value, 'string'
 
     def guess_inputs(self, *arguments):
-        """Yield tuples with ``Path`` instance and argument position."""
+        """Yield command input parameters and command line bindings."""
         position = 0
         prefix = None
 
@@ -240,3 +241,42 @@ class CommandLineToolFactory(object):
                 position=position,
                 prefix=prefix,
             )
+
+    def guess_outputs(self, paths):
+        """Yield detected output and changed command input parameter."""
+        input_candidates = {
+            str(input.default): input for input in self.inputs
+            if input.type != 'File'
+        }  # inputs that need to be changed if an output is detected
+
+        conflicting_paths = {
+            str(input.default) for input in self.inputs
+            if input.type == 'File'
+        }  # names that can not be outputs because they are already inputs
+
+        # TODO group by a common prefix
+
+        for position, path in enumerate(paths):
+            candidate = self.file_candidate(path)
+
+            if candidate is None:
+                raise ValueError('Path "{0}" does not exist.'.format(path))
+
+            glob = str(candidate.relative_to(self.directory))
+
+            if glob in conflicting_paths:
+                raise ValueError('Output already exists in inputs.')
+
+            if glob in input_candidates:
+                raise NotImplemented()
+            else:
+                yield (
+                    CommandOutputParameter(
+                        id='output_{0}'.format(position),
+                        type='File',
+                        outputBinding=dict(
+                            glob=glob,
+                        ),
+                    ),
+                    None
+                )

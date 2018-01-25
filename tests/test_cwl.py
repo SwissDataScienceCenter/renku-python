@@ -17,7 +17,8 @@
 # limitations under the License.
 
 from renga._compat import Path
-from renga.models.cwl.command_line_tool import CommandLineTool
+from renga.models.cwl.command_line_tool import CommandLineTool, \
+    CommandLineToolFactory
 
 
 def test_1st_tool():
@@ -62,8 +63,8 @@ def test_03_input(instance_path):
 
 def test_base_command_detection(instance_path):
     """Test base command detection."""
-    whale = Path(instance_path) / 'hello.tar'
-    whale.touch()
+    hello = Path(instance_path) / 'hello.tar'
+    hello.touch()
 
     tool = CommandLineTool.from_args(('tar', 'xf', 'hello.tar'),
                                      directory=instance_path)
@@ -73,3 +74,22 @@ def test_base_command_detection(instance_path):
     assert tool.inputs[0].type == 'File'
     assert tool.inputs[0].inputBinding.prefix is None
     assert tool.inputs[0].inputBinding.separate is True
+
+
+def test_04_output(instance_path):
+    """Test describtion of outputs from a command."""
+    hello = Path(instance_path) / 'hello.tar'
+    hello.touch()
+
+    factory = CommandLineToolFactory(('tar', 'xf', 'hello.tar'),
+                                     directory=instance_path)
+
+    # simulate run
+
+    output = Path(instance_path) / 'hello.txt'
+    output.touch()
+
+    parameters = list(factory.guess_outputs([output]))
+
+    assert parameters[0][0].type == 'File'
+    assert parameters[0][0].outputBinding.glob == 'hello.txt'
