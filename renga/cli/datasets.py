@@ -29,18 +29,44 @@ from renga.models.dataset import Dataset
 from ._repo import pass_repo
 
 
-@click.command(name='import')
-@click.argument('url')
-@click.argument('name')
+@click.group()
 @click.option('--datadir', default='data', type=click.Path(dir_okay=True))
-@pass_repo
-def import_data(repo, name, url, datadir):
-    """Import a dataset."""
-    datadir = os.path.join(repo.path, datadir)
-
+@click.pass_context
+def datasets(ctx, datadir):
+    """Handle datasets."""
     try:
         os.stat(datadir)
     except FileNotFoundError:
         raise UsageError('Please supply a valid data directory')
 
-    d = Dataset(name, repo=repo.git, import_from=url)
+    ctx.meta['renga.datasets.datadir'] = datadir
+
+
+@datasets.command()
+@click.argument('name')
+@pass_repo
+def create(repo, name):
+    """Create an empty dataset in the current repo."""
+    datadir = get_datadir()
+    d = Dataset(name, repo=repo.git, datadir=datadir)
+
+
+@datasets.command()
+@click.argument('name')
+@click.argument('url')
+@click.option('--nocopy', default=False, is_flag=True)
+@pass_repo
+def add(repo, name, url, nocopy):
+    """Import a dataset from another renga repository."""
+    datadir = get_datadir()
+    d = Dataset.load(name, repo=repo.git, datadir=datadir)
+    try:
+        d.add_data(url, nocopy=nocopy)
+    except FileNotFoundError:
+        raise BadParameter('URL')
+
+
+def get_datadir():
+    """Fetch the current data directory."""
+    ctx = click.get_current_context()
+    return ctx.meta['renga.datasets.datadir']

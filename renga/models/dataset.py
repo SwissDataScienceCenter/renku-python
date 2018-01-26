@@ -22,11 +22,12 @@ import os
 import shutil
 import stat
 import uuid
+import warnings
 from datetime import datetime
 from urllib import error, parse, request
 
 import requests
-from marshmallow import Schema, fields, post_load
+from marshmallow import Schema, fields, post_load, pre_dump
 
 try:
     from pathlib import Path
@@ -40,77 +41,72 @@ class DatasetSchema(Schema):
     name = fields.String()
     identifier = fields.UUID(default=str(uuid.uuid4()))
     files = fields.List(fields.String)
-    date_imported = fields.DateTime()
-    import_from = fields.String(dump_to='imported_from')
+    date_created = fields.DateTime()
 
     @post_load
     def make_dataset(self, data):
         """Return a dataset instance."""
-        return Dataset(makedirs=False, **data)
+        return Dataset(loading=True, **data)
 
 
 class Dataset(object):
     """Repesent a dataset."""
 
-    SUPPORTED_SCHEMES = ('', 'file', 'http')
+    SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
 
-    def __init__(self,
-                 name,
-                 data_dir=None,
-                 import_from=None,
-                 makedirs=True,
-                 repo=None,
-                 **kwargs):
+    def __init__(self, name, datadir=None, loading=False, repo=None, **kwargs):
         """Create a Dataset instance."""
         self.name = name
         self.identifier = uuid.uuid4()
 
-        if data_dir:
-            self.data_dir = Path(data_dir)
+        if datadir:
+            self.datadir = Path(datadir).absolute()
         elif repo:
-            self.data_dir = Path(
+            self.datadir = Path(
                 os.path.dirname(repo.git_dir)).joinpath('data').absolute()
         else:
-            self.data_dir = Path('./data').absolute()
+            self.datadir = Path('./data').absolute()
 
-        self.path = self.data_dir.joinpath(name)
+        self.path = self.datadir.joinpath(name)
+        self.repo = repo
 
-        if makedirs:
+        self.files = []
+
+        if not loading:
             try:
                 os.makedirs(self.path)
             except FileExistsError:
                 raise FileExistsError('This dataset already exists.')
 
-        self.import_from = import_from
-        self.files = []
-        self.repo = repo
+            self.files = []
 
-        if import_from:
-            self.import_data()
+            self.date_created = datetime.now()
+            self.write_metadata()
 
-        self.write_metadata()
+            if repo:
+                self.commit_to_repo()
 
-        if repo:
-            self.commit_to_repo()
-
-    def import_data(self, import_from=None, data_dir=None):
+    def add_data(self, url, datadir=None, git=False, targets=None, **kwargs):
         """Import the data into the data directory."""
-        import_from = import_from or self.import_from
-        self.import_from = import_from
+        datadir = datadir or self.datadir
+        git = os.path.splitext(url)[1] == '.git' or git
 
-        data_dir = data_dir or self.data_dir
+        if not isinstance(url, list):
+            url = [url]
 
-        if not isinstance(import_from, list):
-            import_from = [import_from]
+        if git:
+            new_files = (self._add_from_git(self.path, u, targets, **kwargs)
+                         for u in url)
+        else:
+            new_files = (self._add_from_url(self.path, u, **kwargs)
+                         for u in url)
 
-        self.files.extend(
-            self._import_from_url(self.path, url) for url in import_from)
-        self.date_imported = datetime.now()
+        self.files.extend(new_files)
         self.write_metadata()
 
     def write_metadata(self):
         """Write the dataset metadata to disk."""
-        with open(self.path.joinpath(self.name + '.meta.json'), 'w') as f:
+        with open(self.path.joinpath('metadata.json'), 'w') as f:
             f.write(self.json)
         return self.json
 
@@ -123,30 +119,40 @@ class Dataset(object):
         """Return a dictionary with the metadata for this dataset."""
         return DatasetSchema().dump(self).data
 
-    @staticmethod
-    def _import_from_url(import_path, url):
-        """Process an import from url and return the location on disk."""
+    def _add_from_url(self, path, url, nocopy=False):
+        """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
-
-        if u.scheme == '':
-            url = 'file://' + url
 
         if u.scheme not in Dataset.SUPPORTED_SCHEMES:
             raise NotImplementedError('{} URLs are not supported'.format(
                 u.scheme))
 
-        dst = import_path.joinpath(os.path.basename(url))
+        dst = path.joinpath(os.path.basename(url)).absolute()
 
         if u.scheme in ('', 'file'):
-            shutil.copy(u.path, dst)
-        elif u.scheme == 'http':
+            src = Path(u.path).absolute()
+            try:
+                os.stat(src)
+            except FileNotFoundError:
+                raise FileNotFoundError
+            if nocopy:
+                try:
+                    raise
+                    os.link(src, dst)
+                except:
+                    warnings.warn("[renga] Could not create hard link - "
+                                  "symlinking instead.")
+                    os.symlink(src, dst)
+            else:
+                shutil.copy(src, dst)
+        elif u.scheme in ('http', 'https'):
             try:
                 response = requests.get(url)
                 dst.write_bytes(response.content)
             except error.HTTPError as e:  # pragma nocover
                 raise e
 
-        # make the imported file read-only
+        # make the added file read-only
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
         return dst.absolute()
@@ -157,12 +163,22 @@ class Dataset(object):
         with open(metadata_file) as f:
             return DatasetSchema().load(json.load(f)).data
 
+    @staticmethod
+    def load(name, repo=None, datadir='data'):
+        """Return an existing dataset."""
+        metadata_file = os.path.join(
+            os.path.dirname(repo.git_dir)
+            if repo else '.', datadir, name, 'metadata.json')
+        return Dataset.from_json(metadata_file)
+
     def commit_to_repo(self, message=None):
         """Commit the dataset files to the git repository."""
         repo = self.repo
 
-        repo.index.add([x.as_posix() for x in self.files +
-                       [self.path.joinpath(self.name + '.meta.json')]])
+        repo.index.add([
+            x.as_posix()
+            for x in self.files + [self.path.joinpath('metadata.json')]
+        ])
 
         if not message:
             message = "[renga] commiting changes to {} dataset".format(

@@ -717,4 +717,8 @@ def dataset_responses():
             responses.GET,
             'http://example.com/sample_file',
             callback=request_callback)
+        rsps.add_callback(
+            responses.GET,
+            'https://example.com/sample_file',
+            callback=request_callback)
         yield rsps

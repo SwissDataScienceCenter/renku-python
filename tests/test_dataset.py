@@ -58,10 +58,9 @@ def test_dataset_creation(tmpdir):
 
 @pytest.mark.parametrize('scheme, path, error',
                          [('', 'temp', None), ('file://', 'temp', None),
-                          ('http://', 'example.com/sample_file',
-                           None), ('https://', None, NotImplementedError)])
-def test_data_import(scheme, path, error, tmpdir, sample_file,
-                     dataset_responses):
+                          ('http://', 'example.com/sample_file', None),
+                          ('https://', 'example.com/sample_file', None)])
+def test_data_add(scheme, path, error, tmpdir, sample_file, dataset_responses):
     """Test data import."""
     p = tmpdir.mkdir("project")
     os.chdir(p)
@@ -69,33 +68,35 @@ def test_data_import(scheme, path, error, tmpdir, sample_file,
     with raises(error):
         if path == 'temp':
             path = str(sample_file)
-        d = dataset.Dataset(
-            'dataset',
-            data_dir='./data',
-            import_from='{}{}'.format(scheme, path))
+        d = dataset.Dataset('dataset', data_dir='./data')
+        d.add_data('{}{}'.format(scheme, path))
         with open('data/dataset/sample_file') as f:
             assert f.read() == '1234'
 
         # check that the imported file is read-only
         assert not os.access('data/dataset/sample_file',
                              stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        assert os.stat('data/dataset/dataset.meta.json')
+        assert os.stat('data/dataset/metadata.json')
+
+        # check the linking
+        if scheme in ('', 'file://'):
+            shutil.rmtree('./data/dataset')
+            d = dataset.Dataset('dataset', data_dir='./data')
+            d.add_data('{}{}'.format(scheme, path), nocopy=True)
 
 
 def test_dataset_serialization(temp_dataset, sample_file):
     """Test deserializing a dataset object."""
     # deserialize from json on disk
-    d = dataset.Dataset.from_json(
-        temp_dataset.path.joinpath('dataset.meta.json'))
+    d = dataset.Dataset.from_json(temp_dataset.path.joinpath('metadata.json'))
     assert d.path == temp_dataset.path
 
     d_dict = d.to_dict()
 
     assert all([key in d_dict for key in ('name', 'identifier', 'files')])
     assert not len(d_dict['files'])
-    d.import_data(str(sample_file))
+    d.add_data(str(sample_file))
     d_dict = d.to_dict()
-    assert all([key in d_dict for key in ('date_imported', 'imported_from')])
     assert len(d_dict['files'])
 
 
@@ -105,11 +106,10 @@ def test_repo_commit(temp_dataset, sample_file):
     r = Repo('.')
 
     temp_dataset.repo = r
-    temp_dataset.import_data(str(sample_file))
+    temp_dataset.add_data(str(sample_file))
     temp_dataset.write_metadata()
     temp_dataset.commit_to_repo()
     assert all([
         f not in r.untracked_files
-        for f in
-        ['data/dataset/dataset.meta.json', 'data/dataset/sample_file']
+        for f in ['data/dataset/metadata.json', 'data/dataset/sample_file']
     ])

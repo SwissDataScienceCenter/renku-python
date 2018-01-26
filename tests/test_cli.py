@@ -100,7 +100,7 @@ def test_run_simple(runner):
     assert result.exit_code == 0
 
 
-def test_dataset_import(base_runner, sample_file, test_project):
+def test_dataset_creation(base_runner, sample_file, test_project):
     """Test importing data into a dataset."""
     runner = base_runner
 
@@ -111,9 +111,13 @@ def test_dataset_import(base_runner, sample_file, test_project):
                            ['import', 'file', 'dataset', '--datadir', 'bla'])
     assert result.exit_code == 2
 
-    # import data
-    result = runner.invoke(cli.cli, ['import', str(sample_file), 'dataset'])
+    # create a dataset
+    result = runner.invoke(cli.cli, ['datasets', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert os.stat('data/dataset/sample_file')
-    assert os.stat('data/dataset/dataset.meta.json')
+    assert os.stat('data/dataset/metadata.json')
 
+    # add data
+    result = runner.invoke(cli.cli,
+                           ['datasets', 'add', 'dataset',
+                            str(sample_file)])
+    assert os.stat('data/dataset/sample_file')

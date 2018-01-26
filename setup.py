@@ -101,8 +101,8 @@ setup(
         'console_scripts': ['renga=renga.cli:cli'],
         'renga.cli': [
             # Please keep the items sorted.
+            'datasets=renga.cli.datasets:datasets',
             'deactivate=renga.cli.workon:deactivate',
-            'import=renga.cli.import:import_data',
             'init=renga.cli.init:init',
             'log=renga.cli.log:log',
             'run=renga.cli.run:run',
