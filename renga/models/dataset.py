@@ -38,10 +38,11 @@ except ImportError:  # pragma: no cover
 class DatasetSchema(Schema):
     """Schema for the Dataset objects."""
 
-    name = fields.String()
+    name = fields.String(required=True)
+    creator = fields.Nested('CreatorSchema', required=True)
     identifier = fields.UUID(default=str(uuid.uuid4()))
-    files = fields.List(fields.String)
-    date_created = fields.DateTime()
+    files = fields.List(fields.Nested('DatasetFileSchema'))
+    created_at = fields.DateTime(required=True)
 
     @post_load
     def make_dataset(self, data):
@@ -49,15 +50,75 @@ class DatasetSchema(Schema):
         return Dataset(loading=True, **data)
 
 
+class DatasetFileSchema(Schema):
+    """Schema for the File objects."""
+
+    path = fields.String(required=True)
+    origin = fields.String(required=True)
+    creator = fields.Nested('CreatorSchema', required=True)
+    dataset = fields.String()
+    date_added = fields.DateTime(required=True)
+
+    @post_load
+    def make_file(self, data):
+        """Return a file instance."""
+        return DatasetFile(loading=True, **data)
+
+
+class DatasetFile(object):
+    """Represent a file in a dataset."""
+
+    def __init__(self,
+                 path,
+                 origin,
+                 creator,
+                 dataset=None,
+                 loading=False,
+                 date_added=None):
+        """Create a File instance."""
+        self.path = path
+        self.origin = origin
+        self.dataset = dataset
+        if not loading:
+            self.date_added = datetime.now()
+        else:
+            self.date_added = date_added
+        self.creator = creator
+
+
+class CreatorSchema(Schema):
+    """Schema for the creator of a resource."""
+
+    name = fields.String(required=True)
+    email = fields.String(required=True)
+    affiliation = fields.String()
+
+
 class Dataset(object):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
 
-    def __init__(self, name, datadir=None, loading=False, repo=None, **kwargs):
+    def __init__(self,
+                 name,
+                 creator=None,
+                 datadir=None,
+                 loading=False,
+                 repo=None,
+                 **kwargs):
         """Create a Dataset instance."""
         self.name = name
-        self.identifier = uuid.uuid4()
+        if not creator:
+            if not repo:
+                raise RuntimeError(
+                    'Outside of a git repository '
+                    '- unable to determine creator information.')
+            git_config = repo.config_reader()
+            creator = {
+                'name': git_config.get('user', 'name'),
+                'email': git_config.get('user', 'email')
+            }
+        self.creator = creator
 
         if datadir:
             self.datadir = Path(datadir).absolute()
@@ -78,9 +139,10 @@ class Dataset(object):
             except FileExistsError:
                 raise FileExistsError('This dataset already exists.')
 
+            self.identifier = uuid.uuid4()
             self.files = []
 
-            self.date_created = datetime.now()
+            self.created_at = datetime.now()
             self.write_metadata()
 
             if repo:
@@ -155,7 +217,8 @@ class Dataset(object):
         # make the added file read-only
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
-        return dst.absolute()
+        return DatasetFile(
+            dst.absolute(), url, creator=self.creator, dataset=self.name)
 
     @staticmethod
     def from_json(metadata_file):
