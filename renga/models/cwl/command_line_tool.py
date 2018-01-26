@@ -154,21 +154,24 @@ class CommandLineToolFactory(object):
         """Return new value and CWL parameter type."""
         try:
             value = int(value)
-            return value, 'integer'
+            return value, 'integer', None
         except ValueError:
             pass
 
         candidate = self.file_candidate(value)
         if candidate:
             try:
-                return str(candidate.relative_to(self.directory)), 'File'
+                return str(candidate.relative_to(self.directory)), 'File', None
             except ValueError:
                 # The candidate points to a file outside the working
                 # directory
                 # TODO suggest that the file should be imported to the repo
                 pass
 
-        return value, 'string'
+        if ',' in value:
+            return value.split(','), 'string[]', ','
+
+        return value, 'string', None
 
     def guess_inputs(self, *arguments):
         """Yield command input parameters and command line bindings."""
@@ -176,6 +179,7 @@ class CommandLineToolFactory(object):
         prefix = None
 
         for index, argument in enumerate(arguments):
+            itemSeparator = None
 
             if prefix:
                 if argument.startswith('-'):
@@ -189,7 +193,8 @@ class CommandLineToolFactory(object):
             if argument.startswith('--'):
                 if '=' in argument:
                     prefix, default = argument.split('=', 1)
-                    default, type = self.guess_type(default)
+                    prefix += '='
+                    default, type, itemSeparator = self.guess_type(default)
                     # TODO can be output
 
                     position += 1
@@ -199,7 +204,8 @@ class CommandLineToolFactory(object):
                         default=default,
                         inputBinding=dict(
                             position=position,
-                            prefix=prefix + '=',
+                            itemSeparator=itemSeparator,
+                            prefix=prefix,
                             separate=False,
                         ))
                     prefix = None
@@ -208,10 +214,14 @@ class CommandLineToolFactory(object):
 
             elif argument.startswith('-'):
                 if len(argument) > 2:
-                    # possibly a flag with value
-                    prefix = argument[0:2]
-                    default, type = self.guess_type(argument[2:])
-                    # TODO can be output
+                    if '=' in argument:
+                        prefix, default = argument.split('=', 1)
+                        prefix += '='
+                        default, type, itemSeparator = self.guess_type(default)
+                    else:
+                        # possibly a flag with value
+                        prefix = argument[0:2]
+                        default, type, itemSeparator = self.guess_type(argument[2:])
 
                     position += 1
                     yield CommandInputParameter(
@@ -220,6 +230,7 @@ class CommandLineToolFactory(object):
                         default=default,
                         inputBinding=dict(
                             position=position,
+                            itemSeparator=itemSeparator,
                             prefix=prefix,
                             separate=not bool(argument[2:]),
                         ))
@@ -228,7 +239,7 @@ class CommandLineToolFactory(object):
                     prefix = argument
 
             else:
-                default, type = self.guess_type(argument)
+                default, type, itemSeparator = self.guess_type(argument)
                 # TODO can be output
 
                 # TODO there might be an array
@@ -239,6 +250,7 @@ class CommandLineToolFactory(object):
                     default=default,
                     inputBinding=dict(
                         position=position,
+                        itemSeparator=itemSeparator,
                         prefix=prefix,
                     ))
                 prefix = None
@@ -276,7 +288,16 @@ class CommandLineToolFactory(object):
                 raise ValueError('Output already exists in inputs.')
 
             if glob in input_candidates:
-                raise NotImplemented()
+                input = input_candidates[glob]
+                if input.type == 'File':
+                    # it means that it is rewriting a file
+                    raise NotImplemented()
+
+                yield (CommandOutputParameter(
+                    id='output_{0}'.format(position),
+                    type='File',
+                    outputBinding=dict(glob='$(inputs.{0})'.format(input.id), ),
+                ), None)
             else:
                 yield (CommandOutputParameter(
                     id='output_{0}'.format(position),

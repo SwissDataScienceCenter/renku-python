@@ -108,3 +108,48 @@ def test_05_stdout(instance_path):
 
     assert factory.stdout == 'output.txt'
     assert factory.outputs[0].type == 'stdout'
+
+
+def test_06_params(instance_path):
+    """Test referencing input parameters in other fields."""
+    hello = Path(instance_path) / 'hello.tar'
+    hello.touch()
+
+    factory = CommandLineToolFactory(
+        ('tar', 'xf', 'hello.tar', 'goodbye.txt'),
+        directory=instance_path,
+    )
+
+    assert factory.inputs[1].default == 'goodbye.txt'
+    assert factory.inputs[1].type == 'string'
+    assert factory.inputs[1].inputBinding.position == 2
+
+    goodbye_id = factory.inputs[1].id
+
+    # simulate run
+
+    output = Path(instance_path) / 'goodbye.txt'
+    output.touch()
+
+    parameters = list(factory.guess_outputs([output]))
+
+    assert parameters[0][0].type == 'File'
+    assert parameters[0][0].outputBinding.glob == \
+        '$(inputs.{0})'.format(goodbye_id)
+
+
+def test_09_array_inputs(instance_path):
+    """Test specification of input parameters in arrays."""
+    tool = CommandLineTool.from_args(
+        ('echo',
+         '-A', 'one', 'two', 'three',
+         '-B=four', '-B=five', '-B=six',
+         '-C=seven,eight,nine', ), directory=instance_path)
+
+    # TODO add grouping for -A and -B
+
+    assert tool.inputs[-1].type == 'string[]'
+    assert tool.inputs[-1].default == ['seven', 'eight', 'nine']
+    assert tool.inputs[-1].inputBinding.prefix == '-C='
+    assert tool.inputs[-1].inputBinding.itemSeparator == ','
+    assert tool.inputs[-1].inputBinding.separate is False
