@@ -20,6 +20,8 @@
 import re
 import shlex
 
+from contextlib import contextmanager
+
 import attr
 
 from renga._compat import Path
@@ -56,20 +58,6 @@ class CommandLineTool(Process):
     def run(self, job=None):  # job: Job
         """Execute the command line tool with an optional job description."""
         raise NotImplemented()
-
-    @classmethod
-    def from_args(cls, command_line, directory=None):
-        """Return an instance guessed from arguments."""
-        factory = CommandLineToolFactory(
-            command_line=command_line,
-            directory=directory or '.',
-        )
-        return cls(
-            baseCommand=factory.baseCommand,
-            arguments=factory.arguments,
-            inputs=factory.inputs,
-            outputs=factory.outputs,
-        )
 
 
 @attr.s
@@ -116,6 +104,40 @@ class CommandLineToolFactory(object):
                 self.arguments.append(input_)
             else:
                 self.inputs.append(input_)
+
+    def generate_tool(self):
+        """Return an instance of command line tool."""
+        return CommandLineTool(
+            baseCommand=self.baseCommand,
+            arguments=self.arguments,
+            inputs=self.inputs,
+            outputs=self.outputs,
+        )
+
+    @contextmanager
+    def watch(self, git=None):
+        """Watch a git repository for changes to detect outputs."""
+        tool = self.generate_tool()
+
+        yield tool
+
+        if git:
+            outputs = git.untracked_files
+            outputs += [item.a_path for item in git.index.diff(None)]
+
+            inputs = {input.id: input for input in self.inputs}
+            outputs = []
+
+            for output, input in self.guess_outputs(outputs):
+                outputs.append(output)
+                if input is not None:
+                    if input.id not in inputs:  # pragma: no cover
+                        raise RuntimeError('Inconsistent input name.')
+
+                    inputs[input.id] = input
+
+            tool.inputs = list(inputs.values())
+            tool.outputs = outputs
 
     @command_line.validator
     def validate_command_line(self, attribute, value):
@@ -221,7 +243,8 @@ class CommandLineToolFactory(object):
                     else:
                         # possibly a flag with value
                         prefix = argument[0:2]
-                        default, type, itemSeparator = self.guess_type(argument[2:])
+                        default, type, itemSeparator = self.guess_type(
+                            argument[2:])
 
                     position += 1
                     yield CommandInputParameter(
@@ -296,7 +319,8 @@ class CommandLineToolFactory(object):
                 yield (CommandOutputParameter(
                     id='output_{0}'.format(position),
                     type='File',
-                    outputBinding=dict(glob='$(inputs.{0})'.format(input.id), ),
+                    outputBinding=dict(
+                        glob='$(inputs.{0})'.format(input.id), ),
                 ), None)
             else:
                 yield (CommandOutputParameter(

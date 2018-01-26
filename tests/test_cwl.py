@@ -23,7 +23,7 @@ from renga.models.cwl.command_line_tool import CommandLineTool, \
 
 def test_1st_tool():
     """Check creation of 1st tool example from args."""
-    tool = CommandLineTool.from_args(('echo', 'Hello world!'))
+    tool = CommandLineToolFactory(('echo', 'Hello world!')).generate_tool()
     assert tool.cwlVersion == 'v1.0'
     assert tool.__class__.__name__ == 'CommandLineTool'
     assert tool.inputs[0].default == 'Hello world!'
@@ -34,14 +34,14 @@ def test_03_input(instance_path):
     whale = Path(instance_path) / 'whale.txt'
     whale.touch()
 
-    tool = CommandLineTool.from_args((
+    tool = CommandLineToolFactory((
         'echo',
         '-f',
         '-i42',
         '--example-string',
         'hello',
         '--file=whale.txt',
-    ), directory=instance_path)
+    ), directory=instance_path).generate_tool()
 
     assert tool.arguments[0].prefix == '-f'
 
@@ -66,8 +66,8 @@ def test_base_command_detection(instance_path):
     hello = Path(instance_path) / 'hello.tar'
     hello.touch()
 
-    tool = CommandLineTool.from_args(('tar', 'xf', 'hello.tar'),
-                                     directory=instance_path)
+    tool = CommandLineToolFactory(('tar', 'xf', 'hello.tar'),
+                                  directory=instance_path).generate_tool()
 
     assert tool.baseCommand == ['tar', 'xf']
     assert tool.inputs[0].default == 'hello.tar'
@@ -140,11 +140,11 @@ def test_06_params(instance_path):
 
 def test_09_array_inputs(instance_path):
     """Test specification of input parameters in arrays."""
-    tool = CommandLineTool.from_args(
+    tool = CommandLineToolFactory(
         ('echo',
          '-A', 'one', 'two', 'three',
          '-B=four', '-B=five', '-B=six',
-         '-C=seven,eight,nine', ), directory=instance_path)
+         '-C=seven,eight,nine', ), directory=instance_path).generate_tool()
 
     # TODO add grouping for -A and -B
 

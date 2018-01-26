@@ -19,14 +19,18 @@
 
 import datetime
 import os
+import uuid
 from contextlib import contextmanager
 
+import attr
 import click
 import filelock
 import yaml
 from git import Repo as GitRepo
+from werkzeug.utils import secure_filename
 
 from renga._compat import Path
+from renga.models.cwl.workflow import Workflow
 
 from ._config import RENGA_HOME, read_config, write_config
 from ._git import get_git_home
@@ -40,6 +44,9 @@ class Repo(object):
 
     LOCK_SUFFIX = '.lock'
     """Default suffix for Renga lock file."""
+
+    WORKFLOW = 'workflow'
+    """Directory for storing workflow in Renga."""
 
     def __init__(self, renga=None):
         """Store core options."""
@@ -89,6 +96,28 @@ class Repo(object):
             metadata = read_config(path, final=True)
             yield metadata
             write_config(metadata, path, final=True)
+
+    @contextmanager
+    def with_workflow_storage(self):
+        """Yield a workflow storage."""
+        with self.lock:
+            workflow = Workflow()
+            yield workflow
+
+            for step in workflow.steps:
+                step_name = '{0}_{1}.cwl'.format(
+                    uuid.uuid4().hex,
+                    secure_filename('_'.join(step.run.baseCommand)),
+                )
+
+                workflow_path = self.renga_path / self.WORKFLOW
+                if not workflow_path.exists():
+                    workflow_path.mkdir()
+
+                with open(workflow_path / step_name, 'w') as step_file:
+                    yaml.dump(attr.asdict(
+                        step.run, filter=lambda _, x: x is False or bool(x)
+                    ), stream=step_file, default_flow_style=False)
 
     def init(self, name=None, force=False):
         """Initialize a Renga repository."""
