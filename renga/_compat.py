@@ -27,7 +27,6 @@ try:
 except NameError:  # pragma: no cover
     FileNotFoundError = IOError
 
-
 __all__ = (
     'FileNotFoundError',
     'Path',

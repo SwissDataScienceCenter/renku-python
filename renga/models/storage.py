@@ -181,7 +181,8 @@ class File(Model, FileMixin):
         resp = self._client.api.storage_copy_file(
             resource_id=self.id,
             file_name=name or filename or 'clone_' + self.name,
-            bucket_id=bucket.id if isinstance(bucket, Bucket) else bucket, )
+            bucket_id=bucket.id if isinstance(bucket, Bucket) else bucket,
+        )
         return self.__class__(
             LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
             client=self._client,
@@ -232,11 +233,14 @@ class FileCollection(Collection):
         resp = self._client.api.create_file(
             bucket_id=self.bucket.id,
             file_name=name or filename,
-            request_type='create_file', )
+            request_type='create_file',
+        )
 
         access_token = resp.pop('access_token')
         client = self._client.__class__(
-            self._client.api.endpoint, token={'access_token': access_token})
+            self._client.api.endpoint, token={
+                'access_token': access_token
+            })
 
         if 'Renga-Deployer-Execution' in self._client.api.headers:
             client.api.headers[
@@ -254,7 +258,8 @@ class FileCollection(Collection):
         resp = self._client.api.create_file(
             bucket_id=self.bucket.id,
             file_name=name or filename,
-            request_type='create_file', )
+            request_type='create_file',
+        )
         return self.Meta.model(
             LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
             client=self._client,

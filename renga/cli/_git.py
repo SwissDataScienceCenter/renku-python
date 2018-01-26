@@ -38,8 +38,41 @@ def get_git_home():
     return click.get_current_context().meta.get(GIT_KEY, '.')
 
 
+def _dirty_paths(repo):
+    """Get paths of dirty files in the repository."""
+    return repo.untracked_files + [
+        item.a_path for item in repo.index.diff(None)
+    ]
+
+
+def _mapped_std_streams(lookup_paths):
+    """Get a mapping of standard streams to given paths."""
+    # FIXME add device number too
+    standard_inos = {}
+    for stream in ('stdin', 'stdout', 'stderr'):
+        try:
+            stream_stat = os.fstat(getattr(sys, stream).fileno())
+            key = stream_stat.st_dev, stream_stat.st_ino
+            standard_inos[key] = stream
+        except Exception:  # FIXME UnsupportedOperation
+            pass
+        # FIXME if not getattr(sys, stream).istty()
+
+    lookup_inos = {(stat.st_dev, stat.st_ino): path
+                   for stat, path in ((os.stat(path), path)
+                                      for path in lookup_paths)}
+
+    return {
+        standard_inos[key]: lookup_inos[key]
+        for key in set(standard_inos.keys()) & set(lookup_inos.keys())
+    }
+
+
 @contextmanager
-def with_git(clean=True, up_to_date=False, commit=True, ignore_fileno=None):
+def with_git(clean=True,
+             up_to_date=False,
+             commit=True,
+             ignore_std_streams=False):
     """Perform Git checks and operations."""
     repo_path = get_git_home()
     current_dir = os.getcwd()
@@ -49,14 +82,11 @@ def with_git(clean=True, up_to_date=False, commit=True, ignore_fileno=None):
             os.chdir(repo_path)
             repo = Repo(repo_path)
 
-            if ignore_fileno:
-                dirty_paths = repo.untracked_files + \
-                    [item.a_path for item in repo.index.diff(None)]
+            if ignore_std_streams:
+                dirty_paths = set(_dirty_paths(repo))
+                mapped_paths = set(_mapped_std_streams(dirty_paths).values())
 
-                ignore_inos = {os.fstat(fileno).st_ino for fileno in ignore_fileno}
-                dirty_inos = {os.stat(path).st_ino for path in dirty_paths}
-
-                if dirty_inos - ignore_inos:
+                if dirty_paths - mapped_paths:
                     raise RuntimeError('The repository is dirty.')
 
             elif repo.is_dirty(untracked_files=True):

@@ -30,8 +30,7 @@ def format_cell(cell, datetime_fmt=None):
     return cell
 
 
-def tabulate(collection, headers, datetime_fmt='%Y-%m-%d %H:%M:%S',
-             **kwargs):
+def tabulate(collection, headers, datetime_fmt='%Y-%m-%d %H:%M:%S', **kwargs):
     """Pretty-print a collection."""
     table = [(format_cell(cell, datetime_fmt=datetime_fmt)
               for cell in attrgetter(*headers)(c)) for c in collection]

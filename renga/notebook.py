@@ -203,6 +203,7 @@ def _buckets_resolver(obj, path):
 
 def _current_context_resolver(obj, path):
     """Resolve current context paths."""
+
     # no epty line after dosstring: D202
 
     def _section_resolver(obj, path):
@@ -241,8 +242,8 @@ class RengaStorageManager(ContentsManager):
 
         with file_.open('w') as fp:
             fp.write(
-                nbformat.writes(nb, version=nbformat.NO_CONVERT).encode(
-                    'utf-8'))
+                nbformat.writes(nb,
+                                version=nbformat.NO_CONVERT).encode('utf-8'))
 
     def _save_file(self, path, content, format=None):
         """Save a file to the storage service."""
@@ -384,6 +385,7 @@ class RengaStorageManager(ContentsManager):
         model = self.get(path, content=False, type=model['type'])
         if validation_message:  # pragma: no cover
             model['message'] = validation_message
+
 
 #        self.run_post_save_hook(model=model, os_path=path)
 

@@ -62,8 +62,8 @@ def list(config, all, endpoint):
 
     click.echo(
         tabulate(
-            (execution for context in client.contexts
-             if is_notebook(context) for execution in context.executions),
+            (execution for context in client.contexts if is_notebook(context)
+             for execution in context.executions),
             headers=('engine', 'url'),
             showindex='always'))
 
@@ -133,5 +133,6 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
     execution = context.run(
         engine=engine,
         inputs=inputs,
-        outputs=outputs, )
+        outputs=outputs,
+    )
     click.echo(execution.url)

@@ -105,10 +105,11 @@ class CommandLineToolFactory(object):
         self.outputs = []
 
         if self.stdout and self.file_candidate(self.stdout):
-            self.outputs.append(CommandOutputParameter(
-                id='output_stdout',
-                type='stdout',
-            ))
+            self.outputs.append(
+                CommandOutputParameter(
+                    id='output_stdout',
+                    type='stdout',
+                ))
 
         for input_ in self.guess_inputs(*detect):
             if isinstance(input_, CommandLineBinding):
@@ -200,8 +201,7 @@ class CommandLineToolFactory(object):
                             position=position,
                             prefix=prefix + '=',
                             separate=False,
-                        )
-                    )
+                        ))
                     prefix = None
                 else:
                     prefix = argument
@@ -222,8 +222,7 @@ class CommandLineToolFactory(object):
                             position=position,
                             prefix=prefix,
                             separate=not bool(argument[2:]),
-                        )
-                    )
+                        ))
                     prefix = None
                 else:
                     prefix = argument
@@ -241,8 +240,7 @@ class CommandLineToolFactory(object):
                     inputBinding=dict(
                         position=position,
                         prefix=prefix,
-                    )
-                )
+                    ))
                 prefix = None
 
         if prefix:
@@ -255,13 +253,13 @@ class CommandLineToolFactory(object):
     def guess_outputs(self, paths):
         """Yield detected output and changed command input parameter."""
         input_candidates = {
-            str(input.default): input for input in self.inputs
-            if input.type != 'File'
+            str(input.default): input
+            for input in self.inputs if input.type != 'File'
         }  # inputs that need to be changed if an output is detected
 
         conflicting_paths = {
-            str(input.default) for input in self.inputs
-            if input.type == 'File'
+            str(input.default)
+            for input in self.inputs if input.type == 'File'
         }  # names that can not be outputs because they are already inputs
 
         # TODO group by a common prefix
@@ -280,13 +278,8 @@ class CommandLineToolFactory(object):
             if glob in input_candidates:
                 raise NotImplemented()
             else:
-                yield (
-                    CommandOutputParameter(
-                        id='output_{0}'.format(position),
-                        type='File',
-                        outputBinding=dict(
-                            glob=glob,
-                        ),
-                    ),
-                    None
-                )
+                yield (CommandOutputParameter(
+                    id='output_{0}'.format(position),
+                    type='File',
+                    outputBinding=dict(glob=glob, ),
+                ), None)

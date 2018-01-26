@@ -86,8 +86,8 @@ def list(config, endpoint, all_buckets, sort_by):
     filter_ids = None
 
     if 'project' in config:
-        filter_ids = set(
-            config['project']['endpoints'][endpoint].get('buckets', {}).keys())
+        filter_ids = set(config['project']['endpoints'][endpoint].get(
+            'buckets', {}).keys())
 
     # filter out non-project buckets if needed
     if filter_ids and not all_buckets:

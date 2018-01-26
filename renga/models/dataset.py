@@ -124,8 +124,8 @@ class Dataset(object):
         u = urlparse(url)
 
         if u.scheme not in Dataset.SUPPORTED_SCHEMES:
-            raise NotImplementedError(
-                '{} URLs are not supported'.format(u.scheme))
+            raise NotImplementedError('{} URLs are not supported'.format(
+                u.scheme))
 
         if u.scheme in ('', 'file'):
             shutil.copy(u.path, import_path)

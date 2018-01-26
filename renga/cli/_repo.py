@@ -110,8 +110,8 @@ class Repo(object):
             assert metadata['version'] == 1, 'Only version 1 is supported.'
             metadata.setdefault('core', {})
             metadata['core']['name'] = name
-            metadata['core'].setdefault(
-                'created', datetime.datetime.now().isoformat())
+            metadata['core'].setdefault('created',
+                                        datetime.datetime.now().isoformat())
 
         return str(path)
 

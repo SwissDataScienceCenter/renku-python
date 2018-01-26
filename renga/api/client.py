@@ -34,6 +34,7 @@ from .storage import BucketsApiMixin, FilesApiMixin
 
 def check_status_code(f):
     """Check status code of the response."""
+
     @functools.wraps(f)
     def decorator(*args, **kwargs):
         """Check for ``expected_status_code``."""
@@ -51,7 +52,8 @@ class APIClient(
         ContextsApiMixin,
         ExplorerApiMixin,
         FilesApiMixin,
-        ProjectsApiMixin, ):
+        ProjectsApiMixin,
+):
     """A low-level client for communicating with a Renga Platform API.
 
     Example:
@@ -84,8 +86,8 @@ class APIClient(
 
     def _url(self, url, *args, **kwargs):
         """Format url for endpoint."""
-        return (self.endpoint.rstrip('/') + '/' + url.format(
-            *args, **kwargs).lstrip('/'))
+        return (self.endpoint.rstrip('/') + '/' +
+                url.format(*args, **kwargs).lstrip('/'))
 
     @check_status_code
     def get(self, *args, **kwargs):

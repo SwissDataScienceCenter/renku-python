@@ -92,9 +92,11 @@ def validate_endpoint(ctx, param, value):
 argument_endpoint = click.argument(
     'endpoint',
     required=False,
-    callback=validate_endpoint, )
+    callback=validate_endpoint,
+)
 option_endpoint = click.option(
     '--endpoint',
     default=None,
     callback=validate_endpoint,
-    help=validate_endpoint.__doc__, )
+    help=validate_endpoint.__doc__,
+)

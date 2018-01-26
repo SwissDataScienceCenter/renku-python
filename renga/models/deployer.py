@@ -83,9 +83,9 @@ class SlotCollection(Collection):
         if isinstance(value, self.Meta.model):
             value = value.id
 
-        self._context.spec['labels'].append(
-            '{0}{1}{2}'.format(self._prefix, name, '={0}'.format(value)
-                               if value is not None else ''))
+        self._context.spec['labels'].append('{0}{1}{2}'.format(
+            self._prefix, name, '={0}'.format(value)
+            if value is not None else ''))
 
 
 class Context(Model):
@@ -317,13 +317,7 @@ class ExecutionCollection(Collection):
 
         model = Execution
 
-        headers = (
-            'id',
-            'created',
-            'engine',
-            'ports',
-            'url',
-            'state')
+        headers = ('id', 'created', 'engine', 'ports', 'url', 'state')
 
     def __init__(self, context_id, **kwargs):
         """Initialize the collection of context executions."""
@@ -345,7 +339,6 @@ class ExecutionCollection(Collection):
 
 def _dict_from_labels(labels, separator='='):
     """Create a multidict from label string."""
-    return MultiDict(((label[0].strip(), label[1].strip()
-                       if len(label) > 1 else None)
-                      for label in (raw.split(separator, 1)
-                                    for raw in labels)))
+    return MultiDict(
+        ((label[0].strip(), label[1].strip() if len(label) > 1 else None)
+         for label in (raw.split(separator, 1) for raw in labels)))

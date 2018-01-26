@@ -37,5 +37,6 @@ class ProjectsApiMixin(object):
         """Create a new project and register it on the knowledge graph."""
         resp = self.post(
             self._url('/api/projects'),
-            json=project, )
+            json=project,
+        )
         return resp.json()
