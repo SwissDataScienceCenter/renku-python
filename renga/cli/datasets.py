@@ -48,7 +48,7 @@ def datasets(ctx, datadir):
 def create(repo, name):
     """Create an empty dataset in the current repo."""
     datadir = get_datadir()
-    d = Dataset(name, repo=repo.git, datadir=datadir)
+    d = Dataset.create(name, repo=repo.git, datadir=datadir)
 
 
 @datasets.command()

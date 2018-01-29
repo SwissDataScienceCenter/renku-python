@@ -664,8 +664,9 @@ def test_project(base_runner):
     """Create a test project."""
     from renga import cli
 
-    os.mkdir('test-project')
+    os.makedirs('test-project/data')
     os.chdir('test-project')
+
     result = base_runner.invoke(cli.cli, ['init', '.'])
 
 
@@ -673,7 +674,7 @@ def test_project(base_runner):
 def temp_dataset(test_project):
     """Create a dataset fixture."""
     from renga.models import dataset
-    return dataset.Dataset(
+    return dataset.Dataset.create(
         'dataset',
         datadir='./data',
         creator={'name': 'me',

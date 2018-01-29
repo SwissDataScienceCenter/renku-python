@@ -26,145 +26,122 @@ import uuid
 import warnings
 from datetime import datetime
 from dateutil.parser import parse as parse_date
+from functools import partial
 from urllib import error, parse, request
 
 import attr
 import git
 import requests
-from marshmallow import Schema, fields, post_load, pre_dump
+from attr.validators import instance_of
 
 try:
     from pathlib import Path
 except ImportError:  # pragma: no cover
     from pathlib2 import Path
 
+NoneType = type(None)
 
-class DatasetSchema(Schema):
-    """Schema for the Dataset objects."""
-
-    name = fields.String(required=True)
-    creator = fields.Nested('CreatorSchema', required=True)
-    identifier = fields.UUID(default=str(uuid.uuid4()))
-    files = fields.List(fields.Nested('DatasetFileSchema'))
-    created_at = fields.DateTime(required=True)
-
-    @post_load
-    def make_dataset(self, data):
-        """Return a dataset instance."""
-        return Dataset(loading=True, **data)
+_path_attr = partial(
+    attr.ib,
+    converter=lambda x: Path(x) if isinstance(x, str) else x,
+    validator=lambda i, arg, val: val.stat() if isinstance(val, Path) else True
+)
 
 
-class DatasetFileSchema(Schema):
-    """Schema for the File objects."""
-
-    path = fields.String(required=True)
-    origin = fields.String(required=True)
-    creator = fields.Nested('CreatorSchema', required=True)
-    dataset = fields.String()
-    date_added = fields.DateTime(required=True)
-
-    @post_load
-    def make_file(self, data):
-        """Return a file instance."""
-        return DatasetFile(loading=True, **data)
+def _deserialize_list(l, cls, options=None):
+    """Deserialize a list of dicts into classes."""
+    if not all(isinstance(x, dict) for x in l):
+        raise ValueError('Dicts required for deserialization.')
+    if options:
+        return [cls(**options, **x) for x in l]
+    return [cls(**x) for x in l]
 
 
+@attr.s
+class Creator(object):
+    """Represent the creator."""
+
+    name = attr.ib(validator=instance_of(str))
+    email = attr.ib(validator=instance_of(str))
+    affiliation = attr.ib(default=None)
+
+
+@attr.s
 class DatasetFile(object):
     """Represent a file in a dataset."""
 
-    def __init__(self,
-                 path,
-                 origin,
-                 creator,
-                 dataset=None,
-                 loading=False,
-                 date_added=None):
-        """Create a File instance."""
-        self.path = path
-        self.origin = origin
-        self.dataset = dataset
-        if not loading:
-            self.date_added = datetime.now()
-        else:
-            self.date_added = date_added
-        self.creator = creator
+    path = _path_attr()
+    origin = attr.ib(converter=lambda x: str(x))
+    creator = attr.ib(
+        converter=lambda arg: arg if isinstance(
+            arg, Creator) else Creator(**arg))
+    dataset = attr.ib(default=None)
+    date_added = attr.ib()
+
+    @date_added.default
+    def set_date_added(self):
+        return str(datetime.now())
 
 
-class CreatorSchema(Schema):
-    """Schema for the creator of a resource."""
-
-    name = fields.String(required=True)
-    email = fields.String(required=True)
-    affiliation = fields.String()
-
-    # @post_load
-    # def make_creator(self, data):
-    #     """Return a Creator instance."""
-    #     return Creator(**data)
+_deserialize_files = partial(_deserialize_list, cls=DatasetFile)
 
 
-class Creator(object):
-    """Represent a content creator."""
-
-    def __init__(self, name, email, affiliation=None):
-        """Initialize creator."""
-        self.name = name
-        self.email = email
-
-
+@attr.s
 class Dataset(object):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
 
-    def __init__(self,
-                 name,
-                 creator=None,
-                 created_at=None,
-                 datadir=None,
-                 loading=False,
-                 repo=None,
-                 files=None,
-                 **kwargs):
-        """Create a Dataset instance."""
-        self.name = name
-        self.files = files
-        self.loading = loading
-        self.repo = repo
+    name = attr.ib(type='string')
+    created_at = attr.ib(
+        default=attr.Factory(datetime.now),
+        converter=lambda arg: arg if isinstance(
+            arg, datetime) else parse_date(arg))
+    identifier = attr.ib(
+        default=attr.Factory(uuid.uuid4),
+        converter=lambda x: uuid.UUID(x) if isinstance(x, str) else x)
+    repo = attr.ib(
+        default=None,
+        converter=lambda arg: arg if isinstance(
+            arg, (git.Repo, NoneType)) else git.Repo(arg)
+    )
+    creator = attr.ib(
+        converter=lambda arg: arg if isinstance(
+            arg, Creator) else Creator(**arg))
+    datadir = _path_attr(default='data')
+    files = attr.ib(default=attr.Factory(list), converter=_deserialize_files)
 
-        if not creator:
-            if not repo:
-                raise RuntimeError(
-                    'Outside of a git repository '
-                    '- unable to determine creator information.')
-            git_config = repo.config_reader()
-            creator = {
-                'name': git_config.get('user', 'name'),
-                'email': git_config.get('user', 'email')
-            }
-        self.creator = creator
+    @creator.default
+    def set_creator(self):
+        if not self.repo:
+            raise RuntimeError('Outside of a git repository '
+                               '- unable to determine creator information.')
+        git_config = self.repo.config_reader()
+        return {
+            'name': git_config.get('user', 'name'),
+            'email': git_config.get('user', 'email')
+        }
 
-        if datadir:
-            self.datadir = Path(datadir).absolute()
-        elif repo:
-            self.datadir = Path(
-                os.path.dirname(repo.git_dir)).joinpath('data').absolute()
-        else:
-            self.datadir = Path('data').absolute()
-
-        self.path = self.datadir.joinpath(self.name)
-
-        if not self.loading:
-            self.created_at = datetime.now()
-            self.files = []
-            try:
-                os.makedirs(self.path)
-            except FileExistsError:
-                raise FileExistsError('This dataset already exists.')
-            self.write_metadata()
-
+    def __attrs_post_init__(self):
         if self.repo:
-            self.commit_to_repo()
+            self.datadir = Path(os.path.dirname(self.repo.git_dir)).joinpath(
+                'data').absolute()
+        else:
+            self.datadir = Path(self.datadir).absolute()
+
+    @property
+    def path(self):
+        """Path to this Dataset."""
+        return self.datadir.joinpath(self.name)
+
+    def meta_init(self):
+        """Initialize the directories and metadata."""
+        try:
+            os.mkdir(self.path)
+        except FileExistsError:
+            raise FileExistsError('This dataset already exists.')
+        self.write_metadata()
+        self.commit_to_repo()
 
     def add_data(self, url, datadir=None, git=False, targets=None, **kwargs):
         """Import the data into the data directory."""
@@ -183,21 +160,7 @@ class Dataset(object):
 
         self.files.extend(new_files)
         self.write_metadata()
-
-    def write_metadata(self):
-        """Write the dataset metadata to disk."""
-        with open(self.path.joinpath('metadata.json'), 'w') as f:
-            f.write(self.json)
-        return self.json
-
-    @property
-    def json(self):
-        """Dump the json for this dataset."""
-        return DatasetSchema().dumps(self).data
-
-    def to_dict(self):
-        """Return a dictionary with the metadata for this dataset."""
-        return DatasetSchema().dump(self).data
+        self.commit_to_repo()
 
     def _add_from_url(self, path, url, nocopy=False):
         """Process an add from url and return the location on disk."""
@@ -236,13 +199,65 @@ class Dataset(object):
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
         return DatasetFile(
-            dst.absolute(), url, creator=self.creator, dataset=self.name)
+            str(dst.absolute()), url, creator=self.creator, dataset=self.name)
+
+    def write_metadata(self):
+        """Write the dataset metadata to disk."""
+        with open(self.path.joinpath('metadata.json'), 'w') as f:
+            f.write(self.json)
+        return self.json
+
+    def commit_to_repo(self, message=None):
+        """Commit the dataset files to the git repository."""
+        repo = self.repo
+        if repo:
+            repo.index.add(
+                [Path(x.path).absolute().as_posix() for x in self.files])
+            repo.index.add(
+                [self.path.joinpath('metadata.json').absolute().as_posix()])
+            if not message:
+                message = "[renga] commiting changes to {} dataset".format(
+                    self.name)
+            repo.index.commit(message)
+
+    @property
+    def json(self):
+        """Dump the json for this dataset."""
+        d = attr.asdict(self)
+
+        # convert unserializable values to str
+        for k in ('created_at', 'identifier', 'datadir'):
+            if d[k]:
+                d[k] = str(d[k])
+
+        # serialize file list
+        files = []
+        for f in d['files']:
+            f['path'] = f['path'].absolute().as_posix()
+            files.append(f)
+
+        # serialize repo path
+        if d.get('repo'):
+            d['repo'] = d['repo'].git_dir
+
+        return json.dumps(d)
+
+    def to_dict(self):
+        """Return a dictionary serialization of the Dataset."""
+        return attr.asdict(self)
 
     @staticmethod
     def from_json(metadata_file):
         """Return a Dataset object deserialized from json on disk."""
         with open(metadata_file) as f:
-            return DatasetSchema().load(json.load(f)).data
+            return Dataset(**json.load(f))
+
+    @staticmethod
+    def create(*args, **kwargs):
+        """Create a new dataset and create its directories and metadata."""
+        d = Dataset(*args, **kwargs)
+        d.meta_init()
+        return d
 
     @staticmethod
     def load(name, repo=None, datadir='data'):
@@ -251,16 +266,3 @@ class Dataset(object):
             os.path.dirname(repo.git_dir)
             if repo else '.', datadir, name, 'metadata.json')
         return Dataset.from_json(metadata_file)
-
-    def commit_to_repo(self, message=None):
-        """Commit the dataset files to the git repository."""
-        repo = self.repo
-
-        repo.index.add(f.path.as_posix() for f in self.files)
-        repo.index.add(
-            [self.path.joinpath('metadata.json').absolute().as_posix()])
-
-        if not message:
-            message = "[renga] commiting changes to {} dataset".format(
-                self.name)
-        repo.index.commit(message)

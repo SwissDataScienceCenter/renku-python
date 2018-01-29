@@ -104,13 +104,6 @@ def test_dataset_creation(base_runner, sample_file, test_project):
     """Test importing data into a dataset."""
     runner = base_runner
 
-    os.mkdir('data')
-
-    # providing a bad data directory should fail
-    result = runner.invoke(cli.cli,
-                           ['import', 'file', 'dataset', '--datadir', 'bla'])
-    assert result.exit_code == 2
-
     # create a dataset
     result = runner.invoke(cli.cli, ['datasets', 'create', 'dataset'])
     assert result.exit_code == 0
