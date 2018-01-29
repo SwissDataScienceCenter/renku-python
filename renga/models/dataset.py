@@ -17,6 +17,7 @@
 # limitations under the License.
 """Model objects representing datasets."""
 
+import dateutil
 import json
 import os
 import shutil
@@ -24,8 +25,11 @@ import stat
 import uuid
 import warnings
 from datetime import datetime
+from dateutil.parser import parse as parse_date
 from urllib import error, parse, request
 
+import attr
+import git
 import requests
 from marshmallow import Schema, fields, post_load, pre_dump
 
@@ -93,6 +97,20 @@ class CreatorSchema(Schema):
     email = fields.String(required=True)
     affiliation = fields.String()
 
+    # @post_load
+    # def make_creator(self, data):
+    #     """Return a Creator instance."""
+    #     return Creator(**data)
+
+
+class Creator(object):
+    """Represent a content creator."""
+
+    def __init__(self, name, email, affiliation=None):
+        """Initialize creator."""
+        self.name = name
+        self.email = email
+
 
 class Dataset(object):
     """Repesent a dataset."""
@@ -102,12 +120,18 @@ class Dataset(object):
     def __init__(self,
                  name,
                  creator=None,
+                 created_at=None,
                  datadir=None,
                  loading=False,
                  repo=None,
+                 files=None,
                  **kwargs):
         """Create a Dataset instance."""
         self.name = name
+        self.files = files
+        self.loading = loading
+        self.repo = repo
+
         if not creator:
             if not repo:
                 raise RuntimeError(
@@ -126,27 +150,21 @@ class Dataset(object):
             self.datadir = Path(
                 os.path.dirname(repo.git_dir)).joinpath('data').absolute()
         else:
-            self.datadir = Path('./data').absolute()
+            self.datadir = Path('data').absolute()
 
-        self.path = self.datadir.joinpath(name)
-        self.repo = repo
+        self.path = self.datadir.joinpath(self.name)
 
-        self.files = []
-
-        if not loading:
+        if not self.loading:
+            self.created_at = datetime.now()
+            self.files = []
             try:
                 os.makedirs(self.path)
             except FileExistsError:
                 raise FileExistsError('This dataset already exists.')
-
-            self.identifier = uuid.uuid4()
-            self.files = []
-
-            self.created_at = datetime.now()
             self.write_metadata()
 
-            if repo:
-                self.commit_to_repo()
+        if self.repo:
+            self.commit_to_repo()
 
     def add_data(self, url, datadir=None, git=False, targets=None, **kwargs):
         """Import the data into the data directory."""
@@ -186,8 +204,8 @@ class Dataset(object):
         u = parse.urlparse(url)
 
         if u.scheme not in Dataset.SUPPORTED_SCHEMES:
-            raise NotImplementedError('{} URLs are not supported'.format(
-                u.scheme))
+            raise NotImplementedError(
+                '{} URLs are not supported'.format(u.scheme))
 
         dst = path.joinpath(os.path.basename(url)).absolute()
 
@@ -238,10 +256,9 @@ class Dataset(object):
         """Commit the dataset files to the git repository."""
         repo = self.repo
 
-        repo.index.add([
-            x.as_posix()
-            for x in self.files + [self.path.joinpath('metadata.json')]
-        ])
+        repo.index.add(f.path.as_posix() for f in self.files)
+        repo.index.add(
+            [self.path.joinpath('metadata.json').absolute().as_posix()])
 
         if not message:
             message = "[renga] commiting changes to {} dataset".format(

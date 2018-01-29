@@ -48,12 +48,16 @@ def test_dataset_creation(tmpdir):
     """Test dataset directory tree creation."""
     p = tmpdir.mkdir("project")
     os.chdir(p)
-    d = dataset.Dataset('dataset')
+    d = dataset.Dataset(
+        'dataset', creator={'name': 'me',
+                            'email': 'me@example.com'})
     assert os.stat(p.join('data/dataset'))
 
     # creating another dataset fails by default
     with pytest.raises(FileExistsError):
-        d2 = dataset.Dataset('dataset')
+        d2 = dataset.Dataset(
+            'dataset', creator={'name': 'me',
+                                'email': 'me@example.com'})
 
 
 @pytest.mark.parametrize('scheme, path, error',
@@ -68,7 +72,11 @@ def test_data_add(scheme, path, error, tmpdir, sample_file, dataset_responses):
     with raises(error):
         if path == 'temp':
             path = str(sample_file)
-        d = dataset.Dataset('dataset', data_dir='./data')
+        d = dataset.Dataset(
+            'dataset',
+            datadir='./data',
+            creator={'name': 'me',
+                     'email': 'me@example.com'})
         d.add_data('{}{}'.format(scheme, path))
         with open('data/dataset/sample_file') as f:
             assert f.read() == '1234'
@@ -81,7 +89,11 @@ def test_data_add(scheme, path, error, tmpdir, sample_file, dataset_responses):
         # check the linking
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
-            d = dataset.Dataset('dataset', data_dir='./data')
+            d = dataset.Dataset(
+                'dataset',
+                datadir='./data',
+                creator={'name': 'me',
+                         'email': 'me@example.com'})
             d.add_data('{}{}'.format(scheme, path), nocopy=True)
 
 
