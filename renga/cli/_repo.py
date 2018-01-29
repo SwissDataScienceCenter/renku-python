@@ -30,6 +30,7 @@ from git import Repo as GitRepo
 from werkzeug.utils import secure_filename
 
 from renga._compat import Path
+from renga.models.cwl._ascwl import ascwl
 from renga.models.cwl.workflow import Workflow
 
 from ._config import RENGA_HOME, read_config, write_config
@@ -115,8 +116,11 @@ class Repo(object):
                     workflow_path.mkdir()
 
                 with open(workflow_path / step_name, 'w') as step_file:
-                    yaml.dump(attr.asdict(
-                        step.run, filter=lambda _, x: x is False or bool(x)
+                    yaml.dump(ascwl(
+                        # filter=lambda _, x: not (x is False or bool(x)
+                        step.run,
+                        filter=lambda k, x: not (
+                            k.name == 'default' or x is None),
                     ), stream=step_file, default_flow_style=False)
 
     def init(self, name=None, force=False):
@@ -133,6 +137,12 @@ class Repo(object):
             git = GitRepo.init(str(path))
 
         git.description = name or path.name
+
+        with open(path / '.gitignore', 'a') as gitignore:
+            gitignore.write(str(
+                self.renga_path.relative_to(self.path).with_suffix(
+                    self.LOCK_SUFFIX)
+            ) + '\n')
 
         with self.with_metadata() as metadata:
             metadata.setdefault('version', 1)

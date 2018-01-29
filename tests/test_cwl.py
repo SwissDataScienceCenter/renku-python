@@ -46,7 +46,7 @@ def test_03_input(instance_path):
     assert tool.arguments[0].prefix == '-f'
 
     assert tool.inputs[0].default == 42
-    assert tool.inputs[0].type == 'integer'
+    assert tool.inputs[0].type == 'int'
     assert tool.inputs[0].inputBinding.prefix == '-i'
     assert tool.inputs[0].inputBinding.separate is False
 

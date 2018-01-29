@@ -19,20 +19,20 @@
 
 import re
 import shlex
-
 from contextlib import contextmanager
 
 import attr
 
 from renga._compat import Path
 
+from ._ascwl import CWLClass
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
 from .process import Process
 
 
 @attr.s
-class CommandLineTool(Process):
+class CommandLineTool(Process, CWLClass):
     """Represent a command line tool."""
 
     # specialize inputs and outputs with Command{Input,Output}Parameter
@@ -69,6 +69,7 @@ class CommandLineToolFactory(object):
     command_line = attr.ib(
         converter=lambda cmd: list(cmd) if isinstance(
             cmd, (list, tuple)) else shlex.split(cmd),
+
     )
 
     directory = attr.ib(
@@ -92,12 +93,14 @@ class CommandLineToolFactory(object):
         self.inputs = []
         self.outputs = []
 
-        if self.stdout and self.file_candidate(self.stdout):
-            self.outputs.append(
-                CommandOutputParameter(
-                    id='output_stdout',
-                    type='stdout',
-                ))
+        for stream_name in ('stdout', 'stderr'):
+            stream = getattr(self, stream_name)
+            if stream and self.file_candidate(stream):
+                self.outputs.append(
+                    CommandOutputParameter(
+                        id='output_{0}'.format(stream_name),
+                        type=stream_name,
+                    ))
 
         for input_ in self.guess_inputs(*detect):
             if isinstance(input_, CommandLineBinding):
@@ -108,6 +111,9 @@ class CommandLineToolFactory(object):
     def generate_tool(self):
         """Return an instance of command line tool."""
         return CommandLineTool(
+            stdin=self.stdin,
+            stderr=self.stderr,
+            stdout=self.stdout,
             baseCommand=self.baseCommand,
             arguments=self.arguments,
             inputs=self.inputs,
@@ -122,13 +128,13 @@ class CommandLineToolFactory(object):
         yield tool
 
         if git:
-            outputs = git.untracked_files
-            outputs += [item.a_path for item in git.index.diff(None)]
+            candidates = git.untracked_files
+            candidates += [item.a_path for item in git.index.diff(None)]
 
             inputs = {input.id: input for input in self.inputs}
-            outputs = []
+            outputs = list(tool.outputs)
 
-            for output, input in self.guess_outputs(outputs):
+            for output, input in self.guess_outputs(candidates):
                 outputs.append(output)
                 if input is not None:
                     if input.id not in inputs:  # pragma: no cover
@@ -176,7 +182,7 @@ class CommandLineToolFactory(object):
         """Return new value and CWL parameter type."""
         try:
             value = int(value)
-            return value, 'integer', None
+            return value, 'int', None
         except ValueError:
             pass
 
@@ -297,6 +303,10 @@ class CommandLineToolFactory(object):
             for input in self.inputs if input.type == 'File'
         }  # names that can not be outputs because they are already inputs
 
+        streams = {path for path in (
+            getattr(self, name) for name in ('stdout', 'stderr')
+        ) if path is not None}
+
         # TODO group by a common prefix
 
         for position, path in enumerate(paths):
@@ -306,6 +316,9 @@ class CommandLineToolFactory(object):
                 raise ValueError('Path "{0}" does not exist.'.format(path))
 
             glob = str(candidate.relative_to(self.directory))
+
+            if glob in streams:
+                continue
 
             if glob in conflicting_paths:
                 raise ValueError('Output already exists in inputs.')

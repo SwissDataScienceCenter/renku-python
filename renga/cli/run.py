@@ -35,10 +35,11 @@ from ._repo import pass_repo
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
 def run(repo, command_line):
     """Activate environment for tracking work on a specific problem."""
+    candidates = [x[0] for x in repo.git.index.entries] + \
+        repo.git.untracked_files
     factory = CommandLineToolFactory(
         command_line=command_line,
-        **_mapped_std_streams([x[0] for x in repo.git.index.entries] +
-                              repo.git.untracked_files))
+        **_mapped_std_streams(candidates))
 
     with repo.with_workflow_storage() as wf:
         with factory.watch(repo.git) as tool:

@@ -24,8 +24,12 @@ import attr
 class Process(object):
     """Represent a process."""
 
-    inputs = attr.ib(default=attr.Factory(list))  # list InputParameter
-    outputs = attr.ib(default=attr.Factory(list))  # list OutputParameter
+    inputs = attr.ib(default=attr.Factory(list), metadata={
+        'jsonldPredicate': {'mapSubject': 'id'},
+    })  # list InputParameter
+    outputs = attr.ib(default=attr.Factory(list), metadata={
+        'jsonldPredicate': {'mapSubject': 'id'},
+    })  # list OutputParameter
     requirements = attr.ib(default=attr.Factory(list))
     # list ProcessRequirement
     hints = attr.ib(default=attr.Factory(list))  # list Any
