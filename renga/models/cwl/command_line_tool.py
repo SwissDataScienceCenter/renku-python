@@ -29,6 +29,7 @@ from ._ascwl import CWLClass
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
 from .process import Process
+from .types import File
 
 
 @attr.s
@@ -47,9 +48,17 @@ class CommandLineTool(Process, CWLClass):
             cmd, (list, tuple)) else shlex.split(cmd),
     )  # list(string, Expression, CommandLineBinding)
 
-    stdin = attr.ib(default=None)  # null, str, Expression
-    stderr = attr.ib(default=None)  # null, str, Expression
-    stdout = attr.ib(default=None)  # null, str, Expression
+    stdin = attr.ib(default=None, converter=lambda path: Path(
+        path) if path and not isinstance(path, Path) else path
+    )  # null, str, Expression
+    stdout = attr.ib(default=None)
+    stderr = attr.ib(default=None)
+    # stdout = attr.ib(default=None, converter=lambda path: Path(
+    #     path) if path and not isinstance(path, Path) else path
+    # )  # null, str, Expression
+    # stderr = attr.ib(default=None, converter=lambda path: Path(
+    #     path) if path and not isinstance(path, Path) else path
+    # )  # null, str, Expression
 
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
@@ -189,7 +198,9 @@ class CommandLineToolFactory(object):
         candidate = self.file_candidate(value)
         if candidate:
             try:
-                return str(candidate.relative_to(self.directory)), 'File', None
+                return File(
+                    path=candidate.relative_to(self.directory)
+                ), 'File', None
             except ValueError:
                 # The candidate points to a file outside the working
                 # directory

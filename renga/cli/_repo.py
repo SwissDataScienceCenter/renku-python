@@ -119,8 +119,8 @@ class Repo(object):
                     yaml.dump(ascwl(
                         # filter=lambda _, x: not (x is False or bool(x)
                         step.run,
-                        filter=lambda k, x: not (
-                            k.name == 'default' or x is None),
+                        filter=lambda _, x: x is not None,
+                        basedir=workflow_path,
                     ), stream=step_file, default_flow_style=False)
 
     def init(self, name=None, force=False):

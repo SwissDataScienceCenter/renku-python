@@ -17,11 +17,14 @@
 # limitations under the License.
 """Convert models to Common Workflow Language."""
 
+import os
 from collections import OrderedDict
 
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import fields
+
+from renga._compat import Path
 
 
 class CWLClass(object):
@@ -29,7 +32,7 @@ class CWLClass(object):
 
 
 def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
-          retain_collection_types=False):
+          retain_collection_types=False, basedir=None):
     """Return the ``attrs`` attribute values of *inst* as a dict.
 
     Support ``jsonldPredicate`` in a field metadata for generating
@@ -39,6 +42,13 @@ def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
     """
     attrs = fields(inst.__class__)
     rv = dict_factory()
+
+    def convert_value(v):
+        """Convert special types."""
+        if isinstance(v, Path):
+            return os.path.relpath(v, basedir) if basedir else str(v)
+        return v
+
     for a in attrs:
         v = getattr(inst, a.name)
         if filter is not None and not filter(a, v):
@@ -46,13 +56,13 @@ def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
         if recurse is True:
             if has(v.__class__):
                 rv[a.name] = ascwl(v, recurse=True, filter=filter,
-                                   dict_factory=dict_factory)
+                                   dict_factory=dict_factory, basedir=basedir)
 
             elif isinstance(v, (tuple, list, set)):
                 cf = v.__class__ if retain_collection_types is True else list
                 rv[a.name] = cf([
                     ascwl(i, recurse=True, filter=filter,
-                          dict_factory=dict_factory)
+                          dict_factory=dict_factory, basedir=basedir)
                     if has(i.__class__) else i
                     for i in v
                 ])
@@ -69,13 +79,15 @@ def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
             elif isinstance(v, dict):
                 df = dict_factory
                 rv[a.name] = df((
-                    ascwl(kk, dict_factory=df) if has(kk.__class__) else kk,
-                    ascwl(vv, dict_factory=df) if has(vv.__class__) else vv)
+                    ascwl(kk, dict_factory=df, basedir=basedir)
+                    if has(kk.__class__) else kk,
+                    ascwl(vv, dict_factory=df, basedir=basedir)
+                    if has(vv.__class__) else vv)
                     for kk, vv in iteritems(v))
             else:
-                rv[a.name] = v
+                rv[a.name] = convert_value(v)
         else:
-            rv[a.name] = v
+            rv[a.name] = convert_value(v)
 
     if isinstance(inst, CWLClass):
         rv['class'] = inst.__class__.__name__

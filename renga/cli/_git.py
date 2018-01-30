@@ -24,6 +24,8 @@ from contextlib import contextmanager
 import click
 from git import Repo
 
+from renga._compat import Path
+
 GIT_KEY = 'renga.git'
 
 
