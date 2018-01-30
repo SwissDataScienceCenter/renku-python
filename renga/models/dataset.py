@@ -20,6 +20,7 @@
 import dateutil
 import json
 import os
+import re
 import shutil
 import stat
 import uuid
@@ -62,8 +63,15 @@ class Creator(object):
     """Represent the creator."""
 
     name = attr.ib(validator=instance_of(str))
-    email = attr.ib(validator=instance_of(str))
+    email = attr.ib()
     affiliation = attr.ib(default=None)
+
+    @email.validator
+    def check_email(self, attribute, value):
+        """Check that the email is valid."""
+        if not (isinstance(value, str) or re.match(r"[^@]+@[^@]+\.[^@]+",
+                                                   value)):
+            raise ValueError('Email address is invalid.')
 
 
 @attr.s
@@ -73,15 +81,10 @@ class DatasetFile(object):
     path = _path_attr()
     origin = attr.ib(converter=lambda x: str(x))
     creator = attr.ib(
-        converter=lambda arg: arg if isinstance(
-            arg, Creator) else Creator(**arg))
+        converter=lambda arg: arg if isinstance(arg, Creator)
+        else Creator(**arg))
     dataset = attr.ib(default=None)
-    date_added = attr.ib()
-
-    @date_added.default
-    def set_date_added(self):
-        return str(datetime.now())
-
+    date_added = attr.ib(default=attr.Factory(datetime.now))
 
 _deserialize_files = partial(_deserialize_list, cls=DatasetFile)
 
@@ -95,24 +98,26 @@ class Dataset(object):
     name = attr.ib(type='string')
     created_at = attr.ib(
         default=attr.Factory(datetime.now),
-        converter=lambda arg: arg if isinstance(
-            arg, datetime) else parse_date(arg))
+        converter=lambda arg: arg if isinstance(arg, datetime)
+        else parse_date(arg))
     identifier = attr.ib(
         default=attr.Factory(uuid.uuid4),
-        converter=lambda x: uuid.UUID(x) if isinstance(x, str) else x)
+        converter=lambda x: uuid.UUID(x) if isinstance(x, str)
+        else x)
     repo = attr.ib(
         default=None,
         converter=lambda arg: arg if isinstance(
             arg, (git.Repo, NoneType)) else git.Repo(arg)
     )
     creator = attr.ib(
-        converter=lambda arg: arg if isinstance(
-            arg, Creator) else Creator(**arg))
+        converter=lambda arg: arg if isinstance(arg, Creator)
+        else Creator(**arg))
     datadir = _path_attr(default='data')
     files = attr.ib(default=attr.Factory(list), converter=_deserialize_files)
 
     @creator.default
-    def set_creator(self):
+    def set_creator_from_git(self):
+        """Set the creator name and email from the git repo if present."""
         if not self.repo:
             raise RuntimeError('Outside of a git repository '
                                '- unable to determine creator information.')
@@ -123,6 +128,7 @@ class Dataset(object):
         }
 
     def __attrs_post_init__(self):
+        """Finalize initialization of Dataset instance."""
         if self.repo:
             self.datadir = Path(os.path.dirname(self.repo.git_dir)).joinpath(
                 'data').absolute()
@@ -204,8 +210,8 @@ class Dataset(object):
     def write_metadata(self):
         """Write the dataset metadata to disk."""
         with open(self.path.joinpath('metadata.json'), 'w') as f:
-            f.write(self.json)
-        return self.json
+            f.write(self.to_json())
+        return self.to_json()
 
     def commit_to_repo(self, message=None):
         """Commit the dataset files to the git repository."""
@@ -220,8 +226,7 @@ class Dataset(object):
                     self.name)
             repo.index.commit(message)
 
-    @property
-    def json(self):
+    def to_json(self):
         """Dump the json for this dataset."""
         d = attr.asdict(self)
 
@@ -234,6 +239,7 @@ class Dataset(object):
         files = []
         for f in d['files']:
             f['path'] = f['path'].absolute().as_posix()
+            f['date_added'] = str(f['date_added'])
             files.append(f)
 
         # serialize repo path
