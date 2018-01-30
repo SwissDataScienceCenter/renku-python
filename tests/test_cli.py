@@ -115,7 +115,7 @@ def test_dataset_creation(base_runner, sample_file, test_project):
                             str(sample_file)])
     assert os.stat('data/dataset/sample_file')
 
-    # add data from git repo
+    # add data from a git repo via http
     result = runner.invoke(cli.cli, [
         'datasets', 'add', 'dataset', '--targets', 'README.rst',
         'https://github.com/SwissDataScienceCenter/renga-python.git'

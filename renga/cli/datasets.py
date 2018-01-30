@@ -53,7 +53,7 @@ def create(repo, name):
 @click.option('--targets', default=None, help='Target in the git repo.')
 @pass_repo
 def add(repo, name, url, nocopy, targets):
-    """Import a dataset from another renga repository."""
+    """Add data to a dataset."""
     datadir = get_datadir()
     d = Dataset.load(name, repo=repo.git, datadir=datadir)
     try:

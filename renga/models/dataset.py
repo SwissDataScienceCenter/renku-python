@@ -17,7 +17,6 @@
 # limitations under the License.
 """Model objects representing datasets."""
 
-import dateutil
 import json
 import os
 import re
@@ -26,14 +25,16 @@ import stat
 import uuid
 import warnings
 from datetime import datetime
-from dateutil.parser import parse as parse_date
 from functools import partial
 from urllib import error, parse, request
 
-import attr
-import git
 import requests
+
+import attr
+import dateutil
+import git
 from attr.validators import instance_of
+from dateutil.parser import parse as parse_date
 
 try:
     from pathlib import Path
@@ -49,13 +50,13 @@ _path_attr = partial(
 )
 
 
-def _deserialize_list(l, cls, options=None):
+def _deserialize_dict(d, cls, options=None):
     """Deserialize a list of dicts into classes."""
-    if not all(isinstance(x, dict) for x in l):
+    if not all(isinstance(x, dict) for x in d.values()):
         raise ValueError('Dicts required for deserialization.')
     if options:
-        return [cls(**options, **x) for x in l]
-    return [cls(**x) for x in l]
+        return {k: cls(**options, **v) for (k, v) in d.items()}
+    return {k: cls(**v) for (k, v) in d.items()}
 
 
 @attr.s
@@ -87,7 +88,7 @@ class DatasetFile(object):
     date_added = attr.ib(default=attr.Factory(datetime.now))
 
 
-_deserialize_files = partial(_deserialize_list, cls=DatasetFile)
+_deserialize_files = partial(_deserialize_dict, cls=DatasetFile)
 
 
 @attr.s
@@ -113,7 +114,7 @@ class Dataset(object):
         converter=lambda arg: arg if isinstance(
             arg, Creator) else Creator(**arg))
     datadir = _path_attr(default='data')
-    files = attr.ib(default=attr.Factory(list), converter=_deserialize_files)
+    files = attr.ib(default=attr.Factory(dict), converter=_deserialize_files)
 
     @creator.default
     def set_creator_from_git(self):
@@ -163,14 +164,12 @@ class Dataset(object):
                     'Can only import from one git repo at a time.')
             if not isinstance(targets, list):
                 targets = [targets]
-            new_files = (self._add_from_git(self.path, url, target)
-                         for target in targets)
+            for target in targets:
+                self.files.update(self._add_from_git(self.path, url, target))
         else:
-            new_files = [
-                self._add_from_url(self.path, url, kwargs.get('ncopy'))
-            ]
+            self.files.update(
+                self._add_from_url(self.path, url, kwargs.get('ncopy')))
 
-        self.files.extend(new_files)
         self.write_metadata()
         self.commit_to_repo()
 
@@ -204,11 +203,14 @@ class Dataset(object):
         # make the added file read-only
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
-        return DatasetFile(
-            dst.absolute().as_posix(),
-            url,
-            creator=self.creator,
-            dataset=self.name)
+        return {
+            dst.relative_to(self.path).as_posix():
+            DatasetFile(
+                dst.absolute().as_posix(),
+                url,
+                creator=self.creator,
+                dataset=self.name)
+        }
 
     def _add_from_git(self, path, url, target):
         """Process adding resources from anoth git repository.
@@ -235,10 +237,13 @@ class Dataset(object):
         os.symlink(src, dst)
 
         # TODO: do something smarter about the creator
-        return DatasetFile(
-            dst.absolute().as_posix(),
-            '{}/{}'.format(url, target),
-            creator=self.creator)
+        return {
+            dst.relative_to(self.path).as_posix():
+            DatasetFile(
+                dst.absolute().as_posix(),
+                '{}/{}'.format(url, target),
+                creator=self.creator)
+        }
 
     def write_metadata(self):
         """Write the dataset metadata to disk."""
@@ -250,8 +255,10 @@ class Dataset(object):
         """Commit the dataset files to the git repository."""
         repo = self.repo
         if repo:
-            repo.index.add(
-                [Path(x.path).absolute().as_posix() for x in self.files])
+            repo.index.add([
+                Path(x.path).absolute().as_posix()
+                for x in self.files.values()
+            ])
             repo.index.add(
                 [self.path.joinpath('metadata.json').absolute().as_posix()])
             if not message:
@@ -269,11 +276,11 @@ class Dataset(object):
                 d[k] = str(d[k])
 
         # serialize file list
-        files = []
-        for f in d['files']:
-            f['path'] = f['path'].absolute().as_posix()
-            f['date_added'] = str(f['date_added'])
-            files.append(f)
+        files = {}
+        for k, v in d['files'].items():
+            v['path'] = v['path'].absolute().as_posix()
+            v['date_added'] = str(v['date_added'])
+            files.update({k: v})
 
         # serialize repo path
         if d.get('repo'):

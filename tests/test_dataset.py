@@ -17,6 +17,7 @@
 # limitations under the License.
 """Dataset tests."""
 
+import json
 import os
 import shutil
 import stat
@@ -88,6 +89,8 @@ def test_data_add(scheme, path, error, tmpdir, sample_file, dataset_responses):
         with open('data/dataset/sample_file') as f:
             assert f.read() == '1234'
 
+        assert d.files.get('sample_file')
+
         # check that the imported file is read-only
         assert not os.access('data/dataset/sample_file',
                              stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -113,10 +116,10 @@ def test_dataset_serialization(temp_dataset, sample_file):
     d_dict = d.to_dict()
 
     assert all([key in d_dict for key in ('name', 'identifier', 'files')])
-    assert not len(d_dict['files'])
+    assert not len(d_dict['files'].values())
     d.add_data(str(sample_file))
     d_dict = d.to_dict()
-    assert len(d_dict['files'])
+    assert len(d_dict['files'].values())
 
 
 def test_repo_commit(temp_dataset, sample_file):
