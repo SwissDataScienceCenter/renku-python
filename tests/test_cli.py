@@ -96,7 +96,7 @@ def test_workon(runner):
 def test_run_simple(runner):
     """Test tracking of run command."""
     cmd = ['echo', 'test']
-    result = runner.invoke(cli.cli, ['run'] + cmd)
+    result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
     assert result.exit_code == 0
 
 

@@ -20,6 +20,8 @@
 import os
 from collections import OrderedDict
 
+import attr
+
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import fields
@@ -29,6 +31,33 @@ from renga._compat import Path
 
 class CWLClass(object):
     """Include ``class`` field in serialized object."""
+
+    @classmethod
+    def from_cwl(cls, data):
+        """Return an instance from CWL data."""
+        return cls(**{k: v for k, v in iteritems(data) if k != 'class'})
+
+
+def mapped(cls, key='id', **kwargs):
+    """Create list of instances from a mapping."""
+    kwargs.setdefault('metadata', {})
+    kwargs['metadata']['jsonldPredicate'] = {'mapSubject': key}
+    kwargs.setdefault('default', attr.Factory(list))
+
+    def converter(value):
+        """Convert mapping to a list of instances."""
+        if isinstance(value, dict):
+            result = []
+            for k, v in iteritems(value):
+                vv = dict(v)
+                vv[key] = k
+                result.append(vv)
+        else:
+            result = value
+        return [cls(**v) if not isinstance(v, cls) else v for v in result]
+
+    kwargs['converter'] = converter
+    return attr.ib(**kwargs)
 
 
 def ascwl(inst, recurse=True, filter=None, dict_factory=dict,

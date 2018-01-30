@@ -19,6 +19,8 @@
 
 import attr
 
+from .types import File
+
 
 @attr.s
 class CommandLineBinding(object):
@@ -32,6 +34,13 @@ class CommandLineBinding(object):
     shellQuote = attr.ib(default=True, type=bool)
 
 
+def convert_default(value):
+    """Convert a default value."""
+    if isinstance(value, dict):
+        return File.from_cwl(value)
+    return value
+
+
 @attr.s
 class CommandInputParameter(object):
     """An input parameter for a CommandLineTool."""
@@ -39,7 +48,7 @@ class CommandInputParameter(object):
     id = attr.ib()
     type = attr.ib(default='string')
     description = attr.ib(default=None)
-    default = attr.ib(default=None)
+    default = attr.ib(default=None, converter=convert_default)
     inputBinding = attr.ib(
         default=None,
         converter=lambda data: CommandLineBinding(**data)

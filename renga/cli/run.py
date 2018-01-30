@@ -30,11 +30,13 @@ from ._repo import pass_repo
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
+@click.option('--no-output', is_flag=True, default=False,
+              help='Allow commands without output files.')
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_repo
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
-def run(repo, command_line):
-    """Activate environment for tracking work on a specific problem."""
+def run(repo, no_output, command_line):
+    """Tracking work on a specific problem."""
     candidates = [x[0] for x in repo.git.index.entries] + \
         repo.git.untracked_files
     factory = CommandLineToolFactory(
@@ -42,6 +44,6 @@ def run(repo, command_line):
         **_mapped_std_streams(candidates))
 
     with repo.with_workflow_storage() as wf:
-        with factory.watch(repo.git) as tool:
+        with factory.watch(repo.git, no_output=no_output) as tool:
             call(factory.command_line, cwd=os.getcwd())
             wf.add_step(run=tool)

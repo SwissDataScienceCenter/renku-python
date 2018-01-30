@@ -89,6 +89,11 @@ class Repo(object):
         """Return a ``Path`` instance of Renga metadata file."""
         return self.renga_path.joinpath(self.METADATA)
 
+    @property
+    def workflow_path(self):
+        """Return a ``Path`` instance of the workflow folder."""
+        return self.renga_path / self.WORKFLOW
+
     @contextmanager
     def with_metadata(self):
         """Yield a editable metadata object."""
@@ -111,7 +116,7 @@ class Repo(object):
                     secure_filename('_'.join(step.run.baseCommand)),
                 )
 
-                workflow_path = self.renga_path / self.WORKFLOW
+                workflow_path = self.workflow_path
                 if not workflow_path.exists():
                     workflow_path.mkdir()
 

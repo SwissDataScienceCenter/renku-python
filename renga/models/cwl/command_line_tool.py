@@ -25,7 +25,7 @@ import attr
 
 from renga._compat import Path
 
-from ._ascwl import CWLClass
+from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
 from .process import Process
@@ -48,25 +48,17 @@ class CommandLineTool(Process, CWLClass):
             cmd, (list, tuple)) else shlex.split(cmd),
     )  # list(string, Expression, CommandLineBinding)
 
-    stdin = attr.ib(default=None, converter=lambda path: Path(
-        path) if path and not isinstance(path, Path) else path
-    )  # null, str, Expression
+    stdin = attr.ib(default=None, converter=attr.converters.optional(Path))
+    # null, str, Expression
     stdout = attr.ib(default=None)
     stderr = attr.ib(default=None)
-    # stdout = attr.ib(default=None, converter=lambda path: Path(
-    #     path) if path and not isinstance(path, Path) else path
-    # )  # null, str, Expression
-    # stderr = attr.ib(default=None, converter=lambda path: Path(
-    #     path) if path and not isinstance(path, Path) else path
-    # )  # null, str, Expression
+
+    inputs = mapped(CommandInputParameter)
+    outputs = mapped(CommandOutputParameter)
 
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
-
-    def run(self, job=None):  # job: Job
-        """Execute the command line tool with an optional job description."""
-        raise NotImplemented()
 
 
 @attr.s
@@ -130,15 +122,15 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, git=None):
+    def watch(self, git=None, no_output=False):
         """Watch a git repository for changes to detect outputs."""
         tool = self.generate_tool()
 
         yield tool
 
         if git:
-            candidates = git.untracked_files
-            candidates += [item.a_path for item in git.index.diff(None)]
+            candidates = set(git.untracked_files)
+            candidates |= {item.a_path for item in git.index.diff(None)}
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
@@ -150,6 +142,17 @@ class CommandLineToolFactory(object):
                         raise RuntimeError('Inconsistent input name.')
 
                     inputs[input.id] = input
+
+            if not no_output:
+                for stream_name in ('stdout', 'stderr'):
+                    stream = getattr(self, stream_name)
+                    if stream and stream not in candidates:
+                        raise RuntimeError(
+                            'Output file was not created or changed.'
+                        )
+
+                if not tool.outputs:
+                    raise RuntimeError('No output was detected')
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
