@@ -34,11 +34,6 @@ from ._repo import pass_repo
 @click.pass_context
 def datasets(ctx, datadir):
     """Handle datasets."""
-    try:
-        os.stat(datadir)
-    except FileNotFoundError:
-        raise UsageError('Please supply a valid data directory')
-
     ctx.meta['renga.datasets.datadir'] = datadir
 
 
@@ -55,13 +50,14 @@ def create(repo, name):
 @click.argument('name')
 @click.argument('url')
 @click.option('--nocopy', default=False, is_flag=True)
+@click.option('--targets', default=None, help='Target in the git repo.')
 @pass_repo
-def add(repo, name, url, nocopy):
+def add(repo, name, url, nocopy, targets):
     """Import a dataset from another renga repository."""
     datadir = get_datadir()
     d = Dataset.load(name, repo=repo.git, datadir=datadir)
     try:
-        d.add_data(url, nocopy=nocopy)
+        d.add_data(url, nocopy=nocopy, targets=targets)
     except FileNotFoundError:
         raise BadParameter('URL')
 

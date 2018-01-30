@@ -132,3 +132,17 @@ def test_repo_commit(temp_dataset, sample_file):
         f not in r.untracked_files
         for f in ['data/dataset/metadata.json', 'data/dataset/sample_file']
     ])
+
+
+def test_git_repo_import(temp_dataset):
+    """Test an import from a git repository."""
+    from git import Repo
+    r = Repo('.')
+
+    temp_dataset.repo = r
+    temp_dataset.add_data(
+        'https://github.com/SwissDataScienceCenter/renga-python.git',
+        targets='README.rst')
+    assert os.stat('data/dataset/README.rst')
+    assert os.stat(
+        '.renga/vendors/github.com/SwissDataScienceCenter/renga-python')

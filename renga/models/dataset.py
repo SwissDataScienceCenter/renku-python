@@ -69,8 +69,8 @@ class Creator(object):
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (isinstance(value, str) or re.match(r"[^@]+@[^@]+\.[^@]+",
-                                                   value)):
+        if not (isinstance(value, str) or re.match(
+                r"[^@]+@[^@]+\.[^@]+", value)):
             raise ValueError('Email address is invalid.')
 
 
@@ -81,10 +81,11 @@ class DatasetFile(object):
     path = _path_attr()
     origin = attr.ib(converter=lambda x: str(x))
     creator = attr.ib(
-        converter=lambda arg: arg if isinstance(arg, Creator)
-        else Creator(**arg))
+        converter=lambda arg: arg if isinstance(
+            arg, Creator) else Creator(**arg))
     dataset = attr.ib(default=None)
     date_added = attr.ib(default=attr.Factory(datetime.now))
+
 
 _deserialize_files = partial(_deserialize_list, cls=DatasetFile)
 
@@ -98,20 +99,19 @@ class Dataset(object):
     name = attr.ib(type='string')
     created_at = attr.ib(
         default=attr.Factory(datetime.now),
-        converter=lambda arg: arg if isinstance(arg, datetime)
-        else parse_date(arg))
+        converter=lambda arg: arg if isinstance(
+            arg, datetime) else parse_date(arg))
     identifier = attr.ib(
         default=attr.Factory(uuid.uuid4),
-        converter=lambda x: uuid.UUID(x) if isinstance(x, str)
-        else x)
+        converter=lambda x: uuid.UUID(x) if isinstance(x, str) else x)
     repo = attr.ib(
         default=None,
         converter=lambda arg: arg if isinstance(
             arg, (git.Repo, NoneType)) else git.Repo(arg)
     )
     creator = attr.ib(
-        converter=lambda arg: arg if isinstance(arg, Creator)
-        else Creator(**arg))
+        converter=lambda arg: arg if isinstance(
+            arg, Creator) else Creator(**arg))
     datadir = _path_attr(default='data')
     files = attr.ib(default=attr.Factory(list), converter=_deserialize_files)
 
@@ -154,15 +154,21 @@ class Dataset(object):
         datadir = datadir or self.datadir
         git = os.path.splitext(url)[1] == '.git' or git
 
-        if not isinstance(url, list):
-            url = [url]
-
         if git:
-            new_files = (self._add_from_git(self.path, u, targets, **kwargs)
-                         for u in url)
+            if not targets:
+                raise ValueError(
+                    'Need to specify target files to add from git dataset.')
+            if isinstance(url, list):
+                raise ValueError(
+                    'Can only import from one git repo at a time.')
+            if not isinstance(targets, list):
+                targets = [targets]
+            new_files = (self._add_from_git(self.path, url, target)
+                         for target in targets)
         else:
-            new_files = (self._add_from_url(self.path, u, **kwargs)
-                         for u in url)
+            new_files = [
+                self._add_from_url(self.path, url, kwargs.get('ncopy'))
+            ]
 
         self.files.extend(new_files)
         self.write_metadata()
@@ -185,13 +191,7 @@ class Dataset(object):
             except FileNotFoundError:
                 raise FileNotFoundError
             if nocopy:
-                try:
-                    raise
-                    os.link(src, dst)
-                except:
-                    warnings.warn("[renga] Could not create hard link - "
-                                  "symlinking instead.")
-                    os.symlink(src, dst)
+                os.symlink(src, dst)
             else:
                 shutil.copy(src, dst)
         elif u.scheme in ('http', 'https'):
@@ -205,7 +205,40 @@ class Dataset(object):
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
         return DatasetFile(
-            str(dst.absolute()), url, creator=self.creator, dataset=self.name)
+            dst.absolute().as_posix(),
+            url,
+            creator=self.creator,
+            dataset=self.name)
+
+    def _add_from_git(self, path, url, target):
+        """Process adding resources from anoth git repository.
+
+        The submodules are placed in .renga/vendors and linked
+        to the *path* specified by the user.
+
+        """
+        # create the submodule
+        u = parse.urlparse(url)
+        submodule_name = os.path.splitext(os.path.basename(u.path))[0]
+        submodule_path = Path(os.path.dirname(self.repo.git_dir)).joinpath(
+            '.renga', 'vendors', u.netloc,
+            os.path.dirname(u.path).lstrip('/'), submodule_name)
+
+        if submodule_name not in self.repo.submodules:
+            # new submodule to add
+            submodule = self.repo.create_submodule(
+                name=submodule_name, path=submodule_path.as_posix(), url=url)
+
+        # link the target into the data directory
+        dst = self.path.joinpath(target)
+        src = submodule_path.joinpath(target)
+        os.symlink(src, dst)
+
+        # TODO: do something smarter about the creator
+        return DatasetFile(
+            dst.absolute().as_posix(),
+            '{}/{}'.format(url, target),
+            creator=self.creator)
 
     def write_metadata(self):
         """Write the dataset metadata to disk."""
