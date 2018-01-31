@@ -50,14 +50,19 @@ def create(repo, name):
 @click.argument('name')
 @click.argument('url')
 @click.option('--nocopy', default=False, is_flag=True)
-@click.option('--targets', default=None, help='Target in the git repo.')
+@click.option(
+    '--target',
+    '-t',
+    default=None,
+    multiple=True,
+    help='Target in the git repo.')
 @pass_repo
-def add(repo, name, url, nocopy, targets):
+def add(repo, name, url, nocopy, target):
     """Add data to a dataset."""
     datadir = get_datadir()
     d = Dataset.load(name, repo=repo.git, datadir=datadir)
     try:
-        d.add_data(url, nocopy=nocopy, targets=targets)
+        d.add_data(url, nocopy=nocopy, targets=target)
     except FileNotFoundError:
         raise BadParameter('URL')
 

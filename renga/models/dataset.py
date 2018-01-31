@@ -45,26 +45,18 @@ NoneType = type(None)
 
 _path_attr = partial(
     attr.ib,
-    converter=lambda x: Path(x) if isinstance(x, str) else x,
-    validator=lambda i, arg, val: val.stat() if isinstance(val, Path) else True
+    converter=Path,
+    validator=lambda i, arg, val: Path(val).is_file()
 )
 
 
-def _deserialize_set(s, cls, options=None):
+def _deserialize_set(s, cls):
     """Deserialize a list of dicts into classes."""
-    if not all(isinstance(x, dict) for x in s):
-        raise ValueError('Dicts required for deserialization.')
-    if options:
-        return (cls(**options, **x) for x in s)
     return set(cls(**x) for x in s)
 
 
-def _deserialize_dict(d, cls, options=None):
+def _deserialize_dict(d, cls):
     """Deserialize a list of dicts into classes."""
-    if not all(isinstance(x, dict) for x in d.values()):
-        raise ValueError('Dicts required for deserialization.')
-    if options:
-        return {k: cls(**options, **v) for (k, v) in d.items()}
     return {k: cls(**v) for (k, v) in d.items()}
 
 
@@ -79,7 +71,7 @@ class Author(object):
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (isinstance(value, str) or re.match(
+        if not (isinstance(value, str) and re.match(
                 r"[^@]+@[^@]+\.[^@]+", value)):
             raise ValueError('Email address is invalid.')
 
@@ -96,7 +88,8 @@ def _deserialize_authors(authors):
         elif all(isinstance(x, Author) for x in authors):
             return authors
 
-    raise ValueError('Authors must be a set of dicts or Author.')
+    raise ValueError('Authors must be a dict or '
+                     'set or list of dicts or Author.')
 
 
 @attr.s
@@ -122,18 +115,22 @@ class Dataset(object):
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
 
     name = attr.ib(type='string')
+
     created_at = attr.ib(
         default=attr.Factory(datetime.now),
         converter=lambda arg: arg if isinstance(
             arg, datetime) else parse_date(arg))
+
     identifier = attr.ib(
         default=attr.Factory(uuid.uuid4),
-        converter=lambda x: uuid.UUID(x) if isinstance(x, str) else x)
+        converter=lambda x: uuid.UUID(str(x)))
+
     repo = attr.ib(
         default=None,
         converter=lambda arg: arg if isinstance(
             arg, (git.Repo, NoneType)) else git.Repo(arg)
     )
+
     authors = authors = attr.ib(converter=_deserialize_authors)
     datadir = _path_attr(default='data')
     files = attr.ib(default=attr.Factory(dict), converter=_deserialize_files)
@@ -182,10 +179,7 @@ class Dataset(object):
             if not targets:
                 raise ValueError(
                     'Need to specify target files to add from git dataset.')
-            if isinstance(url, list):
-                raise ValueError(
-                    'Can only import from one git repo at a time.')
-            if not isinstance(targets, list):
+            if not isinstance(targets, (list, tuple)):
                 targets = [targets]
             for target in targets:
                 self.files.update(self._add_from_git(self.path, url, target))

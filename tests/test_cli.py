@@ -26,6 +26,7 @@ import responses
 
 from renga import __version__, cli
 from renga.cli._config import read_config, write_config
+from test_dataset import test_file, test_project, test_repo
 
 
 def test_version(base_runner):
@@ -100,7 +101,7 @@ def test_run_simple(runner):
     assert result.exit_code == 0
 
 
-def test_dataset_creation(base_runner, sample_file, test_project):
+def test_datasets(base_runner, test_file, test_project, test_repo):
     """Test importing data into a dataset."""
     runner = base_runner
 
@@ -112,13 +113,18 @@ def test_dataset_creation(base_runner, sample_file, test_project):
     # add data
     result = runner.invoke(cli.cli,
                            ['datasets', 'add', 'dataset',
-                            str(sample_file)])
-    assert os.stat('data/dataset/sample_file')
+                            str(test_file)])
+    assert os.stat('data/dataset/test_file')
 
     # add data from a git repo via http
     result = runner.invoke(cli.cli, [
-        'datasets', 'add', 'dataset', '--targets', 'README.rst',
+        'datasets', 'add', 'dataset', '--target', 'README.rst',
         'https://github.com/SwissDataScienceCenter/renga-python.git'
     ])
     assert result.exit_code == 0
     assert os.stat('data/dataset/README.rst')
+
+    # add data from local git repo
+    result = runner.invoke(cli.cli, [
+        'datasets', 'add', 'dataset', '-t', 'file', '-t', 'file2',
+        os.path.dirname(test_repo.git_dir)])
