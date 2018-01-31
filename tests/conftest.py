@@ -677,7 +677,7 @@ def temp_dataset(test_project):
     return dataset.Dataset.create(
         'dataset',
         datadir='./data',
-        creator={'name': 'me',
+        authors={'name': 'me',
                  'email': 'me@example.com'})
 
 

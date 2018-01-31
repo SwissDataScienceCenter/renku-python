@@ -50,6 +50,15 @@ _path_attr = partial(
 )
 
 
+def _deserialize_set(s, cls, options=None):
+    """Deserialize a list of dicts into classes."""
+    if not all(isinstance(x, dict) for x in s):
+        raise ValueError('Dicts required for deserialization.')
+    if options:
+        return (cls(**options, **x) for x in s)
+    return set(cls(**x) for x in s)
+
+
 def _deserialize_dict(d, cls, options=None):
     """Deserialize a list of dicts into classes."""
     if not all(isinstance(x, dict) for x in d.values()):
@@ -59,9 +68,9 @@ def _deserialize_dict(d, cls, options=None):
     return {k: cls(**v) for (k, v) in d.items()}
 
 
-@attr.s
-class Creator(object):
-    """Represent the creator."""
+@attr.s(frozen=True)
+class Author(object):
+    """Represent the author of a resource."""
 
     name = attr.ib(validator=instance_of(str))
     email = attr.ib()
@@ -75,15 +84,30 @@ class Creator(object):
             raise ValueError('Email address is invalid.')
 
 
+def _deserialize_authors(authors):
+    """Deserialize authors in various forms."""
+    if isinstance(authors, dict):
+        return set([Author(**authors)])
+    elif isinstance(authors, Author):
+        return set([authors])
+    elif isinstance(authors, (set, list)):
+        if all(isinstance(x, dict) for x in authors):
+            return _deserialize_set(authors, Author)
+        elif all(isinstance(x, Author) for x in authors):
+            return authors
+
+    raise ValueError('Authors must be a set of dicts or Author.')
+
+
 @attr.s
 class DatasetFile(object):
     """Represent a file in a dataset."""
 
     path = _path_attr()
     origin = attr.ib(converter=lambda x: str(x))
-    creator = attr.ib(
-        converter=lambda arg: arg if isinstance(
-            arg, Creator) else Creator(**arg))
+    authors = attr.ib(
+        default=attr.Factory(set),
+        converter=_deserialize_authors)
     dataset = attr.ib(default=None)
     date_added = attr.ib(default=attr.Factory(datetime.now))
 
@@ -110,23 +134,20 @@ class Dataset(object):
         converter=lambda arg: arg if isinstance(
             arg, (git.Repo, NoneType)) else git.Repo(arg)
     )
-    creator = attr.ib(
-        converter=lambda arg: arg if isinstance(
-            arg, Creator) else Creator(**arg))
+    authors = authors = attr.ib(converter=_deserialize_authors)
     datadir = _path_attr(default='data')
     files = attr.ib(default=attr.Factory(dict), converter=_deserialize_files)
 
-    @creator.default
-    def set_creator_from_git(self):
-        """Set the creator name and email from the git repo if present."""
+    @authors.default
+    def set_author_from_git(self):
+        """Set the author name and email from the git repo if present."""
         if not self.repo:
             raise RuntimeError('Outside of a git repository '
-                               '- unable to determine creator information.')
+                               '- unable to determine author information.')
         git_config = self.repo.config_reader()
-        return {
-            'name': git_config.get('user', 'name'),
-            'email': git_config.get('user', 'email')
-        }
+        return Author(
+            name=git_config.get('user', 'name'),
+            email=git_config.get('user', 'email'))
 
     def __attrs_post_init__(self):
         """Finalize initialization of Dataset instance."""
@@ -150,10 +171,12 @@ class Dataset(object):
         self.write_metadata()
         self.commit_to_repo()
 
-    def add_data(self, url, datadir=None, git=False, targets=None, **kwargs):
+    def add_data(self, url, datadir=None, git=False, **kwargs):
         """Import the data into the data directory."""
         datadir = datadir or self.datadir
         git = os.path.splitext(url)[1] == '.git' or git
+
+        targets = kwargs.get('targets')
 
         if git:
             if not targets:
@@ -168,12 +191,13 @@ class Dataset(object):
                 self.files.update(self._add_from_git(self.path, url, target))
         else:
             self.files.update(
-                self._add_from_url(self.path, url, kwargs.get('ncopy')))
+                self._add_from_url(self.path, url, **kwargs)
+            )
 
         self.write_metadata()
         self.commit_to_repo()
 
-    def _add_from_url(self, path, url, nocopy=False):
+    def _add_from_url(self, path, url, nocopy=False, **kwargs):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
@@ -185,14 +209,26 @@ class Dataset(object):
 
         if u.scheme in ('', 'file'):
             src = Path(u.path).absolute()
-            try:
-                os.stat(src)
-            except FileNotFoundError:
-                raise FileNotFoundError
+
+            if not src.exists():
+                raise FileNotFoundError(
+                    '{} not a valid path.'.format(src.as_posix()))
+
+            # check if we have a directory and check for .git
+            if src.is_dir():
+                if src.joinpath('.git').exists():
+                    targets = kwargs.get('targets', [])
+                    new_files = {}
+                    for target in targets:
+                        new_files.update(self._add_from_git(
+                            path, src.as_uri(), target))
+                    return new_files
+
             if nocopy:
                 os.symlink(src, dst)
             else:
                 shutil.copy(src, dst)
+
         elif u.scheme in ('http', 'https'):
             try:
                 response = requests.get(url)
@@ -208,7 +244,7 @@ class Dataset(object):
             DatasetFile(
                 dst.absolute().as_posix(),
                 url,
-                creator=self.creator,
+                authors=self.authors,
                 dataset=self.name)
         }
 
@@ -222,11 +258,15 @@ class Dataset(object):
         # create the submodule
         u = parse.urlparse(url)
         submodule_name = os.path.splitext(os.path.basename(u.path))[0]
-        submodule_path = Path(os.path.dirname(self.repo.git_dir)).joinpath(
-            '.renga', 'vendors', u.netloc,
-            os.path.dirname(u.path).lstrip('/'), submodule_name)
+        submodule_path = Path(self.repo.git_dir).parent.joinpath(
+            '.renga',
+            'vendors',
+            u.netloc or 'local',
+            os.path.dirname(u.path).lstrip('/'),
+            submodule_name)
 
-        if submodule_name not in self.repo.submodules:
+        # FIXME: do a proper check that the repos are not the same
+        if submodule_name not in (s.name for s in self.repo.submodules):
             # new submodule to add
             submodule = self.repo.create_submodule(
                 name=submodule_name, path=submodule_path.as_posix(), url=url)
@@ -236,13 +276,19 @@ class Dataset(object):
         src = submodule_path.joinpath(target)
         os.symlink(src, dst)
 
-        # TODO: do something smarter about the creator
+        # grab all the authors from the commit history
+        repo = git.Repo(submodule_path.absolute().as_posix())
+        authors = set(
+            Author(name=commit.author.name, email=commit.author.email)
+            for commit in repo.iter_commits(paths=target)
+        )
+
         return {
             dst.relative_to(self.path).as_posix():
             DatasetFile(
                 dst.absolute().as_posix(),
                 '{}/{}'.format(url, target),
-                creator=self.creator)
+                authors=authors)
         }
 
     def write_metadata(self):
@@ -275,7 +321,7 @@ class Dataset(object):
             if d[k]:
                 d[k] = str(d[k])
 
-        # serialize file list
+        # serialize file dict
         files = {}
         for k, v in d['files'].items():
             v['path'] = v['path'].absolute().as_posix()
