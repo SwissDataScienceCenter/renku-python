@@ -28,11 +28,10 @@ from datetime import datetime
 from functools import partial
 from urllib import error, parse, request
 
-import requests
-
 import attr
 import dateutil
 import git
+import requests
 from attr.validators import instance_of
 from dateutil.parser import parse as parse_date
 
@@ -46,8 +45,7 @@ NoneType = type(None)
 _path_attr = partial(
     attr.ib,
     converter=Path,
-    validator=lambda i, arg, val: Path(val).is_file()
-)
+    validator=lambda i, arg, val: Path(val).absolute().is_file())
 
 
 def _deserialize_set(s, cls):
@@ -99,8 +97,7 @@ class DatasetFile(object):
     path = _path_attr()
     origin = attr.ib(converter=lambda x: str(x))
     authors = attr.ib(
-        default=attr.Factory(set),
-        converter=_deserialize_authors)
+        default=attr.Factory(set), converter=_deserialize_authors)
     dataset = attr.ib(default=None)
     date_added = attr.ib(default=attr.Factory(datetime.now))
 
@@ -148,9 +145,13 @@ class Dataset(object):
 
     def __attrs_post_init__(self):
         """Finalize initialization of Dataset instance."""
+        if not self.repo:
+            try:
+                self.repo = git.Repo('.', search_parent_directories=True)
+            except Exception as e:
+                warnings.warn('Dataset outside of a git repository.')
         if self.repo:
-            self.datadir = Path(os.path.dirname(self.repo.git_dir)).joinpath(
-                'data').absolute()
+            self.datadir = (self.repo_path / self.datadir).absolute()
         else:
             self.datadir = Path(self.datadir).absolute()
 
@@ -158,6 +159,13 @@ class Dataset(object):
     def path(self):
         """Path to this Dataset."""
         return self.datadir.joinpath(self.name)
+
+    @property
+    def repo_path(self):
+        """Base path of the repo that this dataset is a part of."""
+        if not self.repo:
+            return ''
+        return Path(self.repo.git_dir).parent
 
     def meta_init(self):
         """Initialize the directories and metadata."""
@@ -180,12 +188,9 @@ class Dataset(object):
                 self.files.update(self._add_from_git(self.path, url, target))
             else:
                 for t in target:
-                    self.files.update(self._add_from_git(
-                                self.path, url, t))
+                    self.files.update(self._add_from_git(self.path, url, t))
         else:
-            self.files.update(
-                self._add_from_url(self.path, url, **kwargs)
-            )
+            self.files.update(self._add_from_url(self.path, url, **kwargs))
 
         self.write_metadata()
         self.commit_to_repo()
@@ -208,9 +213,9 @@ class Dataset(object):
                 files = {}
                 os.mkdir(dst)
                 for f in src.iterdir():
-                    files.update(self._add_from_url(dst,
-                                                    f.absolute().as_posix(),
-                                                    nocopy=nocopy))
+                    files.update(
+                        self._add_from_url(
+                            dst, f.absolute().as_posix(), nocopy=nocopy))
                 return files
             if nocopy:
                 try:
@@ -250,34 +255,30 @@ class Dataset(object):
         # create the submodule
         u = parse.urlparse(url)
         submodule_path = Path(self.repo.git_dir).parent.joinpath(
-                              '.renga',
-                              'vendors',
-                              u.netloc or 'local')
+            '.renga', 'vendors', u.netloc or 'local')
 
         if u.scheme in ('', 'file'):
             # determine where is the base repo path
             r = git.Repo(url, search_parent_directories=True)
-            repo_path = Path(r.git_dir).parent
-            submodule_name = os.path.basename(repo_path)
-            submodule_path = submodule_path.joinpath(
-                    str(repo_path).lstrip('/'))
+            src_repo_path = Path(r.git_dir).parent
+            submodule_name = os.path.basename(src_repo_path)
+            submodule_path = submodule_path / str(src_repo_path).lstrip('/')
 
             # if repo path is a parent, rebase the paths and update url
-            if repo_path != Path(u.path):
-                top_target = Path(u.path).relative_to(repo_path)
+            if src_repo_path != Path(u.path):
+                top_target = Path(u.path).relative_to(src_repo_path)
                 if target:
-                    target = top_target.joinpath(target)
+                    target = top_target / target
                 else:
                     target = top_target
-                url = repo_path.as_posix()
+                url = src_repo_path.as_posix()
         elif u.scheme in ('http', 'https'):
             submodule_name = os.path.splitext(os.path.basename(u.path))[0]
             submodule_path = submodule_path.joinpath(
-                os.path.dirname(u.path).lstrip('/'),
-                submodule_name)
+                os.path.dirname(u.path).lstrip('/'), submodule_name)
         else:
             raise NotImplementedError(
-                    'Scheme {} not supported'.format(u.scheme))
+                'Scheme {} not supported'.format(u.scheme))
 
         # FIXME: do a proper check that the repos are not the same
         if submodule_name not in (s.name for s in self.repo.submodules):
@@ -286,37 +287,33 @@ class Dataset(object):
                 name=submodule_name, path=submodule_path.as_posix(), url=url)
 
         # link the target into the data directory
-        dst = self.path.joinpath(submodule_name)
-        src = submodule_path
+        dst = self.path / submodule_name / (target or '')
+        src = submodule_path / (target or '')
 
-        if target:
-            dst = dst.joinpath(target).absolute()
-            src = src.joinpath(target).absolute()
         if not dst.parent.exists():
             dst.parent.mkdir(parents=True)
-
         # if we have a directory, recurse
         if src.is_dir():
             files = {}
             os.mkdir(dst)
             for f in src.iterdir():
-                files.update(self._add_from_git(
-                             path, url, target=f.relative_to(submodule_path)))
+                files.update(
+                    self._add_from_git(
+                        path, url, target=f.relative_to(submodule_path)))
             return files
 
-        os.symlink(src, dst)
+        os.symlink(os.path.relpath(src, dst.parent), dst)
 
         # grab all the authors from the commit history
         repo = git.Repo(submodule_path.absolute().as_posix())
         authors = set(
             Author(name=commit.author.name, email=commit.author.email)
-            for commit in repo.iter_commits(paths=target)
-        )
+            for commit in repo.iter_commits(paths=target))
 
         return {
-            dst.relative_to(self.path).as_posix():
+            dst.absolute().relative_to(self.path).as_posix():
             DatasetFile(
-                dst.absolute().as_posix(),
+                dst.absolute().relative_to(self.path),
                 '{}/{}'.format(url, target),
                 authors=authors)
         }
@@ -331,12 +328,10 @@ class Dataset(object):
         """Commit the dataset files to the git repository."""
         repo = self.repo
         if repo:
-            repo.index.add([
-                Path(x.path).absolute().as_posix()
-                for x in self.files.values()
-            ])
+            repo.index.add([(self.path / x.path).as_posix()
+                            for x in self.files.values()])
             repo.index.add(
-                [self.path.joinpath('metadata.json').absolute().as_posix()])
+                [(self.path / 'metadata.json').absolute().as_posix()])
             if not message:
                 message = "[renga] commiting changes to {} dataset".format(
                     self.name)
@@ -344,17 +339,18 @@ class Dataset(object):
 
     def to_json(self):
         """Dump the json for this dataset."""
-        d = attr.asdict(self)
+        d = attr.asdict(
+            self, filter=lambda attr, _: attr.name not in ('repo', 'datadir'))
 
         # convert unserializable values to str
-        for k in ('created_at', 'identifier', 'datadir'):
+        for k in ('created_at', 'identifier'):
             if d[k]:
                 d[k] = str(d[k])
 
         # serialize file dict
         files = {}
         for k, v in d['files'].items():
-            v['path'] = v['path'].absolute().as_posix()
+            v['path'] = v['path'].as_posix()
             v['date_added'] = str(v['date_added'])
             files.update({k: v})
 
