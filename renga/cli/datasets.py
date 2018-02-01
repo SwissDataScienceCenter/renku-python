@@ -55,14 +55,14 @@ def create(repo, name):
     '-t',
     default=None,
     multiple=True,
-    help='Target in the git repo.')
+    help='Target path in the git repo.')
 @pass_repo
 def add(repo, name, url, nocopy, target):
     """Add data to a dataset."""
     datadir = get_datadir()
     d = Dataset.load(name, repo=repo.git, datadir=datadir)
     try:
-        d.add_data(url, nocopy=nocopy, targets=target)
+        d.add_data(url, nocopy=nocopy, target=target)
     except FileNotFoundError:
         raise BadParameter('URL')
 

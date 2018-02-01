@@ -649,3 +649,87 @@ def add_client(doctest_namespace, renga_client, storage_responses,
                explorer_responses, projects_responses):
     """Add Renga client to doctest namespace."""
     doctest_namespace['client'] = renga_client
+
+
+@pytest.fixture()
+def test_file(tmpdir):
+    """Create a sample data file."""
+    p = tmpdir.mkdir('data').join('test_file')
+    p.write('1234')
+    return p
+
+
+@pytest.fixture()
+def test_project(base_runner):
+    """Create a test project."""
+    from renga import cli
+
+    os.makedirs('test-project/data')
+    os.chdir('test-project')
+
+    result = base_runner.invoke(cli.cli, ['init', '.'])
+
+
+@pytest.fixture()
+def test_dataset(test_project):
+    """Create a dataset."""
+    from renga.models import dataset
+    return dataset.Dataset.create(
+        'dataset',
+        datadir='./data',
+        authors={'name': 'me',
+                 'email': 'me@example.com'})
+
+
+@pytest.fixture()
+def dataset_responses():
+    """Authentication responses."""
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def request_callback(request):
+            return (200, {'Content-Type': 'application/text'}, '1234')
+
+        rsps.add_callback(
+            responses.GET,
+            'http://example.com/test_file',
+            callback=request_callback)
+        rsps.add_callback(
+            responses.GET,
+            'https://example.com/test_file',
+            callback=request_callback)
+        yield rsps
+
+
+@pytest.fixture()
+def test_dir(tmpdir):
+    """Create a test directory tree."""
+    # initialize
+    p = tmpdir.mkdir('test_dir')
+    p.join('file').write('1234')
+    p.join('dir2').mkdir()
+    p.join('dir2/file2').write('5678')
+    return p
+
+
+@pytest.fixture()
+def test_repo(test_dir):
+    """Create a test repo."""
+    from git import Repo, Actor
+    # initialize
+    repo = Repo.init(test_dir.strpath)
+
+    # add a file
+    repo.index.add([test_dir.join('file').strpath])
+    repo.index.commit('test commit', author=Actor('me', 'me@example.com'))
+
+    # commit changes to the same file with a different user
+    test_dir.join('file').write('5678')
+    repo.index.add([test_dir.join('file').strpath])
+    repo.index.commit('test commit', author=Actor('me2', 'me2@example.com'))
+
+    # commit a second file
+    repo.index.add([test_dir.join('dir2/file2').strpath])
+    repo.index.commit('test commit', author=Actor('me', 'me@example.com'))
+
+    # return the repo
+    return repo

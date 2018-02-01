@@ -171,18 +171,17 @@ class Dataset(object):
     def add_data(self, url, datadir=None, git=False, **kwargs):
         """Import the data into the data directory."""
         datadir = datadir or self.datadir
-        git = os.path.splitext(url)[1] == '.git' or git
+        git = git or check_for_git_repo(url)
 
-        targets = kwargs.get('targets')
+        target = kwargs.get('target')
 
         if git:
-            if not targets:
-                raise ValueError(
-                    'Need to specify target files to add from git dataset.')
-            if not isinstance(targets, (list, tuple)):
-                targets = [targets]
-            for target in targets:
+            if isinstance(target, (str, NoneType)):
                 self.files.update(self._add_from_git(self.path, url, target))
+            else:
+                for t in target:
+                    self.files.update(self._add_from_git(
+                                self.path, url, t))
         else:
             self.files.update(
                 self._add_from_url(self.path, url, **kwargs)
@@ -204,26 +203,25 @@ class Dataset(object):
         if u.scheme in ('', 'file'):
             src = Path(u.path).absolute()
 
-            if not src.exists():
-                raise FileNotFoundError(
-                    '{} not a valid path.'.format(src.as_posix()))
-
-            # check if we have a directory and check for .git
+            # if we have a directory, recurse
             if src.is_dir():
-                if src.joinpath('.git').exists():
-                    targets = kwargs.get('targets', [])
-                    new_files = {}
-                    for target in targets:
-                        new_files.update(self._add_from_git(
-                            path, src.as_uri(), target))
-                    return new_files
-
+                files = {}
+                os.mkdir(dst)
+                for f in src.iterdir():
+                    files.update(self._add_from_url(dst,
+                                                    f.absolute().as_posix(),
+                                                    nocopy=nocopy))
+                return files
             if nocopy:
-                os.symlink(src, dst)
+                try:
+                    os.link(src, dst)
+                except Exception as e:
+                    raise Exception('Could not create hard link '
+                                    '- retry without nocopy.') from e
             else:
                 shutil.copy(src, dst)
 
-        elif u.scheme in ('http', 'https'):
+        else:
             try:
                 response = requests.get(url)
                 dst.write_bytes(response.content)
@@ -251,13 +249,35 @@ class Dataset(object):
         """
         # create the submodule
         u = parse.urlparse(url)
-        submodule_name = os.path.splitext(os.path.basename(u.path))[0]
         submodule_path = Path(self.repo.git_dir).parent.joinpath(
-            '.renga',
-            'vendors',
-            u.netloc or 'local',
-            os.path.dirname(u.path).lstrip('/'),
-            submodule_name)
+                              '.renga',
+                              'vendors',
+                              u.netloc or 'local')
+
+        if u.scheme in ('', 'file'):
+            # determine where is the base repo path
+            r = git.Repo(url, search_parent_directories=True)
+            repo_path = Path(r.git_dir).parent
+            submodule_name = os.path.basename(repo_path)
+            submodule_path = submodule_path.joinpath(
+                    str(repo_path).lstrip('/'))
+
+            # if repo path is a parent, rebase the paths and update url
+            if repo_path != Path(u.path):
+                top_target = Path(u.path).relative_to(repo_path)
+                if target:
+                    target = top_target.joinpath(target)
+                else:
+                    target = top_target
+                url = repo_path.as_posix()
+        elif u.scheme in ('http', 'https'):
+            submodule_name = os.path.splitext(os.path.basename(u.path))[0]
+            submodule_path = submodule_path.joinpath(
+                os.path.dirname(u.path).lstrip('/'),
+                submodule_name)
+        else:
+            raise NotImplementedError(
+                    'Scheme {} not supported'.format(u.scheme))
 
         # FIXME: do a proper check that the repos are not the same
         if submodule_name not in (s.name for s in self.repo.submodules):
@@ -266,8 +286,24 @@ class Dataset(object):
                 name=submodule_name, path=submodule_path.as_posix(), url=url)
 
         # link the target into the data directory
-        dst = self.path.joinpath(target)
-        src = submodule_path.joinpath(target)
+        dst = self.path.joinpath(submodule_name)
+        src = submodule_path
+
+        if target:
+            dst = dst.joinpath(target).absolute()
+            src = src.joinpath(target).absolute()
+        if not dst.parent.exists():
+            dst.parent.mkdir(parents=True)
+
+        # if we have a directory, recurse
+        if src.is_dir():
+            files = {}
+            os.mkdir(dst)
+            for f in src.iterdir():
+                files.update(self._add_from_git(
+                             path, url, target=f.relative_to(submodule_path)))
+            return files
+
         os.symlink(src, dst)
 
         # grab all the authors from the commit history
@@ -352,3 +388,19 @@ class Dataset(object):
             os.path.dirname(repo.git_dir)
             if repo else '.', datadir, name, 'metadata.json')
         return Dataset.from_json(metadata_file)
+
+
+def check_for_git_repo(url):
+    """Check if a url points to a git repository."""
+    u = parse.urlparse(url)
+    is_git = False
+
+    if os.path.splitext(u.path)[1] == '.git':
+        is_git = True
+    elif u.scheme in ('', 'file'):
+        try:
+            r = git.Repo(u.path, search_parent_directories=True)
+            is_git = True
+        except git.InvalidGitRepositoryError:
+            is_git = False
+    return is_git

@@ -26,7 +26,6 @@ import responses
 
 from renga import __version__, cli
 from renga.cli._config import read_config, write_config
-from test_dataset import test_file, test_project, test_repo
 
 
 def test_version(base_runner):
@@ -122,7 +121,7 @@ def test_datasets(base_runner, test_file, test_project, test_repo):
         'https://github.com/SwissDataScienceCenter/renga-python.git'
     ])
     assert result.exit_code == 0
-    assert os.stat('data/dataset/README.rst')
+    assert os.stat('data/dataset/renga-python/README.rst')
 
     # add data from local git repo
     result = runner.invoke(cli.cli, [
