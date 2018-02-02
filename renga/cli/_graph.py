@@ -105,7 +105,9 @@ class Graph(object):
                 file_key = self.add_node(commit, path)
                 tool_key = self.add_tool(commit, cwl)
                 #: Edge from a tool to the output.
-                self.G.add_edge(tool_key, file_key)
+                tool = self.G.nodes[tool_key]['tool']
+                output_id = tool.get_output_id(path)
+                self.G.add_edge(tool_key, file_key, id=output_id)
                 return file_key
 
         if file_commits:
