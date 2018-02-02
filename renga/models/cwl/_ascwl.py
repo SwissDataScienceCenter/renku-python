@@ -21,7 +21,6 @@ import os
 from collections import OrderedDict
 
 import attr
-
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import fields
