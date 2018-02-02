@@ -49,14 +49,15 @@ class Repo(object):
     WORKFLOW = 'workflow'
     """Directory for storing workflow in Renga."""
 
-    def __init__(self, renga=None):
+    def __init__(self, renga=None, git_home=None):
         """Store core options."""
         self.renga_path = renga or RENGA_HOME
+        self._git_home = git_home
 
     @property
     def path(self):
         """Return a ``Path`` instance of this repository."""
-        return Path(get_git_home())
+        return Path(self._git_home or get_git_home())
 
     @property
     def git(self):

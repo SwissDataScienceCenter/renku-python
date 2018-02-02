@@ -69,14 +69,16 @@ class Graph(object):
         if commits:
             return commits[-1]
 
-    def iter_inputs(self, tool, basedir):
-        """Yield path of tool inputs."""
+    def iter_file_inputs(self, tool, basedir):
+        """Yield path of tool file inputs."""
         if tool.stdin:
             raise NotImplemented(tool.stdin)
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
                 yield os.path.relpath(
-                    (basedir / input_.default.path).resolve(), self.repo_path)
+                    (basedir / input_.default.path).resolve(),
+                    self.repo_path
+                ), input_.id
 
     def add_tool(self, commit, path):
         """Add a tool and its dependencies to the graph."""
@@ -84,11 +86,12 @@ class Graph(object):
         tool = CommandLineTool.from_cwl(yaml.load(data))
         tool_key = self.add_node(commit, path, tool=tool)
 
-        for input_path in self.iter_inputs(tool, os.path.dirname(path)):
+        for input_path, input_id in self.iter_file_inputs(
+                tool, os.path.dirname(path)):
             input_key = self.add_file(
                 input_path, revision='{0}^'.format(commit))
             #: Edge from an input to the tool.
-            self.G.add_edge(input_key, tool_key)
+            self.G.add_edge(input_key, tool_key, id=input_id)
 
         return tool_key
 
