@@ -153,21 +153,6 @@ def test_git_repo_import(test_dataset, tmpdir, test_repo):
 
     test_dataset.repo = r
 
-    # add data from remote repo
-    test_dataset.add_data(
-        'https://github.com/SwissDataScienceCenter/renga-python.git',
-        target='README.rst')
-    assert os.stat('data/dataset/renga-python/README.rst')
-    assert os.stat(
-        '.renga/vendors/github.com/SwissDataScienceCenter/renga-python')
-    assert 'renga-python/README.rst' in test_dataset.files
-
-    # adding a repo subpath
-    test_dataset.add_data(
-        'https://github.com/SwissDataScienceCenter/renga-python.git',
-        target='renga/cli')
-    assert 'renga-python/renga/cli/__init__.py' in test_dataset.files
-
     # add data from local repo
     test_dataset.add_data(
         os.path.join(os.path.dirname(test_repo.git_dir), 'dir2'))
