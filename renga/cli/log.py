@@ -26,12 +26,13 @@ from ._repo import pass_repo
 
 @click.command()
 @click.option('--revision', default='HEAD')
-@click.argument('path', type=click.Path(exists=True, dir_okay=False))
+@click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_repo
 def log(repo, revision, path):
     """Show logs for a file."""
     graph = Graph(repo)
-    root = graph.add_file(path, revision=revision)
+    for p in path:
+        graph.add_file(p, revision=revision)
 
     H = graph.G.copy()
 
