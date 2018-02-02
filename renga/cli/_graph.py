@@ -79,6 +79,7 @@ class Graph(object):
                     (basedir / input_.default.path).resolve(), self.repo_path)
 
     def add_tool(self, commit, path):
+        """Add a tool and its dependencies to the graph."""
         data = (commit.tree / path).data_stream.read()
         tool = CommandLineTool.from_cwl(yaml.load(data))
         tool_key = self.add_node(commit, path, tool=tool)
@@ -92,7 +93,7 @@ class Graph(object):
         return tool_key
 
     def add_file(self, path, revision='HEAD'):
-        """Add a file node to graph."""
+        """Add a file node to the graph."""
         file_commits = list(self.repo.git.iter_commits(revision, paths=path))
 
         for commit in file_commits:

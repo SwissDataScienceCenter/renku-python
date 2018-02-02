@@ -34,6 +34,7 @@ from .storage import BucketsApiMixin, FilesApiMixin
 
 def check_status_code(f):
     """Check status code of the response."""
+    # ignore D202
 
     @functools.wraps(f)
     def decorator(*args, **kwargs):

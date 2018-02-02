@@ -203,7 +203,6 @@ def _buckets_resolver(obj, path):
 
 def _current_context_resolver(obj, path):
     """Resolve current context paths."""
-
     # no epty line after dosstring: D202
 
     def _section_resolver(obj, path):
