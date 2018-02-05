@@ -19,6 +19,7 @@
 
 from __future__ import absolute_import, print_function
 
+import contextlib
 import os
 
 import pytest
@@ -97,6 +98,25 @@ def test_run_simple(runner):
     """Test tracking of run command."""
     cmd = ['echo', 'test']
     result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
+    assert result.exit_code == 0
+
+
+def test_workflow(runner):
+    """Test workflow command."""
+    result = runner.invoke(cli.cli, ['run', 'touch', 'data.csv'])
+    assert result.exit_code == 0
+
+    with open('counted.txt', 'w') as stdout:
+        with contextlib.redirect_stdout(stdout):
+            try:
+                cli.cli.main(
+                    args=('run', 'wc', 'data.csv'),
+                    prog_name=runner.get_default_prog_name(cli.cli),
+                )
+            except SystemExit as e:
+                assert e.code in {None, 0}
+
+    result = runner.invoke(cli.cli, ['workflow', 'create', 'counted.txt'])
     assert result.exit_code == 0
 
 

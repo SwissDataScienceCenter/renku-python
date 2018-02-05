@@ -25,6 +25,7 @@ import yaml
 
 from renga._compat import Path
 from renga.models.cwl.command_line_tool import CommandLineTool
+from renga.models.cwl.workflow import Workflow
 
 
 @attr.s
@@ -113,3 +114,77 @@ class Graph(object):
         if file_commits:
             #: Does not have a parent CWL.
             return self.add_node(file_commits[0], path)
+
+    @property
+    def _output_keys(self):
+        """Return a list of the input keys."""
+        return [n for n, d in self.G.out_degree() if d == 0]
+
+    def _source_name(self, key):
+        """Find source name for a node."""
+        if self.G.in_degree(key) == 0:
+            return None
+
+        assert self.G.in_degree(key) == 1
+
+        tool_key, attr = list(self.G.pred[key].items())[0]
+        step = self.G.nodes[tool_key]['step']['id']
+        return '{0}/{1}'.format(step, attr['id'])
+
+    @property
+    def _tool_nodes(self):
+        """Yield topologically sorted tools."""
+        for key in nx.topological_sort(self.G):
+            node = self.G.nodes[key]
+            tool = node.get('tool')
+            if tool is not None:
+                yield key, node
+
+    def ascwl(self):
+        """Serialize graph to CWL workflow."""
+        workflow = Workflow()
+
+        input_index = 1
+
+        for tool_index, (key, node) in enumerate(self._tool_nodes, 1):
+            _, path = key
+            tool = node['tool']
+            step_id = 'step_{0}'.format(tool_index)
+            node['step'] = {'id': step_id}
+
+            ins = {
+                edge_id: self._source_name(target_id)
+                for target_id, _, edge_id in self.G.in_edges(key, data='id')
+            }
+            outs = [
+                edge_id for _, _, edge_id in self.G.out_edges(key, data='id')
+            ]
+
+            for input_ in tool.inputs:
+                input_mapping = ins.get(input_.id)
+                if input_mapping is None:
+                    input_id = 'input_{0}'.format(input_index)
+                    workflow.inputs.append({
+                        'id': input_id,
+                        'type': input_.type,
+                        # 'default': input_.default,
+                    })
+                    input_index += 1
+                    ins[input_.id] = input_id
+
+            workflow.add_step(
+                run=Path(path),
+                id=step_id,
+                in_=ins,
+                out=outs,
+            )
+
+        for index, key in enumerate(self._output_keys):
+            output_id = 'output_{0}'.format(index)
+            workflow.outputs.append({
+                'id': output_id,
+                'type': 'File',
+                'outputSource': self._source_name(key),
+            })
+
+        return workflow

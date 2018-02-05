@@ -107,6 +107,7 @@ setup(
             'log=renga.cli.log:log',
             'run=renga.cli.run:run',
             'workon=renga.cli.workon:workon',
+            'workflow=renga.cli.workflow:workflow',
         ],
     },
     extras_require=extras_require,

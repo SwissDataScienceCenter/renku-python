@@ -17,6 +17,7 @@
 # limitations under the License.
 """Represent a ``CommandLineTool`` from the Common Workflow Language."""
 
+import fnmatch
 import re
 import shlex
 from contextlib import contextmanager
@@ -68,7 +69,14 @@ class CommandLineTool(Process, CWLClass):
                 if stream == path:
                     return output.id
             elif output.type == 'File':
-                if output.default.glob == path:
+                glob = output.outputBinding.glob
+                # TODO better support for Expression
+                if glob.startswith('$(inputs.'):
+                    input_id = glob[len('$(inputs.'):-1]
+                    for input_ in self.inputs:
+                        if input_.id == input_id and input_.default == path:
+                            return output.id
+                elif fnmatch.fnmatch(path, glob):
                     return output.id
 
 
@@ -162,7 +170,7 @@ class CommandLineToolFactory(object):
                             'Output file was not created or changed.'
                         )
 
-                if not tool.outputs:
+                if not outputs:
                     raise RuntimeError('No output was detected')
 
             tool.inputs = list(inputs.values())

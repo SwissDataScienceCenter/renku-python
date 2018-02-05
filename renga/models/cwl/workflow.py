@@ -17,7 +17,12 @@
 # limitations under the License.
 """Represent workflows from the Common Workflow Language."""
 
+import uuid
+
 import attr
+
+from ._ascwl import CWLClass, mapped
+from .process import Process
 
 
 @attr.s
@@ -25,13 +30,17 @@ class WorkflowStep(object):
     """Define an executable element of a workflow."""
 
     run = attr.ib()  # string, Process
+    id = attr.ib(default=attr.Factory(uuid.uuid4))
+
+    in_ = attr.ib(default=None)
+    out = attr.ib(default=None)
 
 
 @attr.s
-class Workflow(object):
+class Workflow(Process, CWLClass):
     """Define a workflow representation."""
 
-    steps = attr.ib(default=attr.Factory(list))
+    steps = mapped(WorkflowStep)
 
     def add_step(self, **kwargs):
         """Add a workflow step."""

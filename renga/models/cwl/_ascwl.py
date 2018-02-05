@@ -78,17 +78,18 @@ def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
         return v
 
     for a in attrs:
+        a_name = a.name.rstrip('_')
         v = getattr(inst, a.name)
         if filter is not None and not filter(a, v):
             continue
         if recurse is True:
             if has(v.__class__):
-                rv[a.name] = ascwl(v, recurse=True, filter=filter,
+                rv[a_name] = ascwl(v, recurse=True, filter=filter,
                                    dict_factory=dict_factory, basedir=basedir)
 
             elif isinstance(v, (tuple, list, set)):
                 cf = v.__class__ if retain_collection_types is True else list
-                rv[a.name] = cf([
+                rv[a_name] = cf([
                     ascwl(i, recurse=True, filter=filter,
                           dict_factory=dict_factory, basedir=basedir)
                     if has(i.__class__) else i
@@ -99,23 +100,23 @@ def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
                     k = a.metadata['jsonldPredicate'].get('mapSubject')
                     if k:
                         vv = dict_factory()
-                        for i in rv[a.name]:
+                        for i in rv[a_name]:
                             kk = i.pop(k)
                             vv[kk] = i
-                        rv[a.name] = vv
+                        rv[a_name] = vv
 
             elif isinstance(v, dict):
                 df = dict_factory
-                rv[a.name] = df((
+                rv[a_name] = df((
                     ascwl(kk, dict_factory=df, basedir=basedir)
                     if has(kk.__class__) else kk,
                     ascwl(vv, dict_factory=df, basedir=basedir)
                     if has(vv.__class__) else vv)
                     for kk, vv in iteritems(v))
             else:
-                rv[a.name] = convert_value(v)
+                rv[a_name] = convert_value(v)
         else:
-            rv[a.name] = convert_value(v)
+            rv[a_name] = convert_value(v)
 
     if isinstance(inst, CWLClass):
         rv['class'] = inst.__class__.__name__
