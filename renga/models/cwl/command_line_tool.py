@@ -195,6 +195,10 @@ class CommandLineToolFactory(object):
         cmd = [self.command_line[0]]
         args = list(self.command_line[1:])
 
+        if len(args) < 2:
+            # only guess subcommand for more arguments
+            return cmd, args
+
         while args and re.match(self._RE_SUBCOMMAND, args[0]) \
                 and not self.file_candidate(args[0]):
             cmd.append(args.pop(0))

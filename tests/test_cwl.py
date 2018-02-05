@@ -76,6 +76,14 @@ def test_base_command_detection(instance_path):
     assert tool.inputs[0].inputBinding.separate is True
 
 
+def test_short_base_command_detection():
+    """Test base command detection without arguments."""
+    tool = CommandLineToolFactory(('echo', 'A')).generate_tool()
+    assert tool.cwlVersion == 'v1.0'
+    assert tool.__class__.__name__ == 'CommandLineTool'
+    assert tool.inputs[0].default == 'A'
+
+
 def test_04_output(instance_path):
     """Test describtion of outputs from a command."""
     hello = Path(instance_path) / 'hello.tar'
