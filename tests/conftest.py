@@ -106,21 +106,6 @@ def auth_responses():
 
 
 @pytest.fixture()
-def runner(base_runner):
-    """Return runner with a new project."""
-    from renga import cli
-
-    runner = base_runner
-
-    os.mkdir('test-project')
-    os.chdir('test-project')
-
-    result = runner.invoke(cli.cli, ['init'])
-    assert result.exit_code == 0
-    yield base_runner
-
-
-@pytest.fixture()
 def graph_mutation_responses(auth_responses, graph_mutation_client):
     """Monkeypatch requests to immitate the KnowledgeGraph."""
     rsps = auth_responses
@@ -652,31 +637,37 @@ def add_client(doctest_namespace, renga_client, storage_responses,
 
 
 @pytest.fixture()
-def test_file(tmpdir):
+def data_file(tmpdir):
     """Create a sample data file."""
-    p = tmpdir.mkdir('data').join('test_file')
+    p = tmpdir.mkdir('data').join('file')
     p.write('1234')
     return p
 
 
 @pytest.fixture()
-def test_project(base_runner):
+def project(base_runner):
     """Create a test project."""
     from renga import cli
 
-    os.makedirs('test-project/data')
-    os.chdir('test-project')
-
-    result = base_runner.invoke(cli.cli, ['init', '.'])
+    with base_runner.isolated_filesystem() as project_path:
+        os.makedirs('data')
+        result = base_runner.invoke(cli.cli, ['init', '.'])
+        yield project_path
 
 
 @pytest.fixture()
-def test_dataset(test_project):
+def runner(base_runner, project):
+    """Return runner with a new project."""
+    yield base_runner
+
+
+@pytest.fixture()
+def dataset(project):
     """Create a dataset."""
     from renga.models import dataset
     return dataset.Dataset.create(
         'dataset',
-        datadir='./data',
+        datadir='data',
         authors={'name': 'me',
                  'email': 'me@example.com'})
 
@@ -691,20 +682,20 @@ def dataset_responses():
 
         rsps.add_callback(
             responses.GET,
-            'http://example.com/test_file',
+            'http://example.com/file',
             callback=request_callback)
         rsps.add_callback(
             responses.GET,
-            'https://example.com/test_file',
+            'https://example.com/file',
             callback=request_callback)
         yield rsps
 
 
 @pytest.fixture()
-def test_dir(tmpdir):
+def directory_tree(tmpdir):
     """Create a test directory tree."""
     # initialize
-    p = tmpdir.mkdir('test_dir')
+    p = tmpdir.mkdir('directory_tree')
     p.join('file').write('1234')
     p.join('dir2').mkdir()
     p.join('dir2/file2').write('5678')
@@ -712,23 +703,23 @@ def test_dir(tmpdir):
 
 
 @pytest.fixture()
-def test_repo(test_dir):
+def data_repository(directory_tree):
     """Create a test repo."""
     from git import Repo, Actor
     # initialize
-    repo = Repo.init(test_dir.strpath)
+    repo = Repo.init(directory_tree.strpath)
 
     # add a file
-    repo.index.add([test_dir.join('file').strpath])
+    repo.index.add([directory_tree.join('file').strpath])
     repo.index.commit('test commit', author=Actor('me', 'me@example.com'))
 
     # commit changes to the same file with a different user
-    test_dir.join('file').write('5678')
-    repo.index.add([test_dir.join('file').strpath])
+    directory_tree.join('file').write('5678')
+    repo.index.add([directory_tree.join('file').strpath])
     repo.index.commit('test commit', author=Actor('me2', 'me2@example.com'))
 
     # commit a second file
-    repo.index.add([test_dir.join('dir2/file2').strpath])
+    repo.index.add([directory_tree.join('dir2/file2').strpath])
     repo.index.commit('test commit', author=Actor('me', 'me@example.com'))
 
     # return the repo

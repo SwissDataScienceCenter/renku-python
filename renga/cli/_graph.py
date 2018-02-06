@@ -117,7 +117,7 @@ class Graph(object):
 
     @property
     def _output_keys(self):
-        """Return a list of the input keys."""
+        """Return a list of the output keys."""
         return [n for n, d in self.G.out_degree() if d == 0]
 
     def _source_name(self, key):

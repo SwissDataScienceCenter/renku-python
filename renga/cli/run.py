@@ -18,6 +18,7 @@
 """Track provenance of data created by executing programs."""
 
 import os
+import sys
 from subprocess import call
 
 import click
@@ -39,11 +40,20 @@ def run(repo, no_output, command_line):
     """Tracking work on a specific problem."""
     candidates = [x[0] for x in repo.git.index.entries] + \
         repo.git.untracked_files
+    mapped_std = _mapped_std_streams(candidates)
     factory = CommandLineToolFactory(
         command_line=command_line,
-        **_mapped_std_streams(candidates))
+        **mapped_std)
 
     with repo.with_workflow_storage() as wf:
         with factory.watch(repo.git, no_output=no_output) as tool:
-            call(factory.command_line, cwd=os.getcwd())
+            call(
+                factory.command_line,
+                cwd=os.getcwd(),
+                **{key: getattr(sys, key) for key in mapped_std.keys()},
+            )
+
+            sys.stdout.flush()
+            sys.stderr.flush()
+
             wf.add_step(run=tool)

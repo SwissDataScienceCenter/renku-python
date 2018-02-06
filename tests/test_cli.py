@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,7 +21,9 @@ from __future__ import absolute_import, print_function
 
 import contextlib
 import os
+import sys
 
+import git
 import pytest
 import responses
 
@@ -120,10 +122,41 @@ def test_workflow(runner):
     assert result.exit_code == 0
 
 
-def test_datasets(base_runner, test_file, test_project, test_repo):
-    """Test importing data into a dataset."""
-    runner = base_runner
+def test_streams(runner, capsys):
+    """Test redirection of std streams."""
+    repo = git.Repo('.')
 
+    with open('source.txt', 'w') as source:
+        source.write('first,second,third')
+
+    repo.git.add('--all')
+    repo.index.commit('Added source.txt')
+
+    with capsys.disabled():
+        with open('source.txt', 'rb') as stdin:
+            with open('result.txt', 'wb') as stdout:
+                try:
+                    old_stdin, old_stdout = sys.stdin, sys.stdout
+                    sys.stdin, sys.stdout = stdin, stdout
+                    try:
+                        cli.cli.main(
+                            args=('run', 'cut', '-d,', '-f', '2'),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdin, sys.stdout = old_stdin, old_stdout
+
+    # TODO
+    # result = runner.invoke(cli.cli, ['workflow', 'create', 'result.txt'])
+    # assert result.exit_code == 0
+
+    with open('result.txt', 'r') as f:
+        assert f.read().strip() == 'second'
+
+
+def test_datasets(data_file, data_repository, runner):
+    """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['datasets', 'create', 'dataset'])
     assert result.exit_code == 0
@@ -132,8 +165,10 @@ def test_datasets(base_runner, test_file, test_project, test_repo):
     # add data
     result = runner.invoke(cli.cli,
                            ['datasets', 'add', 'dataset',
-                            str(test_file)])
-    assert os.stat('data/dataset/test_file')
+                            str(data_file)])
+    assert os.stat(os.path.join(
+        'data', 'dataset', os.path.basename(data_file)
+    ))
 
     # add data from a git repo via http
     result = runner.invoke(cli.cli, [
@@ -146,4 +181,4 @@ def test_datasets(base_runner, test_file, test_project, test_repo):
     # add data from local git repo
     result = runner.invoke(cli.cli, [
         'datasets', 'add', 'dataset', '-t', 'file', '-t', 'file2',
-        os.path.dirname(test_repo.git_dir)])
+        os.path.dirname(data_repository.git_dir)])

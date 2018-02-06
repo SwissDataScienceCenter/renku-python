@@ -46,7 +46,7 @@ def raises(error):
         return not_raises()
 
 
-def test_dataset_creation(test_project):
+def dataset_creation(project):
     """Test dataset directory tree creation."""
     # creating a dataset without an author fails
     with pytest.raises(RuntimeError):
@@ -67,31 +67,31 @@ def test_dataset_creation(test_project):
 @pytest.mark.parametrize('scheme, path, error',
                          [('', 'temp', None), ('file://', 'temp', None),
                           ('', 'tempp', git.NoSuchPathError),
-                          ('http://', 'example.com/test_file',
-                           None), ('https://', 'example.com/test_file',
+                          ('http://', 'example.com/file',
+                           None), ('https://', 'example.com/file',
                                    None), ('bla://', 'file',
                                            NotImplementedError)])
-def test_data_add(scheme, path, error, test_project, test_file, test_dir,
+def test_data_add(scheme, path, error, project, data_file, directory_tree,
                   dataset_responses):
     """Test data import."""
     with raises(error):
         if path == 'temp':
-            path = str(test_file)
+            path = str(data_file)
         elif path == 'tempdir':
-            path = str(test_dir)
+            path = str(directory_tree)
         d = dataset.Dataset.create(
             'dataset',
             datadir='./data',
             authors={'name': 'me',
                      'email': 'me@example.com'})
         d.add_data('{}{}'.format(scheme, path))
-        with open('data/dataset/test_file') as f:
+        with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
-        assert d.files.get('test_file')
+        assert d.files.get('file')
 
         # check that the imported file is read-only
-        assert not os.access('data/dataset/test_file',
+        assert not os.access('data/dataset/file',
                              stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         assert os.stat('data/dataset/metadata.json')
 
@@ -104,68 +104,68 @@ def test_data_add(scheme, path, error, test_project, test_file, test_dir,
                 authors={'name': 'me',
                          'email': 'me@example.com'})
             d.add_data('{}{}'.format(scheme, path), nocopy=True)
-            assert os.path.exists('data/dataset/test_file')
+            assert os.path.exists('data/dataset/file')
 
 
-def test_data_add_recursive(test_dir, test_project):
+def test_data_add_recursive(directory_tree, project):
     """Test recursive data imports."""
     d = dataset.Dataset.create(
         'dataset', authors={'name': 'me',
                             'email': 'me@example.com'})
-    d.add_data(test_dir.join('dir2').strpath)
+    d.add_data(directory_tree.join('dir2').strpath)
     assert 'dir2/file2' in d.files
 
 
-def test_dataset_serialization(test_dataset, test_file):
+def dataset_serialization(dataset, data_file):
     """Test deserializing a dataset object."""
     # deserialize from json on disk
-    d = dataset.Dataset.from_json(test_dataset.path.joinpath('metadata.json'))
-    assert d.path == test_dataset.path
+    d = dataset.Dataset.from_json(dataset.path.joinpath('metadata.json'))
+    assert d.path == dataset.path
 
     d_dict = d.to_dict()
 
     assert all([key in d_dict for key in ('name', 'identifier', 'files')])
     assert not len(d_dict['files'].values())
-    d.add_data(str(test_file))
+    d.add_data(str(data_file))
     d_dict = d.to_dict()
     assert len(d_dict['files'].values())
 
 
-def test_repo_commit(test_dataset, test_file):
+def data_repository_commit(dataset, data_file):
     """Test that files get commited to the git repository properly."""
     from git import Repo
     r = Repo('.')
 
-    test_dataset.repo = r
-    test_dataset.add_data(str(test_file))
-    test_dataset.write_metadata()
-    test_dataset.commit_to_repo()
+    dataset.repo = r
+    dataset.add_data(str(data_file))
+    dataset.write_metadata()
+    dataset.commit_to_repo()
     assert all([
         f not in r.untracked_files
-        for f in ['data/dataset/metadata.json', 'data/dataset/test_file']
+        for f in ['data/dataset/metadata.json', 'data/dataset/file']
     ])
 
 
-def test_git_repo_import(test_dataset, tmpdir, test_repo):
+def test_git_repo_import(dataset, tmpdir, data_repository):
     """Test an import from a git repository."""
     from git import Repo
     r = Repo('.')
 
-    test_dataset.repo = r
+    dataset.repo = r
 
     # add data from local repo
-    test_dataset.add_data(
-        os.path.join(os.path.dirname(test_repo.git_dir), 'dir2'))
-    assert os.stat('data/dataset/test_dir/dir2/file2')
-    assert 'test_dir/dir2/file2' in test_dataset.files
+    dataset.add_data(
+        os.path.join(os.path.dirname(data_repository.git_dir), 'dir2'))
+    assert os.stat('data/dataset/directory_tree/dir2/file2')
+    assert 'directory_tree/dir2/file2' in dataset.files
     assert os.stat('.renga/vendors/local')
 
     # check that the authors are properly parsed from commits
-    test_dataset.add_data(os.path.dirname(test_repo.git_dir), target='file')
-    assert len(test_dataset.files['test_dir/file'].authors) == 2
+    dataset.add_data(os.path.dirname(data_repository.git_dir), target='file')
+    assert len(dataset.files['directory_tree/file'].authors) == 2
     assert all(
         x.name in ('me', 'me2')
-        for x in test_dataset.files['test_dir/file'].authors)
+        for x in dataset.files['directory_tree/file'].authors)
 
 
 @pytest.mark.parametrize('authors', [
@@ -176,10 +176,10 @@ def test_git_repo_import(test_dataset, tmpdir, test_repo):
         'email': 'me@example.com'
     }
 ])
-def test_author_parse(authors, test_file):
+def test_author_parse(authors, data_file):
     """Test that different options for specifying authors work."""
     f = dataset.DatasetFile(
-        'test_file', origin=str(test_file), authors=authors)
+        'file', origin=str(data_file), authors=authors)
     assert dataset.Author(name='me', email='me@example.com') in f.authors
 
     # email check
@@ -189,4 +189,4 @@ def test_author_parse(authors, test_file):
     # authors must be a set or list of dicts or Author
     with pytest.raises(ValueError):
         f = dataset.DatasetFile(
-            'test_file', origin=str(test_file), authors=['name'])
+            'file', origin=str(data_file), authors=['name'])

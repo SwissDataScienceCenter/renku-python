@@ -233,7 +233,7 @@ class CommandLineToolFactory(object):
                 # TODO suggest that the file should be imported to the repo
                 pass
 
-        if ',' in value:
+        if len(value) > 1 and ',' in value:
             return value.split(','), 'string[]', ','
 
         return value, 'string', None
