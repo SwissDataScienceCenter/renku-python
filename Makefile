@@ -18,6 +18,11 @@
 
 DOCKER_REPOSITORY?=rengahub/
 DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
+DOCKER_LABEL?=$(or ${TRAVIS_BRANCH},${TRAVIS_BRANCH},latest)
+
+ifeq ($(DOCKER_LABEL), master)
+	DOCKER_LABEL=latest
+endif
 
 ALL_STACKS:=\
 	minimal-notebook \
@@ -32,16 +37,16 @@ GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
 build-docker-images: $(ALL_STACKS:%=build/%)
 
-build/%: Dockerfile.template
-	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):latest -f - .
+build/%-notebook: Dockerfile.template
+	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
 
 push-docker-images: $(ALL_STACKS:%=push/%)
 
 tag/%: build/%
-	docker tag $(DOCKER_PREFIX)$(notdir $@):latest $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA)
+	docker tag $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA) $(DOCKER_PREFIX)$(notdir $@):$(DOCKER_LABEL)
 
 push/%: tag/%
-	docker push $(DOCKER_PREFIX)$(notdir $@):latest
+	docker push $(DOCKER_PREFIX)$(notdir $@):$(DOCKER_LABEL)
 	docker push $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA)
 
 login:
