@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -33,14 +33,19 @@ ALL_STACKS:=\
 	pyspark-notebook \
 	all-spark-notebook
 
+IMAGES=$(ALL_STACKS) gitlab-runner renga-python
+
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
-build-docker-images: $(ALL_STACKS:%=build/%)
+build-docker-images: $(IMAGES:%=build/%)
 
 build/%-notebook: Dockerfile.template
 	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
 
-push-docker-images: $(ALL_STACKS:%=push/%)
+build/%: Dockerfile.%
+	docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f $< .
+
+push-docker-images: $(IMAGES:%=push/%)
 
 tag/%: build/%
 	docker tag $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA) $(DOCKER_PREFIX)$(notdir $@):$(DOCKER_LABEL)

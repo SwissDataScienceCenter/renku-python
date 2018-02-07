@@ -44,6 +44,7 @@ extras_require = {
     ],
     'runner': [
         'cwltool>=1.0.20180130110340',
+        'cwlref-runner>=1.0',
     ],
     'notebook': [
         'jupyter>=1.0.0',
