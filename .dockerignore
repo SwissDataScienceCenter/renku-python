@@ -17,3 +17,7 @@ docker-compose-dev.yml
 Procfile*
 
 Makefile
+
+# FIXME -- no tests in containers...
+docs/conftest.py
+renga/conftest.py

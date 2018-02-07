@@ -70,7 +70,6 @@ install_requires = [
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
-    'marshmallow>=2.15.0',
     'networkx>=2.1',
     'requests-oauthlib>=0.8.0',
     'requests>=2.18.4',
