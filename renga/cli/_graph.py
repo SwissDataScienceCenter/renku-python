@@ -54,7 +54,7 @@ class Graph(object):
         return key
 
     def find_cwl(self, commit):
-        """Return a CWL that generated the path."""
+        """Return a CWL."""
         files = [
             file_ for file_ in commit.stats.files.keys()
             if file_.startswith(self.cwl_prefix) and file_.endswith('.cwl')
@@ -62,6 +62,13 @@ class Graph(object):
 
         if len(files) == 1:
             return os.path.relpath(Path(files[0]).resolve(), self.repo_path)
+
+    def find_latest_cwl(self):
+        """Return the latest CWL in the repository."""
+        for commit in self.repo.git.iter_commits(paths=self.cwl_prefix):
+            cwl = self.find_cwl(commit)
+            if cwl:
+                return cwl
 
     def find_latest(self, start, path):
         """Return the latest commit for path."""

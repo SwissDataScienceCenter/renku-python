@@ -42,6 +42,9 @@ extras_require = {
     'docs': [
         'Sphinx>=1.6.3',
     ],
+    'runner': [
+        'cwltool>=1.0.20180130110340',
+    ],
     'notebook': [
         'jupyter>=1.0.0',
     ],
@@ -106,6 +109,7 @@ setup(
             'init=renga.cli.init:init',
             'log=renga.cli.log:log',
             'run=renga.cli.run:run',
+            'runner=renga.cli.runner:runner',
             'workon=renga.cli.workon:workon',
             'workflow=renga.cli.workflow:workflow',
         ],

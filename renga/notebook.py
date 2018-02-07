@@ -24,6 +24,7 @@ import collections
 import datetime
 import os
 import tempfile
+from binascii import hexlify
 
 import nbformat
 from notebook import notebookapp  # needed for translation setup
@@ -416,3 +417,26 @@ class RengaStorageManager(ContentsManager):
             # FIXME model = self.rename(path, new_path)
             model = self.rename_file(path, new_path)
         return model
+
+
+def generate_notebook_token(size=24):
+    """Generate a notebook access token."""
+    return hexlify(os.urandom(24)).decode('ascii')
+
+
+
+def generate_launch_args(token=None, ip='*', base_url=None):
+    """Generate notebook launch arguments."""
+    token = token or generate_notebook_token()
+
+    args = [
+        'start-notebook.sh',
+        '--ContentsManager.untitled_notebook=notebook',
+        '--NotebookApp.ip="{0}"'.format(ip),
+        '--NotebookApp.token={0}'.format(token),
+    ]
+
+    if base_url:
+        args.append('--NotebookApp.base_url={0}'.format(token))
+
+    return args
