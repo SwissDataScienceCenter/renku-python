@@ -49,8 +49,7 @@ class CommandLineTool(Process, CWLClass):
             cmd, (list, tuple)) else shlex.split(cmd),
     )  # list(string, Expression, CommandLineBinding)
 
-    stdin = attr.ib(default=None, converter=attr.converters.optional(Path))
-    # null, str, Expression
+    stdin = attr.ib(default=None)
     stdout = attr.ib(default=None)
     stderr = attr.ib(default=None)
 
@@ -112,6 +111,13 @@ class CommandLineToolFactory(object):
         self.arguments = []
         self.inputs = []
         self.outputs = []
+
+        if self.stdin:
+            input_ = next(self.guess_inputs(self.stdin))
+            assert input_.type == 'File'
+            input_.id = 'input_stdin'
+            self.inputs.append(input_)
+            self.stdin = '$(inputs.{0}.path)'.format(input_.id)
 
         for stream_name in ('stdout', 'stderr'):
             stream = getattr(self, stream_name)

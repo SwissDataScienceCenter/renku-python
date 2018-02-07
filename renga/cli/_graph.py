@@ -73,7 +73,8 @@ class Graph(object):
     def iter_file_inputs(self, tool, basedir):
         """Yield path of tool file inputs."""
         if tool.stdin:
-            raise NotImplemented(tool.stdin)
+            if tool.stdin[0] != '$':  # pragma: no cover
+                raise NotImplemented(tool.stdin)
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
                 yield os.path.relpath(

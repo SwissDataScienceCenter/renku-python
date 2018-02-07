@@ -140,19 +140,18 @@ def test_streams(runner, capsys):
                     sys.stdin, sys.stdout = stdin, stdout
                     try:
                         cli.cli.main(
-                            args=('run', 'cut', '-d,', '-f', '2'),
+                            args=('run', 'cut', '-d,', '-f', '2', '-s'),
                         )
                     except SystemExit as e:
                         assert e.code in {None, 0}
                 finally:
                     sys.stdin, sys.stdout = old_stdin, old_stdout
 
-    # TODO
-    # result = runner.invoke(cli.cli, ['workflow', 'create', 'result.txt'])
-    # assert result.exit_code == 0
-
     with open('result.txt', 'r') as f:
         assert f.read().strip() == 'second'
+
+    result = runner.invoke(cli.cli, ['workflow', 'create', 'result.txt'])
+    assert result.exit_code == 0
 
 
 def test_datasets(data_file, data_repository, runner):
