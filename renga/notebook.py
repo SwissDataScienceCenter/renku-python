@@ -424,7 +424,6 @@ def generate_notebook_token(size=24):
     return hexlify(os.urandom(24)).decode('ascii')
 
 
-
 def generate_launch_args(token=None, ip='*', base_url=None):
     """Generate notebook launch arguments."""
     token = token or generate_notebook_token()

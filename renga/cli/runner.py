@@ -105,6 +105,4 @@ def notebook(repo, project_path, name, network, image):
         image,
     ] + generate_launch_args(token=token, base_url=base_url)
 
-    import pipes
-    click.echo(' '.join(a for a in args))
-    # call(args, shell=True)
+    call(args)
