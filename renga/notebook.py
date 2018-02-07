@@ -437,6 +437,6 @@ def generate_launch_args(token=None, ip='*', base_url=None):
     ]
 
     if base_url:
-        args.append('--NotebookApp.base_url={0}'.format(token))
+        args.append('--NotebookApp.base_url={0}'.format(base_url))
 
     return args
