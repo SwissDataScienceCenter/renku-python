@@ -18,7 +18,7 @@
 
 DOCKER_REPOSITORY?=rengahub/
 DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
-DOCKER_LABEL?=$(or ${TRAVIS_BRANCH},${TRAVIS_BRANCH},latest)
+DOCKER_LABEL?=$(or ${TRAVIS_BRANCH},${TRAVIS_BRANCH},$(shell git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/^* //'))
 
 ifeq ($(DOCKER_LABEL), master)
 	DOCKER_LABEL=latest
