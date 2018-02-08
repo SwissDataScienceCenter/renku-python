@@ -78,6 +78,7 @@ deploy:
   skip_cleanup: true
   script: make login push-docker-images
   on:
+    all_branches: true
     python: "3.6"
     repo: SwissDataScienceCenter/renga-python
     condition: $DEPLOY = true
