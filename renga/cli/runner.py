@@ -77,32 +77,64 @@ def rerun(repo, run, job):
             os.unlink(job_file.name)
 
 
+def default_name():
+    """Guess a default name from env."""
+    project_slug = os.environ.get('CI_PROJECT_PATH_SLUG')
+    env_slug = os.environ.get('CI_ENVIRONMENT_SLUG')
+
+    if project_slug and env_slug:
+        return project_slug + '-' + env_slug
+
+    raise click.BadOptionUsage('Default name was not detected.')
+
+def default_base_url():
+    """Guess a default base url from env."""
+    project_path = os.environ.get('CI_PROJECT_PATH')
+    env_slug = os.environ.get('CI_ENVIRONMENT_SLUG')
+
+    if project_path and env_slug:
+        return '/{0}/{1}'.format(
+            project_path, env_slug
+        )
+
+    return os.path.basename(os.getcwd())
+
+
 @runner.command()
-@click.option('--project-path', envvar='CI_PROJECT_PATH',
-              default=lambda: os.path.basename(os.getcwd()))
-@click.option('--name', envvar='CI_BUILD_REF_SLUG',
-              default=lambda: uuid.uuid4().hex)
+@click.option('--base-url', default=default_base_url)
+@click.option('--name', default=default_name)
 @click.option('--network', envvar='RENGA_RUNNER_NETWORK',
               default='bridge')
 @click.option('--image', envvar='RENGA_RUNNER_IMAGE',
               default='jupyter/minimal-notebook:latest')
 @pass_repo
-def notebook(repo, project_path, name, network, image):
+def notebook(repo, base_url, name, network, image):
     """Launch notebook in a container."""
     token = generate_notebook_token()
-    base_url = '/{project_path}/{name}'.format(
-        project_path=project_path, name=name)
 
     args = [
-        'docker', 'run',
+        'docker', 'run', '-d',
         '--network', network,
         '--name', name,
         '--rm',
-        '-v', '{0}:/home/jovyan/work'.format(Path('.').absolute()),
+        '--volumes-from', '{0}:rw'.format(os.environ['HOSTNAME']),
         '--label', 'renga.notebook.token={0}'.format(token),
         '--label', 'traefik.enable=true',
         '--label', 'traefik.frontend.rule=PathPrefix:{0}'.format(base_url),
+        '-w={0}'.format(Path('.').absolute()),
         image,
     ] + generate_launch_args(token=token, base_url=base_url)
 
     call(args)
+
+
+@runner.command()
+@click.option('--name', default=default_name)
+@pass_repo
+def undeploy(repo, name):
+    """Stop running deployment."""
+    if not name:
+        raise click.BadOptionUsage(
+            'The name was not defined or detection failed.')
+    call(('docker', 'stop', name))
+    call(('docker', 'rm', name))

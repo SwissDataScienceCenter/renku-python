@@ -20,4 +20,4 @@ RUN usermod -aG root gitlab-runner
 ENV LANG C.UTF-8
 COPY . /code/renga
 WORKDIR /code/renga
-RUN pip install --no-cache .[notebook]
+RUN pip install --no-cache -e .[all]
