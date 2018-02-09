@@ -85,7 +85,8 @@ def default_name():
     if project_slug and env_slug:
         return project_slug + '-' + env_slug
 
-    raise click.BadOptionUsage('Default name was not detected.')
+    return uuid.uuid4().hex
+
 
 def default_base_url():
     """Guess a default base url from env."""
