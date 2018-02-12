@@ -24,6 +24,7 @@ import sys
 from binascii import hexlify
 
 import click
+from notebook.services.config import ConfigManager
 
 import renga
 from renga import errors
@@ -41,6 +42,20 @@ from .deployments import create
 @click.pass_context
 def notebooks(ctx, config):
     """Manage notebooks."""
+
+
+@notebooks.command()
+@click.option('-u', '--url', help='URL of an OpenID Connect server.',
+              envvar='RENGA_OIC_URL', )
+@click.option('-i', '--client-id', help='Client identifer for OAuth 2.0.',
+              envvar='RENGA_OIC_CLIENT_ID', )
+def configure(url, client_id):
+    """Configure the Jupyter server extension."""
+    cm = ConfigManager()
+    cm.update('renga.notebook.oic', {
+        'client_id': args.client_id,
+        'url': args.url,
+    })
 
 
 @notebooks.command()

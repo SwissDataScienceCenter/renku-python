@@ -48,6 +48,7 @@ extras_require = {
     ],
     'notebook': [
         'jupyter>=1.0.0',
+        'openid-connect>=0.3.0',
     ],
     'tests': tests_require,
 }

@@ -1,4 +1,16 @@
 FROM jupyter/%%NOTEBOOK_STACK%%:latest
 
+ENV RENGA_OIC_URL https://testing.datascience.ch/auth/realms/SDSC/
+ENV RENGA_OIC_CLIENT_ID jupyter
+
+USER root
 COPY . /code/renga
-RUN pip install --no-cache /code/renga
+RUN chown $NB_USER -R /code/renga
+USER $NB_USER
+
+RUN cd /code/renga && \
+    pip install --no-cache -e .[notebook]
+
+USER root
+RUN jupyter serverextension enable --py renga.notebook.oic
+USER $NB_USER
