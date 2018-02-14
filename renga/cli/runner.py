@@ -24,6 +24,7 @@ import uuid
 from subprocess import call
 
 import click
+import pkg_resources
 import yaml
 
 from renga._compat import Path
@@ -32,6 +33,8 @@ from renga.notebook import generate_launch_args, generate_notebook_token
 from ._graph import Graph
 from ._repo import pass_repo
 
+_GITLAB_CI = '.gitlab-ci.yml'
+
 
 @click.group()
 def runner():
@@ -39,9 +42,12 @@ def runner():
 
 
 @runner.command()
-def template():
+@pass_repo
+def template(repo):
     """Generate template for CI."""
-    raise NotImplemented()
+    with open(repo.path / _GITLAB_CI, 'wb') as dest:
+        with pkg_resources.resource_stream(__name__, _GITLAB_CI) as tpl:
+            dest.write(tpl.read())
 
 
 @runner.command()

@@ -69,9 +69,13 @@ def store_directory(ctx, param, value):
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True)
 @pass_repo
+@click.pass_context
 @with_git(clean=False)
-def init(repo, directory, name, force):
+def init(ctx, repo, directory, name, force):
     """Initialize a project."""
     project_config_path = repo.init(name=name, force=force)
+
+    from .runner import template
+    ctx.invoke(template)
 
     click.echo('Initialized empty project in {0}'.format(project_config_path))

@@ -46,4 +46,5 @@ recursive-include docs Makefile
 recursive-include examples *.py
 recursive-include examples *.sh
 recursive-include renga *.html
+recursive-include renga *.yml
 recursive-include tests *.py
