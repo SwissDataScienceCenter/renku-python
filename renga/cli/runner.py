@@ -115,11 +115,11 @@ def default_base_url():
               default='jupyter/minimal-notebook:latest')
 @click.option('--base-url', default=default_base_url)
 @click.option('--repo-url', envvar='CI_REPOSITORY_URL')
+@click.option('--token', envvar='RENGA_NOTEBOOK_TOKEN',
+              default=generate_notebook_token)
 @pass_repo
-def notebook(repo, name, network, image, base_url, repo_url):
+def notebook(repo, name, network, image, base_url, repo_url, token):
     """Launch notebook in a container."""
-    token = generate_notebook_token()
-
     args = [
         'docker', 'run', '-d',
         '--network', network,
@@ -127,7 +127,8 @@ def notebook(repo, name, network, image, base_url, repo_url):
         '--rm',
         '--label', 'renga.notebook.token={0}'.format(token),
         '--label', 'traefik.enable=true',
-        '--label', 'traefik.frontend.rule=PathPrefix:{0}'.format(base_url),
+        '--label', 'traefik.frontend.rule=PathPrefix:/{0}'.format(
+                base_url.lstrip('/')),
         image,
     ] + generate_launch_args(token=token, base_url=base_url)
 
