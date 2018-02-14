@@ -53,7 +53,7 @@ class OAuthHandler(IPythonHandler):
         # Read client configuration.
         client_config = self.config_manager.get('renga.notebook.oic') or {}
         url = client_config.get(
-            'url', 'https://testing.datascience.ch/auth/realms/SDSC/'
+            'url', 'https://testing.datascience.ch/auth/realms/Renga/'
         )
         client_id = client_config.get('client_id', 'jupyter')
 

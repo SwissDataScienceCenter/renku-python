@@ -38,9 +38,7 @@ from .deployments import create
 
 
 @click.group()
-@with_config
-@click.pass_context
-def notebooks(ctx, config):
+def notebooks():
     """Manage notebooks."""
 
 
@@ -53,8 +51,8 @@ def configure(url, client_id):
     """Configure the Jupyter server extension."""
     cm = ConfigManager()
     cm.update('renga.notebook.oic', {
-        'client_id': args.client_id,
-        'url': args.url,
+        'client_id': client_id,
+        'url': url,
     })
 
 

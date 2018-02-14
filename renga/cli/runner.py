@@ -102,15 +102,15 @@ def default_base_url():
 
 
 @runner.command()
-@click.option('--base-url', default=default_base_url)
 @click.option('--name', default=default_name)
 @click.option('--network', envvar='RENGA_RUNNER_NETWORK',
               default='bridge')
 @click.option('--image', envvar='RENGA_RUNNER_IMAGE',
               default='jupyter/minimal-notebook:latest')
-@click.option('--repourl', envvar='CI_REPOSITORY_URL')
+@click.option('--base-url', default=default_base_url)
+@click.option('--repo-url', envvar='CI_REPOSITORY_URL')
 @pass_repo
-def notebook(repo, base_url, name, network, image, repourl):
+def notebook(repo, name, network, image, base_url, repo_url):
     """Launch notebook in a container."""
     token = generate_notebook_token()
 
@@ -122,21 +122,21 @@ def notebook(repo, base_url, name, network, image, repourl):
         '--label', 'renga.notebook.token={0}'.format(token),
         '--label', 'traefik.enable=true',
         '--label', 'traefik.frontend.rule=PathPrefix:{0}'.format(base_url),
-        image
+        image,
     ] + generate_launch_args(token=token, base_url=base_url)
 
     call(args)
 
-    if repourl:
+    if repo_url:
         call([
             'docker',
             'exec',
             name,
             'git',
             'clone',
-            repourl,
-            os.path.join('/home/jovyan/', base_url.lstrip('/'))
-            ])
+            repo_url,
+            os.path.join('/home/jovyan/', base_url.lstrip('/')),
+        ])
 
 
 @runner.command()

@@ -110,6 +110,7 @@ setup(
             'init=renga.cli.init:init',
             'log=renga.cli.log:log',
             'run=renga.cli.run:run',
+            'notebooks=renga.cli.notebooks:notebooks',
             'runner=renga.cli.runner:runner',
             'workon=renga.cli.workon:workon',
             'workflow=renga.cli.workflow:workflow',
