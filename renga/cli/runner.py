@@ -120,6 +120,11 @@ def default_base_url():
 @pass_repo
 def notebook(repo, name, network, image, base_url, repo_url, token):
     """Launch notebook in a container."""
+    try:
+        call(['docker', 'rm', '--force', name])
+    except:
+        pass
+
     args = [
         'docker', 'run', '-d',
         '--network', network,

@@ -13,7 +13,6 @@ run_cwl:
 review_notebook:
   stage: review
   script:
-    - docker rm --force $CI_PROJECT_PATH_SLUG-$CI_ENVIRONMENT_SLUG || true
     - renga runner notebook --network review --token $RENGA_NOTEBOOK_TOKEN
   environment:
     name: review/$CI_COMMIT_REF_NAME
