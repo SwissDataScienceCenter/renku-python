@@ -39,7 +39,7 @@ GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
 build-docker-images: $(IMAGES:%=build/%)
 
-build/%-notebook: Dockerfile.template
+build/%-notebook: Dockerfile.notebook.template
 	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
 
 build/%: Dockerfile.%
