@@ -43,6 +43,8 @@ A Python library for the `Renga collaborative data science platform
 ``renga`` command or from withing Python apps - create projects, manage
 buckets, track files, run containers, etc.
 
+**Renga is currently undergoing a major restructuring effort. For a preview, you can look
+at the development branch, but keep in mind it is highly volatile.**
 
 **NOTE**:
    ``renga-python`` is the python library for Renga that provides an SDK and a 
