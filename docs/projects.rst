@@ -18,17 +18,5 @@
 Projects
 ========
 
-.. py:module:: renga.models.projects
+Managing Renga projects.
 
-Manage projects on the server.
-
-.. autoclass:: ProjectCollection
-   :members:
-   :inherited-members:
-
-Project objects
----------------
-
-.. autoclass:: Project()
-   :members:
-   :inherited-members:

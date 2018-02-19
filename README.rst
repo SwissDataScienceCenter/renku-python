@@ -39,18 +39,20 @@
         :target: https://github.com/SwissDataScienceCenter/renga-python/blob/master/LICENSE
 
 A Python library for the `Renga collaborative data science platform
-<https://github.com/SwissDataScienceCenter/renga>`_. It lets you perform any action with
-``renga`` command or from withing Python apps - create projects, manage
-buckets, track files, run containers, etc.
+<https://github.com/SwissDataScienceCenter/renga>`_. It allows the user to
+create projects, manage datasets, and capture data provenance while performing
+analysis tasks.
 
 
 **NOTE**:
-   ``renga-python`` is the python library for Renga that provides an SDK and a 
-   command-line interface (CLI). It *does not* start the Renga platform itself - 
-   for that, refer to the Renga docs on `running the platform 
+   ``renga-python`` is the python library for Renga that provides an SDK and a
+   command-line interface (CLI). It *does not* start the Renga platform itself -
+   for that, refer to the Renga docs on `running the platform
    <https://renga.readthedocs.io/en/latest/user/setup.html>`_.
 
-**This is an experimental developer preview release.**
+**This is the development branch of `renga-python` and should be considered
+highly volatile. The documentation for certain components may be out of
+sync.**
 
 Installation
 ------------
@@ -62,40 +64,44 @@ The latest release is available on PyPI and can be installed using
 
     $ pip install renga
 
-The development version can be installed directly from the Git repository:
+The development branch can be installed directly from the Git repository:
 
 ::
 
-    $ pip install -e git+https://github.com/SwissDataScienceCenter/renga-python.git#egg=renga
+    $ pip install -e git+https://github.com/SwissDataScienceCenter/renga-python.git@development#egg=renga
 
 
 Usage
 -----
 
-Start by login and configuring your shell:
+Initialize a renga project:
 
 ::
 
-   $ renga login http://localhost
+    $ mkdir -p ~/temp/my-renga-project
+    $ cd ~/temp/my-renga-project
+    $ renga init
 
-Connect to Renga platform from Python using the stored configuration:
-
-::
-
-    import renga
-    client = renga.from_config()
-
-The client can be also instantiated from environment variables.
+Create a dataset and add data to it:
 
 ::
 
-   $ eval "$(renga env)"
+    $ renga datasets create my-dataset
+    $ renga datasets add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renga-python/development/README.rst
+
+Run an analysis:
 
 ::
 
-   import renga
-   client = renga.from_env()
+    $ renga run wc data/my-dataset/README.rst > wc_readme
+
+Trace the data provenance:
+
+::
+
+    $ renga log wc_readme
 
 
-Further documentation is available on
-https://renga-python.readthedocs.io/
+These are the basics, but there is much more that renga allows you to do with
+your data analysis workflows. The full documentation will soon be available
+at: https://renga-python.readthedocs.io/en/development

@@ -15,57 +15,41 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Buckets and Files
-=================
+Models
+======
 
-.. py:module:: renga.models.storage
-
-Manage buckets and files on the server.
-
-.. autoclass:: BucketCollection
-   :members:
-   :inherited-members:
-
-Bucket objects
---------------
-
-.. autoclass:: Bucket()
-   :members:
-   :inherited-members:
+Data abstractions.
 
 
-Files
------
+Datasets
+--------
 
-Manage files in the bucket.
+.. py:module:: renga.models.dataset
 
-.. autoclass:: FileCollection
+Manage datasets and their metadata.
+
+
+Dataset objects
+~~~~~~~~~~~~~~~
+
+.. autoclass:: Dataset()
    :members:
    :inherited-members:
 
 
-File objects
-------------
+Dataset files
+~~~~~~~~~~~~~
 
-.. autoclass:: File()
+Manage files in the dataset.
+
+.. autoclass:: DatasetFile()
    :members:
    :inherited-members:
 
 
-File handle objects
--------------------
+Author
+~~~~~~
 
-.. autoclass:: FileHandle()
-   :members:
-   :inherited-members:
-
-File versions
--------------
-
-.. autoclass:: FileVersionCollection
-   :members:
-   :inherited-members:
-
-.. autoclass:: FileVersion
+.. autoclass:: Author()
    :members:
    :inherited-members:
