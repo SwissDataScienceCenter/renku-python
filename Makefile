@@ -37,7 +37,7 @@ IMAGES=$(ALL_STACKS) gitlab-runner renga-python
 
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
-build-docker-images: $(IMAGES:%=build/%)
+tag-docker-images: $(IMAGES:%=tag/%)
 
 build/%-notebook: Dockerfile.notebook.template
 	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
