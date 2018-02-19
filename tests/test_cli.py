@@ -121,6 +121,9 @@ def test_workflow(runner):
     result = runner.invoke(cli.cli, ['workflow', 'create', 'counted.txt'])
     assert result.exit_code == 0
 
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
 
 def test_streams(runner, capsys):
     """Test redirection of std streams."""
@@ -152,6 +155,19 @@ def test_streams(runner, capsys):
 
     result = runner.invoke(cli.cli, ['workflow', 'create', 'result.txt'])
     assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    with open('source.txt', 'w') as source:
+        source.write('first,second,third,fourth')
+
+    repo.git.add('--all')
+    repo.index.commit('Changed source.txt')
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 1
+    assert 'source.txt' in result.output
 
 
 def test_datasets(data_file, data_repository, runner):

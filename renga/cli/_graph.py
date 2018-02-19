@@ -18,10 +18,13 @@
 """Graph builder."""
 
 import os
+from itertools import groupby
+from operator import itemgetter
 
 import attr
 import networkx as nx
 import yaml
+from git import IndexFile
 
 from renga._compat import Path
 from renga.models.cwl.command_line_tool import CommandLineTool
@@ -127,6 +130,76 @@ class Graph(object):
     def _output_keys(self):
         """Return a list of the output keys."""
         return [n for n, d in self.G.out_degree() if d == 0]
+
+    def _need_update(self):
+        """Yield all files that need to be updated."""
+        visited = set()
+
+        for key in nx.topological_sort(self.G):
+            assert key not in visited
+            need_update = []
+            node = self.G.nodes[key]
+            latest = node.get('latest')
+            if latest:
+                need_update.append(key)
+
+            for parent, _ in self.G.in_edges(key):
+                assert parent in visited
+                need_update.extend(self.G.nodes[parent]['_need_update'])
+
+            if not latest and need_update:
+                need_update.append(key)
+
+            self.G.nodes[key]['_need_update'] = need_update
+            visited.add(key)
+
+    def build_status(self, revision='HEAD'):
+        """Return files from the revision grouped by their status."""
+        index = self.repo.git.index if revision == 'HEAD' \
+            else IndexFile.from_tree(repo.git, revision)
+
+        current_files = set()
+
+        for filepath, _ in index.entries.keys():
+            if not filepath.startswith('.renga') and \
+                    filepath not in {'.gitignore', }:
+                self.add_file(filepath, revision=revision)
+                current_files.add(filepath)
+
+        # Prepare status info for each file.
+        self._need_update()
+
+        graph_files = sorted(
+            ((commit, filepath) for (commit, filepath) in self.G
+             if filepath in current_files),
+            key=itemgetter(1)
+        )
+
+        status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
+
+        for filepath, keys in groupby(graph_files, itemgetter(1)):
+            keys = list(keys)
+
+            if len(keys) > 1:
+                status['multiple-versions'][filepath] = keys
+
+            if any(len(self.G.nodes[key]['_need_update']) > 1
+                   for key in keys):
+                updates = list(self.G.nodes[key]
+                               ['_need_update'] for key in keys)
+                status['outdated'][filepath] = updates
+            elif len(keys) == 1:
+                status['up-to-date'][filepath] = keys[0][0]
+
+        return status
+
+    @property
+    def output_files(self):
+        """Return a list of nodes representing output files."""
+        for key in self._output_keys:
+            node = self.G.nodes[key]
+            if 'tool' not in node:
+                yield key, node
 
     def _source_name(self, key):
         """Find source name for a node."""
