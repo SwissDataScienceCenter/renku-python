@@ -170,7 +170,7 @@ class Dataset(object):
     def meta_init(self):
         """Initialize the directories and metadata."""
         try:
-            os.mkdir(self.path)
+            os.makedirs(self.path)
         except FileExistsError:
             raise FileExistsError('This dataset already exists.')
         self.write_metadata()
