@@ -44,5 +44,3 @@ Renga Command Line
 ------------------
 
 .. automodule:: renga.cli.workflow
-
-

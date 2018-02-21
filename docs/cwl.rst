@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,36 +15,49 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Contexts and Executions
-=======================
+Tools and Workflows
+===================
 
-.. py:module:: renga.models.deployer
+.. py:module:: renga.models.cwl
 
-Manage contexts and executions on the server.
+Manage creation of tools and workflows using the `Common Workflow Language
+<http://www.commonwl.org/>`_ (CWL).
 
-Methods available on ``client.contexts``:
 
-.. autoclass:: ContextCollection
+Common Workflow language
+------------------------
+
+Renga uses CWL to represent runnable steps (tools) along with their inputs
+and outputs. Similarly, tools can be chained together to form CWL-defined
+workflows.
+
+
+Command-line tool
+~~~~~~~~~~~~~~~~~
+
+.. automodule:: renga.models.cwl.command_line_tool
    :members:
-   :inherited-members:
 
-Context objects
----------------
+Parameter
+~~~~~~~~~
 
-.. autoclass:: Context()
+.. automodule:: renga.models.cwl.parameter
    :members:
-   :inherited-members:
 
-Executions
-----------
+Process
+~~~~~~~
 
-.. autoclass:: ExecutionCollection
+.. automodule:: renga.models.cwl.process
    :members:
-   :inherited-members:
 
-Execution objects
------------------
+Types
+~~~~~
 
-.. autoclass:: Execution()
+.. automodule:: renga.models.cwl.types
    :members:
-   :inherited-members:
+
+Workflow
+~~~~~~~~
+
+.. automodule:: renga.models.cwl.workflow
+   :members:
