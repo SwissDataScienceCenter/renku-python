@@ -25,6 +25,7 @@
    api
    cli
    client
+   cwl
    models
    projects
    contributing
