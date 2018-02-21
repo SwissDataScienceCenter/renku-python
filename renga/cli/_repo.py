@@ -216,6 +216,11 @@ class Repo(object):
             metadata.name = name
             metadata.updated = datetime.datetime.utcnow()
 
+        with open(path / '.gitattributes', 'w') as gitattributes:
+            gitattributes.write('\n'.join([
+                'data/** filter=lfs diff=lfs merge=lfs -text',
+                'data/**/metadata.json -filter=lfs -diff=lfs -merge=lfs -text'
+            ]) + '\n')
         return str(path)
 
     @property
