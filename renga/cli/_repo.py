@@ -19,8 +19,10 @@
 
 import datetime
 import os
+import shlex
 import uuid
 from contextlib import contextmanager
+from subprocess import call
 
 import attr
 import click
@@ -191,7 +193,7 @@ class Repo(object):
                         stream=step_file,
                         default_flow_style=False)
 
-    def init(self, name=None, force=False):
+    def init(self, name=None, force=False, lfs=True):
         """Initialize a Renga repository."""
         self.renga_path.mkdir(parents=True, exist_ok=force)
 
@@ -216,12 +218,26 @@ class Repo(object):
             metadata.name = name
             metadata.updated = datetime.datetime.utcnow()
 
+        if lfs:
+            self.init_lfs()
+
+        return str(path)
+
+    def init_lfs(self):
+        """Initialize the git-LFS."""
+        path = self.path.absolute()
+
+        try:
+            call(['git', 'lfs', 'install', '--local'])
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                "Please install Git-LFS to use LFS features.")
+
         with open(path / '.gitattributes', 'w') as gitattributes:
             gitattributes.write('\n'.join([
                 'data/** filter=lfs diff=lfs merge=lfs -text',
                 'data/**/metadata.json -filter=lfs -diff=lfs -merge=lfs -text'
             ]) + '\n')
-        return str(path)
 
     @property
     def state(self):
