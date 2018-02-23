@@ -25,7 +25,6 @@ from contextlib import contextmanager
 import attr
 
 from renga._compat import Path
-from renga.cli._repo import track_lfs_paths
 
 from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
@@ -148,9 +147,10 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, git=None, no_output=False):
+    def watch(self, repo=None, no_output=False):
         """Watch a git repository for changes to detect outputs."""
         tool = self.generate_tool()
+        git = repo.git
 
         yield tool
 
@@ -187,7 +187,7 @@ class CommandLineToolFactory(object):
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
-            track_lfs_paths(lfs_paths)
+            repo.track_lfs_paths(lfs_paths)
 
     @command_line.validator
     def validate_command_line(self, attribute, value):

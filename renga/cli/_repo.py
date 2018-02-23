@@ -22,7 +22,7 @@ import os
 import shlex
 import uuid
 from contextlib import contextmanager
-from subprocess import call
+from subprocess import PIPE, STDOUT, call
 
 import attr
 import click
@@ -37,6 +37,8 @@ from renga.models.cwl.workflow import Workflow
 
 from ._config import RENGA_HOME, read_config, write_config
 from ._git import get_git_home
+
+HAS_LFS = not call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT)
 
 
 def uuid_representer(dumper, data):
@@ -175,8 +177,7 @@ class Repo(object):
             for step in workflow.steps:
                 step_name = '{0}_{1}.cwl'.format(
                     uuid.uuid4().hex,
-                    secure_filename('_'.join(step.run.baseCommand)),
-                )
+                    secure_filename('_'.join(step.run.baseCommand)), )
 
                 workflow_path = self.workflow_path
                 if not workflow_path.exists():
@@ -218,7 +219,8 @@ class Repo(object):
             metadata.name = name
             metadata.updated = datetime.datetime.utcnow()
 
-        if lfs:
+        # initialize LFS if it is requested and installed
+        if lfs and HAS_LFS:
             self.init_lfs()
 
         return str(path)
@@ -227,11 +229,7 @@ class Repo(object):
         """Initialize the git-LFS."""
         path = self.path.absolute()
 
-        try:
-            call(['git', 'lfs', 'install', '--local'])
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                "Please install Git-LFS to use LFS features.")
+        call(['git', 'lfs', 'install', '--local'], stdout=PIPE, stderr=STDOUT)
 
         # track everything in ./data except for metadata.json files
         with open(path / '.gitattributes', 'w') as gitattributes:
@@ -240,10 +238,13 @@ class Repo(object):
                 'data/**/metadata.json -filter=lfs -diff=lfs -merge=lfs -text'
             ]) + '\n')
 
-    def track_lfs_paths(paths):
+    def track_lfs_paths(self, paths):
         """Track paths in LFS."""
-        p = call(
-            ['git', 'lfs', 'track', ' '.join(paths)], stdout=subprocess.PIPE)
+        if HAS_LFS:
+            p = call(
+                ['git', 'lfs', 'track', ' '.join(paths)],
+                stdout=PIPE,
+                stderr=STDOUT)
 
     @property
     def state(self):

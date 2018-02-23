@@ -21,6 +21,7 @@ from __future__ import absolute_import, print_function
 
 import contextlib
 import os
+import shutil
 import sys
 
 import git
@@ -79,6 +80,22 @@ def test_init(base_runner):
     assert result.exit_code == 0
     assert os.stat(os.path.join('.git'))
     assert os.stat(os.path.join('.renga'))
+
+    # 4. check git lfs init options
+    os.chdir('../')
+    shutil.rmtree('test-project')
+    os.mkdir('test-project')
+    os.chdir('test-project')
+    result = runner.invoke(cli.cli, ['init', '--nolfs'])
+    with open('.git/config') as f:
+        config = f.read()
+    assert 'filter "lfs"' not in config
+
+    result = runner.invoke(cli.cli, ['init', '--force'])
+    with open('.git/config') as f:
+        config = f.read()
+    assert 'filter "lfs"' in config
+    assert os.stat(os.path.join('.gitattributes'))
 
 
 def test_workon(runner):
@@ -201,4 +218,22 @@ def test_datasets(data_file, data_repository, runner):
     # add data from local git repo
     result = runner.invoke(cli.cli, [
         'datasets', 'add', 'dataset', '-t', 'file', '-t', 'file2',
-        os.path.dirname(data_repository.git_dir)])
+        os.path.dirname(data_repository.git_dir)
+    ])
+
+
+def test_lfs_tracking(base_runner):
+    """Test .gitattribute handling on renga run."""
+    runner = base_runner
+
+    os.mkdir('test-project')
+    os.chdir('test-project')
+    result = runner.invoke(cli.cli, ['init'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
+    assert result.exit_code == 0
+
+    with open('.gitattributes') as f:
+        gitattributes = f.read()
+    assert 'output' in gitattributes
