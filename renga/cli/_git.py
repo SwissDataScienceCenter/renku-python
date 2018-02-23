@@ -18,6 +18,7 @@
 """Utility functions for managing the underling Git repository."""
 
 import os
+import subprocess
 import sys
 from contextlib import contextmanager
 

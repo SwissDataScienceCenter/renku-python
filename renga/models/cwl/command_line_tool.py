@@ -25,6 +25,7 @@ from contextlib import contextmanager
 import attr
 
 from renga._compat import Path
+from renga.cli._repo import track_lfs_paths
 
 from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
@@ -159,9 +160,12 @@ class CommandLineToolFactory(object):
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
+            lfs_paths = []
 
-            for output, input in self.guess_outputs(candidates):
+            for output, input, path in self.guess_outputs(candidates):
                 outputs.append(output)
+                lfs_paths.append(path)
+
                 if input is not None:
                     if input.id not in inputs:  # pragma: no cover
                         raise RuntimeError('Inconsistent input name.')
@@ -175,12 +179,15 @@ class CommandLineToolFactory(object):
                         raise RuntimeError(
                             'Output file was not created or changed.'
                         )
+                    elif stream:
+                        lfs_paths.append(stream)
 
                 if not outputs:
                     raise RuntimeError('No output was detected')
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
+            track_lfs_paths(lfs_paths)
 
     @command_line.validator
     def validate_command_line(self, attribute, value):
@@ -377,10 +384,10 @@ class CommandLineToolFactory(object):
                     type='File',
                     outputBinding=dict(
                         glob='$(inputs.{0})'.format(input.id), ),
-                ), None)
+                ), None, path)
             else:
                 yield (CommandOutputParameter(
                     id='output_{0}'.format(position),
                     type='File',
                     outputBinding=dict(glob=glob, ),
-                ), None)
+                ), None, path)

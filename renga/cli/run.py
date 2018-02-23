@@ -35,7 +35,7 @@ from ._repo import pass_repo
               help='Allow commands without output files.')
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_repo
-@with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
+@with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True, lfs=True)
 def run(repo, no_output, command_line):
     """Tracking work on a specific problem."""
     candidates = [x[0] for x in repo.git.index.entries] + \

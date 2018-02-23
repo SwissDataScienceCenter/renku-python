@@ -233,11 +233,17 @@ class Repo(object):
             raise FileNotFoundError(
                 "Please install Git-LFS to use LFS features.")
 
+        # track everything in ./data except for metadata.json files
         with open(path / '.gitattributes', 'w') as gitattributes:
             gitattributes.write('\n'.join([
                 'data/** filter=lfs diff=lfs merge=lfs -text',
                 'data/**/metadata.json -filter=lfs -diff=lfs -merge=lfs -text'
             ]) + '\n')
+
+    def track_lfs_paths(paths):
+        """Track paths in LFS."""
+        p = call(
+            ['git', 'lfs', 'track', ' '.join(paths)], stdout=subprocess.PIPE)
 
     @property
     def state(self):
