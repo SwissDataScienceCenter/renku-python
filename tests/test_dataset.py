@@ -17,7 +17,6 @@
 # limitations under the License.
 """Dataset tests."""
 
-import json
 import os
 import shutil
 import stat
@@ -26,6 +25,7 @@ from contextlib import contextmanager
 import git
 import pytest
 import responses
+import yaml
 
 from renga.models import dataset
 
@@ -93,7 +93,7 @@ def test_data_add(scheme, path, error, project, data_file, directory_tree,
         # check that the imported file is read-only
         assert not os.access('data/dataset/file',
                              stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        assert os.stat('data/dataset/metadata.json')
+        # assert os.stat('data/dataset/file/metadata.yml')
 
         # check the linking
         if scheme in ('', 'file://'):
@@ -118,8 +118,10 @@ def test_data_add_recursive(directory_tree, project):
 
 def dataset_serialization(dataset, data_file):
     """Test deserializing a dataset object."""
-    # deserialize from json on disk
-    d = dataset.Dataset.from_json(dataset.path.joinpath('metadata.json'))
+    with open(dataset.path / 'metadata.yml', 'r') as f:
+        source = yaml.load(f)
+
+    d = dataset.Dataset.from_jsonld(source)
     assert d.path == dataset.path
 
     d_dict = d.to_dict()
@@ -142,17 +144,12 @@ def data_repository_commit(dataset, data_file):
     dataset.commit_to_repo()
     assert all([
         f not in r.untracked_files
-        for f in ['data/dataset/metadata.json', 'data/dataset/file']
+        for f in ['data/dataset/metadata.yml', 'data/dataset/file']
     ])
 
 
 def test_git_repo_import(dataset, tmpdir, data_repository):
     """Test an import from a git repository."""
-    from git import Repo
-    r = Repo('.')
-
-    dataset.repo = r
-
     # add data from local repo
     dataset.add_data(
         os.path.join(os.path.dirname(data_repository.git_dir), 'dir2'))

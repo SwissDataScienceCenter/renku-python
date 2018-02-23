@@ -37,6 +37,14 @@ from ._config import RENGA_HOME, read_config, write_config
 from ._git import get_git_home
 
 
+def uuid_representer(dumper, data):
+    """Add UUID serializer for YAML."""
+    return dumper.represent_str(str(data))
+
+
+yaml.add_representer(uuid.UUID, uuid_representer)
+
+
 class Repo(object):
     """Represent a Renga repository."""
 
@@ -97,7 +105,7 @@ class Repo(object):
 
     @contextmanager
     def with_metadata(self):
-        """Yield a editable metadata object."""
+        """Yield an editable metadata object."""
         with self.lock:
             from renga.models._jsonld import asjsonld
             from renga.models.projects import Project
@@ -115,6 +123,43 @@ class Repo(object):
             yield metadata
 
             source.update(**asjsonld(metadata))
+            with open(path, 'w') as f:
+                yaml.dump(source, f, default_flow_style=False)
+
+    @contextmanager
+    def with_dataset(self, name=None, datadir='data'):
+        """Yield an editable metadata object for a dataset."""
+        with self.lock:
+            from renga.models._jsonld import asjsonld
+            from renga.models.dataset import Dataset
+            path = None
+            dataset = None
+
+            if name:
+                path = self.path / datadir / name / 'metadata.yml'
+                if path.exists():
+                    with open(path, 'r') as f:
+                        source = yaml.load(f) or {}
+                    dataset = Dataset.from_jsonld(source)
+                    # TODO update? dataset ...
+            if dataset is None:
+                source = {}
+                dataset = Dataset.create(name=name, repo=self.git)
+
+            dataset.repo = self.git
+            yield dataset
+
+            source.update(**asjsonld(
+                dataset,
+                filter=lambda attr, _: attr.name not in {'repo', 'datadir'},
+            ))
+
+            # TODO
+            # if path is None:
+            #     path = self.path / datadir / dataset.name / 'metadata.yml'
+            #     if path.exists():
+            #         raise ValueError('Dataset already exists')
+
             with open(path, 'w') as f:
                 yaml.dump(source, f, default_flow_style=False)
 

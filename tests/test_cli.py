@@ -175,7 +175,7 @@ def test_datasets(data_file, data_repository, runner):
     # create a dataset
     result = runner.invoke(cli.cli, ['datasets', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert os.stat('data/dataset/metadata.json')
+    assert os.stat('data/dataset/metadata.yml')
 
     # add data
     result = runner.invoke(cli.cli,

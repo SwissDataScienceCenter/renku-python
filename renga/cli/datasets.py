@@ -43,8 +43,9 @@ import shutil
 import click
 from click import BadParameter, UsageError
 
-from renga.models.dataset import Dataset
+from renga.models.dataset import Author, Dataset
 
+from ._git import with_git
 from ._repo import pass_repo
 
 
@@ -59,10 +60,12 @@ def datasets(ctx, datadir):
 @datasets.command()
 @click.argument('name')
 @pass_repo
+@with_git()
 def create(repo, name):
     """Create an empty dataset in the current repo."""
-    datadir = get_datadir()
-    d = Dataset.create(name, repo=repo.git, datadir=datadir)
+    with repo.with_dataset(name=name, datadir=get_datadir()) as dataset:
+        click.echo('Creating a dataset ... ', nl=False)
+    click.secho('OK', fg='green')
 
 
 @datasets.command()
@@ -70,18 +73,18 @@ def create(repo, name):
 @click.argument('url')
 @click.option('--nocopy', default=False, is_flag=True)
 @click.option(
-    '--target',
     '-t',
+    '--target',
     default=None,
     multiple=True,
     help='Target path in the git repo.')
 @pass_repo
+@with_git()
 def add(repo, name, url, nocopy, target):
     """Add data to a dataset."""
-    datadir = get_datadir()
-    d = Dataset.load(name, repo=repo.git, datadir=datadir)
     try:
-        d.add_data(url, nocopy=nocopy, target=target)
+        with repo.with_dataset(name=name, datadir=get_datadir()) as dataset:
+            dataset.add_data(url, nocopy=nocopy, target=target)
     except FileNotFoundError:
         raise BadParameter('URL')
 

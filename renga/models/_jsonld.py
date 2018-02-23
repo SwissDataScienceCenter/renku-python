@@ -25,16 +25,21 @@ from pyld import jsonld as ld
 
 KEY = '__json_ld'
 
+make_type = type
 
-def attrs(maybe_cls=None, type=None, context=None, translate=None):
+
+def attrs(maybe_cls=None, type=None, context=None, translate=None,
+          **attrs_kwargs):
     """Wrap an attr enabled class."""
     context = context or {}
     translate = translate or {}
 
     def wrap(cls):
         """Decorate an attr enabled class."""
-        cls._jsonld_type = type
-        jsonld_cls = attr.s(cls, slots=True)
+        jsonld_cls = attr.s(cls, **attrs_kwargs)
+
+        if not issubclass(jsonld_cls, JSONLDMixin):
+            jsonld_cls = make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {})
 
         for a in attr.fields(jsonld_cls):
             try:
@@ -49,11 +54,13 @@ def attrs(maybe_cls=None, type=None, context=None, translate=None):
                     context[key] = ctx
                     continue
 
-            if ctx not in context:
+            if isinstance(ctx, dict) or ctx not in context:
                 context[key] = ctx
 
+        jsonld_cls._jsonld_type = type
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
+        jsonld_cls._jsonld_fields = {a.name for a in attr.fields(jsonld_cls)}
         return jsonld_cls
 
     if maybe_cls is None:
@@ -91,7 +98,8 @@ class JSONLDMixin(object):
         compacted = ld.compact(data, cls._jsonld_context)
         # assert compacted['@type'] == cls._jsonld_type, '@type must be equal'
         # TODO update self(not cls)._jsonld_context with data['@context']
-        return cls(**{k: v for k, v in compacted.items() if hasattr(cls, k)})
+        fields = cls._jsonld_fields
+        return cls(**{k: v for k, v in compacted.items() if k in fields})
 
 
 s = attrs

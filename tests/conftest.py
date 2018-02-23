@@ -94,7 +94,7 @@ def auth_responses():
             return (200, {
                 'Content-Type': 'application/json'
             }, '{"refresh_token": "demodemo", "access_token": "accessdemo", '
-                    '"expires_at": 0}')
+                '"expires_at": 0}')
 
         rsps.add_callback(
             responses.POST,
@@ -664,12 +664,16 @@ def runner(base_runner, project):
 @pytest.fixture()
 def dataset(project):
     """Create a dataset."""
-    from renga.models import dataset
-    return dataset.Dataset.create(
-        'dataset',
-        datadir='data',
-        authors={'name': 'me',
-                 'email': 'me@example.com'})
+    from renga.cli._repo import Repo
+
+    with Repo(project, git_home=project).with_dataset(
+            name='dataset') as dataset:
+        dataset.authors = {
+            'name': 'me',
+            'email': 'me@example.com',
+        }
+
+    return dataset
 
 
 @pytest.fixture()

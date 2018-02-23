@@ -32,18 +32,18 @@ import attr
 import dateutil
 import git
 import requests
+import yaml
 from attr.validators import instance_of
 from dateutil.parser import parse as parse_date
 
-try:
-    from pathlib import Path
-except ImportError:  # pragma: no cover
-    from pathlib2 import Path
+from renga._compat import Path
+
+from . import _jsonld as jsonld
 
 NoneType = type(None)
 
 _path_attr = partial(
-    attr.ib,
+    jsonld.ib,
     converter=Path,
     validator=lambda i, arg, val: Path(val).absolute().is_file())
 
@@ -58,13 +58,21 @@ def _deserialize_dict(d, cls):
     return {k: cls(**v) for (k, v) in d.items()}
 
 
-@attr.s(frozen=True)
+@jsonld.s(
+    type='dcterms:creator',
+    context={
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'dcterms': 'http://purl.org/dc/terms/',
+        'scoro': 'http://purl.org/spar/scoro/',
+    },
+    frozen=True,
+)
 class Author(object):
     """Represent the author of a resource."""
 
-    name = attr.ib(validator=instance_of(str))
-    email = attr.ib()
-    affiliation = attr.ib(default=None)
+    name = jsonld.ib(validator=instance_of(str), context='dcterms:name')
+    email = jsonld.ib(context='dcterms:email')
+    affiliation = jsonld.ib(default=None, context='scoro:affiliate')
 
     @email.validator
     def check_email(self, attribute, value):
@@ -72,6 +80,15 @@ class Author(object):
         if not (isinstance(value, str) and re.match(
                 r"[^@]+@[^@]+\.[^@]+", value)):
             raise ValueError('Email address is invalid.')
+
+    @classmethod
+    def from_git(cls, git):
+        """Create an instance from a Git repo."""
+        git_config = git.config_reader()
+        return cls(
+            name=git_config.get('user', 'name'),
+            email=git_config.get('user', 'email'),
+        )
 
 
 def _deserialize_authors(authors):
@@ -90,7 +107,7 @@ def _deserialize_authors(authors):
                      'set or list of dicts or Author.')
 
 
-@attr.s
+@jsonld.s
 class DatasetFile(object):
     """Represent a file in a dataset."""
 
@@ -105,22 +122,38 @@ class DatasetFile(object):
 _deserialize_files = partial(_deserialize_dict, cls=DatasetFile)
 
 
-@attr.s
+@jsonld.s(
+    type='dctypes:Dataset',
+    context={
+        'dcterms': 'http://purl.org/dc/terms/',
+        'dctypes': 'http://purl.org/dc/dcmitypes/',
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'prov': 'http://www.w3.org/ns/prov#',
+        'scoro': 'http://purl.org/spar/scoro/',
+    },
+)
 class Dataset(object):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
 
-    name = attr.ib(type='string')
+    name = jsonld.ib(type='string', context='foaf:name')
 
-    created_at = attr.ib(
+    created = jsonld.ib(
         default=attr.Factory(datetime.now),
         converter=lambda arg: arg if isinstance(
-            arg, datetime) else parse_date(arg))
+            arg, datetime) else parse_date(arg),
+        context='http://schema.org/dateCreated',
+    )
 
-    identifier = attr.ib(
+    identifier = jsonld.ib(
         default=attr.Factory(uuid.uuid4),
-        converter=lambda x: uuid.UUID(str(x)))
+        converter=lambda x: uuid.UUID(str(x)),
+        context={
+            '@id': 'dctypes:Dataset',
+            '@type': '@id',
+        },
+    )
 
     repo = attr.ib(
         default=None,
@@ -128,20 +161,12 @@ class Dataset(object):
             arg, (git.Repo, NoneType)) else git.Repo(arg)
     )
 
-    authors = authors = attr.ib(converter=_deserialize_authors)
+    authors = jsonld.ib(
+        default=attr.Factory(set),  # FIXME should respect order
+        converter=_deserialize_authors,
+    )
     datadir = _path_attr(default='data')
     files = attr.ib(default=attr.Factory(dict), converter=_deserialize_files)
-
-    @authors.default
-    def set_author_from_git(self):
-        """Set the author name and email from the git repo if present."""
-        if not self.repo:
-            raise RuntimeError('Outside of a git repository '
-                               '- unable to determine author information.')
-        git_config = self.repo.config_reader()
-        return Author(
-            name=git_config.get('user', 'name'),
-            email=git_config.get('user', 'email'))
 
     def __attrs_post_init__(self):
         """Finalize initialization of Dataset instance."""
@@ -173,8 +198,6 @@ class Dataset(object):
             os.makedirs(self.path)
         except FileExistsError:
             raise FileExistsError('This dataset already exists.')
-        self.write_metadata()
-        self.commit_to_repo()
 
     def add_data(self, url, datadir=None, git=False, **kwargs):
         """Import the data into the data directory."""
@@ -191,9 +214,6 @@ class Dataset(object):
                     self.files.update(self._add_from_git(self.path, url, t))
         else:
             self.files.update(self._add_from_url(self.path, url, **kwargs))
-
-        self.write_metadata()
-        self.commit_to_repo()
 
     def _add_from_url(self, path, url, nocopy=False, **kwargs):
         """Process an add from url and return the location on disk."""
@@ -318,72 +338,18 @@ class Dataset(object):
                 authors=authors)
         }
 
-    def write_metadata(self):
-        """Write the dataset metadata to disk."""
-        with open(self.path.joinpath('metadata.json'), 'w') as f:
-            f.write(self.to_json())
-        return self.to_json()
-
-    def commit_to_repo(self, message=None):
-        """Commit the dataset files to the git repository."""
-        repo = self.repo
-        if repo:
-            repo.index.add([(self.path / x.path).as_posix()
-                            for x in self.files.values()])
-            repo.index.add(
-                [(self.path / 'metadata.json').absolute().as_posix()])
-            if not message:
-                message = "[renga] commiting changes to {} dataset".format(
-                    self.name)
-            repo.index.commit(message)
-
-    def to_json(self):
-        """Dump the json for this dataset."""
-        d = attr.asdict(
-            self, filter=lambda attr, _: attr.name not in ('repo', 'datadir'))
-
-        # convert unserializable values to str
-        for k in ('created_at', 'identifier'):
-            if d[k]:
-                d[k] = str(d[k])
-
-        # serialize file dict
-        files = {}
-        for k, v in d['files'].items():
-            v['path'] = v['path'].as_posix()
-            v['date_added'] = str(v['date_added'])
-            files.update({k: v})
-
-        # serialize repo path
-        if d.get('repo'):
-            d['repo'] = d['repo'].git_dir
-
-        return json.dumps(d)
-
-    def to_dict(self):
-        """Return a dictionary serialization of the Dataset."""
-        return attr.asdict(self)
-
-    @staticmethod
-    def from_json(metadata_file):
-        """Return a Dataset object deserialized from json on disk."""
-        with open(metadata_file) as f:
-            return Dataset(**json.load(f))
-
     @staticmethod
     def create(*args, **kwargs):
         """Create a new dataset and create its directories and metadata."""
         d = Dataset(*args, **kwargs)
+
+        if d.repo:
+            author = Author.from_git(d.repo)
+            if author not in d.authors:
+                d.authors.add(author)
+
         d.meta_init()
         return d
-
-    @staticmethod
-    def load(name, repo=None, datadir='data'):
-        """Return an existing dataset."""
-        metadata_file = os.path.join(
-            os.path.dirname(repo.git_dir)
-            if repo else '.', datadir, name, 'metadata.json')
-        return Dataset.from_json(metadata_file)
 
 
 def check_for_git_repo(url):

@@ -33,8 +33,9 @@ from ._datastructures import Collection, Model
     translate={
         'http://xmlns.com/foaf/0.1/name': 'http://schema.org/description',
     },
+    slots=True,
 )
-class Project(jsonld.JSONLDMixin):
+class Project(object):
     """Represent a project."""
 
     name = jsonld.ib(default=None, context='foaf:name')
