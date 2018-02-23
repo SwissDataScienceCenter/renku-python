@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,16 +17,44 @@
 # limitations under the License.
 """Model objects representing projects."""
 
+import datetime
+
+import attr
+
+from . import _jsonld as jsonld
 from ._datastructures import Collection, Model
 
 
-class Project(Model):
+@jsonld.s(
+    type='foaf:Project',
+    context={
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+    },
+    translate={
+        'http://xmlns.com/foaf/0.1/name': 'http://schema.org/description',
+    },
+)
+class Project(jsonld.JSONLDMixin):
     """Represent a project."""
 
-    @property
-    def name(self):
-        """The name of the project."""
-        return self._response.get('name')
+    name = jsonld.ib(default=None, context='foaf:name')
+    created = jsonld.ib(
+        context='http://schema.org/dateCreated',
+    )
+    updated = jsonld.ib(
+        context='http://schema.org/dateUpdated',
+    )
+    version = jsonld.ib(
+        converter=str,
+        default='1',
+        context='http://schema.org/schemaVersion',
+    )
+
+    @created.default
+    @updated.default
+    def _now(self):
+        """Define default value for datetime fields."""
+        return datetime.datetime.utcnow()
 
 
 class ProjectCollection(Collection):
@@ -36,9 +64,9 @@ class ProjectCollection(Collection):
 
     Create a project and check its name.
 
-    >>> project = client.projects.create(name='test-project')
-    >>> project.name
-    'test-project'
+    # >>> project = client.projects.create(name='test-project')
+    # >>> project.name
+    # 'test-project'
 
     """
 

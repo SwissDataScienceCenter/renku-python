@@ -99,10 +99,24 @@ class Repo(object):
     def with_metadata(self):
         """Yield a editable metadata object."""
         with self.lock:
+            from renga.models._jsonld import asjsonld
+            from renga.models.projects import Project
+
             path = str(self.renga_metadata_path)
-            metadata = read_config(path, final=True)
+
+            if self.renga_metadata_path.exists():
+                with open(path, 'r') as f:
+                    source = yaml.load(f) or {}
+                metadata = Project.from_jsonld(source)
+            else:
+                source = {}
+                metadata = Project()
+
             yield metadata
-            write_config(metadata, path, final=True)
+
+            source.update(**asjsonld(metadata))
+            with open(path, 'w') as f:
+                yaml.dump(source, f, default_flow_style=False)
 
     @contextmanager
     def with_workflow_storage(self):
@@ -122,12 +136,15 @@ class Repo(object):
                     workflow_path.mkdir()
 
                 with open(workflow_path / step_name, 'w') as step_file:
-                    yaml.dump(ascwl(
-                        # filter=lambda _, x: not (x is False or bool(x)
-                        step.run,
-                        filter=lambda _, x: x is not None,
-                        basedir=workflow_path,
-                    ), stream=step_file, default_flow_style=False)
+                    yaml.dump(
+                        ascwl(
+                            # filter=lambda _, x: not (x is False or bool(x)
+                            step.run,
+                            filter=lambda _, x: x is not None,
+                            basedir=workflow_path,
+                        ),
+                        stream=step_file,
+                        default_flow_style=False)
 
     def init(self, name=None, force=False):
         """Initialize a Renga repository."""
@@ -145,18 +162,14 @@ class Repo(object):
         git.description = name or path.name
 
         with open(path / '.gitignore', 'a') as gitignore:
-            gitignore.write(str(
-                self.renga_path.relative_to(self.path).with_suffix(
-                    self.LOCK_SUFFIX)
-            ) + '\n')
+            gitignore.write(
+                str(
+                    self.renga_path.relative_to(self.path).with_suffix(
+                        self.LOCK_SUFFIX)) + '\n')
 
         with self.with_metadata() as metadata:
-            metadata.setdefault('version', 1)
-            assert metadata['version'] == 1, 'Only version 1 is supported.'
-            metadata.setdefault('core', {})
-            metadata['core']['name'] = name
-            metadata['core'].setdefault('created',
-                                        datetime.datetime.now().isoformat())
+            metadata.name = name
+            metadata.updated = datetime.datetime.utcnow()
 
         return str(path)
 

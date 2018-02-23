@@ -52,6 +52,7 @@ def test_auto_refresh(projects_responses):
     assert client.api.token['access_token'] == 'accessdemo'
 
 
+@pytest.mark.skip(reason='Project service has changed')
 def test_client_projects(renga_client, projects_responses):
     """Test client for managing projects."""
     project = renga_client.projects.create('test-project')
