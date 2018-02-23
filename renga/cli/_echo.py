@@ -15,24 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Show provenance of data created by executing programs."""
+"""Custom console echo."""
+
+import os
 
 import click
 
-from ._ascii import DAG
-from ._echo import echo_via_pager
-from ._graph import Graph
-from ._repo import pass_repo
 
+def echo_via_pager(*args, **kwargs):
+    """Display pager only if it does not fit in one terminal screen.
 
-@click.command()
-@click.option('--revision', default='HEAD')
-@click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_repo
-def log(repo, revision, path):
-    """Show logs for a file."""
-    graph = Graph(repo)
-    for p in path:
-        graph.add_file(p, revision=revision)
-
-    echo_via_pager(DAG(graph=graph))
+    NOTE: The feature is available only on ``less``-based pager.
+    """
+    try:
+        restore = 'LESS' not in os.environ
+        os.environ.setdefault('LESS', '-F')
+        click.echo_via_pager(*args, **kwargs)
+    finally:
+        if restore:
+            os.environ.pop('LESS', None)
