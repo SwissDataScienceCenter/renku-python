@@ -15,36 +15,41 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Contexts and Executions
-=======================
+Models
+======
 
-.. py:module:: renga.models.deployer
+Data abstractions.
 
-Manage contexts and executions on the server.
 
-Methods available on ``client.contexts``:
+Datasets
+--------
 
-.. autoclass:: ContextCollection
+.. py:module:: renga.models.dataset
+
+Manage datasets and their metadata.
+
+
+Dataset objects
+~~~~~~~~~~~~~~~
+
+.. autoclass:: Dataset()
    :members:
    :inherited-members:
 
-Context objects
----------------
 
-.. autoclass:: Context()
+Dataset files
+~~~~~~~~~~~~~
+
+Manage files in the dataset.
+
+.. autoclass:: DatasetFile()
    :members:
    :inherited-members:
 
-Executions
-----------
 
-.. autoclass:: ExecutionCollection
-   :members:
-   :inherited-members:
+Author
+~~~~~~
 
-Execution objects
------------------
-
-.. autoclass:: Execution()
+.. autoclass:: Author()
    :members:
    :inherited-members:

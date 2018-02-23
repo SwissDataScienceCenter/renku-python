@@ -15,7 +15,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Import a dataset into the current repository."""
+"""Work with datasets in the current repository.
+
+Manipulating datasets
+~~~~~~~~~~~~~~~~~~~~~
+
+Creating an empty dataset inside a Renga project:
+
+.. code-block:: console
+
+    $ renga datasets create my-dataset
+
+Adding data to the dataset:
+
+.. code-block:: console
+
+    $ renga datasets add my-dataset http://data-url
+
+This will copy the contents of ``data-url`` to the dataset and add it
+to the dataset metadata.
+"""
 
 import datetime
 import os

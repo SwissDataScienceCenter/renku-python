@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,57 +15,49 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Buckets and Files
-=================
+Tools and Workflows
+===================
 
-.. py:module:: renga.models.storage
+.. py:module:: renga.models.cwl
 
-Manage buckets and files on the server.
+Manage creation of tools and workflows using the `Common Workflow Language
+<http://www.commonwl.org/>`_ (CWL).
 
-.. autoclass:: BucketCollection
+
+Common Workflow language
+------------------------
+
+Renga uses CWL to represent runnable steps (tools) along with their inputs
+and outputs. Similarly, tools can be chained together to form CWL-defined
+workflows.
+
+
+Command-line tool
+~~~~~~~~~~~~~~~~~
+
+.. automodule:: renga.models.cwl.command_line_tool
    :members:
-   :inherited-members:
 
-Bucket objects
---------------
+Parameter
+~~~~~~~~~
 
-.. autoclass:: Bucket()
+.. automodule:: renga.models.cwl.parameter
    :members:
-   :inherited-members:
 
+Process
+~~~~~~~
 
-Files
------
-
-Manage files in the bucket.
-
-.. autoclass:: FileCollection
+.. automodule:: renga.models.cwl.process
    :members:
-   :inherited-members:
 
+Types
+~~~~~
 
-File objects
-------------
-
-.. autoclass:: File()
+.. automodule:: renga.models.cwl.types
    :members:
-   :inherited-members:
 
+Workflow
+~~~~~~~~
 
-File handle objects
--------------------
-
-.. autoclass:: FileHandle()
+.. automodule:: renga.models.cwl.workflow
    :members:
-   :inherited-members:
-
-File versions
--------------
-
-.. autoclass:: FileVersionCollection
-   :members:
-   :inherited-members:
-
-.. autoclass:: FileVersion
-   :members:
-   :inherited-members:

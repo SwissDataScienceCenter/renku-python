@@ -19,7 +19,6 @@ Client
 ======
 .. py:module:: renga.client
 
-
 Creating a client
 -----------------
 
@@ -42,6 +41,3 @@ Client reference
 
 .. autoclass:: RengaClient()
 
-  .. autoattribute:: projects
-  .. autoattribute:: buckets
-  .. autoattribute:: contexts

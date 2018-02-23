@@ -20,18 +20,27 @@ Renga Command Line
 
 .. automodule:: renga.cli
 
-
-``renga login``
----------------
-
-.. automodule:: renga.cli.login
-
 ``renga init``
 --------------
 
 .. automodule:: renga.cli.init
 
-``renga add``
+``renga datasets``
+------------------
+
+.. automodule:: renga.cli.datasets
+
+``renga run``
 -------------
 
-.. automodule:: renga.cli.add
+.. automodule:: renga.cli.run
+
+``renga log``
+-------------
+
+.. automodule:: renga.cli.log
+
+``renga workflow``
+------------------
+
+.. automodule:: renga.cli.workflow
