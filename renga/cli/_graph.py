@@ -248,7 +248,7 @@ class Graph(object):
                     workflow.inputs.append({
                         'id': input_id,
                         'type': input_.type,
-                        # 'default': input_.default,
+                        'default': input_.default,
                     })
                     input_index += 1
                     ins[input_.id] = input_id

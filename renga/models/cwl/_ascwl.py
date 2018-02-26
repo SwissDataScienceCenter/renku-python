@@ -34,6 +34,8 @@ class CWLClass(object):
     @classmethod
     def from_cwl(cls, data):
         """Return an instance from CWL data."""
+        class_name = data.pop('class', None)
+        assert class_name == cls.__name__
         return cls(**{k: v for k, v in iteritems(data) if k != 'class'})
 
 
@@ -53,7 +55,17 @@ def mapped(cls, key='id', **kwargs):
                 result.append(vv)
         else:
             result = value
-        return [cls(**v) if not isinstance(v, cls) else v for v in result]
+
+        def fix_keys(data):
+            """Fix names of keys."""
+            for a in fields(cls):
+                a_name = a.name.rstrip('_')
+                if a_name in data:
+                    yield a.name, data[a_name]
+
+        return [cls(**{kk: vv for kk, vv in fix_keys(v)})
+                if not isinstance(v, cls) else v
+                for v in result]
 
     kwargs['converter'] = converter
     return attr.ib(**kwargs)

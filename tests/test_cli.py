@@ -26,9 +26,11 @@ import sys
 import git
 import pytest
 import responses
+import yaml
 
 from renga import __version__, cli
 from renga.cli._config import read_config, write_config
+from renga.models.cwl.workflow import Workflow
 
 
 def test_version(base_runner):
@@ -118,11 +120,14 @@ def test_workflow(runner):
             except SystemExit as e:
                 assert e.code in {None, 0}
 
-    result = runner.invoke(cli.cli, ['workflow', 'create', 'counted.txt'])
+    result = runner.invoke(cli.cli, [
+        'workflow', 'create', 'counted.txt', '-o', 'workflow.cwl'
+    ])
     assert result.exit_code == 0
 
-    result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
+    with open('workflow.cwl', 'r') as f:
+        workflow = Workflow.from_cwl(yaml.load(f))
+        assert workflow.steps[0].run.startswith('.renga/workflow/')
 
 
 def test_streams(runner, capsys):

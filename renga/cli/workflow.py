@@ -35,18 +35,28 @@ def workflow():
 
 @workflow.command()
 @click.option('--revision', default='HEAD')
+@click.option(
+    '-o',
+    '--output-file',
+    metavar='FILE',
+    type=click.File('w'),
+    default='-',
+    help='Write workflow to the FILE.',
+)
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_repo
-def create(repo, revision, path):
+def create(repo, output_file, revision, path):
     """Create a workflow description for a file."""
     graph = Graph(repo)
     for p in path:
         graph.add_file(p, revision=revision)
 
-    click.echo(
-        yaml.dump(ascwl(
-            graph.ascwl(),
-            filter=lambda _, x: x is not None,
-            # basedir=repo.workflow_path,
-            basedir='.',
-        ), default_flow_style=False))
+    output_file.write(
+        yaml.dump(
+            ascwl(
+                graph.ascwl(),
+                filter=lambda _, x: x is not None and x != [],
+                basedir=os.path.dirname(
+                    getattr(output_file, 'name', '.')) or '.',
+            ),
+            default_flow_style=False))
