@@ -71,7 +71,7 @@ def create(repo, name):
 @datasets.command()
 @click.argument('name')
 @click.argument('url')
-@click.option('--nocopy', default=False, is_flag=True)
+@click.option('nocopy', '--copy/--no-copy', default=False, is_flag=True)
 @click.option(
     '-t',
     '--target',

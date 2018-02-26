@@ -68,13 +68,20 @@ def store_directory(ctx, param, value):
         exists=True, writable=True, file_okay=False, resolve_path=True))
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True)
-@click.option('--lfs/--nolfs', is_flag=True, default=True)
+@click.option(
+    'use_external_storage',
+    '--external-storage/--no-external-storage',
+    ' /-S',
+    is_flag=True,
+    default=True,
+    help='Configure the file storage service.')
 @pass_repo
 @click.pass_context
 @with_git(clean=False)
-def init(ctx, repo, directory, name, force, lfs):
+def init(ctx, repo, directory, name, force, use_external_storage):
     """Initialize a project."""
-    project_config_path = repo.init(name=name, force=force, lfs=lfs)
+    project_config_path = repo.init(
+        name=name, force=force, use_external_storage=use_external_storage)
 
     from .runner import template
     ctx.invoke(template)

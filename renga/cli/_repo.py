@@ -140,7 +140,7 @@ class Repo(object):
             dataset = None
 
             if name:
-                path = self.path / datadir / name / 'metadata.yml'
+                path = self.path / datadir / name / self.METADATA
                 if path.exists():
                     with open(path, 'r') as f:
                         source = yaml.load(f) or {}
@@ -160,7 +160,7 @@ class Repo(object):
 
             # TODO
             # if path is None:
-            #     path = self.path / datadir / dataset.name / 'metadata.yml'
+            #     path = self.path / datadir / dataset.name / self.METADATA
             #     if path.exists():
             #         raise ValueError('Dataset already exists')
 
@@ -194,7 +194,7 @@ class Repo(object):
                         stream=step_file,
                         default_flow_style=False)
 
-    def init(self, name=None, force=False, lfs=True):
+    def init(self, name=None, force=False, use_external_storage=True):
         """Initialize a Renga repository."""
         self.renga_path.mkdir(parents=True, exist_ok=force)
 
@@ -220,31 +220,28 @@ class Repo(object):
             metadata.updated = datetime.datetime.utcnow()
 
         # initialize LFS if it is requested and installed
-        if lfs and HAS_LFS:
-            self.init_lfs()
+        if use_external_storage and HAS_LFS:
+            self.init_external_storage()
 
         return str(path)
 
-    def init_lfs(self):
-        """Initialize the git-LFS."""
+    def init_external_storage(self):
+        """Initialize the external storage for data."""
         path = self.path.absolute()
+        call(
+            ['git', 'lfs', 'install', '--local'],
+            stdout=PIPE,
+            stderr=STDOUT,
+        )
 
-        call(['git', 'lfs', 'install', '--local'], stdout=PIPE, stderr=STDOUT)
-
-        # track everything in ./data except for metadata.json files
-        with open(path / '.gitattributes', 'w') as gitattributes:
-            gitattributes.write('\n'.join([
-                'data/** filter=lfs diff=lfs merge=lfs -text',
-                'data/**/metadata.json -filter=lfs -diff=lfs -merge=lfs -text'
-            ]) + '\n')
-
-    def track_lfs_paths(self, paths):
-        """Track paths in LFS."""
+    def track_paths_in_storage(self, paths):
+        """Track paths in the external storage."""
         if HAS_LFS:
-            p = call(
-                ['git', 'lfs', 'track', ' '.join(paths)],
+            call(
+                ['git', 'lfs', 'track'] + paths,
                 stdout=PIPE,
-                stderr=STDOUT)
+                stderr=STDOUT,
+            )
 
     @property
     def state(self):

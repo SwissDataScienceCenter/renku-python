@@ -160,11 +160,11 @@ class CommandLineToolFactory(object):
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
-            lfs_paths = []
+            paths = []
 
             for output, input, path in self.guess_outputs(candidates):
                 outputs.append(output)
-                lfs_paths.append(path)
+                paths.append(path)
 
                 if input is not None:
                     if input.id not in inputs:  # pragma: no cover
@@ -180,14 +180,14 @@ class CommandLineToolFactory(object):
                             'Output file was not created or changed.'
                         )
                     elif stream:
-                        lfs_paths.append(stream)
+                        paths.append(stream)
 
                 if not outputs:
                     raise RuntimeError('No output was detected')
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
-            repo.track_lfs_paths(lfs_paths)
+            repo.track_paths_in_storage(paths)
 
     @command_line.validator
     def validate_command_line(self, attribute, value):

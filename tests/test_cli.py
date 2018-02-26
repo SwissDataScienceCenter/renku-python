@@ -86,7 +86,7 @@ def test_init(base_runner):
     shutil.rmtree('test-project')
     os.mkdir('test-project')
     os.chdir('test-project')
-    result = runner.invoke(cli.cli, ['init', '--nolfs'])
+    result = runner.invoke(cli.cli, ['init', '--no-external-storage'])
     with open('.git/config') as f:
         config = f.read()
     assert 'filter "lfs"' not in config
@@ -95,7 +95,6 @@ def test_init(base_runner):
     with open('.git/config') as f:
         config = f.read()
     assert 'filter "lfs"' in config
-    assert os.stat(os.path.join('.gitattributes'))
 
 
 def test_workon(runner):
@@ -222,7 +221,7 @@ def test_datasets(data_file, data_repository, runner):
     ])
 
 
-def test_lfs_tracking(base_runner):
+def test_file_tracking(base_runner):
     """Test .gitattribute handling on renga run."""
     runner = base_runner
 
