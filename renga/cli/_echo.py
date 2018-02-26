@@ -29,7 +29,7 @@ def echo_via_pager(*args, **kwargs):
     """
     try:
         restore = 'LESS' not in os.environ
-        os.environ.setdefault('LESS', '-F')
+        os.environ.setdefault('LESS', '-iXFR')
         click.echo_via_pager(*args, **kwargs)
     finally:
         if restore:
