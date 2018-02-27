@@ -24,11 +24,13 @@ from operator import itemgetter
 import attr
 import networkx as nx
 import yaml
-from git import IndexFile
+from git import IndexFile, Submodule
 
 from renga._compat import Path
 from renga.models.cwl.command_line_tool import CommandLineTool
 from renga.models.cwl.workflow import Workflow
+
+from ._repo import Repo
 
 
 @attr.s
@@ -64,7 +66,7 @@ class Graph(object):
         ]
 
         if len(files) == 1:
-            return os.path.relpath(Path(files[0]).resolve(), self.repo_path)
+            return files[0]
 
     def find_latest_cwl(self):
         """Return the latest CWL in the repository."""
@@ -88,9 +90,8 @@ class Graph(object):
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
                 yield os.path.relpath(
-                    (basedir / input_.default.path).resolve(),
-                    self.repo_path
-                ), input_.id
+                    (self.repo_path / basedir / input_.default.path).resolve(),
+                    self.repo_path), input_.id
 
     def add_tool(self, commit, path):
         """Add a tool and its dependencies to the graph."""
@@ -124,7 +125,44 @@ class Graph(object):
 
         if file_commits:
             #: Does not have a parent CWL.
-            return self.add_node(file_commits[0], path)
+            root_node = self.add_node(file_commits[0], path)
+            parent_commit, original_path = root_node
+
+            #: Capture information about the submodule in a submodule.
+            root_submodule = self.G.nodes[root_node].get('submodule', [])
+
+            #: Resolve Renga based submodules.
+            original_path = Path(original_path)
+            if original_path.is_symlink() or str(original_path).startswith(
+                    '.renga/vendors'):
+                original_path = original_path.resolve()
+
+                for submodule in Submodule.iter_items(
+                        self.repo.git, parent_commit=parent_commit):
+                    try:
+                        subpath = original_path.relative_to(
+                            Path(submodule.path).resolve())
+                        subgraph = Graph(repo=Repo(git_home=submodule.path))
+                        subnode = subgraph.add_file(
+                            str(subpath), revision=submodule.hexsha)
+
+                        #: Extend node metadata.
+                        for _, data in subgraph.G.nodes(data=True):
+                            data['submodule'] = root_submodule + [
+                                submodule.name
+                            ]
+
+                        #: Merge file node with it's symlinked version.
+                        self.G = nx.contracted_nodes(
+                            nx.compose(self.G, subgraph.G),
+                            root_node,
+                            subnode,
+                        )  # TODO optionally it can be changed to an edge.
+                        break
+                    except ValueError:
+                        continue
+
+            return root_node
 
     @property
     def _output_keys(self):
@@ -162,7 +200,7 @@ class Graph(object):
 
         for filepath, _ in index.entries.keys():
             if not filepath.startswith('.renga') and \
-                    filepath not in {'.gitignore', }:
+                    filepath not in {'.gitignore', '.gitattributes'}:
                 self.add_file(filepath, revision=revision)
                 current_files.add(filepath)
 
@@ -172,8 +210,7 @@ class Graph(object):
         graph_files = sorted(
             ((commit, filepath) for (commit, filepath) in self.G
              if filepath in current_files),
-            key=itemgetter(1)
-        )
+            key=itemgetter(1))
 
         status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
 
@@ -183,10 +220,9 @@ class Graph(object):
             if len(keys) > 1:
                 status['multiple-versions'][filepath] = keys
 
-            if any(len(self.G.nodes[key]['_need_update']) > 1
-                   for key in keys):
-                updates = list(self.G.nodes[key]
-                               ['_need_update'] for key in keys)
+            if any(len(self.G.nodes[key]['_need_update']) > 1 for key in keys):
+                updates = list(
+                    self.G.nodes[key]['_need_update'] for key in keys)
                 status['outdated'][filepath] = updates
             elif len(keys) == 1:
                 status['up-to-date'][filepath] = keys[0][0]

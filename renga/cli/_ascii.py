@@ -27,6 +27,15 @@ import click
 from networkx.algorithms.dag import topological_sort
 
 
+def _format_sha1(graph, key):
+    """Return formatted text with the submodule information."""
+    submodule = ':'.join(graph.G.nodes[key].get('submodule', []))
+    if submodule:
+        return click.style(submodule, fg='green') + '@' + click.style(
+            key[0][:8], fg='yellow')
+    return click.style(key[0][:8], fg='yellow')
+
+
 @attr.s
 class DAG(object):
     """Generate ASCII representation of a DAG."""
@@ -72,7 +81,7 @@ class DAG(object):
 
     def node_text(self, node):
         """Return text for a given node."""
-        return [click.style(node[0][:7], fg='yellow') + ' ' + node[1]]
+        return [_format_sha1(self.graph, node) + ' ' + node[1]]
 
     def iter_edges(self, node):
         """Yield edges for a node and update internal status."""

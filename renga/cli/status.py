@@ -19,6 +19,7 @@
 
 import click
 
+from ._ascii import _format_sha1
 from ._git import with_git
 from ._graph import Graph
 from ._repo import pass_repo
@@ -46,13 +47,12 @@ def status(ctx, repo, revision, path):
 
         for filepath, files in status['outdated'].items():
             paths = (', '.join(
-                '{0}@{1}'.format(
-                    click.style(p, fg='yellow', bold=True),
-                    click.style(c[:8], fg='blue'),
-                )
-                for c, p in stts
-                if not p.startswith('.renga') and p not in status['outdated']
-            ) for stts in files)
+                '{0}#{1}'.format(
+                    click.style(p, fg='blue', bold=True),
+                    _format_sha1(graph, (c, p)),
+                ) for c, p in stts
+                if not p.startswith('.renga') and p not in status['outdated'])
+                     for stts in files)
 
             click.echo('\t{0}: {1}'.format(
                 click.style(filepath, fg='red', bold=True), ', '.join(paths)))
@@ -71,10 +71,9 @@ def status(ctx, repo, revision, path):
         click.echo()
 
         for filepath, files in status['multiple-versions'].items():
-            commits = (click.style(commit[:8], fg='blue')
-                       for commit, _ in files)
+            commits = (_format_sha1(graph, key) for key in files)
             click.echo('\t{0}: {1}'.format(
-                click.style(filepath, fg='yellow', bold=True),
+                click.style(filepath, fg='blue', bold=True),
                 ', '.join(commits)))
 
         click.echo()
