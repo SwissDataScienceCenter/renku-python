@@ -17,6 +17,7 @@
 # limitations under the License.
 """Model objects representing datasets."""
 
+import datetime
 import json
 import os
 import re
@@ -24,7 +25,6 @@ import shutil
 import stat
 import uuid
 import warnings
-from datetime import datetime
 from functools import partial
 from urllib import error, parse, request
 
@@ -37,6 +37,7 @@ from attr.validators import instance_of
 from dateutil.parser import parse as parse_date
 
 from renga._compat import Path
+from renga.cli._repo import Repo
 
 from . import _jsonld as jsonld
 
@@ -77,8 +78,8 @@ class Author(object):
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (isinstance(value, str) and re.match(
-                r"[^@]+@[^@]+\.[^@]+", value)):
+        if not (isinstance(value, str) and
+                re.match(r"[^@]+@[^@]+\.[^@]+", value)):
             raise ValueError('Email address is invalid.')
 
     @classmethod
@@ -113,10 +114,17 @@ class DatasetFile(object):
 
     path = _path_attr()
     origin = attr.ib(converter=lambda x: str(x))
-    authors = attr.ib(
-        default=attr.Factory(set), converter=_deserialize_authors)
+    authors = jsonld.ib(
+        default=attr.Factory(set),
+        converter=_deserialize_authors,
+    )
     dataset = attr.ib(default=None)
-    date_added = attr.ib(default=attr.Factory(datetime.now))
+    added = jsonld.ib(context='http://schema.org/dateCreated', )
+
+    @added.default
+    def _now(self):
+        """Define default value for datetime fields."""
+        return datetime.datetime.utcnow()
 
 
 _deserialize_files = partial(_deserialize_dict, cls=DatasetFile)
@@ -140,9 +148,8 @@ class Dataset(object):
     name = jsonld.ib(type='string', context='foaf:name')
 
     created = jsonld.ib(
-        default=attr.Factory(datetime.now),
-        converter=lambda arg: arg if isinstance(
-            arg, datetime) else parse_date(arg),
+        converter=lambda arg: arg
+        if isinstance(arg, datetime.datetime) else parse_date(arg),
         context='http://schema.org/dateCreated',
     )
 
@@ -154,43 +161,26 @@ class Dataset(object):
             '@type': '@id',
         },
     )
-
-    repo = attr.ib(
-        default=None,
-        converter=lambda arg: arg if isinstance(
-            arg, (git.Repo, NoneType)) else git.Repo(arg)
-    )
-
     authors = jsonld.ib(
         default=attr.Factory(set),  # FIXME should respect order
         converter=_deserialize_authors,
     )
-    datadir = _path_attr(default='data')
-    files = attr.ib(default=attr.Factory(dict), converter=_deserialize_files)
+    files = attr.ib(
+        default=attr.Factory(dict),
+        converter=_deserialize_files,
+    )
 
-    def __attrs_post_init__(self):
-        """Finalize initialization of Dataset instance."""
-        if not self.repo:
-            try:
-                self.repo = git.Repo('.', search_parent_directories=True)
-            except Exception as e:
-                warnings.warn('Dataset outside of a git repository.')
-        if self.repo:
-            self.datadir = (self.repo_path / self.datadir).absolute()
-        else:
-            self.datadir = Path(self.datadir).absolute()
+    datadir = _path_attr(default='data')
+
+    @created.default
+    def _now(self):
+        """Define default value for datetime fields."""
+        return datetime.datetime.utcnow()
 
     @property
     def path(self):
         """Path to this Dataset."""
-        return self.datadir.joinpath(self.name)
-
-    @property
-    def repo_path(self):
-        """Base path of the repo that this dataset is a part of."""
-        if not self.repo:
-            return ''
-        return Path(self.repo.git_dir).parent
+        return self.datadir / self.name
 
     def meta_init(self):
         """Initialize the directories and metadata."""
@@ -199,7 +189,7 @@ class Dataset(object):
         except FileExistsError:
             raise FileExistsError('This dataset already exists.')
 
-    def add_data(self, url, datadir=None, git=False, **kwargs):
+    def add_data(self, repo, url, datadir=None, git=False, **kwargs):
         """Import the data into the data directory."""
         datadir = datadir or self.datadir
         git = git or check_for_git_repo(url)
@@ -208,20 +198,23 @@ class Dataset(object):
 
         if git:
             if isinstance(target, (str, NoneType)):
-                self.files.update(self._add_from_git(self.path, url, target))
+                self.files.update(
+                    self._add_from_git(repo, self.path, url, target))
             else:
                 for t in target:
-                    self.files.update(self._add_from_git(self.path, url, t))
+                    self.files.update(
+                        self._add_from_git(repo, self.path, url, t))
         else:
-            self.files.update(self._add_from_url(self.path, url, **kwargs))
+            self.files.update(
+                self._add_from_url(repo, self.path, url, **kwargs))
 
-    def _add_from_url(self, path, url, nocopy=False, **kwargs):
+    def _add_from_url(self, repo, path, url, nocopy=False, **kwargs):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
         if u.scheme not in Dataset.SUPPORTED_SCHEMES:
-            raise NotImplementedError(
-                '{} URLs are not supported'.format(u.scheme))
+            raise NotImplementedError('{} URLs are not supported'.format(
+                u.scheme))
 
         dst = path.joinpath(os.path.basename(url)).absolute()
 
@@ -235,7 +228,7 @@ class Dataset(object):
                 for f in src.iterdir():
                     files.update(
                         self._add_from_url(
-                            dst, f.absolute().as_posix(), nocopy=nocopy))
+                            repo, dst, f.absolute().as_posix(), nocopy=nocopy))
                 return files
             if nocopy:
                 try:
@@ -256,26 +249,22 @@ class Dataset(object):
         # make the added file read-only
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+
+        result = dst.relative_to(repo.path / self.path).as_posix()
         return {
-            dst.relative_to(self.path).as_posix():
-            DatasetFile(
-                dst.absolute().as_posix(),
-                url,
-                authors=self.authors,
-                dataset=self.name)
+            result:
+            DatasetFile(result, url, authors=self.authors, dataset=self.name)
         }
 
-    def _add_from_git(self, path, url, target):
-        """Process adding resources from anoth git repository.
+    def _add_from_git(self, repo, path, url, target):
+        """Process adding resources from another git repository.
 
         The submodules are placed in .renga/vendors and linked
         to the *path* specified by the user.
-
         """
         # create the submodule
         u = parse.urlparse(url)
-        submodule_path = Path(self.repo.git_dir).parent.joinpath(
-            '.renga', 'vendors', u.netloc or 'local')
+        submodule_path = repo.renga_path / 'vendors' / (u.netloc or 'local')
 
         if u.scheme in ('', 'file'):
             # determine where is the base repo path
@@ -297,17 +286,17 @@ class Dataset(object):
             submodule_path = submodule_path.joinpath(
                 os.path.dirname(u.path).lstrip('/'), submodule_name)
         else:
-            raise NotImplementedError(
-                'Scheme {} not supported'.format(u.scheme))
+            raise NotImplementedError('Scheme {} not supported'.format(
+                u.scheme))
 
         # FIXME: do a proper check that the repos are not the same
-        if submodule_name not in (s.name for s in self.repo.submodules):
+        if submodule_name not in (s.name for s in repo.git.submodules):
             # new submodule to add
-            submodule = self.repo.create_submodule(
+            submodule = repo.git.create_submodule(
                 name=submodule_name, path=submodule_path.as_posix(), url=url)
 
         # link the target into the data directory
-        dst = self.path / submodule_name / (target or '')
+        dst = repo.path / self.path / submodule_name / (target or '')
         src = submodule_path / (target or '')
 
         if not dst.parent.exists():
@@ -319,35 +308,27 @@ class Dataset(object):
             for f in src.iterdir():
                 files.update(
                     self._add_from_git(
-                        path, url, target=f.relative_to(submodule_path)))
+                        repo, path, url, target=f.relative_to(submodule_path)))
             return files
 
         os.symlink(os.path.relpath(src, dst.parent), dst)
 
         # grab all the authors from the commit history
-        repo = git.Repo(submodule_path.absolute().as_posix())
+        git_repo = git.Repo(submodule_path.absolute().as_posix())
         authors = set(
             Author(name=commit.author.name, email=commit.author.email)
-            for commit in repo.iter_commits(paths=target))
+            for commit in git_repo.iter_commits(paths=target))
 
+        result = dst.relative_to(repo.path / self.path).as_posix()
         return {
-            dst.absolute().relative_to(self.path).as_posix():
-            DatasetFile(
-                dst.absolute().relative_to(self.path),
-                '{}/{}'.format(url, target),
-                authors=authors)
+            result:
+            DatasetFile(result, '{}/{}'.format(url, target), authors=authors)
         }
 
-    @staticmethod
-    def create(*args, **kwargs):
+    @classmethod
+    def create(cls, *args, **kwargs):
         """Create a new dataset and create its directories and metadata."""
-        d = Dataset(*args, **kwargs)
-
-        if d.repo:
-            author = Author.from_git(d.repo)
-            if author not in d.authors:
-                d.authors.add(author)
-
+        d = cls(*args, **kwargs)
         d.meta_init()
         return d
 

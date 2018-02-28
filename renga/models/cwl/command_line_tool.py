@@ -88,7 +88,6 @@ class CommandLineToolFactory(object):
     command_line = attr.ib(
         converter=lambda cmd: list(cmd) if isinstance(
             cmd, (list, tuple)) else shlex.split(cmd),
-
     )
 
     directory = attr.ib(
@@ -148,7 +147,7 @@ class CommandLineToolFactory(object):
 
     @contextmanager
     def watch(self, repo=None, no_output=False):
-        """Watch a git repository for changes to detect outputs."""
+        """Watch a Renga repository for changes to detect outputs."""
         tool = self.generate_tool()
         git = repo.git
 

@@ -65,6 +65,7 @@ def create(repo, name):
     """Create an empty dataset in the current repo."""
     with repo.with_dataset(name=name, datadir=get_datadir()) as dataset:
         click.echo('Creating a dataset ... ', nl=False)
+        dataset.authors.add(Author.from_git(repo.git))
     click.secho('OK', fg='green')
 
 
@@ -84,7 +85,7 @@ def add(repo, name, url, nocopy, target):
     """Add data to a dataset."""
     try:
         with repo.with_dataset(name=name, datadir=get_datadir()) as dataset:
-            dataset.add_data(url, nocopy=nocopy, target=target)
+            dataset.add_data(repo, url, nocopy=nocopy, target=target)
     except FileNotFoundError:
         raise BadParameter('URL')
 

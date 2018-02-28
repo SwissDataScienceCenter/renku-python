@@ -45,7 +45,6 @@ def uuid_representer(dumper, data):
     """Add UUID serializer for YAML."""
     return dumper.represent_str(str(data))
 
-
 yaml.add_representer(uuid.UUID, uuid_representer)
 
 
@@ -69,7 +68,7 @@ class Repo(object):
     @property
     def path(self):
         """Return a ``Path`` instance of this repository."""
-        return Path(self._git_home or get_git_home())
+        return Path(self._git_home or get_git_home()).resolve()
 
     @property
     def git(self):
@@ -146,12 +145,17 @@ class Repo(object):
                         source = yaml.load(f) or {}
                     dataset = Dataset.from_jsonld(source)
                     # TODO update? dataset ...
+
             if dataset is None:
                 source = {}
-                dataset = Dataset.create(name=name, repo=self.git)
+                dataset = Dataset.create(name=name)
 
             dataset.repo = self.git
             yield dataset
+
+            paths = list(dataset.files.keys())
+            if paths:
+                self.track_paths_in_storage(paths)
 
             source.update(**asjsonld(
                 dataset,

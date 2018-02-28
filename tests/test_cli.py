@@ -136,9 +136,8 @@ def test_workflow(runner):
             except SystemExit as e:
                 assert e.code in {None, 0}
 
-    result = runner.invoke(cli.cli, [
-        'workflow', 'create', 'counted.txt', '-o', 'workflow.cwl'
-    ])
+    result = runner.invoke(
+        cli.cli, ['workflow', 'create', 'counted.txt', '-o', 'workflow.cwl'])
     assert result.exit_code == 0
 
     with open('workflow.cwl', 'r') as f:
@@ -164,8 +163,7 @@ def test_streams(runner, capsys):
                     sys.stdin, sys.stdout = stdin, stdout
                     try:
                         cli.cli.main(
-                            args=('run', 'cut', '-d,', '-f', '2', '-s'),
-                        )
+                            args=('run', 'cut', '-d,', '-f', '2', '-s'), )
                     except SystemExit as e:
                         assert e.code in {None, 0}
                 finally:
@@ -202,9 +200,9 @@ def test_datasets(data_file, data_repository, runner):
     result = runner.invoke(cli.cli,
                            ['datasets', 'add', 'dataset',
                             str(data_file)])
-    assert os.stat(os.path.join(
-        'data', 'dataset', os.path.basename(data_file)
-    ))
+    assert result.exit_code == 0
+    assert os.stat(
+        os.path.join('data', 'dataset', os.path.basename(data_file)))
 
     # add data from a git repo via http
     result = runner.invoke(cli.cli, [
@@ -219,6 +217,7 @@ def test_datasets(data_file, data_repository, runner):
         'datasets', 'add', 'dataset', '-t', 'file', '-t', 'file2',
         os.path.dirname(data_repository.git_dir)
     ])
+    assert result.exit_code == 0
 
 
 def test_file_tracking(base_runner):

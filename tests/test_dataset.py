@@ -27,7 +27,7 @@ import pytest
 import responses
 import yaml
 
-from renga.models import dataset
+from renga.models.dataset import Author, Dataset, DatasetFile
 
 
 def raises(error):
@@ -46,32 +46,35 @@ def raises(error):
         return not_raises()
 
 
-def dataset_creation(project):
+def dataset_creation(repo):
     """Test dataset directory tree creation."""
     # creating a dataset without an author fails
     with pytest.raises(RuntimeError):
-        d = dataset.Dataset.create('dataset')
+        d = Dataset.create('dataset')
 
-    d = dataset.Dataset.create(
-        'dataset', authors={'name': 'me',
-                            'email': 'me@example.com'})
+    d = Dataset.create(
+        'dataset', authors={
+            'name': 'me',
+            'email': 'me@example.com'
+        })
     assert os.stat('data/dataset')
 
     # creating another dataset fails by default
     with pytest.raises(FileExistsError):
-        d2 = dataset.Dataset.create(
-            'dataset', authors={'name': 'me',
-                                'email': 'me@example.com'})
+        d2 = Dataset.create(
+            'dataset', authors={
+                'name': 'me',
+                'email': 'me@example.com'
+            })
 
 
-@pytest.mark.parametrize('scheme, path, error',
-                         [('', 'temp', None), ('file://', 'temp', None),
-                          ('', 'tempp', git.NoSuchPathError),
-                          ('http://', 'example.com/file',
-                           None), ('https://', 'example.com/file',
-                                   None), ('bla://', 'file',
-                                           NotImplementedError)])
-def test_data_add(scheme, path, error, project, data_file, directory_tree,
+@pytest.mark.parametrize(
+    'scheme, path, error',
+    [('', 'temp', None), ('file://', 'temp', None),
+     ('', 'tempp', git.NoSuchPathError), ('http://', 'example.com/file', None),
+     ('https://', 'example.com/file', None),
+     ('bla://', 'file', NotImplementedError)])
+def test_data_add(scheme, path, error, repo, data_file, directory_tree,
                   dataset_responses):
     """Test data import."""
     with raises(error):
@@ -79,12 +82,14 @@ def test_data_add(scheme, path, error, project, data_file, directory_tree,
             path = str(data_file)
         elif path == 'tempdir':
             path = str(directory_tree)
-        d = dataset.Dataset.create(
+        d = Dataset.create(
             'dataset',
             datadir='./data',
-            authors={'name': 'me',
-                     'email': 'me@example.com'})
-        d.add_data('{}{}'.format(scheme, path))
+            authors={
+                'name': 'me',
+                'email': 'me@example.com'
+            })
+        d.add_data(repo, '{}{}'.format(scheme, path))
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
@@ -98,30 +103,34 @@ def test_data_add(scheme, path, error, project, data_file, directory_tree,
         # check the linking
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
-            d = dataset.Dataset.create(
+            d = Dataset.create(
                 'dataset',
                 datadir='./data',
-                authors={'name': 'me',
-                         'email': 'me@example.com'})
-            d.add_data('{}{}'.format(scheme, path), nocopy=True)
+                authors={
+                    'name': 'me',
+                    'email': 'me@example.com'
+                })
+            d.add_data(repo, '{}{}'.format(scheme, path), nocopy=True)
             assert os.path.exists('data/dataset/file')
 
 
-def test_data_add_recursive(directory_tree, project):
+def test_data_add_recursive(directory_tree, repo):
     """Test recursive data imports."""
-    d = dataset.Dataset.create(
-        'dataset', authors={'name': 'me',
-                            'email': 'me@example.com'})
-    d.add_data(directory_tree.join('dir2').strpath)
+    d = Dataset.create(
+        'dataset', authors={
+            'name': 'me',
+            'email': 'me@example.com'
+        })
+    d.add_data(repo, directory_tree.join('dir2').strpath)
     assert 'dir2/file2' in d.files
 
 
-def dataset_serialization(dataset, data_file):
+def dataset_serialization(repo, dataset, data_file):
     """Test deserializing a dataset object."""
     with open(dataset.path / 'metadata.yml', 'r') as f:
         source = yaml.load(f)
 
-    d = dataset.Dataset.from_jsonld(source)
+    d = Dataset.from_jsonld(source)
     assert d.path == dataset.path
 
     d_dict = d.to_dict()
@@ -133,32 +142,19 @@ def dataset_serialization(dataset, data_file):
     assert len(d_dict['files'].values())
 
 
-def data_repository_commit(dataset, data_file):
-    """Test that files get commited to the git repository properly."""
-    from git import Repo
-    r = Repo('.')
-
-    dataset.repo = r
-    dataset.add_data(str(data_file))
-    dataset.write_metadata()
-    dataset.commit_to_repo()
-    assert all([
-        f not in r.untracked_files
-        for f in ['data/dataset/metadata.yml', 'data/dataset/file']
-    ])
-
-
-def test_git_repo_import(dataset, tmpdir, data_repository):
+def test_git_repo_import(repo, dataset, tmpdir, data_repository):
     """Test an import from a git repository."""
     # add data from local repo
-    dataset.add_data(
-        os.path.join(os.path.dirname(data_repository.git_dir), 'dir2'))
+    dataset.add_data(repo,
+                     os.path.join(
+                         os.path.dirname(data_repository.git_dir), 'dir2'))
     assert os.stat('data/dataset/directory_tree/dir2/file2')
     assert 'directory_tree/dir2/file2' in dataset.files
     assert os.stat('.renga/vendors/local')
 
     # check that the authors are properly parsed from commits
-    dataset.add_data(os.path.dirname(data_repository.git_dir), target='file')
+    dataset.add_data(
+        repo, os.path.dirname(data_repository.git_dir), target='file')
     assert len(dataset.files['directory_tree/file'].authors) == 2
     assert all(
         x.name in ('me', 'me2')
@@ -166,24 +162,22 @@ def test_git_repo_import(dataset, tmpdir, data_repository):
 
 
 @pytest.mark.parametrize('authors', [
-    dataset.Author(name='me', email='me@example.com'),
-    set([dataset.Author(name='me', email='me@example.com')]),
-    [dataset.Author(name='me', email='me@example.com')], {
+    Author(name='me', email='me@example.com'),
+    set([Author(name='me', email='me@example.com')]),
+    [Author(name='me', email='me@example.com')], {
         'name': 'me',
         'email': 'me@example.com'
     }
 ])
 def test_author_parse(authors, data_file):
     """Test that different options for specifying authors work."""
-    f = dataset.DatasetFile(
-        'file', origin=str(data_file), authors=authors)
-    assert dataset.Author(name='me', email='me@example.com') in f.authors
+    f = DatasetFile('file', origin=str(data_file), authors=authors)
+    assert Author(name='me', email='me@example.com') in f.authors
 
     # email check
     with pytest.raises(ValueError):
-        dataset.Author(name='me', email='meexample.com')
+        Author(name='me', email='meexample.com')
 
     # authors must be a set or list of dicts or Author
     with pytest.raises(ValueError):
-        f = dataset.DatasetFile(
-            'file', origin=str(data_file), authors=['name'])
+        f = DatasetFile('file', origin=str(data_file), authors=['name'])
