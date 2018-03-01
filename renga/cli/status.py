@@ -51,8 +51,9 @@ def status(ctx, repo, revision, path):
                     click.style(p, fg='blue', bold=True),
                     _format_sha1(graph, (c, p)),
                 ) for c, p in stts
-                if not p.startswith('.renga') and p not in status['outdated'])
-                     for stts in files)
+                if not p.startswith('.renga/workflow/') and
+                p not in status['outdated'])
+                for stts in files)
 
             click.echo('\t{0}: {1}'.format(
                 click.style(filepath, fg='red', bold=True), ', '.join(paths)))

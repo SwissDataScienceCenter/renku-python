@@ -29,8 +29,12 @@ from networkx.algorithms.dag import topological_sort
 
 def _format_sha1(graph, key):
     """Return formatted text with the submodule information."""
-    submodule = ':'.join(graph.G.nodes[key].get('submodule', []))
-    if submodule:
+    submodules = graph.G.nodes[key].get('submodule', [])
+    for data in graph.G.nodes[key].get('contraction', {}).values():
+        submodules.extend(data.get('submodule', []))
+
+    if submodules:
+        submodule = ':'.join(submodules)
         return click.style(submodule, fg='green') + '@' + click.style(
             key[0][:8], fg='yellow')
     return click.style(key[0][:8], fg='yellow')

@@ -89,9 +89,10 @@ class Graph(object):
                 raise NotImplemented(tool.stdin)
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
-                yield os.path.relpath(
-                    (self.repo_path / basedir / input_.default.path).resolve(),
-                    self.repo_path), input_.id
+                yield (
+                    os.path.normpath(basedir / input_.default.path),
+                    input_.id
+                )
 
     def add_tool(self, commit, path):
         """Add a tool and its dependencies to the graph."""
@@ -126,13 +127,13 @@ class Graph(object):
         if file_commits:
             #: Does not have a parent CWL.
             root_node = self.add_node(file_commits[0], path)
-            parent_commit, original_path = root_node
+            parent_commit, parent_path = root_node
 
             #: Capture information about the submodule in a submodule.
             root_submodule = self.G.nodes[root_node].get('submodule', [])
 
             #: Resolve Renga based submodules.
-            original_path = Path(original_path)
+            original_path = Path(parent_path)
             if original_path.is_symlink() or str(original_path).startswith(
                     '.renga/vendors'):
                 original_path = original_path.resolve()
@@ -178,6 +179,13 @@ class Graph(object):
             need_update = []
             node = self.G.nodes[key]
             latest = node.get('latest')
+
+            if not latest:
+                for data in node.get('contraction', {}).values():
+                    latest = data.get('latest')
+                    if latest:
+                        break
+
             if latest:
                 need_update.append(key)
 
