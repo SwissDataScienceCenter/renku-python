@@ -23,6 +23,7 @@ import contextlib
 import os
 import shutil
 import sys
+from subprocess import call
 
 import git
 import pytest
@@ -235,3 +236,59 @@ def test_file_tracking(base_runner):
     with open('.gitattributes') as f:
         gitattributes = f.read()
     assert 'output' in gitattributes
+
+
+def test_status_with_submodules(base_runner):
+    """Test status calculation with submodules."""
+    os.mkdir('foo')
+    os.mkdir('bar')
+
+    with open('woop', 'w') as f:
+        f.write('woop')
+
+    os.chdir('foo')
+    result = base_runner.invoke(cli.cli, ['init'], catch_exceptions=False)
+    assert result.exit_code == 0
+
+    os.chdir('../bar')
+    result = base_runner.invoke(cli.cli, ['init'], catch_exceptions=False)
+    assert result.exit_code == 0
+
+    os.chdir('../foo')
+    result = base_runner.invoke(
+        cli.cli, ['datasets', 'add', 'f', '../woop'], catch_exceptions=False)
+    assert result.exit_code == 0
+
+    os.chdir('../bar')
+    result = base_runner.invoke(
+        cli.cli, ['datasets', 'add', 'b', '../foo/data/f/woop'],
+        catch_exceptions=False)
+    assert result.exit_code == 0
+
+    # Produce a derived data from the imported data.
+    with open('woop.wc', 'w') as stdout:
+        with contextlib.redirect_stdout(stdout):
+            try:
+                cli.cli.main(
+                    args=('run', 'wc', 'data/b/foo/data/f/woop'),
+                    prog_name=base_runner.get_default_prog_name(cli.cli),
+                )
+            except SystemExit as e:
+                assert e.code in {None, 0}
+
+    result = base_runner.invoke(cli.cli, ['status'], catch_exceptions=False)
+    assert result.exit_code == 0
+
+    # Modify the source data.
+    os.chdir('../foo')
+    with open('data/f/woop', 'w') as f:
+        f.write('woop2')
+
+    call(['git', 'commit', '-am', 'commiting changes to woop'])
+
+    os.chdir('../bar')
+    call(['git', 'submodule', 'update', '--rebase', '--remote'])
+    call(['git', 'commit', '-am', 'update submodule'])
+
+    result = base_runner.invoke(cli.cli, ['status'], catch_exceptions=False)
+    assert result.exit_code != 0
