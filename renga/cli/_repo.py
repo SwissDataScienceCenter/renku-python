@@ -153,10 +153,6 @@ class Repo(object):
             dataset.repo = self.git
             yield dataset
 
-            paths = list(dataset.files.keys())
-            if paths:
-                self.track_paths_in_storage(paths)
-
             source.update(**asjsonld(
                 dataset,
                 filter=lambda attr, _: attr.name not in {'repo', 'datadir'},
@@ -236,15 +232,17 @@ class Repo(object):
             ['git', 'lfs', 'install', '--local'],
             stdout=PIPE,
             stderr=STDOUT,
+            cwd=self.path,
         )
 
-    def track_paths_in_storage(self, paths):
+    def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
         if HAS_LFS:
             call(
-                ['git', 'lfs', 'track'] + paths,
+                ['git', 'lfs', 'track'] + list(paths),
                 stdout=PIPE,
                 stderr=STDOUT,
+                cwd=self.path,
             )
 
     @property

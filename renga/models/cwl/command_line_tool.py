@@ -186,7 +186,7 @@ class CommandLineToolFactory(object):
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
-            repo.track_paths_in_storage(paths)
+            repo.track_paths_in_storage(*paths)
 
     @command_line.validator
     def validate_command_line(self, attribute, value):

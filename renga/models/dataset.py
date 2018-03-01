@@ -250,6 +250,7 @@ class Dataset(object):
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
+        repo.track_paths_in_storage(dst.relative_to(repo.path))
         result = dst.relative_to(repo.path / self.path).as_posix()
         return {
             result:
@@ -319,6 +320,7 @@ class Dataset(object):
             Author(name=commit.author.name, email=commit.author.email)
             for commit in git_repo.iter_commits(paths=target))
 
+        repo.track_paths_in_storage(dst.relative_to(repo.path))
         result = dst.relative_to(repo.path / self.path).as_posix()
         return {
             result:
