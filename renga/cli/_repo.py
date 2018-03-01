@@ -150,7 +150,6 @@ class Repo(object):
                 source = {}
                 dataset = Dataset.create(name=name)
 
-            dataset.repo = self.git
             yield dataset
 
             source.update(**asjsonld(

@@ -85,8 +85,12 @@ def add(repo, name, url, nocopy, target):
     """Add data to a dataset."""
     try:
         with repo.with_dataset(name=name, datadir=get_datadir()) as dataset:
+            click.echo('Adding data to the dataset ... ', nl=False)
+            target = target if target else None
             dataset.add_data(repo, url, nocopy=nocopy, target=target)
+        click.secho('OK', fg='green')
     except FileNotFoundError:
+        click.secho('ERROR', fg='red')
         raise BadParameter('URL')
 
 

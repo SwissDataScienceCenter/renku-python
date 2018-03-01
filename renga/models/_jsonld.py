@@ -21,14 +21,22 @@ import datetime
 from copy import deepcopy
 
 import attr
+from attr._compat import iteritems
+from attr._funcs import has
+from attr._make import fields
 from pyld import jsonld as ld
+
+from renga._compat import Path
 
 KEY = '__json_ld'
 
 make_type = type
 
 
-def attrs(maybe_cls=None, type=None, context=None, translate=None,
+def attrs(maybe_cls=None,
+          type=None,
+          context=None,
+          translate=None,
           **attrs_kwargs):
     """Wrap an attr enabled class."""
     context = context or {}
@@ -76,13 +84,56 @@ def attrib(context=None, **kwargs):
     return attr.ib(**kwargs)
 
 
-def asjsonld(jsonld_obj, *args, **kwargs):
+def asjsonld(inst,
+             recurse=True,
+             filter=None,
+             dict_factory=dict,
+             retain_collection_types=False):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
-    data = attr.asdict(jsonld_obj, *args, **kwargs)
-    data['@context'] = context = deepcopy(jsonld_obj.__class__._jsonld_context)
-    if jsonld_obj.__class__._jsonld_type:
-        data['@type'] = jsonld_obj.__class__._jsonld_type
-    return data
+    attrs = fields(inst.__class__)
+    rv = dict_factory()
+
+    def convert_value(v):
+        """Convert special types."""
+        if isinstance(v, Path):
+            return str(v)
+        return v
+
+    for a in attrs:
+        v = getattr(inst, a.name)
+        if filter is not None and not filter(a, v):
+            continue
+        if recurse is True:
+            if has(v.__class__):
+                rv[a.name] = asjsonld(
+                    v, recurse=True, filter=filter, dict_factory=dict_factory)
+            elif isinstance(v, (tuple, list, set)):
+                cf = v.__class__ if retain_collection_types is True else list
+                rv[a.name] = cf([
+                    asjsonld(
+                        i,
+                        recurse=True,
+                        filter=filter,
+                        dict_factory=dict_factory) if has(i.__class__) else i
+                    for i in v
+                ])
+            elif isinstance(v, dict):
+                df = dict_factory
+                rv[a.name] = df((
+                    asjsonld(kk, dict_factory=df) if has(kk.__class__) else kk,
+                    asjsonld(vv, dict_factory=df) if has(vv.__class__) else vv)
+                                for kk, vv in iteritems(v))
+            else:
+                rv[a.name] = convert_value(v)
+        else:
+            rv[a.name] = convert_value(v)
+
+    inst_cls = type(inst)
+    rv['@context'] = deepcopy(inst_cls._jsonld_context)
+
+    if inst_cls._jsonld_type:
+        rv['@type'] = inst_cls._jsonld_type
+    return rv
 
 
 class JSONLDMixin(object):
@@ -95,7 +146,8 @@ class JSONLDMixin(object):
             data = ld.compact(data, {'@context': cls._jsonld_translate})
             data.pop('@context', None)
 
-        compacted = ld.compact(data, cls._jsonld_context)
+        # FIXME compacted = ld.compact(data, cls._jsonld_context)
+        compacted = data
         # assert compacted['@type'] == cls._jsonld_type, '@type must be equal'
         # TODO update self(not cls)._jsonld_context with data['@context']
         fields = cls._jsonld_fields

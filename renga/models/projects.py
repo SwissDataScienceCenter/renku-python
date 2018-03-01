@@ -30,9 +30,10 @@ from ._datastructures import Collection, Model
     context={
         'foaf': 'http://xmlns.com/foaf/0.1/',
     },
-    translate={
-        'http://xmlns.com/foaf/0.1/name': 'http://schema.org/description',
-    },
+    # TODO show a working example
+    # translate={
+    #     'http://xmlns.com/foaf/0.1/name': 'http://schema.org/description',
+    # },
     slots=True,
 )
 class Project(object):

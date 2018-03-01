@@ -51,12 +51,14 @@ _path_attr = partial(
 
 def _deserialize_set(s, cls):
     """Deserialize a list of dicts into classes."""
-    return set(cls(**x) for x in s)
+    return set(cls.from_jsonld(x) if hasattr(cls, 'from_jsonld')
+               else cls(**x) for x in s)
 
 
 def _deserialize_dict(d, cls):
     """Deserialize a list of dicts into classes."""
-    return {k: cls(**v) for (k, v) in d.items()}
+    return {k: cls.from_jsonld(v) if hasattr(cls, 'from_jsonld')
+            else cls(**v) for k, v in d.items()}
 
 
 @jsonld.s(
@@ -164,10 +166,18 @@ class Dataset(object):
     authors = jsonld.ib(
         default=attr.Factory(set),  # FIXME should respect order
         converter=_deserialize_authors,
+        context={
+            '@id': Author._jsonld_type,
+            '@container': '@list',
+        },
     )
-    files = attr.ib(
+    files = jsonld.ib(
         default=attr.Factory(dict),
         converter=_deserialize_files,
+        context={
+            '@id': DatasetFile._jsonld_type,
+            '@container': '@index',
+        },
     )
 
     datadir = _path_attr(default='data')
@@ -276,7 +286,8 @@ class Dataset(object):
 
             # if repo path is a parent, rebase the paths and update url
             if src_repo_path != Path(u.path):
-                top_target = Path(u.path).relative_to(src_repo_path)
+                top_target = Path(u.path).resolve().absolute().relative_to(
+                    src_repo_path)
                 if target:
                     target = top_target / target
                 else:
@@ -320,7 +331,6 @@ class Dataset(object):
             Author(name=commit.author.name, email=commit.author.email)
             for commit in git_repo.iter_commits(paths=target))
 
-        repo.track_paths_in_storage(dst.relative_to(repo.path))
         result = dst.relative_to(repo.path / self.path).as_posix()
         return {
             result:
