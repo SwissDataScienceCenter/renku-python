@@ -120,7 +120,7 @@ class RepositoryApiMixin(object):
         """Yield an editable metadata object for a dataset."""
         with self.lock:
             from renga.models._jsonld import asjsonld
-            from renga.models.dataset import Dataset
+            from renga.models.datasets import Dataset
             path = None
             dataset = None
 

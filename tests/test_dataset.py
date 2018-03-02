@@ -27,7 +27,7 @@ import pytest
 import responses
 import yaml
 
-from renga.models.dataset import Author, Dataset, DatasetFile
+from renga.models.datasets import Author, Dataset, DatasetFile
 
 
 def raises(error):
@@ -94,7 +94,7 @@ def test_data_add(
                 'email': 'me@example.com'
             }
         )
-        d.add_data(client, '{}{}'.format(scheme, path))
+        client.add_data_to_dataset(d, '{}{}'.format(scheme, path))
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
@@ -117,7 +117,9 @@ def test_data_add(
                     'email': 'me@example.com'
                 }
             )
-            d.add_data(client, '{}{}'.format(scheme, path), nocopy=True)
+            client.add_data_to_dataset(
+                d, '{}{}'.format(scheme, path), nocopy=True
+            )
             assert os.path.exists('data/dataset/file')
 
 
@@ -129,7 +131,7 @@ def test_data_add_recursive(directory_tree, client):
             'email': 'me@example.com'
         }
     )
-    d.add_data(client, directory_tree.join('dir2').strpath)
+    client.add_data_to_dataset(d, directory_tree.join('dir2').strpath)
     assert 'dir2/file2' in d.files
 
 
@@ -145,7 +147,7 @@ def dataset_serialization(client, dataset, data_file):
 
     assert all([key in d_dict for key in ('name', 'identifier', 'files')])
     assert not len(d_dict['files'].values())
-    d.add_data(str(data_file))
+    client.add_data_to_dataset(d, str(data_file))
     d_dict = d.to_dict()
     assert len(d_dict['files'].values())
 
@@ -153,16 +155,17 @@ def dataset_serialization(client, dataset, data_file):
 def test_git_repo_import(client, dataset, tmpdir, data_repository):
     """Test an import from a git repository."""
     # add data from local repo
-    dataset.add_data(
-        client, os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
+    client.add_data_to_dataset(
+        dataset,
+        os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
     )
     assert os.stat('data/dataset/directory_tree/dir2/file2')
     assert 'directory_tree/dir2/file2' in dataset.files
     assert os.stat('.renga/vendors/local')
 
     # check that the authors are properly parsed from commits
-    dataset.add_data(
-        client, os.path.dirname(data_repository.git_dir), target='file'
+    client.add_data_to_dataset(
+        dataset, os.path.dirname(data_repository.git_dir), target='file'
     )
     assert len(dataset.files['directory_tree/file'].authors) == 2
     assert all(

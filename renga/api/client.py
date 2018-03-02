@@ -28,6 +28,7 @@ from renga import errors
 from renga._compat import Path
 
 from .authorization import AuthorizationMixin
+from .datasets import DatasetsApiMixin
 from .deployer import ContextsApiMixin
 from .explorer import ExplorerApiMixin
 from .projects import ProjectsApiMixin
@@ -121,6 +122,7 @@ class APIClient(
 @attr.s
 class LocalClient(
     RepositoryApiMixin,
+    DatasetsApiMixin,
 ):
     """A low-level client for communicating with a local Renga repository.
 

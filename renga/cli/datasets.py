@@ -43,7 +43,7 @@ import shutil
 import click
 from click import BadParameter, UsageError
 
-from renga.models.dataset import Author, Dataset
+from renga.models.datasets import Author, Dataset
 
 from ._git import with_git
 from ._client import pass_local_client
@@ -61,11 +61,11 @@ def datasets(ctx, datadir):
 @click.argument('name')
 @pass_local_client
 @with_git()
-def create(repo, name):
+def create(client, name):
     """Create an empty dataset in the current repo."""
-    with repo.with_dataset(name=name, datadir=get_datadir()) as dataset:
+    with client.with_dataset(name=name, datadir=get_datadir()) as dataset:
         click.echo('Creating a dataset ... ', nl=False)
-        dataset.authors.add(Author.from_git(repo.git))
+        dataset.authors.add(Author.from_git(client.git))
     click.secho('OK', fg='green')
 
 
@@ -82,13 +82,15 @@ def create(repo, name):
 )
 @pass_local_client
 @with_git()
-def add(repo, name, url, nocopy, target):
+def add(client, name, url, nocopy, target):
     """Add data to a dataset."""
     try:
-        with repo.with_dataset(name=name, datadir=get_datadir()) as dataset:
+        with client.with_dataset(name=name, datadir=get_datadir()) as dataset:
             click.echo('Adding data to the dataset ... ', nl=False)
             target = target if target else None
-            dataset.add_data(repo, url, nocopy=nocopy, target=target)
+            client.add_data_to_dataset(
+                dataset, url, nocopy=nocopy, target=target
+            )
         click.secho('OK', fg='green')
     except FileNotFoundError:
         click.secho('ERROR', fg='red')
