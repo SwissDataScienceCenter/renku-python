@@ -20,23 +20,72 @@
 import os
 import shutil
 import stat
+from contextlib import contextmanager
 from urllib import error, parse
 
+import attr
 import git
 import requests
+import yaml
 
 from renga._compat import Path
 from renga.models.datasets import Author, Dataset, DatasetFile, NoneType
 
 
+@attr.s
 class DatasetsApiMixin(object):
     """Client for handling datasets."""
 
-    def add_data_to_dataset(
-        self, dataset, url, datadir=None, git=False, **kwargs
-    ):
+    datadir = attr.ib(default='data', converter=str)
+    """Define a name of the folder for storing datasets."""
+
+    @contextmanager
+    def with_dataset(self, name=None):
+        """Yield an editable metadata object for a dataset."""
+        with self.lock:
+            from renga.models._jsonld import asjsonld
+            from renga.models.datasets import Dataset
+            path = None
+            dataset = None
+
+            dataset_path = self.path / self.datadir / name
+
+            if name:
+                path = dataset_path / self.METADATA
+                if path.exists():
+                    with open(path, 'r') as f:
+                        source = yaml.load(f) or {}
+                    dataset = Dataset.from_jsonld(source)
+
+            if dataset is None:
+                source = {}
+                dataset = Dataset(name=name)
+                try:
+                    dataset_path.mkdir(parents=True, exist_ok=True)
+                except FileExistsError:
+                    raise FileExistsError('This dataset already exists.')
+
+            yield dataset
+
+            source.update(
+                **asjsonld(
+                    dataset,
+                    filter=lambda attr, _: attr.name != 'datadir',
+                )
+            )
+
+            # TODO
+            # if path is None:
+            #     path = dataset_path / self.METADATA
+            #     if path.exists():
+            #         raise ValueError('Dataset already exists')
+
+            with open(path, 'w') as f:
+                yaml.dump(source, f, default_flow_style=False)
+
+    def add_data_to_dataset(self, dataset, url, git=False, **kwargs):
         """Import the data into the data directory."""
-        datadir = datadir or dataset.datadir
+        dataset_path = self.path / self.datadir / dataset.name
         git = git or check_for_git_repo(url)
 
         target = kwargs.get('target')
@@ -44,16 +93,16 @@ class DatasetsApiMixin(object):
         if git:
             if isinstance(target, (str, NoneType)):
                 dataset.files.update(
-                    self._add_from_git(dataset, dataset.path, url, target)
+                    self._add_from_git(dataset, dataset_path, url, target)
                 )
             else:
                 for t in target:
                     dataset.files.update(
-                        self._add_from_git(dataset, dataset.path, url, t)
+                        self._add_from_git(dataset, dataset_path, url, t)
                     )
         else:
             dataset.files.update(
-                self._add_from_url(dataset, dataset.path, url, **kwargs)
+                self._add_from_url(dataset, dataset_path, url, **kwargs)
             )
 
     def _add_from_url(self, dataset, path, url, nocopy=False, **kwargs):
@@ -107,7 +156,8 @@ class DatasetsApiMixin(object):
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
         self.track_paths_in_storage(dst.relative_to(self.path))
-        result = dst.relative_to(self.path / dataset.path).as_posix()
+        dataset_path = self.path / self.datadir / dataset.name
+        result = dst.relative_to(dataset_path).as_posix()
         return {
             result:
                 DatasetFile(
@@ -160,7 +210,7 @@ class DatasetsApiMixin(object):
             )
 
         # link the target into the data directory
-        dst = self.path / dataset.path / submodule_name / (target or '')
+        dst = self.path / path / submodule_name / (target or '')
         src = submodule_path / (target or '')
 
         if not dst.parent.exists():
@@ -189,7 +239,8 @@ class DatasetsApiMixin(object):
             for commit in git_repo.iter_commits(paths=target)
         )
 
-        result = dst.relative_to(self.path / dataset.path).as_posix()
+        dataset_path = self.path / self.datadir / dataset.name
+        result = dst.relative_to(dataset_path).as_posix()
         return {
             result:
                 DatasetFile(

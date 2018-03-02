@@ -59,7 +59,7 @@ def datasets(ctx, datadir):
 @with_git()
 def create(client, name):
     """Create an empty dataset in the current repo."""
-    with client.with_dataset(name=name, datadir=get_datadir()) as dataset:
+    with client.with_dataset(name=name) as dataset:
         click.echo('Creating a dataset ... ', nl=False)
         dataset.authors.add(Author.from_git(client.git))
     click.secho('OK', fg='green')
@@ -81,7 +81,7 @@ def create(client, name):
 def add(client, name, url, nocopy, target):
     """Add data to a dataset."""
     try:
-        with client.with_dataset(name=name, datadir=get_datadir()) as dataset:
+        with client.with_dataset(name=name) as dataset:
             click.echo('Adding data to the dataset ... ', nl=False)
             target = target if target else None
             client.add_data_to_dataset(

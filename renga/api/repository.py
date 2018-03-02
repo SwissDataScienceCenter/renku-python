@@ -114,45 +114,6 @@ class RepositoryApiMixin(object):
                 yaml.dump(source, f, default_flow_style=False)
 
     @contextmanager
-    def with_dataset(self, name=None, datadir='data'):
-        """Yield an editable metadata object for a dataset."""
-        with self.lock:
-            from renga.models._jsonld import asjsonld
-            from renga.models.datasets import Dataset
-            path = None
-            dataset = None
-
-            if name:
-                path = self.path / datadir / name / self.METADATA
-                if path.exists():
-                    with open(path, 'r') as f:
-                        source = yaml.load(f) or {}
-                    dataset = Dataset.from_jsonld(source)
-                    # TODO update? dataset ...
-
-            if dataset is None:
-                source = {}
-                dataset = Dataset.create(name=name)
-
-            yield dataset
-
-            source.update(
-                **asjsonld(
-                    dataset,
-                    filter=lambda attr, _: attr.name != 'datadir',
-                )
-            )
-
-            # TODO
-            # if path is None:
-            #     path = self.path / datadir / dataset.name / self.METADATA
-            #     if path.exists():
-            #         raise ValueError('Dataset already exists')
-
-            with open(path, 'w') as f:
-                yaml.dump(source, f, default_flow_style=False)
-
-    @contextmanager
     def with_workflow_storage(self):
         """Yield a workflow storage."""
         with self.lock:

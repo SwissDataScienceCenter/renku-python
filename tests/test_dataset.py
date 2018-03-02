@@ -45,31 +45,6 @@ def raises(error):
         return not_raises()
 
 
-def dataset_creation(client):
-    """Test dataset directory tree creation."""
-    # creating a dataset without an author fails
-    with pytest.raises(RuntimeError):
-        d = Dataset.create('dataset')
-
-    d = Dataset.create(
-        'dataset', authors={
-            'name': 'me',
-            'email': 'me@example.com'
-        }
-    )
-    assert d.name == 'dataset'
-    assert os.stat('data/dataset')
-
-    # creating another dataset fails by default
-    with pytest.raises(FileExistsError):
-        Dataset.create(
-            'dataset', authors={
-                'name': 'me',
-                'email': 'me@example.com'
-            }
-        )
-
-
 @pytest.mark.parametrize(
     'scheme, path, error',
     [('', 'temp', None), ('file://', 'temp', None),
@@ -86,15 +61,14 @@ def test_data_add(
             path = str(data_file)
         elif path == 'tempdir':
             path = str(directory_tree)
-        d = Dataset.create(
-            'dataset',
-            datadir='./data',
-            authors={
+
+        with client.with_dataset('dataset') as d:
+            d.authors = {
                 'name': 'me',
-                'email': 'me@example.com'
+                'email': 'me@example.com',
             }
-        )
-        client.add_data_to_dataset(d, '{}{}'.format(scheme, path))
+            client.add_data_to_dataset(d, '{}{}'.format(scheme, path))
+
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
@@ -109,29 +83,25 @@ def test_data_add(
         # check the linking
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
-            d = Dataset.create(
-                'dataset',
-                datadir='./data',
-                authors={
+            with client.with_dataset('dataset') as d:
+                d.authors = {
                     'name': 'me',
-                    'email': 'me@example.com'
+                    'email': 'me@example.com',
                 }
-            )
-            client.add_data_to_dataset(
-                d, '{}{}'.format(scheme, path), nocopy=True
-            )
+                client.add_data_to_dataset(
+                    d, '{}{}'.format(scheme, path), nocopy=True
+                )
             assert os.path.exists('data/dataset/file')
 
 
 def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
-    d = Dataset.create(
-        'dataset', authors={
+    with client.with_dataset('dataset') as d:
+        d.authors = {
             'name': 'me',
-            'email': 'me@example.com'
+            'email': 'me@example.com',
         }
-    )
-    client.add_data_to_dataset(d, directory_tree.join('dir2').strpath)
+        client.add_data_to_dataset(d, directory_tree.join('dir2').strpath)
     assert 'dir2/file2' in d.files
 
 

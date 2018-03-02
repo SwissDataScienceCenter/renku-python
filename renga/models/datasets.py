@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,7 +18,6 @@
 """Model objects representing datasets."""
 
 import datetime
-import os
 import re
 import uuid
 from functools import partial
@@ -184,30 +183,7 @@ class Dataset(object):
         },
     )
 
-    # FIXME move to the local client
-    datadir = _path_attr(default='data')
-
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
-
-    @property
-    def path(self):
-        """Path to this Dataset."""
-        return self.datadir / self.name
-
-    def meta_init(self):
-        """Initialize the directories and metadata."""
-        try:
-            # FIXME remove side-effects from models
-            os.makedirs(self.path)
-        except FileExistsError:
-            raise FileExistsError('This dataset already exists.')
-
-    @classmethod
-    def create(cls, *args, **kwargs):
-        """Create a new dataset and create its directories and metadata."""
-        d = cls(*args, **kwargs)
-        d.meta_init()
-        return d
