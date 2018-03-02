@@ -58,34 +58,41 @@ class SlotCollection(Collection):
         """Check if a name is defined."""
         env = getattr(self._client, '_environment', os.environ)
         file_id = env.get(
-            self._env_tpl.format(name.upper()), self._names[name])
+            self._env_tpl.format(name.upper()), self._names[name]
+        )
         return file_id is not None
 
     def __getitem__(self, name):
         """Return a file object."""
         env = getattr(self._client, '_environment', os.environ)
         file_id = env.get(
-            self._env_tpl.format(name.upper()), self._names[name])
+            self._env_tpl.format(name.upper()), self._names[name]
+        )
         if file_id is None:
             raise KeyError(name)
 
         return self.Meta.model(
             self._client.api.get_file(file_id),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
     def __setitem__(self, name, value):
         """Set a file object reference."""
         if name in self._names:  # pragma: no cover
             raise RengaException(
-                'Can not modify an existing slot "{0}"'.format(name))
+                'Can not modify an existing slot "{0}"'.format(name)
+            )
 
         if isinstance(value, self.Meta.model):
             value = value.id
 
-        self._context.spec['labels'].append('{0}{1}{2}'.format(
-            self._prefix, name, '={0}'.format(value)
-            if value is not None else ''))
+        self._context.spec['labels'].append(
+            '{0}{1}{2}'.format(
+                self._prefix, name, '={0}'.format(value)
+                if value is not None else ''
+            )
+        )
 
 
 class Context(Model):
@@ -125,7 +132,8 @@ class Context(Model):
             self,
             prefix='renga.context.outputs.',
             env_tpl='RENGA_CONTEXT_OUTPUTS_{0}',
-            client=self._client)
+            client=self._client
+        )
 
     @property
     def image(self):
@@ -179,8 +187,8 @@ class Context(Model):
 
                 # Update only if they are different.
                 if new_value != value:
-                    environment[self.inputs._env_tpl.format(
-                        name.upper())] = new_value
+                    environment[self.inputs._env_tpl.format(name.upper())
+                                ] = new_value
 
         try:
             self._client._environment = {}
@@ -202,7 +210,8 @@ class Context(Model):
     def lineage(self):
         """Return the lineage of this context."""
         return self._client.api.get_context_lineage(
-            self.labels.get('renga.execution_context.vertex_id'))
+            self.labels.get('renga.execution_context.vertex_id')
+        )
 
 
 class ContextCollection(Collection):
@@ -217,15 +226,18 @@ class ContextCollection(Collection):
 
     def __iter__(self):
         """Return all contexts."""
-        return (self.Meta.model(data, client=self._client, collection=self)
-                for data in self._client.api.list_contexts())
+        return (
+            self.Meta.model(data, client=self._client, collection=self)
+            for data in self._client.api.list_contexts()
+        )
 
     def __getitem__(self, context_id):
         """Return the context definition."""
         return self.Meta.model(
             self._client.api.get_context(context_id),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
     def create(self, spec=None, **kwargs):
         """Create a new context."""
@@ -280,8 +292,8 @@ class Execution(Model):
                 # FIXME use edge when defined
                 env = getattr(self._client, '_environment', os.environ)
                 self._client._environment = self.environment
-                filename = self._client.contexts[self.context_id].inputs[
-                    'notebook'].filename
+                filename = self._client.contexts[self.context_id
+                                                 ].inputs['notebook'].filename
                 filename = 'notebooks/current_context/inputs/notebook'
             except Exception:  # pragma: no cover
                 # TODO add logging
@@ -292,7 +304,8 @@ class Execution(Model):
             if token:
                 token = '?token={0}'.format(token)
             return 'http://{host}:{exposed}/{filename}{token}'.format(
-                token=token, filename=filename, **ports[0])
+                token=token, filename=filename, **ports[0]
+            )
 
     @property
     def context(self):
@@ -301,8 +314,9 @@ class Execution(Model):
 
     def logs(self, **kwargs):
         """Get logs from this execution."""
-        return self._client.api.execution_logs(self.context_id, self.id,
-                                               **kwargs)
+        return self._client.api.execution_logs(
+            self.context_id, self.id, **kwargs
+        )
 
     def stop(self):
         """Stop a running execution."""
@@ -326,19 +340,23 @@ class ExecutionCollection(Collection):
 
     def __iter__(self):
         """Return all executions."""
-        return (self.Meta.model(data, client=self._client, collection=self)
-                for data in self._client.api.list_executions(self.id))
+        return (
+            self.Meta.model(data, client=self._client, collection=self)
+            for data in self._client.api.list_executions(self.id)
+        )
 
     def __getitem__(self, execution_id):
         """Return the execution definition."""
         return self.Meta.model(
             self._client.api.get_execution(self.id, execution_id),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
 
 def _dict_from_labels(labels, separator='='):
     """Create a multidict from label string."""
     return MultiDict(
         ((label[0].strip(), label[1].strip() if len(label) > 1 else None)
-         for label in (raw.split(separator, 1) for raw in labels)))
+         for label in (raw.split(separator, 1) for raw in labels))
+    )

@@ -56,7 +56,8 @@ def dataset_creation(repo):
         'dataset', authors={
             'name': 'me',
             'email': 'me@example.com'
-        })
+        }
+    )
     assert os.stat('data/dataset')
 
     # creating another dataset fails by default
@@ -65,7 +66,8 @@ def dataset_creation(repo):
             'dataset', authors={
                 'name': 'me',
                 'email': 'me@example.com'
-            })
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -73,9 +75,11 @@ def dataset_creation(repo):
     [('', 'temp', None), ('file://', 'temp', None),
      ('', 'tempp', git.NoSuchPathError), ('http://', 'example.com/file', None),
      ('https://', 'example.com/file', None),
-     ('bla://', 'file', NotImplementedError)])
-def test_data_add(scheme, path, error, repo, data_file, directory_tree,
-                  dataset_responses):
+     ('bla://', 'file', NotImplementedError)]
+)
+def test_data_add(
+    scheme, path, error, repo, data_file, directory_tree, dataset_responses
+):
     """Test data import."""
     with raises(error):
         if path == 'temp':
@@ -88,7 +92,8 @@ def test_data_add(scheme, path, error, repo, data_file, directory_tree,
             authors={
                 'name': 'me',
                 'email': 'me@example.com'
-            })
+            }
+        )
         d.add_data(repo, '{}{}'.format(scheme, path))
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
@@ -96,8 +101,9 @@ def test_data_add(scheme, path, error, repo, data_file, directory_tree,
         assert d.files.get('file')
 
         # check that the imported file is read-only
-        assert not os.access('data/dataset/file',
-                             stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        assert not os.access(
+            'data/dataset/file', stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        )
         # assert os.stat('data/dataset/file/metadata.yml')
 
         # check the linking
@@ -109,7 +115,8 @@ def test_data_add(scheme, path, error, repo, data_file, directory_tree,
                 authors={
                     'name': 'me',
                     'email': 'me@example.com'
-                })
+                }
+            )
             d.add_data(repo, '{}{}'.format(scheme, path), nocopy=True)
             assert os.path.exists('data/dataset/file')
 
@@ -120,7 +127,8 @@ def test_data_add_recursive(directory_tree, repo):
         'dataset', authors={
             'name': 'me',
             'email': 'me@example.com'
-        })
+        }
+    )
     d.add_data(repo, directory_tree.join('dir2').strpath)
     assert 'dir2/file2' in d.files
 
@@ -145,30 +153,34 @@ def dataset_serialization(repo, dataset, data_file):
 def test_git_repo_import(repo, dataset, tmpdir, data_repository):
     """Test an import from a git repository."""
     # add data from local repo
-    dataset.add_data(repo,
-                     os.path.join(
-                         os.path.dirname(data_repository.git_dir), 'dir2'))
+    dataset.add_data(
+        repo, os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
+    )
     assert os.stat('data/dataset/directory_tree/dir2/file2')
     assert 'directory_tree/dir2/file2' in dataset.files
     assert os.stat('.renga/vendors/local')
 
     # check that the authors are properly parsed from commits
     dataset.add_data(
-        repo, os.path.dirname(data_repository.git_dir), target='file')
+        repo, os.path.dirname(data_repository.git_dir), target='file'
+    )
     assert len(dataset.files['directory_tree/file'].authors) == 2
     assert all(
         x.name in ('me', 'me2')
-        for x in dataset.files['directory_tree/file'].authors)
+        for x in dataset.files['directory_tree/file'].authors
+    )
 
 
-@pytest.mark.parametrize('authors', [
-    Author(name='me', email='me@example.com'),
-    set([Author(name='me', email='me@example.com')]),
-    [Author(name='me', email='me@example.com')], {
-        'name': 'me',
-        'email': 'me@example.com'
-    }
-])
+@pytest.mark.parametrize(
+    'authors', [
+        Author(name='me', email='me@example.com'),
+        set([Author(name='me', email='me@example.com')]),
+        [Author(name='me', email='me@example.com')], {
+            'name': 'me',
+            'email': 'me@example.com'
+        }
+    ]
+)
 def test_author_parse(authors, data_file):
     """Test that different options for specifying authors work."""
     f = DatasetFile('file', origin=str(data_file), authors=authors)

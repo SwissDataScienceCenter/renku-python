@@ -78,7 +78,8 @@ def create(repo, name):
     '--target',
     default=None,
     multiple=True,
-    help='Target path in the git repo.')
+    help='Target path in the git repo.'
+)
 @pass_repo
 @with_git()
 def add(repo, name, url, nocopy, target):

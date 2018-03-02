@@ -39,8 +39,11 @@ def endpoint(ctx, config, verbose):
             if not verbose:
                 click.echo(endpoint)
             else:
-                click.echo('{endpoint}\t{url}'.format(
-                    endpoint=endpoint, url=values.get('url', '')))
+                click.echo(
+                    '{endpoint}\t{url}'.format(
+                        endpoint=endpoint, url=values.get('url', '')
+                    )
+                )
 
 
 @endpoint.command(name='set-default')

@@ -63,9 +63,7 @@ class OAuthHandler(IPythonHandler):
         try:
             code = self.get_query_argument('code')
         except MissingArgumentError:
-            self.redirect(client.authorize(
-                base_url + self.request.path, None
-            ))
+            self.redirect(client.authorize(base_url + self.request.path, None))
             return  # in case redirect doesn't raise
 
         token = client.request_token(base_url + self.request.path, code)

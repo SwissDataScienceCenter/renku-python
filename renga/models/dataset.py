@@ -46,19 +46,24 @@ NoneType = type(None)
 _path_attr = partial(
     jsonld.ib,
     converter=Path,
-    validator=lambda i, arg, val: Path(val).absolute().is_file())
+    validator=lambda i, arg, val: Path(val).absolute().is_file()
+)
 
 
 def _deserialize_set(s, cls):
     """Deserialize a list of dicts into classes."""
-    return set(cls.from_jsonld(x) if hasattr(cls, 'from_jsonld')
-               else cls(**x) for x in s)
+    return set(
+        cls.from_jsonld(x) if hasattr(cls, 'from_jsonld') else cls(**x)
+        for x in s
+    )
 
 
 def _deserialize_dict(d, cls):
     """Deserialize a list of dicts into classes."""
-    return {k: cls.from_jsonld(v) if hasattr(cls, 'from_jsonld')
-            else cls(**v) for k, v in d.items()}
+    return {
+        k: cls.from_jsonld(v) if hasattr(cls, 'from_jsonld') else cls(**v)
+        for k, v in d.items()
+    }
 
 
 @jsonld.s(
@@ -80,8 +85,9 @@ class Author(object):
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (isinstance(value, str) and
-                re.match(r"[^@]+@[^@]+\.[^@]+", value)):
+        if not (
+            isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)
+        ):
             raise ValueError('Email address is invalid.')
 
     @classmethod
@@ -106,8 +112,10 @@ def _deserialize_authors(authors):
         elif all(isinstance(x, Author) for x in authors):
             return authors
 
-    raise ValueError('Authors must be a dict or '
-                     'set or list of dicts or Author.')
+    raise ValueError(
+        'Authors must be a dict or '
+        'set or list of dicts or Author.'
+    )
 
 
 @jsonld.s
@@ -132,6 +140,13 @@ class DatasetFile(object):
 _deserialize_files = partial(_deserialize_dict, cls=DatasetFile)
 
 
+def _parse_date(value):
+    """Convert date to datetime."""
+    if isinstance(value, datetime.datetime):
+        return value
+    return parse_date(value)
+
+
 @jsonld.s(
     type='dctypes:Dataset',
     context={
@@ -150,8 +165,7 @@ class Dataset(object):
     name = jsonld.ib(type='string', context='foaf:name')
 
     created = jsonld.ib(
-        converter=lambda arg: arg
-        if isinstance(arg, datetime.datetime) else parse_date(arg),
+        converter=_parse_date,
         context='http://schema.org/dateCreated',
     )
 
@@ -209,22 +223,26 @@ class Dataset(object):
         if git:
             if isinstance(target, (str, NoneType)):
                 self.files.update(
-                    self._add_from_git(repo, self.path, url, target))
+                    self._add_from_git(repo, self.path, url, target)
+                )
             else:
                 for t in target:
                     self.files.update(
-                        self._add_from_git(repo, self.path, url, t))
+                        self._add_from_git(repo, self.path, url, t)
+                    )
         else:
             self.files.update(
-                self._add_from_url(repo, self.path, url, **kwargs))
+                self._add_from_url(repo, self.path, url, **kwargs)
+            )
 
     def _add_from_url(self, repo, path, url, nocopy=False, **kwargs):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
         if u.scheme not in Dataset.SUPPORTED_SCHEMES:
-            raise NotImplementedError('{} URLs are not supported'.format(
-                u.scheme))
+            raise NotImplementedError(
+                '{} URLs are not supported'.format(u.scheme)
+            )
 
         dst = path.joinpath(os.path.basename(url)).absolute()
 
@@ -238,14 +256,18 @@ class Dataset(object):
                 for f in src.iterdir():
                     files.update(
                         self._add_from_url(
-                            repo, dst, f.absolute().as_posix(), nocopy=nocopy))
+                            repo, dst, f.absolute().as_posix(), nocopy=nocopy
+                        )
+                    )
                 return files
             if nocopy:
                 try:
                     os.link(src, dst)
                 except Exception as e:
-                    raise Exception('Could not create hard link '
-                                    '- retry without nocopy.') from e
+                    raise Exception(
+                        'Could not create hard link '
+                        '- retry without nocopy.'
+                    ) from e
             else:
                 shutil.copy(src, dst)
 
@@ -264,7 +286,9 @@ class Dataset(object):
         result = dst.relative_to(repo.path / self.path).as_posix()
         return {
             result:
-            DatasetFile(result, url, authors=self.authors, dataset=self.name)
+                DatasetFile(
+                    result, url, authors=self.authors, dataset=self.name
+                )
         }
 
     def _add_from_git(self, repo, path, url, target):
@@ -286,8 +310,9 @@ class Dataset(object):
 
             # if repo path is a parent, rebase the paths and update url
             if src_repo_path != Path(u.path):
-                top_target = Path(u.path).resolve().absolute().relative_to(
-                    src_repo_path)
+                top_target = Path(
+                    u.path
+                ).resolve().absolute().relative_to(src_repo_path)
                 if target:
                     target = top_target / target
                 else:
@@ -296,16 +321,19 @@ class Dataset(object):
         elif u.scheme in ('http', 'https'):
             submodule_name = os.path.splitext(os.path.basename(u.path))[0]
             submodule_path = submodule_path.joinpath(
-                os.path.dirname(u.path).lstrip('/'), submodule_name)
+                os.path.dirname(u.path).lstrip('/'), submodule_name
+            )
         else:
-            raise NotImplementedError('Scheme {} not supported'.format(
-                u.scheme))
+            raise NotImplementedError(
+                'Scheme {} not supported'.format(u.scheme)
+            )
 
         # FIXME: do a proper check that the repos are not the same
         if submodule_name not in (s.name for s in repo.git.submodules):
             # new submodule to add
             submodule = repo.git.create_submodule(
-                name=submodule_name, path=submodule_path.as_posix(), url=url)
+                name=submodule_name, path=submodule_path.as_posix(), url=url
+            )
 
         # link the target into the data directory
         dst = repo.path / self.path / submodule_name / (target or '')
@@ -320,7 +348,9 @@ class Dataset(object):
             for f in src.iterdir():
                 files.update(
                     self._add_from_git(
-                        repo, path, url, target=f.relative_to(submodule_path)))
+                        repo, path, url, target=f.relative_to(submodule_path)
+                    )
+                )
             return files
 
         os.symlink(os.path.relpath(src, dst.parent), dst)
@@ -329,12 +359,15 @@ class Dataset(object):
         git_repo = git.Repo(submodule_path.absolute().as_posix())
         authors = set(
             Author(name=commit.author.name, email=commit.author.email)
-            for commit in git_repo.iter_commits(paths=target))
+            for commit in git_repo.iter_commits(paths=target)
+        )
 
         result = dst.relative_to(repo.path / self.path).as_posix()
         return {
             result:
-            DatasetFile(result, '{}/{}'.format(url, target), authors=authors)
+                DatasetFile(
+                    result, '{}/{}'.format(url, target), authors=authors
+                )
         }
 
     @classmethod

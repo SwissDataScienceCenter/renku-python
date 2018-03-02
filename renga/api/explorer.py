@@ -25,7 +25,8 @@ class ExplorerApiMixin(object):
         """Return a list of buckets."""
         resp = self.get(
             self._url('/api/explorer/storage/bucket'),
-            expected_status_code=200)
+            expected_status_code=200
+        )
 
         # parse each bucket JSON and flatten
         buckets = [_flatten_vertex(bucket) for bucket in resp.json()]
@@ -35,14 +36,16 @@ class ExplorerApiMixin(object):
         """Retrieve a bucket using the Explorer."""
         resp = self.get(
             self._url('/api/explorer/storage/bucket/{0}'.format(bucket_id)),
-            expected_status_code=200)
+            expected_status_code=200
+        )
         return _flatten_vertex(resp.json())
 
     def get_context_lineage(self, context_id):
         """Retrieve all nodes connected to a context."""
         resp = self.get(
             self._url('/api/explorer/lineage/context/{0}'.format(context_id)),
-            expected_status_code=200)
+            expected_status_code=200
+        )
 
         vertices = []
         edges = []
@@ -55,15 +58,18 @@ class ExplorerApiMixin(object):
         """Retrieve files stored in the bucket with bucket_id."""
         resp = self.get(
             self._url(
-                '/api/explorer/storage/bucket/{0}/files'.format(bucket_id)),
-            expected_status_code=200)
+                '/api/explorer/storage/bucket/{0}/files'.format(bucket_id)
+            ),
+            expected_status_code=200
+        )
         return [_flatten_vertex(vertex) for vertex in resp.json()]
 
     def get_file(self, file_id):
         """Retrieve a file metadata using the Explorer."""
         resp = self.get(
             self._url('/api/explorer/storage/file/{0}'.format(file_id)),
-            expected_status_code=200)
+            expected_status_code=200
+        )
 
         return _flatten_vertex(resp.json()['data'])
 
@@ -71,8 +77,10 @@ class ExplorerApiMixin(object):
         """Retrieve file versions for the given file identifer."""
         resp = self.get(
             self._url(
-                '/api/explorer/storage/file/{0}/versions'.format(file_id)),
-            expected_status_code=200)
+                '/api/explorer/storage/file/{0}/versions'.format(file_id)
+            ),
+            expected_status_code=200
+        )
         return [_flatten_vertex(vertex) for vertex in resp.json()]
 
 

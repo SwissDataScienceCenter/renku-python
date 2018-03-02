@@ -63,16 +63,24 @@ def mapped(cls, key='id', **kwargs):
                 if a_name in data:
                     yield a.name, data[a_name]
 
-        return [cls(**{kk: vv for kk, vv in fix_keys(v)})
-                if not isinstance(v, cls) else v
-                for v in result]
+        return [
+            cls(**{kk: vv
+                   for kk, vv in fix_keys(v)}) if not isinstance(v, cls) else v
+            for v in result
+        ]
 
     kwargs['converter'] = converter
     return attr.ib(**kwargs)
 
 
-def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
-          retain_collection_types=False, basedir=None):
+def ascwl(
+    inst,
+    recurse=True,
+    filter=None,
+    dict_factory=dict,
+    retain_collection_types=False,
+    basedir=None
+):
     """Return the ``attrs`` attribute values of *inst* as a dict.
 
     Support ``jsonldPredicate`` in a field metadata for generating
@@ -96,16 +104,24 @@ def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
             continue
         if recurse is True:
             if has(v.__class__):
-                rv[a_name] = ascwl(v, recurse=True, filter=filter,
-                                   dict_factory=dict_factory, basedir=basedir)
+                rv[a_name] = ascwl(
+                    v,
+                    recurse=True,
+                    filter=filter,
+                    dict_factory=dict_factory,
+                    basedir=basedir
+                )
 
             elif isinstance(v, (tuple, list, set)):
                 cf = v.__class__ if retain_collection_types is True else list
                 rv[a_name] = cf([
-                    ascwl(i, recurse=True, filter=filter,
-                          dict_factory=dict_factory, basedir=basedir)
-                    if has(i.__class__) else i
-                    for i in v
+                    ascwl(
+                        i,
+                        recurse=True,
+                        filter=filter,
+                        dict_factory=dict_factory,
+                        basedir=basedir
+                    ) if has(i.__class__) else i for i in v
                 ])
 
                 if 'jsonldPredicate' in a.metadata:
@@ -123,8 +139,8 @@ def ascwl(inst, recurse=True, filter=None, dict_factory=dict,
                     ascwl(kk, dict_factory=df, basedir=basedir)
                     if has(kk.__class__) else kk,
                     ascwl(vv, dict_factory=df, basedir=basedir)
-                    if has(vv.__class__) else vv)
-                    for kk, vv in iteritems(v))
+                    if has(vv.__class__) else vv
+                ) for kk, vv in iteritems(v))
             else:
                 rv[a_name] = convert_value(v)
         else:

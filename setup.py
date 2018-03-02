@@ -33,16 +33,16 @@ tests_require = [
     'pytest-cache>=1.0',
     'pytest-cov>=2.5.1',
     'pytest-pep8>=1.0.6',
+    'pytest-yapf>=0.1.1',
     'pytest>=3.2.1',
     'renga-sphinx-theme>=0.1.0',
     'responses>=0.7.0',
+    'yapf>=0.20.2',
 ]
 
 extras_require = {
     ':python_version<"3.6"': ['pathlib2>=2.3.0'],
-    'docs': [
-        'Sphinx>=1.6.3',
-    ],
+    'docs': ['Sphinx>=1.6.3', ],
     'runner': [
         'cwltool>=1.0.20180130110340',
         'cwlref-runner>=1.0',
@@ -134,4 +134,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Development Status :: 1 - Planning',
-    ], )
+    ],
+)

@@ -39,21 +39,23 @@ def check_status_code(f):
     @functools.wraps(f)
     def decorator(*args, **kwargs):
         """Check for ``expected_status_code``."""
-        expected_status_code = kwargs.pop('expected_status_code',
-                                          range(200, 300))
+        expected_status_code = kwargs.pop(
+            'expected_status_code', range(200, 300)
+        )
         return errors.UnexpectedStatusCode.return_or_raise(
-            f(*args, **kwargs), expected_status_code)
+            f(*args, **kwargs), expected_status_code
+        )
 
     return decorator
 
 
 class APIClient(
-        AuthorizationMixin,
-        BucketsApiMixin,
-        ContextsApiMixin,
-        ExplorerApiMixin,
-        FilesApiMixin,
-        ProjectsApiMixin,
+    AuthorizationMixin,
+    BucketsApiMixin,
+    ContextsApiMixin,
+    ExplorerApiMixin,
+    FilesApiMixin,
+    ProjectsApiMixin,
 ):
     """A low-level client for communicating with a Renga Platform API.
 
@@ -87,8 +89,10 @@ class APIClient(
 
     def _url(self, url, *args, **kwargs):
         """Format url for endpoint."""
-        return (self.endpoint.rstrip('/') + '/' +
-                url.format(*args, **kwargs).lstrip('/'))
+        return (
+            self.endpoint.rstrip('/') + '/' +
+            url.format(*args, **kwargs).lstrip('/')
+        )
 
     @check_status_code
     def get(self, *args, **kwargs):

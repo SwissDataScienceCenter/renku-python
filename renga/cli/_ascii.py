@@ -35,8 +35,11 @@ def _format_sha1(graph, key):
 
     if submodules:
         submodule = ':'.join(submodules)
-        return click.style(submodule, fg='green') + '@' + click.style(
-            key[0][:8], fg='yellow')
+        return click.style(
+            submodule, fg='green'
+        ) + '@' + click.style(
+            key[0][:8], fg='yellow'
+        )
     return click.style(key[0][:8], fg='yellow')
 
 
@@ -78,9 +81,9 @@ class DAG(object):
         """Generate lines of ASCII representation of a DAG."""
         for node in reversed(list(topological_sort(self.graph.G))):
             for node_symbol, lines, column_info in self.iter_edges(node):
-                for line in self.iter_node_lines(node_symbol,
-                                                 self.node_text(node),
-                                                 column_info):
+                for line in self.iter_node_lines(
+                    node_symbol, self.node_text(node), column_info
+                ):
                     yield line
 
     def node_text(self, node):
@@ -129,8 +132,10 @@ class DAG(object):
             edges.append((column_index, column_index + 1))
             columns_size_diff = 1
             width += 2
-            yield (node_symbol, width, (column_index, edges, number_of_columns,
-                                        columns_size_diff))
+            yield (
+                node_symbol, width,
+                (column_index, edges, number_of_columns, columns_size_diff)
+            )
 
             # Next line will only expand edges.
             node_symbol = '\\'
@@ -152,8 +157,10 @@ class DAG(object):
 
         # Remove the current node for map of edges.
         self.edges.pop(node, None)
-        yield (node_symbol, width, (column_index, edges, number_of_columns,
-                                    columns_size_diff))
+        yield (
+            node_symbol, width,
+            (column_index, edges, number_of_columns, columns_size_diff)
+        )
 
     def iter_node_lines(self, node_symbol, text, column_info):
         """Yield lines for a node of the DAG."""
@@ -166,8 +173,10 @@ class DAG(object):
             c for p in self.columns for c in (self.edges.get(p, '|'), ' ')
         ]
         # Extend line with newly added columns.
-        edge_characters.extend(('|', ' ') * max(
-            number_of_columns + columns_size_diff - len(self.columns), 0))
+        edge_characters.extend(
+            ('|', ' ') *
+            max(number_of_columns + columns_size_diff - len(self.columns), 0)
+        )
 
         if columns_size_diff == -1:
             # Fix potentially right crossed edges into horizontal line.
@@ -178,7 +187,8 @@ class DAG(object):
             # multi-line text when it is shrinking and
             len(text) > 2 and columns_size_diff == -1 and
             # it has a horizontal line.
-            [start for (start, end) in edges if start + 1 < end])
+            [start for (start, end) in edges if start + 1 < end]
+        )
 
         # Fix slope of edges after the node for single line text.
         fix_tail_slope = len(text) <= 2 and not add_padding_line
@@ -195,7 +205,8 @@ class DAG(object):
                 number_of_columns,
                 columns_size_diff,
                 fix_tail_slope,
-            ))
+            )
+        )
 
         # shift_line is the line containing the non-vertical
         # edges between this entry and the next
@@ -208,7 +219,8 @@ class DAG(object):
                 shift_line.extend([self.LEFT_EDGE, ' '])
         elif columns_size_diff == 0:
             shift_line.extend(
-                edge_characters[(column_index + 1) * 2:number_of_columns * 2])
+                edge_characters[(column_index + 1) * 2:number_of_columns * 2]
+            )
         else:
             for i in range(count):
                 shift_line.extend([self.RIGHT_EDGE, ' '])
@@ -220,8 +232,10 @@ class DAG(object):
         lines = [current_line]
         if add_padding_line:  # ... for long text.
             lines.append(
-                self._padding_line(edge_characters, column_index,
-                                   number_of_columns, edges))
+                self._padding_line(
+                    edge_characters, column_index, number_of_columns, edges
+                )
+            )
 
         if self.short:
             shift_chars = {self.LEFT_EDGE, self.RIGHT_EDGE}
@@ -233,7 +247,8 @@ class DAG(object):
 
         # Add missing graph lines for long log strings.
         extra_shift_line = edge_characters[:(
-            number_of_columns + columns_size_diff) * 2]
+            number_of_columns + columns_size_diff
+        ) * 2]
         if len(lines) < len(text):
             while len(lines) < len(text):
                 lines.append(extra_shift_line[:])
@@ -243,8 +258,9 @@ class DAG(object):
 
         for (line, msg) in zip_longest(lines, text, fillvalue=''):
             if node_symbol in {self.ROOT_NODE, self.NODE}:
-                ln = '%-*s %s' % (2 * indentation_level,
-                                  ''.join(line).rstrip(), msg)
+                ln = '%-*s %s' % (
+                    2 * indentation_level, ''.join(line).rstrip(), msg
+                )
             else:
                 ln = '%-*s' % (2 * indentation_level, ''.join(line))
 
@@ -267,8 +283,10 @@ class DAG(object):
             if end > start:
                 edges[index] = (start, end + 1)
 
-    def _line_tail(self, edge_characters, column_index, number_of_columns,
-                   columns_size_diff, fix_tail):
+    def _line_tail(
+        self, edge_characters, column_index, number_of_columns,
+        columns_size_diff, fix_tail
+    ):
         """Return a line tail from the given column index."""
         if fix_tail and columns_size_diff == self.last_columns_size_diff \
                 and columns_size_diff != 0:
@@ -282,8 +300,8 @@ class DAG(object):
                 return tail
             else:
                 # Next line has more columns, hence the edge orientation.
-                return [self.RIGHT_EDGE, " "] * (
-                    number_of_columns - column_index - 1)
+                return [self.RIGHT_EDGE, " "
+                        ] * (number_of_columns - column_index - 1)
         else:
             # No fix required, just copy the rest.
             remainder = (number_of_columns - column_index - 1)
@@ -327,7 +345,8 @@ class DAG(object):
                 (column_index, column_index) in edges:
             # Copy the edge from the current node.
             line.extend(
-                edge_characters[column_index * 2:(column_index + 1) * 2])
+                edge_characters[column_index * 2:(column_index + 1) * 2]
+            )
         else:
             # There is no vertical branch from the current node.
             line.extend([' ', ' '])

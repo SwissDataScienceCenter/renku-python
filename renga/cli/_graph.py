@@ -47,7 +47,8 @@ class Graph(object):
         """Derive basic informations."""
         self.repo_path = self.repo.path
         self.cwl_prefix = str(
-            self.repo.workflow_path.relative_to(self.repo_path))
+            self.repo.workflow_path.relative_to(self.repo_path)
+        )
 
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
@@ -55,7 +56,8 @@ class Graph(object):
         if key not in self.G.node:
             latest = self.find_latest(commit, path)
             self.G.add_node(
-                key, commit=commit, path=path, latest=latest, **kwargs)
+                key, commit=commit, path=path, latest=latest, **kwargs
+            )
         return key
 
     def find_cwl(self, commit):
@@ -78,7 +80,8 @@ class Graph(object):
     def find_latest(self, start, path):
         """Return the latest commit for path."""
         commits = list(
-            self.repo.git.iter_commits('{0}..'.format(start), paths=path))
+            self.repo.git.iter_commits('{0}..'.format(start), paths=path)
+        )
         if commits:
             return commits[-1]
 
@@ -90,8 +93,7 @@ class Graph(object):
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
                 yield (
-                    os.path.normpath(basedir / input_.default.path),
-                    input_.id
+                    os.path.normpath(basedir / input_.default.path), input_.id
                 )
 
     def add_tool(self, commit, path):
@@ -101,9 +103,11 @@ class Graph(object):
         tool_key = self.add_node(commit, path, tool=tool)
 
         for input_path, input_id in self.iter_file_inputs(
-                tool, os.path.dirname(path)):
+            tool, os.path.dirname(path)
+        ):
             input_key = self.add_file(
-                input_path, revision='{0}^'.format(commit))
+                input_path, revision='{0}^'.format(commit)
+            )
             #: Edge from an input to the tool.
             self.G.add_edge(input_key, tool_key, id=input_id)
 
@@ -134,24 +138,26 @@ class Graph(object):
 
             #: Resolve Renga based submodules.
             original_path = Path(parent_path)
-            if original_path.is_symlink() or str(original_path).startswith(
-                    '.renga/vendors'):
+            if original_path.is_symlink(
+            ) or str(original_path).startswith('.renga/vendors'):
                 original_path = original_path.resolve()
 
                 for submodule in Submodule.iter_items(
-                        self.repo.git, parent_commit=parent_commit):
+                    self.repo.git, parent_commit=parent_commit
+                ):
                     try:
                         subpath = original_path.relative_to(
-                            Path(submodule.path).resolve())
+                            Path(submodule.path).resolve()
+                        )
                         subgraph = Graph(repo=Repo(git_home=submodule.path))
                         subnode = subgraph.add_file(
-                            str(subpath), revision=submodule.hexsha)
+                            str(subpath), revision=submodule.hexsha
+                        )
 
                         #: Extend node metadata.
                         for _, data in subgraph.G.nodes(data=True):
-                            data['submodule'] = root_submodule + [
-                                submodule.name
-                            ]
+                            data['submodule'
+                                 ] = root_submodule + [submodule.name]
 
                         #: Merge file node with it's symlinked version.
                         self.G = nx.contracted_nodes(
@@ -215,10 +221,10 @@ class Graph(object):
         # Prepare status info for each file.
         self._need_update()
 
-        graph_files = sorted(
-            ((commit, filepath) for (commit, filepath) in self.G
-             if filepath in current_files),
-            key=itemgetter(1))
+        graph_files = sorted(((commit, filepath)
+                              for (commit, filepath) in self.G
+                              if filepath in current_files),
+                             key=itemgetter(1))
 
         status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
 
@@ -230,7 +236,8 @@ class Graph(object):
 
             if any(len(self.G.nodes[key]['_need_update']) > 1 for key in keys):
                 updates = list(
-                    self.G.nodes[key]['_need_update'] for key in keys)
+                    self.G.nodes[key]['_need_update'] for key in keys
+                )
                 status['outdated'][filepath] = updates
             elif len(keys) == 1:
                 status['up-to-date'][filepath] = keys[0][0]

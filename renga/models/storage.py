@@ -50,7 +50,8 @@ class Bucket(Model):
         self._client.api.storage_bucket_metadata_replace(
             self.id, {
                 'file_name': value,
-            })
+            }
+        )
 
         # Update if the service replace works
         self._properties['resource:bucket_name'] = value
@@ -105,8 +106,9 @@ class BucketCollection(Collection):
 
             The default backend for newly created buckets.
         """
-        backend = backend or os.environ.get('RENGA_STORAGE_BUCKET_BACKEND',
-                                            self.backends[0])
+        backend = backend or os.environ.get(
+            'RENGA_STORAGE_BUCKET_BACKEND', self.backends[0]
+        )
         data = self._client.api.create_bucket(name=name, backend=backend)
         return self.Meta.model(data, client=self._client, collection=self)
 
@@ -115,12 +117,15 @@ class BucketCollection(Collection):
         return self.Meta.model(
             self._client.api.get_bucket(bucket_id),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
     def __iter__(self):
         """Iterate through all buckets as returned by the Explorer."""
-        return (self.Meta.model(data, client=self._client, collection=self)
-                for data in self._client.api.list_buckets())
+        return (
+            self.Meta.model(data, client=self._client, collection=self)
+            for data in self._client.api.list_buckets()
+        )
 
 
 class FileMixin(object):
@@ -141,8 +146,8 @@ class FileMixin(object):
         client = self._client.__class__(self._client.api.endpoint, token=token)
         if 'Renga-Deployer-Execution' in self._client.api.headers:
             client.api.headers[
-                'Renga-Deployer-Execution'] = self._client.api.headers[
-                    'Renga-Deployer-Execution']
+                'Renga-Deployer-Execution'
+            ] = self._client.api.headers['Renga-Deployer-Execution']
 
         return FileHandle(file_handle, client=client)
 
@@ -156,8 +161,9 @@ class File(Model, FileMixin):
     def access_token(self):
         """The access token for performing file operations."""
         # FIXME make sure that bucket endpoint returns name
-        return self._response.get('access_token',
-                                  self._client.api.access_token)
+        return self._response.get(
+            'access_token', self._client.api.access_token
+        )
 
     @property
     def name(self):
@@ -167,9 +173,11 @@ class File(Model, FileMixin):
     @name.setter
     def name(self, value):
         """Modify the name."""
-        self._client.api.storage_file_metadata_replace(self.id, {
-            'file_name': value,
-        })
+        self._client.api.storage_file_metadata_replace(
+            self.id, {
+                'file_name': value,
+            }
+        )
 
         # Update if the service replace works
         self._properties['resource:file_name'] = value
@@ -186,7 +194,8 @@ class File(Model, FileMixin):
         return self.__class__(
             LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
             client=self._client,
-            collection=self._collection)
+            collection=self._collection
+        )
 
     @property
     def versions(self):
@@ -218,12 +227,15 @@ class FileCollection(Collection):
         return self.Meta.model(
             self._client.api.get_file(file_id),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
     def __iter__(self):
         """Return all files in this bucket."""
-        return (self.Meta.model(f, client=self._client, collection=self)
-                for f in self._client.api.get_bucket_files(self.bucket.id))
+        return (
+            self.Meta.model(f, client=self._client, collection=self)
+            for f in self._client.api.get_bucket_files(self.bucket.id)
+        )
 
     def open(self, name=None, filename=None, mode='w'):
         """Create an empty file in this bucket."""
@@ -238,14 +250,13 @@ class FileCollection(Collection):
 
         access_token = resp.pop('access_token')
         client = self._client.__class__(
-            self._client.api.endpoint, token={
-                'access_token': access_token
-            })
+            self._client.api.endpoint, token={'access_token': access_token}
+        )
 
         if 'Renga-Deployer-Execution' in self._client.api.headers:
             client.api.headers[
-                'Renga-Deployer-Execution'] = self._client.api.headers[
-                    'Renga-Deployer-Execution']
+                'Renga-Deployer-Execution'
+            ] = self._client.api.headers['Renga-Deployer-Execution']
 
         file_handle = {
             'resource_id': resp['id'],
@@ -263,7 +274,8 @@ class FileCollection(Collection):
         return self.Meta.model(
             LazyResponse(lambda: self._client.api.get_file(resp['id']), resp),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
     def from_url(self, url, name=None, filename=None):
         """Create a file with data from the streamed GET response.
@@ -351,8 +363,9 @@ class FileVersion(Model, FileMixin):
     @property
     def name(self):
         """Name of the file."""
-        return self._properties.get('resource:file_name',
-                                    self._collection.file.name)
+        return self._properties.get(
+            'resource:file_name', self._collection.file.name
+        )
 
     filename = name
 
@@ -360,8 +373,8 @@ class FileVersion(Model, FileMixin):
     def created(self):
         """Return file creation date and time."""
         return datetime.utcfromtimestamp(
-            int(self._properties.get('system:creation_time')) //
-            1000)  # thank you Java
+            int(self._properties.get('system:creation_time')) // 1000
+        )  # thank you Java
 
 
 class FileVersionCollection(Collection):
@@ -384,13 +397,16 @@ class FileVersionCollection(Collection):
         return self.Meta.model(
             self._client.api.get_file(file_id),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
     def __iter__(self):
         """Return all versions of this file."""
         return iter(
-            sorted(
-                (self.Meta.model(data, client=self._client, collection=self)
-                 for data in self._client.api.get_file_versions(self.file.id)),
-                key=lambda file_: file_.created,
-                reverse=True))
+            sorted((
+                self.Meta.model(data, client=self._client, collection=self)
+                for data in self._client.api.get_file_versions(self.file.id)
+            ),
+                   key=lambda file_: file_.created,
+                   reverse=True)
+        )

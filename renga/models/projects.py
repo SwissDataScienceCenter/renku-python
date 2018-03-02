@@ -40,12 +40,8 @@ class Project(object):
     """Represent a project."""
 
     name = jsonld.ib(default=None, context='foaf:name')
-    created = jsonld.ib(
-        context='http://schema.org/dateCreated',
-    )
-    updated = jsonld.ib(
-        context='http://schema.org/dateUpdated',
-    )
+    created = jsonld.ib(context='http://schema.org/dateCreated', )
+    updated = jsonld.ib(context='http://schema.org/dateUpdated', )
     version = jsonld.ib(
         converter=str,
         default='1',
@@ -92,9 +88,12 @@ class ProjectCollection(Collection):
         return self.Meta.model(
             self._client.api.get_project(project_id),
             client=self._client,
-            collection=self)
+            collection=self
+        )
 
     def __iter__(self):
         """Return all projects."""
-        return (self.Meta.model(data, client=self._client, collection=self)
-                for data in self._client.api.list_projects())
+        return (
+            self.Meta.model(data, client=self._client, collection=self)
+            for data in self._client.api.list_projects()
+        )

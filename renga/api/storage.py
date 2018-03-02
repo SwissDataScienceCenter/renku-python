@@ -34,7 +34,8 @@ class BucketsApiMixin(object):
         # TODO add validation
         kwargs['request_type'] = 'create_bucket'
         resp = self.post(
-            self._url('/api/storage/authorize/create_bucket'), json=kwargs)
+            self._url('/api/storage/authorize/create_bucket'), json=kwargs
+        )
         return resp.json()
 
     def storage_bucket_metadata_replace(self, resource_id, data):
@@ -54,7 +55,8 @@ class FilesApiMixin(object):
         # TODO add validation
         kwargs['request_type'] = 'create_file'
         resp = self.post(
-            self._url('/api/storage/authorize/create_file'), json=kwargs)
+            self._url('/api/storage/authorize/create_file'), json=kwargs
+        )
         return resp.json()
 
     def storage_authorize(self, resource_id=None, request_type=None):
@@ -65,7 +67,8 @@ class FilesApiMixin(object):
             json={
                 'resource_id': resource_id,
                 'request_type': request_type
-            })
+            }
+        )
         return resp.json()
 
     def storage_copy_file(self, resource_id=None, file_name=None, **kwargs):
@@ -100,9 +103,8 @@ class FilesApiMixin(object):
         resp = self.post(
             self._url('/api/storage/io/write'),
             data=data,
-            headers={
-                'Content-Type': 'application/octet-stream'
-            })
+            headers={'Content-Type': 'application/octet-stream'}
+        )
 
     def storage_io_read(self, *args, **kwargs):
         """Write data to the file.

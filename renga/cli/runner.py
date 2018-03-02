@@ -52,10 +52,14 @@ def template(repo):
 
 @runner.command()
 @click.option(
-    '--run/--no-run', is_flag=True, envvar='RENGA_RUNNER_RERUN',
-    help='Run or only load the CWL and the job description.')
-@click.option('--job', envvar='RENGA_RUNNER_JOB',
-              help='Job description in YAML.')
+    '--run/--no-run',
+    is_flag=True,
+    envvar='RENGA_RUNNER_RERUN',
+    help='Run or only load the CWL and the job description.'
+)
+@click.option(
+    '--job', envvar='RENGA_RUNNER_JOB', help='Job description in YAML.'
+)
 @pass_repo
 def rerun(repo, run, job):
     """Re-run existing workflow or tool using CWL runner."""
@@ -100,23 +104,24 @@ def default_base_url():
     env_slug = os.environ.get('CI_ENVIRONMENT_SLUG')
 
     if project_path and env_slug:
-        return '/{0}/{1}'.format(
-            project_path, env_slug
-        )
+        return '/{0}/{1}'.format(project_path, env_slug)
 
     return os.path.basename(os.getcwd())
 
 
 @runner.command()
 @click.option('--name', default=default_name)
-@click.option('--network', envvar='RENGA_RUNNER_NETWORK',
-              default='bridge')
-@click.option('--image', envvar='RENGA_RUNNER_IMAGE',
-              default='jupyter/minimal-notebook:latest')
+@click.option('--network', envvar='RENGA_RUNNER_NETWORK', default='bridge')
+@click.option(
+    '--image',
+    envvar='RENGA_RUNNER_IMAGE',
+    default='jupyter/minimal-notebook:latest'
+)
 @click.option('--base-url', default=default_base_url)
 @click.option('--repo-url', envvar='CI_REPOSITORY_URL')
-@click.option('--token', envvar='RENGA_NOTEBOOK_TOKEN',
-              default=generate_notebook_token)
+@click.option(
+    '--token', envvar='RENGA_NOTEBOOK_TOKEN', default=generate_notebook_token
+)
 @pass_repo
 def notebook(repo, name, network, image, base_url, repo_url, token):
     """Launch notebook in a container."""
@@ -126,16 +131,24 @@ def notebook(repo, name, network, image, base_url, repo_url, token):
         pass
 
     args = [
-        'docker', 'run', '-d',
-        '--network', network,
-        '--name', name,
+        'docker',
+        'run',
+        '-d',
+        '--network',
+        network,
+        '--name',
+        name,
         '--rm',
-        '--label', 'renga.notebook.token={0}'.format(token),
-        '--label', 'traefik.enable=true',
-        '--label', 'traefik.frontend.rule=PathPrefix:/{0}'.format(
-                base_url.lstrip('/')),
+        '--label',
+        'renga.notebook.token={0}'.format(token),
+        '--label',
+        'traefik.enable=true',
+        '--label',
+        'traefik.frontend.rule=PathPrefix:/{0}'.format(base_url.lstrip('/')),
         image,
-    ] + generate_launch_args(token=token, base_url=base_url)
+    ] + generate_launch_args(
+        token=token, base_url=base_url
+    )
 
     call(args)
 
@@ -158,6 +171,7 @@ def undeploy(repo, name):
     """Stop running deployment."""
     if not name:
         raise click.BadOptionUsage(
-            'The name was not defined or detection failed.')
+            'The name was not defined or detection failed.'
+        )
     call(('docker', 'stop', name))
     call(('docker', 'rm', name))

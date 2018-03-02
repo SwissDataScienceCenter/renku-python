@@ -33,11 +33,9 @@ KEY = '__json_ld'
 make_type = type
 
 
-def attrs(maybe_cls=None,
-          type=None,
-          context=None,
-          translate=None,
-          **attrs_kwargs):
+def attrs(
+    maybe_cls=None, type=None, context=None, translate=None, **attrs_kwargs
+):
     """Wrap an attr enabled class."""
     context = context or {}
     translate = translate or {}
@@ -84,11 +82,13 @@ def attrib(context=None, **kwargs):
     return attr.ib(**kwargs)
 
 
-def asjsonld(inst,
-             recurse=True,
-             filter=None,
-             dict_factory=dict,
-             retain_collection_types=False):
+def asjsonld(
+    inst,
+    recurse=True,
+    filter=None,
+    dict_factory=dict,
+    retain_collection_types=False
+):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
     attrs = fields(inst.__class__)
     rv = dict_factory()
@@ -106,7 +106,8 @@ def asjsonld(inst,
         if recurse is True:
             if has(v.__class__):
                 rv[a.name] = asjsonld(
-                    v, recurse=True, filter=filter, dict_factory=dict_factory)
+                    v, recurse=True, filter=filter, dict_factory=dict_factory
+                )
             elif isinstance(v, (tuple, list, set)):
                 cf = v.__class__ if retain_collection_types is True else list
                 rv[a.name] = cf([
@@ -114,15 +115,15 @@ def asjsonld(inst,
                         i,
                         recurse=True,
                         filter=filter,
-                        dict_factory=dict_factory) if has(i.__class__) else i
-                    for i in v
+                        dict_factory=dict_factory
+                    ) if has(i.__class__) else i for i in v
                 ])
             elif isinstance(v, dict):
                 df = dict_factory
                 rv[a.name] = df((
                     asjsonld(kk, dict_factory=df) if has(kk.__class__) else kk,
-                    asjsonld(vv, dict_factory=df) if has(vv.__class__) else vv)
-                                for kk, vv in iteritems(v))
+                    asjsonld(vv, dict_factory=df) if has(vv.__class__) else vv
+                ) for kk, vv in iteritems(v))
             else:
                 rv[a.name] = convert_value(v)
         else:

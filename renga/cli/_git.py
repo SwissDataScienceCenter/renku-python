@@ -72,10 +72,9 @@ def _mapped_std_streams(lookup_paths):
 
 
 @contextmanager
-def with_git(clean=True,
-             up_to_date=False,
-             commit=True,
-             ignore_std_streams=False):
+def with_git(
+    clean=True, up_to_date=False, commit=True, ignore_std_streams=False
+):
     """Perform Git checks and operations."""
     repo_path = get_git_home()
     current_dir = os.getcwd()

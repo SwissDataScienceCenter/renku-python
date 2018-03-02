@@ -41,10 +41,12 @@ def from_config(config=None, endpoint=None):
     client_id = config['endpoints'][endpoint]['client_id']
 
     client = RengaClient(
-        endpoint, client_id=client_id, token=token, auto_refresh_url=url)
+        endpoint, client_id=client_id, token=token, auto_refresh_url=url
+    )
 
     if 'project' in config:
         client.api.headers['Renga-Projects-Project'] = config['project'][
-            'endpoints'][endpoint]['vertex_id']
+            'endpoints'
+        ][endpoint]['vertex_id']
 
     return client

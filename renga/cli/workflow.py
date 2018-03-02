@@ -56,7 +56,9 @@ def create(repo, output_file, revision, path):
             ascwl(
                 graph.ascwl(),
                 filter=lambda _, x: x is not None and x != [],
-                basedir=os.path.dirname(
-                    getattr(output_file, 'name', '.')) or '.',
+                basedir=os.path.dirname(getattr(output_file, 'name', '.')) or
+                '.',
             ),
-            default_flow_style=False))
+            default_flow_style=False
+        )
+    )

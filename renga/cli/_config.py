@@ -35,8 +35,9 @@ RENGA_HOME = '.renga'
 """Project directory name."""
 
 # Register Endpoint serializer
-yaml.add_representer(Endpoint,
-                     lambda dumper, data: dumper.represent_str(str(data)))
+yaml.add_representer(
+    Endpoint, lambda dumper, data: dumper.represent_str(str(data))
+)
 
 
 def default_config_dir():
@@ -127,8 +128,9 @@ def print_app_config_path(ctx, param, value):
     ctx.exit()
 
 
-def create_project_config_path(path, mode=0o777, parents=False,
-                               exist_ok=False):
+def create_project_config_path(
+    path, mode=0o777, parents=False, exist_ok=False
+):
     """Create new project configuration folder."""
     # FIXME check default directory mode
     project_path = Path(path).absolute().joinpath(RENGA_HOME)

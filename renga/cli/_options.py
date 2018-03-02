@@ -35,13 +35,15 @@ class Endpoint(str):
 def default_endpoint_from_config(config, option=None):
     """Return a default endpoint."""
     default_endpoint = config.get('core', {}).get('default')
-    project_endpoint = config.get('project', {}).get('core', {}).get(
-        'default', default_endpoint)
+    project_endpoint = config.get('project',
+                                  {}).get('core',
+                                          {}).get('default', default_endpoint)
     return Endpoint(
         option or project_endpoint or default_endpoint,
         default=default_endpoint,
         project=project_endpoint,
-        option=option)
+        option=option
+    )
 
 
 def password_prompt(ctx, param, value):

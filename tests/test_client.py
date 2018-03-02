@@ -43,7 +43,8 @@ def test_auto_refresh(projects_responses):
             'access_token': 'expired',
             'expires_at': 1,
             'refresh_token': 'refreshtoken',
-        }, )
+        },
+    )
 
     url = 'https://example.com/api/projects'
     data = b'{"name": "test-project"}'
@@ -72,8 +73,9 @@ def test_client_invalid_requests(renga_client, projects_responses):
         renga_client.projects[0]
 
 
-def test_client_contexts(renga_client, deployer_responses, storage_responses,
-                         monkeypatch):
+def test_client_contexts(
+    renga_client, deployer_responses, storage_responses, monkeypatch
+):
     """Test client for managing contexts."""
     monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 

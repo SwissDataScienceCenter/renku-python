@@ -41,7 +41,8 @@ def test_03_input(instance_path):
         '--example-string',
         'hello',
         '--file=whale.txt',
-    ), directory=instance_path).generate_tool()
+    ),
+                                  directory=instance_path).generate_tool()
 
     assert tool.arguments[0].prefix == '-f'
 
@@ -148,11 +149,18 @@ def test_06_params(instance_path):
 
 def test_09_array_inputs(instance_path):
     """Test specification of input parameters in arrays."""
-    tool = CommandLineToolFactory(
-        ('echo',
-         '-A', 'one', 'two', 'three',
-         '-B=four', '-B=five', '-B=six',
-         '-C=seven,eight,nine', ), directory=instance_path).generate_tool()
+    tool = CommandLineToolFactory((
+        'echo',
+        '-A',
+        'one',
+        'two',
+        'three',
+        '-B=four',
+        '-B=five',
+        '-B=six',
+        '-C=seven,eight,nine',
+    ),
+                                  directory=instance_path).generate_tool()
 
     # TODO add grouping for -A and -B
 

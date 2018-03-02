@@ -55,7 +55,8 @@ def renga_client():
     """Return a graph mutation client."""
     from renga.client import RengaClient
     return RengaClient(
-        'https://example.com', token={'access_token': 'accessdemo'})
+        'https://example.com', token={'access_token': 'accessdemo'}
+    )
 
 
 @pytest.fixture()
@@ -67,21 +68,25 @@ def graph_mutation_client():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
         def request_callback(request):
-            return (200, {
-                'Content-Type': 'application/json'
-            }, '{"access_token": "servicetoken"}')
+            return (
+                200, {
+                    'Content-Type': 'application/json'
+                }, '{"access_token": "servicetoken"}'
+            )
 
         rsps.add_callback(
             responses.POST,
             'https://example.com/auth/realms/Renga/protocol/openid-connect'
             '/token',
             content_type='application/json',
-            callback=request_callback)
+            callback=request_callback
+        )
 
         client.authorization.authorize_service(
             audience='renga-services',
             client_id='renga-services-client-id',
-            client_secret='renga-services-client-secret', )
+            client_secret='renga-services-client-secret',
+        )
     return client
 
 
@@ -91,17 +96,21 @@ def auth_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
         def request_callback(request):
-            return (200, {
-                'Content-Type': 'application/json'
-            }, '{"refresh_token": "demodemo", "access_token": "accessdemo", '
-                '"expires_at": 0}')
+            return (
+                200, {
+                    'Content-Type': 'application/json'
+                },
+                '{"refresh_token": "demodemo", "access_token": "accessdemo", '
+                '"expires_at": 0}'
+            )
 
         rsps.add_callback(
             responses.POST,
             'https://example.com/auth/realms/Renga/protocol/openid-connect'
             '/token',
             content_type='application/json',
-            callback=request_callback)
+            callback=request_callback
+        )
         yield rsps
 
 
@@ -127,14 +136,14 @@ def graph_mutation_responses(auth_responses, graph_mutation_client):
                     }]
                 }
             }
-        })
+        }
+    )
     rsps.add(
         responses.GET,
         named_type_url,
         status=200,
         json=[{
-            'name':
-            'context',
+            'name': 'context',
             'properties': [{
                 'name': 'context_id',
                 'data_type': 'string',
@@ -149,8 +158,7 @@ def graph_mutation_responses(auth_responses, graph_mutation_client):
                 'cardinality': 'single'
             }]
         }, {
-            'name':
-            'execution',
+            'name': 'execution',
             'properties': [{
                 'name': 'execution_id',
                 'data_type': 'string',
@@ -165,14 +173,14 @@ def graph_mutation_responses(auth_responses, graph_mutation_client):
                 'cardinality': 'single'
             }]
         }, {
-            "name":
-            "project",
+            "name": "project",
             "properties": [{
                 "name": "project_name",
                 "data_type": "string",
                 "cardinality": "single"
             }]
-        }])
+        }]
+    )
 
     yield rsps
 
@@ -189,21 +197,25 @@ def projects_responses(auth_responses, renga_client):
         responses.POST,
         renga_client.api._url('/api/projects'),
         status=201,
-        json=project, )
+        json=project,
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/projects'),
         status=200,
-        json={'projects': [project]}, )
+        json={'projects': [project]},
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/projects/1234'),
         status=200,
-        json=project, )
+        json=project,
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/projects/0'),
-        status=404, )
+        status=404,
+    )
     yield rsps
 
 
@@ -213,8 +225,7 @@ def deployer_responses(auth_responses, renga_client):
     context = {
         'identifier': 'abcd',
         'spec': {
-            'image':
-            'hello-world',
+            'image': 'hello-world',
             'labels': [
                 'renga.context.inputs.notebook=9876',
                 'renga.context.inputs.no_default',
@@ -237,59 +248,69 @@ def deployer_responses(auth_responses, renga_client):
         responses.POST,
         renga_client.api._url('/api/deployer/contexts'),
         status=201,
-        json=context, )
+        json=context,
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/deployer/contexts'),
         status=200,
         json={
             'contexts': [context],
-        })
+        }
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/deployer/contexts/abcd'),
         status=200,
-        json=context)
+        json=context
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/deployer/contexts/deadbeef'),
-        status=404)
+        status=404
+    )
     rsps.add(
         responses.POST,
         renga_client.api._url('/api/deployer/contexts/abcd/executions'),
         status=201,
-        json=execution, )
+        json=execution,
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/deployer/contexts/abcd/executions'),
         status=200,
         json={
             'executions': [execution],
-        })
+        }
+    )
     rsps.add(
         responses.DELETE,
         renga_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
         status=200,
-        json=execution, )
+        json=execution,
+    )
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
         status=200,
-        json=execution, )
+        json=execution,
+    )
     rsps.add(
         responses.GET,
-        renga_client.api._url(
-            '/api/deployer/contexts/abcd/executions/efgh/logs'),
+        renga_client.api.
+        _url('/api/deployer/contexts/abcd/executions/efgh/logs'),
         status=200,
-        body=b'Hello world!', )
+        body=b'Hello world!',
+    )
     rsps.add(
         responses.GET,
-        renga_client.api._url(
-            '/api/deployer/contexts/abcd/executions/efgh/ports'),
+        renga_client.api.
+        _url('/api/deployer/contexts/abcd/executions/efgh/ports'),
         status=200,
         json={
             'ports': [],
-        })
+        }
+    )
     yield rsps
 
 
@@ -308,16 +329,12 @@ def storage_responses(auth_responses, renga_client):
         bucket_['id'] += 4444
         name = resp['name']
         buckets.append({
-            "id":
-            id,
+            "id": id,
             "types": ["resource:bucket"],
             "properties": [{
-                "key":
-                "resource:bucket_backend",
-                "data_type":
-                "string",
-                "cardinality":
-                "single",
+                "key": "resource:bucket_backend",
+                "data_type": "string",
+                "cardinality": "single",
                 "values": [{
                     "key": "resource:bucket_backend",
                     "data_type": "string",
@@ -325,12 +342,9 @@ def storage_responses(auth_responses, renga_client):
                     "properties": []
                 }]
             }, {
-                "key":
-                "resource:bucket_name",
-                "data_type":
-                "string",
-                "cardinality":
-                "single",
+                "key": "resource:bucket_name",
+                "data_type": "string",
+                "cardinality": "single",
                 "values": [{
                     "key": "resource:bucket_name",
                     "data_type": "string",
@@ -339,16 +353,19 @@ def storage_responses(auth_responses, renga_client):
                 }]
             }]
         })
-        return (201, {}, json.dumps({
-            'id': id,
-            'name': name,
-            'backend': 'local',
-        }))
+        return (
+            201, {}, json.dumps({
+                'id': id,
+                'name': name,
+                'backend': 'local',
+            })
+        )
 
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/create_bucket'),
-        callback=create_bucket, )
+        callback=create_bucket,
+    )
 
     file_ = {'id': 9876}
     data = {}
@@ -358,12 +375,13 @@ def storage_responses(auth_responses, renga_client):
         """Create new file."""
         file_id = file_['id']
         file_['id'] -= 1
-        return (201, {}, json.dumps({
-            'id':
-            file_id,
-            'access_token':
-            'accessfile_{0}'.format(file_id),
-        }))
+        return (
+            201, {},
+            json.dumps({
+                'id': file_id,
+                'access_token': 'accessfile_{0}'.format(file_id),
+            })
+        )
 
     def copy_file(request):
         """Copy a file."""
@@ -378,45 +396,47 @@ def storage_responses(auth_responses, renga_client):
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/create_file'),
-        callback=create_file, )
+        callback=create_file,
+    )
 
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/copy_file'),
-        callback=copy_file, )
+        callback=copy_file,
+    )
 
     def authorize_io(request):
         """Generate access token."""
         resp = json.loads(request.body.decode('utf-8'))
-        return (200, {}, json.dumps({
-            'access_token':
-            '{request_type}_{resource_id}'.format(**resp)
-        }))
+        return (
+            200, {},
+            json.dumps({
+                'access_token': '{request_type}_{resource_id}'.format(**resp)
+            })
+        )
 
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/write'),
-        callback=authorize_io, )
+        callback=authorize_io,
+    )
 
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/authorize/read'),
-        callback=authorize_io, )
+        callback=authorize_io,
+    )
 
     def file_version(file_id):
         """Return new file version metadata."""
         id_ = file_id * 10 + file_id % 10 - 1
         return {
-            "id":
-            id_,
+            "id": id_,
             "types": ["resource:file_version"],
             "properties": [{
-                "key":
-                "resource:owner",
-                "data_type":
-                "string",
-                "cardinality":
-                "set",
+                "key": "resource:owner",
+                "data_type": "string",
+                "cardinality": "set",
                 "values": [{
                     "parent": {
                         "type": "vertex",
@@ -428,12 +448,9 @@ def storage_responses(auth_responses, renga_client):
                     "properties": []
                 }]
             }, {
-                "key":
-                "system:creation_time",
-                "data_type":
-                "long",
-                "cardinality":
-                "single",
+                "key": "system:creation_time",
+                "data_type": "long",
+                "cardinality": "single",
                 "values": [{
                     "parent": {
                         "type": "vertex",
@@ -450,7 +467,8 @@ def storage_responses(auth_responses, renga_client):
     def io_write(request):
         """Store file data."""
         file_id = int(
-            request.headers['Authorization'].split(' ')[1].split('_')[-1])
+            request.headers['Authorization'].split(' ')[1].split('_')[-1]
+        )
 
         if file_id in data:
             # Store old version
@@ -475,7 +493,8 @@ def storage_responses(auth_responses, renga_client):
         """Read file data."""
         try:
             file_id = int(
-                request.headers['Authorization'].split(' ')[1].split('_')[-1])
+                request.headers['Authorization'].split(' ')[1].split('_')[-1]
+            )
             return (200, {}, data[file_id])
         except KeyError:
             return (401, {}, '')
@@ -483,34 +502,40 @@ def storage_responses(auth_responses, renga_client):
     rsps.add_callback(
         responses.POST,
         renga_client.api._url('/api/storage/io/write'),
-        callback=io_write, )
+        callback=io_write,
+    )
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/storage/io/read'),
-        callback=io_read, )
+        callback=io_read,
+    )
     rsps._matches[-1].stream = True
     rsps.add(
         responses.GET,
         renga_client.api._url('/api/storage/io/backends'),
         status=200,
-        json=['local'], )
+        json=['local'],
+    )
     rsps.add(
         responses.GET,
         'https://example.com/tests/data',
         status=200,
         body=b'hello world',
-        stream=True, )
+        stream=True,
+    )
 
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/file/9876/versions'),
         callback=lambda request: (200, {}, json.dumps(file_versions)),
-        content_type='application/json', )
+        content_type='application/json',
+    )
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/file/9875/versions'),
         callback=lambda request: (200, {}, json.dumps([])),
-        content_type='application/json', )
+        content_type='application/json',
+    )
 
     yield rsps
 
@@ -524,39 +549,38 @@ def explorer_responses(auth_responses, renga_client):
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/bucket'),
-        callback=lambda request: (200, {}, json.dumps(buckets)), )
+        callback=lambda request: (200, {}, json.dumps(buckets)),
+    )
 
     def rename_bucket(request):
         """Rename a bucket."""
         payload = json.loads(request.body.decode('utf-8'))
-        buckets[0]['properties'][1]['values'][0]['value'] = payload[
-            'file_name']
+        buckets[0]['properties'][1]['values'][0]['value'] = payload['file_name'
+                                                                    ]
         return (200, {}, '{}')
 
     rsps.add_callback(
         responses.PUT,
         renga_client.api._url('/api/storage/bucket/1234'),
         callback=rename_bucket,
-        content_type='application/json', )
+        content_type='application/json',
+    )
 
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/bucket/1234'),
-        callback=lambda request: (200, {}, json.dumps(buckets[0])))
+        callback=lambda request: (200, {}, json.dumps(buckets[0]))
+    )
 
     def new_file(id, name):
         """Create new file."""
         return {
-            'id':
-            id,
+            'id': id,
             'types': ['resource:file'],
             'properties': [{
-                'key':
-                'resource:file_name',
-                'data_type':
-                'string',
-                'cardinality':
-                'single',
+                'key': 'resource:file_name',
+                'data_type': 'string',
+                'cardinality': 'single',
                 'values': [{
                     'parent': {
                         'type': 'vertex',
@@ -568,12 +592,9 @@ def explorer_responses(auth_responses, renga_client):
                     'properties': []
                 }]
             }, {
-                'key':
-                'resource:owner',
-                'data_type':
-                'string',
-                'cardinality':
-                'set',
+                'key': 'resource:owner',
+                'data_type': 'string',
+                'cardinality': 'set',
                 'values': [{
                     'parent': {
                         'type': 'vertex',
@@ -596,21 +617,28 @@ def explorer_responses(auth_responses, renga_client):
         responses.GET,
         renga_client.api._url('/api/explorer/storage/bucket/1234/files'),
         status=200,
-        json=files[:1])
+        json=files[:1]
+    )
 
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/file/9876'),
-        callback=lambda request: (200, {}, json.dumps(
-            {'data': files[0], 'bucket': buckets[0]})),
+        callback=lambda request:
+        (200, {}, json.dumps({
+            'data': files[0],
+            'bucket': buckets[0]
+        })),
         content_type='application/json',
     )
 
     rsps.add_callback(
         responses.GET,
         renga_client.api._url('/api/explorer/storage/file/9875'),
-        callback=lambda request: (200, {}, json.dumps(
-            {'data': files[1], 'bucket': buckets[0]})),
+        callback=lambda request:
+        (200, {}, json.dumps({
+            'data': files[1],
+            'bucket': buckets[0]
+        })),
         content_type='application/json',
     )
 
@@ -624,14 +652,17 @@ def explorer_responses(auth_responses, renga_client):
         responses.PUT,
         renga_client.api._url('/api/storage/file/9876'),
         callback=rename_file,
-        content_type='application/json', )
+        content_type='application/json',
+    )
 
     return rsps
 
 
 @pytest.fixture(autouse=True)
-def add_client(doctest_namespace, renga_client, storage_responses,
-               explorer_responses, projects_responses):
+def add_client(
+    doctest_namespace, renga_client, storage_responses, explorer_responses,
+    projects_responses
+):
     """Add Renga client to doctest namespace."""
     doctest_namespace['client'] = renga_client
 
@@ -671,8 +702,7 @@ def repo(project):
 @pytest.fixture()
 def dataset(repo):
     """Create a dataset."""
-    with repo.with_dataset(
-            name='dataset') as dataset:
+    with repo.with_dataset(name='dataset') as dataset:
         dataset.authors = {
             'name': 'me',
             'email': 'me@example.com',
@@ -691,11 +721,13 @@ def dataset_responses():
         rsps.add_callback(
             responses.GET,
             'http://example.com/file',
-            callback=request_callback)
+            callback=request_callback
+        )
         rsps.add_callback(
             responses.GET,
             'https://example.com/file',
-            callback=request_callback)
+            callback=request_callback
+        )
         yield rsps
 
 

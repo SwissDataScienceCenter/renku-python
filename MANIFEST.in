@@ -33,6 +33,7 @@ include Dockerfile*
 include Makefile
 include babel.ini
 include pytest.ini
+include .style.yapf
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
 recursive-include docs *.bat

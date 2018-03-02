@@ -46,36 +46,47 @@ def status(ctx, repo, revision, path):
         click.echo()
 
         for filepath, files in status['outdated'].items():
-            paths = (', '.join(
-                '{0}#{1}'.format(
-                    click.style(p, fg='blue', bold=True),
-                    _format_sha1(graph, (c, p)),
-                ) for c, p in stts
-                if not p.startswith('.renga/workflow/') and
-                p not in status['outdated'])
-                for stts in files)
+            paths = (
+                ', '.join(
+                    '{0}#{1}'.format(
+                        click.style(p, fg='blue', bold=True),
+                        _format_sha1(graph, (c, p)),
+                    ) for c, p in stts
+                    if not p.startswith('.renga/workflow/') and
+                    p not in status['outdated']
+                ) for stts in files
+            )
 
-            click.echo('\t{0}: {1}'.format(
-                click.style(filepath, fg='red', bold=True), ', '.join(paths)))
+            click.echo(
+                '\t{0}: {1}'.format(
+                    click.style(filepath, fg='red', bold=True),
+                    ', '.join(paths)
+                )
+            )
 
         click.echo()
 
     else:
         click.secho(
-            'All files were generated from the lastest inputs.', fg='green')
+            'All files were generated from the lastest inputs.', fg='green'
+        )
 
     if status['multiple-versions']:
         click.echo('Input files used in different versions:')
         click.echo(
             '  (use "renga log --revision <sha1> <file>" to see a lineage '
-            'for the given revision)')
+            'for the given revision)'
+        )
         click.echo()
 
         for filepath, files in status['multiple-versions'].items():
             commits = (_format_sha1(graph, key) for key in files)
-            click.echo('\t{0}: {1}'.format(
-                click.style(filepath, fg='blue', bold=True),
-                ', '.join(commits)))
+            click.echo(
+                '\t{0}: {1}'.format(
+                    click.style(filepath, fg='blue', bold=True),
+                    ', '.join(commits)
+                )
+            )
 
         click.echo()
 

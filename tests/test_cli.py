@@ -138,7 +138,8 @@ def test_workflow(runner):
                 assert e.code in {None, 0}
 
     result = runner.invoke(
-        cli.cli, ['workflow', 'create', 'counted.txt', '-o', 'workflow.cwl'])
+        cli.cli, ['workflow', 'create', 'counted.txt', '-o', 'workflow.cwl']
+    )
     assert result.exit_code == 0
 
     with open('workflow.cwl', 'r') as f:
@@ -164,7 +165,8 @@ def test_streams(runner, capsys):
                     sys.stdin, sys.stdout = stdin, stdout
                     try:
                         cli.cli.main(
-                            args=('run', 'cut', '-d,', '-f', '2', '-s'), )
+                            args=('run', 'cut', '-d,', '-f', '2', '-s'),
+                        )
                     except SystemExit as e:
                         assert e.code in {None, 0}
                 finally:
@@ -198,26 +200,32 @@ def test_datasets(data_file, data_repository, runner):
     assert os.stat('data/dataset/metadata.yml')
 
     # add data
-    result = runner.invoke(cli.cli,
-                           ['datasets', 'add', 'dataset',
-                            str(data_file)])
+    result = runner.invoke(
+        cli.cli, ['datasets', 'add', 'dataset',
+                  str(data_file)]
+    )
     assert result.exit_code == 0
     assert os.stat(
-        os.path.join('data', 'dataset', os.path.basename(data_file)))
+        os.path.join('data', 'dataset', os.path.basename(data_file))
+    )
 
     # add data from a git repo via http
-    result = runner.invoke(cli.cli, [
-        'datasets', 'add', 'dataset', '--target', 'README.rst',
-        'https://github.com/SwissDataScienceCenter/renga-python.git'
-    ])
+    result = runner.invoke(
+        cli.cli, [
+            'datasets', 'add', 'dataset', '--target', 'README.rst',
+            'https://github.com/SwissDataScienceCenter/renga-python.git'
+        ]
+    )
     assert result.exit_code == 0
     assert os.stat('data/dataset/renga-python/README.rst')
 
     # add data from local git repo
-    result = runner.invoke(cli.cli, [
-        'datasets', 'add', 'dataset', '-t', 'file', '-t', 'file2',
-        os.path.dirname(data_repository.git_dir)
-    ])
+    result = runner.invoke(
+        cli.cli, [
+            'datasets', 'add', 'dataset', '-t', 'file', '-t', 'file2',
+            os.path.dirname(data_repository.git_dir)
+        ]
+    )
     assert result.exit_code == 0
 
 
@@ -248,23 +256,27 @@ def test_status_with_submodules(base_runner):
 
     os.chdir('foo')
     result = base_runner.invoke(
-        cli.cli, ['init', '-S'], catch_exceptions=False)
+        cli.cli, ['init', '-S'], catch_exceptions=False
+    )
     assert result.exit_code == 0
 
     os.chdir('../bar')
     result = base_runner.invoke(
-        cli.cli, ['init', '-S'], catch_exceptions=False)
+        cli.cli, ['init', '-S'], catch_exceptions=False
+    )
     assert result.exit_code == 0
 
     os.chdir('../foo')
     result = base_runner.invoke(
-        cli.cli, ['datasets', 'add', 'f', '../woop'], catch_exceptions=False)
+        cli.cli, ['datasets', 'add', 'f', '../woop'], catch_exceptions=False
+    )
     assert result.exit_code == 0
 
     os.chdir('../bar')
     result = base_runner.invoke(
         cli.cli, ['datasets', 'add', 'b', '../foo/data/f/woop'],
-        catch_exceptions=False)
+        catch_exceptions=False
+    )
     assert result.exit_code == 0
 
     # Produce a derived data from the imported data.

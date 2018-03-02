@@ -39,15 +39,15 @@ def notebook():
             u'outputs': []
         }],
         u'metadata': {},
-        u'nbformat':
-        4,
-        u'nbformat_minor':
-        2,
+        u'nbformat': 4,
+        u'nbformat_minor': 2,
     }
 
 
-def test_file_manager_browse(instance_path, renga_client, monkeypatch,
-                             deployer_responses, storage_responses, notebook):
+def test_file_manager_browse(
+    instance_path, renga_client, monkeypatch, deployer_responses,
+    storage_responses, notebook
+):
     """Test browsing in file manager."""
     client = renga_client
     client.buckets.create('bucket1')
@@ -61,17 +61,19 @@ def test_file_manager_browse(instance_path, renga_client, monkeypatch,
     assert contents_manager.get('/')['name'] == 'Renga'
     # First level
     assert contents_manager.get('/buckets')['name'] == 'Buckets'
-    assert contents_manager.get('/current_context')[
-        'name'] == 'Current Context'
+    assert contents_manager.get('/current_context')['name'
+                                                    ] == 'Current Context'
     # Second level
     assert contents_manager.get('/buckets/1234')['name'] == 'bucket1'
     assert contents_manager.get('/current_context/inputs')['name'] == 'Inputs'
-    assert contents_manager.get('/current_context/outputs')[
-        'name'] == 'Outputs'
+    assert contents_manager.get('/current_context/outputs')['name'
+                                                            ] == 'Outputs'
 
 
-def test_file_manager(instance_path, renga_client, monkeypatch,
-                      deployer_responses, storage_responses, notebook):
+def test_file_manager(
+    instance_path, renga_client, monkeypatch, deployer_responses,
+    storage_responses, notebook
+):
     """Test file manager."""
     client = renga_client
     client.buckets.create('bucket1')
@@ -81,12 +83,14 @@ def test_file_manager(instance_path, renga_client, monkeypatch,
     monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 
     contents_manager = RengaStorageManager()
-    contents_manager._save_notebook('current_context/inputs/notebook',
-                                    from_dict(notebook))
+    contents_manager._save_notebook(
+        'current_context/inputs/notebook', from_dict(notebook)
+    )
 
     notebook_model = contents_manager.get('current_context/inputs/notebook')
     assert notebook_model['content']['cells'][0]['source'] == notebook[
-        'cells'][0]['source']
+        'cells'
+    ][0]['source']
 
     new_path = '1.ipynb'
     notebook_model['path'] = 'current_context/inputs/' + new_path
@@ -108,8 +112,10 @@ def test_file_manager(instance_path, renga_client, monkeypatch,
         contents_manager.update(notebook_model, 'buckets/1234/9876')
 
 
-def test_file_manager_save(instance_path, renga_client, monkeypatch,
-                           deployer_responses, storage_responses, notebook):
+def test_file_manager_save(
+    instance_path, renga_client, monkeypatch, deployer_responses,
+    storage_responses, notebook
+):
     """Test file saving manager."""
     client = renga_client
 

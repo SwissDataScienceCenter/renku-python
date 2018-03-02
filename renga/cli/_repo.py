@@ -45,6 +45,7 @@ def uuid_representer(dumper, data):
     """Add UUID serializer for YAML."""
     return dumper.represent_str(str(data))
 
+
 yaml.add_representer(uuid.UUID, uuid_representer)
 
 
@@ -94,7 +95,8 @@ class Repo(object):
     def lock(self):
         """Create a Renga config lock."""
         return filelock.FileLock(
-            str(self.renga_path.with_suffix(self.LOCK_SUFFIX)))
+            str(self.renga_path.with_suffix(self.LOCK_SUFFIX))
+        )
 
     @property
     def renga_metadata_path(self):
@@ -152,10 +154,13 @@ class Repo(object):
 
             yield dataset
 
-            source.update(**asjsonld(
-                dataset,
-                filter=lambda attr, _: attr.name not in {'repo', 'datadir'},
-            ))
+            source.update(
+                **asjsonld(
+                    dataset,
+                    filter=lambda attr, _: attr.name not in
+                    {'repo', 'datadir'},
+                )
+            )
 
             # TODO
             # if path is None:
@@ -176,7 +181,8 @@ class Repo(object):
             for step in workflow.steps:
                 step_name = '{0}_{1}.cwl'.format(
                     uuid.uuid4().hex,
-                    secure_filename('_'.join(step.run.baseCommand)), )
+                    secure_filename('_'.join(step.run.baseCommand)),
+                )
 
                 workflow_path = self.workflow_path
                 if not workflow_path.exists():
@@ -191,7 +197,8 @@ class Repo(object):
                             basedir=workflow_path,
                         ),
                         stream=step_file,
-                        default_flow_style=False)
+                        default_flow_style=False
+                    )
 
     def init(self, name=None, force=False, use_external_storage=True):
         """Initialize a Renga repository."""
@@ -211,8 +218,10 @@ class Repo(object):
         with open(path / '.gitignore', 'a') as gitignore:
             gitignore.write(
                 str(
-                    self.renga_path.relative_to(self.path).with_suffix(
-                        self.LOCK_SUFFIX)) + '\n')
+                    self.renga_path.relative_to(self.path)
+                    .with_suffix(self.LOCK_SUFFIX)
+                ) + '\n'
+            )
 
         with self.with_metadata() as metadata:
             metadata.name = name
@@ -240,8 +249,8 @@ class Repo(object):
 
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
-        if HAS_LFS and self.git.config_reader(
-                config_level='repository').has_section('filter "lfs"'):
+        if HAS_LFS and self.git.config_reader(config_level='repository'
+                                              ).has_section('filter "lfs"'):
             call(
                 ['git', 'lfs', 'track'] + list(paths),
                 stdout=PIPE,

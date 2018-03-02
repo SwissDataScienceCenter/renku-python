@@ -49,7 +49,8 @@ class Path(object):
         """Join path components."""
         obj, resolver = self._resolver(self._obj, path)
         return self.__class__(
-            self._path + '/' + path, obj=obj, resolver=resolver)
+            self._path + '/' + path, obj=obj, resolver=resolver
+        )
 
     __truediv__ = __div__
 
@@ -120,7 +121,9 @@ class Path(object):
                 file_ = collection[slot]
                 content.append(
                     Path(path + '/' + slot, obj=file_)._file_to_model(
-                        name='[{0}] {1}'.format(slot, file_.filename)))
+                        name='[{0}] {1}'.format(slot, file_.filename)
+                    )
+                )
 
         model = {
             'name': name,
@@ -202,15 +205,17 @@ def _buckets_resolver(obj, path):
     return bucket, lambda obj, path: (obj.files[int(path)], None)
 
 
+def _default_section_resolver(obj, path):
+    """Resolve inputs and outputs."""
+    return obj[path], None
+
+
 def _current_context_resolver(obj, path):
     """Resolve current context paths."""
-    # no epty line after dosstring: D202
-
-    def _section_resolver(obj, path):
-        """Resolve inputs and outputs."""
-        return obj[path], None
-
-    sections = {'inputs': _section_resolver, 'outputs': _section_resolver}
+    sections = {
+        'inputs': _default_section_resolver,
+        'outputs': _default_section_resolver
+    }
     return getattr(obj, path), sections[path]
 
 
@@ -243,7 +248,8 @@ class RengaStorageManager(ContentsManager):
         with file_.open('w') as fp:
             fp.write(
                 nbformat.writes(nb,
-                                version=nbformat.NO_CONVERT).encode('utf-8'))
+                                version=nbformat.NO_CONVERT).encode('utf-8')
+            )
 
     def _save_file(self, path, content, format=None):
         """Save a file to the storage service."""
@@ -337,7 +343,8 @@ class RengaStorageManager(ContentsManager):
 
                 if not hasattr(resource._obj, 'files'):
                     raise web.HTTPError(
-                        403, "Notebook can only be created in a bucket.")
+                        403, "Notebook can only be created in a bucket."
+                    )
 
                 new_file = resource._obj.files.create(items[-1])
                 path = (resource / str(new_file.id))._path
@@ -352,7 +359,8 @@ class RengaStorageManager(ContentsManager):
 
                 if not hasattr(resource._obj, 'files'):
                     raise web.HTTPError(
-                        403, "File can only be created in a bucket.")
+                        403, "File can only be created in a bucket."
+                    )
 
                 new_file = resource._obj.files.create(items[-1])
                 path = (resource / str(new_file.id))._path
@@ -365,7 +373,8 @@ class RengaStorageManager(ContentsManager):
 
                 if not hasattr(resource._obj, 'create'):
                     raise web.HTTPError(
-                        403, "Buckets can only be created from buckets view.")
+                        403, "Buckets can only be created from buckets view."
+                    )
 
                 new_directory = resource._obj.create(items[-1])
                 path = (resource / str(new_directory.id))._path
@@ -374,8 +383,9 @@ class RengaStorageManager(ContentsManager):
 
             model['format'] = None
         else:
-            raise web.HTTPError(400,
-                                "Unhandled contents type: %s" % model['type'])
+            raise web.HTTPError(
+                400, "Unhandled contents type: %s" % model['type']
+            )
 
         validation_message = None
         if model['type'] == 'notebook':  # pragma: no cover

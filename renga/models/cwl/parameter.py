@@ -51,9 +51,9 @@ class CommandInputParameter(object):
     default = attr.ib(default=None, converter=convert_default)
     inputBinding = attr.ib(
         default=None,
-        converter=lambda data: CommandLineBinding(**data)
-        if not isinstance(data, CommandLineBinding) and data is not None
-        else data,
+        converter=lambda data: CommandLineBinding(**data) if not isinstance(
+            data, CommandLineBinding
+        ) and data is not None else data,
     )
     streamable = attr.ib(default=None)
 
@@ -76,8 +76,8 @@ class CommandOutputParameter(object):
     format = attr.ib(default=None)
     outputBinding = attr.ib(
         default=None,
-        converter=lambda data: CommandOutputBinding(**data)
-        if not isinstance(data, CommandOutputBinding) and data is not None
-        else data,
+        converter=lambda data: CommandOutputBinding(**data) if not isinstance(
+            data, CommandOutputBinding
+        ) and data is not None else data,
     )
     streamable = attr.ib(default=None)

@@ -51,7 +51,8 @@ class UnexpectedStatusCode(APIError):
         """Build custom message."""
         super(UnexpectedStatusCode, self).__init__(
             'Unexpected status code: {0}'.format(response.status_code),
-            response=response)
+            response=response
+        )
 
     @classmethod
     def return_or_raise(cls, response, expected_status_code):

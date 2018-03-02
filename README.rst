@@ -101,7 +101,31 @@ Trace the data provenance:
 
     $ renga log wc_readme
 
-
 These are the basics, but there is much more that renga allows you to do with
 your data analysis workflows. The full documentation will soon be available
 at: https://renga-python.readthedocs.io/en/development
+
+
+Contributing
+------------
+
+We're happy to receive contributions of all kinds, whether it is an idea for a
+new feature, a bug report or a pull request.
+
+Before you submit a pull request, please run
+
+::
+
+   $ yapf -irp .
+   $ ./run-tests.sh
+
+You may want to set up yapf styling as a pre-commit hook to do this
+automatically:
+
+::
+
+   curl https://raw.githubusercontent.com/google/yapf/master/plugins/pre-commit.sh -o .git/hooks/pre-commit
+   chmod u+x .git/hooks/pre-commit
+
+
+.. _yapf: https://github.com/google/yapf/

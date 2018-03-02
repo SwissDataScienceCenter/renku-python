@@ -67,14 +67,16 @@ def create(config, name, backend, endpoint):
 
         # Set default bucket
         config['project']['endpoints'][endpoint].setdefault(
-            'default_bucket', bucket.id)
+            'default_bucket', bucket.id
+        )
 
     click.echo(bucket.id)
 
 
 @buckets.command()
 @click.option(
-    '-a', '--all', 'all_buckets', is_flag=True, help='Show all buckets.')
+    '-a', '--all', 'all_buckets', is_flag=True, help='Show all buckets.'
+)
 @click.option('--sort-by', type=click.Choice(['id', 'name']), default='id')
 @option_endpoint
 @with_config
@@ -86,8 +88,9 @@ def list(config, endpoint, all_buckets, sort_by):
     filter_ids = None
 
     if 'project' in config:
-        filter_ids = set(config['project']['endpoints'][endpoint].get(
-            'buckets', {}).keys())
+        filter_ids = set(
+            config['project']['endpoints'][endpoint].get('buckets', {}).keys()
+        )
 
     # filter out non-project buckets if needed
     if filter_ids and not all_buckets:
@@ -107,7 +110,8 @@ def files(ctx, config, endpoint):
 
     if bucket_id is None:
         raise click.MissingParameter(
-            'bucket has to be defined', ctx=ctx, param_hint='bucket')
+            'bucket has to be defined', ctx=ctx, param_hint='bucket'
+        )
 
     client = from_config(config, endpoint=endpoint)
     bucket = client.buckets[bucket_id]
@@ -128,7 +132,8 @@ def upload(ctx, config, input, name, endpoint):
 
     if bucket_id is None:
         raise click.MissingParameter(
-            'bucket has to be defined', ctx=ctx, param_hint='bucket_id')
+            'bucket has to be defined', ctx=ctx, param_hint='bucket_id'
+        )
 
     client = from_config(config, endpoint=endpoint)
     bucket = client.buckets[bucket_id]
@@ -138,7 +143,8 @@ def upload(ctx, config, input, name, endpoint):
         raise click.MissingParameter(
             'name has to be define when using STDIN',
             ctx=ctx,
-            param_hint='name')
+            param_hint='name'
+        )
 
     with bucket.files.open(name, 'w') as fp:
         fp.write(input.read())
@@ -158,7 +164,8 @@ def download(ctx, config, file_id, output, endpoint):
 
     if bucket_id is None:
         raise click.MissingParameter(
-            'bucket has to be defined', ctx=ctx, param_hint='bucket_id')
+            'bucket has to be defined', ctx=ctx, param_hint='bucket_id'
+        )
 
     client = from_config(config, endpoint=endpoint)
     file_ = client.buckets[bucket_id].files[file_id]

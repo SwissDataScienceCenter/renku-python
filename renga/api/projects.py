@@ -25,7 +25,8 @@ class ProjectsApiMixin(object):
         """Get existing project."""
         resp = self.get(
             self._url('/api/projects/{0}', project_id),
-            expected_status_code=200)
+            expected_status_code=200
+        )
         return resp.json()
 
     def list_projects(self):

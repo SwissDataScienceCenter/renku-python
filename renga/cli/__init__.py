@@ -78,38 +78,44 @@ from ._version import print_version
 
 
 @with_plugins(iter_entry_points('renga.cli'))
-@click.group(context_settings={
-    'auto_envvar_prefix': 'RENGA',
-    'help_option_names': ['-h', '--help'],
-})
+@click.group(
+    context_settings={
+        'auto_envvar_prefix': 'RENGA',
+        'help_option_names': ['-h', '--help'],
+    }
+)
 @click.option(
     '--version',
     is_flag=True,
     callback=print_version,
     expose_value=False,
     is_eager=True,
-    help=print_version.__doc__)
+    help=print_version.__doc__
+)
 @click.option(
     '--config',
     envvar='RENGA_CONFIG',
     default=default_config_dir,
     type=click.Path(),
     expose_value=False,
-    help='Location of client config files.')
+    help='Location of client config files.'
+)
 @click.option(
     '--config-path',
     is_flag=True,
     callback=print_app_config_path,
     expose_value=False,
     is_eager=True,
-    help=print_app_config_path.__doc__)
+    help=print_app_config_path.__doc__
+)
 @click.option(
     '--renga',
     envvar='RENGA_HOME',
     show_default=True,
     metavar='<path>',
     default=RENGA_HOME,
-    help='Location of Renga directory.')
+    help='Location of Renga directory.'
+)
 @click.pass_context
 def cli(ctx, renga):
     """Check common Renga commands used in various situations."""

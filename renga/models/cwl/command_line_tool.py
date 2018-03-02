@@ -45,8 +45,8 @@ class CommandLineTool(Process, CWLClass):
     )  # str or list(str) -> shutil.split()
     arguments = attr.ib(
         default=attr.Factory(list),
-        converter=lambda cmd: list(cmd) if isinstance(
-            cmd, (list, tuple)) else shlex.split(cmd),
+        converter=lambda cmd: list(cmd)
+        if isinstance(cmd, (list, tuple)) else shlex.split(cmd),
     )  # list(string, Expression, CommandLineBinding)
 
     stdin = attr.ib(default=None)
@@ -86,8 +86,8 @@ class CommandLineToolFactory(object):
     _RE_SUBCOMMAND = re.compile(r'^[A-Za-z]+(-[A-Za-z]+)?$')
 
     command_line = attr.ib(
-        converter=lambda cmd: list(cmd) if isinstance(
-            cmd, (list, tuple)) else shlex.split(cmd),
+        converter=lambda cmd: list(cmd)
+        if isinstance(cmd, (list, tuple)) else shlex.split(cmd),
     )
 
     directory = attr.ib(
@@ -125,7 +125,8 @@ class CommandLineToolFactory(object):
                     CommandOutputParameter(
                         id='output_{0}'.format(stream_name),
                         type=stream_name,
-                    ))
+                    )
+                )
 
         for input_ in self.guess_inputs(*detect):
             if isinstance(input_, CommandLineBinding):
@@ -236,9 +237,8 @@ class CommandLineToolFactory(object):
         candidate = self.file_candidate(value)
         if candidate:
             try:
-                return File(
-                    path=candidate.relative_to(self.directory)
-                ), 'File', None
+                return File(path=candidate.relative_to(self.directory)
+                            ), 'File', None
             except ValueError:
                 # The candidate points to a file outside the working
                 # directory
@@ -284,7 +284,8 @@ class CommandLineToolFactory(object):
                             itemSeparator=itemSeparator,
                             prefix=prefix,
                             separate=False,
-                        ))
+                        )
+                    )
                     prefix = None
                 else:
                     prefix = argument
@@ -299,7 +300,8 @@ class CommandLineToolFactory(object):
                         # possibly a flag with value
                         prefix = argument[0:2]
                         default, type, itemSeparator = self.guess_type(
-                            argument[2:])
+                            argument[2:]
+                        )
 
                     position += 1
                     yield CommandInputParameter(
@@ -311,7 +313,8 @@ class CommandLineToolFactory(object):
                             itemSeparator=itemSeparator,
                             prefix=prefix,
                             separate=not bool(argument[2:]),
-                        ))
+                        )
+                    )
                     prefix = None
                 else:
                     prefix = argument
@@ -330,7 +333,8 @@ class CommandLineToolFactory(object):
                         position=position,
                         itemSeparator=itemSeparator,
                         prefix=prefix,
-                    ))
+                    )
+                )
                 prefix = None
 
         if prefix:
@@ -352,9 +356,11 @@ class CommandLineToolFactory(object):
             for input in self.inputs if input.type == 'File'
         }  # names that can not be outputs because they are already inputs
 
-        streams = {path for path in (
-            getattr(self, name) for name in ('stdout', 'stderr')
-        ) if path is not None}
+        streams = {
+            path
+            for path in (getattr(self, name) for name in ('stdout', 'stderr'))
+            if path is not None
+        }
 
         # TODO group by a common prefix
 
@@ -378,15 +384,20 @@ class CommandLineToolFactory(object):
                     # it means that it is rewriting a file
                     raise NotImplemented()
 
-                yield (CommandOutputParameter(
-                    id='output_{0}'.format(position),
-                    type='File',
-                    outputBinding=dict(
-                        glob='$(inputs.{0})'.format(input.id), ),
-                ), None, path)
+                yield (
+                    CommandOutputParameter(
+                        id='output_{0}'.format(position),
+                        type='File',
+                        outputBinding=dict(
+                            glob='$(inputs.{0})'.format(input.id),
+                        ),
+                    ), None, path
+                )
             else:
-                yield (CommandOutputParameter(
-                    id='output_{0}'.format(position),
-                    type='File',
-                    outputBinding=dict(glob=glob, ),
-                ), None, path)
+                yield (
+                    CommandOutputParameter(
+                        id='output_{0}'.format(position),
+                        type='File',
+                        outputBinding=dict(glob=glob, ),
+                    ), None, path
+                )
