@@ -247,11 +247,13 @@ def test_status_with_submodules(base_runner):
         f.write('woop')
 
     os.chdir('foo')
-    result = base_runner.invoke(cli.cli, ['init'], catch_exceptions=False)
+    result = base_runner.invoke(
+        cli.cli, ['init', '-S'], catch_exceptions=False)
     assert result.exit_code == 0
 
     os.chdir('../bar')
-    result = base_runner.invoke(cli.cli, ['init'], catch_exceptions=False)
+    result = base_runner.invoke(
+        cli.cli, ['init', '-S'], catch_exceptions=False)
     assert result.exit_code == 0
 
     os.chdir('../foo')

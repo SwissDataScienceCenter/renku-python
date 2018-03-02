@@ -38,7 +38,7 @@ from renga.models.cwl.workflow import Workflow
 from ._config import RENGA_HOME, read_config, write_config
 from ._git import get_git_home
 
-HAS_LFS = not call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT)
+HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
 
 def uuid_representer(dumper, data):
@@ -220,15 +220,19 @@ class Repo(object):
 
         # initialize LFS if it is requested and installed
         if use_external_storage and HAS_LFS:
-            self.init_external_storage()
+            self.init_external_storage(force=force)
 
         return str(path)
 
-    def init_external_storage(self):
+    def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
+        cmd = ['git', 'lfs', 'install', '--local']
+        if force:
+            cmd.append('--force')
+
         path = self.path.absolute()
         call(
-            ['git', 'lfs', 'install', '--local'],
+            cmd,
             stdout=PIPE,
             stderr=STDOUT,
             cwd=self.path,
@@ -236,7 +240,8 @@ class Repo(object):
 
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
-        if HAS_LFS:
+        if HAS_LFS and self.git.config_reader(
+                config_level='repository').has_section('filter "lfs"'):
             call(
                 ['git', 'lfs', 'track'] + list(paths),
                 stdout=PIPE,
