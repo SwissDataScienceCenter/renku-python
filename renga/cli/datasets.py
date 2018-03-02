@@ -46,7 +46,7 @@ from click import BadParameter, UsageError
 from renga.models.dataset import Author, Dataset
 
 from ._git import with_git
-from ._repo import pass_repo
+from ._client import pass_local_client
 
 
 @click.group()
@@ -59,7 +59,7 @@ def datasets(ctx, datadir):
 
 @datasets.command()
 @click.argument('name')
-@pass_repo
+@pass_local_client
 @with_git()
 def create(repo, name):
     """Create an empty dataset in the current repo."""
@@ -80,7 +80,7 @@ def create(repo, name):
     multiple=True,
     help='Target path in the git repo.'
 )
-@pass_repo
+@pass_local_client
 @with_git()
 def add(repo, name, url, nocopy, target):
     """Add data to a dataset."""

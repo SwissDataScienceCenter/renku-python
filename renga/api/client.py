@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,14 +21,17 @@ import functools
 import os
 import warnings
 
+import attr
 import requests
 
 from renga import errors
+from renga._compat import Path
 
 from .authorization import AuthorizationMixin
 from .deployer import ContextsApiMixin
 from .explorer import ExplorerApiMixin
 from .projects import ProjectsApiMixin
+from .repository import RepositoryApiMixin
 from .storage import BucketsApiMixin, FilesApiMixin
 
 
@@ -69,7 +72,7 @@ class APIClient(
     __attrs__ = requests.Session.__attrs__ + ['endpoint']
 
     def __init__(self, endpoint=None, **kwargs):
-        """Create a storage client."""
+        """Create a remote API client."""
         self.endpoint = endpoint
         super(APIClient, self).__init__(**kwargs)
 
@@ -113,3 +116,31 @@ class APIClient(
     def delete(self, *args, **kwargs):
         """Perform the ``DELETE`` request and check its status code."""
         return super(APIClient, self).delete(*args, **kwargs)
+
+
+@attr.s
+class LocalClient(
+    RepositoryApiMixin,
+):
+    """A low-level client for communicating with a local Renga repository.
+
+    Example:
+
+        >>> import renga
+        >>> client = renga.LocalClient('.')
+
+    """
+
+    path = attr.ib(converter=lambda arg: Path(arg).resolve().absolute())
+
+    @path.default
+    def _default_path(self):
+        """Return default repository path."""
+        from renga.cli._git import get_git_home
+        return get_git_home()
+
+    @path.validator
+    def _check_path(self, _, value):
+        """Check the path exists and it is a directory."""
+        if not (value.exists() and value.is_dir()):
+            raise ValueError('Define an existing directory.')

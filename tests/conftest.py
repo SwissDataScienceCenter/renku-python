@@ -693,16 +693,16 @@ def runner(base_runner, project):
 
 
 @pytest.fixture()
-def repo(project):
+def client(project):
     """Return a Renga repository."""
-    from renga.cli._repo import Repo
-    return Repo(git_home=project)
+    from renga.api import LocalClient
+    return LocalClient(path=project)
 
 
 @pytest.fixture()
-def dataset(repo):
+def dataset(client):
     """Create a dataset."""
-    with repo.with_dataset(name='dataset') as dataset:
+    with client.with_dataset(name='dataset') as dataset:
         dataset.authors = {
             'name': 'me',
             'email': 'me@example.com',

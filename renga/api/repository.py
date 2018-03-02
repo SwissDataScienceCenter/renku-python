@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renga repository."""
+"""Client for handling a local repository."""
 
 import datetime
 import os
@@ -28,29 +28,26 @@ import attr
 import click
 import filelock
 import yaml
-from git import Repo as GitRepo
+from git import Repo as GitRepo, InvalidGitRepositoryError
 from werkzeug.utils import secure_filename
 
 from renga._compat import Path
-from renga.models.cwl._ascwl import ascwl
-from renga.models.cwl.workflow import Workflow
-
-from ._config import RENGA_HOME, read_config, write_config
-from ._git import get_git_home
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
 
-def uuid_representer(dumper, data):
-    """Add UUID serializer for YAML."""
-    return dumper.represent_str(str(data))
+@attr.s
+class RepositoryApiMixin(object):
+    """Client for handling a local repository."""
 
+    renga_home = attr.ib(default='.renga')
+    """Define a name of the Renga folder (default: ``.renga``)."""
 
-yaml.add_representer(uuid.UUID, uuid_representer)
+    renga_path = attr.ib(init=False)
+    """Store a ``Path`` instance of the Renga folder."""
 
-
-class Repo(object):
-    """Represent a Renga repository."""
+    git = attr.ib(init=False)
+    """Store an instance of the Git repository."""
 
     METADATA = 'metadata.yml'
     """Default name of Renga config file."""
@@ -61,35 +58,22 @@ class Repo(object):
     WORKFLOW = 'workflow'
     """Directory for storing workflow in Renga."""
 
-    def __init__(self, renga=None, git_home=None):
-        """Store core options."""
-        self.renga_path = renga or RENGA_HOME
-        self._git_home = git_home
-
-    @property
-    def path(self):
-        """Return a ``Path`` instance of this repository."""
-        return Path(self._git_home or get_git_home()).resolve()
-
-    @property
-    def git(self):
-        """Return a Git repository."""
-        return GitRepo(str(self.path))
-
-    @property
-    def renga_path(self):
-        """Return a ``Path`` instance of Renga folder."""
-        path = Path(self._renga_path)
+    def __attrs_post_init__(self):
+        """Initialize computed attributes."""
+        #: Configure Renga path.
+        path = Path(self.renga_home)
         if not path.is_absolute():
             path = self.path / path
 
         path.relative_to(path)
-        return path
+        self.renga_path = path
 
-    @renga_path.setter
-    def renga_path(self, value):
-        """Update path of the Renga folder."""
-        self._renga_path = value
+        #: Create an instance of a Git repository for the given path.
+        try:
+            self.git = GitRepo(str(self.path))
+        except InvalidGitRepositoryError:
+            self.git = None
+        # TODO except
 
     @property
     def lock(self):
@@ -175,6 +159,9 @@ class Repo(object):
     def with_workflow_storage(self):
         """Yield a workflow storage."""
         with self.lock:
+            from renga.models.cwl._ascwl import ascwl
+            from renga.models.cwl.workflow import Workflow
+
             workflow = Workflow()
             yield workflow
 
@@ -200,21 +187,23 @@ class Repo(object):
                         default_flow_style=False
                     )
 
-    def init(self, name=None, force=False, use_external_storage=True):
-        """Initialize a Renga repository."""
+    def init_repository(
+        self, name=None, force=False, use_external_storage=True
+    ):
+        """Initialize a local Renga repository."""
         self.renga_path.mkdir(parents=True, exist_ok=force)
 
         path = self.path.absolute()
         if force:
-            try:
-                git = GitRepo.init(str(path))
-            except FileExistsError:
-                git = GitRepo(str(path))
+            if self.git is None:
+                self.git = GitRepo.init(str(path))
         else:
-            git = GitRepo.init(str(path))
+            assert self.git is None, 'Git repo already exists.'
+            self.git = GitRepo.init(str(path))
 
-        git.description = name or path.name
+        self.git.description = name or path.name
 
+        # FIXME do not append
         with open(path / '.gitignore', 'a') as gitignore:
             gitignore.write(
                 str(
@@ -239,12 +228,11 @@ class Repo(object):
         if force:
             cmd.append('--force')
 
-        path = self.path.absolute()
         call(
             cmd,
             stdout=PIPE,
             stderr=STDOUT,
-            cwd=self.path,
+            cwd=self.path.absolute(),
         )
 
     def track_paths_in_storage(self, *paths):
@@ -257,11 +245,3 @@ class Repo(object):
                 stderr=STDOUT,
                 cwd=self.path,
             )
-
-    @property
-    def state(self):
-        """Return the current state object."""
-        raise NotImplemented()  # pragma: no cover
-
-
-pass_repo = click.make_pass_decorator(Repo, ensure=True)

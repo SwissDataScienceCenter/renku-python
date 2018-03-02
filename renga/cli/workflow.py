@@ -25,7 +25,7 @@ import yaml
 from renga.models.cwl._ascwl import ascwl
 
 from ._graph import Graph
-from ._repo import pass_repo
+from ._client import pass_local_client
 
 
 @click.group()
@@ -44,10 +44,10 @@ def workflow():
     help='Write workflow to the FILE.',
 )
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_repo
-def create(repo, output_file, revision, path):
+@pass_local_client
+def create(client, output_file, revision, path):
     """Create a workflow description for a file."""
-    graph = Graph(repo)
+    graph = Graph(client)
     for p in path:
         graph.add_file(p, revision=revision)
 

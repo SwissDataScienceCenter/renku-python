@@ -22,13 +22,13 @@ import click
 from ._ascii import _format_sha1
 from ._git import with_git
 from ._graph import Graph
-from ._repo import pass_repo
+from ._client import pass_local_client
 
 
 @click.command()
 @click.option('--revision', default='HEAD')
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_repo
+@pass_local_client
 @click.pass_context
 @with_git(commit=False)
 def status(ctx, repo, revision, path):

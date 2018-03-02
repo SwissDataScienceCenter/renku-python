@@ -27,17 +27,16 @@ import yaml
 from git import IndexFile, Submodule
 
 from renga._compat import Path
+from renga.api import LocalClient
 from renga.models.cwl.command_line_tool import CommandLineTool
 from renga.models.cwl.workflow import Workflow
-
-from ._repo import Repo
 
 
 @attr.s
 class Graph(object):
     """Represent the provenance graph."""
 
-    repo = attr.ib()
+    client = attr.ib()
     G = attr.ib(default=attr.Factory(nx.DiGraph))
 
     repo_path = attr.ib(init=False)
@@ -45,9 +44,9 @@ class Graph(object):
 
     def __attrs_post_init__(self):
         """Derive basic informations."""
-        self.repo_path = self.repo.path
+        self.repo_path = self.client.path
         self.cwl_prefix = str(
-            self.repo.workflow_path.relative_to(self.repo_path)
+            self.client.workflow_path.relative_to(self.repo_path)
         )
 
     def add_node(self, commit, path, **kwargs):
@@ -72,7 +71,7 @@ class Graph(object):
 
     def find_latest_cwl(self):
         """Return the latest CWL in the repository."""
-        for commit in self.repo.git.iter_commits(paths=self.cwl_prefix):
+        for commit in self.client.git.iter_commits(paths=self.cwl_prefix):
             cwl = self.find_cwl(commit)
             if cwl:
                 return cwl
@@ -80,7 +79,7 @@ class Graph(object):
     def find_latest(self, start, path):
         """Return the latest commit for path."""
         commits = list(
-            self.repo.git.iter_commits('{0}..'.format(start), paths=path)
+            self.client.git.iter_commits('{0}..'.format(start), paths=path)
         )
         if commits:
             return commits[-1]
@@ -115,7 +114,7 @@ class Graph(object):
 
     def add_file(self, path, revision='HEAD'):
         """Add a file node to the graph."""
-        file_commits = list(self.repo.git.iter_commits(revision, paths=path))
+        file_commits = list(self.client.git.iter_commits(revision, paths=path))
 
         for commit in file_commits:
             cwl = self.find_cwl(commit)
@@ -143,13 +142,15 @@ class Graph(object):
                 original_path = original_path.resolve()
 
                 for submodule in Submodule.iter_items(
-                    self.repo.git, parent_commit=parent_commit
+                    self.client.git, parent_commit=parent_commit
                 ):
                     try:
                         subpath = original_path.relative_to(
                             Path(submodule.path).resolve()
                         )
-                        subgraph = Graph(repo=Repo(git_home=submodule.path))
+                        subgraph = Graph(
+                            client=LocalClient(path=submodule.path)
+                        )
                         subnode = subgraph.add_file(
                             str(subpath), revision=submodule.hexsha
                         )
@@ -207,8 +208,8 @@ class Graph(object):
 
     def build_status(self, revision='HEAD'):
         """Return files from the revision grouped by their status."""
-        index = self.repo.git.index if revision == 'HEAD' \
-            else IndexFile.from_tree(repo.git, revision)
+        index = self.client.git.index if revision == 'HEAD' \
+            else IndexFile.from_tree(client.git, revision)
 
         current_files = set()
 

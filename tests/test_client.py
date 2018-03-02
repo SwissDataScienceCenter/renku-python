@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,6 +20,12 @@
 import pytest
 
 import renga
+
+
+def test_local_client(base_runner):
+    """Test a local client."""
+    from renga.api.client import LocalClient
+    client = LocalClient('.')
 
 
 def test_client(renga_client, monkeypatch):

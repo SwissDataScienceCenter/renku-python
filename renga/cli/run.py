@@ -27,7 +27,7 @@ from werkzeug.utils import secure_filename
 from renga.models.cwl.command_line_tool import CommandLineToolFactory
 
 from ._git import _mapped_std_streams, with_git
-from ._repo import pass_repo
+from ._client import pass_local_client
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
@@ -38,7 +38,7 @@ from ._repo import pass_repo
     help='Allow commands without output files.'
 )
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
-@pass_repo
+@pass_local_client
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
 def run(repo, no_output, command_line):
     """Tracking work on a specific problem."""

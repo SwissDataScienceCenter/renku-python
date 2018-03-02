@@ -46,7 +46,7 @@ def raises(error):
         return not_raises()
 
 
-def dataset_creation(repo):
+def dataset_creation(client):
     """Test dataset directory tree creation."""
     # creating a dataset without an author fails
     with pytest.raises(RuntimeError):
@@ -78,7 +78,7 @@ def dataset_creation(repo):
      ('bla://', 'file', NotImplementedError)]
 )
 def test_data_add(
-    scheme, path, error, repo, data_file, directory_tree, dataset_responses
+    scheme, path, error, client, data_file, directory_tree, dataset_responses
 ):
     """Test data import."""
     with raises(error):
@@ -94,7 +94,7 @@ def test_data_add(
                 'email': 'me@example.com'
             }
         )
-        d.add_data(repo, '{}{}'.format(scheme, path))
+        d.add_data(client, '{}{}'.format(scheme, path))
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
@@ -117,11 +117,11 @@ def test_data_add(
                     'email': 'me@example.com'
                 }
             )
-            d.add_data(repo, '{}{}'.format(scheme, path), nocopy=True)
+            d.add_data(client, '{}{}'.format(scheme, path), nocopy=True)
             assert os.path.exists('data/dataset/file')
 
 
-def test_data_add_recursive(directory_tree, repo):
+def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
     d = Dataset.create(
         'dataset', authors={
@@ -129,11 +129,11 @@ def test_data_add_recursive(directory_tree, repo):
             'email': 'me@example.com'
         }
     )
-    d.add_data(repo, directory_tree.join('dir2').strpath)
+    d.add_data(client, directory_tree.join('dir2').strpath)
     assert 'dir2/file2' in d.files
 
 
-def dataset_serialization(repo, dataset, data_file):
+def dataset_serialization(client, dataset, data_file):
     """Test deserializing a dataset object."""
     with open(dataset.path / 'metadata.yml', 'r') as f:
         source = yaml.load(f)
@@ -150,11 +150,11 @@ def dataset_serialization(repo, dataset, data_file):
     assert len(d_dict['files'].values())
 
 
-def test_git_repo_import(repo, dataset, tmpdir, data_repository):
+def test_git_repo_import(client, dataset, tmpdir, data_repository):
     """Test an import from a git repository."""
     # add data from local repo
     dataset.add_data(
-        repo, os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
+        client, os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
     )
     assert os.stat('data/dataset/directory_tree/dir2/file2')
     assert 'directory_tree/dir2/file2' in dataset.files
@@ -162,7 +162,7 @@ def test_git_repo_import(repo, dataset, tmpdir, data_repository):
 
     # check that the authors are properly parsed from commits
     dataset.add_data(
-        repo, os.path.dirname(data_repository.git_dir), target='file'
+        client, os.path.dirname(data_repository.git_dir), target='file'
     )
     assert len(dataset.files['directory_tree/file'].authors) == 2
     assert all(

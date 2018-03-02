@@ -43,7 +43,7 @@ import os
 import click
 
 from ._git import set_git_home, with_git
-from ._repo import pass_repo
+from ._client import pass_local_client
 
 
 def validate_name(ctx, param, value):
@@ -78,12 +78,12 @@ def store_directory(ctx, param, value):
     default=True,
     help='Configure the file storage service.'
 )
-@pass_repo
+@pass_local_client
 @click.pass_context
 @with_git(clean=False)
 def init(ctx, repo, directory, name, force, use_external_storage):
     """Initialize a project."""
-    project_config_path = repo.init(
+    project_config_path = repo.init_repository(
         name=name, force=force, use_external_storage=use_external_storage
     )
 

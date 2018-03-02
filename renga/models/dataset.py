@@ -37,7 +37,6 @@ from attr.validators import instance_of
 from dateutil.parser import parse as parse_date
 
 from renga._compat import Path
-from renga.cli._repo import Repo
 
 from . import _jsonld as jsonld
 
@@ -213,7 +212,7 @@ class Dataset(object):
         except FileExistsError:
             raise FileExistsError('This dataset already exists.')
 
-    def add_data(self, repo, url, datadir=None, git=False, **kwargs):
+    def add_data(self, client, url, datadir=None, git=False, **kwargs):
         """Import the data into the data directory."""
         datadir = datadir or self.datadir
         git = git or check_for_git_repo(url)
@@ -223,19 +222,19 @@ class Dataset(object):
         if git:
             if isinstance(target, (str, NoneType)):
                 self.files.update(
-                    self._add_from_git(repo, self.path, url, target)
+                    self._add_from_git(client, self.path, url, target)
                 )
             else:
                 for t in target:
                     self.files.update(
-                        self._add_from_git(repo, self.path, url, t)
+                        self._add_from_git(client, self.path, url, t)
                     )
         else:
             self.files.update(
-                self._add_from_url(repo, self.path, url, **kwargs)
+                self._add_from_url(client, self.path, url, **kwargs)
             )
 
-    def _add_from_url(self, repo, path, url, nocopy=False, **kwargs):
+    def _add_from_url(self, client, path, url, nocopy=False, **kwargs):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
@@ -256,7 +255,10 @@ class Dataset(object):
                 for f in src.iterdir():
                     files.update(
                         self._add_from_url(
-                            repo, dst, f.absolute().as_posix(), nocopy=nocopy
+                            client,
+                            dst,
+                            f.absolute().as_posix(),
+                            nocopy=nocopy
                         )
                     )
                 return files
@@ -282,8 +284,8 @@ class Dataset(object):
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
-        repo.track_paths_in_storage(dst.relative_to(repo.path))
-        result = dst.relative_to(repo.path / self.path).as_posix()
+        client.track_paths_in_storage(dst.relative_to(client.path))
+        result = dst.relative_to(client.path / self.path).as_posix()
         return {
             result:
                 DatasetFile(
@@ -291,7 +293,7 @@ class Dataset(object):
                 )
         }
 
-    def _add_from_git(self, repo, path, url, target):
+    def _add_from_git(self, client, path, url, target):
         """Process adding resources from another git repository.
 
         The submodules are placed in .renga/vendors and linked
@@ -299,7 +301,7 @@ class Dataset(object):
         """
         # create the submodule
         u = parse.urlparse(url)
-        submodule_path = repo.renga_path / 'vendors' / (u.netloc or 'local')
+        submodule_path = client.renga_path / 'vendors' / (u.netloc or 'local')
 
         if u.scheme in ('', 'file'):
             # determine where is the base repo path
@@ -329,14 +331,14 @@ class Dataset(object):
             )
 
         # FIXME: do a proper check that the repos are not the same
-        if submodule_name not in (s.name for s in repo.git.submodules):
+        if submodule_name not in (s.name for s in client.git.submodules):
             # new submodule to add
-            submodule = repo.git.create_submodule(
+            submodule = client.git.create_submodule(
                 name=submodule_name, path=submodule_path.as_posix(), url=url
             )
 
         # link the target into the data directory
-        dst = repo.path / self.path / submodule_name / (target or '')
+        dst = client.path / self.path / submodule_name / (target or '')
         src = submodule_path / (target or '')
 
         if not dst.parent.exists():
@@ -348,7 +350,10 @@ class Dataset(object):
             for f in src.iterdir():
                 files.update(
                     self._add_from_git(
-                        repo, path, url, target=f.relative_to(submodule_path)
+                        client,
+                        path,
+                        url,
+                        target=f.relative_to(submodule_path)
                     )
                 )
             return files
@@ -362,7 +367,7 @@ class Dataset(object):
             for commit in git_repo.iter_commits(paths=target)
         )
 
-        result = dst.relative_to(repo.path / self.path).as_posix()
+        result = dst.relative_to(client.path / self.path).as_posix()
         return {
             result:
                 DatasetFile(

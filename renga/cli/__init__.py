@@ -31,11 +31,12 @@ execute ``renga help``:
     Check common Renga commands used in various situations.
 
     Options:
-      --version          Print version number.
-      --config FILENAME  Location of client config files.
-      --config-path      Print application config path.
-      --home <path>      Location of Renga working directory.
-      -h, --help         Show this message and exit.
+      --version            Print version number.
+      --config PATH        Location of client config files.
+      --config-path        Print application config path.
+      --path <path>        Location of a Renga repository.  [default: .]
+      --renga-home <path>  Location of Renga directory.  [default: .renga]
+      -h, --help           Show this message and exit.
 
     Commands:
       # [...]
@@ -68,13 +69,23 @@ instructs Renga to store the configuration files in your ``~/renga/config/``
 directory when running the ``init`` command.
 """
 
+import uuid
+
 import click
+import yaml
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
 from ._config import RENGA_HOME, default_config_dir, print_app_config_path
-from ._repo import get_git_home
 from ._version import print_version
+
+
+def _uuid_representer(dumper, data):
+    """Add UUID serializer for YAML."""
+    return dumper.represent_str(str(data))
+
+
+yaml.add_representer(uuid.UUID, _uuid_representer)
 
 
 @with_plugins(iter_entry_points('renga.cli'))
@@ -109,7 +120,14 @@ from ._version import print_version
     help=print_app_config_path.__doc__
 )
 @click.option(
-    '--renga',
+    '--path',
+    show_default=True,
+    metavar='<path>',
+    default='.',
+    help='Location of a Renga repository.'
+)
+@click.option(
+    '--renga-home',
     envvar='RENGA_HOME',
     show_default=True,
     metavar='<path>',
@@ -117,7 +135,7 @@ from ._version import print_version
     help='Location of Renga directory.'
 )
 @click.pass_context
-def cli(ctx, renga):
+def cli(ctx, path, renga_home):
     """Check common Renga commands used in various situations."""
 
 

@@ -30,8 +30,7 @@ import yaml
 from renga._compat import Path
 from renga.notebook import generate_launch_args, generate_notebook_token
 
-from ._graph import Graph
-from ._repo import pass_repo
+from ._client import pass_local_client
 
 _GITLAB_CI = '.gitlab-ci.yml'
 
@@ -42,7 +41,7 @@ def runner():
 
 
 @runner.command()
-@pass_repo
+@pass_local_client
 def template(repo):
     """Generate template for CI."""
     with open(repo.path / _GITLAB_CI, 'wb') as dest:
@@ -60,9 +59,11 @@ def template(repo):
 @click.option(
     '--job', envvar='RENGA_RUNNER_JOB', help='Job description in YAML.'
 )
-@pass_repo
+@pass_local_client
 def rerun(repo, run, job):
     """Re-run existing workflow or tool using CWL runner."""
+    from ._graph import Graph
+
     graph = Graph(repo)
     cwl = graph.find_latest_cwl()
 
@@ -122,7 +123,7 @@ def default_base_url():
 @click.option(
     '--token', envvar='RENGA_NOTEBOOK_TOKEN', default=generate_notebook_token
 )
-@pass_repo
+@pass_local_client
 def notebook(repo, name, network, image, base_url, repo_url, token):
     """Launch notebook in a container."""
     try:
@@ -166,7 +167,7 @@ def notebook(repo, name, network, image, base_url, repo_url, token):
 
 @runner.command()
 @click.option('--name', default=default_name)
-@pass_repo
+@pass_local_client
 def undeploy(repo, name):
     """Stop running deployment."""
     if not name:

@@ -20,12 +20,12 @@
 import click
 
 from ._git import _safe_issue_checkout, with_git
-from ._repo import pass_repo
+from ._client import pass_local_client
 
 
 @click.command()
 @click.argument('issue', type=click.INT)
-@pass_repo
+@pass_local_client
 @with_git(clean=True, up_to_date=True, commit=False)
 def workon(repo, issue):
     """Activate environment for tracking work on a specific problem."""
@@ -33,7 +33,7 @@ def workon(repo, issue):
 
 
 @click.command()
-@pass_repo
+@pass_local_client
 @with_git(clean=True, up_to_date=True, commit=False)
 def deactivate(repo):
     """Deactivate environment for tracking work on a specific problem."""
