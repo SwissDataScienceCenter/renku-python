@@ -29,9 +29,9 @@ from ._graph import Graph
 @click.option('--revision', default='HEAD')
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client
-def log(repo, revision, path):
+def log(client, revision, path):
     """Show logs for a file."""
-    graph = Graph(repo)
+    graph = Graph(client)
     for p in path:
         graph.add_file(p, revision=revision)
 

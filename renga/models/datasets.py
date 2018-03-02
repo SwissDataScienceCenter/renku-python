@@ -184,6 +184,7 @@ class Dataset(object):
         },
     )
 
+    # FIXME move to the local client
     datadir = _path_attr(default='data')
 
     @created.default
@@ -199,6 +200,7 @@ class Dataset(object):
     def meta_init(self):
         """Initialize the directories and metadata."""
         try:
+            # FIXME remove side-effects from models
             os.makedirs(self.path)
         except FileExistsError:
             raise FileExistsError('This dataset already exists.')

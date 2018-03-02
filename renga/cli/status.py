@@ -31,13 +31,13 @@ from ._graph import Graph
 @pass_local_client
 @click.pass_context
 @with_git(commit=False)
-def status(ctx, repo, revision, path):
+def status(ctx, client, revision, path):
     """Show a status of the repository."""
     paths = set(path)
-    graph = Graph(repo)
+    graph = Graph(client)
     status = graph.build_status(revision=revision)
 
-    click.echo('On branch {0}'.format(repo.git.active_branch))
+    click.echo('On branch {0}'.format(client.git.active_branch))
     if status['outdated']:
         click.echo('Files generated from outdated inputs:')
         click.echo('  (use "renga log <file>..." to see the full lineage)')

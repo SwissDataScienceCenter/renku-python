@@ -39,15 +39,15 @@ from ._git import _mapped_std_streams, with_git
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_local_client
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
-def run(repo, no_output, command_line):
+def run(client, no_output, command_line):
     """Tracking work on a specific problem."""
-    candidates = [x[0] for x in repo.git.index.entries] + \
-        repo.git.untracked_files
+    candidates = [x[0] for x in client.git.index.entries] + \
+        client.git.untracked_files
     mapped_std = _mapped_std_streams(candidates)
     factory = CommandLineToolFactory(command_line=command_line, **mapped_std)
 
-    with repo.with_workflow_storage() as wf:
-        with factory.watch(repo, no_output=no_output) as tool:
+    with client.with_workflow_storage() as wf:
+        with factory.watch(client, no_output=no_output) as tool:
             call(
                 factory.command_line,
                 cwd=os.getcwd(),

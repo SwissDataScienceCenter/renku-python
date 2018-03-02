@@ -40,9 +40,9 @@ def runner():
 
 @runner.command()
 @pass_local_client
-def template(repo):
+def template(client):
     """Generate template for CI."""
-    with open(repo.path / _GITLAB_CI, 'wb') as dest:
+    with open(client.path / _GITLAB_CI, 'wb') as dest:
         with pkg_resources.resource_stream(__name__, _GITLAB_CI) as tpl:
             dest.write(tpl.read())
 
@@ -58,11 +58,11 @@ def template(repo):
     '--job', envvar='RENGA_RUNNER_JOB', help='Job description in YAML.'
 )
 @pass_local_client
-def rerun(repo, run, job):
+def rerun(client, run, job):
     """Re-run existing workflow or tool using CWL runner."""
     from ._graph import Graph
 
-    graph = Graph(repo)
+    graph = Graph(client)
     cwl = graph.find_latest_cwl()
 
     if not cwl:
@@ -122,7 +122,7 @@ def default_base_url():
     '--token', envvar='RENGA_NOTEBOOK_TOKEN', default=generate_notebook_token
 )
 @pass_local_client
-def notebook(repo, name, network, image, base_url, repo_url, token):
+def notebook(client, name, network, image, base_url, repo_url, token):
     """Launch notebook in a container."""
     try:
         call(['docker', 'rm', '--force', name])
@@ -166,7 +166,7 @@ def notebook(repo, name, network, image, base_url, repo_url, token):
 @runner.command()
 @click.option('--name', default=default_name)
 @pass_local_client
-def undeploy(repo, name):
+def undeploy(client, name):
     """Stop running deployment."""
     if not name:
         raise click.BadOptionUsage(

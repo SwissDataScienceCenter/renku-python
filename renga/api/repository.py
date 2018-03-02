@@ -139,8 +139,7 @@ class RepositoryApiMixin(object):
             source.update(
                 **asjsonld(
                     dataset,
-                    filter=lambda attr, _: attr.name not in
-                    {'repo', 'datadir'},
+                    filter=lambda attr, _: attr.name != 'datadir',
                 )
             )
 
