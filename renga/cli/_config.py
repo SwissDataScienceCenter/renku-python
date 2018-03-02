@@ -147,7 +147,7 @@ def get_project_config_path(path=None):
 
 def find_project_config_path(path=None):
     """Find project config path."""
-    path = Path(path) if path else pathlib.Path.cwd()
+    path = Path(path) if path else Path.cwd()
     abspath = path.absolute()
 
     project_path = get_project_config_path(abspath)

@@ -22,12 +22,11 @@ import sys
 from subprocess import call
 
 import click
-from werkzeug.utils import secure_filename
 
 from renga.models.cwl.command_line_tool import CommandLineToolFactory
 
-from ._git import _mapped_std_streams, with_git
 from ._client import pass_local_client
+from ._git import _mapped_std_streams, with_git
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))

@@ -18,7 +18,6 @@
 """Model objects representing buckets and file objects."""
 
 import os
-from contextlib import contextmanager
 from datetime import datetime
 
 import requests
@@ -330,7 +329,7 @@ class FileHandle(Model):
     def write(self, data):
         """Write data to the file."""
         if not self.can_write:
-            raise error.InvalidFileOperation('File is not writable.')
+            raise errors.InvalidFileOperation('File is not writable.')
 
         self._client.api.storage_io_write(data)
 
@@ -350,7 +349,7 @@ class FileHandle(Model):
     def read(self, *args, **kwargs):
         """Read data from the file."""
         if not self.can_read:
-            raise error.InvalidFileOperation('File is not writable.')
+            raise errors.InvalidFileOperation('File is not writable.')
 
         return self._client.api.storage_io_read(*args, **kwargs)
 

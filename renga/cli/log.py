@@ -20,9 +20,9 @@
 import click
 
 from ._ascii import DAG
+from ._client import pass_local_client
 from ._echo import echo_via_pager
 from ._graph import Graph
-from ._client import pass_local_client
 
 
 @click.command()

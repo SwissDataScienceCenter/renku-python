@@ -24,8 +24,8 @@ import yaml
 
 from renga.models.cwl._ascwl import ascwl
 
-from ._graph import Graph
 from ._client import pass_local_client
+from ._graph import Graph
 
 
 @click.group()

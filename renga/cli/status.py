@@ -20,9 +20,9 @@
 import click
 
 from ._ascii import _format_sha1
+from ._client import pass_local_client
 from ._git import with_git
 from ._graph import Graph
-from ._client import pass_local_client
 
 
 @click.command()

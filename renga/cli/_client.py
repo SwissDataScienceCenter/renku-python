@@ -22,8 +22,8 @@ import uuid
 import click
 import yaml
 
-from renga.client import RengaClient
 from renga.api import LocalClient
+from renga.client import RengaClient
 
 from ._config import get_project_config_path, read_config
 from ._options import default_endpoint_from_config

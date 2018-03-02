@@ -36,17 +36,13 @@ This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
 """
 
-import datetime
-import os
-import shutil
-
 import click
-from click import BadParameter, UsageError
+from click import BadParameter
 
-from renga.models.datasets import Author, Dataset
+from renga.models.datasets import Author
 
-from ._git import with_git
 from ._client import pass_local_client
+from ._git import with_git
 
 
 @click.group()

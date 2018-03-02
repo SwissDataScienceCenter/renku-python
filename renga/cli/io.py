@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,11 +18,10 @@
 """Handle storage API."""
 
 import click
-import requests
 
 from ..models._tabulate import tabulate
 from ._client import from_config
-from ._config import config_path, with_config
+from ._config import with_config
 from ._group import OptionalGroup
 from ._options import option_endpoint
 

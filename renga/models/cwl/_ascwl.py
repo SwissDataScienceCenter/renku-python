@@ -18,7 +18,6 @@
 """Convert models to Common Workflow Language."""
 
 import os
-from collections import OrderedDict
 
 import attr
 from attr._compat import iteritems

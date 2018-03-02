@@ -19,10 +19,8 @@
 
 import datetime
 
-import attr
-
 from . import _jsonld as jsonld
-from ._datastructures import Collection, Model
+from ._datastructures import Collection
 
 
 @jsonld.s(

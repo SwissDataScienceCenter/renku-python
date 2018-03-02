@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,9 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Manage set of platform API endpoints."""
-
-import datetime
-import os
 
 import click
 

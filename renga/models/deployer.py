@@ -143,7 +143,6 @@ class Context(Model):
     @property
     def vertex_id(self):
         """Graph vertex id."""
-        labels = self.spec.get('labels', {})
         return self.labels.get('renga.execution_context.vertex_id')
 
     def run(self, inputs=None, outputs=None, **kwargs):

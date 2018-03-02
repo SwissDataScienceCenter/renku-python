@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,17 +19,13 @@
 
 from __future__ import absolute_import
 
-import codecs
-import collections
 import datetime
 import os
-import tempfile
 from binascii import hexlify
 
 import nbformat
-from notebook import notebookapp  # needed for translation setup
+from notebook import notebookapp  # noqa: F401
 from notebook.services.contents.filecheckpoints import GenericFileCheckpoints
-from notebook.services.contents.largefilemanager import LargeFileManager
 from notebook.services.contents.manager import ContentsManager
 from tornado import web
 
@@ -306,9 +302,8 @@ class RengaStorageManager(ContentsManager):
         resource = self._resolve_path(path)
         model = resource.to_model()
         if content and model['type'] == 'notebook':
-            with tempfile.NamedTemporaryFile() as t:
-                with resource._obj.open('r') as f:
-                    nb = nbformat.reads(f.read().decode('utf-8'), as_version=4)
+            with resource._obj.open('r') as f:
+                nb = nbformat.reads(f.read().decode('utf-8'), as_version=4)
 
             self.mark_trusted_cells(nb, path)
             model['content'] = nb

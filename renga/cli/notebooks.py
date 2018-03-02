@@ -17,17 +17,12 @@
 # limitations under the License.
 """Manage notebookss."""
 
-import datetime
-import json
 import os
-import sys
 from binascii import hexlify
 
 import click
 from notebook.services.config import ConfigManager
 
-import renga
-from renga import errors
 from renga.cli._options import option_endpoint
 
 from ..models._tabulate import tabulate

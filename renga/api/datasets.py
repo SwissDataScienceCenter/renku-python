@@ -18,12 +18,12 @@
 """Client for handling datasets."""
 
 import os
+import shutil
+import stat
 from urllib import error, parse
 
 import git
 import requests
-import shutil
-import stat
 
 from renga._compat import Path
 from renga.models.datasets import Author, Dataset, DatasetFile, NoneType

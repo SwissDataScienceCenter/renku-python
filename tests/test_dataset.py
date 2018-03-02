@@ -24,7 +24,6 @@ from contextlib import contextmanager
 
 import git
 import pytest
-import responses
 import yaml
 
 from renga.models.datasets import Author, Dataset, DatasetFile
@@ -58,11 +57,12 @@ def dataset_creation(client):
             'email': 'me@example.com'
         }
     )
+    assert d.name == 'dataset'
     assert os.stat('data/dataset')
 
     # creating another dataset fails by default
     with pytest.raises(FileExistsError):
-        d2 = Dataset.create(
+        Dataset.create(
             'dataset', authors={
                 'name': 'me',
                 'email': 'me@example.com'

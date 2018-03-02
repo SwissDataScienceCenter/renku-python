@@ -20,7 +20,6 @@
 from __future__ import absolute_import
 
 from notebook.base.handlers import IPythonHandler
-from notebook.services.config import ConfigManager
 from notebook.utils import url_path_join
 from openid_connect import OpenIDClient
 from tornado.web import MissingArgumentError
@@ -67,6 +66,7 @@ class OAuthHandler(IPythonHandler):
             return  # in case redirect doesn't raise
 
         token = client.request_token(base_url + self.request.path, code)
+        assert token
 
         # TODO use the real login mechanism
         self.redirect(base_url + '/?token={}'.format(self.token))

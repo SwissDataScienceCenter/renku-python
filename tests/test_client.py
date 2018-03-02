@@ -27,6 +27,9 @@ def test_local_client(base_runner):
     from renga.api.client import LocalClient
     client = LocalClient('.')
 
+    assert client.path
+    assert client.git is None
+
 
 def test_client(renga_client, monkeypatch):
     """Test client creation."""
@@ -54,7 +57,7 @@ def test_auto_refresh(projects_responses):
 
     url = 'https://example.com/api/projects'
     data = b'{"name": "test-project"}'
-    response = client.api.request('POST', url, data=data)
+    client.api.request('POST', url, data=data)
 
     assert client.api.token['access_token'] == 'accessdemo'
 

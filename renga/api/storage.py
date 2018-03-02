@@ -100,7 +100,7 @@ class FilesApiMixin(object):
 
         .. note:: Use only with ``access_token`` issued by storage service.
         """
-        resp = self.post(
+        self.post(
             self._url('/api/storage/io/write'),
             data=data,
             headers={'Content-Type': 'application/octet-stream'}

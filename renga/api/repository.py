@@ -18,17 +18,15 @@
 """Client for handling a local repository."""
 
 import datetime
-import os
-import shlex
 import uuid
 from contextlib import contextmanager
 from subprocess import PIPE, STDOUT, call
 
 import attr
-import click
 import filelock
 import yaml
-from git import Repo as GitRepo, InvalidGitRepositoryError
+from git import InvalidGitRepositoryError
+from git import Repo as GitRepo
 from werkzeug.utils import secure_filename
 
 from renga._compat import Path

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,17 +17,10 @@
 # limitations under the License.
 """Print useful ``RENGA`` environment variables that can be sourced."""
 
-import sys
-
 import click
-import requests
 
-from renga import APIClient
-from renga.api.authorization import LegacyApplicationClient
-
-from ._client import from_config
-from ._config import config_path, with_config
-from ._options import argument_endpoint, default_endpoint
+from ._config import with_config
+from ._options import default_endpoint
 
 
 @click.command()

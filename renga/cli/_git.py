@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,14 +18,11 @@
 """Utility functions for managing the underling Git repository."""
 
 import os
-import subprocess
 import sys
 from contextlib import contextmanager
 
 import click
 from git import Repo
-
-from renga._compat import Path
 
 GIT_KEY = 'renga.git'
 

@@ -27,11 +27,9 @@ from subprocess import call
 
 import git
 import pytest
-import responses
 import yaml
 
 from renga import __version__, cli
-from renga.cli._config import read_config, write_config
 from renga.models.cwl.workflow import Workflow
 
 

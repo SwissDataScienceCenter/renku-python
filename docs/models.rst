@@ -24,7 +24,7 @@ Data abstractions.
 Datasets
 --------
 
-.. py:module:: renga.models.dataset
+.. py:module:: renga.models.datasets
 
 Manage datasets and their metadata.
 

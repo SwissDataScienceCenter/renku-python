@@ -17,7 +17,6 @@
 # limitations under the License.
 """Support JSON-LD context in models."""
 
-import datetime
 from copy import deepcopy
 
 import attr

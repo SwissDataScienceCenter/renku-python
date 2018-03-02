@@ -18,7 +18,6 @@
 """Simplify running of CI scripts."""
 
 import os
-import sys
 import tempfile
 import uuid
 from subprocess import call
@@ -27,7 +26,6 @@ import click
 import pkg_resources
 import yaml
 
-from renga._compat import Path
 from renga.notebook import generate_launch_args, generate_notebook_token
 
 from ._client import pass_local_client
@@ -128,7 +126,7 @@ def notebook(repo, name, network, image, base_url, repo_url, token):
     """Launch notebook in a container."""
     try:
         call(['docker', 'rm', '--force', name])
-    except:
+    except Exception:
         pass
 
     args = [

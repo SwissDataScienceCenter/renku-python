@@ -42,8 +42,8 @@ import os
 
 import click
 
-from ._git import set_git_home, with_git
 from ._client import pass_local_client
+from ._git import set_git_home, with_git
 
 
 def validate_name(ctx, param, value):

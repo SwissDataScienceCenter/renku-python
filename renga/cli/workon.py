@@ -19,8 +19,8 @@
 
 import click
 
-from ._git import _safe_issue_checkout, with_git
 from ._client import pass_local_client
+from ._git import _safe_issue_checkout, with_git
 
 
 @click.command()

@@ -19,7 +19,6 @@
 
 from __future__ import absolute_import, print_function
 
-import io
 import json
 import os
 import shutil
@@ -683,6 +682,7 @@ def project(base_runner):
     with base_runner.isolated_filesystem() as project_path:
         os.makedirs('data')
         result = base_runner.invoke(cli.cli, ['init', '.'])
+        assert result.exit_code == 0
         yield project_path
 
 

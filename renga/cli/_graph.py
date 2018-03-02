@@ -209,7 +209,7 @@ class Graph(object):
     def build_status(self, revision='HEAD'):
         """Return files from the revision grouped by their status."""
         index = self.client.git.index if revision == 'HEAD' \
-            else IndexFile.from_tree(client.git, revision)
+            else IndexFile.from_tree(self.client.git, revision)
 
         current_files = set()
 
