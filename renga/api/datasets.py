@@ -20,6 +20,7 @@
 import os
 import shutil
 import stat
+import warnings
 from contextlib import contextmanager
 from urllib import error, parse
 
@@ -176,6 +177,7 @@ class DatasetsApiMixin(object):
         submodule_path = self.renga_path / 'vendors' / (u.netloc or 'local')
 
         if u.scheme in ('', 'file'):
+            warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path
             r = git.Repo(url, search_parent_directories=True)
             src_repo_path = Path(r.git_dir).parent
