@@ -18,6 +18,7 @@
 """Simplify running of CI scripts."""
 
 import os
+import sys
 import tempfile
 import uuid
 from subprocess import call
@@ -63,10 +64,12 @@ def rerun(client, run, job):
     from ._graph import Graph
 
     graph = Graph(client)
+    # TODO find tool in branch or merge-request range.
     cwl = graph.find_latest_cwl()
 
     if not cwl:
-        raise click.ClickException('No tool was found.')
+        click.secho('No tool was found.', fg='red', file=sys.stderr)
+        return
 
     try:
         args = ['cwl-runner', cwl]
@@ -80,7 +83,7 @@ def rerun(client, run, job):
                 yaml.dump(yaml.load(job), stream=fp, encoding='utf-8')
 
         if run:
-            call(args, cwd=os.getcwd())
+            return call(args, cwd=os.getcwd())
     finally:
         if job:
             os.unlink(job_file.name)
