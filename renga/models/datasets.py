@@ -112,7 +112,10 @@ class DatasetFile(object):
     """Represent a file in a dataset."""
 
     path = _path_attr()
-    origin = attr.ib(converter=lambda x: str(x))
+    url = jsonld.ib(
+        default=None,
+        context='http://schema.org/url',
+    )
     authors = jsonld.ib(
         default=attr.Factory(set),
         converter=_deserialize_authors,

@@ -156,7 +156,7 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 )
 def test_author_parse(authors, data_file):
     """Test that different options for specifying authors work."""
-    f = DatasetFile('file', origin=str(data_file), authors=authors)
+    f = DatasetFile('file', authors=authors)
     assert Author(name='me', email='me@example.com') in f.authors
 
     # email check
@@ -165,4 +165,4 @@ def test_author_parse(authors, data_file):
 
     # authors must be a set or list of dicts or Author
     with pytest.raises(ValueError):
-        f = DatasetFile('file', origin=str(data_file), authors=['name'])
+        f = DatasetFile('file', authors=['name'])

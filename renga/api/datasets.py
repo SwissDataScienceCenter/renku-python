@@ -145,6 +145,8 @@ class DatasetsApiMixin(object):
             else:
                 shutil.copy(src, dst)
 
+            # Do not expose local paths.
+            src = None
         else:
             try:
                 response = requests.get(url)
@@ -162,7 +164,10 @@ class DatasetsApiMixin(object):
         return {
             result:
                 DatasetFile(
-                    result, url, authors=dataset.authors, dataset=dataset.name
+                    path=result,
+                    url=url,
+                    authors=dataset.authors,
+                    dataset=dataset.name,
                 )
         }
 
@@ -221,6 +226,7 @@ class DatasetsApiMixin(object):
         if src.is_dir():
             files = {}
             os.mkdir(dst)
+            # FIXME get all files from submodule index
             for f in src.iterdir():
                 files.update(
                     self._add_from_git(
@@ -243,10 +249,19 @@ class DatasetsApiMixin(object):
 
         dataset_path = self.path / self.datadir / dataset.name
         result = dst.relative_to(dataset_path).as_posix()
+
+        if u.scheme in ('', 'file'):
+            url = None
+        else:
+            url = '{}/{}'.format(url, target)
+
         return {
             result:
                 DatasetFile(
-                    result, '{}/{}'.format(url, target), authors=authors
+                    path=result,
+                    url=url,
+                    authors=authors,
+                    dataset=dataset.name,  # TODO detect original dataset
                 )
         }
 
