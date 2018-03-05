@@ -18,8 +18,11 @@
 """Graph builder."""
 
 import os
+import pickle
+from functools import wraps
 from itertools import groupby
 from operator import itemgetter
+from shutil import rmtree
 
 import attr
 import networkx as nx
@@ -30,6 +33,53 @@ from renga._compat import Path
 from renga.api import LocalClient
 from renga.models.cwl.command_line_tool import CommandLineTool
 from renga.models.cwl.workflow import Workflow
+
+
+def with_file_cache(f):
+    """Build cache of graph ancestors."""
+    # noqa: D202
+
+    @wraps(f)
+    def decorator(self, commit, path, **kwargs):
+        """Write result to the cache."""
+        key = (str(commit), path)
+
+        if key in self.G.nodes:
+            return key
+
+        cache_path = self.client.cache_path / path / str(commit)
+
+        if not cache_path.exists():
+            cache_path.mkdir(parents=True)
+
+        ancestors_path = cache_path / 'graph.gpickle'
+        root_path = cache_path / 'root.pickle'
+        if not ancestors_path.exists() or not root_path.exists():
+            result = f(self, commit, path, **kwargs)
+
+            nx.write_gpickle(
+                self.G.subgraph(nx.ancestors(self.G, result) |
+                                {result}).copy(), str(ancestors_path)
+            )
+            with open(root_path, 'wb') as fp:
+                pickle.dump(key, fp)
+        else:
+            try:
+                G = nx.read_gpickle(str(ancestors_path))
+
+                for c, p in G.nodes:
+                    G.nodes[(c, p)]['latest'] = self.find_latest(c, p)
+
+                with open(root_path, 'rb') as fp:
+                    result = pickle.load(fp)
+                self.G = nx.compose(G, self.G)
+            except Exception:
+                rmtree(str(cache_path))
+                result = f(self, commit, path, **kwargs)
+
+        return result
+
+    return decorator
 
 
 @attr.s
@@ -79,7 +129,11 @@ class Graph(object):
     def find_latest(self, start, path):
         """Return the latest commit for path."""
         commits = list(
-            self.client.git.iter_commits('{0}..'.format(start), paths=path)
+            self.client.git.iter_commits(
+                '{0}..'.format(start),
+                paths=path,
+                max_count=1,
+            )
         )
         if commits:
             return commits[-1]
@@ -95,6 +149,7 @@ class Graph(object):
                     os.path.normpath(basedir / input_.default.path), input_.id
                 )
 
+    @with_file_cache
     def add_tool(self, commit, path):
         """Add a tool and its dependencies to the graph."""
         data = (commit.tree / path).data_stream.read()
@@ -114,9 +169,9 @@ class Graph(object):
 
     def add_file(self, path, revision='HEAD'):
         """Add a file node to the graph."""
-        file_commits = list(self.client.git.iter_commits(revision, paths=path))
+        root_commit = None
 
-        for commit in file_commits:
+        for commit in self.client.git.iter_commits(revision, paths=path):
             cwl = self.find_cwl(commit)
             if cwl is not None:
                 file_key = self.add_node(commit, path)
@@ -127,9 +182,12 @@ class Graph(object):
                 self.G.add_edge(tool_key, file_key, id=output_id)
                 return file_key
 
-        if file_commits:
+            if root_commit is None:
+                root_commit = commit
+
+        if root_commit:
             #: Does not have a parent CWL.
-            root_node = self.add_node(file_commits[0], path)
+            root_node = self.add_node(root_commit, path)
             parent_commit, parent_path = root_node
 
             #: Capture information about the submodule in a submodule.

@@ -18,6 +18,7 @@
 """Client for handling a local repository."""
 
 import datetime
+import os
 import uuid
 from contextlib import contextmanager
 from subprocess import PIPE, STDOUT, call
@@ -44,6 +45,9 @@ class RepositoryApiMixin(object):
     renga_path = attr.ib(init=False)
     """Store a ``Path`` instance of the Renga folder."""
 
+    cache_path = attr.ib(init=False)
+    """Store a ``Path`` instance of the cache folder."""
+
     git = attr.ib(init=False)
     """Store an instance of the Git repository."""
 
@@ -65,6 +69,7 @@ class RepositoryApiMixin(object):
 
         path.relative_to(path)
         self.renga_path = path
+        self.cache_path = path / 'cache'
 
         #: Create an instance of a Git repository for the given path.
         try:
@@ -168,6 +173,12 @@ class RepositoryApiMixin(object):
                     self.renga_path.relative_to(self.path)
                     .with_suffix(self.LOCK_SUFFIX)
                 ) + '\n'
+            )
+            gitignore.write(
+                '{0}{1}\n'.format(
+                    self.cache_path.relative_to(self.path),
+                    os.path.sep,
+                )
             )
 
         with self.with_metadata() as metadata:
