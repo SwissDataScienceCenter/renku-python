@@ -18,7 +18,6 @@
 """Client for handling a local repository."""
 
 import datetime
-import errno
 import uuid
 from contextlib import contextmanager
 from subprocess import PIPE, STDOUT, call
@@ -151,10 +150,13 @@ class RepositoryApiMixin(object):
         self, name=None, force=False, use_external_storage=True
     ):
         """Initialize a local Renga repository."""
-        try:
+        path = self.path.absolute()
+        if force:
             self.renga_path.mkdir(parents=True, exist_ok=force)
-        except OSError as e:
-            if e.errno == errno.EEXIST:
+            if self.git is None:
+                self.git = GitRepo.init(str(path))
+        else:
+            if self.renga_path.exists():
                 raise InvalidFileOperation(
                     'You are trying to initialize a Renga '
                     'repository in an already existing Renga repository. '
@@ -162,15 +164,13 @@ class RepositoryApiMixin(object):
                     'try again with the `--force` flag.'
                 )
             else:
-                raise
+                self.renga_path.mkdir(parents=True, exist_ok=force)
 
-        path = self.path.absolute()
-        if force:
-            if self.git is None:
-                self.git = GitRepo.init(str(path))
-        else:
             if self.git is not None:
                 # Cleanup
+                # The only way in which `self.renga_path` can exist now if
+                # it was created in the previous conditional. Hence its
+                # safe to delete all the contents of the directory.
                 self.renga_path.rmdir()
                 raise QuestionableGitOperation(
                     'Git repo already exists. Please use the `--force` flag '
