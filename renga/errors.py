@@ -71,5 +71,9 @@ class InvalidFileOperation(RengaException):
     """Raise when trying to perfrom invalid file operation."""
 
 
+class UsageError(RengaException):
+    """Raise in case of unintended usage of certain function calls."""
+
+
 class NotFound(APIError):
     """Raise when an API object is not found."""

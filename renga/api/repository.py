@@ -30,6 +30,7 @@ from git import Repo as GitRepo
 from werkzeug.utils import secure_filename
 
 from renga._compat import Path
+from renga.errors import UsageError
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
@@ -149,15 +150,35 @@ class RepositoryApiMixin(object):
         self, name=None, force=False, use_external_storage=True
     ):
         """Initialize a local Renga repository."""
-        self.renga_path.mkdir(parents=True, exist_ok=force)
-
         path = self.path.absolute()
         if force:
+            self.renga_path.mkdir(parents=True, exist_ok=force)
             if self.git is None:
                 self.git = GitRepo.init(str(path))
         else:
-            assert self.git is None, 'Git repo already exists.'
-            self.git = GitRepo.init(str(path))
+            if self.renga_path.exists():
+                raise UsageError(
+                    'You are trying to initialize a Renga '
+                    'repository in an already existing Renga repository. '
+                    'If you are sure you know what you are doing, please '
+                    'try again with the `--force` flag.'
+                )
+            else:
+                self.renga_path.mkdir(parents=True, exist_ok=force)
+
+            if self.git is not None:
+                # Cleanup
+                # The only way in which `self.renga_path` can exist now if
+                # it was created in the previous conditional. Hence its
+                # safe to delete all the contents of the directory.
+                self.renga_path.rmdir()
+                raise UsageError(
+                    'Git repo already exists. Please use the `--force` flag '
+                    'if you want to force initialize a Renga repository '
+                    'on top of your existing git repository.'
+                )
+            else:
+                self.git = GitRepo.init(str(path))
 
         self.git.description = name or path.name
 
