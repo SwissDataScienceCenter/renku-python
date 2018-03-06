@@ -30,6 +30,7 @@ from git import Repo as GitRepo
 from werkzeug.utils import secure_filename
 
 from renga._compat import Path
+from renga.errors import QuestionableGitOperation
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
@@ -156,8 +157,15 @@ class RepositoryApiMixin(object):
             if self.git is None:
                 self.git = GitRepo.init(str(path))
         else:
-            assert self.git is None, 'Git repo already exists.'
-            self.git = GitRepo.init(str(path))
+            if self.git is not None:
+                # Cleanup
+                self.renga_path.rmdir()
+                raise QuestionableGitOperation(
+                    'Git repo already exists. Please use the `--force` flag ' +
+                    'if you want to force initialize a Renga repository ' +
+                    'on top of your existing git repository.')
+            else:
+                self.git = GitRepo.init(str(path))
 
         self.git.description = name or path.name
 
