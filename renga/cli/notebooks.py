@@ -21,7 +21,6 @@ import os
 from binascii import hexlify
 
 import click
-from notebook.services.config import ConfigManager
 
 from renga.cli._options import option_endpoint
 
@@ -52,6 +51,8 @@ def notebooks():
 )
 def configure(url, client_id):
     """Configure the Jupyter server extension."""
+    from notebook.services.config import ConfigManager
+
     cm = ConfigManager()
     cm.update('renga.notebook.oic', {
         'client_id': client_id,

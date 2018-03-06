@@ -77,6 +77,7 @@ install_requires = [
     'gitpython>=2.1.8',
     'networkx>=2.1',
     'pyld>=0.8.2',
+    'python-dateutil>=2.6.1',
     'requests-oauthlib>=0.8.0',
     'requests>=2.18.4',
     'tabulate>=0.7.7',

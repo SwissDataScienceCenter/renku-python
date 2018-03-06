@@ -27,8 +27,6 @@ import click
 import pkg_resources
 import yaml
 
-from renga.notebook import generate_launch_args, generate_notebook_token
-
 from ._client import pass_local_client
 
 _GITLAB_CI = '.gitlab-ci.yml'
@@ -121,12 +119,13 @@ def default_base_url():
 )
 @click.option('--base-url', default=default_base_url)
 @click.option('--repo-url', envvar='CI_REPOSITORY_URL')
-@click.option(
-    '--token', envvar='RENGA_NOTEBOOK_TOKEN', default=generate_notebook_token
-)
+@click.option('--token', envvar='RENGA_NOTEBOOK_TOKEN', default=None)
 @pass_local_client
 def notebook(client, name, network, image, base_url, repo_url, token):
     """Launch notebook in a container."""
+    from renga.notebook import generate_launch_args, generate_notebook_token
+
+    token = token if token is not None else generate_notebook_token()
     try:
         call(['docker', 'rm', '--force', name])
     except Exception:
