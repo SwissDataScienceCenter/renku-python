@@ -22,6 +22,37 @@ import attr
 from .types import File
 
 
+def convert_default(value):
+    """Convert a default value."""
+    if isinstance(value, dict):
+        return File.from_cwl(value)
+    return value
+
+
+@attr.s
+class _IdMixin(object):
+    """Define id field."""
+
+    id = attr.ib()
+
+
+@attr.s
+class Parameter(object):
+    """Define an input or output parameter to a process."""
+
+    streamable = attr.ib(default=None, converter=bool)
+
+
+@attr.s
+class InputParameter(_IdMixin, Parameter):
+    """An input parameter."""
+
+    type = attr.ib(default='string')
+    description = attr.ib(default=None)
+    default = attr.ib(default=None, converter=convert_default)
+    inputBinding = attr.ib(default=None)
+
+
 @attr.s
 class CommandLineBinding(object):
     """Define the binding behavior when building the command line."""
@@ -34,28 +65,26 @@ class CommandLineBinding(object):
     shellQuote = attr.ib(default=True, type=bool)
 
 
-def convert_default(value):
-    """Convert a default value."""
-    if isinstance(value, dict):
-        return File.from_cwl(value)
-    return value
-
-
 @attr.s
-class CommandInputParameter(object):
+class CommandInputParameter(InputParameter):
     """An input parameter for a CommandLineTool."""
 
-    id = attr.ib()
-    type = attr.ib(default='string')
-    description = attr.ib(default=None)
-    default = attr.ib(default=None, converter=convert_default)
     inputBinding = attr.ib(
         default=None,
         converter=lambda data: CommandLineBinding(**data) if not isinstance(
             data, CommandLineBinding
         ) and data is not None else data,
     )
-    streamable = attr.ib(default=None)
+
+
+@attr.s
+class OutputParameter(_IdMixin, Parameter):
+    """An output parameter."""
+
+    type = attr.ib(default='string')
+    description = attr.ib(default=None)
+    format = attr.ib(default=None)
+    outputBinding = attr.ib(default=None)
 
 
 @attr.s
@@ -67,17 +96,19 @@ class CommandOutputBinding(object):
 
 
 @attr.s
-class CommandOutputParameter(object):
-    """An input parameter for a CommandLineTool."""
+class CommandOutputParameter(OutputParameter):
+    """Define an output parameter for a CommandLineTool."""
 
-    id = attr.ib()
-    type = attr.ib(default='string')
-    description = attr.ib(default=None)
-    format = attr.ib(default=None)
     outputBinding = attr.ib(
         default=None,
         converter=lambda data: CommandOutputBinding(**data) if not isinstance(
             data, CommandOutputBinding
         ) and data is not None else data,
     )
-    streamable = attr.ib(default=None)
+
+
+@attr.s
+class WorkflowOutputParameter(OutputParameter):
+    """Define an output parameter for a Workflow."""
+
+    outputSource = attr.ib(default=None)

@@ -29,6 +29,7 @@ from git import IndexFile, Submodule
 from renga._compat import Path
 from renga.api import LocalClient
 from renga.models.cwl.command_line_tool import CommandLineTool
+from renga.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renga.models.cwl.workflow import Workflow
 
 
@@ -297,11 +298,13 @@ class Graph(object):
                 input_mapping = ins.get(input_.id)
                 if input_mapping is None:
                     input_id = 'input_{0}'.format(input_index)
-                    workflow.inputs.append({
-                        'id': input_id,
-                        'type': input_.type,
-                        'default': input_.default,
-                    })
+                    workflow.inputs.append(
+                        InputParameter(
+                            id=input_id,
+                            type=input_.type,
+                            default=input_.default,
+                        )
+                    )
                     input_index += 1
                     ins[input_.id] = input_id
 
@@ -314,10 +317,12 @@ class Graph(object):
 
         for index, key in enumerate(self._output_keys):
             output_id = 'output_{0}'.format(index)
-            workflow.outputs.append({
-                'id': output_id,
-                'type': 'File',
-                'outputSource': self._source_name(key),
-            })
+            workflow.outputs.append(
+                WorkflowOutputParameter(
+                    id=output_id,
+                    type='File',
+                    outputSource=self._source_name(key),
+                )
+            )
 
         return workflow

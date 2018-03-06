@@ -22,6 +22,7 @@ import uuid
 import attr
 
 from ._ascwl import CWLClass, mapped
+from .parameter import WorkflowOutputParameter
 from .process import Process
 
 
@@ -40,6 +41,7 @@ class WorkflowStep(object):
 class Workflow(Process, CWLClass):
     """Define a workflow representation."""
 
+    outputs = mapped(WorkflowOutputParameter)
     steps = mapped(WorkflowStep)
 
     def add_step(self, **kwargs):
