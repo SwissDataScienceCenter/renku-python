@@ -163,7 +163,8 @@ class RepositoryApiMixin(object):
                 raise QuestionableGitOperation(
                     'Git repo already exists. Please use the `--force` flag ' +
                     'if you want to force initialize a Renga repository ' +
-                    'on top of your existing git repository.')
+                    'on top of your existing git repository.'
+                )
             else:
                 self.git = GitRepo.init(str(path))
 

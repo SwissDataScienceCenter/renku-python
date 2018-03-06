@@ -75,6 +75,10 @@ def test_init(base_runner):
     result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code != 0
 
+    # 4. in case of init failure because of existing .git folder
+    #    .renga directory should not exist
+    assert not os.path.exists(os.path.join('test-project', '.renga'))
+
     result = runner.invoke(cli.cli, ['init', '--force'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.git'))

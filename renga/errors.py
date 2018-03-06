@@ -70,8 +70,10 @@ class UnexpectedStatusCode(APIError):
 class InvalidFileOperation(RengaException):
     """Raise when trying to perfrom invalid file operation."""
 
+
 class QuestionableGitOperation(RengaException):
-    """Raise when trying to perform questionable/conflicting git operation"""
+    """Raise when trying to perform questionable/conflicting git operation."""
+
 
 class NotFound(APIError):
     """Raise when an API object is not found."""
