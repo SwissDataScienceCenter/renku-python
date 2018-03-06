@@ -30,7 +30,7 @@ from git import Repo as GitRepo
 from werkzeug.utils import secure_filename
 
 from renga._compat import Path
-from renga.errors import InvalidFileOperation, QuestionableGitOperation
+from renga.errors import UsageError
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
@@ -157,7 +157,7 @@ class RepositoryApiMixin(object):
                 self.git = GitRepo.init(str(path))
         else:
             if self.renga_path.exists():
-                raise InvalidFileOperation(
+                raise UsageError(
                     'You are trying to initialize a Renga '
                     'repository in an already existing Renga repository. '
                     'If you are sure you know what you are doing, please '
@@ -172,7 +172,7 @@ class RepositoryApiMixin(object):
                 # it was created in the previous conditional. Hence its
                 # safe to delete all the contents of the directory.
                 self.renga_path.rmdir()
-                raise QuestionableGitOperation(
+                raise UsageError(
                     'Git repo already exists. Please use the `--force` flag '
                     'if you want to force initialize a Renga repository '
                     'on top of your existing git repository.'

@@ -71,8 +71,8 @@ class InvalidFileOperation(RengaException):
     """Raise when trying to perfrom invalid file operation."""
 
 
-class QuestionableGitOperation(RengaException):
-    """Raise when trying to perform questionable/conflicting git operation."""
+class UsageError(RengaException):
+    """Raise in case of unintended usage of certain function calls."""
 
 
 class NotFound(APIError):
