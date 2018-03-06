@@ -156,9 +156,9 @@ class RepositoryApiMixin(object):
         except OSError as e:
             if e.errno == errno.EEXIST:
                 raise InvalidFileOperation(
-                    'You are trying to initialize a Renga ' +
-                    'repository in an already existing Renga repository. ' +
-                    'If you are sure you know what you are doing, please ' +
+                    'You are trying to initialize a Renga '
+                    'repository in an already existing Renga repository. '
+                    'If you are sure you know what you are doing, please '
                     'try again with the `--force` flag.'
                 )
             else:
@@ -173,8 +173,8 @@ class RepositoryApiMixin(object):
                 # Cleanup
                 self.renga_path.rmdir()
                 raise QuestionableGitOperation(
-                    'Git repo already exists. Please use the `--force` flag ' +
-                    'if you want to force initialize a Renga repository ' +
+                    'Git repo already exists. Please use the `--force` flag '
+                    'if you want to force initialize a Renga repository '
                     'on top of your existing git repository.'
                 )
             else:
