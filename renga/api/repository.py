@@ -18,6 +18,7 @@
 """Client for handling a local repository."""
 
 import datetime
+import errno
 import uuid
 from contextlib import contextmanager
 from subprocess import PIPE, STDOUT, call
@@ -30,7 +31,7 @@ from git import Repo as GitRepo
 from werkzeug.utils import secure_filename
 
 from renga._compat import Path
-from renga.errors import QuestionableGitOperation
+from renga.errors import InvalidFileOperation, QuestionableGitOperation
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
@@ -150,7 +151,18 @@ class RepositoryApiMixin(object):
         self, name=None, force=False, use_external_storage=True
     ):
         """Initialize a local Renga repository."""
-        self.renga_path.mkdir(parents=True, exist_ok=force)
+        try:
+            self.renga_path.mkdir(parents=True, exist_ok=force)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                raise InvalidFileOperation(
+                    'You are trying to initialize a Renga ' +
+                    'repository in an already existing Renga repository. ' +
+                    'If you are sure you know what you are doing, please ' +
+                    'try again with the `--force` flag.'
+                )
+            else:
+                raise
 
         path = self.path.absolute()
         if force:
