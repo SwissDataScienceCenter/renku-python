@@ -63,10 +63,10 @@ def test_data_add(
             path = str(directory_tree)
 
         with client.with_dataset('dataset') as d:
-            d.authors = {
+            d.authors = [{
                 'name': 'me',
                 'email': 'me@example.com',
-            }
+            }]
             client.add_data_to_dataset(d, '{}{}'.format(scheme, path))
 
         with open('data/dataset/file') as f:
@@ -84,10 +84,10 @@ def test_data_add(
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
             with client.with_dataset('dataset') as d:
-                d.authors = {
+                d.authors = [{
                     'name': 'me',
                     'email': 'me@example.com',
-                }
+                }]
                 client.add_data_to_dataset(
                     d, '{}{}'.format(scheme, path), nocopy=True
                 )
@@ -97,10 +97,10 @@ def test_data_add(
 def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
     with client.with_dataset('dataset') as d:
-        d.authors = {
+        d.authors = [{
             'name': 'me',
             'email': 'me@example.com',
-        }
+        }]
         client.add_data_to_dataset(d, directory_tree.join('dir2').strpath)
     assert 'dir2/file2' in d.files
 
@@ -146,12 +146,11 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 
 @pytest.mark.parametrize(
     'authors', [
-        Author(name='me', email='me@example.com'),
-        set([Author(name='me', email='me@example.com')]),
-        [Author(name='me', email='me@example.com')], {
+        [Author(name='me', email='me@example.com')],
+        [{
             'name': 'me',
-            'email': 'me@example.com'
-        }
+            'email': 'me@example.com',
+        }],
     ]
 )
 def test_author_parse(authors, data_file):

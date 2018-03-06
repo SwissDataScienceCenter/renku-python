@@ -88,23 +88,13 @@ class Author(object):
             email=git_config.get('user', 'email'),
         )
 
-
-def _deserialize_authors(authors):
-    """Deserialize authors in various forms."""
-    if isinstance(authors, dict):
-        return set([Author(**authors)])
-    elif isinstance(authors, Author):
-        return set([authors])
-    elif isinstance(authors, (set, list)):
-        if all(isinstance(x, dict) for x in authors):
-            return _deserialize_set(authors, Author)
-        elif all(isinstance(x, Author) for x in authors):
-            return authors
-
-    raise ValueError(
-        'Authors must be a dict or '
-        'set or list of dicts or Author.'
-    )
+    @classmethod
+    def from_commit(cls, commit):
+        """Create an instance from a Git commit."""
+        return cls(
+            name=commit.author.name,
+            email=commit.author.email,
+        )
 
 
 @jsonld.s
@@ -116,10 +106,7 @@ class DatasetFile(object):
         default=None,
         context='http://schema.org/url',
     )
-    authors = jsonld.ib(
-        default=attr.Factory(set),
-        converter=_deserialize_authors,
-    )
+    authors = jsonld.container.list(Author)
     dataset = attr.ib(default=None)
     added = jsonld.ib(context='http://schema.org/dateCreated', )
 
@@ -154,7 +141,7 @@ class Dataset(object):
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
 
-    name = jsonld.ib(type='string', context='foaf:name')
+    name = jsonld.ib(type='string', context='dcterms:name')
 
     created = jsonld.ib(
         converter=_parse_date,
@@ -169,22 +156,8 @@ class Dataset(object):
             '@type': '@id',
         },
     )
-    authors = jsonld.ib(
-        default=attr.Factory(set),  # FIXME should respect order
-        converter=_deserialize_authors,
-        context={
-            '@id': Author._jsonld_type,
-            '@container': '@list',
-        },
-    )
-    files = jsonld.ib(
-        default=attr.Factory(dict),
-        converter=_deserialize_files,
-        context={
-            '@id': DatasetFile._jsonld_type,
-            '@container': '@index',
-        },
-    )
+    authors = jsonld.container.list(Author)
+    files = jsonld.container.index(DatasetFile)
 
     @created.default
     def _now(self):

@@ -242,10 +242,11 @@ class DatasetsApiMixin(object):
 
         # grab all the authors from the commit history
         git_repo = git.Repo(submodule_path.absolute().as_posix())
-        authors = set(
-            Author(name=commit.author.name, email=commit.author.email)
-            for commit in git_repo.iter_commits(paths=target)
-        )
+        authors = []
+        for commit in git_repo.iter_commits(paths=target):
+            author = Author.from_commit(commit)
+            if author not in authors:
+                authors.append(author)
 
         dataset_path = self.path / self.datadir / dataset.name
         result = dst.relative_to(dataset_path).as_posix()
