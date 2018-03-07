@@ -83,9 +83,15 @@ def store_directory(ctx, param, value):
 @with_git(clean=False)
 def init(ctx, repo, directory, name, force, use_external_storage):
     """Initialize a project."""
-    project_config_path = repo.init_repository(
-        name=name, force=force, use_external_storage=use_external_storage
-    )
+    try:
+        project_config_path = repo.init_repository(
+            name=name, force=force, use_external_storage=use_external_storage
+        )
+    except FileExistsError:
+        raise click.UsageError(
+            'Renga repository is not empty. '
+            'Please use --force flag to use the directory as Renga repository.'
+        )
 
     from .runner import template
     ctx.invoke(template)
