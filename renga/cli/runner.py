@@ -120,8 +120,9 @@ def default_base_url():
 @click.option('--base-url', default=default_base_url)
 @click.option('--repo-url', envvar='CI_REPOSITORY_URL')
 @click.option('--token', envvar='RENGA_NOTEBOOK_TOKEN', default=None)
+@click.option('--branch', envvar='CI_COMMIT_REF_NAME', default='master')
 @pass_local_client
-def notebook(client, name, network, image, base_url, repo_url, token):
+def notebook(client, name, network, image, base_url, repo_url, token, branch):
     """Launch notebook in a container."""
     from renga.notebook import generate_launch_args, generate_notebook_token
 
@@ -160,6 +161,9 @@ def notebook(client, name, network, image, base_url, repo_url, token):
             name,
             'git',
             'clone',
+            '-b',
+            branch,
+            '--single-branch',
             repo_url,
             os.path.join('/home/jovyan/', base_url.lstrip('/')),
         ])
