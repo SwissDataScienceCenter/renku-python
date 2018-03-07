@@ -63,6 +63,7 @@ def _deserialize_dict(d, cls):
         'scoro': 'http://purl.org/spar/scoro/',
     },
     frozen=True,
+    slots=True,
 )
 class Author(object):
     """Represent the author of a resource."""
@@ -97,7 +98,10 @@ class Author(object):
         )
 
 
-@jsonld.s
+@jsonld.s(
+    type='http://schema.org/DigitalDocument',
+    slots=True,
+)
 class DatasetFile(object):
     """Represent a file in a dataset."""
 

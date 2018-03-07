@@ -17,6 +17,7 @@
 # limitations under the License.
 """Support JSON-LD context in models."""
 
+import json
 from copy import deepcopy
 
 import attr
@@ -29,6 +30,16 @@ from renga._compat import Path
 
 KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
+
+DOC_TPL = (
+    "{cls.__doc__}\n\n"
+    "**Type:**\n\n"
+    ".. code-block:: json\n\n"
+    "    \"{jsonld_cls._jsonld_type}\"\n\n"
+    "**Context:**\n\n"
+    ".. code-block:: json\n\n"
+    "{context}\n"
+)
 
 make_type = type
 
@@ -74,10 +85,18 @@ def attrs(
                             )
                         )
 
+        jsonld_cls.__module__ = cls.__module__
         jsonld_cls._jsonld_type = type
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
         jsonld_cls._jsonld_fields = {a.name for a in attr.fields(jsonld_cls)}
+
+        context_doc = '\n'.join(
+            '   ' + line for line in json.dumps(context, indent=2).split('\n')
+        )
+        jsonld_cls.__doc__ = DOC_TPL.format(
+            cls=cls, jsonld_cls=jsonld_cls, context=context_doc
+        )
         return jsonld_cls
 
     if maybe_cls is None:

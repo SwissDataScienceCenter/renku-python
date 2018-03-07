@@ -20,6 +20,12 @@ Models
 
 Data abstractions.
 
+Projects
+--------
+
+.. automodule:: renga.models.projects
+   :members:
+
 
 Datasets
 --------
