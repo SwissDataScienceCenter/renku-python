@@ -81,10 +81,10 @@ def store_directory(ctx, param, value):
 @pass_local_client
 @click.pass_context
 @with_git(clean=False)
-def init(ctx, repo, directory, name, force, use_external_storage):
+def init(ctx, client, directory, name, force, use_external_storage):
     """Initialize a project."""
     try:
-        project_config_path = repo.init_repository(
+        project_config_path = client.init_repository(
             name=name, force=force, use_external_storage=use_external_storage
         )
     except FileExistsError:

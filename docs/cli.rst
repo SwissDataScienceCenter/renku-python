@@ -28,7 +28,7 @@ Renga Command Line
 ``renga datasets``
 ------------------
 
-.. automodule:: renga.cli.datasets
+.. automodule:: renga.cli.dataset
 
 ``renga run``
 -------------

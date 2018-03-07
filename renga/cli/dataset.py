@@ -24,13 +24,13 @@ Creating an empty dataset inside a Renga project:
 
 .. code-block:: console
 
-    $ renga datasets create my-dataset
+    $ renga dataset create my-dataset
 
 Adding data to the dataset:
 
 .. code-block:: console
 
-    $ renga datasets add my-dataset http://data-url
+    $ renga dataset add my-dataset http://data-url
 
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
@@ -48,12 +48,12 @@ from ._git import with_git
 @click.group()
 @click.option('--datadir', default='data', type=click.Path(dir_okay=True))
 @click.pass_context
-def datasets(ctx, datadir):
+def dataset(ctx, datadir):
     """Handle datasets."""
     ctx.meta['renga.datasets.datadir'] = datadir
 
 
-@datasets.command()
+@dataset.command()
 @click.argument('name')
 @pass_local_client
 @with_git()
@@ -67,7 +67,7 @@ def create(client, name):
     click.secho('OK', fg='green')
 
 
-@datasets.command()
+@dataset.command()
 @click.argument('name')
 @click.argument('url')
 @click.option('nocopy', '--copy/--no-copy', default=False, is_flag=True)

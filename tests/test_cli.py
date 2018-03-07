@@ -197,13 +197,13 @@ def test_streams(runner, capsys):
 def test_datasets(data_file, data_repository, runner):
     """Test importing data into a dataset."""
     # create a dataset
-    result = runner.invoke(cli.cli, ['datasets', 'create', 'dataset'])
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
     assert os.stat('data/dataset/metadata.yml')
 
     # add data
     result = runner.invoke(
-        cli.cli, ['datasets', 'add', 'dataset',
+        cli.cli, ['dataset', 'add', 'dataset',
                   str(data_file)]
     )
     assert result.exit_code == 0
@@ -214,7 +214,7 @@ def test_datasets(data_file, data_repository, runner):
     # add data from a git repo via http
     result = runner.invoke(
         cli.cli, [
-            'datasets', 'add', 'dataset', '--target', 'README.rst',
+            'dataset', 'add', 'dataset', '--target', 'README.rst',
             'https://github.com/SwissDataScienceCenter/renga-python.git'
         ]
     )
@@ -224,7 +224,7 @@ def test_datasets(data_file, data_repository, runner):
     # add data from local git repo
     result = runner.invoke(
         cli.cli, [
-            'datasets', 'add', 'dataset', '-t', 'file', '-t', 'file2',
+            'dataset', 'add', 'dataset', '-t', 'file', '-t', 'file2',
             os.path.dirname(data_repository.git_dir)
         ]
     )
@@ -270,13 +270,13 @@ def test_status_with_submodules(base_runner):
 
     os.chdir('../foo')
     result = base_runner.invoke(
-        cli.cli, ['datasets', 'add', 'f', '../woop'], catch_exceptions=False
+        cli.cli, ['dataset', 'add', 'f', '../woop'], catch_exceptions=False
     )
     assert result.exit_code == 0
 
     os.chdir('../bar')
     result = base_runner.invoke(
-        cli.cli, ['datasets', 'add', 'b', '../foo/data/f/woop'],
+        cli.cli, ['dataset', 'add', 'b', '../foo/data/f/woop'],
         catch_exceptions=False
     )
     assert result.exit_code == 0

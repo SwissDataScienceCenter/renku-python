@@ -86,8 +86,8 @@ Create a dataset and add data to it:
 
 ::
 
-    $ renga datasets create my-dataset
-    $ renga datasets add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renga-python/development/README.rst
+    $ renga dataset create my-dataset
+    $ renga dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renga-python/development/README.rst
 
 Run an analysis:
 
