@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -17,17 +17,60 @@
 
 
 .. include:: ../README.rst
+   :end-before: Usage
+
+For more information about the Renga API `see its documentation
+<https://renga.readthedocs.org/latest/developer/index.html>`_.
+
+Use the Renga command line
+--------------------------
+
+Interaction with the platform can take place via the command-line
+interface (CLI).
+
+Start by creating for folder where you want to keep your Renga project:
+
+.. code-block:: console
+
+   $ mkdir -p ~/temp/my-renga-project
+   $ cd ~/temp/my-renga-project
+   $ renga init
+
+Create a dataset and add data to it:
+
+.. code-block:: console
+
+   $ renga dataset create my-dataset
+   $ renga dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renga-python/development/README.rst
+
+Run an analysis:
+
+.. code-block:: console
+
+   $ renga run wc < data/my-dataset/README.rst > wc_readme
+
+Trace the data provenance:
+
+.. code-block:: console
+
+    $ renga log wc_readme
+
+These are the basics, but there is much more that Renga allows you to do with
+your data analysis workflows.
+
+For more information about using `renga`, refer to the :doc:`Renga command
+line <cli>` instructions.
 
 .. toctree::
    :hidden:
    :maxdepth: 2
 
-   api
    cli
-   client
-   cwl
-   models
    projects
+   datasets
+   cwl
+   client
+   api
    contributing
    changes
    license
