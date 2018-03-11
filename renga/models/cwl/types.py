@@ -29,3 +29,7 @@ class File(CWLClass):
     """Represent a file."""
 
     path = attr.ib(converter=Path)
+
+    def __str__(self):
+        """Simple conversion to string."""
+        return str(self.path)

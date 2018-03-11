@@ -78,6 +78,21 @@ class CommandLineTool(Process, CWLClass):
                 elif fnmatch.fnmatch(path, glob):
                     return output.id
 
+    def to_argv(self, job=None):
+        """Generate arguments for system call."""
+        argv = [self.baseCommand
+                ] if not isinstance(self.baseCommand, list) else list(
+                    self.baseCommand
+                )
+
+        args = [(a.position, a) for a in self.arguments]
+        args += [(i.inputBinding.position, i) for i in self.inputs]
+
+        for p, v in sorted(args):
+            argv.extend(v.to_argv())
+
+        return argv
+
 
 @attr.s
 class CommandLineToolFactory(object):

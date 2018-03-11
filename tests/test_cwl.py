@@ -33,15 +33,17 @@ def test_03_input(instance_path):
     whale = Path(instance_path) / 'whale.txt'
     whale.touch()
 
-    tool = CommandLineToolFactory((
+    argv = [
         'echo',
         '-f',
         '-i42',
         '--example-string',
         'hello',
         '--file=whale.txt',
-    ),
-                                  directory=instance_path).generate_tool()
+    ]
+    tool = CommandLineToolFactory(
+        argv, directory=instance_path
+    ).generate_tool()
 
     assert tool.arguments[0].prefix == '-f'
 
@@ -60,20 +62,26 @@ def test_03_input(instance_path):
     assert tool.inputs[2].inputBinding.prefix == '--file='
     assert tool.inputs[2].inputBinding.separate is False
 
+    assert tool.to_argv() == argv
+
 
 def test_base_command_detection(instance_path):
     """Test base command detection."""
     hello = Path(instance_path) / 'hello.tar'
     hello.touch()
 
-    tool = CommandLineToolFactory(('tar', 'xf', 'hello.tar'),
-                                  directory=instance_path).generate_tool()
+    argv = ['tar', 'xf', 'hello.tar']
+    tool = CommandLineToolFactory(
+        argv, directory=instance_path
+    ).generate_tool()
 
     assert tool.baseCommand == ['tar', 'xf']
     assert tool.inputs[0].default.path == Path('hello.tar')
     assert tool.inputs[0].type == 'File'
     assert tool.inputs[0].inputBinding.prefix is None
     assert tool.inputs[0].inputBinding.separate is True
+
+    assert tool.to_argv() == argv
 
 
 def test_short_base_command_detection():
@@ -83,14 +91,16 @@ def test_short_base_command_detection():
     assert tool.__class__.__name__ == 'CommandLineTool'
     assert tool.inputs[0].default == 'A'
 
+    assert tool.to_argv() == ['echo', 'A']
+
 
 def test_04_output(instance_path):
     """Test describtion of outputs from a command."""
     hello = Path(instance_path) / 'hello.tar'
     hello.touch()
 
-    factory = CommandLineToolFactory(('tar', 'xf', 'hello.tar'),
-                                     directory=instance_path)
+    argv = ['tar', 'xf', 'hello.tar']
+    factory = CommandLineToolFactory(argv, directory=instance_path)
 
     # simulate run
 
@@ -102,14 +112,18 @@ def test_04_output(instance_path):
     assert parameters[0][0].type == 'File'
     assert parameters[0][0].outputBinding.glob == 'hello.txt'
 
+    tool = factory.generate_tool()
+    assert tool.to_argv() == argv
+
 
 def test_05_stdout(instance_path):
     """Test stdout mapping."""
     output = Path(instance_path) / 'output.txt'
     output.touch()
 
+    argv = ['echo', 'Hello world!']
     factory = CommandLineToolFactory(
-        ('echo', 'Hello world!'),
+        argv,
         directory=instance_path,
         stdout='output.txt',
     )
@@ -117,14 +131,18 @@ def test_05_stdout(instance_path):
     assert factory.stdout == 'output.txt'
     assert factory.outputs[0].type == 'stdout'
 
+    tool = factory.generate_tool()
+    assert tool.to_argv() == argv
+
 
 def test_06_params(instance_path):
     """Test referencing input parameters in other fields."""
     hello = Path(instance_path) / 'hello.tar'
     hello.touch()
 
+    argv = ['tar', 'xf', 'hello.tar', 'goodbye.txt']
     factory = CommandLineToolFactory(
-        ('tar', 'xf', 'hello.tar', 'goodbye.txt'),
+        argv,
         directory=instance_path,
     )
 
@@ -145,10 +163,13 @@ def test_06_params(instance_path):
     assert parameters[0][0].outputBinding.glob == \
         '$(inputs.{0})'.format(goodbye_id)
 
+    tool = factory.generate_tool()
+    assert tool.to_argv() == argv
+
 
 def test_09_array_inputs(instance_path):
     """Test specification of input parameters in arrays."""
-    tool = CommandLineToolFactory((
+    argv = [
         'echo',
         '-A',
         'one',
@@ -158,8 +179,10 @@ def test_09_array_inputs(instance_path):
         '-B=five',
         '-B=six',
         '-C=seven,eight,nine',
-    ),
-                                  directory=instance_path).generate_tool()
+    ]
+    tool = CommandLineToolFactory(
+        argv, directory=instance_path
+    ).generate_tool()
 
     # TODO add grouping for -A and -B
 
@@ -168,3 +191,5 @@ def test_09_array_inputs(instance_path):
     assert tool.inputs[-1].inputBinding.prefix == '-C='
     assert tool.inputs[-1].inputBinding.itemSeparator == ','
     assert tool.inputs[-1].inputBinding.separate is False
+
+    assert tool.to_argv() == argv

@@ -64,6 +64,40 @@ class CommandLineBinding(object):
     valueFrom = attr.ib(default=None)  # str | Expression
     shellQuote = attr.ib(default=True, type=bool)
 
+    def to_argv(self, default=None):
+        """Format command line binding as shell argument."""
+        if self.valueFrom is not None:
+            raise NotImplemented()
+
+        value = default
+
+        def _convert(value):
+            """Convert value to a argument list."""
+            if self.prefix:
+                if self.separate:
+                    return [self.prefix, str(value)]
+                else:
+                    return [self.prefix + str(value)]
+            else:
+                return [str(value)]
+
+        if self.prefix is None and not self.separate:
+            raise ValueError('Can not separate an empty prefix.')
+
+        if isinstance(value, list):
+            if self.itemSeparator and value:
+                value = self.itemSeparator.join([str(v) for v in value])
+            elif value:
+                return [a for v in value for a in _convert(v)]
+        elif (value is True or value is None) and self.prefix:
+            return [self.prefix]
+        elif value is False or value is None or (
+            value is True and not self.prefix
+        ):
+            return []
+
+        return _convert(value)
+
 
 @attr.s
 class CommandInputParameter(InputParameter):
@@ -75,6 +109,11 @@ class CommandInputParameter(InputParameter):
             data, CommandLineBinding
         ) and data is not None else data,
     )
+
+    def to_argv(self):
+        """Format command input parameter as shell argument."""
+        return self.inputBinding.to_argv(default=self.default
+                                         ) if self.inputBinding else []
 
 
 @attr.s
