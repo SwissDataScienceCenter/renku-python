@@ -118,6 +118,7 @@ setup(
             'run=renga.cli.run:run',
             'runner=renga.cli.runner:runner',
             'status=renga.cli.status:status',
+            'update=renga.cli.update:update',
             'workflow=renga.cli.workflow:workflow',
             'workon=renga.cli.workon:workon',
         ],

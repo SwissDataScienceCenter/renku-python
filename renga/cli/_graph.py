@@ -30,6 +30,7 @@ from renga._compat import Path
 from renga.api import LocalClient
 from renga.models.cwl.command_line_tool import CommandLineTool
 from renga.models.cwl.parameter import InputParameter, WorkflowOutputParameter
+from renga.models.cwl.types import File
 from renga.models.cwl.workflow import Workflow
 
 
@@ -87,9 +88,9 @@ class Graph(object):
 
     def iter_file_inputs(self, tool, basedir):
         """Yield path of tool file inputs."""
-        if tool.stdin:
-            if tool.stdin[0] != '$':  # pragma: no cover
-                raise NotImplemented(tool.stdin)
+        stdin = getattr(tool, 'stdin', None)
+        if stdin and stdin[0] != '$':  # pragma: no cover
+            raise NotImplemented(tool.stdin)
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
                 yield (
@@ -99,7 +100,13 @@ class Graph(object):
     def add_tool(self, commit, path):
         """Add a tool and its dependencies to the graph."""
         data = (commit.tree / path).data_stream.read()
-        tool = CommandLineTool.from_cwl(yaml.load(data))
+        cwl = yaml.load(data)
+
+        try:
+            tool = CommandLineTool.from_cwl(cwl)
+        except Exception:
+            tool = Workflow.from_cwl(cwl)
+
         tool_key = self.add_node(commit, path, tool=tool)
 
         for input_path, input_id in self.iter_file_inputs(
@@ -254,17 +261,6 @@ class Graph(object):
             if 'tool' not in node:
                 yield key, node
 
-    def _source_name(self, key):
-        """Find source name for a node."""
-        if self.G.in_degree(key) == 0:
-            return None
-
-        assert self.G.in_degree(key) == 1
-
-        tool_key, attr = list(self.G.pred[key].items())[0]
-        step = self.G.nodes[tool_key]['step']['id']
-        return '{0}/{1}'.format(step, attr['id'])
-
     @property
     def _tool_nodes(self):
         """Yield topologically sorted tools."""
@@ -274,20 +270,41 @@ class Graph(object):
             if tool is not None:
                 yield key, node
 
-    def ascwl(self):
-        """Serialize graph to CWL workflow."""
+    def ascwl(self, global_step_outputs=False):
+        """Serialize graph to CWL workflow.
+
+        :param global_step_outputs: Make all step outputs global.
+        """
         workflow = Workflow()
 
         input_index = 1
+        steps = {}
+
+        def _source_name(key):
+            """Find source name for a node."""
+            if self.G.in_degree(key) == 0:
+                return None
+
+            assert self.G.in_degree(key) == 1
+
+            tool_key, node = list(self.G.pred[key].items())[0]
+            return '{0}/{1}'.format(steps[tool_key], node['id'])
+
+        def _relative_default(default, path):
+            """Evolve ``File`` path."""
+            if isinstance(default, File):
+                dirname = Path(os.path.dirname(path))
+                return attr.evolve(default, path=dirname / default.path)
+            return default
 
         for tool_index, (key, node) in enumerate(self._tool_nodes, 1):
             _, path = key
             tool = node['tool']
             step_id = 'step_{0}'.format(tool_index)
-            node['step'] = {'id': step_id}
+            steps[key] = step_id
 
             ins = {
-                edge_id: self._source_name(target_id)
+                edge_id: _source_name(target_id)
                 for target_id, _, edge_id in self.G.in_edges(key, data='id')
             }
             outs = [
@@ -302,7 +319,7 @@ class Graph(object):
                         InputParameter(
                             id=input_id,
                             type=input_.type,
-                            default=input_.default,
+                            default=_relative_default(input_.default, path),
                         )
                     )
                     input_index += 1
@@ -315,13 +332,16 @@ class Graph(object):
                 out=outs,
             )
 
-        for index, key in enumerate(self._output_keys):
+        output_keys = (key for _, key in self.G.out_edges(steps.keys())
+                       ) if global_step_outputs else self._output_keys
+
+        for index, key in enumerate(output_keys):
             output_id = 'output_{0}'.format(index)
             workflow.outputs.append(
                 WorkflowOutputParameter(
                     id=output_id,
                     type='File',
-                    outputSource=self._source_name(key),
+                    outputSource=_source_name(key),
                 )
             )
 

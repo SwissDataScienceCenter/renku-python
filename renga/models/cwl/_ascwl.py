@@ -33,8 +33,13 @@ class CWLClass(object):
     @classmethod
     def from_cwl(cls, data):
         """Return an instance from CWL data."""
-        class_name = data.pop('class', None)
-        assert class_name == cls.__name__
+        class_name = data.get('class', None)
+        if class_name != cls.__name__:
+            raise TypeError(
+                'Got {0} but need {1}'.format(class_name, cls.__name__)
+            )
+        elif 'class' in data:
+            del data['class']
         return cls(**{k: v for k, v in iteritems(data) if k != 'class'})
 
 
