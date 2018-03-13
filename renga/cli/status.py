@@ -68,7 +68,7 @@ def status(ctx, client, revision, path):
 
     else:
         click.secho(
-            'All files were generated from the lastest inputs.', fg='green'
+            'All files were generated from the latest inputs.', fg='green'
         )
 
     if status['multiple-versions']:
