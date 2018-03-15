@@ -21,6 +21,7 @@ import uuid
 from subprocess import call
 
 import click
+import networkx as nx
 import yaml
 
 from renga.models.cwl._ascwl import ascwl
@@ -45,16 +46,24 @@ def update(ctx, client, revision, paths):
     if not paths:
         raise click.UsageError('Define atleast one file.')
 
-    for path in paths:
-        graph.add_file(path, revision=revision)
+    outputs = {graph.add_file(path, revision=revision) for path in paths}
 
-    graph._need_update()
-    nodes = {
-        key
-        for key, need_update in graph.G.nodes(data='_need_update')
-        if not need_update
-    }
-    graph.G.remove_nodes_from(nodes)
+    status = graph.build_status()
+
+    # Get parents of all clean nodes
+    clean_paths = status['up-to-date'].keys()
+    clean_nodes = {(c, p) for (c, p) in graph.G if p in clean_paths}
+    clean_parents = set()
+    for key in clean_nodes:
+        clean_parents |= nx.ancestors(graph.G, key)
+
+    subnodes = set()
+    for key in outputs:
+        if key in graph.G:
+            subnodes |= nx.shortest_path_length(graph.G, target=key).keys()
+
+    graph.G.remove_nodes_from(clean_parents)
+    graph.G.remove_nodes_from([n for n in graph.G if n not in subnodes])
 
     output_file = client.workflow_path / '{0}.cwl'.format(uuid.uuid4().hex)
     with open(output_file, 'w') as f:

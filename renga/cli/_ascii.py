@@ -88,7 +88,15 @@ class DAG(object):
 
     def node_text(self, node):
         """Return text for a given node."""
-        return [_format_sha1(self.graph, node) + ' ' + node[1]]
+        result = [_format_sha1(self.graph, node) + ' ' + node[1]]
+        workflow = self.graph.G.nodes[node].get('workflow_path')
+        if workflow:
+            result.append(
+                '         (part of {0})'.format(
+                    click.style(workflow, fg='blue')
+                )
+            )
+        return result
 
     def iter_edges(self, node):
         """Yield edges for a node and update internal status."""

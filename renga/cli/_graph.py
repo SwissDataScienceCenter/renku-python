@@ -97,17 +97,97 @@ class Graph(object):
                     os.path.normpath(basedir / input_.default.path), input_.id
                 )
 
-    def add_tool(self, commit, path):
+    def add_workflow(self, commit, path, cwl=None, file_key=None):
+        """Add a workflow and its dependencies to the graph."""
+        if cwl is None:
+            data = (commit.tree / path).data_stream.read()
+            cwl = yaml.load(data)
+
+        workflow = Workflow.from_cwl(cwl)
+        basedir = os.path.dirname(path)
+
+        # Keep track of node identifiers for steps, inputs and outputs:
+        step_map = {}
+        input_map = {}
+        output_map = {}
+
+        #: First find workflow inputs, but don't connect them yet.
+        for input_path, input_id in self.iter_file_inputs(workflow, basedir):
+            input_key = self.add_file(
+                input_path, revision='{0}^'.format(commit)
+            )
+            input_map[input_id] = input_key
+
+        for step in workflow.steps:
+            tool_key = self.add_tool(
+                commit,
+                os.path.join(basedir, step.run),
+                file_key=file_key,
+                is_step=True,
+            )
+
+            step_tool = self.G.nodes[tool_key]['tool']
+
+            for input_path, input_id in self.iter_file_inputs(
+                step_tool, basedir
+            ):
+                if input_path in commit.stats.files:
+                    #: Check intermediate committed files
+                    input_key = self.add_node(commit, input_path)
+                    #: Edge from an input to the tool.
+                    self.G.add_edge(input_key, tool_key, id=input_id)
+                else:
+                    #: Global workflow input
+                    source = step.in_[input_id]
+                    self.G.add_edge(input_map[source], tool_key, id=input_id)
+
+            if file_key:
+                _, output_path = file_key
+                output_id = step_tool.get_output_id(output_path)
+                if output_id:
+                    self.G.add_edge(tool_key, file_key, id=output_id)
+
+            output_map.update({
+                step.id + '/' + name: target
+                for target, _, name in self.G.in_edges(tool_key, data='id')
+            })
+            step_map[step.id] = tool_key
+
+            self.G.nodes[tool_key]['workflow'] = workflow
+            self.G.nodes[tool_key]['workflow_path'
+                                   ] = path + '#steps/' + step.id
+
+        for step in workflow.steps:
+            for alias, source in step.in_.items():
+                name = step.id + '/' + alias
+
+                if name in output_map and '/' in source:
+                    other_step, id_ = source.split('/')
+                    other_key = step_map[other_step]
+                    self.G.add_edge(other_key, output_map[name], id=id_)
+
+        return workflow
+
+    def add_tool(
+        self, commit, path, file_key=None, expand_workflow=True, is_step=False
+    ):
         """Add a tool and its dependencies to the graph."""
         data = (commit.tree / path).data_stream.read()
         cwl = yaml.load(data)
 
         try:
             tool = CommandLineTool.from_cwl(cwl)
-        except Exception:
+        except TypeError:
+            if expand_workflow:
+                return self.add_workflow(
+                    commit, path, file_key=file_key, cwl=cwl
+                )
             tool = Workflow.from_cwl(cwl)
 
         tool_key = self.add_node(commit, path, tool=tool)
+
+        if is_step:
+            return tool_key
 
         for input_path, input_id in self.iter_file_inputs(
             tool, os.path.dirname(path)
@@ -117,6 +197,12 @@ class Graph(object):
             )
             #: Edge from an input to the tool.
             self.G.add_edge(input_key, tool_key, id=input_id)
+
+        if file_key:
+            _, path = file_key
+            output_id = tool.get_output_id(path)
+            if output_id:
+                self.G.add_edge(tool_key, file_key, id=output_id)
 
         return tool_key
 
@@ -128,11 +214,7 @@ class Graph(object):
             cwl = self.find_cwl(commit)
             if cwl is not None:
                 file_key = self.add_node(commit, path)
-                tool_key = self.add_tool(commit, cwl)
-                #: Edge from a tool to the output.
-                tool = self.G.nodes[tool_key]['tool']
-                output_id = tool.get_output_id(path)
-                self.G.add_edge(tool_key, file_key, id=output_id)
+                self.add_tool(commit, cwl, file_key=file_key)
                 return file_key
 
         if file_commits:
@@ -199,6 +281,7 @@ class Graph(object):
                 for data in node.get('contraction', {}).values():
                     latest = data.get('latest')
                     if latest:
+                        node['latest'] = latest
                         break
 
             if latest:
@@ -243,12 +326,20 @@ class Graph(object):
             if len(keys) > 1:
                 status['multiple-versions'][filepath] = keys
 
-            if any(len(self.G.nodes[key]['_need_update']) > 1 for key in keys):
+            nodes = [self.G.nodes[key] for key in keys]
+
+            # Any latest version of a file needs an update.
+            is_outdated = any(
+                len(node['_need_update']) > 1
+                for node in nodes if node['latest'] is None
+            )
+
+            if is_outdated:
                 updates = list(
                     self.G.nodes[key]['_need_update'] for key in keys
                 )
                 status['outdated'][filepath] = updates
-            elif len(keys) == 1:
+            else:
                 status['up-to-date'][filepath] = keys[0][0]
 
         return status
