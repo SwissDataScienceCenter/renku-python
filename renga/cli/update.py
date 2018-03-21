@@ -43,12 +43,15 @@ def update(ctx, client, revision, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
 
+    status = graph.build_status(revision=revision)
+
     if not paths:
-        raise click.UsageError('Define atleast one file.')
-
-    outputs = {graph.add_file(path, revision=revision) for path in paths}
-
-    status = graph.build_status()
+        outputs = {
+            graph.add_file(path, revision=revision)
+            for path in status['outdated']
+        }
+    else:
+        outputs = {graph.add_file(path, revision=revision) for path in paths}
 
     # Get parents of all clean nodes
     clean_paths = status['up-to-date'].keys()

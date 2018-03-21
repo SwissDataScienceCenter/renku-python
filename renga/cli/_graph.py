@@ -41,14 +41,12 @@ class Graph(object):
     client = attr.ib()
     G = attr.ib(default=attr.Factory(nx.DiGraph))
 
-    repo_path = attr.ib(init=False)
     cwl_prefix = attr.ib(init=False)
 
     def __attrs_post_init__(self):
         """Derive basic informations."""
-        self.repo_path = self.client.path
         self.cwl_prefix = str(
-            self.client.workflow_path.relative_to(self.repo_path)
+            self.client.workflow_path.resolve().relative_to(self.client.path)
         )
 
     def add_node(self, commit, path, **kwargs):
@@ -210,16 +208,23 @@ class Graph(object):
         """Add a file node to the graph."""
         file_commits = list(self.client.git.iter_commits(revision, paths=path))
 
-        for commit in file_commits:
-            cwl = self.find_cwl(commit)
-            if cwl is not None:
-                file_key = self.add_node(commit, path)
-                self.add_tool(commit, cwl, file_key=file_key)
-                return file_key
+        if not file_commits:
+            raise KeyError(
+                'Could not find a file {0} in range {1}'.format(
+                    path, revision
+                )
+            )
 
-        if file_commits:
+        commit = file_commits[0]
+
+        cwl = self.find_cwl(commit)
+        if cwl is not None:
+            file_key = self.add_node(commit, path)
+            self.add_tool(commit, cwl, file_key=file_key)
+            return file_key
+        else:
             #: Does not have a parent CWL.
-            root_node = self.add_node(file_commits[0], path)
+            root_node = self.add_node(commit, path)
             parent_commit, parent_path = root_node
 
             #: Capture information about the submodule in a submodule.
