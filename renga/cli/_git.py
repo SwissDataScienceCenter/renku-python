@@ -24,6 +24,8 @@ from contextlib import contextmanager
 import click
 from git import Repo
 
+from renga import errors
+
 GIT_KEY = 'renga.git'
 
 
@@ -89,11 +91,10 @@ def with_git(
                 mapped_paths = set(_mapped_std_streams(dirty_paths).values())
 
                 if dirty_paths - mapped_paths:
-                    raise RuntimeError('The repository is dirty.')
+                    raise errors.DirtyRepository(repo)
 
             elif repo.is_dirty(untracked_files=True):
-                raise RuntimeError('The repository is dirty.')
-
+                raise errors.DirtyRepository(repo)
         finally:
             os.chdir(current_dir)
 
