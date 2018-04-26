@@ -24,6 +24,7 @@ from subprocess import PIPE, STDOUT, call
 
 import attr
 import filelock
+import pkg_resources
 import yaml
 from git import InvalidGitRepositoryError
 from git import Repo as GitRepo
@@ -163,10 +164,15 @@ class RepositoryApiMixin(object):
 
         self.git.description = name or path.name
 
-        # FIXME do not append
-        with open(path / '.gitignore', 'a') as gitignore:
+        # TODO read existing gitignore and create a unique set of rules
+        gitignore_default = pkg_resources.resource_stream(
+            'renga.data', 'gitignore.default'
+        )
+        with open(path / '.gitignore', 'w') as gitignore:
+            gitignore.write(gitignore_default.read().decode())
+
             gitignore.write(
-                str(
+                '\n' + str(
                     self.renga_path.relative_to(self.path)
                     .with_suffix(self.LOCK_SUFFIX)
                 ) + '\n'
