@@ -114,7 +114,7 @@ setup(
             'deactivate=renga.cli.workon:deactivate',
             'init=renga.cli.init:init',
             'log=renga.cli.log:log',
-            'notebooks=renga.cli.notebooks:notebooks',
+            # 'notebooks=renga.cli.notebooks:notebooks',
             'run=renga.cli.run:run',
             'runner=renga.cli.runner:runner',
             'status=renga.cli.status:status',
