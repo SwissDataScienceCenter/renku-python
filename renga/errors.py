@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renga exceptions."""
 
+import click
 import requests
 
 
@@ -51,7 +52,8 @@ class UnexpectedStatusCode(APIError):
         """Build custom message."""
         super(UnexpectedStatusCode, self).__init__(
             'Unexpected status code: {0}'.format(response.status_code),
-            response=response)
+            response=response
+        )
 
     @classmethod
     def return_or_raise(cls, response, expected_status_code):
@@ -68,6 +70,24 @@ class UnexpectedStatusCode(APIError):
 
 class InvalidFileOperation(RengaException):
     """Raise when trying to perfrom invalid file operation."""
+
+
+class UsageError(RengaException):
+    """Raise in case of unintended usage of certain function calls."""
+
+
+class DirtyRepository(RengaException, click.ClickException):
+    """Raise when trying to work with dirty repository."""
+
+    def __init__(self, repo):
+        """Build a custom message."""
+        super(DirtyRepository, self).__init__(
+            'The repository is dirty. '
+            'Please use the "git" command to clean it.'
+            '\n\n' + str(repo.git.status()) + '\n\n'
+            'Once you have added the untracked files, '
+            'commit them with "git commit".'
+        )
 
 
 class NotFound(APIError):

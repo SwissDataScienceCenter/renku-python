@@ -32,7 +32,6 @@ If you want to add a file to a specific bucket, you can do so by using the
 """
 
 import datetime
-import os
 
 import click
 

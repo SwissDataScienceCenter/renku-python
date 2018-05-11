@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -22,60 +22,41 @@
 For more information about the Renga API `see its documentation
 <https://renga.readthedocs.org/latest/developer/index.html>`_.
 
-Getting started
----------------
-
-To instantiate a Renga client from a running notebook on the platform, you
-can use :py:func:`~renga.client.from_env` helper function.
-
-.. code-block:: python
-
-   import renga
-   client = renga.from_env()
-
-You can now upload files to new bucket:
-
-.. code-block:: python
-
-   >>> bucket = client.buckets.create('first-bucket')
-   >>> with bucket.files.open('greeting.txt', 'w') as fp:
-   ...     fp.write('hello world')
-
-You can access files from a bucket:
-
-.. code-block:: python
-
-   >>> client.buckets.list()[0].files.list()[0].open('r').read()
-   b'hello world'
-
-
-For more details and examples have a look at :doc:`the reference
-<client>`.
-
 Use the Renga command line
 --------------------------
 
-Interaction with the platform can also take place via the command-line
+Interaction with the platform can take place via the command-line
 interface (CLI).
 
-First, you need to authenticate with an existing instance of the Renga
-platform. The example shows a case when you have the platform running on
-``localhost``.
+Start by creating for folder where you want to keep your Renga project:
 
 .. code-block:: console
 
-   $ renga login http://localhost
-   Username: demo
-   Password: ****
-   Access token has been stored in: ...
+   $ mkdir -p ~/temp/my-renga-project
+   $ cd ~/temp/my-renga-project
+   $ renga init
 
-Following the above example you can create a first bucket and upload a file.
+Create a dataset and add data to it:
 
 .. code-block:: console
 
-   $ export BUCKET_ID=$(renga io buckets create first-bucket)
-   $ echo "hello world" | renga io buckets $BUCKET_ID upload --name greeting.txt
-   9876
+   $ renga dataset create my-dataset
+   $ renga dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renga-python/development/README.rst
+
+Run an analysis:
+
+.. code-block:: console
+
+   $ renga run wc < data/my-dataset/README.rst > wc_readme
+
+Trace the data provenance:
+
+.. code-block:: console
+
+    $ renga log wc_readme
+
+These are the basics, but there is much more that Renga allows you to do with
+your data analysis workflows.
 
 For more information about using `renga`, refer to the :doc:`Renga command
 line <cli>` instructions.
@@ -84,12 +65,12 @@ line <cli>` instructions.
    :hidden:
    :maxdepth: 2
 
-   client
-   projects
-   buckets
-   contexts
-   api
    cli
+   projects
+   datasets
+   cwl
+   client
+   api
    contributing
    changes
    license

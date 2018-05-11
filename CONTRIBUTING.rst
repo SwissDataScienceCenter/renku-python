@@ -90,6 +90,22 @@ Ready to contribute? Here's how to set up `renga` for local development.
    (code style), PEP257 (documentation), flake8 as well as build the Sphinx
    documentation and run doctests.
 
+   Before you submit a pull request, please reformat the code using yapf_.
+
+   .. code-block:: console
+
+      $ yapf -irp .
+
+   You may want to set up yapf_ styling as a pre-commit hook to do this
+   automatically:
+
+   .. code-block:: console
+
+      $ curl https://raw.githubusercontent.com/google/yapf/master/plugins/pre-commit.sh -o .git/hooks/pre-commit
+      $ chmod u+x .git/hooks/pre-commit
+
+   .. _yapf: https://github.com/google/yapf/
+
 6. Commit your changes and push your branch to GitHub:
 
    .. code-block:: console

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,6 +18,11 @@
 
 DOCKER_REPOSITORY?=rengahub/
 DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
+DOCKER_LABEL?=$(or ${TRAVIS_BRANCH},${TRAVIS_BRANCH},$(shell git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/^* //'))
+
+ifeq ($(DOCKER_LABEL), master)
+	DOCKER_LABEL=latest
+endif
 
 ALL_STACKS:=\
 	minimal-notebook \
@@ -28,21 +33,26 @@ ALL_STACKS:=\
 	pyspark-notebook \
 	all-spark-notebook
 
+IMAGES=$(ALL_STACKS) gitlab-runner renga-python
+
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
-build-docker-images: $(ALL_STACKS:%=build/%)
+tag-docker-images: $(IMAGES:%=tag/%)
 
-build/%: Dockerfile.template
-	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):latest -f - .
+build/%-notebook: Dockerfile.notebook.template
+	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
 
-push-docker-images: $(ALL_STACKS:%=push/%)
+build/%: Dockerfile.%
+	docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f $< .
+
+push-docker-images: $(IMAGES:%=push/%)
 
 tag/%: build/%
-	docker tag $(DOCKER_PREFIX)$(notdir $@):latest $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA)
+	docker tag $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA) $(DOCKER_PREFIX)$(notdir $@):$(DOCKER_LABEL)
 
 push/%: tag/%
-	docker push $(DOCKER_PREFIX)$(notdir $@):latest
+	docker push $(DOCKER_PREFIX)$(notdir $@):$(DOCKER_LABEL)
 	docker push $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA)
 
 login:
-	@docker login -u="${DOCKER_USERNAME}" -p="${DOCKER_PASSWORD}" ${DOCKER_REGISTRY}
+	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}

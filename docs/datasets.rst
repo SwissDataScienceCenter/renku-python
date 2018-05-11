@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,57 +15,35 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Buckets and Files
-=================
+Datasets
+========
 
-.. py:module:: renga.models.storage
+.. py:module:: renga.models.datasets
 
-Manage buckets and files on the server.
+Manage datasets and their metadata.
 
-.. autoclass:: BucketCollection
-   :members:
-   :inherited-members:
 
-Bucket objects
+Dataset object
 --------------
 
-.. autoclass:: Bucket()
+.. autoclass:: Dataset
    :members:
    :inherited-members:
 
 
-Files
------
-
-Manage files in the bucket.
-
-.. autoclass:: FileCollection
-   :members:
-   :inherited-members:
-
-
-File objects
+Dataset file
 ------------
 
-.. autoclass:: File()
+Manage files in the dataset.
+
+.. autoclass:: DatasetFile
    :members:
    :inherited-members:
 
 
-File handle objects
--------------------
+Author
+------
 
-.. autoclass:: FileHandle()
-   :members:
-   :inherited-members:
-
-File versions
--------------
-
-.. autoclass:: FileVersionCollection
-   :members:
-   :inherited-members:
-
-.. autoclass:: FileVersion
+.. autoclass:: Author
    :members:
    :inherited-members:

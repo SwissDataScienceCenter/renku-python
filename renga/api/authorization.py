@@ -40,18 +40,21 @@ class AuthorizationMixin(OAuth2Session):
 
     def __init__(self, **kwargs):
         """Define default client."""
-        kwargs.setdefault('client',
-                          LegacyApplicationClient(
-                              kwargs.get('client_id'),
-                              token=kwargs.get('token')))
+        kwargs.setdefault(
+            'client',
+            LegacyApplicationClient(
+                kwargs.get('client_id'), token=kwargs.get('token')
+            )
+        )
 
         def token_updater(token):
             """Dummy token updater."""
             pass
 
         kwargs.setdefault('token_updater', token_updater)
-        kwargs.setdefault('auto_refresh_url',
-                          self.TOKEN_URL.format(self.endpoint))
+        kwargs.setdefault(
+            'auto_refresh_url', self.TOKEN_URL.format(self.endpoint)
+        )
 
         super(AuthorizationMixin, self).__init__(**kwargs)
 
@@ -65,5 +68,5 @@ class AuthorizationMixin(OAuth2Session):
         """Set default ``token_url``."""
         token_url = token_url or self.TOKEN_URL.format(self.endpoint)
         kwargs.setdefault('client_id', self.client_id)
-        return super(AuthorizationMixin, self).refresh_token(
-            token_url, **kwargs)
+        return super(AuthorizationMixin,
+                     self).refresh_token(token_url, **kwargs)

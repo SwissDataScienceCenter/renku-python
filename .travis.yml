@@ -38,8 +38,8 @@ env:
   # - REQUIREMENTS=devel
 
 python:
-  - "2.7"
-  - "3.5"
+  # - "2.7"
+  # - "3.5"
   - "3.6"
 
 before_install:
@@ -78,7 +78,7 @@ deploy:
   skip_cleanup: true
   script: make login push-docker-images
   on:
-    branch: master
+    all_branches: true
     python: "3.6"
     repo: SwissDataScienceCenter/renga-python
     condition: $DEPLOY = true

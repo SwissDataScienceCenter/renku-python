@@ -39,40 +39,54 @@ class ContextsApiMixin(object):
     def list_executions(self, context_id):
         """List all executions of a given context."""
         resp = self.get(
-            self._url('/api/deployer/contexts/{0}/executions', context_id))
+            self._url('/api/deployer/contexts/{0}/executions', context_id)
+        )
         return resp.json()['executions']
 
     def create_execution(self, context_id, **kwargs):
         """Create an execution of a context on a given engine."""
         resp = self.post(
             self._url('/api/deployer/contexts/{0}/executions', context_id),
-            json=kwargs)
+            json=kwargs
+        )
         return resp.json()
 
     def stop_execution(self, context_id, execution_id):
         """Stop a running execution."""
         return self.delete(
-            self._url('/api/deployer/contexts/{0}/executions/{1}', context_id,
-                      execution_id),
-            expected_status_code=200)
+            self._url(
+                '/api/deployer/contexts/{0}/executions/{1}', context_id,
+                execution_id
+            ),
+            expected_status_code=200
+        )
 
     def execution_logs(self, context_id, execution_id):
         """Retrieve logs of an execution."""
         resp = self.get(
-            self._url('/api/deployer/contexts/{0}/executions/{1}/logs',
-                      context_id, execution_id))
+            self._url(
+                '/api/deployer/contexts/{0}/executions/{1}/logs', context_id,
+                execution_id
+            )
+        )
         return resp.text
 
     def execution_ports(self, context_id, execution_id):
         """Retrieve port mappings for an execution."""
         resp = self.get(
-            self._url('/api/deployer/contexts/{0}/executions/{1}/ports',
-                      context_id, execution_id))
+            self._url(
+                '/api/deployer/contexts/{0}/executions/{1}/ports', context_id,
+                execution_id
+            )
+        )
         return resp.json()['ports']
 
     def get_execution(self, context_id, execution_id):
         """Retrieve an execution."""
         return self.get(
-            self._url('/api/deployer/contexts/{0}/executions/{1}', context_id,
-                      execution_id),
-            expected_status_code=200).json()
+            self._url(
+                '/api/deployer/contexts/{0}/executions/{1}', context_id,
+                execution_id
+            ),
+            expected_status_code=200
+        ).json()

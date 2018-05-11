@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -31,11 +31,12 @@ execute ``renga help``:
     Check common Renga commands used in various situations.
 
     Options:
-      --version          Print version number.
-      --config FILENAME  Location of client config files.
-      --config-path      Print application config path.
-      --no-project       Run command outside project context.
-      -h, --help         Show this message and exit.
+      --version            Print version number.
+      --config PATH        Location of client config files.
+      --config-path        Print application config path.
+      --path <path>        Location of a Renga repository.  [default: .]
+      --renga-home <path>  Location of Renga directory.  [default: .renga]
+      -h, --help           Show this message and exit.
 
     Commands:
       # [...]
@@ -62,56 +63,80 @@ the ``--config`` option value is used. For example:
 
 .. code-block:: console
 
-    $ renga --config ~/renga/config/ login
+    $ renga --config ~/renga/config/ init
 
 instructs Renga to store the configuration files in your ``~/renga/config/``
-directory when running the ``login`` command.
+directory when running the ``init`` command.
 """
 
+import uuid
+
 import click
+import yaml
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
-from ._config import config_load, default_config_dir, print_app_config_path
+from ._config import RENGA_HOME, default_config_dir, print_app_config_path
 from ._version import print_version
 
 
+def _uuid_representer(dumper, data):
+    """Add UUID serializer for YAML."""
+    return dumper.represent_str(str(data))
+
+
+yaml.add_representer(uuid.UUID, _uuid_representer)
+
+
 @with_plugins(iter_entry_points('renga.cli'))
-@click.group(context_settings={
-    'auto_envvar_prefix': 'RENGA',
-    'help_option_names': ['-h', '--help'],
-})
+@click.group(
+    context_settings={
+        'auto_envvar_prefix': 'RENGA',
+        'help_option_names': ['-h', '--help'],
+    }
+)
 @click.option(
     '--version',
     is_flag=True,
     callback=print_version,
     expose_value=False,
     is_eager=True,
-    help=print_version.__doc__)
+    help=print_version.__doc__
+)
 @click.option(
     '--config',
     envvar='RENGA_CONFIG',
     default=default_config_dir,
     type=click.Path(),
-    callback=config_load,
     expose_value=False,
-    help='Location of client config files.')
+    help='Location of client config files.'
+)
 @click.option(
     '--config-path',
     is_flag=True,
     callback=print_app_config_path,
     expose_value=False,
     is_eager=True,
-    help=print_app_config_path.__doc__)
+    help=print_app_config_path.__doc__
+)
 @click.option(
-    '--no-project',
-    is_flag=True,
-    default=False,
-    help='Run command outside project context.')
+    '--path',
+    show_default=True,
+    metavar='<path>',
+    default='.',
+    help='Location of a Renga repository.'
+)
+@click.option(
+    '--renga-home',
+    envvar='RENGA_HOME',
+    show_default=True,
+    metavar='<path>',
+    default=RENGA_HOME,
+    help='Location of Renga directory.'
+)
 @click.pass_context
-def cli(ctx, no_project):
+def cli(ctx, path, renga_home):
     """Check common Renga commands used in various situations."""
-    ctx.obj['no_project'] = no_project
 
 
 @cli.command()

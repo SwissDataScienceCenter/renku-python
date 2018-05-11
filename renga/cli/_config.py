@@ -24,27 +24,20 @@ from functools import update_wrapper
 import click
 import yaml
 
+from renga._compat import Path
+
 from ._options import Endpoint
-
-try:
-    from pathlib import Path
-except ImportError:  # pragma: no cover
-    from pathlib2 import Path
-
-try:
-    FileNotFoundError
-except NameError:
-    FileNotFoundError = IOError
 
 APP_NAME = 'Renga'
 """Application name for storing configuration."""
 
-PROJECT_DIR = '.renga'
+RENGA_HOME = '.renga'
 """Project directory name."""
 
 # Register Endpoint serializer
-yaml.add_representer(Endpoint,
-                     lambda dumper, data: dumper.represent_str(str(data)))
+yaml.add_representer(
+    Endpoint, lambda dumper, data: dumper.represent_str(str(data))
+)
 
 
 def default_config_dir():
@@ -52,8 +45,11 @@ def default_config_dir():
     return click.get_app_dir(APP_NAME)
 
 
-def config_path(path=None):
+def config_path(path=None, final=False):
     """Return config path."""
+    if final and path:
+        return path
+
     if path is None:
         path = default_config_dir()
     try:
@@ -64,18 +60,18 @@ def config_path(path=None):
     return os.path.join(path, 'config.yml')
 
 
-def read_config(path=None):
+def read_config(path=None, final=False):
     """Read Renga configuration."""
     try:
-        with open(config_path(path), 'r') as configfile:
+        with open(config_path(path, final=final), 'r') as configfile:
             return yaml.load(configfile) or {}
     except FileNotFoundError:
         return {}
 
 
-def write_config(config, path):
+def write_config(config, path, final=False):
     """Write Renga configuration."""
-    with open(config_path(path), 'w+') as configfile:
+    with open(config_path(path, final=final), 'w+') as configfile:
         yaml.dump(config, configfile, default_flow_style=False)
 
 
@@ -132,24 +128,26 @@ def print_app_config_path(ctx, param, value):
     ctx.exit()
 
 
-def create_project_config_path(path, mode=0o777, parents=False,
-                               exist_ok=False):
+def create_project_config_path(
+    path, mode=0o777, parents=False, exist_ok=False
+):
     """Create new project configuration folder."""
-    project_path = Path(path).absolute().joinpath(PROJECT_DIR)
+    # FIXME check default directory mode
+    project_path = Path(path).absolute().joinpath(RENGA_HOME)
     project_path.mkdir(mode=mode, parents=parents, exist_ok=exist_ok)
     return str(project_path)
 
 
 def get_project_config_path(path=None):
     """Return project configuration folder if exist."""
-    project_path = Path(path or '.').absolute().joinpath(PROJECT_DIR)
+    project_path = Path(path or '.').absolute().joinpath(RENGA_HOME)
     if project_path.exists() and project_path.is_dir():
         return str(project_path)
 
 
 def find_project_config_path(path=None):
     """Find project config path."""
-    path = Path(path) if path else pathlib.Path.cwd()
+    path = Path(path) if path else Path.cwd()
     abspath = path.absolute()
 
     project_path = get_project_config_path(abspath)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -53,10 +53,6 @@ The following example reads a password from a file, and passes it to the
 """
 
 import click
-import requests
-
-from renga import APIClient
-from renga.api.authorization import LegacyApplicationClient
 
 from ._client import from_config
 from ._config import config_path, with_config
@@ -67,7 +63,8 @@ from ._options import argument_endpoint, default_endpoint, password_prompt
 @click.argument('endpoint', required=False, callback=default_endpoint)
 @click.option(
     '--url',
-    default='{endpoint}/auth/realms/Renga/protocol/openid-connect/token')
+    default='{endpoint}/auth/realms/Renga/protocol/openid-connect/token'
+)
 @click.option('--client-id', default='demo-client')
 @click.option('--username', prompt=True)
 @click.option('--password', callback=password_prompt)
@@ -75,8 +72,10 @@ from ._options import argument_endpoint, default_endpoint, password_prompt
 @click.option('--default', is_flag=True)
 @with_config
 @click.pass_context
-def login(ctx, config, endpoint, url, client_id, username, password,
-          password_stdin, default):
+def login(
+    ctx, config, endpoint, url, client_id, username, password, password_stdin,
+    default
+):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
     scope = ['offline_access', 'openid']
@@ -93,7 +92,8 @@ def login(ctx, config, endpoint, url, client_id, username, password,
         username=username,
         password=password,
         client_id=client_id,
-        scope=scope)
+        scope=scope
+    )
 
     config['endpoints'][endpoint]['token'] = dict(token)
 
@@ -101,8 +101,11 @@ def login(ctx, config, endpoint, url, client_id, username, password,
         config.setdefault('core', {})
         config['core']['default'] = endpoint
 
-    click.echo('Access token has been stored in: {0}'.format(
-        config_path(ctx.obj['config_path'])))
+    click.echo(
+        'Access token has been stored in: {0}'.format(
+            config_path(ctx.obj['config_path'])
+        )
+    )
 
 
 @click.group(invoke_without_command=True)
@@ -112,8 +115,11 @@ def tokens(ctx, config):
     """Print access tokens."""
     if ctx.invoked_subcommand is None:
         for url, data in config.get('endpoints').items():
-            click.echo('{url}: {token}'.format(
-                url=url, token=data['token']['refresh_token']))
+            click.echo(
+                '{url}: {token}'.format(
+                    url=url, token=data['token']['refresh_token']
+                )
+            )
 
 
 @tokens.command()

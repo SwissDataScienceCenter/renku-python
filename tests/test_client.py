@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,6 +20,15 @@
 import pytest
 
 import renga
+
+
+def test_local_client(base_runner):
+    """Test a local client."""
+    from renga.api.client import LocalClient
+    client = LocalClient('.')
+
+    assert client.path
+    assert client.git is None
 
 
 def test_client(renga_client, monkeypatch):
@@ -43,15 +52,17 @@ def test_auto_refresh(projects_responses):
             'access_token': 'expired',
             'expires_at': 1,
             'refresh_token': 'refreshtoken',
-        }, )
+        },
+    )
 
     url = 'https://example.com/api/projects'
     data = b'{"name": "test-project"}'
-    response = client.api.request('POST', url, data=data)
+    client.api.request('POST', url, data=data)
 
     assert client.api.token['access_token'] == 'accessdemo'
 
 
+@pytest.mark.skip(reason='Project service has changed')
 def test_client_projects(renga_client, projects_responses):
     """Test client for managing projects."""
     project = renga_client.projects.create('test-project')
@@ -71,8 +82,9 @@ def test_client_invalid_requests(renga_client, projects_responses):
         renga_client.projects[0]
 
 
-def test_client_contexts(renga_client, deployer_responses, storage_responses,
-                         monkeypatch):
+def test_client_contexts(
+    renga_client, deployer_responses, storage_responses, monkeypatch
+):
     """Test client for managing contexts."""
     monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
 

@@ -25,7 +25,8 @@ class ProjectsApiMixin(object):
         """Get existing project."""
         resp = self.get(
             self._url('/api/projects/{0}', project_id),
-            expected_status_code=200)
+            expected_status_code=200
+        )
         return resp.json()
 
     def list_projects(self):
@@ -37,5 +38,6 @@ class ProjectsApiMixin(object):
         """Create a new project and register it on the knowledge graph."""
         resp = self.post(
             self._url('/api/projects'),
-            json=project, )
+            json=project,
+        )
         return resp.json()

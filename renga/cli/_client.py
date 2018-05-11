@@ -17,10 +17,24 @@
 # limitations under the License.
 """Client utilities."""
 
+import uuid
+
+import click
+import yaml
+
+from renga.api import LocalClient
 from renga.client import RengaClient
 
 from ._config import get_project_config_path, read_config
 from ._options import default_endpoint_from_config
+
+
+def _uuid_representer(dumper, data):
+    """Add UUID serializer for YAML."""
+    return dumper.represent_str(str(data))
+
+
+yaml.add_representer(uuid.UUID, _uuid_representer)
 
 
 def from_config(config=None, endpoint=None):
@@ -41,10 +55,15 @@ def from_config(config=None, endpoint=None):
     client_id = config['endpoints'][endpoint]['client_id']
 
     client = RengaClient(
-        endpoint, client_id=client_id, token=token, auto_refresh_url=url)
+        endpoint, client_id=client_id, token=token, auto_refresh_url=url
+    )
 
     if 'project' in config:
         client.api.headers['Renga-Projects-Project'] = config['project'][
-            'endpoints'][endpoint]['vertex_id']
+            'endpoints'
+        ][endpoint]['vertex_id']
 
     return client
+
+
+pass_local_client = click.make_pass_decorator(LocalClient, ensure=True)

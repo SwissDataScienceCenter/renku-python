@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,6 +17,6 @@
 # limitations under the License.
 """HTTP clients for Renga platform."""
 
-from .client import APIClient
+from .client import APIClient, LocalClient
 
-__all__ = ('APIClient', )
+__all__ = ('APIClient', 'LocalClient')

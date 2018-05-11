@@ -15,13 +15,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Sphinx configuration."""
 
 from __future__ import print_function
 
 import os
-import sys
 
 import sphinx.environment
 
@@ -71,9 +69,9 @@ author = u'Swiss Data Science Center'
 
 # Get the version string. Cannot be done with import!
 g = {}
-with open(os.path.join(os.path.dirname(__file__), '..',
-                       'renga', 'version.py'),
-          'rt') as fp:
+with open(
+    os.path.join(os.path.dirname(__file__), '..', 'renga', 'version.py'), 'rt'
+) as fp:
     exec(fp.read(), g)
     version = g['__version__']
 
@@ -124,7 +122,6 @@ exclude_patterns = ['_build']
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-
 # -- Options for HTML output ----------------------------------------------
 html_theme = 'renga'
 
@@ -132,7 +129,8 @@ html_theme_options = {
     'description': 'Python API and CLI for the Renga platform.',
     'github_repo': 'renga-python',
     'extra_nav_links': {
-        'renga-python@GitHub': 'https://github.com/SwissDataScienceCenter/renga-python',
+        'renga-python@GitHub':
+            'https://github.com/SwissDataScienceCenter/renga-python',
         'renga-python@PyPI': 'https://pypi.python.org/pypi/renga/',
         'renga@GitHub': 'https://github.com/SwissDataScienceCenter/renga',
     },
@@ -244,25 +242,27 @@ htmlhelp_basename = 'renga_namedoc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    #'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    #'pointsize': '10pt',
 
-# Additional stuff for the LaTeX preamble.
-#'preamble': '',
+    # Additional stuff for the LaTeX preamble.
+    #'preamble': '',
 
-# Latex figure (float) alignment
-#'figure_align': 'htbp',
+    # Latex figure (float) alignment
+    #'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'renga.tex', u'renga Documentation',
-   u'Swiss Data Science Center', 'manual'),
+    (
+        master_doc, 'renga.tex', u'renga Documentation',
+        u'Swiss Data Science Center', 'manual'
+    ),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -285,19 +285,14 @@ latex_documents = [
 # If false, no module index is generated.
 #latex_domain_indices = True
 
-
 # -- Options for manual page output ---------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'renga', u'renga Documentation',
-     [author], 1)
-]
+man_pages = [(master_doc, 'renga', u'renga Documentation', [author], 1)]
 
 # If true, show URL addresses after external links.
 #man_show_urls = False
-
 
 # -- Options for Texinfo output -------------------------------------------
 
@@ -305,9 +300,10 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'renga', u'Renga Documentation',
-   author, 'renga', 'Python API and CLI for the Renga platform.',
-   'Miscellaneous'),
+    (
+        master_doc, 'renga', u'Renga Documentation', author, 'renga',
+        'Python API and CLI for the Renga platform.', 'Miscellaneous'
+    ),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -321,7 +317,6 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
-
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {

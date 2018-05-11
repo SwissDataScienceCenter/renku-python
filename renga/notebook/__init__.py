@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,16 +19,13 @@
 
 from __future__ import absolute_import
 
-import codecs
-import collections
 import datetime
 import os
-import tempfile
+from binascii import hexlify
 
 import nbformat
-from notebook import notebookapp  # needed for translation setup
+from notebook import notebookapp  # noqa: F401
 from notebook.services.contents.filecheckpoints import GenericFileCheckpoints
-from notebook.services.contents.largefilemanager import LargeFileManager
 from notebook.services.contents.manager import ContentsManager
 from tornado import web
 
@@ -48,7 +45,8 @@ class Path(object):
         """Join path components."""
         obj, resolver = self._resolver(self._obj, path)
         return self.__class__(
-            self._path + '/' + path, obj=obj, resolver=resolver)
+            self._path + '/' + path, obj=obj, resolver=resolver
+        )
 
     __truediv__ = __div__
 
@@ -119,7 +117,9 @@ class Path(object):
                 file_ = collection[slot]
                 content.append(
                     Path(path + '/' + slot, obj=file_)._file_to_model(
-                        name='[{0}] {1}'.format(slot, file_.filename)))
+                        name='[{0}] {1}'.format(slot, file_.filename)
+                    )
+                )
 
         model = {
             'name': name,
@@ -201,15 +201,17 @@ def _buckets_resolver(obj, path):
     return bucket, lambda obj, path: (obj.files[int(path)], None)
 
 
+def _default_section_resolver(obj, path):
+    """Resolve inputs and outputs."""
+    return obj[path], None
+
+
 def _current_context_resolver(obj, path):
     """Resolve current context paths."""
-    # no epty line after dosstring: D202
-
-    def _section_resolver(obj, path):
-        """Resolve inputs and outputs."""
-        return obj[path], None
-
-    sections = {'inputs': _section_resolver, 'outputs': _section_resolver}
+    sections = {
+        'inputs': _default_section_resolver,
+        'outputs': _default_section_resolver
+    }
     return getattr(obj, path), sections[path]
 
 
@@ -241,8 +243,9 @@ class RengaStorageManager(ContentsManager):
 
         with file_.open('w') as fp:
             fp.write(
-                nbformat.writes(nb, version=nbformat.NO_CONVERT).encode(
-                    'utf-8'))
+                nbformat.writes(nb,
+                                version=nbformat.NO_CONVERT).encode('utf-8')
+            )
 
     def _save_file(self, path, content, format=None):
         """Save a file to the storage service."""
@@ -299,9 +302,8 @@ class RengaStorageManager(ContentsManager):
         resource = self._resolve_path(path)
         model = resource.to_model()
         if content and model['type'] == 'notebook':
-            with tempfile.NamedTemporaryFile() as t:
-                with resource._obj.open('r') as f:
-                    nb = nbformat.reads(f.read().decode('utf-8'), as_version=4)
+            with resource._obj.open('r') as f:
+                nb = nbformat.reads(f.read().decode('utf-8'), as_version=4)
 
             self.mark_trusted_cells(nb, path)
             model['content'] = nb
@@ -336,7 +338,8 @@ class RengaStorageManager(ContentsManager):
 
                 if not hasattr(resource._obj, 'files'):
                     raise web.HTTPError(
-                        403, "Notebook can only be created in a bucket.")
+                        403, "Notebook can only be created in a bucket."
+                    )
 
                 new_file = resource._obj.files.create(items[-1])
                 path = (resource / str(new_file.id))._path
@@ -351,7 +354,8 @@ class RengaStorageManager(ContentsManager):
 
                 if not hasattr(resource._obj, 'files'):
                     raise web.HTTPError(
-                        403, "File can only be created in a bucket.")
+                        403, "File can only be created in a bucket."
+                    )
 
                 new_file = resource._obj.files.create(items[-1])
                 path = (resource / str(new_file.id))._path
@@ -364,7 +368,8 @@ class RengaStorageManager(ContentsManager):
 
                 if not hasattr(resource._obj, 'create'):
                     raise web.HTTPError(
-                        403, "Buckets can only be created from buckets view.")
+                        403, "Buckets can only be created from buckets view."
+                    )
 
                 new_directory = resource._obj.create(items[-1])
                 path = (resource / str(new_directory.id))._path
@@ -373,8 +378,9 @@ class RengaStorageManager(ContentsManager):
 
             model['format'] = None
         else:
-            raise web.HTTPError(400,
-                                "Unhandled contents type: %s" % model['type'])
+            raise web.HTTPError(
+                400, "Unhandled contents type: %s" % model['type']
+            )
 
         validation_message = None
         if model['type'] == 'notebook':  # pragma: no cover
@@ -384,6 +390,7 @@ class RengaStorageManager(ContentsManager):
         model = self.get(path, content=False, type=model['type'])
         if validation_message:  # pragma: no cover
             model['message'] = validation_message
+
 
 #        self.run_post_save_hook(model=model, os_path=path)
 
@@ -415,3 +422,25 @@ class RengaStorageManager(ContentsManager):
             # FIXME model = self.rename(path, new_path)
             model = self.rename_file(path, new_path)
         return model
+
+
+def generate_notebook_token(size=24):
+    """Generate a notebook access token."""
+    return hexlify(os.urandom(24)).decode('ascii')
+
+
+def generate_launch_args(token=None, ip='*', base_url=None):
+    """Generate notebook launch arguments."""
+    token = token or generate_notebook_token()
+
+    args = [
+        'start-notebook.sh',
+        '--ContentsManager.untitled_notebook=notebook',
+        '--NotebookApp.ip="{0}"'.format(ip),
+        '--NotebookApp.token={0}'.format(token),
+    ]
+
+    if base_url:
+        args.append('--NotebookApp.base_url={0}'.format(base_url))
+
+    return args

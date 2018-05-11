@@ -25,7 +25,8 @@ class BucketsApiMixin(object):
         """Return information about available bucket backends."""
         resp = self.get(
             self._url('/api/storage/io/backends'),
-            headers=self.headers, )
+            headers=self.headers,
+        )
         return resp.json()
 
     def create_bucket(self, **kwargs):
@@ -33,7 +34,8 @@ class BucketsApiMixin(object):
         # TODO add validation
         kwargs['request_type'] = 'create_bucket'
         resp = self.post(
-            self._url('/api/storage/authorize/create_bucket'), json=kwargs)
+            self._url('/api/storage/authorize/create_bucket'), json=kwargs
+        )
         return resp.json()
 
     def storage_bucket_metadata_replace(self, resource_id, data):
@@ -41,7 +43,8 @@ class BucketsApiMixin(object):
         return self.put(
             self._url('/api/storage/bucket/{0}', resource_id),
             json=data,
-            expected_status_code=200, ).json()
+            expected_status_code=200,
+        ).json()
 
 
 class FilesApiMixin(object):
@@ -52,7 +55,8 @@ class FilesApiMixin(object):
         # TODO add validation
         kwargs['request_type'] = 'create_file'
         resp = self.post(
-            self._url('/api/storage/authorize/create_file'), json=kwargs)
+            self._url('/api/storage/authorize/create_file'), json=kwargs
+        )
         return resp.json()
 
     def storage_authorize(self, resource_id=None, request_type=None):
@@ -60,8 +64,11 @@ class FilesApiMixin(object):
         action = request_type.split('_')[0]
         resp = self.post(
             self._url('/api/storage/authorize/{0}', action),
-            json={'resource_id': resource_id,
-                  'request_type': request_type})
+            json={
+                'resource_id': resource_id,
+                'request_type': request_type
+            }
+        )
         return resp.json()
 
     def storage_copy_file(self, resource_id=None, file_name=None, **kwargs):
@@ -76,7 +83,8 @@ class FilesApiMixin(object):
             json={
                 key: value
                 for key, value in kwargs.items() if value is not None
-            }, )
+            },
+        )
         return resp.json()
 
     def storage_file_metadata_replace(self, resource_id, data):
@@ -84,17 +92,19 @@ class FilesApiMixin(object):
         return self.put(
             self._url('/api/storage/file/{0}', resource_id),
             json=data,
-            expected_status_code=200, ).json()
+            expected_status_code=200,
+        ).json()
 
     def storage_io_write(self, data):
         """Write data to the file.
 
         .. note:: Use only with ``access_token`` issued by storage service.
         """
-        resp = self.post(
+        self.post(
             self._url('/api/storage/io/write'),
             data=data,
-            headers={'Content-Type': 'application/octet-stream'})
+            headers={'Content-Type': 'application/octet-stream'}
+        )
 
     def storage_io_read(self, *args, **kwargs):
         """Write data to the file.

@@ -17,16 +17,11 @@
 # limitations under the License.
 """Manage notebookss."""
 
-import datetime
-import json
 import os
-import sys
 from binascii import hexlify
 
 import click
 
-import renga
-from renga import errors
 from renga.cli._options import option_endpoint
 
 from ..models._tabulate import tabulate
@@ -37,10 +32,32 @@ from .deployments import create
 
 
 @click.group()
-@with_config
-@click.pass_context
-def notebooks(ctx, config):
+def notebooks():
     """Manage notebooks."""
+
+
+@notebooks.command()
+@click.option(
+    '-u',
+    '--url',
+    help='URL of an OpenID Connect server.',
+    envvar='RENGA_OIC_URL',
+)
+@click.option(
+    '-i',
+    '--client-id',
+    help='Client identifer for OAuth 2.0.',
+    envvar='RENGA_OIC_CLIENT_ID',
+)
+def configure(url, client_id):
+    """Configure the Jupyter server extension."""
+    from notebook.services.config import ConfigManager
+
+    cm = ConfigManager()
+    cm.update('renga.notebook.oic', {
+        'client_id': client_id,
+        'url': url,
+    })
 
 
 @notebooks.command()
@@ -50,32 +67,39 @@ def notebooks(ctx, config):
 def list(config, all, endpoint):
     """Show running notebooks."""
     project_config = config.get('project', {})
-    project_vertex_id = project_config.get('endpoints', {}).get(
-        endpoint, {}).get('vertex_id')
+    project_vertex_id = project_config.get('endpoints',
+                                           {}).get(endpoint,
+                                                   {}).get('vertex_id')
 
     client = from_config(config, endpoint=endpoint)
 
     def is_notebook(context):
         return 'renga.notebook.token' in context.labels and (
-            project_vertex_id == context.labels.get('renga.project.vertex_id',
-                                                    0) or all)
+            project_vertex_id == context.labels.get(
+                'renga.project.vertex_id', 0
+            ) or all
+        )
 
     click.echo(
-        tabulate(
-            (execution for context in client.contexts
-             if is_notebook(context) for execution in context.executions),
-            headers=('engine', 'url'),
-            showindex='always'))
+        tabulate((
+            execution for context in client.contexts if is_notebook(context)
+            for execution in context.executions
+        ),
+                 headers=('engine', 'url'),
+                 showindex='always')
+    )
 
 
 @notebooks.command()
 @click.option(
-    '--context', default=None, help='Use an existing notebook context.')
+    '--context', default=None, help='Use an existing notebook context.'
+)
 @click.option('--engine', default='docker')
 @click.option(
     '--image',
     default='rengahub/minimal-notebook:latest',
-    help='Notebook image to use.')
+    help='Notebook image to use.'
+)
 @click.option('--input', multiple=True, help='Named input context slots.')
 @click.option('--output', multiple=True, help='Named output context slots.')
 @option_endpoint
@@ -120,18 +144,22 @@ def launch(ctx, config, context, engine, image, input, output, endpoint):
             labels=['renga.notebook.token={0}'.format(notebook_token)],
             input=input,
             output=output,
-            endpoint=endpoint)
+            endpoint=endpoint
+        )
         cfg = ctx.obj['config'].get('project', config)['endpoints'][endpoint]
         proj_notebooks = cfg.get('notebooks', {})
         proj_notebooks[image] = context.id
         cfg['notebooks'] = proj_notebooks
 
     if 'notebook' not in context.inputs._names:
-        click.echo('Option "--input notebook[=ID]" is missing. '
-                   'The new notebook will not be tracked.')
+        click.echo(
+            'Option "--input notebook[=ID]" is missing. '
+            'The new notebook will not be tracked.'
+        )
 
     execution = context.run(
         engine=engine,
         inputs=inputs,
-        outputs=outputs, )
+        outputs=outputs,
+    )
     click.echo(execution.url)

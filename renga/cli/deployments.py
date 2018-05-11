@@ -47,9 +47,11 @@ def list(config, endpoint):
 @click.argument('image')
 @click.option('--command', '-c', help='Command to run in the container.')
 @click.option(
-    '--labels', '-l', multiple=True, help='Labels to add to the container.')
+    '--labels', '-l', multiple=True, help='Labels to add to the container.'
+)
 @click.option(
-    '--ports', '-p', multiple=True, help='Ports to expose in the container.')
+    '--ports', '-p', multiple=True, help='Ports to expose in the container.'
+)
 @click.option('--input', multiple=True, help='Named input context slots.')
 @click.option('--output', multiple=True, help='Named output context slots.')
 @option_endpoint
@@ -57,8 +59,9 @@ def list(config, endpoint):
 def create(config, image, ports, command, labels, input, output, endpoint):
     """Create an execution context."""
     project_config = config.get('project', {})
-    project_vertex_id = project_config.get('endpoints', {}).get(
-        endpoint, {}).get('vertex_id')
+    project_vertex_id = project_config.get('endpoints',
+                                           {}).get(endpoint,
+                                                   {}).get('vertex_id')
 
     client = from_config(config, endpoint=endpoint)
 
@@ -79,7 +82,8 @@ def create(config, image, ports, command, labels, input, output, endpoint):
 
     if project_vertex_id:
         context.spec['labels'].append(
-            'renga.project.vertex_id={0}'.format(project_vertex_id))
+            'renga.project.vertex_id={0}'.format(project_vertex_id)
+        )
 
         client.api.headers['Renga-Projects-Project'] = project_vertex_id
 
@@ -109,7 +113,8 @@ def executions():
 @click.argument('context_id', nargs=-1)
 @option_endpoint
 @click.option(
-    '--all-contexts', is_flag=True, help='Stop executions for all contexts.')
+    '--all-contexts', is_flag=True, help='Stop executions for all contexts.'
+)
 @with_config
 def stop_executions(config, context_id, endpoint, all_contexts):
     """Stop running executions."""
@@ -117,7 +122,8 @@ def stop_executions(config, context_id, endpoint, all_contexts):
 
     if not bool(context_id) ^ all_contexts:
         raise click.UsageError(
-            'Either specify context id or use --all-contexts')
+            'Either specify context id or use --all-contexts'
+        )
 
     if context_id:
         contexts = (client.contexts[cid] for cid in context_id)
@@ -129,8 +135,10 @@ def stop_executions(config, context_id, endpoint, all_contexts):
             try:
                 click.echo(
                     'Stopping execution {0.id} on context {1.id} ... '.format(
-                        execution, context),
-                    nl=False)
+                        execution, context
+                    ),
+                    nl=False
+                )
                 execution.stop()
                 click.secho('OK', fg='green')
             except errors.APIError:

@@ -1,4 +1,0 @@
-FROM jupyter/%%NOTEBOOK_STACK%%:latest
-
-COPY . /code/renga
-RUN pip install --no-cache /code/renga
