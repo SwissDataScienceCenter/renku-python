@@ -29,8 +29,8 @@ import git
 import pytest
 import yaml
 
-from renga import __version__, cli
-from renga.models.cwl.workflow import Workflow
+from renku import __version__, cli
+from renku.models.cwl.workflow import Workflow
 
 
 def test_version(base_runner):
@@ -68,21 +68,21 @@ def test_init(base_runner):
     result = runner.invoke(cli.cli, ['init', 'test-project'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('test-project', '.git'))
-    assert os.stat(os.path.join('test-project', '.renga'))
+    assert os.stat(os.path.join('test-project', '.renku'))
 
-    # 3. test project init from already existing renga repository
+    # 3. test project init from already existing renku repository
     os.chdir('test-project')
     result = runner.invoke(cli.cli, ['init'])
     assert result.exit_code != 0
 
     # 4. in case of init failure because of existing .git folder
-    #    .renga directory should not exist
-    assert not os.path.exists(os.path.join('test-project', '.renga'))
+    #    .renku directory should not exist
+    assert not os.path.exists(os.path.join('test-project', '.renku'))
 
     result = runner.invoke(cli.cli, ['init', '--force'])
     assert result.exit_code == 0
     assert os.stat(os.path.join('.git'))
-    assert os.stat(os.path.join('.renga'))
+    assert os.stat(os.path.join('.renku'))
 
     # 4. check git lfs init options
     os.chdir('../')
@@ -146,7 +146,7 @@ def test_workflow(runner):
 
     with open('workflow.cwl', 'r') as f:
         workflow = Workflow.from_cwl(yaml.load(f))
-        assert workflow.steps[0].run.startswith('.renga/workflow/')
+        assert workflow.steps[0].run.startswith('.renku/workflow/')
 
 
 def test_streams(runner, capsys):
@@ -215,11 +215,11 @@ def test_datasets(data_file, data_repository, runner):
     result = runner.invoke(
         cli.cli, [
             'dataset', 'add', 'dataset', '--target', 'README.rst',
-            'https://github.com/SwissDataScienceCenter/renga-python.git'
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
         ]
     )
     assert result.exit_code == 0
-    assert os.stat('data/dataset/renga-python/README.rst')
+    assert os.stat('data/dataset/renku-python/README.rst')
 
     # add data from local git repo
     result = runner.invoke(
@@ -232,7 +232,7 @@ def test_datasets(data_file, data_repository, runner):
 
 
 def test_file_tracking(base_runner):
-    """Test .gitattribute handling on renga run."""
+    """Test .gitattribute handling on renku run."""
     runner = base_runner
 
     os.mkdir('test-project')

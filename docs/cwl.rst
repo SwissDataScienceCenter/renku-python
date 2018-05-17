@@ -18,7 +18,7 @@
 Tools and Workflows
 ===================
 
-.. py:module:: renga.models.cwl
+.. py:module:: renku.models.cwl
 
 Manage creation of tools and workflows using the `Common Workflow Language
 <http://www.commonwl.org/>`_ (CWL).
@@ -27,7 +27,7 @@ Manage creation of tools and workflows using the `Common Workflow Language
 Common Workflow language
 ------------------------
 
-Renga uses CWL to represent runnable steps (tools) along with their inputs
+Renku uses CWL to represent runnable steps (tools) along with their inputs
 and outputs. Similarly, tools can be chained together to form CWL-defined
 workflows.
 
@@ -35,29 +35,29 @@ workflows.
 Command-line tool
 ~~~~~~~~~~~~~~~~~
 
-.. automodule:: renga.models.cwl.command_line_tool
+.. automodule:: renku.models.cwl.command_line_tool
    :members:
 
 Parameter
 ~~~~~~~~~
 
-.. automodule:: renga.models.cwl.parameter
+.. automodule:: renku.models.cwl.parameter
    :members:
 
 Process
 ~~~~~~~
 
-.. automodule:: renga.models.cwl.process
+.. automodule:: renku.models.cwl.process
    :members:
 
 Types
 ~~~~~
 
-.. automodule:: renga.models.cwl.types
+.. automodule:: renku.models.cwl.types
    :members:
 
 Workflow
 ~~~~~~~~
 
-.. automodule:: renga.models.cwl.workflow
+.. automodule:: renku.models.cwl.workflow
    :members:

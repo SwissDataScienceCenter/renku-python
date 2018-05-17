@@ -26,7 +26,7 @@ import git
 import pytest
 import yaml
 
-from renga.models.datasets import Author, Dataset, DatasetFile
+from renku.models.datasets import Author, Dataset, DatasetFile
 
 
 def raises(error):
@@ -131,7 +131,7 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
     )
     assert os.stat('data/dataset/directory_tree/dir2/file2')
     assert 'directory_tree/dir2/file2' in dataset.files
-    assert os.stat('.renga/vendors/local')
+    assert os.stat('.renku/vendors/local')
 
     # check that the authors are properly parsed from commits
     client.add_data_to_dataset(

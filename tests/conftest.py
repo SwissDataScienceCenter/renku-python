@@ -42,18 +42,18 @@ def instance_path():
 @pytest.fixture()
 def base_runner(instance_path, monkeypatch):
     """Create a runner on isolated filesystem."""
-    from renga.cli._config import RENGA_HOME
-    monkeypatch.setenv('RENGA_CONFIG', os.path.join(instance_path, RENGA_HOME))
+    from renku.cli._config import RENKU_HOME
+    monkeypatch.setenv('RENKU_CONFIG', os.path.join(instance_path, RENKU_HOME))
     cli_runner = CliRunner()
     with cli_runner.isolated_filesystem():
         yield cli_runner
 
 
 @pytest.fixture()
-def renga_client():
+def renku_client():
     """Return a graph mutation client."""
-    from renga.client import RengaClient
-    return RengaClient(
+    from renku.client import RenkuClient
+    return RenkuClient(
         'https://example.com', token={'access_token': 'accessdemo'}
     )
 
@@ -61,7 +61,7 @@ def renga_client():
 @pytest.fixture()
 def graph_mutation_client():
     """Return a graph mutation client."""
-    from renga.client.graph.mutation import GraphMutationClient
+    from renku.client.graph.mutation import GraphMutationClient
     client = GraphMutationClient('https://example.com')
 
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
@@ -75,16 +75,16 @@ def graph_mutation_client():
 
         rsps.add_callback(
             responses.POST,
-            'https://example.com/auth/realms/Renga/protocol/openid-connect'
+            'https://example.com/auth/realms/Renku/protocol/openid-connect'
             '/token',
             content_type='application/json',
             callback=request_callback
         )
 
         client.authorization.authorize_service(
-            audience='renga-services',
-            client_id='renga-services-client-id',
-            client_secret='renga-services-client-secret',
+            audience='renku-services',
+            client_id='renku-services-client-id',
+            client_secret='renku-services-client-secret',
         )
     return client
 
@@ -105,7 +105,7 @@ def auth_responses():
 
         rsps.add_callback(
             responses.POST,
-            'https://example.com/auth/realms/Renga/protocol/openid-connect'
+            'https://example.com/auth/realms/Renku/protocol/openid-connect'
             '/token',
             content_type='application/json',
             callback=request_callback
@@ -185,7 +185,7 @@ def graph_mutation_responses(auth_responses, graph_mutation_client):
 
 
 @pytest.fixture()
-def projects_responses(auth_responses, renga_client):
+def projects_responses(auth_responses, renku_client):
     """Monkeypatch requests to immitate the projects service."""
     rsps = auth_responses
     project = {
@@ -194,42 +194,42 @@ def projects_responses(auth_responses, renga_client):
     }
     rsps.add(
         responses.POST,
-        renga_client.api._url('/api/projects'),
+        renku_client.api._url('/api/projects'),
         status=201,
         json=project,
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/projects'),
+        renku_client.api._url('/api/projects'),
         status=200,
         json={'projects': [project]},
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/projects/1234'),
+        renku_client.api._url('/api/projects/1234'),
         status=200,
         json=project,
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/projects/0'),
+        renku_client.api._url('/api/projects/0'),
         status=404,
     )
     yield rsps
 
 
 @pytest.fixture()
-def deployer_responses(auth_responses, renga_client):
+def deployer_responses(auth_responses, renku_client):
     """Monkeypatch requests to immitate the deployer service."""
     context = {
         'identifier': 'abcd',
         'spec': {
             'image': 'hello-world',
             'labels': [
-                'renga.context.inputs.notebook=9876',
-                'renga.context.inputs.no_default',
-                'renga.context.inputs.with_default=9876',
-                'renga.context.outputs.result',
+                'renku.context.inputs.notebook=9876',
+                'renku.context.inputs.no_default',
+                'renku.context.inputs.with_default=9876',
+                'renku.context.outputs.result',
             ],
         },
         'created': '1984-01-01T00:00:00.0+00:00'
@@ -245,13 +245,13 @@ def deployer_responses(auth_responses, renga_client):
     rsps = auth_responses
     rsps.add(
         responses.POST,
-        renga_client.api._url('/api/deployer/contexts'),
+        renku_client.api._url('/api/deployer/contexts'),
         status=201,
         json=context,
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/deployer/contexts'),
+        renku_client.api._url('/api/deployer/contexts'),
         status=200,
         json={
             'contexts': [context],
@@ -259,24 +259,24 @@ def deployer_responses(auth_responses, renga_client):
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/deployer/contexts/abcd'),
+        renku_client.api._url('/api/deployer/contexts/abcd'),
         status=200,
         json=context
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/deployer/contexts/deadbeef'),
+        renku_client.api._url('/api/deployer/contexts/deadbeef'),
         status=404
     )
     rsps.add(
         responses.POST,
-        renga_client.api._url('/api/deployer/contexts/abcd/executions'),
+        renku_client.api._url('/api/deployer/contexts/abcd/executions'),
         status=201,
         json=execution,
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/deployer/contexts/abcd/executions'),
+        renku_client.api._url('/api/deployer/contexts/abcd/executions'),
         status=200,
         json={
             'executions': [execution],
@@ -284,26 +284,26 @@ def deployer_responses(auth_responses, renga_client):
     )
     rsps.add(
         responses.DELETE,
-        renga_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
+        renku_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
         status=200,
         json=execution,
     )
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
+        renku_client.api._url('/api/deployer/contexts/abcd/executions/efgh'),
         status=200,
         json=execution,
     )
     rsps.add(
         responses.GET,
-        renga_client.api.
+        renku_client.api.
         _url('/api/deployer/contexts/abcd/executions/efgh/logs'),
         status=200,
         body=b'Hello world!',
     )
     rsps.add(
         responses.GET,
-        renga_client.api.
+        renku_client.api.
         _url('/api/deployer/contexts/abcd/executions/efgh/ports'),
         status=200,
         json={
@@ -314,7 +314,7 @@ def deployer_responses(auth_responses, renga_client):
 
 
 @pytest.fixture()
-def storage_responses(auth_responses, renga_client):
+def storage_responses(auth_responses, renku_client):
     """Monkeypatch requests to immitate the storage service."""
     rsps = auth_responses
 
@@ -362,7 +362,7 @@ def storage_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.POST,
-        renga_client.api._url('/api/storage/authorize/create_bucket'),
+        renku_client.api._url('/api/storage/authorize/create_bucket'),
         callback=create_bucket,
     )
 
@@ -394,13 +394,13 @@ def storage_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.POST,
-        renga_client.api._url('/api/storage/authorize/create_file'),
+        renku_client.api._url('/api/storage/authorize/create_file'),
         callback=create_file,
     )
 
     rsps.add_callback(
         responses.POST,
-        renga_client.api._url('/api/storage/authorize/copy_file'),
+        renku_client.api._url('/api/storage/authorize/copy_file'),
         callback=copy_file,
     )
 
@@ -416,13 +416,13 @@ def storage_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.POST,
-        renga_client.api._url('/api/storage/authorize/write'),
+        renku_client.api._url('/api/storage/authorize/write'),
         callback=authorize_io,
     )
 
     rsps.add_callback(
         responses.POST,
-        renga_client.api._url('/api/storage/authorize/read'),
+        renku_client.api._url('/api/storage/authorize/read'),
         callback=authorize_io,
     )
 
@@ -500,18 +500,18 @@ def storage_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.POST,
-        renga_client.api._url('/api/storage/io/write'),
+        renku_client.api._url('/api/storage/io/write'),
         callback=io_write,
     )
     rsps.add_callback(
         responses.GET,
-        renga_client.api._url('/api/storage/io/read'),
+        renku_client.api._url('/api/storage/io/read'),
         callback=io_read,
     )
     rsps._matches[-1].stream = True
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/storage/io/backends'),
+        renku_client.api._url('/api/storage/io/backends'),
         status=200,
         json=['local'],
     )
@@ -525,13 +525,13 @@ def storage_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.GET,
-        renga_client.api._url('/api/explorer/storage/file/9876/versions'),
+        renku_client.api._url('/api/explorer/storage/file/9876/versions'),
         callback=lambda request: (200, {}, json.dumps(file_versions)),
         content_type='application/json',
     )
     rsps.add_callback(
         responses.GET,
-        renga_client.api._url('/api/explorer/storage/file/9875/versions'),
+        renku_client.api._url('/api/explorer/storage/file/9875/versions'),
         callback=lambda request: (200, {}, json.dumps([])),
         content_type='application/json',
     )
@@ -540,14 +540,14 @@ def storage_responses(auth_responses, renga_client):
 
 
 @pytest.fixture()
-def explorer_responses(auth_responses, renga_client):
+def explorer_responses(auth_responses, renku_client):
     """Monkeypatch requests to immitate the explorer service."""
     rsps = auth_responses
     buckets = rsps.buckets
 
     rsps.add_callback(
         responses.GET,
-        renga_client.api._url('/api/explorer/storage/bucket'),
+        renku_client.api._url('/api/explorer/storage/bucket'),
         callback=lambda request: (200, {}, json.dumps(buckets)),
     )
 
@@ -560,14 +560,14 @@ def explorer_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.PUT,
-        renga_client.api._url('/api/storage/bucket/1234'),
+        renku_client.api._url('/api/storage/bucket/1234'),
         callback=rename_bucket,
         content_type='application/json',
     )
 
     rsps.add_callback(
         responses.GET,
-        renga_client.api._url('/api/explorer/storage/bucket/1234'),
+        renku_client.api._url('/api/explorer/storage/bucket/1234'),
         callback=lambda request: (200, {}, json.dumps(buckets[0]))
     )
 
@@ -614,14 +614,14 @@ def explorer_responses(auth_responses, renga_client):
 
     rsps.add(
         responses.GET,
-        renga_client.api._url('/api/explorer/storage/bucket/1234/files'),
+        renku_client.api._url('/api/explorer/storage/bucket/1234/files'),
         status=200,
         json=files[:1]
     )
 
     rsps.add_callback(
         responses.GET,
-        renga_client.api._url('/api/explorer/storage/file/9876'),
+        renku_client.api._url('/api/explorer/storage/file/9876'),
         callback=lambda request:
         (200, {}, json.dumps({
             'data': files[0],
@@ -632,7 +632,7 @@ def explorer_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.GET,
-        renga_client.api._url('/api/explorer/storage/file/9875'),
+        renku_client.api._url('/api/explorer/storage/file/9875'),
         callback=lambda request:
         (200, {}, json.dumps({
             'data': files[1],
@@ -649,7 +649,7 @@ def explorer_responses(auth_responses, renga_client):
 
     rsps.add_callback(
         responses.PUT,
-        renga_client.api._url('/api/storage/file/9876'),
+        renku_client.api._url('/api/storage/file/9876'),
         callback=rename_file,
         content_type='application/json',
     )
@@ -659,11 +659,11 @@ def explorer_responses(auth_responses, renga_client):
 
 @pytest.fixture(autouse=True)
 def add_client(
-    doctest_namespace, renga_client, storage_responses, explorer_responses,
+    doctest_namespace, renku_client, storage_responses, explorer_responses,
     projects_responses
 ):
-    """Add Renga client to doctest namespace."""
-    doctest_namespace['client'] = renga_client
+    """Add Renku client to doctest namespace."""
+    doctest_namespace['client'] = renku_client
 
 
 @pytest.fixture()
@@ -677,7 +677,7 @@ def data_file(tmpdir):
 @pytest.fixture()
 def project(base_runner):
     """Create a test project."""
-    from renga import cli
+    from renku import cli
 
     with base_runner.isolated_filesystem() as project_path:
         os.makedirs('data')
@@ -694,8 +694,8 @@ def runner(base_runner, project):
 
 @pytest.fixture()
 def client(project):
-    """Return a Renga repository."""
-    from renga.api import LocalClient
+    """Return a Renku repository."""
+    from renku.api import LocalClient
     return LocalClient(path=project)
 
 

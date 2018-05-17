@@ -16,41 +16,41 @@
     limitations under the License.
 
 ==============================
- Renga CLI and SDK for Python
+ Renku CLI and SDK for Python
 ==============================
 
-.. image:: https://img.shields.io/travis/SwissDataScienceCenter/renga-python.svg
-   :target: https://travis-ci.org/SwissDataScienceCenter/renga-python
+.. image:: https://img.shields.io/travis/SwissDataScienceCenter/renku-python.svg
+   :target: https://travis-ci.org/SwissDataScienceCenter/renku-python
 
-.. image:: https://img.shields.io/coveralls/SwissDataScienceCenter/renga-python.svg
-   :target: https://coveralls.io/r/SwissDataScienceCenter/renga-python
+.. image:: https://img.shields.io/coveralls/SwissDataScienceCenter/renku-python.svg
+   :target: https://coveralls.io/r/SwissDataScienceCenter/renku-python
 
-.. image:: https://img.shields.io/github/tag/SwissDataScienceCenter/renga-python.svg
-   :target: https://github.com/SwissDataScienceCenter/renga-python/releases
+.. image:: https://img.shields.io/github/tag/SwissDataScienceCenter/renku-python.svg
+   :target: https://github.com/SwissDataScienceCenter/renku-python/releases
 
-.. image:: https://img.shields.io/pypi/dm/renga.svg
-   :target: https://pypi.python.org/pypi/renga
+.. image:: https://img.shields.io/pypi/dm/renku.svg
+   :target: https://pypi.python.org/pypi/renku
 
-.. image:: http://readthedocs.org/projects/renga-python/badge/?version=latest
-   :target: http://renga-python.readthedocs.io/en/latest/?badge=latest
+.. image:: http://readthedocs.org/projects/renku-python/badge/?version=latest
+   :target: http://renku-python.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renga-python.svg
-        :target: https://github.com/SwissDataScienceCenter/renga-python/blob/master/LICENSE
+.. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renku-python.svg
+        :target: https://github.com/SwissDataScienceCenter/renku-python/blob/master/LICENSE
 
-A Python library for the `Renga collaborative data science platform
-<https://github.com/SwissDataScienceCenter/renga>`_. It allows the user to
+A Python library for the `Renku collaborative data science platform
+<https://github.com/SwissDataScienceCenter/renku>`_. It allows the user to
 create projects, manage datasets, and capture data provenance while performing
 analysis tasks.
 
 
 **NOTE**:
-   ``renga-python`` is the python library for Renga that provides an SDK and a
-   command-line interface (CLI). It *does not* start the Renga platform itself -
-   for that, refer to the Renga docs on `running the platform
-   <https://renga.readthedocs.io/en/latest/user/setup.html>`_.
+   ``renku-python`` is the python library for Renku that provides an SDK and a
+   command-line interface (CLI). It *does not* start the Renku platform itself -
+   for that, refer to the Renku docs on `running the platform
+   <https://renku.readthedocs.io/en/latest/user/setup.html>`_.
 
-**This is the development branch of `renga-python` and should be considered
+**This is the development branch of `renku-python` and should be considered
 highly volatile. The documentation for certain components may be out of
 sync.**
 
@@ -62,45 +62,45 @@ The latest release is available on PyPI and can be installed using
 
 ::
 
-    $ pip install renga
+    $ pip install renku
 
 The development branch can be installed directly from the Git repository:
 
 ::
 
-    $ pip install -e git+https://github.com/SwissDataScienceCenter/renga-python.git@development#egg=renga
+    $ pip install -e git+https://github.com/SwissDataScienceCenter/renku-python.git@development#egg=renku
 
 
 Usage
 -----
 
-Initialize a renga project:
+Initialize a renku project:
 
 ::
 
-    $ mkdir -p ~/temp/my-renga-project
-    $ cd ~/temp/my-renga-project
-    $ renga init
+    $ mkdir -p ~/temp/my-renku-project
+    $ cd ~/temp/my-renku-project
+    $ renku init
 
 Create a dataset and add data to it:
 
 ::
 
-    $ renga dataset create my-dataset
-    $ renga dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renga-python/development/README.rst
+    $ renku dataset create my-dataset
+    $ renku dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/development/README.rst
 
 Run an analysis:
 
 ::
 
-    $ renga run wc < data/my-dataset/README.rst > wc_readme
+    $ renku run wc < data/my-dataset/README.rst > wc_readme
 
 Trace the data provenance:
 
 ::
 
-    $ renga log wc_readme
+    $ renku log wc_readme
 
-These are the basics, but there is much more that Renga allows you to do with
+These are the basics, but there is much more that Renku allows you to do with
 your data analysis workflows. The full documentation will soon be available
-at: https://renga-python.readthedocs.io/en/development
+at: https://renku-python.readthedocs.io/en/development

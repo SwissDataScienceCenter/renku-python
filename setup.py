@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python SDK and CLI for the Renga platform."""
+"""Python SDK and CLI for the Renku platform."""
 
 import os
 
@@ -37,14 +37,16 @@ tests_require = [
     'pytest-pep8>=1.0.6',
     'pytest-yapf>=0.1.1',
     'pytest>=3.2.1',
-    'renga-sphinx-theme>=0.1.0',
     'responses>=0.7.0',
-    'yapf>=0.20.2',
+    'yapf>=0.22.0',
 ]
 
 extras_require = {
     ':python_version<"3.6"': ['pathlib2>=2.3.0'],
-    'docs': ['Sphinx>=1.6.3', ],
+    'docs': [
+        'Sphinx>=1.6.3',
+        'renku-sphinx-theme>=0.1.0',
+    ],
     'runner': [
         'cwltool>=1.0.20180130110340',
         'cwlref-runner>=1.0',
@@ -88,39 +90,39 @@ packages = find_packages()
 
 # Get the version string. Cannot be done with import!
 g = {}
-with open(os.path.join('renga', 'version.py'), 'rt') as fp:
+with open(os.path.join('renku', 'version.py'), 'rt') as fp:
     exec(fp.read(), g)
     version = g['__version__']
 
 setup(
-    name='renga',
+    name='renku',
     version=version,
     description=__doc__,
     long_description=readme + '\n\n' + history,
-    keywords='Renga CLI',
+    keywords='Renku CLI',
     license='Apache License 2.0',
     author='Swiss Data Science Center',
     author_email='contact@datascience.ch',
-    url='https://github.com/SwissDataScienceCenter/renga-python',
+    url='https://github.com/SwissDataScienceCenter/renku-python',
     packages=packages,
     zip_safe=False,
     include_package_data=True,
     platforms='any',
     entry_points={
-        'console_scripts': ['renga=renga.cli:cli'],
-        'renga.cli': [
+        'console_scripts': ['renku=renku.cli:cli'],
+        'renku.cli': [
             # Please keep the items sorted.
-            'dataset=renga.cli.dataset:dataset',
-            'deactivate=renga.cli.workon:deactivate',
-            'init=renga.cli.init:init',
-            'log=renga.cli.log:log',
-            # 'notebooks=renga.cli.notebooks:notebooks',
-            'run=renga.cli.run:run',
-            'runner=renga.cli.runner:runner',
-            'status=renga.cli.status:status',
-            'update=renga.cli.update:update',
-            'workflow=renga.cli.workflow:workflow',
-            'workon=renga.cli.workon:workon',
+            'dataset=renku.cli.dataset:dataset',
+            'deactivate=renku.cli.workon:deactivate',
+            'init=renku.cli.init:init',
+            'log=renku.cli.log:log',
+            # 'notebooks=renku.cli.notebooks:notebooks',
+            'run=renku.cli.run:run',
+            'runner=renku.cli.runner:runner',
+            'status=renku.cli.status:status',
+            'update=renku.cli.update:update',
+            'workflow=renku.cli.workflow:workflow',
+            'workon=renku.cli.workon:workon',
         ],
     },
     extras_require=extras_require,

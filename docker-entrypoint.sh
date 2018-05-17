@@ -1,3 +1,3 @@
 #!/bin/bash -e
-renga notebooks configure
+renku notebooks configure
 tini -- $@

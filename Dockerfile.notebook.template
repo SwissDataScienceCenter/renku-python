@@ -1,19 +1,19 @@
 FROM jupyter/%%NOTEBOOK_STACK%%:latest
 
-ENV RENGA_OIC_URL https://testing.datascience.ch/auth/realms/Renga/
-ENV RENGA_OIC_CLIENT_ID jupyter
+ENV RENKU_OIC_URL https://testing.datascience.ch/auth/realms/Renku/
+ENV RENKU_OIC_CLIENT_ID jupyter
 
 USER root
-COPY . /code/renga
-RUN chown $NB_USER -R /code/renga
+COPY . /code/renku
+RUN chown $NB_USER -R /code/renku
 USER $NB_USER
 
-RUN cd /code/renga && \
+RUN cd /code/renku && \
     pip install --no-cache -e .[notebook]
 
 USER root
-RUN jupyter serverextension enable --py renga.notebook.oic && \
+RUN jupyter serverextension enable --py renku.notebook.oic && \
     chown $NB_USER -R /home/$NB_USER/.jupyter
 USER $NB_USER
 
-ENTRYPOINT ["/code/renga/docker-entrypoint.sh"]
+ENTRYPOINT ["/code/renku/docker-entrypoint.sh"]

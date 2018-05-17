@@ -18,7 +18,7 @@
 Datasets
 ========
 
-.. py:module:: renga.models.datasets
+.. py:module:: renku.models.datasets
 
 Manage datasets and their metadata.
 

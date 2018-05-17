@@ -20,8 +20,8 @@
 import yaml
 from freezegun import freeze_time
 
-from renga.models._jsonld import asjsonld
-from renga.models.projects import Project
+from renku.models._jsonld import asjsonld
+from renku.models.projects import Project
 
 # Do not modify the content so we can ensure backwards compatibility.
 PROJECT_V1 = """

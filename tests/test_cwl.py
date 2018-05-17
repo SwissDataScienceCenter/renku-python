@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from renga._compat import Path
-from renga.models.cwl.command_line_tool import CommandLineToolFactory
+from renku._compat import Path
+from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
 
 def test_1st_tool():

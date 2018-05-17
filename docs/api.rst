@@ -19,30 +19,30 @@
 Low-level API
 =============
 
-This API is built on top of REST API endpoints exposed by Renga services.
+This API is built on top of REST API endpoints exposed by Renku services.
 
 .. warning::
 
-   Renga services are currently in **beta preview** status and they are
+   Renku services are currently in **beta preview** status and they are
    subject to change in forseenable future.
 
-.. automodule:: renga.api
+.. automodule:: renku.api
    :members:
 
 Projects
 --------
 
-.. automodule:: renga.api.projects
+.. automodule:: renku.api.projects
    :members:
 
 Storage
 -------
 
-.. automodule:: renga.api.storage
+.. automodule:: renku.api.storage
    :members:
 
 Deployer
 --------
 
-.. automodule:: renga.api.deployer
+.. automodule:: renku.api.deployer
    :members:

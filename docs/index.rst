@@ -19,46 +19,46 @@
 .. include:: ../README.rst
    :end-before: Usage
 
-For more information about the Renga API `see its documentation
-<https://renga.readthedocs.org/latest/developer/index.html>`_.
+For more information about the Renku API `see its documentation
+<https://renku.readthedocs.org/latest/developer/index.html>`_.
 
-Use the Renga command line
+Use the Renku command line
 --------------------------
 
 Interaction with the platform can take place via the command-line
 interface (CLI).
 
-Start by creating for folder where you want to keep your Renga project:
+Start by creating for folder where you want to keep your Renku project:
 
 .. code-block:: console
 
-   $ mkdir -p ~/temp/my-renga-project
-   $ cd ~/temp/my-renga-project
-   $ renga init
+   $ mkdir -p ~/temp/my-renku-project
+   $ cd ~/temp/my-renku-project
+   $ renku init
 
 Create a dataset and add data to it:
 
 .. code-block:: console
 
-   $ renga dataset create my-dataset
-   $ renga dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renga-python/development/README.rst
+   $ renku dataset create my-dataset
+   $ renku dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/development/README.rst
 
 Run an analysis:
 
 .. code-block:: console
 
-   $ renga run wc < data/my-dataset/README.rst > wc_readme
+   $ renku run wc < data/my-dataset/README.rst > wc_readme
 
 Trace the data provenance:
 
 .. code-block:: console
 
-    $ renga log wc_readme
+    $ renku log wc_readme
 
-These are the basics, but there is much more that Renga allows you to do with
+These are the basics, but there is much more that Renku allows you to do with
 your data analysis workflows.
 
-For more information about using `renga`, refer to the :doc:`Renga command
+For more information about using `renku`, refer to the :doc:`Renku command
 line <cli>` instructions.
 
 .. toctree::

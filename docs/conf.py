@@ -57,7 +57,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Renga'
+project = u'Renku'
 copyright = u'2017, Swiss Data Science Center'
 author = u'Swiss Data Science Center'
 
@@ -70,7 +70,7 @@ author = u'Swiss Data Science Center'
 # Get the version string. Cannot be done with import!
 g = {}
 with open(
-    os.path.join(os.path.dirname(__file__), '..', 'renga', 'version.py'), 'rt'
+    os.path.join(os.path.dirname(__file__), '..', 'renku', 'version.py'), 'rt'
 ) as fp:
     exec(fp.read(), g)
     version = g['__version__']
@@ -123,16 +123,16 @@ exclude_patterns = ['_build']
 todo_include_todos = False
 
 # -- Options for HTML output ----------------------------------------------
-html_theme = 'renga'
+html_theme = 'renku'
 
 html_theme_options = {
-    'description': 'Python API and CLI for the Renga platform.',
-    'github_repo': 'renga-python',
+    'description': 'Python API and CLI for the Renku platform.',
+    'github_repo': 'renku-python',
     'extra_nav_links': {
-        'renga-python@GitHub':
-            'https://github.com/SwissDataScienceCenter/renga-python',
-        'renga-python@PyPI': 'https://pypi.python.org/pypi/renga/',
-        'renga@GitHub': 'https://github.com/SwissDataScienceCenter/renga',
+        'renku-python@GitHub':
+            'https://github.com/SwissDataScienceCenter/renku-python',
+        'renku-python@PyPI': 'https://pypi.python.org/pypi/renku/',
+        'renku@GitHub': 'https://github.com/SwissDataScienceCenter/renku',
     },
 }
 
@@ -237,7 +237,7 @@ html_sidebars = {
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'renga_namedoc'
+htmlhelp_basename = 'renku_namedoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -260,7 +260,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (
-        master_doc, 'renga.tex', u'renga Documentation',
+        master_doc, 'renku.tex', u'renku Documentation',
         u'Swiss Data Science Center', 'manual'
     ),
 ]
@@ -289,7 +289,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, 'renga', u'renga Documentation', [author], 1)]
+man_pages = [(master_doc, 'renku', u'renku Documentation', [author], 1)]
 
 # If true, show URL addresses after external links.
 #man_show_urls = False
@@ -301,8 +301,8 @@ man_pages = [(master_doc, 'renga', u'renga Documentation', [author], 1)]
 #  dir menu entry, description, category)
 texinfo_documents = [
     (
-        master_doc, 'renga', u'Renga Documentation', author, 'renga',
-        'Python API and CLI for the Renga platform.', 'Miscellaneous'
+        master_doc, 'renku', u'Renku Documentation', author, 'renku',
+        'Python API and CLI for the Renku platform.', 'Miscellaneous'
     ),
 ]
 

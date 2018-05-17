@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License..PHONY: build-docker-images push-docker-images login
 
-DOCKER_REPOSITORY?=rengahub/
+DOCKER_REPOSITORY?=renku/
 DOCKER_PREFIX:=${DOCKER_REGISTRY}$(DOCKER_REPOSITORY)
 DOCKER_LABEL?=$(or ${TRAVIS_BRANCH},${TRAVIS_BRANCH},$(shell git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/^* //'))
 
@@ -33,17 +33,17 @@ ALL_STACKS:=\
 	pyspark-notebook \
 	all-spark-notebook
 
-IMAGES=$(ALL_STACKS) gitlab-runner renga-python
+IMAGES=$(ALL_STACKS) gitlab-runner renku-python
 
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
 tag-docker-images: $(IMAGES:%=tag/%)
 
 build/%-notebook: Dockerfile.notebook.template
-	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
+	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t renku/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
 
 build/%: Dockerfile.%
-	docker build --rm --force-rm -t rengahub/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f $< .
+	docker build --rm --force-rm -t renku/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f $< .
 
 push-docker-images: $(IMAGES:%=push/%)
 

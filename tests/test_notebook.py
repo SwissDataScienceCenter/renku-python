@@ -20,7 +20,7 @@
 import pytest
 from nbformat.notebooknode import from_dict
 
-from renga.notebook import RengaStorageManager
+from renku.notebook import RenkuStorageManager
 
 
 @pytest.fixture
@@ -43,20 +43,20 @@ def notebook():
 
 
 def test_file_manager_browse(
-    instance_path, renga_client, monkeypatch, deployer_responses,
+    instance_path, renku_client, monkeypatch, deployer_responses,
     storage_responses, notebook
 ):
     """Test browsing in file manager."""
-    client = renga_client
+    client = renku_client
     client.buckets.create('bucket1')
 
-    monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
-    monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
-    monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
+    monkeypatch.setenv('RENKU_ENDPOINT', client.api.endpoint)
+    monkeypatch.setenv('RENKU_ACCESS_TOKEN', client.api.token['access_token'])
+    monkeypatch.setenv('RENKU_CONTEXT_ID', 'abcd')
 
-    contents_manager = RengaStorageManager()
+    contents_manager = RenkuStorageManager()
     # Top level
-    assert contents_manager.get('/')['name'] == 'Renga'
+    assert contents_manager.get('/')['name'] == 'Renku'
     # First level
     assert contents_manager.get('/buckets')['name'] == 'Buckets'
     assert contents_manager.get('/current_context')['name'
@@ -69,18 +69,18 @@ def test_file_manager_browse(
 
 
 def test_file_manager(
-    instance_path, renga_client, monkeypatch, deployer_responses,
+    instance_path, renku_client, monkeypatch, deployer_responses,
     storage_responses, notebook
 ):
     """Test file manager."""
-    client = renga_client
+    client = renku_client
     client.buckets.create('bucket1')
 
-    monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
-    monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
-    monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
+    monkeypatch.setenv('RENKU_ENDPOINT', client.api.endpoint)
+    monkeypatch.setenv('RENKU_ACCESS_TOKEN', client.api.token['access_token'])
+    monkeypatch.setenv('RENKU_CONTEXT_ID', 'abcd')
 
-    contents_manager = RengaStorageManager()
+    contents_manager = RenkuStorageManager()
     contents_manager._save_notebook(
         'current_context/inputs/notebook', from_dict(notebook)
     )
@@ -111,17 +111,17 @@ def test_file_manager(
 
 
 def test_file_manager_save(
-    instance_path, renga_client, monkeypatch, deployer_responses,
+    instance_path, renku_client, monkeypatch, deployer_responses,
     storage_responses, notebook
 ):
     """Test file saving manager."""
-    client = renga_client
+    client = renku_client
 
-    monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
-    monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
-    monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
+    monkeypatch.setenv('RENKU_ENDPOINT', client.api.endpoint)
+    monkeypatch.setenv('RENKU_ACCESS_TOKEN', client.api.token['access_token'])
+    monkeypatch.setenv('RENKU_CONTEXT_ID', 'abcd')
 
-    contents_manager = RengaStorageManager()
+    contents_manager = RenkuStorageManager()
 
     with pytest.raises(Exception):
         bucket_model = contents_manager.save({

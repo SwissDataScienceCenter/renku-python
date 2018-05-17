@@ -21,4 +21,4 @@ Makefile
 
 # FIXME -- no tests in containers...
 docs/conftest.py
-renga/conftest.py
+renku/conftest.py

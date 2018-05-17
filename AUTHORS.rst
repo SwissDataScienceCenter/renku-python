@@ -18,6 +18,6 @@
 Authors
 =======
 
-Python SDK and CLI for the Renga platform.
+Python SDK and CLI for the Renku platform.
 
 - Swiss Data Science Center <contact@datascience.ch>

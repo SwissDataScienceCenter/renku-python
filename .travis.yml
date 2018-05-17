@@ -72,7 +72,7 @@ deploy:
   on:
     tags: true
     python: "3.6"
-    repo: SwissDataScienceCenter/renga-python
+    repo: SwissDataScienceCenter/renku-python
     condition: $DEPLOY = true
 - provider: script
   skip_cleanup: true
@@ -80,5 +80,5 @@ deploy:
   on:
     all_branches: true
     python: "3.6"
-    repo: SwissDataScienceCenter/renga-python
+    repo: SwissDataScienceCenter/renku-python
     condition: $DEPLOY = true
