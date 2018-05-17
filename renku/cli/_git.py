@@ -38,9 +38,9 @@ def set_git_home(value):
 def get_git_home():
     """Get Git path from current context."""
     ctx = click.get_current_context(silent=True)
-    if ctx:
-        return ctx.meta.get(GIT_KEY, '.')
-    return '.'
+    if ctx and GIT_KEY in ctx.meta:
+        return ctx.meta[GIT_KEY]
+    return Repo('.', search_parent_directories=True).working_dir
 
 
 def _dirty_paths(repo):

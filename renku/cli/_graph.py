@@ -49,6 +49,12 @@ class Graph(object):
             self.client.workflow_path.resolve().relative_to(self.client.path)
         )
 
+    def normalize_path(self, path):
+        """Normalize path relative to the Git workdir."""
+        start = self.client.path.resolve()
+        path = Path(path).resolve()
+        return os.path.relpath(path, start=start)
+
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
         key = str(commit), str(path)

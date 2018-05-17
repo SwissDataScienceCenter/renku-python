@@ -33,6 +33,6 @@ def log(client, revision, path):
     """Show logs for a file."""
     graph = Graph(client)
     for p in path:
-        graph.add_file(p, revision=revision)
+        graph.add_file(graph.normalize_path(p), revision=revision)
 
     echo_via_pager(DAG(graph=graph))

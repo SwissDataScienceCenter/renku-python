@@ -33,8 +33,8 @@ from ._graph import Graph
 @with_git(commit=False)
 def status(ctx, client, revision, path):
     """Show a status of the repository."""
-    paths = set(path)
     graph = Graph(client)
+    paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision)
 
     click.echo('On branch {0}'.format(client.git.active_branch))
@@ -46,7 +46,7 @@ def status(ctx, client, revision, path):
         click.echo()
 
         for filepath, files in status['outdated'].items():
-            paths = (
+            outdated = (
                 ', '.join(
                     '{0}#{1}'.format(
                         click.style(p, fg='blue', bold=True),
@@ -60,7 +60,7 @@ def status(ctx, client, revision, path):
             click.echo(
                 '\t{0}: {1}'.format(
                     click.style(filepath, fg='red', bold=True),
-                    ', '.join(paths)
+                    ', '.join(outdated)
                 )
             )
 
