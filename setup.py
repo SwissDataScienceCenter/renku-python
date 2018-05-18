@@ -67,6 +67,7 @@ for name, reqs in extras_require.items():
 setup_requires = [
     'Babel>=1.3',
     'pytest-runner>=2.6.2',
+    'reentry>=1.2.0',
 ]
 
 install_requires = [
@@ -80,6 +81,7 @@ install_requires = [
     'networkx>=2.1',
     'pyld>=0.8.2',
     'python-dateutil>=2.6.1',
+    'reentry>=1.2.0',
     'requests-oauthlib>=0.8.0',
     'requests>=2.18.4',
     'tabulate>=0.7.7',
@@ -108,6 +110,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     platforms='any',
+    reentry_register=True,
     entry_points={
         'console_scripts': ['renku=renku.cli:cli'],
         'renku.cli': [
