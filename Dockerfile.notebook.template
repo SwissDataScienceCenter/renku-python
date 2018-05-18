@@ -15,5 +15,3 @@ USER root
 RUN jupyter serverextension enable --py renku.notebook.oic && \
     chown $NB_USER -R /home/$NB_USER/.jupyter
 USER $NB_USER
-
-ENTRYPOINT ["/code/renku/docker-entrypoint.sh"]
