@@ -17,31 +17,27 @@
 
 Client
 ======
-.. py:module:: renga.client
-
+.. py:module:: renku.client
 
 Creating a client
 -----------------
 
 There are several ways to instantiate a client used for communication with
-the Renga platform.
+the Renku platform.
 
-1. The easiest way is by calling the function :py:func:`~renga.client.from_env`
-   when running in an environment created by the Renga platform itself.
+1. The easiest way is by calling the function :py:func:`~renku.client.from_env`
+   when running in an environment created by the Renku platform itself.
 2. The client can be created from a local configuration file by calling
-   :py:func:`~renga.cli._client.from_config`.
+   :py:func:`~renku.cli._client.from_config`.
 3. Lastly, it can also be configured manually by
-   instantiating a :py:class:`~renga.client.RengaClient` class.
+   instantiating a :py:class:`~renku.client.RenkuClient` class.
 
 .. autofunction:: from_env()
 
-.. autofunction:: renga.cli._client.from_config()
+.. autofunction:: renku.cli._client.from_config()
 
 Client reference
 ----------------
 
-.. autoclass:: RengaClient()
+.. autoclass:: RenkuClient()
 
-  .. autoattribute:: projects
-  .. autoattribute:: buckets
-  .. autoattribute:: contexts

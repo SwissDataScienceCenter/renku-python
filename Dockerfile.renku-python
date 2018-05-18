@@ -1,0 +1,9 @@
+FROM python:3.6-alpine
+
+RUN apk add --no-cache alpine-sdk zeromq-dev
+
+COPY . /code/renku
+WORKDIR /code/renku
+RUN pip install --no-cache -e .[all]
+
+WORKDIR /

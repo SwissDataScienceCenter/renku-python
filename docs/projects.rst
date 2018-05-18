@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -18,17 +18,5 @@
 Projects
 ========
 
-.. py:module:: renga.models.projects
-
-Manage projects on the server.
-
-.. autoclass:: ProjectCollection
+.. automodule:: renku.models.projects
    :members:
-   :inherited-members:
-
-Project objects
----------------
-
-.. autoclass:: Project()
-   :members:
-   :inherited-members:

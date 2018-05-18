@@ -17,7 +17,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-pydocstyle renga tests docs && \
+
+pydocstyle renku tests docs && \
 isort -rc -c -df && \
 check-manifest --ignore ".travis-*" && \
 sphinx-build -qnNW docs docs/_build/html && \

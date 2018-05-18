@@ -21,7 +21,7 @@ include .dockerignore
 include .editorconfig
 include .tx/config
 prune docs/_build
-recursive-include renga *.po *.pot *.mo
+recursive-include renku *.po *.pot *.mo
 
 # added by check_manifest.py
 include *.rst
@@ -33,6 +33,7 @@ include Dockerfile*
 include Makefile
 include babel.ini
 include pytest.ini
+include .style.yapf
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
 recursive-include docs *.bat
@@ -45,5 +46,7 @@ recursive-include docs *.txt
 recursive-include docs Makefile
 recursive-include examples *.py
 recursive-include examples *.sh
-recursive-include renga *.html
+recursive-include renku *.default
+recursive-include renku *.html
+recursive-include renku *.yml
 recursive-include tests *.py

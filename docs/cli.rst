@@ -15,23 +15,32 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Renga Command Line
+Renku Command Line
 ==================
 
-.. automodule:: renga.cli
+.. automodule:: renku.cli
 
-
-``renga login``
----------------
-
-.. automodule:: renga.cli.login
-
-``renga init``
+``renku init``
 --------------
 
-.. automodule:: renga.cli.init
+.. automodule:: renku.cli.init
 
-``renga add``
+``renku datasets``
+------------------
+
+.. automodule:: renku.cli.dataset
+
+``renku run``
 -------------
 
-.. automodule:: renga.cli.add
+.. automodule:: renku.cli.run
+
+``renku log``
+-------------
+
+.. automodule:: renku.cli.log
+
+``renku workflow``
+------------------
+
+.. automodule:: renku.cli.workflow

@@ -1,2 +1,2 @@
 [run]
-omit = renga/conftest.py
+omit = renku/conftest.py

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,65 +19,77 @@
 
 import pytest
 
-import renga
+import renku
 
 
-def test_client(renga_client, monkeypatch):
+def test_local_client(base_runner):
+    """Test a local client."""
+    from renku.api.client import LocalClient
+    client = LocalClient('.')
+
+    assert client.path
+    assert client.git is None
+
+
+def test_client(renku_client, monkeypatch):
     """Test client creation."""
-    client = renga_client
+    client = renku_client
     assert hasattr(client, 'api')
 
-    monkeypatch.setenv('RENGA_ENDPOINT', client.api.endpoint)
-    monkeypatch.setenv('RENGA_ACCESS_TOKEN', client.api.token['access_token'])
+    monkeypatch.setenv('RENKU_ENDPOINT', client.api.endpoint)
+    monkeypatch.setenv('RENKU_ACCESS_TOKEN', client.api.token['access_token'])
 
-    env_client = renga.from_env()
+    env_client = renku.from_env()
     assert client.api.endpoint == env_client.api.endpoint
     assert client.api.headers == env_client.api.headers
 
 
 def test_auto_refresh(projects_responses):
     """Test automatic token refresh."""
-    client = renga.RengaClient(
+    client = renku.RenkuClient(
         'https://example.com',
         token={
             'access_token': 'expired',
             'expires_at': 1,
             'refresh_token': 'refreshtoken',
-        }, )
+        },
+    )
 
     url = 'https://example.com/api/projects'
     data = b'{"name": "test-project"}'
-    response = client.api.request('POST', url, data=data)
+    client.api.request('POST', url, data=data)
 
     assert client.api.token['access_token'] == 'accessdemo'
 
 
-def test_client_projects(renga_client, projects_responses):
+@pytest.mark.skip(reason='Project service has changed')
+def test_client_projects(renku_client, projects_responses):
     """Test client for managing projects."""
-    project = renga_client.projects.create('test-project')
+    project = renku_client.projects.create('test-project')
 
     assert "<Project '1234'>" == str(project)
     assert project.id == '1234'
     assert project.name == 'test-project'
 
-    projects = renga_client.projects.list()
+    projects = renku_client.projects.list()
     assert projects[0].id == project.id
-    assert project.id == renga_client.projects[project.id].id
+    assert project.id == renku_client.projects[project.id].id
 
 
-def test_client_invalid_requests(renga_client, projects_responses):
+def test_client_invalid_requests(renku_client, projects_responses):
     """Test invalid client responses."""
-    with pytest.raises(renga.errors.RengaException):
-        renga_client.projects[0]
+    with pytest.raises(renku.errors.RenkuException):
+        renku_client.projects[0]
 
 
-def test_client_contexts(renga_client, deployer_responses, storage_responses,
-                         monkeypatch):
+def test_client_contexts(
+    renku_client, deployer_responses, storage_responses, monkeypatch
+):
     """Test client for managing contexts."""
-    monkeypatch.setenv('RENGA_CONTEXT_ID', 'abcd')
+    monkeypatch.setenv('RENKU_CONTEXT_ID', 'abcd')
 
-    context = renga_client.contexts.create(image='hello-world')
-    renga_client.buckets.create('hello')
+    context = renku_client.contexts.create(image='hello-world')
+    renku_client.buckets.create('hello')
 
     assert context.id == 'abcd'
     assert context.spec['image'] == 'hello-world'
@@ -92,17 +104,17 @@ def test_client_contexts(renga_client, deployer_responses, storage_responses,
     with pytest.raises(KeyError):
         context.outputs['result']
 
-    monkeypatch.setenv('RENGA_CONTEXT_INPUTS_NO_DEFAULT', '9876')
+    monkeypatch.setenv('RENKU_CONTEXT_INPUTS_NO_DEFAULT', '9876')
     assert context.inputs['no_default'].id == 9876
     assert context.inputs['with_default'].id == 9876
 
-    monkeypatch.setenv('RENGA_CONTEXT_OUTPUTS_RESULT', '9876')
+    monkeypatch.setenv('RENKU_CONTEXT_OUTPUTS_RESULT', '9876')
     assert context.outputs['result'].id == 9876
 
-    assert context.id == renga_client.contexts['abcd'].id
-    assert context.id == renga_client.current_context.id
+    assert context.id == renku_client.contexts['abcd'].id
+    assert context.id == renku_client.current_context.id
 
-    contexts = renga_client.contexts.list()
+    contexts = renku_client.contexts.list()
     assert contexts
     assert contexts[0].id == 'abcd'
     assert contexts[0].spec['image'] == 'hello-world'
@@ -119,15 +131,15 @@ def test_client_contexts(renga_client, deployer_responses, storage_responses,
     assert executions[0].engine == 'docker'
 
 
-def test_client_buckets(renga_client, storage_responses):
+def test_client_buckets(renku_client, storage_responses):
     """Test client for managing buckets and files."""
-    bucket = renga_client.buckets.create(name='world', backend='local')
+    bucket = renku_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
     assert bucket.name == 'world'
 
     bucket.name = 'Earth'
 
-    bucket = renga_client.buckets[1234]
+    bucket = renku_client.buckets[1234]
     assert bucket.name == 'Earth'
 
     file_ = bucket.files.create(name='hello.ipynb')
@@ -141,9 +153,9 @@ def test_client_buckets(renga_client, storage_responses):
         assert fp.read() == b'hello world'
 
 
-def test_client_buckets_shortcut(renga_client, storage_responses):
+def test_client_buckets_shortcut(renku_client, storage_responses):
     """Test shortcut for creating file on a bucket."""
-    bucket = renga_client.buckets.create(name='world', backend='local')
+    bucket = renku_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
     with bucket.files.open('hello', 'w') as fp:
@@ -155,22 +167,22 @@ def test_client_buckets_shortcut(renga_client, storage_responses):
         assert fp.read() == b'hello world'
 
 
-def test_bucket_listing(renga_client, explorer_responses):
+def test_bucket_listing(renku_client, explorer_responses):
     """Test storage explorer client."""
-    renga_client.buckets.create(name='first')
-    renga_client.buckets.create(name='second')
+    renku_client.buckets.create(name='first')
+    renku_client.buckets.create(name='second')
 
-    buckets = renga_client.buckets.list()
+    buckets = renku_client.buckets.list()
 
     assert buckets[0].name == 'first'
     assert buckets[1].name == 'second'
 
-    assert renga_client.buckets[buckets[0].id].id == buckets[0].id
+    assert renku_client.buckets[buckets[0].id].id == buckets[0].id
 
 
-def test_file_renaming(renga_client, storage_responses):
+def test_file_renaming(renku_client, storage_responses):
     """Test file renaming."""
-    bucket = renga_client.buckets.create(name='world', backend='local')
+    bucket = renku_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
     file_ = bucket.files.create(name='hello.ipynb')
@@ -184,9 +196,9 @@ def test_file_renaming(renga_client, storage_responses):
     assert file_.name == 'hello-2'
 
 
-def test_file_cloning(renga_client, storage_responses):
+def test_file_cloning(renku_client, storage_responses):
     """Test file cloning."""
-    bucket = renga_client.buckets.create(name='world', backend='local')
+    bucket = renku_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
     file_ = bucket.files.create(name='hello.ipynb')
@@ -202,9 +214,9 @@ def test_file_cloning(renga_client, storage_responses):
         assert fp.read() == b'hello world'
 
 
-def test_file_versioning(renga_client, storage_responses, explorer_responses):
+def test_file_versioning(renku_client, storage_responses, explorer_responses):
     """Test shortcut for creating file on a bucket."""
-    bucket = renga_client.buckets.create(name='world', backend='local')
+    bucket = renku_client.buckets.create(name='world', backend='local')
     assert bucket.id == 1234
 
     with bucket.files.open('hello.ipynb', 'w') as fp:

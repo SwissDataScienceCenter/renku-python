@@ -36,8 +36,8 @@
 [main]
 host = https://www.transifex.com
 
-[sdsc.renga-messages]
-file_filter = renga/translations/<lang>/LC_MESSAGES/messages.po
-source_file = renga/translations/messages.pot
+[sdsc.renku-messages]
+file_filter = renku/translations/<lang>/LC_MESSAGES/messages.po
+source_file = renku/translations/messages.pot
 source_lang = en
 type = PO

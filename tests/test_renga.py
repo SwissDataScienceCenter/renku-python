@@ -15,7 +15,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Module tests."""
 
 from __future__ import absolute_import, print_function
@@ -23,5 +22,5 @@ from __future__ import absolute_import, print_function
 
 def test_version():
     """Test version import."""
-    from renga import __version__
+    from renku import __version__
     assert __version__

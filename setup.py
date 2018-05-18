@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python SDK and CLI for the Renga platform."""
+"""Python SDK and CLI for the Renku platform."""
 
 import os
 
@@ -27,23 +27,33 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'check-manifest>=0.25',
     'coverage>=4.0',
-    'isort>=4.2.2',
+    'flake8>=3.5',
+    'freezegun>=0.3.9',
+    'isort>=4.3.4',
     'pydocstyle>=1.0.0',
     'pytest-cache>=1.0',
     'pytest-cov>=2.5.1',
+    'pytest-flake8>=0.9.1',
     'pytest-pep8>=1.0.6',
+    'pytest-yapf>=0.1.1',
     'pytest>=3.2.1',
-    'renga-sphinx-theme>=0.1.0',
     'responses>=0.7.0',
+    'yapf>=0.22.0',
 ]
 
 extras_require = {
     ':python_version<"3.6"': ['pathlib2>=2.3.0'],
     'docs': [
         'Sphinx>=1.6.3',
+        'renku-sphinx-theme>=0.1.0',
+    ],
+    'runner': [
+        'cwltool>=1.0.20180130110340',
+        'cwlref-runner>=1.0',
     ],
     'notebook': [
         'jupyter>=1.0.0',
+        'openid-connect>=0.3.0',
     ],
     'tests': tests_require,
 }
@@ -61,10 +71,17 @@ setup_requires = [
 
 install_requires = [
     'PyYAML>=3.12',
-    'click>=6.7',
+    'attrs>=17.4.0',
     'click-plugins>=1.0.3',
-    'requests>=2.18.4',
+    'click>=6.7',
+    'environ_config>=18.2.0',
+    'filelock>=3.0.0',
+    'gitpython>=2.1.8',
+    'networkx>=2.1',
+    'pyld>=0.8.2',
+    'python-dateutil>=2.6.1',
     'requests-oauthlib>=0.8.0',
+    'requests>=2.18.4',
     'tabulate>=0.7.7',
     'werkzeug>=0.12',
 ]
@@ -73,38 +90,39 @@ packages = find_packages()
 
 # Get the version string. Cannot be done with import!
 g = {}
-with open(os.path.join('renga', 'version.py'), 'rt') as fp:
+with open(os.path.join('renku', 'version.py'), 'rt') as fp:
     exec(fp.read(), g)
     version = g['__version__']
 
 setup(
-    name='renga',
+    name='renku',
     version=version,
     description=__doc__,
     long_description=readme + '\n\n' + history,
-    keywords='Renga CLI',
+    keywords='Renku CLI',
     license='Apache License 2.0',
     author='Swiss Data Science Center',
     author_email='contact@datascience.ch',
-    url='https://github.com/SwissDataScienceCenter/renga-python',
+    url='https://github.com/SwissDataScienceCenter/renku-python',
     packages=packages,
     zip_safe=False,
     include_package_data=True,
     platforms='any',
     entry_points={
-        'console_scripts': ['renga=renga.cli:cli'],
-        'renga.cli': [
+        'console_scripts': ['renku=renku.cli:cli'],
+        'renku.cli': [
             # Please keep the items sorted.
-            'add=renga.cli.add:add',
-            'contexts=renga.cli.deployments:contexts',
-            'endpoint=renga.cli.endpoint:endpoint',
-            'env=renga.cli.env:env',
-            'executions=renga.cli.deployments:executions',
-            'init=renga.cli.init:init',
-            'io=renga.cli.io:storage',
-            'login=renga.cli.login:login',
-            'notebooks=renga.cli.notebooks:notebooks',
-            'tokens=renga.cli.login:tokens',
+            'dataset=renku.cli.dataset:dataset',
+            'deactivate=renku.cli.workon:deactivate',
+            'init=renku.cli.init:init',
+            'log=renku.cli.log:log',
+            # 'notebooks=renku.cli.notebooks:notebooks',
+            'run=renku.cli.run:run',
+            'runner=renku.cli.runner:runner',
+            'status=renku.cli.status:status',
+            'update=renku.cli.update:update',
+            'workflow=renku.cli.workflow:workflow',
+            'workon=renku.cli.workon:workon',
         ],
     },
     extras_require=extras_require,
@@ -122,4 +140,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Development Status :: 1 - Planning',
-    ], )
+    ],
+)
