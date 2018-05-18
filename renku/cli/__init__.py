@@ -74,7 +74,7 @@ import uuid
 import click
 import yaml
 from click_plugins import with_plugins
-from reentry.manager import iter_entry_points
+import reentry.manager
 
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
 from ._version import print_version
@@ -88,7 +88,7 @@ def _uuid_representer(dumper, data):
 yaml.add_representer(uuid.UUID, _uuid_representer)
 
 
-@with_plugins(iter_entry_points('renku.cli'))
+@with_plugins(reentry.manager.iter_entry_points('renku.cli'))
 @click.group(
     context_settings={
         'auto_envvar_prefix': 'RENKU',
