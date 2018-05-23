@@ -194,6 +194,27 @@ def test_streams(runner, capsys):
     assert 'source.txt' in result.output
 
 
+def test_streams_and_args_names(runner, capsys):
+    """Test streams and conflicting argument names."""
+    with capsys.disabled():
+        with open('lalala', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(args=('run', 'echo', 'lalala'), )
+                except SystemExit as e:
+                    assert e.code in {None, 0}
+            finally:
+                sys.stdout = old_stdout
+
+    with open('lalala', 'r') as f:
+        assert f.read().strip() == 'lalala'
+
+    result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
+    assert result.exit_code == 0
+
+
 def test_datasets(data_file, data_repository, runner):
     """Test importing data into a dataset."""
     # create a dataset

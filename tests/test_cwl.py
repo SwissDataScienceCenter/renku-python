@@ -135,6 +135,27 @@ def test_05_stdout(instance_path):
     assert tool.to_argv() == argv
 
 
+def test_stdout_with_conflicting_arg(instance_path):
+    """Test stdout with conflicting argument value."""
+    output = Path(instance_path) / 'lalala'
+    output.touch()
+
+    argv = ['echo', 'lalala']
+    factory = CommandLineToolFactory(
+        argv,
+        directory=instance_path,
+        stdout='lalala',
+    )
+
+    assert factory.inputs[0].default == 'lalala'
+    assert factory.inputs[0].type == 'string'
+    assert factory.stdout == 'lalala'
+    assert factory.outputs[0].type == 'stdout'
+
+    tool = factory.generate_tool()
+    assert tool.to_argv() == argv
+
+
 def test_06_params(instance_path):
     """Test referencing input parameters in other fields."""
     hello = Path(instance_path) / 'hello.tar'
