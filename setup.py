@@ -65,7 +65,6 @@ setup_requires = [
 install_requires = [
     'PyYAML>=3.12',
     'attrs>=17.4.0',
-    'click-plugins>=1.0.3',
     'click>=6.7',
     'cwltool>=1.0.20180820141117',
     'environ_config>=18.2.0',
@@ -104,25 +103,6 @@ setup(
     platforms='any',
     entry_points={
         'console_scripts': ['renku=renku.cli:cli'],
-        'renku.cli': [
-            # Please keep the items sorted.
-            'config=renku.cli.config:config',
-            'dataset=renku.cli.dataset:dataset',
-            'deactivate=renku.cli.workon:deactivate',
-            'githooks=renku.cli.githooks:githooks',
-            'image=renku.cli.image:image',
-            'init=renku.cli.init:init',
-            'log=renku.cli.log:log',
-            # 'notebooks=renku.cli.notebooks:notebooks',
-            'rerun=renku.cli.rerun:rerun',
-            'run=renku.cli.run:run',
-            'runner=renku.cli.runner:runner',
-            'status=renku.cli.status:status',
-            'show=renku.cli.show:show',
-            'update=renku.cli.update:update',
-            'workflow=renku.cli.workflow:workflow',
-            'workon=renku.cli.workon:workon',
-        ],
     },
     extras_require=extras_require,
     install_requires=install_requires,

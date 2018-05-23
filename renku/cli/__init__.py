@@ -73,11 +73,23 @@ import uuid
 
 import click
 import yaml
-from click_plugins import with_plugins
-from pkg_resources import iter_entry_points
 
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
 from ._version import print_version
+from .config import config
+from .dataset import dataset
+from .githooks import githooks
+from .image import image
+from .init import init
+from .log import log
+from .rerun import rerun
+from .run import run
+from .runner import runner
+from .show import show
+from .status import status
+from .update import update
+from .workflow import workflow
+from .workon import deactivate, workon
 
 
 def _uuid_representer(dumper, data):
@@ -88,7 +100,6 @@ def _uuid_representer(dumper, data):
 yaml.add_representer(uuid.UUID, _uuid_representer)
 
 
-@with_plugins(iter_entry_points('renku.cli'))
 @click.group(
     context_settings={
         'auto_envvar_prefix': 'RENKU',
@@ -144,3 +155,21 @@ def cli(ctx, path, renku_home):
 def help(ctx):
     """Show help message and exit."""
     click.echo(ctx.parent.get_help())
+
+
+# Register subcommands:
+cli.add_command(config)
+cli.add_command(dataset)
+cli.add_command(deactivate)
+cli.add_command(githooks)
+cli.add_command(image)
+cli.add_command(init)
+cli.add_command(log)
+cli.add_command(rerun)
+cli.add_command(run)
+cli.add_command(runner)
+cli.add_command(status)
+cli.add_command(show)
+cli.add_command(update)
+cli.add_command(workflow)
+cli.add_command(workon)
