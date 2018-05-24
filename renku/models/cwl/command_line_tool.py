@@ -216,8 +216,11 @@ class CommandLineToolFactory(object):
         if not value.exists():
             raise ValueError('Directory must exist.')
 
-    def file_candidate(self, candidate):
+    def file_candidate(self, candidate, ignore=None):
         """Return a path instance if it exists in current directory."""
+        if ignore and candidate in ignore:
+            return
+
         candidate = Path(candidate)
 
         if not candidate.is_absolute():
@@ -241,7 +244,7 @@ class CommandLineToolFactory(object):
 
         return cmd, args
 
-    def guess_type(self, value):
+    def guess_type(self, value, ignore_filenames=None):
         """Return new value and CWL parameter type."""
         try:
             value = int(value)
@@ -249,7 +252,7 @@ class CommandLineToolFactory(object):
         except ValueError:
             pass
 
-        candidate = self.file_candidate(value)
+        candidate = self.file_candidate(value, ignore=ignore_filenames)
         if candidate:
             try:
                 return File(path=candidate.relative_to(self.directory)
@@ -270,6 +273,11 @@ class CommandLineToolFactory(object):
         position = 0
         prefix = None
 
+        output_streams = {
+            getattr(self, stream_name)
+            for stream_name in ('stdout', 'stderr')
+        }
+
         for index, argument in enumerate(arguments):
             itemSeparator = None
 
@@ -286,7 +294,9 @@ class CommandLineToolFactory(object):
                 if '=' in argument:
                     prefix, default = argument.split('=', 1)
                     prefix += '='
-                    default, type, itemSeparator = self.guess_type(default)
+                    default, type, itemSeparator = self.guess_type(
+                        default, ignore_filenames=output_streams
+                    )
                     # TODO can be output
 
                     position += 1
@@ -310,12 +320,14 @@ class CommandLineToolFactory(object):
                     if '=' in argument:
                         prefix, default = argument.split('=', 1)
                         prefix += '='
-                        default, type, itemSeparator = self.guess_type(default)
+                        default, type, itemSeparator = self.guess_type(
+                            default, ignore_filenames=output_streams
+                        )
                     else:
                         # possibly a flag with value
                         prefix = argument[0:2]
                         default, type, itemSeparator = self.guess_type(
-                            argument[2:]
+                            argument[2:], ignore_filenames=output_streams
                         )
 
                     position += 1
@@ -335,7 +347,9 @@ class CommandLineToolFactory(object):
                     prefix = argument
 
             else:
-                default, type, itemSeparator = self.guess_type(argument)
+                default, type, itemSeparator = self.guess_type(
+                    argument, ignore_filenames=output_streams
+                )
                 # TODO can be output
 
                 # TODO there might be an array
