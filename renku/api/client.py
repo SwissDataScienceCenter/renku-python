@@ -138,8 +138,13 @@ class LocalClient(
     @path.default
     def _default_path(self):
         """Return default repository path."""
+        from git import InvalidGitRepositoryError
         from renku.cli._git import get_git_home
-        return get_git_home()
+
+        try:
+            return get_git_home()
+        except InvalidGitRepositoryError:
+            return '.'
 
     @path.validator
     def _check_path(self, _, value):

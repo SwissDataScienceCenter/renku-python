@@ -34,7 +34,7 @@ from ._graph import Graph
 def status(ctx, client, revision, path):
     """Show a status of the repository."""
     graph = Graph(client)
-    paths = {graph.normalize_path(p) for p in path}
+    # TODO filter only paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision)
 
     click.echo('On branch {0}'.format(client.git.active_branch))

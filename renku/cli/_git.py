@@ -81,13 +81,17 @@ def with_git(
     repo_path = get_git_home()
     current_dir = os.getcwd()
 
-    if clean:  # pragma: no cover
+    if clean:
         try:
             os.chdir(repo_path)
             repo = Repo(repo_path)
 
             if ignore_std_streams:
-                dirty_paths = set(_dirty_paths(repo))
+                # Use absolute paths for comparison.
+                dirty_paths = {
+                    os.path.join(repo_path, p)
+                    for p in _dirty_paths(repo)
+                }
                 mapped_paths = set(_mapped_std_streams(dirty_paths).values())
 
                 if dirty_paths - mapped_paths:

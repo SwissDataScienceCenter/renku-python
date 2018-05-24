@@ -17,6 +17,8 @@
 # limitations under the License.
 """Represent the Common Workflow Language types."""
 
+import os
+
 import attr
 
 from renku._compat import Path
@@ -32,4 +34,7 @@ class File(CWLClass):
 
     def __str__(self):
         """Simple conversion to string."""
-        return str(self.path)
+        # TODO refactor to use `basedir`
+        return os.path.relpath(
+            os.path.realpath(str(self.path)), os.path.realpath(os.getcwd())
+        )

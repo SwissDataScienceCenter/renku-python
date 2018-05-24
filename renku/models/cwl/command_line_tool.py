@@ -255,8 +255,7 @@ class CommandLineToolFactory(object):
         candidate = self.file_candidate(value, ignore=ignore_filenames)
         if candidate:
             try:
-                return File(path=candidate.relative_to(self.directory)
-                            ), 'File', None
+                return File(path=candidate), 'File', None
             except ValueError:
                 # The candidate points to a file outside the working
                 # directory

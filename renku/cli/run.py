@@ -41,10 +41,21 @@ from ._git import _mapped_std_streams, with_git
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
 def run(client, no_output, command_line):
     """Tracking work on a specific problem."""
-    candidates = [x[0] for x in client.git.index.entries] + \
+    working_dir = client.git.working_dir
+    candidates = [
+        os.path.join(working_dir, path)
+        for path in [x[0] for x in client.git.index.entries] +
         client.git.untracked_files
+    ]
     mapped_std = _mapped_std_streams(candidates)
-    factory = CommandLineToolFactory(command_line=command_line, **mapped_std)
+    factory = CommandLineToolFactory(
+        command_line=command_line,
+        directory=working_dir,
+        **{
+            name: os.path.relpath(path, working_dir)
+            for name, path in mapped_std.items()
+        }
+    )
 
     with client.with_workflow_storage() as wf:
         with factory.watch(client, no_output=no_output) as tool:
