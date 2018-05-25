@@ -49,7 +49,8 @@ def status(ctx, client, revision, path):
             outdated = (
                 ', '.join(
                     '{0}#{1}'.format(
-                        click.style(p, fg='blue', bold=True),
+                        click.
+                        style(graph._format_path(p), fg='blue', bold=True),
                         _format_sha1(graph, (c, p)),
                     ) for c, p in stts
                     if not p.startswith('.renku/workflow/') and
@@ -59,8 +60,9 @@ def status(ctx, client, revision, path):
 
             click.echo(
                 '\t{0}: {1}'.format(
-                    click.style(filepath, fg='red', bold=True),
-                    ', '.join(outdated)
+                    click.style(
+                        graph._format_path(filepath), fg='red', bold=True
+                    ), ', '.join(outdated)
                 )
             )
 
@@ -83,8 +85,9 @@ def status(ctx, client, revision, path):
             commits = (_format_sha1(graph, key) for key in files)
             click.echo(
                 '\t{0}: {1}'.format(
-                    click.style(filepath, fg='blue', bold=True),
-                    ', '.join(commits)
+                    click.style(
+                        graph._format_path(filepath), fg='blue', bold=True
+                    ), ', '.join(commits)
                 )
             )
 

@@ -55,6 +55,10 @@ class Graph(object):
         path = Path(path).resolve()
         return os.path.relpath(path, start=start)
 
+    def _format_path(self, path):
+        """Return a relative path based on the client configuration."""
+        return os.path.relpath(self.client.path / path)
+
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
         key = str(commit), str(path)
