@@ -35,50 +35,95 @@ the platform endpoint.
 
     The warning will be shown when an unsecure protocol is used.
 
-Non-interactive login
-~~~~~~~~~~~~~~~~~~~~~
-
-In some environments, you might need to run the ``renku login`` command
-non-interactively. Using the ``--password-stdin`` flag, you can provide a
-password through ``STDIN``, which also prevents the password from ending up in
-the shell's history or log-files.
-
-The following example reads a password from a file, and passes it to the
-``renku login`` command using ``STDIN``:
-
-.. code-block:: console
-
-    $ cat ~/my_secret.txt | renku login --username demo --password-stdin
-
 """
 
 import click
+import http.server
+import logging
+import socketserver
+import threading
+import webbrowser
 
 from ._client import from_config
 from ._config import config_path, with_config
-from ._options import argument_endpoint, default_endpoint, password_prompt
+from ._options import argument_endpoint, default_endpoint
+
+logger = logging.getLogger('renku.cli.login')
+
+
+class AuthServer(socketserver.TCPServer):
+    """A TCPServer with some extra local variables."""
+
+    def __init__(self, ctx, client, config, endpoint, url, client_id, default,
+                 *args, **kwargs):
+        """Initialize the server with extra parameters."""
+        self.auth_ctx = ctx
+        self.auth_client = client
+        self.auth_config = config
+        self.auth_endpoint = endpoint
+        self.auth_client_id = client_id
+        self.auth_url = url
+        self.auth_default = default
+        super().__init__(*args, **kwargs)
+
+
+class AuthHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+    """A very simple http server to handle the redirect with the code."""
+
+    def do_GET(self):
+        """Endpoint for the redirect with the code."""
+        scope = ['offline_access', 'openid']
+        token = self.server.auth_client.api.fetch_token(
+            '{}/protocol/openid-connect/token'.format(self.server.auth_url),
+            authorization_response=self.path,
+            client_id=self.server.auth_client_id,
+            scope=scope,
+        )
+        config = self.server.auth_config
+
+        config['endpoints'][self.server.auth_endpoint]['token'] = dict(token)
+
+        if len(config['endpoints']) == 1 or self.server.auth_default:
+            config.setdefault('core', {})
+            config['core']['default'] = self.server.auth_endpoint
+
+        click.echo(
+            'Access token has been stored in: {0}'.format(
+                config_path(self.server.auth_ctx.obj.get('config_path'))
+            )
+        )
+        text = b"<html><body>You can close this.</body></html>"
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.send_header("Content-Length", str(len(text)))
+        self.end_headers()
+        self.wfile.write(text)
+
+        assassin = threading.Thread(target=self.server.shutdown)
+        assassin.daemon = True
+        assassin.start()
+
+    def log_message(self, format, *args):
+        """Logging with httpd format."""
+        logger.debug("%s - - [%s] %s\n" % (
+            self.address_string(),
+            self.log_date_time_string(), format % args)
+        )
 
 
 @click.command()
 @click.argument('endpoint', required=False, callback=default_endpoint)
 @click.option(
     '--url',
-    default='{endpoint}/auth/realms/Renku/protocol/openid-connect/token'
+    default='{endpoint}/auth/realms/Renku'
 )
 @click.option('--client-id', default='demo-client')
-@click.option('--username', prompt=True)
-@click.option('--password', callback=password_prompt)
-@click.option('--password-stdin', is_flag=True)
 @click.option('--default', is_flag=True)
 @with_config
 @click.pass_context
-def login(
-    ctx, config, endpoint, url, client_id, username, password, password_stdin,
-    default
-):
+def login(ctx, config, endpoint, url, client_id, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint, client_id=client_id)
-    scope = ['offline_access', 'openid']
 
     config.setdefault('endpoints', {})
     config['endpoints'].setdefault(endpoint, {})
@@ -87,25 +132,15 @@ def login(
     config['endpoints'][endpoint]['url'] = url
 
     client = from_config(config, endpoint=endpoint)
-    token = client.api.fetch_token(
-        url,
-        username=username,
-        password=password,
-        client_id=client_id,
-        scope=scope
-    )
 
-    config['endpoints'][endpoint]['token'] = dict(token)
+    authorization_url, _ = client.api.authorization_url(
+        '{url}/protocol/openid-connect/auth'.format(url=url))
 
-    if len(config['endpoints']) == 1 or default:
-        config.setdefault('core', {})
-        config['core']['default'] = endpoint
+    webbrowser.open_new_tab(authorization_url)
 
-    click.echo(
-        'Access token has been stored in: {0}'.format(
-            config_path(ctx.obj['config_path'])
-        )
-    )
+    with AuthServer(ctx, client, config, endpoint, url, client_id, default,
+                    ("", 5000), AuthHTTPRequestHandler) as httpd:
+        httpd.serve_forever()
 
 
 @click.group(invoke_without_command=True)

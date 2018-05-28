@@ -67,7 +67,11 @@ def default_endpoint(ctx, param, value):
     if ctx.resilient_parsing:
         return
 
-    config = ctx.obj['config']
+    try:
+        config = ctx.obj['config']
+    except Exception:
+        return value
+
     endpoint = default_endpoint_from_config(config, option=value)
 
     if endpoint is None:

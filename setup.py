@@ -116,6 +116,7 @@ setup(
             'deactivate=renku.cli.workon:deactivate',
             'init=renku.cli.init:init',
             'log=renku.cli.log:log',
+            'login=renku.cli.login:login',
             # 'notebooks=renku.cli.notebooks:notebooks',
             'run=renku.cli.run:run',
             'runner=renku.cli.runner:runner',

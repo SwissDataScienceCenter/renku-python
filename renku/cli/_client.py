@@ -50,6 +50,7 @@ def from_config(config=None, endpoint=None):
             config['project'] = read_config(project_config_path)
 
     endpoint = endpoint or default_endpoint_from_config(config)
+
     token = config['endpoints'][endpoint]['token']
     url = config['endpoints'][endpoint]['url']
     client_id = config['endpoints'][endpoint]['client_id']
@@ -58,7 +59,7 @@ def from_config(config=None, endpoint=None):
         endpoint, client_id=client_id, token=token, auto_refresh_url=url
     )
 
-    if 'project' in config:
+    if 'project' in config and 'endpoints' in config['project']:
         client.api.headers['Renku-Projects-Project'] = config['project'][
             'endpoints'
         ][endpoint]['vertex_id']

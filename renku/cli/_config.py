@@ -98,7 +98,7 @@ def with_config(f):
         if ctx.obj is None:
             ctx.obj = {}
 
-        config = ctx.obj['config']
+        config = ctx.obj.get('config', {})
 
         project_enabled = not ctx.obj.get('no_project', False)
         project_config_path = get_project_config_path()
@@ -112,7 +112,8 @@ def with_config(f):
             if not project_config_path:
                 raise RuntimeError('Invalid config update')
             write_config(project_config, path=project_config_path)
-        write_config(config, path=ctx.obj['config_path'])
+        if 'config_path' in ctx.obj:
+            write_config(config, path=ctx.obj['config_path'])
         if project_config is not None:
             config['project'] = project_config
         return result
