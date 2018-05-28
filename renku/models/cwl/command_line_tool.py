@@ -86,7 +86,8 @@ class CommandLineTool(Process, CWLClass):
                 )
 
         args = [(a.position, a) for a in self.arguments]
-        args += [(i.inputBinding.position, i) for i in self.inputs]
+        args += [(i.inputBinding.position, i)
+                 for i in self.inputs if i.inputBinding]
 
         for p, v in sorted(args):
             argv.extend(v.to_argv())
@@ -130,6 +131,7 @@ class CommandLineToolFactory(object):
             input_ = next(self.guess_inputs(self.stdin))
             assert input_.type == 'File'
             input_.id = 'input_stdin'
+            input_.inputBinding = None  # do not include in tool arguments
             self.inputs.append(input_)
             self.stdin = '$(inputs.{0}.path)'.format(input_.id)
 
