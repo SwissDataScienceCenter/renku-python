@@ -20,7 +20,6 @@
 import os
 import sys
 import tempfile
-import uuid
 from subprocess import call
 
 import click
@@ -85,98 +84,3 @@ def rerun(client, run, job):
     finally:
         if job:
             os.unlink(job_file.name)
-
-
-def default_name():
-    """Guess a default name from env."""
-    project_slug = os.environ.get('CI_PROJECT_PATH_SLUG')
-    env_slug = os.environ.get('CI_ENVIRONMENT_SLUG')
-
-    if project_slug and env_slug:
-        return project_slug + '-' + env_slug
-
-    return uuid.uuid4().hex
-
-
-def default_base_url():
-    """Guess a default base url from env."""
-    project_path = os.environ.get('CI_PROJECT_PATH')
-    env_slug = os.environ.get('CI_ENVIRONMENT_SLUG')
-
-    if project_path and env_slug:
-        return '/{0}/{1}'.format(project_path, env_slug)
-
-    return os.path.basename(os.getcwd())
-
-
-@runner.command()
-@click.option('--name', default=default_name)
-@click.option('--network', envvar='RENGA_RUNNER_NETWORK', default='bridge')
-@click.option(
-    '--image',
-    envvar='RENGA_RUNNER_IMAGE',
-    default='jupyter/minimal-notebook:latest'
-)
-@click.option('--base-url', default=default_base_url)
-@click.option('--repo-url', envvar='CI_REPOSITORY_URL')
-@click.option('--token', envvar='RENGA_NOTEBOOK_TOKEN', default=None)
-@click.option('--branch', envvar='CI_COMMIT_REF_NAME', default='master')
-@pass_local_client
-def notebook(client, name, network, image, base_url, repo_url, token, branch):
-    """Launch notebook in a container."""
-    from renga.notebook import generate_launch_args, generate_notebook_token
-
-    token = token if token is not None else generate_notebook_token()
-    try:
-        call(['docker', 'rm', '--force', name])
-    except Exception:
-        pass
-
-    args = [
-        'docker',
-        'run',
-        '-d',
-        '--network',
-        network,
-        '--name',
-        name,
-        '--rm',
-        '--label',
-        'renga.notebook.token={0}'.format(token),
-        '--label',
-        'traefik.enable=true',
-        '--label',
-        'traefik.frontend.rule=PathPrefix:/{0}'.format(base_url.lstrip('/')),
-        image,
-    ] + generate_launch_args(
-        token=token, base_url=base_url
-    )
-
-    call(args)
-
-    if repo_url:
-        call([
-            'docker',
-            'exec',
-            name,
-            'git',
-            'clone',
-            '-b',
-            branch,
-            '--single-branch',
-            repo_url,
-            os.path.join('/home/jovyan/', base_url.lstrip('/')),
-        ])
-
-
-@runner.command()
-@click.option('--name', default=default_name)
-@pass_local_client
-def undeploy(client, name):
-    """Stop running deployment."""
-    if not name:
-        raise click.BadOptionUsage(
-            'The name was not defined or detection failed.'
-        )
-    call(('docker', 'stop', name))
-    call(('docker', 'rm', name))
