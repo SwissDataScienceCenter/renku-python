@@ -1,0 +1,39 @@
+# renga: v1
+
+stages:
+  - build
+  - review
+
+run_cwl:
+  stage: build
+  script: renga runner rerun
+  tags:
+    - cwl
+
+review_notebook:
+  stage: review
+  script: renga runner notebook
+  variables:
+    GIT_STRATEGY: clone
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: http://$RENGA_REVIEW_DOMAIN/$CI_PROJECT_PATH/$CI_ENVIRONMENT_SLUG/?token=$RENGA_NOTEBOOK_TOKEN
+    on_stop: stop_review_notebook
+  only:
+    - branches
+  except:
+    - master
+  tags:
+    - notebook
+
+stop_review_notebook:
+  stage: review
+  script: renga runner undeploy
+  variables:
+    GIT_STRATEGY: none
+  when: manual
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
+  tags:
+    - notebook
