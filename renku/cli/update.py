@@ -82,4 +82,9 @@ def update(ctx, client, revision, paths):
         )
 
     # TODO remove existing outputs?
-    call(['cwl-runner', str(output_file)])
+    call(
+        ['cwl-runner', '--basedir',
+         str(client.path),
+         str(output_file)],
+        cwd=client.path,
+    )
