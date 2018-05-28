@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+
 from renku._compat import Path
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
@@ -213,4 +215,28 @@ def test_09_array_inputs(instance_path):
     assert tool.inputs[-1].inputBinding.itemSeparator == ','
     assert tool.inputs[-1].inputBinding.separate is False
 
+    assert tool.to_argv() == argv
+
+
+@pytest.mark.parametrize('argv', [['wc'], ['wc', '-l']])
+def test_stdin_and_stdout(argv, instance_path):
+    """Test stdout mapping."""
+    input_ = Path(instance_path) / 'input.txt'
+    input_.touch()
+    output = Path(instance_path) / 'output.txt'
+    output.touch()
+
+    factory = CommandLineToolFactory(
+        argv,
+        directory=instance_path,
+        stdin='input.txt',
+        stdout='output.txt',
+    )
+
+    assert factory.stdin
+
+    assert factory.stdout == 'output.txt'
+    assert factory.outputs[0].type == 'stdout'
+
+    tool = factory.generate_tool()
     assert tool.to_argv() == argv
