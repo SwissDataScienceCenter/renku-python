@@ -47,10 +47,7 @@ extras_require = {
         'Sphinx>=1.6.3',
         'renku-sphinx-theme>=0.1.0',
     ],
-    'runner': [
-        'cwltool>=1.0.20180130110340',
-        'cwlref-runner>=1.0',
-    ],
+    'runner': ['cwlref-runner>=1.0', ],
     'notebook': [
         'jupyter>=1.0.0',
         'openid-connect>=0.3.0',
@@ -74,6 +71,7 @@ install_requires = [
     'attrs>=17.4.0',
     'click-plugins>=1.0.3',
     'click>=6.7',
+    'cwltool==1.0.20180525185854',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',

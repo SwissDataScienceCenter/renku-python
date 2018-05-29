@@ -17,8 +17,8 @@
 # limitations under the License.
 """Update an existing file."""
 
+import os
 import uuid
-from subprocess import call
 
 import click
 import networkx as nx
@@ -81,10 +81,45 @@ def update(ctx, client, revision, paths):
             )
         )
 
-    # TODO remove existing outputs?
-    call(
-        ['cwl-runner', '--basedir',
-         str(client.path),
-         str(output_file)],
-        cwd=client.path,
-    )
+    import cwltool.factory
+    from cwltool import workflow
+    from cwltool.utils import visit_class
+
+    def makeTool(toolpath_object, **kwargs):
+        """Fix missing locations."""
+        protocol = 'file://'
+
+        def addLocation(d):
+            if 'location' not in d and 'path' in d:
+                d['location'] = protocol + d['path']
+
+        visit_class(toolpath_object, ('File', 'Directory'), addLocation)
+        return workflow.defaultMakeTool(toolpath_object, **kwargs)
+
+    factory = cwltool.factory.Factory(makeTool=makeTool)
+    process = factory.make(os.path.relpath(output_file))
+    outputs = process()
+    output_dirs = process.factory.executor.output_dirs
+
+    def remove_prefix(location, prefix='file://'):
+        if location.startswith(prefix):
+            return location[len(prefix):]
+        return location
+
+    locations = {
+        remove_prefix(output['location'])
+        for output in outputs.values()
+    }
+
+    for location in locations:
+        for output_dir in output_dirs:
+            if location.startswith(output_dir):
+                output_path = client.path / location[len(output_dir):].lstrip(
+                    os.path.sep
+                )
+                click.echo(
+                    'Moving {location} to {output_path}'.format(
+                        location=location, output_path=output_path
+                    )
+                )
+                os.rename(location, output_path)
