@@ -47,7 +47,7 @@ def test_03_input(instance_path):
         argv, directory=instance_path
     ).generate_tool()
 
-    assert tool.arguments[0].prefix == '-f'
+    assert tool.arguments[0].to_argv() == ['-f']
 
     assert tool.inputs[0].default == 42
     assert tool.inputs[0].type == 'int'
@@ -234,6 +234,8 @@ def test_stdin_and_stdout(argv, instance_path):
     )
 
     assert factory.stdin
+    if len(argv) > 1:
+        assert factory.arguments
 
     assert factory.stdout == 'output.txt'
     assert factory.outputs[0].type == 'stdout'

@@ -287,7 +287,7 @@ class CommandLineToolFactory(object):
                     position += 1
                     yield CommandLineBinding(
                         position=position,
-                        prefix=prefix,
+                        valueFrom=prefix,
                     )
                     prefix = None
 
@@ -371,7 +371,7 @@ class CommandLineToolFactory(object):
             position += 1
             yield CommandLineBinding(
                 position=position,
-                prefix=prefix,
+                valueFrom=prefix,
             )
 
     def guess_outputs(self, paths):

@@ -18,6 +18,7 @@
 """Update an existing file."""
 
 import os
+import sys
 import uuid
 
 import click
@@ -96,9 +97,15 @@ def update(ctx, client, revision, paths):
         visit_class(toolpath_object, ('File', 'Directory'), addLocation)
         return workflow.defaultMakeTool(toolpath_object, **kwargs)
 
+    argv = sys.argv
+    sys.argv = ['cwltool']
+
     factory = cwltool.factory.Factory(makeTool=makeTool)
     process = factory.make(os.path.relpath(output_file))
     outputs = process()
+
+    sys.argv = argv
+
     output_dirs = process.factory.executor.output_dirs
 
     def remove_prefix(location, prefix='file://'):

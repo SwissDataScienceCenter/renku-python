@@ -30,6 +30,7 @@ import pytest
 import yaml
 
 from renku import __version__, cli
+from renku._compat import Path
 from renku.models.cwl.workflow import Workflow
 
 
@@ -168,6 +169,7 @@ def test_streams(runner, capsys):
                     try:
                         cli.cli.main(
                             args=('run', 'cut', '-d,', '-f', '2', '-s'),
+                            prog_name=runner.get_default_prog_name(cli.cli),
                         )
                     except SystemExit as e:
                         assert e.code in {None, 0}
@@ -192,6 +194,69 @@ def test_streams(runner, capsys):
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 1
     assert 'source.txt' in result.output
+
+
+def test_update(project, runner, capsys):
+    """Test automatic file update."""
+    cwd = Path(project)
+    data = cwd / 'data'
+    source = cwd / 'source.txt'
+    output = data / 'result.txt'
+
+    repo = git.Repo(str(cwd))
+
+    def update_source(data):
+        """Update source.txt."""
+        with source.open('w') as fp:
+            fp.write(data)
+
+        repo.git.add('--all')
+        repo.index.commit('Updated source.txt')
+
+    update_source('1')
+
+    with capsys.disabled():
+        with open(source, 'rb') as stdin:
+            with open(output, 'wb') as stdout:
+                try:
+                    old_stdin, old_stdout = sys.stdin, sys.stdout
+                    sys.stdin, sys.stdout = stdin, stdout
+
+                    try:
+                        cli.cli.main(
+                            args=('run', 'wc', '-c'),
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdin, sys.stdout = old_stdin, old_stdout
+
+    with output.open('r') as f:
+        assert f.read().strip() == '1'
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    update_source('12')
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 1
+
+    with capsys.disabled():
+        try:
+            cli.cli.main(
+                args=('update', ),
+                prog_name=runner.get_default_prog_name(cli.cli),
+            )
+        except SystemExit as e:
+            assert e.code in {None, 0}
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
 
 
 def test_streams_and_args_names(runner, capsys):
