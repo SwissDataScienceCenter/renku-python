@@ -4,6 +4,7 @@ RUN apk add --no-cache alpine-sdk zeromq-dev
 
 COPY . /code/renku
 WORKDIR /code/renku
+RUN pip install pydot
 RUN pip install --no-cache -e .[all]
 
 WORKDIR /
