@@ -196,6 +196,61 @@ def test_streams(runner, capsys):
     assert 'source.txt' in result.output
 
 
+def test_streams_cleanup(project, runner, capsys):
+    """Test cleanup of standard streams."""
+    with open('source.txt', 'w') as source:
+        source.write('first,second,third')
+
+    # File outside the Git index should be deleted.
+    with capsys.disabled():
+        with open('result.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(
+                        args=('run', 'cat', 'source.txt'),
+                        prog_name=runner.get_default_prog_name(cli.cli),
+                    )
+                except SystemExit as e:
+                    assert e.code in {None, 1}, 'The repo must be dirty.'
+            finally:
+                sys.stdout = old_stdout
+
+    with open('source.txt', 'r') as source:
+        assert source.read() == 'first,second,third'
+
+    assert not Path('result.txt').exists()
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 1
+
+    # File from the Git index should be restored.
+    repo = git.Repo(project)
+    with open('result.txt', 'w') as fp:
+        fp.write('1')
+
+    repo.index.add(['result.txt'])
+
+    with capsys.disabled():
+        with open('result.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(
+                        args=('run', 'cat', 'source.txt'),
+                        prog_name=runner.get_default_prog_name(cli.cli),
+                    )
+                except SystemExit as e:
+                    assert e.code in {None, 1}, 'The repo must be dirty.'
+            finally:
+                sys.stdout = old_stdout
+
+    with open('result.txt', 'r') as fp:
+        assert fp.read() == '1'
+
+
 def test_update(project, runner, capsys):
     """Test automatic file update."""
     cwd = Path(project)
@@ -203,7 +258,7 @@ def test_update(project, runner, capsys):
     source = cwd / 'source.txt'
     output = data / 'result.txt'
 
-    repo = git.Repo(str(cwd))
+    repo = git.Repo(project)
 
     def update_source(data):
         """Update source.txt."""
