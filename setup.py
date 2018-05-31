@@ -47,7 +47,10 @@ extras_require = {
         'Sphinx>=1.6.3',
         'renku-sphinx-theme>=0.1.0',
     ],
-    'runner': ['cwlref-runner>=1.0', ],
+    'runner': [
+        'cwlref-runner>=1.0',
+        'pydot>=1.2.4',
+    ],
     'notebook': [
         'jupyter>=1.0.0',
         'openid-connect>=0.3.0',
