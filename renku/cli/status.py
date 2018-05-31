@@ -41,8 +41,10 @@ def status(ctx, client, revision, path):
     if status['outdated']:
         click.echo('Files generated from outdated inputs:')
         click.echo('  (use "renku log <file>..." to see the full lineage)')
-        # click.echo('  (use "renku update <file>..." to '
-        #            'generate file from latest inputs)')
+        click.echo(
+            '  (use "renku update <file>..." to '
+            'generate the file from its latest inputs)'
+        )
         click.echo()
 
         for filepath, files in status['outdated'].items():

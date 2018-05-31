@@ -117,16 +117,19 @@ def update(ctx, client, revision, paths):
         remove_prefix(output['location'])
         for output in outputs.values()
     }
+    fill_char = click.style(u' ', bg='green')
 
-    for location in locations:
-        for output_dir in output_dirs:
-            if location.startswith(output_dir):
-                output_path = client.path / location[len(output_dir):].lstrip(
-                    os.path.sep
-                )
-                click.echo(
-                    'Moving {location} to {output_path}'.format(
-                        location=location, output_path=output_path
-                    )
-                )
-                os.rename(location, output_path)
+    with click.progressbar(
+        locations,
+        label='Moving outputs',
+        show_pos=True,
+        item_show_func=lambda x: x,
+        fill_char=fill_char
+    ) as bar:
+        for location in bar:
+            for output_dir in output_dirs:
+                if location.startswith(output_dir):
+                    output_path = client.path / location[len(output_dir):
+                                                         ].lstrip(os.path.sep)
+                    os.rename(location, output_path)
+                    continue
