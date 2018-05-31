@@ -28,6 +28,7 @@ import yaml
 from renku.models.cwl._ascwl import ascwl
 
 from ._client import pass_local_client
+from ._echo import progressbar
 from ._git import with_git
 from ._graph import Graph
 
@@ -117,14 +118,10 @@ def update(ctx, client, revision, paths):
         remove_prefix(output['location'])
         for output in outputs.values()
     }
-    fill_char = click.style(u' ', bg='green')
 
-    with click.progressbar(
+    with progressbar(
         locations,
         label='Moving outputs',
-        show_pos=True,
-        item_show_func=lambda x: x,
-        fill_char=fill_char
     ) as bar:
         for location in bar:
             for output_dir in output_dirs:

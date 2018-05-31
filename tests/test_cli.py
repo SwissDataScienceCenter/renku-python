@@ -335,7 +335,11 @@ def test_streams_and_args_names(runner, capsys):
     assert result.exit_code == 0
 
 
-def test_datasets(data_file, data_repository, runner):
+def test_datasets(
+    data_file,
+    data_repository,
+    runner,
+):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -369,6 +373,28 @@ def test_datasets(data_file, data_repository, runner):
             os.path.dirname(data_repository.git_dir)
         ]
     )
+    assert result.exit_code == 0
+
+
+def test_multiple_file_to_dataset(
+    tmpdir,
+    data_repository,
+    runner,
+):
+    """Test importing multiple data into a dataset at once."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+    assert os.stat('data/dataset/metadata.yml')
+
+    paths = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+    # add data
+    result = runner.invoke(cli.cli, ['dataset', 'add', 'dataset'] + paths)
     assert result.exit_code == 0
 
 
