@@ -24,6 +24,7 @@ from contextlib import contextmanager
 
 import attr
 
+from renku import errors
 from renku._compat import Path
 
 from ._ascwl import CWLClass, mapped
@@ -172,12 +173,16 @@ class CommandLineToolFactory(object):
         yield tool
 
         if git:
+            # List of all output paths.
+            paths = []
+            # Keep track of unmodified output files.
+            unmodified = set()
+            # Possible output paths.
             candidates = set(git.untracked_files)
             candidates |= {item.a_path for item in git.index.diff(None)}
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
-            paths = []
 
             for output, input, path in self.guess_outputs(candidates):
                 outputs.append(output)
@@ -189,18 +194,18 @@ class CommandLineToolFactory(object):
 
                     inputs[input.id] = input
 
-            if not no_output:
-                for stream_name in ('stdout', 'stderr'):
-                    stream = getattr(self, stream_name)
-                    if stream and stream not in candidates:
-                        raise RuntimeError(
-                            'Output file was not created or changed.'
-                        )
-                    elif stream:
-                        paths.append(stream)
+            for stream_name in ('stdout', 'stderr'):
+                stream = getattr(self, stream_name)
+                if stream and stream not in candidates:
+                    unmodified.add(stream)
+                elif stream:
+                    paths.append(stream)
 
-                if not outputs:
-                    raise RuntimeError('No output was detected')
+            if unmodified:
+                raise errors.UnmodifiedOutputs(repo, unmodified)
+
+            if not no_output and not paths:
+                raise errors.OutputsNotFound(repo, inputs.values())
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
@@ -248,12 +253,6 @@ class CommandLineToolFactory(object):
 
     def guess_type(self, value, ignore_filenames=None):
         """Return new value and CWL parameter type."""
-        try:
-            value = int(value)
-            return value, 'int', None
-        except ValueError:
-            pass
-
         candidate = self.file_candidate(value, ignore=ignore_filenames)
         if candidate:
             try:
@@ -263,6 +262,12 @@ class CommandLineToolFactory(object):
                 # directory
                 # TODO suggest that the file should be imported to the repo
                 pass
+
+        try:
+            value = int(value)
+            return value, 'int', None
+        except ValueError:
+            pass
 
         if len(value) > 1 and ',' in value:
             return value.split(','), 'string[]', ','

@@ -449,3 +449,42 @@ def test_status_with_submodules(base_runner):
 
     result = base_runner.invoke(cli.cli, ['status'], catch_exceptions=False)
     assert result.exit_code != 0
+
+
+def test_unchanged_output(runner):
+    """Test detection of unchanged output."""
+    cmd = ['run', 'touch', '1']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['run', 'touch', '1']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 1
+
+
+def test_unchanged_stdout(runner, capsys):
+    """Test detection of unchanged stdout."""
+    with capsys.disabled():
+        with open('output.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(args=('run', 'echo', '1'), )
+                except SystemExit as e:
+                    assert e.code in {None, 0}
+            finally:
+                sys.stdout = old_stdout
+
+    with capsys.disabled():
+        with open('output.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(args=('run', 'echo', '1'), )
+                except SystemExit as e:
+                    # The stdout has not been modified!
+                    assert e.code in {None, 1}
+            finally:
+                sys.stdout = old_stdout
