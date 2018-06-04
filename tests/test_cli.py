@@ -335,11 +335,7 @@ def test_streams_and_args_names(runner, capsys):
     assert result.exit_code == 0
 
 
-def test_datasets(
-    data_file,
-    data_repository,
-    runner,
-):
+def test_datasets(data_file, data_repository, runner):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -376,11 +372,7 @@ def test_datasets(
     assert result.exit_code == 0
 
 
-def test_multiple_file_to_dataset(
-    tmpdir,
-    data_repository,
-    runner,
-):
+def test_multiple_file_to_dataset(tmpdir, data_repository, runner):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -396,6 +388,43 @@ def test_multiple_file_to_dataset(
     # add data
     result = runner.invoke(cli.cli, ['dataset', 'add', 'dataset'] + paths)
     assert result.exit_code == 0
+
+
+def test_relative_import_to_dataset(tmpdir, data_repository, runner):
+    """Test importing data from a directory structure."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+    assert os.stat('data/dataset/metadata.yml')
+
+    zero_data = tmpdir.join('data.txt')
+    zero_data.write('zero')
+
+    first_level = tmpdir.mkdir('first')
+    second_level = first_level.mkdir('second')
+
+    first_data = first_level.join('data.txt')
+    first_data.write('first')
+
+    second_data = second_level.join('data.txt')
+    second_data.write('second')
+
+    paths = [str(zero_data), str(first_data), str(second_data)]
+
+    # add data in subdirectory
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset', '--relative-to',
+         str(tmpdir)] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    assert os.stat(os.path.join('data', 'dataset', 'data.txt'))
+    assert os.stat(os.path.join('data', 'dataset', 'first', 'data.txt'))
+    assert os.stat(
+        os.path.join('data', 'dataset', 'first', 'second', 'data.txt')
+    )
 
 
 def test_file_tracking(base_runner):

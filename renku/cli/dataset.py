@@ -72,6 +72,7 @@ def create(client, name):
 @click.argument('name')
 @click.argument('urls', nargs=-1)
 @click.option('nocopy', '--copy/--no-copy', default=False, is_flag=True)
+@click.option('--relative-to', default=None)
 @click.option(
     '-t',
     '--target',
@@ -81,7 +82,7 @@ def create(client, name):
 )
 @pass_local_client
 @with_git()
-def add(client, name, urls, nocopy, target):
+def add(client, name, urls, nocopy, relative_to, target):
     """Add data to a dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
@@ -89,7 +90,11 @@ def add(client, name, urls, nocopy, target):
             with progressbar(urls, label='Adding data to dataset') as bar:
                 for url in bar:
                     client.add_data_to_dataset(
-                        dataset, url, nocopy=nocopy, target=target
+                        dataset,
+                        url,
+                        nocopy=nocopy,
+                        target=target,
+                        relative_to=relative_to,
                     )
     except FileNotFoundError:
         raise BadParameter('Could not process {0}'.format(url))
