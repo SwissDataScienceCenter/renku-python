@@ -34,6 +34,12 @@ from renku.models.cwl.types import File
 from renku.models.cwl.workflow import Workflow
 
 
+def _safe_path(filepath, can_be_workflow=False):
+    """Check if the path should be used in output."""
+    return not filepath.startswith('.renku') and \
+        filepath not in {'.gitignore', '.gitattributes'}
+
+
 @attr.s
 class Graph(object):
     """Represent the provenance graph."""
@@ -320,8 +326,7 @@ class Graph(object):
         current_files = set()
 
         for filepath, _ in index.entries.keys():
-            if not filepath.startswith('.renku') and \
-                    filepath not in {'.gitignore', '.gitattributes'}:
+            if _safe_path(filepath):
                 self.add_file(filepath, revision=revision)
                 current_files.add(filepath)
 

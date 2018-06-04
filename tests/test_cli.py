@@ -161,6 +161,14 @@ def test_workflow(runner):
         workflow = Workflow.from_cwl(yaml.load(f))
         assert workflow.steps[0].run.startswith('.renku/workflow/')
 
+    # Compare default log and log for a specific file.
+    result_default = runner.invoke(cli.cli, ['log'])
+    result_arg = runner.invoke(cli.cli, ['log', 'counted.txt'])
+
+    assert result_default.exit_code == 0
+    assert result_arg.exit_code == 0
+    assert result_default.output == result_arg.output
+
 
 def test_streams(runner, capsys):
     """Test redirection of std streams."""

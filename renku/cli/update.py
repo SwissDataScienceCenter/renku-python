@@ -15,7 +15,71 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Update an existing file."""
+r"""Update outdated files created by the "run" command.
+
+Recreating outdated files
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The information about dependencies for each file in the repository is generated
+from information stored in the underlying Git repository.
+
+A minimal dependency graph is generated for each outdated file stored in the
+repository. It means that only the necessary steps will be executed and the
+workflow used to orchestrate these steps is stored in the repository.
+
+Assume that the following history for the file ``H`` exists.
+
+.. code-block:: text
+
+          C---D---E
+         /         \
+    A---B---F---G---H
+
+The first example shows situation when ``D`` is modified and files ``E`` and
+``H`` become outdated.
+
+.. code-block:: text
+
+          C--*D*--(E)
+         /          \
+    A---B---F---G---(H)
+
+    ** - modified
+    () - needs update
+
+In this situation, you can do efectively two things:
+
+* Recreate a single file by running
+
+  .. code-block:: console
+
+     $ renku update E
+
+* Update all files by simply running
+
+  .. code-block:: console
+
+     $ renku update
+
+.. note:: If there were uncommitted changes then the command fails.
+   Check :program:`git status` to see details.
+
+Pre-update checks
+~~~~~~~~~~~~~~~~~
+
+In the next example, files ``A`` or ``B`` are modified, hence the majority
+of dependent files must be recreated.
+
+.. code-block:: text
+
+            (C)--(D)--(E)
+           /            \
+    *A*--*B*--(F)--(G)--(H)
+
+To avoid excesive recreation of the large portion of files which could have
+been affected by a simple change of an input file, consider speficing a single
+file (e.g. ``renku update G``). See also :ref:`cli-status`.
+"""
 
 import os
 import sys

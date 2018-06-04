@@ -15,7 +15,63 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Track provenance of data created by executing programs."""
+"""Track provenance of data created by executing programs.
+
+Capture command line execution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Tracking exection of your command line script is done by simply adding the
+``renku run`` command before the previous arguments. The command will detect:
+
+* arguments (flags),
+* string and integer options,
+* input files if linked to existing files in the repository,
+* output files if modified or created while running the command.
+
+.. note:: If there were uncommitted changes then the command fails.
+   See :program:`git status` for details.
+
+Detecting input files
+~~~~~~~~~~~~~~~~~~~~~
+
+An argument is identified as an input file only if its path matches an existing
+file in the repository. There might be several situations when the detection
+might not work as expected:
+
+* If the file is modified during the execution, then it is stored as an output;
+* If the path points to a directory, then it is stored as a string option;
+* The input file is not defined as the tool argument.
+
+Detecting output files
+~~~~~~~~~~~~~~~~~~~~~~
+
+Any file which is modified or created after the execution will be added as an
+output. If the program does not produce any outputs, you can specify the
+``--no-output`` option.
+
+There might be situations where an existing output file has not been changed
+when the command has been executed with different parameters. The execution
+ends with an error: ``Error: There are not any detected outputs in the
+repository.`` In order to resolve it remove any proposed input file from the
+list first.
+
+.. cli-run-std
+
+Detecting standard streams
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Often the program expect inputs as a standard input stream. This is detected
+and recorded in the tool specification when invoked by ``renku run cat < A``.
+
+Similarly, both redirects to standard output and standard error output can be
+done when invoking a command:
+
+.. code-block:: console
+
+   $ renku run grep "test" B > C 2> D
+
+.. warning:: Detecting inputs and outputs from pipes ``|`` is not supported.
+"""
 
 import os
 import sys
