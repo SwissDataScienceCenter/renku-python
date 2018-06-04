@@ -109,7 +109,7 @@ class CommandLineToolFactory(object):
 
     directory = attr.ib(
         default='.',
-        converter=Path,
+        converter=lambda path: Path(path).resolve(),
     )
 
     stdin = attr.ib(default=None)  # null, str, Expression
@@ -234,7 +234,7 @@ class CommandLineToolFactory(object):
             candidate = self.directory / candidate
 
         if candidate.exists():
-            return candidate
+            return candidate.resolve()
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
@@ -387,8 +387,8 @@ class CommandLineToolFactory(object):
         }  # inputs that need to be changed if an output is detected
 
         conflicting_paths = {
-            str(input.default)
-            for input in self.inputs if input.type == 'File'
+            str(input.default): (index, input)
+            for index, input in enumerate(self.inputs) if input.type == 'File'
         }  # names that can not be outputs because they are already inputs
 
         streams = {
@@ -410,14 +410,19 @@ class CommandLineToolFactory(object):
             if glob in streams:
                 continue
 
+            new_input = None
+
             if glob in conflicting_paths:
-                raise ValueError('Output already exists in inputs.')
+                # it means that it is rewriting a file
+                index, input = conflicting_paths[glob]
+                new_input = attr.evolve(input, type='string', default=glob)
+                input_candidates[str(glob)] = new_input
+
+                del conflicting_paths[glob]
+                # TODO add warning ('Output already exists in inputs.')
 
             if glob in input_candidates:
                 input = input_candidates[glob]
-                if input.type == 'File':
-                    # it means that it is rewriting a file
-                    raise NotImplemented()
 
                 yield (
                     CommandOutputParameter(
@@ -426,7 +431,7 @@ class CommandLineToolFactory(object):
                         outputBinding=dict(
                             glob='$(inputs.{0})'.format(input.id),
                         ),
-                    ), None, path
+                    ), new_input, path
                 )
             else:
                 yield (
