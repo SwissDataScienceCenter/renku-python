@@ -38,10 +38,10 @@ the platform endpoint.
 """
 
 import click
-import http.server
+import json
 import logging
-import socketserver
-import threading
+import requests
+import uuid
 import webbrowser
 
 from ._client import from_config
@@ -51,71 +51,11 @@ from ._options import argument_endpoint, default_endpoint
 logger = logging.getLogger('renku.cli.login')
 
 
-class AuthServer(socketserver.TCPServer):
-    """A TCPServer with some extra local variables."""
-
-    def __init__(self, ctx, client, config, endpoint, url, client_id, default,
-                 *args, **kwargs):
-        """Initialize the server with extra parameters."""
-        self.auth_ctx = ctx
-        self.auth_client = client
-        self.auth_config = config
-        self.auth_endpoint = endpoint
-        self.auth_client_id = client_id
-        self.auth_url = url
-        self.auth_default = default
-        super().__init__(*args, **kwargs)
-
-
-class AuthHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
-    """A very simple http server to handle the redirect with the code."""
-
-    def do_GET(self):
-        """Endpoint for the redirect with the code."""
-        scope = ['offline_access', 'openid']
-        token = self.server.auth_client.api.fetch_token(
-            '{}/protocol/openid-connect/token'.format(self.server.auth_url),
-            authorization_response=self.path,
-            client_id=self.server.auth_client_id,
-            scope=scope,
-        )
-        config = self.server.auth_config
-
-        config['endpoints'][self.server.auth_endpoint]['token'] = dict(token)
-
-        if len(config['endpoints']) == 1 or self.server.auth_default:
-            config.setdefault('core', {})
-            config['core']['default'] = self.server.auth_endpoint
-
-        click.echo(
-            'Access token has been stored in: {0}'.format(
-                config_path(self.server.auth_ctx.obj.get('config_path'))
-            )
-        )
-        text = b"<html><body>You can close this.</body></html>"
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.send_header("Content-Length", str(len(text)))
-        self.end_headers()
-        self.wfile.write(text)
-
-        assassin = threading.Thread(target=self.server.shutdown)
-        assassin.daemon = True
-        assassin.start()
-
-    def log_message(self, format, *args):
-        """Logging with httpd format."""
-        logger.debug("%s - - [%s] %s\n" % (
-            self.address_string(),
-            self.log_date_time_string(), format % args)
-        )
-
-
 @click.command()
 @click.argument('endpoint', required=False, callback=default_endpoint)
 @click.option(
     '--url',
-    default='{endpoint}/auth/realms/Renku'
+    default='{endpoint}/auth'
 )
 @click.option('--client-id', default='demo-client')
 @click.option('--default', is_flag=True)
@@ -123,7 +63,7 @@ class AuthHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 @click.pass_context
 def login(ctx, config, endpoint, url, client_id, default):
     """Initialize tokens for access to the platform."""
-    url = url.format(endpoint=endpoint, client_id=client_id)
+    url = url.format(endpoint=endpoint)
 
     config.setdefault('endpoints', {})
     config['endpoints'].setdefault(endpoint, {})
@@ -131,16 +71,23 @@ def login(ctx, config, endpoint, url, client_id, default):
     config['endpoints'][endpoint]['client_id'] = client_id
     config['endpoints'][endpoint]['url'] = url
 
-    client = from_config(config, endpoint=endpoint)
+    uid = str(uuid.uuid4())
 
-    authorization_url, _ = client.api.authorization_url(
-        '{url}/protocol/openid-connect/auth'.format(url=url))
+    webbrowser.open_new_tab("{url}/login?cli_token={uid}&scope=offline_access+openid".format(url=url, uid=uid))
 
-    webbrowser.open_new_tab(authorization_url)
+    token = requests.get("{url}/info?cli_token={uid}".format(url=url, uid=uid)).json()
 
-    with AuthServer(ctx, client, config, endpoint, url, client_id, default,
-                    ("", 5000), AuthHTTPRequestHandler) as httpd:
-        httpd.serve_forever()
+    config['endpoints'][endpoint]['token'] = dict(token)
+
+    if len(config['endpoints']) == 1 or default:
+        config.setdefault('core', {})
+        config['core']['default'] = endpoint
+
+    click.echo(
+        'Access token has been stored in: {0}'.format(
+            config_path(ctx.obj.get('config_path'))
+        )
+    )
 
 
 @click.group(invoke_without_command=True)
