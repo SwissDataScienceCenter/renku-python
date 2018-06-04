@@ -17,7 +17,20 @@
 # limitations under the License.
 """Authorization service."""
 
+from oauthlib.oauth2 import LegacyApplicationClient as LAC
 from requests_oauthlib import OAuth2Session
+
+
+class LegacyApplicationClient(LAC):
+    """A public client using the password and username directly.
+
+    Provides defaults for simple usage with CLI.
+    """
+
+    def __init__(self, client_id, **kwargs):
+        """Define default scopes."""
+        kwargs.setdefault('scope', ['offline_access', 'openid'])
+        super(LegacyApplicationClient, self).__init__(client_id, **kwargs)
 
 
 class AuthorizationMixin(OAuth2Session):
@@ -27,7 +40,12 @@ class AuthorizationMixin(OAuth2Session):
 
     def __init__(self, **kwargs):
         """Define default client."""
-        kwargs.setdefault('redirect_uri', 'http://localhost:5000')
+        kwargs.setdefault(
+            'client',
+            LegacyApplicationClient(
+                kwargs.get('client_id'), token=kwargs.get('token')
+            )
+        )
 
         def token_updater(token):
             """Dummy token updater."""

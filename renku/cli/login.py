@@ -37,27 +37,20 @@ the platform endpoint.
 
 """
 
-import click
-import json
-import logging
-import requests
 import uuid
 import webbrowser
+
+import click
+import requests
 
 from ._client import from_config
 from ._config import config_path, with_config
 from ._options import argument_endpoint, default_endpoint
 
-logger = logging.getLogger('renku.cli.login')
-
 
 @click.command()
 @click.argument('endpoint', required=False, callback=default_endpoint)
-@click.option(
-    '--url',
-    default='{endpoint}/auth'
-)
-@click.option('--client-id', default='demo-client')
+@click.option('--url', default='{endpoint}/auth')
 @click.option('--default', is_flag=True)
 @with_config
 @click.pass_context
@@ -68,14 +61,19 @@ def login(ctx, config, endpoint, url, client_id, default):
     config.setdefault('endpoints', {})
     config['endpoints'].setdefault(endpoint, {})
     config['endpoints'][endpoint].setdefault('token', {})
-    config['endpoints'][endpoint]['client_id'] = client_id
     config['endpoints'][endpoint]['url'] = url
 
     uid = str(uuid.uuid4())
 
-    webbrowser.open_new_tab("{url}/login?cli_token={uid}&scope=offline_access+openid".format(url=url, uid=uid))
+    webbrowser.open_new_tab(
+        "{url}/login?cli_token={uid}&scope=offline_access+openid".format(
+            url=url, uid=uid
+        )
+    )
 
-    token = requests.get("{url}/info?cli_token={uid}".format(url=url, uid=uid)).json()
+    token = requests.get(
+        "{url}/info?cli_token={uid}".format(url=url, uid=uid)
+    ).json()
 
     config['endpoints'][endpoint]['token'] = dict(token)
 
