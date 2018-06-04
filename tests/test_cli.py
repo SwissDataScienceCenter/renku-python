@@ -34,6 +34,18 @@ from renku._compat import Path
 from renku.models.cwl.workflow import Workflow
 
 
+def _run_update(runner, capsys):
+    """Run the update command."""
+    with capsys.disabled():
+        try:
+            cli.cli.main(
+                args=('update', ),
+                prog_name=runner.get_default_prog_name(cli.cli),
+            )
+        except SystemExit as e:
+            return 0 if e.code is None else e.code
+
+
 def test_version(base_runner):
     """Test cli version."""
     result = base_runner.invoke(cli.cli, ['--version'])
@@ -298,14 +310,7 @@ def test_update(project, runner, capsys):
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 1
 
-    with capsys.disabled():
-        try:
-            cli.cli.main(
-                args=('update', ),
-                prog_name=runner.get_default_prog_name(cli.cli),
-            )
-        except SystemExit as e:
-            assert e.code in {None, 0}
+    assert _run_update(runner, capsys) == 0
 
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 0
@@ -543,3 +548,51 @@ def test_unchanged_stdout(runner, capsys):
                     assert e.code in {None, 1}
             finally:
                 sys.stdout = old_stdout
+
+
+def test_modified_output(project, runner, capsys):
+    """Test detection of changed file as output."""
+    cwd = Path(project)
+    source = cwd / 'source.txt'
+    output = cwd / 'result.txt'
+
+    repo = git.Repo(project)
+    cmd = ['run', 'cp', '-r', str(source), str(output)]
+
+    def update_source(data):
+        """Update source.txt."""
+        with source.open('w') as fp:
+            fp.write(data)
+
+        repo.git.add('--all')
+        repo.index.commit('Updated source.txt')
+
+    update_source('1')
+
+    # The output file does not exist.
+    assert not output.exists()
+
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    # The output file is copied from the source.
+    with output.open('r') as f:
+        assert f.read().strip() == '1'
+
+    update_source('2')
+
+    # The input file has been updated and output is recreated.
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
+
+    update_source('3')
+
+    # The input has been modifed and we check that the previous
+    # run command correctly recognized output.txt.
+    assert _run_update(runner, capsys) == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '3'

@@ -59,7 +59,7 @@ def test_03_input(instance_path):
     assert tool.inputs[1].inputBinding.prefix == '--example-string'
     assert tool.inputs[1].inputBinding.separate is True
 
-    assert tool.inputs[2].default.path == whale
+    assert tool.inputs[2].default.path.samefile(whale)
     assert tool.inputs[2].type == 'File'
     assert tool.inputs[2].inputBinding.prefix == '--file='
     assert tool.inputs[2].inputBinding.separate is False
@@ -78,7 +78,7 @@ def test_base_command_detection(instance_path):
     ).generate_tool()
 
     assert tool.baseCommand == ['tar', 'xf']
-    assert tool.inputs[0].default.path == hello
+    assert tool.inputs[0].default.path.samefile(hello)
     assert tool.inputs[0].type == 'File'
     assert tool.inputs[0].inputBinding.prefix is None
     assert tool.inputs[0].inputBinding.separate is True
