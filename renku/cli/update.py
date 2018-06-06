@@ -165,7 +165,12 @@ def update(ctx, client, revision, paths):
     argv = sys.argv
     sys.argv = ['cwltool']
 
-    factory = cwltool.factory.Factory(makeTool=makeTool)
+    # Keep all environment variables.
+    execkwargs = {
+        'preserve_entire_environment': True,
+    }
+
+    factory = cwltool.factory.Factory(makeTool=makeTool, **execkwargs)
     process = factory.make(os.path.relpath(output_file))
     outputs = process()
 
