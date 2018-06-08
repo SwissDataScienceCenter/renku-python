@@ -89,17 +89,21 @@ class DatasetsApiMixin(object):
         dataset_path = self.path / self.datadir / dataset.name
         git = git or check_for_git_repo(url)
 
-        target = kwargs.get('target')
+        target = kwargs.pop('target', None)
 
         if git:
             if isinstance(target, (str, NoneType)):
                 dataset.files.update(
-                    self._add_from_git(dataset, dataset_path, url, target)
+                    self._add_from_git(
+                        dataset, dataset_path, url, target, **kwargs
+                    )
                 )
             else:
                 for t in target:
                     dataset.files.update(
-                        self._add_from_git(dataset, dataset_path, url, t)
+                        self._add_from_git(
+                            dataset, dataset_path, url, t, **kwargs
+                        )
                     )
         else:
             dataset.files.update(
@@ -184,15 +188,18 @@ class DatasetsApiMixin(object):
                 )
         }
 
-    def _add_from_git(self, dataset, path, url, target):
+    def _add_from_git(self, dataset, path, url, target, **kwargs):
         """Process adding resources from another git repository.
 
-        The submodules are placed in .renku/vendors and linked
+        The submodules are placed in ``.renku/vendors`` and linked
         to the *path* specified by the user.
         """
         # create the submodule
         u = parse.urlparse(url)
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
+
+        # Respect the directory struture inside the source path.
+        relative_to = kwargs.get('relative_to', None)
 
         if u.scheme in ('', 'file'):
             warnings.warn('Importing local git repository, use HTTPS')
@@ -229,27 +236,46 @@ class DatasetsApiMixin(object):
                 name=submodule_name, path=submodule_path.as_posix(), url=url
             )
 
-        # link the target into the data directory
-        dst = self.path / path / submodule_name / (target or '')
         src = submodule_path / (target or '')
 
-        if not dst.parent.exists():
-            dst.parent.mkdir(parents=True)
+        if target and relative_to:
+            relative_to = Path(relative_to)
+            if relative_to.is_absolute():
+                assert u.scheme in {
+                    '', 'file'
+                }, ('Only relative paths can be used with URLs.')
+                target = (Path(url).resolve().absolute() / target).relative_to(
+                    relative_to.resolve()
+                )
+            else:
+                # src already includes target so we do not have to append it
+                target = src.relative_to(submodule_path / relative_to)
+
+        # link the target into the data directory
+        dst = self.path / path / submodule_name / (target or '')
+
         # if we have a directory, recurse
         if src.is_dir():
             files = {}
-            os.mkdir(dst)
+            dst.mkdir(parents=True, exist_ok=True)
             # FIXME get all files from submodule index
             for f in src.iterdir():
-                files.update(
-                    self._add_from_git(
-                        dataset,
-                        path,
-                        url,
-                        target=f.relative_to(submodule_path)
+                try:
+                    files.update(
+                        self._add_from_git(
+                            dataset,
+                            path,
+                            url,
+                            target=f.relative_to(submodule_path),
+                            **kwargs
+                        )
                     )
-                )
+                except ValueError:
+                    pass  # skip files outside the relative path
             return files
+
+        if not dst.parent.exists():
+            dst.parent.mkdir(parents=True)
 
         os.symlink(os.path.relpath(src, dst.parent), dst)
 

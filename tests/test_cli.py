@@ -440,6 +440,67 @@ def test_relative_import_to_dataset(tmpdir, data_repository, runner):
     )
 
 
+def test_relative_git_import_to_dataset(tmpdir, project, runner):
+    """Test importing data from a directory structure."""
+    submodule_name = os.path.basename(tmpdir)
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+    assert os.stat('data/dataset/metadata.yml')
+
+    data_repo = git.Repo.init(tmpdir)
+
+    zero_data = tmpdir.join('data.txt')
+    zero_data.write('zero')
+
+    first_level = tmpdir.mkdir('first')
+    second_level = first_level.mkdir('second')
+
+    first_data = first_level.join('data.txt')
+    first_data.write('first')
+
+    second_data = second_level.join('data.txt')
+    second_data.write('second')
+
+    paths = [str(zero_data), str(first_data), str(second_data)]
+    data_repo.index.add(paths)
+    data_repo.index.commit('Added source files')
+
+    # add data in subdirectory
+    result = runner.invoke(
+        cli.cli,
+        [
+            'dataset', 'add', 'dataset', '--relative-to',
+            str(first_level),
+            str(tmpdir)
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    assert os.stat(os.path.join('data', 'dataset', submodule_name, 'data.txt'))
+    assert os.stat(
+        os.path.join('data', 'dataset', submodule_name, 'second', 'data.txt')
+    )
+
+    # add data in subdirectory
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'relative', '--relative-to', 'first',
+         str(tmpdir)],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    assert os.stat(
+        os.path.join('data', 'relative', submodule_name, 'data.txt')
+    )
+    assert os.stat(
+        os.path.join('data', 'relative', submodule_name, 'second', 'data.txt')
+    )
+
+
 def test_file_tracking(base_runner):
     """Test .gitattribute handling on renku run."""
     runner = base_runner
