@@ -88,7 +88,10 @@ class DAG(object):
 
     def node_text(self, node):
         """Return text for a given node."""
-        result = [_format_sha1(self.graph, node) + ' ' + node[1]]
+        result = [
+            _format_sha1(self.graph, node) + ' ' +
+            self.graph._format_path(node[1])
+        ]
         workflow = self.graph.G.nodes[node].get('workflow_path')
         if workflow:
             result.append(

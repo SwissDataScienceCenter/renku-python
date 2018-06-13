@@ -38,23 +38,26 @@ def set_git_home(value):
 def get_git_home():
     """Get Git path from current context."""
     ctx = click.get_current_context(silent=True)
-    if ctx:
-        return ctx.meta.get(GIT_KEY, '.')
-    return '.'
+    if ctx and GIT_KEY in ctx.meta:
+        return ctx.meta[GIT_KEY]
+    return Repo('.', search_parent_directories=True).working_dir
 
 
 def _dirty_paths(repo):
     """Get paths of dirty files in the repository."""
-    return repo.untracked_files + [
-        item.a_path for item in repo.index.diff(None)
-    ]
+    repo_path = repo.working_dir
+    return {
+        os.path.join(repo_path, p)
+        for p in repo.untracked_files +
+        [item.a_path for item in repo.index.diff(None)]
+    }
 
 
-def _mapped_std_streams(lookup_paths):
+def _mapped_std_streams(lookup_paths, streams=('stdin', 'stdout', 'stderr')):
     """Get a mapping of standard streams to given paths."""
     # FIXME add device number too
     standard_inos = {}
-    for stream in ('stdin', 'stdout', 'stderr'):
+    for stream in streams:
         try:
             stream_stat = os.fstat(getattr(sys, stream).fileno())
             key = stream_stat.st_dev, stream_stat.st_ino
@@ -73,6 +76,22 @@ def _mapped_std_streams(lookup_paths):
     }
 
 
+def _clean_streams(repo, mapped_streams):
+    """Clean mapped standard streams."""
+    for stream_name in ('stdout', 'stderr'):
+        stream = mapped_streams.get(stream_name)
+        if not stream:
+            continue
+
+        path = os.path.relpath(stream, start=repo.working_dir)
+        if (path, 0) not in repo.index.entries:
+            os.remove(stream)
+        else:
+            blob = repo.index.entries[(path, 0)].to_blob(repo)
+            with open(path, 'wb') as fp:
+                fp.write(blob.data_stream.read())
+
+
 @contextmanager
 def with_git(
     clean=True, up_to_date=False, commit=True, ignore_std_streams=False
@@ -81,19 +100,21 @@ def with_git(
     repo_path = get_git_home()
     current_dir = os.getcwd()
 
-    if clean:  # pragma: no cover
+    if clean:
         try:
             os.chdir(repo_path)
             repo = Repo(repo_path)
 
-            if ignore_std_streams:
-                dirty_paths = set(_dirty_paths(repo))
-                mapped_paths = set(_mapped_std_streams(dirty_paths).values())
+            dirty_paths = _dirty_paths(repo)
+            mapped_streams = _mapped_std_streams(dirty_paths)
 
-                if dirty_paths - mapped_paths:
+            if ignore_std_streams:
+                if dirty_paths - set(mapped_streams.values()):
+                    _clean_streams(repo, mapped_streams)
                     raise errors.DirtyRepository(repo)
 
             elif repo.is_dirty(untracked_files=True):
+                _clean_streams(repo, mapped_streams)
                 raise errors.DirtyRepository(repo)
         finally:
             os.chdir(current_dir)

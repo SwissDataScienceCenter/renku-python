@@ -17,6 +17,7 @@
 # limitations under the License.
 """Custom console echo."""
 
+import functools
 import os
 
 import click
@@ -34,3 +35,11 @@ def echo_via_pager(*args, **kwargs):
     finally:
         if restore:
             os.environ.pop('LESS', None)
+
+
+progressbar = functools.partial(
+    click.progressbar,
+    fill_char=click.style(u' ', bg='green'),
+    show_pos=True,
+    item_show_func=lambda x: x,
+)

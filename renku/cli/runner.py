@@ -23,14 +23,26 @@ import tempfile
 from subprocess import call
 
 import click
+import pkg_resources
 import yaml
 
 from ._client import pass_local_client
+
+_GITLAB_CI = '.gitlab-ci.yml'
 
 
 @click.group()
 def runner():
     """Simplify running of CI scripts."""
+
+
+@runner.command()
+@pass_local_client
+def template(client):
+    """Generate template for CI."""
+    with open(client.path / _GITLAB_CI, 'wb') as dest:
+        with pkg_resources.resource_stream(__name__, _GITLAB_CI) as tpl:
+            dest.write(tpl.read())
 
 
 @runner.command()

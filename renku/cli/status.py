@@ -15,7 +15,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Show status of data created in Renku repository."""
+"""Show status of data files created in the repository.
+
+Inspecting a repository
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Displays paths of outputs which were generated from newer inputs files
+and paths of files that have been used in diverent versions.
+
+The first paths are what need to be recreated by running ``renku update``.
+See more in section about :ref:`renku update <cli-update>`.
+
+The paths mentioned in the output are made relative to the current directory
+if you are working in a subdirectory (this is on purpose, to help
+cutting and pasting to other commands). They also contain first 8 characters
+of the corresponding commit identifier after the ``#`` (hash). If the file was
+imported from another repository, the short name of is shown together with the
+filename before ``@``.
+"""
 
 import click
 
@@ -26,30 +43,37 @@ from ._graph import Graph
 
 
 @click.command()
-@click.option('--revision', default='HEAD')
+@click.option(
+    '--revision',
+    default='HEAD',
+    help='Display status as it was in the given revision'
+)
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client
 @click.pass_context
 @with_git(commit=False)
 def status(ctx, client, revision, path):
     """Show a status of the repository."""
-    paths = set(path)
     graph = Graph(client)
+    # TODO filter only paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision)
 
     click.echo('On branch {0}'.format(client.git.active_branch))
     if status['outdated']:
-        click.echo('Files generated from outdated inputs:')
+        click.echo('Files generated from newer inputs:')
         click.echo('  (use "renku log <file>..." to see the full lineage)')
-        # click.echo('  (use "renku update <file>..." to '
-        #            'generate file from latest inputs)')
+        click.echo(
+            '  (use "renku update <file>..." to '
+            'generate the file from its latest inputs)'
+        )
         click.echo()
 
         for filepath, files in status['outdated'].items():
-            paths = (
+            outdated = (
                 ', '.join(
                     '{0}#{1}'.format(
-                        click.style(p, fg='blue', bold=True),
+                        click.
+                        style(graph._format_path(p), fg='blue', bold=True),
                         _format_sha1(graph, (c, p)),
                     ) for c, p in stts
                     if not p.startswith('.renku/workflow/') and
@@ -59,8 +83,9 @@ def status(ctx, client, revision, path):
 
             click.echo(
                 '\t{0}: {1}'.format(
-                    click.style(filepath, fg='red', bold=True),
-                    ', '.join(paths)
+                    click.style(
+                        graph._format_path(filepath), fg='red', bold=True
+                    ), ', '.join(outdated)
                 )
             )
 
@@ -83,8 +108,9 @@ def status(ctx, client, revision, path):
             commits = (_format_sha1(graph, key) for key in files)
             click.echo(
                 '\t{0}: {1}'.format(
-                    click.style(filepath, fg='blue', bold=True),
-                    ', '.join(commits)
+                    click.style(
+                        graph._format_path(filepath), fg='blue', bold=True
+                    ), ', '.join(commits)
                 )
             )
 
