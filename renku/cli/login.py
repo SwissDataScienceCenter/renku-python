@@ -43,9 +43,8 @@ import webbrowser
 import click
 import requests
 
-from ._client import from_config
 from ._config import config_path, with_config
-from ._options import argument_endpoint, default_endpoint
+from ._options import default_endpoint
 
 
 @click.command()
@@ -56,6 +55,10 @@ from ._options import argument_endpoint, default_endpoint
 @click.pass_context
 def login(ctx, config, endpoint, url, default):
     """Initialize tokens for access to the platform."""
+    if not endpoint:
+        raise click.UsageError(
+            'No endpoint defined yet, please specify one first.'
+        )
     url = url.format(endpoint=endpoint)
 
     config.setdefault('endpoints', {})
@@ -83,7 +86,7 @@ def login(ctx, config, endpoint, url, default):
 
     click.echo(
         'Access token has been stored in: {0}'.format(
-            config_path(ctx.obj.get('config_path'))
+            config_path(ctx.obj['config_path'])
         )
     )
 
@@ -100,13 +103,3 @@ def tokens(ctx, config):
                     url=url, token=data['token']['refresh_token']
                 )
             )
-
-
-@tokens.command()
-@argument_endpoint
-@with_config
-@click.pass_context
-def access(ctx, config, endpoint):
-    """Try to get access token."""
-    client = from_config(config, endpoint=endpoint)
-    click.echo(client.api.refresh_token()['access_token'])

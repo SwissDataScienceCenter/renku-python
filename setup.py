@@ -121,6 +121,7 @@ setup(
             'run=renku.cli.run:run',
             'runner=renku.cli.runner:runner',
             'status=renku.cli.status:status',
+            'tokens=renku.cli.login:tokens',
             'update=renku.cli.update:update',
             'workflow=renku.cli.workflow:workflow',
             'workon=renku.cli.workon:workon',

@@ -100,6 +100,18 @@ def test_init(base_runner):
     assert 'filter "lfs"' in config
 
 
+def test_login(base_runner, auth_responses):
+    """Test login."""
+    runner = base_runner
+    result = runner.invoke(cli.cli, ['login', 'https://example.com'])
+    assert result.exit_code == 0
+    assert 'stored' in result.output
+
+    result = runner.invoke(cli.cli, ['tokens'])
+    assert result.exit_code == 0
+    assert 'https://example.com: demodemo' in result.output.split('\n')
+
+
 def test_workon(runner):
     """Test switching branches."""
     # Create first issue

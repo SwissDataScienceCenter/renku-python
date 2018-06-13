@@ -76,7 +76,8 @@ import yaml
 from click_plugins import with_plugins
 from pkg_resources import iter_entry_points
 
-from ._config import RENKU_HOME, default_config_dir, print_app_config_path
+from ._config import RENKU_HOME, config_load, default_config_dir,\
+    print_app_config_path
 from ._version import print_version
 
 
@@ -108,6 +109,7 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     envvar='RENKU_CONFIG',
     default=default_config_dir,
     type=click.Path(),
+    callback=config_load,
     expose_value=False,
     help='Location of client config files.'
 )

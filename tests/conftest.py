@@ -110,6 +110,15 @@ def auth_responses():
             content_type='application/json',
             callback=request_callback
         )
+        rsps.add(
+            responses.GET,
+            'https://example.com/auth/info',
+            status=200,
+            json={
+                "refresh_token": "demodemo",
+                "access_token": "accessdemo",
+            },
+        )
         yield rsps
 
 

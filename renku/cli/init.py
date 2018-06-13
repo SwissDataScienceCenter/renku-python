@@ -38,11 +38,13 @@ This creates a new subdirectory named ``.renku`` that contains all the
 necessary files for managing the project configuration.
 """
 
+import datetime
 import os
 
 import click
 
 from ._client import pass_local_client
+from ._config import read_config, write_config
 from ._git import set_git_home, with_git
 
 
@@ -92,5 +94,15 @@ def init(ctx, client, directory, name, force, use_external_storage):
             'Renku repository is not empty. '
             'Please use --force flag to use the directory as Renku repository.'
         )
+
+    project_config = read_config(project_config_path)
+    project_config.setdefault('core', {})
+    project_config['core']['name'] = name
+    project_config['core'].setdefault(
+        'generated',
+        datetime.datetime.utcnow().isoformat()
+    )
+
+    write_config(project_config, path=project_config_path)
 
     click.echo('Initialized empty project in {0}'.format(project_config_path))
