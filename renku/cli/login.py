@@ -54,7 +54,7 @@ from ._options import argument_endpoint, default_endpoint
 @click.option('--default', is_flag=True)
 @with_config
 @click.pass_context
-def login(ctx, config, endpoint, url, client_id, default):
+def login(ctx, config, endpoint, url, default):
     """Initialize tokens for access to the platform."""
     url = url.format(endpoint=endpoint)
 
