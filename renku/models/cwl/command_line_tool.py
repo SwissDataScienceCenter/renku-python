@@ -24,6 +24,7 @@ from contextlib import contextmanager
 
 import attr
 
+from renku import errors
 from renku._compat import Path
 
 from ._ascwl import CWLClass, mapped
@@ -86,7 +87,8 @@ class CommandLineTool(Process, CWLClass):
                 )
 
         args = [(a.position, a) for a in self.arguments]
-        args += [(i.inputBinding.position, i) for i in self.inputs]
+        args += [(i.inputBinding.position, i)
+                 for i in self.inputs if i.inputBinding]
 
         for p, v in sorted(args):
             argv.extend(v.to_argv())
@@ -107,7 +109,7 @@ class CommandLineToolFactory(object):
 
     directory = attr.ib(
         default='.',
-        converter=Path,
+        converter=lambda path: Path(path).resolve(),
     )
 
     stdin = attr.ib(default=None)  # null, str, Expression
@@ -130,6 +132,7 @@ class CommandLineToolFactory(object):
             input_ = next(self.guess_inputs(self.stdin))
             assert input_.type == 'File'
             input_.id = 'input_stdin'
+            input_.inputBinding = None  # do not include in tool arguments
             self.inputs.append(input_)
             self.stdin = '$(inputs.{0}.path)'.format(input_.id)
 
@@ -170,12 +173,16 @@ class CommandLineToolFactory(object):
         yield tool
 
         if git:
+            # List of all output paths.
+            paths = []
+            # Keep track of unmodified output files.
+            unmodified = set()
+            # Possible output paths.
             candidates = set(git.untracked_files)
             candidates |= {item.a_path for item in git.index.diff(None)}
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
-            paths = []
 
             for output, input, path in self.guess_outputs(candidates):
                 outputs.append(output)
@@ -187,18 +194,18 @@ class CommandLineToolFactory(object):
 
                     inputs[input.id] = input
 
-            if not no_output:
-                for stream_name in ('stdout', 'stderr'):
-                    stream = getattr(self, stream_name)
-                    if stream and stream not in candidates:
-                        raise RuntimeError(
-                            'Output file was not created or changed.'
-                        )
-                    elif stream:
-                        paths.append(stream)
+            for stream_name in ('stdout', 'stderr'):
+                stream = getattr(self, stream_name)
+                if stream and stream not in candidates:
+                    unmodified.add(stream)
+                elif stream:
+                    paths.append(stream)
 
-                if not outputs:
-                    raise RuntimeError('No output was detected')
+            if unmodified:
+                raise errors.UnmodifiedOutputs(repo, unmodified)
+
+            if not no_output and not paths:
+                raise errors.OutputsNotFound(repo, inputs.values())
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
@@ -227,7 +234,7 @@ class CommandLineToolFactory(object):
             candidate = self.directory / candidate
 
         if candidate.exists():
-            return candidate
+            return candidate.resolve()
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
@@ -246,22 +253,21 @@ class CommandLineToolFactory(object):
 
     def guess_type(self, value, ignore_filenames=None):
         """Return new value and CWL parameter type."""
-        try:
-            value = int(value)
-            return value, 'int', None
-        except ValueError:
-            pass
-
         candidate = self.file_candidate(value, ignore=ignore_filenames)
         if candidate:
             try:
-                return File(path=candidate.relative_to(self.directory)
-                            ), 'File', None
+                return File(path=candidate), 'File', None
             except ValueError:
                 # The candidate points to a file outside the working
                 # directory
                 # TODO suggest that the file should be imported to the repo
                 pass
+
+        try:
+            value = int(value)
+            return value, 'int', None
+        except ValueError:
+            pass
 
         if len(value) > 1 and ',' in value:
             return value.split(','), 'string[]', ','
@@ -286,7 +292,7 @@ class CommandLineToolFactory(object):
                     position += 1
                     yield CommandLineBinding(
                         position=position,
-                        prefix=prefix,
+                        valueFrom=prefix,
                     )
                     prefix = None
 
@@ -370,7 +376,7 @@ class CommandLineToolFactory(object):
             position += 1
             yield CommandLineBinding(
                 position=position,
-                prefix=prefix,
+                valueFrom=prefix,
             )
 
     def guess_outputs(self, paths):
@@ -381,8 +387,8 @@ class CommandLineToolFactory(object):
         }  # inputs that need to be changed if an output is detected
 
         conflicting_paths = {
-            str(input.default)
-            for input in self.inputs if input.type == 'File'
+            str(input.default): (index, input)
+            for index, input in enumerate(self.inputs) if input.type == 'File'
         }  # names that can not be outputs because they are already inputs
 
         streams = {
@@ -404,14 +410,19 @@ class CommandLineToolFactory(object):
             if glob in streams:
                 continue
 
+            new_input = None
+
             if glob in conflicting_paths:
-                raise ValueError('Output already exists in inputs.')
+                # it means that it is rewriting a file
+                index, input = conflicting_paths[glob]
+                new_input = attr.evolve(input, type='string', default=glob)
+                input_candidates[str(glob)] = new_input
+
+                del conflicting_paths[glob]
+                # TODO add warning ('Output already exists in inputs.')
 
             if glob in input_candidates:
                 input = input_candidates[glob]
-                if input.type == 'File':
-                    # it means that it is rewriting a file
-                    raise NotImplemented()
 
                 yield (
                     CommandOutputParameter(
@@ -420,7 +431,7 @@ class CommandLineToolFactory(object):
                         outputBinding=dict(
                             glob='$(inputs.{0})'.format(input.id),
                         ),
-                    ), None, path
+                    ), new_input, path
                 )
             else:
                 yield (

@@ -115,7 +115,16 @@ class DatasetsApiMixin(object):
                 '{} URLs are not supported'.format(u.scheme)
             )
 
-        dst = path.joinpath(os.path.basename(url)).absolute()
+        # Respect the directory struture inside the source path.
+        relative_to = kwargs.pop('relative_to', None)
+        if relative_to:
+            dst_path = Path(url).resolve().absolute().relative_to(
+                Path(relative_to).resolve().absolute()
+            )
+        else:
+            dst_path = os.path.basename(url)
+
+        dst = path.joinpath(dst_path).absolute()
 
         if u.scheme in ('', 'file'):
             src = Path(u.path).absolute()
@@ -134,6 +143,10 @@ class DatasetsApiMixin(object):
                         )
                     )
                 return files
+
+            # Make sure the parent directory exists.
+            dst.parent.mkdir(parents=True, exist_ok=True)
+
             if nocopy:
                 try:
                     os.link(src, dst)

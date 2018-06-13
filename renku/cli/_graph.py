@@ -34,6 +34,12 @@ from renku.models.cwl.types import File
 from renku.models.cwl.workflow import Workflow
 
 
+def _safe_path(filepath, can_be_workflow=False):
+    """Check if the path should be used in output."""
+    return not filepath.startswith('.renku') and \
+        filepath not in {'.gitignore', '.gitattributes'}
+
+
 @attr.s
 class Graph(object):
     """Represent the provenance graph."""
@@ -48,6 +54,16 @@ class Graph(object):
         self.cwl_prefix = str(
             self.client.workflow_path.resolve().relative_to(self.client.path)
         )
+
+    def normalize_path(self, path):
+        """Normalize path relative to the Git workdir."""
+        start = self.client.path.resolve()
+        path = Path(path).resolve()
+        return os.path.relpath(path, start=start)
+
+    def _format_path(self, path):
+        """Return a relative path based on the client configuration."""
+        return os.path.relpath(self.client.path / path)
 
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
@@ -310,8 +326,7 @@ class Graph(object):
         current_files = set()
 
         for filepath, _ in index.entries.keys():
-            if not filepath.startswith('.renku') and \
-                    filepath not in {'.gitignore', '.gitattributes'}:
+            if _safe_path(filepath):
                 self.add_file(filepath, revision=revision)
                 current_files.add(filepath)
 
@@ -386,11 +401,11 @@ class Graph(object):
             tool_key, node = list(self.G.pred[key].items())[0]
             return '{0}/{1}'.format(steps[tool_key], node['id'])
 
-        def _relative_default(default, path):
+        def _relative_default(client, default):
             """Evolve ``File`` path."""
             if isinstance(default, File):
-                dirname = Path(os.path.dirname(path))
-                return attr.evolve(default, path=dirname / default.path)
+                path = (client.workflow_path / default.path).resolve()
+                return attr.evolve(default, path=path)
             return default
 
         for tool_index, (key, node) in enumerate(self._tool_nodes, 1):
@@ -415,14 +430,16 @@ class Graph(object):
                         InputParameter(
                             id=input_id,
                             type=input_.type,
-                            default=_relative_default(input_.default, path),
+                            default=_relative_default(
+                                self.client, input_.default
+                            ),
                         )
                     )
                     input_index += 1
                     ins[input_.id] = input_id
 
             workflow.add_step(
-                run=Path(path),
+                run=self.client.path / path,
                 id=step_id,
                 in_=ins,
                 out=outs,

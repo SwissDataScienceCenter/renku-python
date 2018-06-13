@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+
 from renku._compat import Path
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
@@ -45,7 +47,7 @@ def test_03_input(instance_path):
         argv, directory=instance_path
     ).generate_tool()
 
-    assert tool.arguments[0].prefix == '-f'
+    assert tool.arguments[0].to_argv() == ['-f']
 
     assert tool.inputs[0].default == 42
     assert tool.inputs[0].type == 'int'
@@ -57,7 +59,7 @@ def test_03_input(instance_path):
     assert tool.inputs[1].inputBinding.prefix == '--example-string'
     assert tool.inputs[1].inputBinding.separate is True
 
-    assert tool.inputs[2].default.path == Path('whale.txt')
+    assert tool.inputs[2].default.path.samefile(whale)
     assert tool.inputs[2].type == 'File'
     assert tool.inputs[2].inputBinding.prefix == '--file='
     assert tool.inputs[2].inputBinding.separate is False
@@ -76,7 +78,7 @@ def test_base_command_detection(instance_path):
     ).generate_tool()
 
     assert tool.baseCommand == ['tar', 'xf']
-    assert tool.inputs[0].default.path == Path('hello.tar')
+    assert tool.inputs[0].default.path.samefile(hello)
     assert tool.inputs[0].type == 'File'
     assert tool.inputs[0].inputBinding.prefix is None
     assert tool.inputs[0].inputBinding.separate is True
@@ -213,4 +215,30 @@ def test_09_array_inputs(instance_path):
     assert tool.inputs[-1].inputBinding.itemSeparator == ','
     assert tool.inputs[-1].inputBinding.separate is False
 
+    assert tool.to_argv() == argv
+
+
+@pytest.mark.parametrize('argv', [['wc'], ['wc', '-l']])
+def test_stdin_and_stdout(argv, instance_path):
+    """Test stdout mapping."""
+    input_ = Path(instance_path) / 'input.txt'
+    input_.touch()
+    output = Path(instance_path) / 'output.txt'
+    output.touch()
+
+    factory = CommandLineToolFactory(
+        argv,
+        directory=instance_path,
+        stdin='input.txt',
+        stdout='output.txt',
+    )
+
+    assert factory.stdin
+    if len(argv) > 1:
+        assert factory.arguments
+
+    assert factory.stdout == 'output.txt'
+    assert factory.outputs[0].type == 'stdout'
+
+    tool = factory.generate_tool()
     assert tool.to_argv() == argv

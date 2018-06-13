@@ -35,7 +35,14 @@ from click.testing import CliRunner
 def instance_path():
     """Temporary instance path."""
     path = tempfile.mkdtemp()
-    yield path
+    orig_pwd = os.getcwd()
+
+    try:
+        os.chdir(path)
+        yield path
+    finally:
+        os.chdir(orig_pwd)
+
     shutil.rmtree(path)
 
 

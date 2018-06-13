@@ -105,4 +105,7 @@ def init(ctx, client, directory, name, force, use_external_storage):
 
     write_config(project_config, path=project_config_path)
 
+    from .runner import template
+    ctx.invoke(template)
+
     click.echo('Initialized empty project in {0}'.format(project_config_path))

@@ -17,6 +17,8 @@
 # limitations under the License.
 """Renku exceptions."""
 
+import os
+
 import click
 import requests
 
@@ -88,6 +90,53 @@ class DirtyRepository(RenkuException, click.ClickException):
             'Once you have added the untracked files, '
             'commit them with "git commit".'
         )
+
+
+class UnmodifiedOutputs(RenkuException, click.ClickException):
+    """Raise when there are unmodified outputs in the repository."""
+
+    def __init__(self, repo, unmodified):
+        """Build a custom message."""
+        super(UnmodifiedOutputs, self).__init__(
+            'There are unmodified outputs in the repository.\n'
+            '  (use "git rm <file>..." to remove them first)'
+            '\n\n' + '\n'.
+            join('\t' + click.style(path, fg='green')
+                 for path in unmodified) + '\n\n'
+            'Once you have removed the outputs, '
+            'you can safely rerun the previous command.'
+        )
+
+
+class OutputsNotFound(RenkuException, click.ClickException):
+    """Raise when there are not any detected outputs in the repository."""
+
+    def __init__(self, repo, inputs):
+        """Build a custom message."""
+        msg = 'There are not any detected outputs in the repository.'
+
+        from renku.models.cwl.types import File
+        paths = [
+            os.path.relpath(input_.default.path)
+            for input_ in inputs if isinstance(input_.default, File)
+        ]
+
+        if paths:
+            msg += (
+                '\n  (use "git rm <file>..." to remove them first)'
+                '\n\n' + '\n'.join(
+                    '\t' + click.style(path, fg='yellow') for path in paths
+                ) + '\n\n'
+                'Once you have removed files that should be used as outputs,\n'
+                'you can safely rerun the previous command.'
+            )
+        else:
+            msg += (
+                '\n\nIf you want to track the command anyway use '
+                '--no-output option.'
+            )
+
+        super(OutputsNotFound, self).__init__(msg)
 
 
 class NotFound(APIError):

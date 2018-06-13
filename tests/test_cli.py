@@ -30,7 +30,20 @@ import pytest
 import yaml
 
 from renku import __version__, cli
+from renku._compat import Path
 from renku.models.cwl.workflow import Workflow
+
+
+def _run_update(runner, capsys):
+    """Run the update command."""
+    with capsys.disabled():
+        try:
+            cli.cli.main(
+                args=('update', ),
+                prog_name=runner.get_default_prog_name(cli.cli),
+            )
+        except SystemExit as e:
+            return 0 if e.code is None else e.code
 
 
 def test_version(base_runner):
@@ -160,6 +173,14 @@ def test_workflow(runner):
         workflow = Workflow.from_cwl(yaml.load(f))
         assert workflow.steps[0].run.startswith('.renku/workflow/')
 
+    # Compare default log and log for a specific file.
+    result_default = runner.invoke(cli.cli, ['log'])
+    result_arg = runner.invoke(cli.cli, ['log', 'counted.txt'])
+
+    assert result_default.exit_code == 0
+    assert result_arg.exit_code == 0
+    assert result_default.output == result_arg.output
+
 
 def test_streams(runner, capsys):
     """Test redirection of std streams."""
@@ -180,6 +201,7 @@ def test_streams(runner, capsys):
                     try:
                         cli.cli.main(
                             args=('run', 'cut', '-d,', '-f', '2', '-s'),
+                            prog_name=runner.get_default_prog_name(cli.cli),
                         )
                     except SystemExit as e:
                         assert e.code in {None, 0}
@@ -204,6 +226,117 @@ def test_streams(runner, capsys):
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 1
     assert 'source.txt' in result.output
+
+
+def test_streams_cleanup(project, runner, capsys):
+    """Test cleanup of standard streams."""
+    with open('source.txt', 'w') as source:
+        source.write('first,second,third')
+
+    # File outside the Git index should be deleted.
+    with capsys.disabled():
+        with open('result.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(
+                        args=('run', 'cat', 'source.txt'),
+                        prog_name=runner.get_default_prog_name(cli.cli),
+                    )
+                except SystemExit as e:
+                    assert e.code in {None, 1}, 'The repo must be dirty.'
+            finally:
+                sys.stdout = old_stdout
+
+    with open('source.txt', 'r') as source:
+        assert source.read() == 'first,second,third'
+
+    assert not Path('result.txt').exists()
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 1
+
+    # File from the Git index should be restored.
+    repo = git.Repo(project)
+    with open('result.txt', 'w') as fp:
+        fp.write('1')
+
+    repo.index.add(['result.txt'])
+
+    with capsys.disabled():
+        with open('result.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(
+                        args=('run', 'cat', 'source.txt'),
+                        prog_name=runner.get_default_prog_name(cli.cli),
+                    )
+                except SystemExit as e:
+                    assert e.code in {None, 1}, 'The repo must be dirty.'
+            finally:
+                sys.stdout = old_stdout
+
+    with open('result.txt', 'r') as fp:
+        assert fp.read() == '1'
+
+
+def test_update(project, runner, capsys):
+    """Test automatic file update."""
+    cwd = Path(project)
+    data = cwd / 'data'
+    source = cwd / 'source.txt'
+    output = data / 'result.txt'
+
+    repo = git.Repo(project)
+
+    def update_source(data):
+        """Update source.txt."""
+        with source.open('w') as fp:
+            fp.write(data)
+
+        repo.git.add('--all')
+        repo.index.commit('Updated source.txt')
+
+    update_source('1')
+
+    with capsys.disabled():
+        with open(source, 'rb') as stdin:
+            with open(output, 'wb') as stdout:
+                try:
+                    old_stdin, old_stdout = sys.stdin, sys.stdout
+                    sys.stdin, sys.stdout = stdin, stdout
+
+                    try:
+                        cli.cli.main(
+                            args=('run', 'wc', '-c'),
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdin, sys.stdout = old_stdin, old_stdout
+
+    with output.open('r') as f:
+        assert f.read().strip() == '1'
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    update_source('12')
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 1
+
+    assert _run_update(runner, capsys) == 0
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
 
 
 def test_streams_and_args_names(runner, capsys):
@@ -262,6 +395,61 @@ def test_datasets(data_file, data_repository, runner):
         ]
     )
     assert result.exit_code == 0
+
+
+def test_multiple_file_to_dataset(tmpdir, data_repository, runner):
+    """Test importing multiple data into a dataset at once."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+    assert os.stat('data/dataset/metadata.yml')
+
+    paths = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+    # add data
+    result = runner.invoke(cli.cli, ['dataset', 'add', 'dataset'] + paths)
+    assert result.exit_code == 0
+
+
+def test_relative_import_to_dataset(tmpdir, data_repository, runner):
+    """Test importing data from a directory structure."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+    assert os.stat('data/dataset/metadata.yml')
+
+    zero_data = tmpdir.join('data.txt')
+    zero_data.write('zero')
+
+    first_level = tmpdir.mkdir('first')
+    second_level = first_level.mkdir('second')
+
+    first_data = first_level.join('data.txt')
+    first_data.write('first')
+
+    second_data = second_level.join('data.txt')
+    second_data.write('second')
+
+    paths = [str(zero_data), str(first_data), str(second_data)]
+
+    # add data in subdirectory
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset', '--relative-to',
+         str(tmpdir)] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    assert os.stat(os.path.join('data', 'dataset', 'data.txt'))
+    assert os.stat(os.path.join('data', 'dataset', 'first', 'data.txt'))
+    assert os.stat(
+        os.path.join('data', 'dataset', 'first', 'second', 'data.txt')
+    )
 
 
 def test_file_tracking(base_runner):
@@ -341,3 +529,90 @@ def test_status_with_submodules(base_runner):
 
     result = base_runner.invoke(cli.cli, ['status'], catch_exceptions=False)
     assert result.exit_code != 0
+
+
+def test_unchanged_output(runner):
+    """Test detection of unchanged output."""
+    cmd = ['run', 'touch', '1']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['run', 'touch', '1']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 1
+
+
+def test_unchanged_stdout(runner, capsys):
+    """Test detection of unchanged stdout."""
+    with capsys.disabled():
+        with open('output.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(args=('run', 'echo', '1'), )
+                except SystemExit as e:
+                    assert e.code in {None, 0}
+            finally:
+                sys.stdout = old_stdout
+
+    with capsys.disabled():
+        with open('output.txt', 'wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(args=('run', 'echo', '1'), )
+                except SystemExit as e:
+                    # The stdout has not been modified!
+                    assert e.code in {None, 1}
+            finally:
+                sys.stdout = old_stdout
+
+
+def test_modified_output(project, runner, capsys):
+    """Test detection of changed file as output."""
+    cwd = Path(project)
+    source = cwd / 'source.txt'
+    output = cwd / 'result.txt'
+
+    repo = git.Repo(project)
+    cmd = ['run', 'cp', '-r', str(source), str(output)]
+
+    def update_source(data):
+        """Update source.txt."""
+        with source.open('w') as fp:
+            fp.write(data)
+
+        repo.git.add('--all')
+        repo.index.commit('Updated source.txt')
+
+    update_source('1')
+
+    # The output file does not exist.
+    assert not output.exists()
+
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    # The output file is copied from the source.
+    with output.open('r') as f:
+        assert f.read().strip() == '1'
+
+    update_source('2')
+
+    # The input file has been updated and output is recreated.
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
+
+    update_source('3')
+
+    # The input has been modifed and we check that the previous
+    # run command correctly recognized output.txt.
+    assert _run_update(runner, capsys) == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '3'

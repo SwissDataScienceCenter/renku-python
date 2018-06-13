@@ -20,25 +20,49 @@ Renku Command Line
 
 .. automodule:: renku.cli
 
+.. _cli-init:
+
 ``renku init``
 --------------
 
 .. automodule:: renku.cli.init
+
+.. _cli-datasets:
 
 ``renku datasets``
 ------------------
 
 .. automodule:: renku.cli.dataset
 
+.. _cli-run:
+
 ``renku run``
 -------------
 
 .. automodule:: renku.cli.run
 
+.. _cli-log:
+
 ``renku log``
 -------------
 
 .. automodule:: renku.cli.log
+
+.. _cli-status:
+
+``renku status``
+----------------
+
+.. automodule:: renku.cli.status
+
+.. _cli-update:
+
+``renku update``
+----------------
+
+.. automodule:: renku.cli.update
+
+.. _cli-workflow:
 
 ``renku workflow``
 ------------------

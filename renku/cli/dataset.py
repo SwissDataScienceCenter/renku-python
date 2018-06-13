@@ -42,6 +42,7 @@ from click import BadParameter
 from renku.models.datasets import Author
 
 from ._client import pass_local_client
+from ._echo import progressbar
 from ._git import with_git
 
 
@@ -69,8 +70,9 @@ def create(client, name):
 
 @dataset.command()
 @click.argument('name')
-@click.argument('url')
+@click.argument('urls', nargs=-1)
 @click.option('nocopy', '--copy/--no-copy', default=False, is_flag=True)
+@click.option('--relative-to', default=None)
 @click.option(
     '-t',
     '--target',
@@ -80,19 +82,22 @@ def create(client, name):
 )
 @pass_local_client
 @with_git()
-def add(client, name, url, nocopy, target):
+def add(client, name, urls, nocopy, relative_to, target):
     """Add data to a dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
-            click.echo('Adding data to the dataset ... ', nl=False)
             target = target if target else None
-            client.add_data_to_dataset(
-                dataset, url, nocopy=nocopy, target=target
-            )
-        click.secho('OK', fg='green')
+            with progressbar(urls, label='Adding data to dataset') as bar:
+                for url in bar:
+                    client.add_data_to_dataset(
+                        dataset,
+                        url,
+                        nocopy=nocopy,
+                        target=target,
+                        relative_to=relative_to,
+                    )
     except FileNotFoundError:
-        click.secho('ERROR', fg='red')
-        raise BadParameter('URL')
+        raise BadParameter('Could not process {0}'.format(url))
 
 
 def get_datadir():

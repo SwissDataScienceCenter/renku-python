@@ -67,9 +67,11 @@ class CommandLineBinding(object):
     def to_argv(self, default=None):
         """Format command line binding as shell argument."""
         if self.valueFrom is not None:
-            raise NotImplemented()
-
-        value = default
+            if self.valueFrom.startswith('$('):
+                raise NotImplemented()
+            value = self.valueFrom
+        else:
+            value = default
 
         def _convert(value):
             """Convert value to a argument list."""
