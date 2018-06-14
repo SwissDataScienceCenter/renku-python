@@ -97,15 +97,58 @@ from ._git import with_git
 from ._graph import Graph
 
 
+def check_siblings(graph, outputs):
+    """Check that all outputs have their siblings listed."""
+    siblings = set()
+    for node in outputs:
+        siblings |= graph.siblings(node)
+
+    missing = siblings - outputs
+    if missing:
+        raise click.ClickException(
+            'There are missing output siblings:\n\n'
+            '{0}\n\n'
+            'Include the files above or use --with-siblings option.'.format(
+                '\n'.join(
+                    '  {0}'.format(click.style(path, fg='red'))
+                    for _, path in missing
+                )
+            ),
+        )
+    return outputs
+
+
+def with_siblings(graph, outputs):
+    """Include all missing siblings."""
+    siblings = set()
+    for node in outputs:
+        siblings |= graph.siblings(node)
+    return siblings
+
+
 @click.command()
 @click.option('--revision', default='HEAD')
+@click.option(
+    '--check-siblings',
+    'check_siblings',
+    flag_value=check_siblings,
+    default=True,
+    help=check_siblings.__doc__,
+)
+@click.option(
+    '--with-siblings',
+    'check_siblings',
+    flag_value=with_siblings,
+    default=True,
+    help=with_siblings.__doc__,
+)
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
 @pass_local_client
 @click.pass_context
 @with_git()
-def update(ctx, client, revision, paths):
+def update(ctx, client, revision, check_siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
 
@@ -118,6 +161,8 @@ def update(ctx, client, revision, paths):
         }
     else:
         outputs = {graph.add_file(path, revision=revision) for path in paths}
+        # Check siblings *only* when paths were specified.
+        outputs = check_siblings(graph, outputs)
 
     # Get parents of all clean nodes
     clean_paths = status['up-to-date'].keys()

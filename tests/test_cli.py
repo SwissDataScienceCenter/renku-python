@@ -34,12 +34,12 @@ from renku._compat import Path
 from renku.models.cwl.workflow import Workflow
 
 
-def _run_update(runner, capsys):
+def _run_update(runner, capsys, args=('update', )):
     """Run the update command."""
     with capsys.disabled():
         try:
             cli.cli.main(
-                args=('update', ),
+                args=args,
                 prog_name=runner.get_default_prog_name(cli.cli),
             )
         except SystemExit as e:
@@ -712,3 +712,65 @@ def test_only_child(runner):
     result = runner.invoke(cli.cli, cmd)
     assert result.exit_code == 0
     assert 'only_child\n' == result.output
+
+
+def test_siblings_update(project, runner, capsys):
+    """Test detection of siblings during update."""
+    cwd = Path(project)
+    parent = cwd / 'parent.txt'
+    brother = cwd / 'brother.txt'
+    sister = cwd / 'sister.txt'
+    siblings = {brother, sister}
+
+    repo = git.Repo(project)
+
+    def update_source(data):
+        """Update parent.txt."""
+        with parent.open('w') as fp:
+            fp.write(data)
+
+        repo.git.add('--all')
+        repo.index.commit('Updated parent.txt')
+
+    update_source('1')
+
+    # The output files do not exist.
+    assert not any(sibling.exists() for sibling in siblings)
+
+    cmd = ['run', 'tee', 'brother.txt']
+
+    with capsys.disabled():
+        with parent.open('rb') as stdin:
+            with sister.open('wb') as stdout:
+                try:
+                    old_stdin, old_stdout = sys.stdin, sys.stdout
+                    sys.stdin, sys.stdout = stdin, stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdin, sys.stdout = old_stdin, old_stdout
+
+    # The output file is copied from the source.
+    for sibling in siblings:
+        with sibling.open('r') as f:
+            assert f.read().strip() == '1', sibling
+
+    update_source('2')
+
+    # Siblings must be updated together.
+    for sibling in siblings:
+        assert 1 == _run_update(runner, capsys, args=('update', sibling.name))
+
+    # Update brother and check the sister has not been changed.
+    assert 0 == _run_update(
+        runner, capsys, args=('update', '--with-siblings', brother.name)
+    )
+
+    for sibling in siblings:
+        with sibling.open('r') as f:
+            assert f.read().strip() == '2', sibling
