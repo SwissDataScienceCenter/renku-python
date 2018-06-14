@@ -381,6 +381,18 @@ class Graph(object):
             if tool is not None:
                 yield key, node
 
+    def siblings(self, key):
+        """Return siblings for a given key.
+
+        The key is part of the result set, hence to check if the node has
+        siblings you should check the lenght is greater than 1.
+        """
+        return {
+            sibling
+            for parent in self.G.predecessors(key)
+            for sibling in self.G.successors(parent)
+        }
+
     def ascwl(self, global_step_outputs=False):
         """Serialize graph to CWL workflow.
 

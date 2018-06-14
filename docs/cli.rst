@@ -68,3 +68,9 @@ Renku Command Line
 ------------------
 
 .. automodule:: renku.cli.workflow
+
+
+``renku show``
+--------------
+
+.. automodule:: renku.cli.show

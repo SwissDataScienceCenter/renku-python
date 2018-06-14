@@ -665,3 +665,50 @@ def test_modified_output(project, runner, capsys):
 
     with output.open('r') as f:
         assert f.read().strip() == '3'
+
+
+def test_siblings(runner):
+    """Test detection of siblings."""
+    siblings = {'brother', 'sister'}
+
+    cmd = ['run', 'touch'] + list(siblings)
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    for sibling in siblings:
+        cmd = ['show', 'siblings', sibling]
+        result = runner.invoke(cli.cli, cmd)
+        assert result.exit_code == 0
+
+        output = {
+            name.strip()
+            for name in result.output.split('\n') if name.strip()
+        }
+        assert output == siblings, 'Checked {0}'.format(sibling)
+
+
+def test_orphan(project, runner):
+    """Test detection of an orphan."""
+    cwd = Path(project)
+    orphan = cwd / 'orphan.txt'
+
+    cmd = ['run', 'touch', orphan.name]
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['show', 'siblings', 'orphan.txt']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+    assert 'orphan.txt\n' == result.output
+
+
+def test_only_child(runner):
+    """Test detection of an only child."""
+    cmd = ['run', 'touch', 'only_child']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['show', 'siblings', 'only_child']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+    assert 'only_child\n' == result.output
