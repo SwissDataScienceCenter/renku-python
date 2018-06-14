@@ -25,6 +25,8 @@ class Endpoint(str):
 
     def __new__(cls, content, default=None, project=None, option=None):
         """Set endpoint sources."""
+        if content is None:
+            return None
         endpoint = str.__new__(cls, content)
         endpoint.default = default
         endpoint.project = project

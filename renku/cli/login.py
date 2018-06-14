@@ -55,10 +55,6 @@ from ._options import default_endpoint
 @click.pass_context
 def login(ctx, config, endpoint, url, default):
     """Initialize tokens for access to the platform."""
-    if not endpoint:
-        raise click.UsageError(
-            'No endpoint defined yet, please specify one first.'
-        )
     url = url.format(endpoint=endpoint)
 
     config.setdefault('endpoints', {})

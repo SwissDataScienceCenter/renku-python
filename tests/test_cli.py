@@ -116,6 +116,10 @@ def test_init(base_runner):
 def test_login(base_runner, auth_responses):
     """Test login."""
     runner = base_runner
+    result = runner.invoke(cli.cli, ['login'])
+    assert result.exit_code == 2
+    assert 'No default endpoint found.' in result.output
+
     result = runner.invoke(cli.cli, ['login', 'https://example.com'])
     assert result.exit_code == 0
     assert 'stored' in result.output
