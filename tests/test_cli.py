@@ -44,6 +44,8 @@ def _run_update(runner, capsys, args=('update', )):
             )
         except SystemExit as e:
             return 0 if e.code is None else e.code
+        except Exception:
+            raise
 
 
 def test_version(base_runner):
@@ -325,6 +327,24 @@ def test_update(project, runner, capsys):
 
     with output.open('r') as f:
         assert f.read().strip() == '2'
+
+    # Source has been updated but output is unchanged.
+    update_source('34')
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 1
+
+    assert _run_update(runner, capsys) == 0
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
+
+    # Make sure the log contains the original parent.
+    result = runner.invoke(cli.cli, ['log'])
+    assert source.name in result.output
 
 
 def test_streams_and_args_names(runner, capsys):
@@ -774,3 +794,19 @@ def test_siblings_update(project, runner, capsys):
     for sibling in siblings:
         with sibling.open('r') as f:
             assert f.read().strip() == '2', sibling
+
+    update_source('3')
+
+    # Siblings kept together even when one is removed.
+    repo.index.remove([brother.name], working_tree=True)
+    repo.index.commit('Brother removed')
+
+    assert not brother.exists()
+
+    # Update should find also missing siblings.
+    assert 1 == _run_update(runner, capsys, args=('update', ))
+    assert 0 == _run_update(runner, capsys, args=('update', '--with-siblings'))
+
+    for sibling in siblings:
+        with sibling.open('r') as f:
+            assert f.read().strip() == '3', sibling

@@ -86,8 +86,6 @@ import sys
 import uuid
 
 import click
-import networkx as nx
-import yaml
 
 from renku.models.cwl._ascwl import ascwl
 
@@ -105,14 +103,14 @@ def check_siblings(graph, outputs):
 
     missing = siblings - outputs
     if missing:
+        msg = 'Include the files above or use --with-siblings option.'
         raise click.ClickException(
             'There are missing output siblings:\n\n'
-            '{0}\n\n'
-            'Include the files above or use --with-siblings option.'.format(
-                '\n'.join(
-                    '  {0}'.format(click.style(path, fg='red'))
-                    for _, path in missing
-                )
+            '\t{0}\n\n{1}'.format(
+                '\n\t'.join(
+                    click.style(path, fg='red') for _, path in missing
+                ),
+                msg,
             ),
         )
     return outputs
@@ -151,21 +149,24 @@ def with_siblings(graph, outputs):
 def update(ctx, client, revision, check_siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
-
     status = graph.build_status(revision=revision)
+    paths = paths or status['outdated'].keys()
+    outputs = {graph.add_file(path, revision=revision) for path in paths}
 
-    if not paths:
-        outputs = {
-            graph.add_file(path, revision=revision)
-            for path in status['outdated']
-        }
-    else:
-        outputs = {graph.add_file(path, revision=revision) for path in paths}
-        # Check siblings *only* when paths were specified.
-        outputs = check_siblings(graph, outputs)
+    if not outputs:
+        click.secho(
+            'All files were generated from the latest inputs.', fg='green'
+        )
+        sys.exit(0)
+
+    # Check or extend siblings of outputs.
+    outputs = check_siblings(graph, outputs)
+    output_paths = {path for _, path in outputs}
 
     # Get parents of all clean nodes
-    clean_paths = status['up-to-date'].keys()
+    import networkx as nx
+
+    clean_paths = set(status['up-to-date'].keys()) - output_paths
     clean_nodes = {(c, p) for (c, p) in graph.G if p in clean_paths}
     clean_parents = set()
     for key in clean_nodes:
@@ -179,8 +180,11 @@ def update(ctx, client, revision, check_siblings, paths):
     graph.G.remove_nodes_from(clean_parents)
     graph.G.remove_nodes_from([n for n in graph.G if n not in subnodes])
 
+    # Store the generated workflow used for updating paths.
+    import yaml
+
     output_file = client.workflow_path / '{0}.cwl'.format(uuid.uuid4().hex)
-    with open(output_file, 'w') as f:
+    with output_file.open('w') as f:
         f.write(
             yaml.dump(
                 ascwl(
@@ -192,6 +196,7 @@ def update(ctx, client, revision, check_siblings, paths):
             )
         )
 
+    # Run the generated workflow using cwltool library.
     import cwltool.factory
     from cwltool import workflow
     from cwltool.utils import visit_class
@@ -221,6 +226,7 @@ def update(ctx, client, revision, check_siblings, paths):
 
     sys.argv = argv
 
+    # Move outputs to correct location in the repository.
     output_dirs = process.factory.executor.output_dirs
 
     def remove_prefix(location, prefix='file://'):
@@ -240,7 +246,33 @@ def update(ctx, client, revision, check_siblings, paths):
         for location in bar:
             for output_dir in output_dirs:
                 if location.startswith(output_dir):
-                    output_path = client.path / location[len(output_dir):
-                                                         ].lstrip(os.path.sep)
-                    os.rename(location, output_path)
+                    output_path = location[len(output_dir):].lstrip(
+                        os.path.sep
+                    )
+                    os.rename(location, client.path / output_path)
                     continue
+
+    # Keep only unchanged files in the output paths.
+    tracked_paths = {
+        diff.b_path
+        for diff in client.git.index.diff(None)
+        if diff.change_type in {'A', 'R', 'M', 'T'} and
+        diff.b_path in output_paths
+    }
+    unchanged_paths = output_paths - tracked_paths
+
+    # Fix tracking of unchanged files by removing them first.
+    if unchanged_paths:
+        client.git.index.remove(
+            unchanged_paths, cached=True, ignore_unmatch=True
+        )
+        client.git.index.commit('renku: automatic removal of unchanged files')
+        client.git.index.add(unchanged_paths)
+
+        click.echo(
+            'Unchanged files:\n\n\t{0}'.format(
+                '\n\t'.join(
+                    click.style(path, fg='yellow') for path in unchanged_paths
+                )
+            )
+        )

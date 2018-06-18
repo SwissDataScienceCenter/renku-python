@@ -61,7 +61,7 @@ class CommandLineTool(Process, CWLClass):
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
-    def get_output_id(self, path):
+    def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""
         for output in self.outputs:
             if output.type in {'stdout', 'stderr'}:
@@ -78,6 +78,25 @@ class CommandLineTool(Process, CWLClass):
                             return output.id
                 elif fnmatch.fnmatch(path, glob):
                     return output.id
+
+    def iter_output_files(self):
+        """Yield tuples with output id and path."""
+        for output in self.outputs:
+            if output.type in {'stdout', 'stderr'}:
+                stream = getattr(self, output.type)
+                if stream:
+                    yield output.id, stream
+            elif output.type == 'File':
+                glob = output.outputBinding.glob
+                # TODO better support for Expression
+                if glob.startswith('$(inputs.'):
+                    input_id = glob[len('$(inputs.'):-1]
+                    for input_ in self.inputs:
+                        if input_.id == input_id:
+                            yield output.id, input_.default
+                            break  # out from self.inputs
+                else:
+                    yield output.id, glob
 
     def to_argv(self, job=None):
         """Generate arguments for system call."""

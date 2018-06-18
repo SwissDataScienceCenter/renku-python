@@ -155,11 +155,11 @@ class Graph(object):
                     source = step.in_[input_id]
                     self.G.add_edge(input_map[source], tool_key, id=input_id)
 
-            if file_key:
-                _, output_path = file_key
-                output_id = step_tool.get_output_id(output_path)
-                if output_id:
-                    self.G.add_edge(tool_key, file_key, id=output_id)
+            # Find ALL siblings that MUST be generated in the same commit.
+            for output_id, output_path in step_tool.iter_output_files():
+                self.G.add_edge(
+                    tool_key, (str(commit), output_path), id=output_id
+                )
 
             output_map.update({
                 step.id + '/' + name: target
@@ -212,11 +212,9 @@ class Graph(object):
             #: Edge from an input to the tool.
             self.G.add_edge(input_key, tool_key, id=input_id)
 
-        if file_key:
-            _, path = file_key
-            output_id = tool.get_output_id(path)
-            if output_id:
-                self.G.add_edge(tool_key, file_key, id=output_id)
+        # Find ALL siblings that MUST be generated in the same commit.
+        for output_id, path in tool.iter_output_files():
+            self.G.add_edge(tool_key, (str(commit), path), id=output_id)
 
         return tool_key
 
@@ -350,8 +348,8 @@ class Graph(object):
 
             # Any latest version of a file needs an update.
             is_outdated = any(
-                len(node['_need_update']) > 1
-                for node in nodes if node['latest'] is None
+                len(node.get('_need_update', [])) > 1
+                for node in nodes if node.get('latest') is None
             )
 
             if is_outdated:
