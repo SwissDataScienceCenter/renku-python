@@ -79,25 +79,6 @@ class CommandLineTool(Process, CWLClass):
                 elif fnmatch.fnmatch(path, glob):
                     return output.id
 
-    def iter_output_files(self):
-        """Yield tuples with output id and path."""
-        for output in self.outputs:
-            if output.type in {'stdout', 'stderr'}:
-                stream = getattr(self, output.type)
-                if stream:
-                    yield output.id, stream
-            elif output.type == 'File':
-                glob = output.outputBinding.glob
-                # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
-                    for input_ in self.inputs:
-                        if input_.id == input_id:
-                            yield output.id, input_.default
-                            break  # out from self.inputs
-                else:
-                    yield output.id, glob
-
     def to_argv(self, job=None):
         """Generate arguments for system call."""
         argv = [self.baseCommand

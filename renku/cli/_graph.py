@@ -100,16 +100,35 @@ class Graph(object):
         if commits:
             return commits[-1]
 
-    def iter_file_inputs(self, tool, basedir):
-        """Yield path of tool file inputs."""
+    def iter_input_files(self, tool, basedir):
+        """Yield tuples with input id and path."""
         stdin = getattr(tool, 'stdin', None)
         if stdin and stdin[0] != '$':  # pragma: no cover
             raise NotImplemented(tool.stdin)
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
                 yield (
-                    os.path.normpath(basedir / input_.default.path), input_.id
+                    input_.id, os.path.normpath(basedir / input_.default.path)
                 )
+
+    def iter_output_files(self, tool):
+        """Yield tuples with output id and path."""
+        for output in tool.outputs:
+            if output.type in {'stdout', 'stderr'}:
+                stream = getattr(tool, output.type)
+                if stream:
+                    yield output.id, stream
+            elif output.type == 'File':
+                glob = output.outputBinding.glob
+                # TODO better support for Expression
+                if glob.startswith('$(inputs.'):
+                    input_id = glob[len('$(inputs.'):-1]
+                    for input_ in tool.inputs:
+                        if input_.id == input_id:
+                            yield output.id, input_.default
+                            break  # out from tool.inputs
+                else:
+                    yield output.id, glob
 
     def add_workflow(self, commit, path, cwl=None, file_key=None):
         """Add a workflow and its dependencies to the graph."""
@@ -126,7 +145,7 @@ class Graph(object):
         output_map = {}
 
         #: First find workflow inputs, but don't connect them yet.
-        for input_path, input_id in self.iter_file_inputs(workflow, basedir):
+        for input_id, input_path in self.iter_input_files(workflow, basedir):
             input_key = self.add_file(
                 input_path, revision='{0}^'.format(commit)
             )
@@ -142,7 +161,7 @@ class Graph(object):
 
             step_tool = self.G.nodes[tool_key]['tool']
 
-            for input_path, input_id in self.iter_file_inputs(
+            for input_id, input_path in self.iter_input_files(
                 step_tool, basedir
             ):
                 if input_path in commit.stats.files:
@@ -156,7 +175,7 @@ class Graph(object):
                     self.G.add_edge(input_map[source], tool_key, id=input_id)
 
             # Find ALL siblings that MUST be generated in the same commit.
-            for output_id, output_path in step_tool.iter_output_files():
+            for output_id, output_path in self.iter_output_files(step_tool):
                 self.G.add_edge(
                     tool_key, (str(commit), output_path), id=output_id
                 )
@@ -203,7 +222,7 @@ class Graph(object):
         if is_step:
             return tool_key
 
-        for input_path, input_id in self.iter_file_inputs(
+        for input_id, input_path in self.iter_input_files(
             tool, os.path.dirname(path)
         ):
             input_key = self.add_file(
@@ -213,7 +232,7 @@ class Graph(object):
             self.G.add_edge(input_key, tool_key, id=input_id)
 
         # Find ALL siblings that MUST be generated in the same commit.
-        for output_id, path in tool.iter_output_files():
+        for output_id, path in self.iter_output_files(tool):
             self.G.add_edge(tool_key, (str(commit), path), id=output_id)
 
         return tool_key
