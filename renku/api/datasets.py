@@ -136,7 +136,7 @@ class DatasetsApiMixin(object):
             # if we have a directory, recurse
             if src.is_dir():
                 files = {}
-                os.mkdir(dst)
+                dst.mkdir(parents=True, exist_ok=True)
                 for f in src.iterdir():
                     files.update(
                         self._add_from_url(
