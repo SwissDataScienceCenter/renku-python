@@ -48,5 +48,7 @@ recursive-include examples *.py
 recursive-include examples *.sh
 recursive-include renku *.default
 recursive-include renku *.html
+recursive-include renku *.txt
 recursive-include renku *.yml
+recursive-include renku Dockerfile
 recursive-include tests *.py

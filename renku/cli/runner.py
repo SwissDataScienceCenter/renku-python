@@ -39,10 +39,12 @@ def runner():
 @runner.command()
 @pass_local_client
 def template(client):
-    """Generate template for CI."""
-    with open(client.path / _GITLAB_CI, 'wb') as dest:
-        with pkg_resources.resource_stream(__name__, _GITLAB_CI) as tpl:
-            dest.write(tpl.read())
+    """Render templated configuration files."""
+    # create the templated files
+    for tpl_file in [_GITLAB_CI, 'Dockerfile', 'requirements.txt']:
+        with open(client.path / tpl_file, 'wb') as dest:
+            with pkg_resources.resource_stream(__name__, tpl_file) as tpl:
+                dest.write(tpl.read())
 
 
 @runner.command()
