@@ -132,7 +132,8 @@ def with_git(
             os.chdir(repo_path)
             repo = Repo(get_git_home())
             repo.git.add('--all')
-            repo.index.commit(' '.join(sys.argv))
+            argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
+            repo.index.commit(' '.join(argv))
         finally:
             os.chdir(current_dir)
 
