@@ -1,4 +1,4 @@
-# renku: v1.dev20181906
+# renku: v1.dev20180619
 
 stages:
   - build

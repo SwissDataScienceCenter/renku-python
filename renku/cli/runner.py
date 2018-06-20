@@ -29,6 +29,9 @@ import yaml
 from ._client import pass_local_client
 
 _GITLAB_CI = '.gitlab-ci.yml'
+_DOCKERFILE = 'Dockerfile'
+_REQUIREMENTS = 'requirements.txt'
+CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
 @click.group()
@@ -41,7 +44,7 @@ def runner():
 def template(client):
     """Render templated configuration files."""
     # create the templated files
-    for tpl_file in [_GITLAB_CI, 'Dockerfile', 'requirements.txt']:
+    for tpl_file in CI_TEMPLATES:
         with open(client.path / tpl_file, 'wb') as dest:
             with pkg_resources.resource_stream(__name__, tpl_file) as tpl:
                 dest.write(tpl.read())
