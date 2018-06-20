@@ -118,6 +118,7 @@ setup(
             'init=renku.cli.init:init',
             'log=renku.cli.log:log',
             # 'notebooks=renku.cli.notebooks:notebooks',
+            'rerun=renku.cli.rerun:rerun',
             'run=renku.cli.run:run',
             'runner=renku.cli.runner:runner',
             'status=renku.cli.status:status',

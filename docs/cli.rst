@@ -62,6 +62,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.update
 
+.. _cli-rerun:
+
+``renku rerun``
+---------------
+
+.. automodule:: renku.cli.rerun
+
 .. _cli-workflow:
 
 ``renku workflow``
@@ -69,6 +76,7 @@ Renku Command Line
 
 .. automodule:: renku.cli.workflow
 
+.. _cli-show:
 
 ``renku show``
 --------------

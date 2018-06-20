@@ -810,3 +810,123 @@ def test_siblings_update(project, runner, capsys):
     for sibling in siblings:
         with sibling.open('r') as f:
             assert f.read().strip() == '3', sibling
+
+
+def test_simple_rerun(project, runner, capsys):
+    """Test simple file recreation."""
+    greetings = {'hello', 'hola', 'ahoj'}
+
+    cwd = Path(project)
+    source = cwd / 'source.txt'
+    selected = cwd / 'selected.txt'
+
+    repo = git.Repo(project)
+
+    with source.open('w') as f:
+        f.write('\n'.join(greetings))
+
+    repo.git.add('--all')
+    repo.index.commit('Created greetings')
+
+    cmd = [
+        'run', 'python', '-S', '-c',
+        'import sys, random; print(random.choice(sys.stdin.readlines()))'
+    ]
+
+    with capsys.disabled():
+        with source.open('rb') as stdin:
+            with selected.open('wb') as stdout:
+                try:
+                    old_stdin, old_stdout = sys.stdin, sys.stdout
+                    sys.stdin, sys.stdout = stdin, stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdin, sys.stdout = old_stdin, old_stdout
+
+    with selected.open('r') as f:
+        greeting = f.read().strip()
+        assert greeting in greetings
+
+    def _rerun():
+        """Return greeting after reruning."""
+        assert 0 == _run_update(runner, capsys, args=('rerun', str(selected)))
+        with selected.open('r') as f:
+            greeting = f.read().strip()
+            assert greeting in greetings
+            return greeting
+
+    for _ in range(100):
+        new_greeting = _rerun()
+        if greeting != new_greeting:
+            break
+
+    assert greeting != new_greeting, "Something is not random"
+
+    for _ in range(100):
+        new_greeting = _rerun()
+        if greeting == new_greeting:
+            break
+
+    assert greeting == new_greeting, "Something is not random"
+
+
+def test_rerun_with_inputs(project, runner, capsys):
+    """Test file recreation with specified inputs."""
+    cwd = Path(project)
+    first = cwd / 'first.txt'
+    second = cwd / 'second.txt'
+    inputs = (first, second)
+
+    output = cwd / 'output.txt'
+
+    cmd = [
+        'run', 'python', '-S', '-c', 'import random; print(random.random())'
+    ]
+
+    def _generate(output, cmd):
+        """Generate an output."""
+        with capsys.disabled():
+            with output.open('wb') as stdout:
+                try:
+                    old_stdout = sys.stdout
+                    sys.stdout = stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdout = old_stdout
+
+    for file_ in inputs:
+        _generate(file_, cmd)
+
+    cmd = ['run', 'cat'] + [str(path) for path in inputs]
+    _generate(output, cmd)
+
+    with output.open('r') as f:
+        initial_data = f.read()
+
+    assert 0 == _run_update(runner, capsys, args=('rerun', str(output)))
+
+    with output.open('r') as f:
+        assert f.read() != initial_data, "The output should have changed."
+
+    # Keep the first file unchanged.
+    with first.open('r') as f:
+        first_data = f.read()
+
+    assert 0 == _run_update(
+        runner, capsys, args=('rerun', '--from', str(first), str(output))
+    )
+
+    with output.open('r') as f:
+        assert f.read().startswith(first_data)
