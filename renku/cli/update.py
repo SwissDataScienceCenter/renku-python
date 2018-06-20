@@ -107,7 +107,8 @@ def update(ctx, client, revision, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
     status = graph.build_status(revision=revision)
-    paths = paths or status['outdated'].keys()
+    paths = {graph.normalize_path(path) for path in paths} \
+        if paths else status['outdated'].keys()
     outputs = {graph.add_file(path, revision=revision) for path in paths}
 
     if not outputs:
