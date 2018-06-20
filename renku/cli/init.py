@@ -42,7 +42,7 @@ Updating an existing project
 
 There are situations when the required structure of a Renku project needs
 to be recreated or you have an **existing** Git repository. You can solve
-these situation by simply adding ``--force`` option.
+these situation by simply adding the ``--force`` option.
 
 .. code-block:: console
 
