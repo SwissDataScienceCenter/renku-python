@@ -81,7 +81,6 @@ been affected by a simple change of an input file, consider speficing a single
 file (e.g. ``renku update G``). See also :ref:`cli-status`.
 """
 
-import os
 import sys
 import uuid
 
@@ -90,63 +89,21 @@ import click
 from renku.models.cwl._ascwl import ascwl
 
 from ._client import pass_local_client
-from ._echo import progressbar
 from ._git import with_git
 from ._graph import Graph
-
-
-def check_siblings(graph, outputs):
-    """Check that all outputs have their siblings listed."""
-    siblings = set()
-    for node in outputs:
-        siblings |= graph.siblings(node)
-
-    missing = siblings - outputs
-    if missing:
-        msg = 'Include the files above or use --with-siblings option.'
-        raise click.ClickException(
-            'There are missing output siblings:\n\n'
-            '\t{0}\n\n{1}'.format(
-                '\n\t'.join(
-                    click.style(path, fg='red') for _, path in missing
-                ),
-                msg,
-            ),
-        )
-    return outputs
-
-
-def with_siblings(graph, outputs):
-    """Include all missing siblings."""
-    siblings = set()
-    for node in outputs:
-        siblings |= graph.siblings(node)
-    return siblings
+from ._options import option_siblings
 
 
 @click.command()
 @click.option('--revision', default='HEAD')
-@click.option(
-    '--check-siblings',
-    'check_siblings',
-    flag_value=check_siblings,
-    default=True,
-    help=check_siblings.__doc__,
-)
-@click.option(
-    '--with-siblings',
-    'check_siblings',
-    flag_value=with_siblings,
-    default=True,
-    help=with_siblings.__doc__,
-)
+@option_siblings
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
 @pass_local_client
 @click.pass_context
 @with_git()
-def update(ctx, client, revision, check_siblings, paths):
+def update(ctx, client, revision, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
     status = graph.build_status(revision=revision)
@@ -160,7 +117,7 @@ def update(ctx, client, revision, check_siblings, paths):
         sys.exit(0)
 
     # Check or extend siblings of outputs.
-    outputs = check_siblings(graph, outputs)
+    outputs = siblings(graph, outputs)
     output_paths = {path for _, path in outputs}
 
     # Get parents of all clean nodes
@@ -196,83 +153,5 @@ def update(ctx, client, revision, check_siblings, paths):
             )
         )
 
-    # Run the generated workflow using cwltool library.
-    import cwltool.factory
-    from cwltool import workflow
-    from cwltool.utils import visit_class
-
-    def makeTool(toolpath_object, **kwargs):
-        """Fix missing locations."""
-        protocol = 'file://'
-
-        def addLocation(d):
-            if 'location' not in d and 'path' in d:
-                d['location'] = protocol + d['path']
-
-        visit_class(toolpath_object, ('File', 'Directory'), addLocation)
-        return workflow.defaultMakeTool(toolpath_object, **kwargs)
-
-    argv = sys.argv
-    sys.argv = ['cwltool']
-
-    # Keep all environment variables.
-    execkwargs = {
-        'preserve_entire_environment': True,
-    }
-
-    factory = cwltool.factory.Factory(makeTool=makeTool, **execkwargs)
-    process = factory.make(os.path.relpath(output_file))
-    outputs = process()
-
-    sys.argv = argv
-
-    # Move outputs to correct location in the repository.
-    output_dirs = process.factory.executor.output_dirs
-
-    def remove_prefix(location, prefix='file://'):
-        if location.startswith(prefix):
-            return location[len(prefix):]
-        return location
-
-    locations = {
-        remove_prefix(output['location'])
-        for output in outputs.values()
-    }
-
-    with progressbar(
-        locations,
-        label='Moving outputs',
-    ) as bar:
-        for location in bar:
-            for output_dir in output_dirs:
-                if location.startswith(output_dir):
-                    output_path = location[len(output_dir):].lstrip(
-                        os.path.sep
-                    )
-                    os.rename(location, client.path / output_path)
-                    continue
-
-    # Keep only unchanged files in the output paths.
-    tracked_paths = {
-        diff.b_path
-        for diff in client.git.index.diff(None)
-        if diff.change_type in {'A', 'R', 'M', 'T'} and
-        diff.b_path in output_paths
-    }
-    unchanged_paths = output_paths - tracked_paths
-
-    # Fix tracking of unchanged files by removing them first.
-    if unchanged_paths:
-        client.git.index.remove(
-            unchanged_paths, cached=True, ignore_unmatch=True
-        )
-        client.git.index.commit('renku: automatic removal of unchanged files')
-        client.git.index.add(unchanged_paths)
-
-        click.echo(
-            'Unchanged files:\n\n\t{0}'.format(
-                '\n\t'.join(
-                    click.style(path, fg='yellow') for path in unchanged_paths
-                )
-            )
-        )
+    from ._cwl import execute
+    execute(client, output_file, output_paths=output_paths)

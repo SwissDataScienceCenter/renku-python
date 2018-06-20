@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -102,3 +102,53 @@ option_endpoint = click.option(
     callback=validate_endpoint,
     help=validate_endpoint.__doc__,
 )
+
+
+def check_siblings(graph, outputs):
+    """Check that all outputs have their siblings listed."""
+    siblings = set()
+    for node in outputs:
+        siblings |= graph.siblings(node)
+
+    missing = siblings - outputs
+    if missing:
+        msg = 'Include the files above or use --with-siblings option.'
+        raise click.ClickException(
+            'There are missing output siblings:\n\n'
+            '\t{0}\n\n{1}'.format(
+                '\n\t'.join(
+                    click.style(path, fg='red') for _, path in missing
+                ),
+                msg,
+            ),
+        )
+    return outputs
+
+
+def with_siblings(graph, outputs):
+    """Include all missing siblings."""
+    siblings = set()
+    for node in outputs:
+        siblings |= graph.siblings(node)
+    return siblings
+
+
+option_check_siblings = click.option(
+    '--check-siblings',
+    'siblings',
+    flag_value=check_siblings,
+    default=True,
+    help=check_siblings.__doc__,
+)
+option_with_siblings = click.option(
+    '--with-siblings',
+    'siblings',
+    flag_value=with_siblings,
+    default=True,
+    help=with_siblings.__doc__,
+)
+
+
+def option_siblings(func):
+    """Combine siblings options."""
+    return option_check_siblings(option_with_siblings(func))
