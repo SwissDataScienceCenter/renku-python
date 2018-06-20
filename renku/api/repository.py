@@ -24,7 +24,6 @@ from subprocess import PIPE, STDOUT, call
 
 import attr
 import filelock
-import pkg_resources
 import yaml
 from git import InvalidGitRepositoryError
 from git import Repo as GitRepo
@@ -165,6 +164,7 @@ class RepositoryApiMixin(object):
         self.git.description = name or path.name
 
         # TODO read existing gitignore and create a unique set of rules
+        import pkg_resources
         gitignore_default = pkg_resources.resource_stream(
             'renku.data', 'gitignore.default'
         )

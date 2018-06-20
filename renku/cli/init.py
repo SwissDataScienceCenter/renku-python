@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Create an empty Renku project or reinitialize an existing one.
+r"""Create an empty Renku project or reinitialize an existing one.
 
 Starting a Renku project
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,6 +36,30 @@ or:
 
 This creates a new subdirectory named ``.renku`` that contains all the
 necessary files for managing the project configuration.
+
+Updating an existing project
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are situations when the required structure of a Renku project needs
+to be recreated or you have an **existing** Git repository. You can solve
+these situation by simply adding ``--force`` option.
+
+.. code-block:: console
+
+    $ git init .
+    $ echo "# Example\nThis is a README." > README.md
+    $ git add README.md
+    $ git commit -m 'Example readme file'
+    # renku init would fail because there is a git repository
+    $ renku init --force
+
+You can also enable the external storage system for output files, if it
+was not installed previously.
+
+.. code-block:: console
+
+    $ renku init --force --external-storage
+
 """
 
 import os
@@ -69,7 +93,7 @@ def store_directory(ctx, param, value):
     )
 )
 @click.option('--name', callback=validate_name)
-@click.option('--force', is_flag=True)
+@click.option('--force', is_flag=True, help='Override project templates.')
 @click.option(
     'use_external_storage',
     '--external-storage/--no-external-storage',
