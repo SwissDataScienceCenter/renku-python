@@ -205,6 +205,11 @@ class RepositoryApiMixin(object):
         """Track paths in the external storage."""
         if HAS_LFS and self.git.config_reader(config_level='repository'
                                               ).has_section('filter "lfs"'):
+            # FIXME create configurable filter and respect .gitattributes
+            paths = [
+                path for path in paths if not str(path).endswith('.ipynb')
+            ]
+
             call(
                 ['git', 'lfs', 'track'] + list(paths),
                 stdout=PIPE,
