@@ -56,3 +56,31 @@ push/%: tag/%
 
 login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
+
+Pipfile.lock:
+	@pipenv install --pre renku
+
+renku.rb: Pipfile.lock brew.py
+	@python brew.py renku > renku.rb
+
+.PHONY: brew-commit-formula
+brew-commit-formula: renku.rb
+	@brew tap swissdatasciencecenter/renku
+	@cp $< $(shell brew formula renku)
+	@cd $(shell brew --repo swissdatasciencecenter/renku) && git commit -a -m "renku: release $(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
+
+.PHONY: brew-build-bottle
+brew-build-bottle:
+	@brew uninstall renku || echo OK
+	@brew tap swissdatasciencecenter/renku
+	@brew install --build-bottle renku
+
+%.bottle.json:
+	@brew bottle --json --root-url=https://github.com/SwissDataScienceCenter/renku-python/releases/download/v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable') renku || echo 'OK'
+
+.PHONY: brew-commit-bottle
+brew-commit-bottle: *.bottle.json
+	brew bottle --merge --keep-old --write $<
+
+brew-release:
+	open "https://github.com/SwissDataScienceCenter/renku-python/releases/new?tag=v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"

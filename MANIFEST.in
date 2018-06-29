@@ -28,6 +28,7 @@ include *.rst
 include *.sh
 include *.txt
 include .coveragerc
+include brew.py
 include LICENSE
 include Dockerfile*
 include Makefile
