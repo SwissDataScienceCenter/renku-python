@@ -53,7 +53,7 @@ def execute(client, output_file, output_paths=None):
     }
 
     factory = cwltool.factory.Factory(makeTool=makeTool, **execkwargs)
-    process = factory.make(os.path.relpath(output_file))
+    process = factory.make(os.path.relpath(str(output_file)))
     outputs = process()
 
     sys.argv = argv
@@ -81,7 +81,7 @@ def execute(client, output_file, output_paths=None):
                     output_path = location[len(output_dir):].lstrip(
                         os.path.sep
                     )
-                    os.rename(location, client.path / output_path)
+                    os.rename(location, str(client.path / output_path))
                     continue
 
     # Keep only unchanged files in the output paths.

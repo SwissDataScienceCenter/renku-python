@@ -54,7 +54,7 @@ class DatasetsApiMixin(object):
             if name:
                 path = dataset_path / self.METADATA
                 if path.exists():
-                    with open(path, 'r') as f:
+                    with path.open('r') as f:
                         source = yaml.load(f) or {}
                     dataset = Dataset.from_jsonld(source)
 
@@ -81,7 +81,7 @@ class DatasetsApiMixin(object):
             #     if path.exists():
             #         raise ValueError('Dataset already exists')
 
-            with open(path, 'w') as f:
+            with path.open('w') as f:
                 yaml.dump(source, f, default_flow_style=False)
 
     def add_data_to_dataset(self, dataset, url, git=False, **kwargs):
@@ -153,14 +153,14 @@ class DatasetsApiMixin(object):
 
             if nocopy:
                 try:
-                    os.link(src, dst)
+                    os.link(str(src), str(dst))
                 except Exception as e:
                     raise Exception(
                         'Could not create hard link '
                         '- retry without nocopy.'
                     ) from e
             else:
-                shutil.copy(src, dst)
+                shutil.copy(str(src), str(dst))
 
             # Do not expose local paths.
             src = None
@@ -175,7 +175,7 @@ class DatasetsApiMixin(object):
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
-        self.track_paths_in_storage(dst.relative_to(self.path))
+        self.track_paths_in_storage(str(dst.relative_to(self.path)))
         dataset_path = self.path / self.datadir / dataset.name
         result = dst.relative_to(dataset_path).as_posix()
         return {
@@ -206,7 +206,7 @@ class DatasetsApiMixin(object):
             # determine where is the base repo path
             r = git.Repo(url, search_parent_directories=True)
             src_repo_path = Path(r.git_dir).parent
-            submodule_name = os.path.basename(src_repo_path)
+            submodule_name = src_repo_path.name
             submodule_path = submodule_path / str(src_repo_path).lstrip('/')
 
             # if repo path is a parent, rebase the paths and update url
@@ -277,10 +277,10 @@ class DatasetsApiMixin(object):
         if not dst.parent.exists():
             dst.parent.mkdir(parents=True)
 
-        os.symlink(os.path.relpath(src, dst.parent), dst)
+        os.symlink(os.path.relpath(str(src), str(dst.parent)), str(dst))
 
         # grab all the authors from the commit history
-        git_repo = git.Repo(submodule_path.absolute().as_posix())
+        git_repo = git.Repo(str(submodule_path.absolute()))
         authors = []
         for commit in git_repo.iter_commits(paths=target):
             author = Author.from_commit(commit)

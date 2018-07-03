@@ -51,6 +51,9 @@ class Graph(object):
 
     def __attrs_post_init__(self):
         """Derive basic informations."""
+        self.client.workflow_path.mkdir(
+            parents=True, exist_ok=True
+        )  # for Python 3.5
         self.cwl_prefix = str(
             self.client.workflow_path.resolve().relative_to(self.client.path)
         )
@@ -59,11 +62,11 @@ class Graph(object):
         """Normalize path relative to the Git workdir."""
         start = self.client.path.resolve()
         path = Path(path).resolve()
-        return os.path.relpath(path, start=start)
+        return os.path.relpath(str(path), start=str(start))
 
     def _format_path(self, path):
         """Return a relative path based on the client configuration."""
-        return os.path.relpath(self.client.path / path)
+        return os.path.relpath(str(self.client.path / path))
 
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
@@ -108,7 +111,8 @@ class Graph(object):
         for input_ in tool.inputs:
             if input_.type == 'File' and input_.default:
                 yield (
-                    input_.id, os.path.normpath(basedir / input_.default.path)
+                    input_.id,
+                    os.path.normpath(str(basedir / input_.default.path))
                 )
 
     def iter_output_files(self, tool):

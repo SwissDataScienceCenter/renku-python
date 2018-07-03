@@ -293,8 +293,8 @@ def test_update(project, runner, capsys):
     update_source('1')
 
     with capsys.disabled():
-        with open(source, 'rb') as stdin:
-            with open(output, 'wb') as stdout:
+        with source.open('rb') as stdin:
+            with output.open('wb') as stdout:
                 try:
                     old_stdin, old_stdout = sys.stdin, sys.stdout
                     sys.stdin, sys.stdout = stdin, stdout
@@ -382,7 +382,7 @@ def test_datasets(data_file, data_repository, runner):
     )
     assert result.exit_code == 0
     assert os.stat(
-        os.path.join('data', 'dataset', os.path.basename(data_file))
+        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
     )
 
     # add data from a git repo via http
@@ -462,14 +462,14 @@ def test_relative_import_to_dataset(tmpdir, data_repository, runner):
 
 def test_relative_git_import_to_dataset(tmpdir, project, runner):
     """Test importing data from a directory structure."""
-    submodule_name = os.path.basename(tmpdir)
+    submodule_name = os.path.basename(str(tmpdir))
 
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
     assert os.stat('data/dataset/metadata.yml')
 
-    data_repo = git.Repo.init(tmpdir)
+    data_repo = git.Repo.init(str(tmpdir))
 
     zero_data = tmpdir.join('data.txt')
     zero_data.write('zero')
