@@ -1,0 +1,80 @@
+#!/bin/sh
+
+set -ep
+
+# dpkg-architecture will try to execute $CC, so make sure we don't end
+# up re-calling our script.
+export CC="@CC@"
+triplet="@TRIPLET@"
+
+get_target() {
+    while [ $# -gt 1 ]; do
+        case "$1" in
+            -o)
+                echo "$2"
+                return
+                ;;
+        esac
+        shift
+    done
+}
+
+target="$(get_target "$@")"
+target="$(basename "$target")"
+
+rpath=""
+case "$target" in
+    *.o)
+        # Ignore object files
+        ;;
+    python*)
+        rpath="\$ORIGIN/../lib"
+        ;;
+    libpython*)
+        rpath="\$ORIGIN"
+        ;;
+    *.so)
+        rpath="\$ORIGIN/../.."
+        ;;
+esac
+
+if [ -z "$rpath" ]; then
+    exec $CC "$@"
+fi
+
+core=/snap/core/current
+
+case "$triplet" in
+    i386-linux-gnu)
+        linker="$core/lib/ld-linux.so.2"
+        ;;
+    x86_64-linux-gnu)
+        linker="$core/lib64/ld-linux-x86-64.so.2"
+        ;;
+    arm-linux-gnueabihf)
+        linker="$core/lib/ld-linux-armhf.so.3"
+        ;;
+    aarch64-linux-gnu)
+        linker="$core/lib/ld-linux-aarch64.so.1"
+        ;;
+    powerpc64le-linux-gnu)
+        linker="$core/lib64/ld64.so.2"
+        ;;
+    s390x-linux-gnu)
+        linker="$core/lib/ld64.so.1"
+        ;;
+    *)
+        echo "Unknown architecture: $triplet" >&2
+        exit 1
+        ;;
+esac
+
+core_rpath="$core/lib:$core/usr/lib:$core/lib/$triplet:$core/usr/lib/$triplet"
+
+# FIXME: Should also include -Wl,--dynamic-linker,"$linker" but can't
+# due to https://bugs.launchpad.net/snapd/+bug/1684063
+
+# -Wl,-z,nodefaultlib should also be in there, but breaks "snapcraft
+# cleanbuild".
+
+exec $CC "$@" -Wl,-rpath,"$rpath:$core_rpath"

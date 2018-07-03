@@ -17,7 +17,7 @@
 # limitations under the License.
 
 name: renku
-version: git
+version: 0.1.0.dev20180613
 summary: A Python library for the Renku collaborative data science platform.
 description: |
   A Python library for the Renku collaborative data science platform. It allows
@@ -25,19 +25,21 @@ description: |
   while performing analysis tasks.
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: devmode # use 'strict' once you have the right plugs and slots
+confinement: classic # use 'strict' once you have the right plugs and slots
 
-plugs:
-  python3:
-    interface: content
-    content: python3
-    target: python
-    default-provider: python36-jamesh
+# slots:
+#   python3:
+#     interface: content
+#     content: python3
+#     read:
+#       - $SNAP
 
-hooks:
-  install:
-    plugs:
-      - python3
+# plugs:
+#   python3:
+#     interface: content
+#     content: python3
+#     target: python
+#     default-provider: python36-jamesh
 
 apps:
   renku:
@@ -45,10 +47,136 @@ apps:
     plugs:
       - home
       - network
-      - python3
 
 parts:
   renku:
-    plugin: python
-    python-version: python3
+    # plugin: python
+    # python-version: python3
+    plugin: nil
     source: .
+    after:
+      - python
+      - sitecustomize
+    override-build: |
+      python3.6 setup.py install
+      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+      rm $SNAPCRAFT_PART_INSTALL/bin/renku || true
+      cp $SNAPCRAFT_STAGE/bin/renku $SNAPCRAFT_PART_INSTALL/bin/renku
+    #   snapcraftctl build
+    #   python3 setup.py install
+    #   snapcraftctl build
+    #   # Create directory to serve as mount point for Python
+    #   mkdir $SNAPCRAFT_PART_INSTALL/python
+    # stage:
+    #   - bin/*
+    # prime:
+    #   - bin/*
+    #   - python/
+    filesets:
+      renku:
+        - bin/renku
+    stage:
+      - $renku
+    prime:
+      - $renku
+
+  compiler-wrapper:
+    plugin: nil
+    source: snap/tools
+    install: |
+      sed -e "s/@CC@/${CC:-gcc}/g" \
+          -e "s/@TRIPLET@/$(dpkg-architecture -q DEB_TARGET_MULTIARCH)/g" \
+          compiler.sh.in > $SNAPCRAFT_PART_INSTALL/compiler.sh
+      chmod a+x $SNAPCRAFT_PART_INSTALL/compiler.sh
+    prime:
+      - -*
+    build-packages:
+      - gcc
+      - dpkg-dev
+
+  python:
+    after:
+      - compiler-wrapper
+    plugin: autotools
+    source: https://www.python.org/ftp/python/3.6.4/Python-3.6.4.tar.xz
+    configflags:
+      - --enable-shared
+      - --enable-ipv6
+      - --enable-loadable-sqlite-extensions
+      - --with-dbmliborder=bdb:gdbm
+      - --with-computed-gotos
+      - --with-ensurepip=upgrade
+      - --with-system-expat
+      - --with-system-libmpdec
+      - --with-system-ffi
+      - --with-fpectl
+    make-parameters:
+      - DESTDIR=$SNAPCRAFT_PART_INSTALL/usr
+      - CC=$SNAPCRAFT_STAGE/compiler.sh
+
+    filesets:
+      python:
+        - bin/
+        - lib/
+        - -bin/*-config
+        - -lib/python3.6/test/
+        - -lib/python3.6/*/test/
+        - -lib/python3.6/*/tests/
+        - -lib/python3.6/idle/idle_test/
+        - -lib/python3.6/lib-dynload/_*test*.so
+        - -lib/pkgconfig
+      tests:
+        - lib/python3.6/test/
+        - lib/python3.6/*/test/
+        - lib/python3.6/*/tests/
+        - lib/python3.6/idle/idle_test/
+        - lib/python3.6/lib-dynload/_*test*.so
+      manpages:
+        - share/man/
+      dev:
+        - bin/*-config
+        - include/
+        - lib/pkgconfig/
+
+    stage:
+      - $python
+      - $manpages
+      - $dev
+
+    prime:
+      - $python
+      - $manpages
+      - $dev
+
+    build-packages:
+      - gcc
+      - libreadline-dev
+      - libncursesw5-dev
+      - zlib1g-dev
+      - libbz2-dev
+      - liblzma-dev
+      - libgdbm-dev
+      - libdb-dev
+      - libssl-dev
+      - libexpat1-dev
+      - libmpdec-dev
+      - libbluetooth-dev
+      - libsqlite3-dev
+      - libffi-dev
+
+  sitecustomize:
+    after:
+      - python
+    plugin: dump
+    source: snap/src
+    organize:
+      '*': lib/python3.6/site-packages/
+
+    install: |
+      set -x
+      # byte compile sitecustomize.py
+      installdir=$SNAPCRAFT_PART_INSTALL
+      primedir=lib/python3.6/site-packages
+      $SNAPCRAFT_STAGE/bin/python3.6 -Wi -m compileall -d $primedir $installdir
+      $SNAPCRAFT_STAGE/bin/python3.6 -O -Wi -m compileall -d $primedir $installdir
+      $SNAPCRAFT_STAGE/bin/python3.6 -OO -Wi -m compileall -d $primedir $installdir
