@@ -18,6 +18,7 @@
 """Wrap CWL runner."""
 
 import os
+import shutil
 import sys
 
 import click
@@ -81,7 +82,7 @@ def execute(client, output_file, output_paths=None):
                     output_path = location[len(output_dir):].lstrip(
                         os.path.sep
                     )
-                    os.rename(location, str(client.path / output_path))
+                    shutil.move(location, str(client.path / output_path))
                     continue
 
     # Keep only unchanged files in the output paths.
