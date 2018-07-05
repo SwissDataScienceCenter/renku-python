@@ -25,7 +25,7 @@ description: |
   while performing analysis tasks.
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: classic # use 'strict' once you have the right plugs and slots
+confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   renku:
@@ -37,6 +37,5 @@ parts:
     python-version: python3
     source: .
     source-type: git
-    process-dependency-links: true
     python-packages:
       - "git+https://github.com/leafty/python-future.git@fix-read-only#egg=future-0.16.0"
