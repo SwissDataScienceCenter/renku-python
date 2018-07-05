@@ -37,3 +37,4 @@ parts:
     python-version: python3
     source: .
     source-type: git
+    process-dependency-links: true
