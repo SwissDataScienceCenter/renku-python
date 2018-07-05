@@ -37,5 +37,7 @@ parts:
     python-version: python3
     source: .
     source-type: git
+    stage-packages:
+      - git
     python-packages:
       - "git+https://github.com/leafty/python-future.git@fix-read-only#egg=future-0.16.0"
