@@ -84,8 +84,7 @@ install_requires = [
     'requests-oauthlib>=0.8.0',
     'requests>=2.18.4',
     'tabulate>=0.7.7',
-    'werkzeug>=0.12',
-    'future==0.16.0'
+    'werkzeug>=0.12'
 ]
 
 packages = find_packages()
@@ -109,7 +108,6 @@ setup(
     packages=packages,
     zip_safe=False,
     include_package_data=True,
-    dependency_links=["git+https://github.com/leafty/python-future.git@fix-read-only#egg=future-0.16.0"],
     platforms='any',
     entry_points={
         'console_scripts': ['renku=renku.cli:cli'],

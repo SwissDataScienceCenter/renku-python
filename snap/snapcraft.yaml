@@ -38,3 +38,5 @@ parts:
     source: .
     source-type: git
     process-dependency-links: true
+    python-packages:
+      - "git+https://github.com/leafty/python-future.git@fix-read-only#egg=future-0.16.0"
