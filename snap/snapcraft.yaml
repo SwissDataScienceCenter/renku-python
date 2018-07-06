@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,12 +15,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Version information for Renku.
 
-This file is imported by ``renku.__init__``,
-and parsed by ``setup.py``.
-"""
+name: renku
+version: 0.1.0+git
+summary: A Python library for the Renku collaborative data science platform.
+description: |
+  A Python library for the Renku collaborative data science platform. It allows
+  the user to create projects, manage datasets, and capture data provenance
+  while performing analysis tasks.
 
-from __future__ import absolute_import, print_function
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: classic # use 'strict' once you have the right plugs and slots
 
-__version__ = '0.1.0.dev20180628'
+apps:
+  renku:
+    command: bin/renku
+
+parts:
+  renku:
+    plugin: python
+    python-version: python3
+    source: .
+    source-type: git

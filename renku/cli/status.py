@@ -61,9 +61,9 @@ def status(ctx, client, revision, path):
     click.echo('On branch {0}'.format(client.git.active_branch))
     if status['outdated']:
         click.echo('Files generated from newer inputs:')
-        click.echo('  (use "renku log <file>..." to see the full lineage)')
+        click.echo('  (use "renku log [<file>...]" to see the full lineage)')
         click.echo(
-            '  (use "renku update <file>..." to '
+            '  (use "renku update [<file>...]" to '
             'generate the file from its latest inputs)'
         )
         click.echo()

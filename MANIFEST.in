@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -28,12 +28,14 @@ include *.rst
 include *.sh
 include *.txt
 include .coveragerc
-include LICENSE
+include .style.yapf
 include Dockerfile*
+include LICENSE
 include Makefile
 include babel.ini
+include brew.py
 include pytest.ini
-include .style.yapf
+include snap/snapcraft.yaml
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
 recursive-include docs *.bat
@@ -48,5 +50,7 @@ recursive-include examples *.py
 recursive-include examples *.sh
 recursive-include renku *.default
 recursive-include renku *.html
+recursive-include renku *.txt
 recursive-include renku *.yml
+recursive-include renku Dockerfile
 recursive-include tests *.py

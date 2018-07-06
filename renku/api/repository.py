@@ -24,7 +24,6 @@ from subprocess import PIPE, STDOUT, call
 
 import attr
 import filelock
-import pkg_resources
 import yaml
 from git import InvalidGitRepositoryError
 from git import Repo as GitRepo
@@ -98,10 +97,10 @@ class RepositoryApiMixin(object):
             from renku.models._jsonld import asjsonld
             from renku.models.projects import Project
 
-            path = str(self.renku_metadata_path)
+            metadata_path = self.renku_metadata_path
 
             if self.renku_metadata_path.exists():
-                with open(path, 'r') as f:
+                with metadata_path.open('r') as f:
                     source = yaml.load(f) or {}
                 metadata = Project.from_jsonld(source)
             else:
@@ -111,7 +110,7 @@ class RepositoryApiMixin(object):
             yield metadata
 
             source.update(**asjsonld(metadata))
-            with open(path, 'w') as f:
+            with metadata_path.open('w') as f:
                 yaml.dump(source, f, default_flow_style=False)
 
     @contextmanager
@@ -134,7 +133,8 @@ class RepositoryApiMixin(object):
                 if not workflow_path.exists():
                     workflow_path.mkdir()
 
-                with open(workflow_path / step_name, 'w') as step_file:
+                step_path = workflow_path / step_name
+                with step_path.open('w') as step_file:
                     yaml.dump(
                         ascwl(
                             # filter=lambda _, x: not (x is False or bool(x)
@@ -165,10 +165,12 @@ class RepositoryApiMixin(object):
         self.git.description = name or path.name
 
         # TODO read existing gitignore and create a unique set of rules
+        import pkg_resources
         gitignore_default = pkg_resources.resource_stream(
             'renku.data', 'gitignore.default'
         )
-        with open(path / '.gitignore', 'w') as gitignore:
+        gitignore_path = path / '.gitignore'
+        with gitignore_path.open('w') as gitignore:
             gitignore.write(gitignore_default.read().decode())
 
             gitignore.write(
@@ -198,16 +200,21 @@ class RepositoryApiMixin(object):
             cmd,
             stdout=PIPE,
             stderr=STDOUT,
-            cwd=self.path.absolute(),
+            cwd=str(self.path.absolute()),
         )
 
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
         if HAS_LFS and self.git.config_reader(config_level='repository'
                                               ).has_section('filter "lfs"'):
+            # FIXME create configurable filter and respect .gitattributes
+            paths = [
+                path for path in paths if not str(path).endswith('.ipynb')
+            ]
+
             call(
                 ['git', 'lfs', 'track'] + list(paths),
                 stdout=PIPE,
                 stderr=STDOUT,
-                cwd=self.path,
+                cwd=str(self.path),
             )

@@ -98,7 +98,8 @@ def ascwl(
     def convert_value(v):
         """Convert special types."""
         if isinstance(v, Path):
-            return os.path.relpath(v, basedir) if basedir else str(v)
+            v = str(v)
+            return os.path.relpath(v, str(basedir)) if basedir else v
         return v
 
     for a in attrs:

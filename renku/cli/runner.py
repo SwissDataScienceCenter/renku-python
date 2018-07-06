@@ -23,12 +23,14 @@ import tempfile
 from subprocess import call
 
 import click
-import pkg_resources
 import yaml
 
 from ._client import pass_local_client
 
 _GITLAB_CI = '.gitlab-ci.yml'
+_DOCKERFILE = 'Dockerfile'
+_REQUIREMENTS = 'requirements.txt'
+CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
 @click.group()
@@ -39,10 +41,15 @@ def runner():
 @runner.command()
 @pass_local_client
 def template(client):
-    """Generate template for CI."""
-    with open(client.path / _GITLAB_CI, 'wb') as dest:
-        with pkg_resources.resource_stream(__name__, _GITLAB_CI) as tpl:
-            dest.write(tpl.read())
+    """Render templated configuration files."""
+    import pkg_resources
+
+    # create the templated files
+    for tpl_file in CI_TEMPLATES:
+        tpl_path = client.path / tpl_file
+        with tpl_path.open('wb') as dest:
+            with pkg_resources.resource_stream(__name__, tpl_file) as tpl:
+                dest.write(tpl.read())
 
 
 @runner.command()

@@ -54,7 +54,7 @@ class DatasetsApiMixin(object):
             if name:
                 path = dataset_path / self.METADATA
                 if path.exists():
-                    with open(path, 'r') as f:
+                    with path.open('r') as f:
                         source = yaml.load(f) or {}
                     dataset = Dataset.from_jsonld(source)
 
@@ -81,7 +81,7 @@ class DatasetsApiMixin(object):
             #     if path.exists():
             #         raise ValueError('Dataset already exists')
 
-            with open(path, 'w') as f:
+            with path.open('w') as f:
                 yaml.dump(source, f, default_flow_style=False)
 
     def add_data_to_dataset(self, dataset, url, git=False, **kwargs):
@@ -89,17 +89,21 @@ class DatasetsApiMixin(object):
         dataset_path = self.path / self.datadir / dataset.name
         git = git or check_for_git_repo(url)
 
-        target = kwargs.get('target')
+        target = kwargs.pop('target', None)
 
         if git:
             if isinstance(target, (str, NoneType)):
                 dataset.files.update(
-                    self._add_from_git(dataset, dataset_path, url, target)
+                    self._add_from_git(
+                        dataset, dataset_path, url, target, **kwargs
+                    )
                 )
             else:
                 for t in target:
                     dataset.files.update(
-                        self._add_from_git(dataset, dataset_path, url, t)
+                        self._add_from_git(
+                            dataset, dataset_path, url, t, **kwargs
+                        )
                     )
         else:
             dataset.files.update(
@@ -132,7 +136,7 @@ class DatasetsApiMixin(object):
             # if we have a directory, recurse
             if src.is_dir():
                 files = {}
-                os.mkdir(dst)
+                dst.mkdir(parents=True, exist_ok=True)
                 for f in src.iterdir():
                     files.update(
                         self._add_from_url(
@@ -149,14 +153,14 @@ class DatasetsApiMixin(object):
 
             if nocopy:
                 try:
-                    os.link(src, dst)
+                    os.link(str(src), str(dst))
                 except Exception as e:
                     raise Exception(
                         'Could not create hard link '
                         '- retry without nocopy.'
                     ) from e
             else:
-                shutil.copy(src, dst)
+                shutil.copy(str(src), str(dst))
 
             # Do not expose local paths.
             src = None
@@ -171,7 +175,7 @@ class DatasetsApiMixin(object):
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
-        self.track_paths_in_storage(dst.relative_to(self.path))
+        self.track_paths_in_storage(str(dst.relative_to(self.path)))
         dataset_path = self.path / self.datadir / dataset.name
         result = dst.relative_to(dataset_path).as_posix()
         return {
@@ -184,22 +188,25 @@ class DatasetsApiMixin(object):
                 )
         }
 
-    def _add_from_git(self, dataset, path, url, target):
+    def _add_from_git(self, dataset, path, url, target, **kwargs):
         """Process adding resources from another git repository.
 
-        The submodules are placed in .renku/vendors and linked
+        The submodules are placed in ``.renku/vendors`` and linked
         to the *path* specified by the user.
         """
         # create the submodule
         u = parse.urlparse(url)
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
 
+        # Respect the directory struture inside the source path.
+        relative_to = kwargs.get('relative_to', None)
+
         if u.scheme in ('', 'file'):
             warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path
             r = git.Repo(url, search_parent_directories=True)
             src_repo_path = Path(r.git_dir).parent
-            submodule_name = os.path.basename(src_repo_path)
+            submodule_name = src_repo_path.name
             submodule_path = submodule_path / str(src_repo_path).lstrip('/')
 
             # if repo path is a parent, rebase the paths and update url
@@ -229,32 +236,51 @@ class DatasetsApiMixin(object):
                 name=submodule_name, path=submodule_path.as_posix(), url=url
             )
 
-        # link the target into the data directory
-        dst = self.path / path / submodule_name / (target or '')
         src = submodule_path / (target or '')
 
-        if not dst.parent.exists():
-            dst.parent.mkdir(parents=True)
+        if target and relative_to:
+            relative_to = Path(relative_to)
+            if relative_to.is_absolute():
+                assert u.scheme in {
+                    '', 'file'
+                }, ('Only relative paths can be used with URLs.')
+                target = (Path(url).resolve().absolute() / target).relative_to(
+                    relative_to.resolve()
+                )
+            else:
+                # src already includes target so we do not have to append it
+                target = src.relative_to(submodule_path / relative_to)
+
+        # link the target into the data directory
+        dst = self.path / path / submodule_name / (target or '')
+
         # if we have a directory, recurse
         if src.is_dir():
             files = {}
-            os.mkdir(dst)
+            dst.mkdir(parents=True, exist_ok=True)
             # FIXME get all files from submodule index
             for f in src.iterdir():
-                files.update(
-                    self._add_from_git(
-                        dataset,
-                        path,
-                        url,
-                        target=f.relative_to(submodule_path)
+                try:
+                    files.update(
+                        self._add_from_git(
+                            dataset,
+                            path,
+                            url,
+                            target=f.relative_to(submodule_path),
+                            **kwargs
+                        )
                     )
-                )
+                except ValueError:
+                    pass  # skip files outside the relative path
             return files
 
-        os.symlink(os.path.relpath(src, dst.parent), dst)
+        if not dst.parent.exists():
+            dst.parent.mkdir(parents=True)
+
+        os.symlink(os.path.relpath(str(src), str(dst.parent)), str(dst))
 
         # grab all the authors from the commit history
-        git_repo = git.Repo(submodule_path.absolute().as_posix())
+        git_repo = git.Repo(str(submodule_path.absolute()))
         authors = []
         for commit in git_repo.iter_commits(paths=target):
             author = Author.from_commit(commit)

@@ -34,16 +34,18 @@ from renku._compat import Path
 from renku.models.cwl.workflow import Workflow
 
 
-def _run_update(runner, capsys):
+def _run_update(runner, capsys, args=('update', )):
     """Run the update command."""
     with capsys.disabled():
         try:
             cli.cli.main(
-                args=('update', ),
+                args=args,
                 prog_name=runner.get_default_prog_name(cli.cli),
             )
         except SystemExit as e:
             return 0 if e.code is None else e.code
+        except Exception:
+            raise
 
 
 def test_version(base_runner):
@@ -307,8 +309,8 @@ def test_update(project, runner, capsys):
     update_source('1')
 
     with capsys.disabled():
-        with open(source, 'rb') as stdin:
-            with open(output, 'wb') as stdout:
+        with source.open('rb') as stdin:
+            with output.open('wb') as stdout:
                 try:
                     old_stdin, old_stdout = sys.stdin, sys.stdout
                     sys.stdin, sys.stdout = stdin, stdout
@@ -341,6 +343,24 @@ def test_update(project, runner, capsys):
 
     with output.open('r') as f:
         assert f.read().strip() == '2'
+
+    # Source has been updated but output is unchanged.
+    update_source('34')
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 1
+
+    assert _run_update(runner, capsys) == 0
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
+
+    # Make sure the log contains the original parent.
+    result = runner.invoke(cli.cli, ['log'])
+    assert source.name in result.output
 
 
 def test_streams_and_args_names(runner, capsys):
@@ -378,7 +398,7 @@ def test_datasets(data_file, data_repository, runner):
     )
     assert result.exit_code == 0
     assert os.stat(
-        os.path.join('data', 'dataset', os.path.basename(data_file))
+        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
     )
 
     # add data from a git repo via http
@@ -453,6 +473,67 @@ def test_relative_import_to_dataset(tmpdir, data_repository, runner):
     assert os.stat(os.path.join('data', 'dataset', 'first', 'data.txt'))
     assert os.stat(
         os.path.join('data', 'dataset', 'first', 'second', 'data.txt')
+    )
+
+
+def test_relative_git_import_to_dataset(tmpdir, project, runner):
+    """Test importing data from a directory structure."""
+    submodule_name = os.path.basename(str(tmpdir))
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+    assert os.stat('data/dataset/metadata.yml')
+
+    data_repo = git.Repo.init(str(tmpdir))
+
+    zero_data = tmpdir.join('data.txt')
+    zero_data.write('zero')
+
+    first_level = tmpdir.mkdir('first')
+    second_level = first_level.mkdir('second')
+
+    first_data = first_level.join('data.txt')
+    first_data.write('first')
+
+    second_data = second_level.join('data.txt')
+    second_data.write('second')
+
+    paths = [str(zero_data), str(first_data), str(second_data)]
+    data_repo.index.add(paths)
+    data_repo.index.commit('Added source files')
+
+    # add data in subdirectory
+    result = runner.invoke(
+        cli.cli,
+        [
+            'dataset', 'add', 'dataset', '--relative-to',
+            str(first_level),
+            str(tmpdir)
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    assert os.stat(os.path.join('data', 'dataset', submodule_name, 'data.txt'))
+    assert os.stat(
+        os.path.join('data', 'dataset', submodule_name, 'second', 'data.txt')
+    )
+
+    # add data in subdirectory
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'relative', '--relative-to', 'first',
+         str(tmpdir)],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    assert os.stat(
+        os.path.join('data', 'relative', submodule_name, 'data.txt')
+    )
+    assert os.stat(
+        os.path.join('data', 'relative', submodule_name, 'second', 'data.txt')
     )
 
 
@@ -620,3 +701,248 @@ def test_modified_output(project, runner, capsys):
 
     with output.open('r') as f:
         assert f.read().strip() == '3'
+
+
+def test_siblings(runner):
+    """Test detection of siblings."""
+    siblings = {'brother', 'sister'}
+
+    cmd = ['run', 'touch'] + list(siblings)
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    for sibling in siblings:
+        cmd = ['show', 'siblings', sibling]
+        result = runner.invoke(cli.cli, cmd)
+        assert result.exit_code == 0
+
+        output = {
+            name.strip()
+            for name in result.output.split('\n') if name.strip()
+        }
+        assert output == siblings, 'Checked {0}'.format(sibling)
+
+
+def test_orphan(project, runner):
+    """Test detection of an orphan."""
+    cwd = Path(project)
+    orphan = cwd / 'orphan.txt'
+
+    cmd = ['run', 'touch', orphan.name]
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['show', 'siblings', 'orphan.txt']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+    assert 'orphan.txt\n' == result.output
+
+
+def test_only_child(runner):
+    """Test detection of an only child."""
+    cmd = ['run', 'touch', 'only_child']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['show', 'siblings', 'only_child']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+    assert 'only_child\n' == result.output
+
+
+def test_siblings_update(project, runner, capsys):
+    """Test detection of siblings during update."""
+    cwd = Path(project)
+    parent = cwd / 'parent.txt'
+    brother = cwd / 'brother.txt'
+    sister = cwd / 'sister.txt'
+    siblings = {brother, sister}
+
+    repo = git.Repo(project)
+
+    def update_source(data):
+        """Update parent.txt."""
+        with parent.open('w') as fp:
+            fp.write(data)
+
+        repo.git.add('--all')
+        repo.index.commit('Updated parent.txt')
+
+    update_source('1')
+
+    # The output files do not exist.
+    assert not any(sibling.exists() for sibling in siblings)
+
+    cmd = ['run', 'tee', 'brother.txt']
+
+    with capsys.disabled():
+        with parent.open('rb') as stdin:
+            with sister.open('wb') as stdout:
+                try:
+                    old_stdin, old_stdout = sys.stdin, sys.stdout
+                    sys.stdin, sys.stdout = stdin, stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdin, sys.stdout = old_stdin, old_stdout
+
+    # The output file is copied from the source.
+    for sibling in siblings:
+        with sibling.open('r') as f:
+            assert f.read().strip() == '1', sibling
+
+    update_source('2')
+
+    # Siblings must be updated together.
+    for sibling in siblings:
+        assert 1 == _run_update(runner, capsys, args=('update', sibling.name))
+
+    # Update brother and check the sister has not been changed.
+    assert 0 == _run_update(
+        runner, capsys, args=('update', '--with-siblings', brother.name)
+    )
+
+    for sibling in siblings:
+        with sibling.open('r') as f:
+            assert f.read().strip() == '2', sibling
+
+    update_source('3')
+
+    # Siblings kept together even when one is removed.
+    repo.index.remove([brother.name], working_tree=True)
+    repo.index.commit('Brother removed')
+
+    assert not brother.exists()
+
+    # Update should find also missing siblings.
+    assert 1 == _run_update(runner, capsys, args=('update', ))
+    assert 0 == _run_update(runner, capsys, args=('update', '--with-siblings'))
+
+    for sibling in siblings:
+        with sibling.open('r') as f:
+            assert f.read().strip() == '3', sibling
+
+
+def test_simple_rerun(project, runner, capsys):
+    """Test simple file recreation."""
+    greetings = {'hello', 'hola', 'ahoj'}
+
+    cwd = Path(project)
+    source = cwd / 'source.txt'
+    selected = cwd / 'selected.txt'
+
+    repo = git.Repo(project)
+
+    with source.open('w') as f:
+        f.write('\n'.join(greetings))
+
+    repo.git.add('--all')
+    repo.index.commit('Created greetings')
+
+    cmd = [
+        'run', 'python', '-S', '-c',
+        'import sys, random; print(random.choice(sys.stdin.readlines()))'
+    ]
+
+    with capsys.disabled():
+        with source.open('rb') as stdin:
+            with selected.open('wb') as stdout:
+                try:
+                    old_stdin, old_stdout = sys.stdin, sys.stdout
+                    sys.stdin, sys.stdout = stdin, stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdin, sys.stdout = old_stdin, old_stdout
+
+    with selected.open('r') as f:
+        greeting = f.read().strip()
+        assert greeting in greetings
+
+    def _rerun():
+        """Return greeting after reruning."""
+        assert 0 == _run_update(runner, capsys, args=('rerun', str(selected)))
+        with selected.open('r') as f:
+            greeting = f.read().strip()
+            assert greeting in greetings
+            return greeting
+
+    for _ in range(100):
+        new_greeting = _rerun()
+        if greeting != new_greeting:
+            break
+
+    assert greeting != new_greeting, "Something is not random"
+
+    for _ in range(100):
+        new_greeting = _rerun()
+        if greeting == new_greeting:
+            break
+
+    assert greeting == new_greeting, "Something is not random"
+
+
+def test_rerun_with_inputs(project, runner, capsys):
+    """Test file recreation with specified inputs."""
+    cwd = Path(project)
+    first = cwd / 'first.txt'
+    second = cwd / 'second.txt'
+    inputs = (first, second)
+
+    output = cwd / 'output.txt'
+
+    cmd = [
+        'run', 'python', '-S', '-c', 'import random; print(random.random())'
+    ]
+
+    def _generate(output, cmd):
+        """Generate an output."""
+        with capsys.disabled():
+            with output.open('wb') as stdout:
+                try:
+                    old_stdout = sys.stdout
+                    sys.stdout = stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdout = old_stdout
+
+    for file_ in inputs:
+        _generate(file_, cmd)
+
+    cmd = ['run', 'cat'] + [str(path) for path in inputs]
+    _generate(output, cmd)
+
+    with output.open('r') as f:
+        initial_data = f.read()
+
+    assert 0 == _run_update(runner, capsys, args=('rerun', str(output)))
+
+    with output.open('r') as f:
+        assert f.read() != initial_data, "The output should have changed."
+
+    # Keep the first file unchanged.
+    with first.open('r') as f:
+        first_data = f.read()
+
+    assert 0 == _run_update(
+        runner, capsys, args=('rerun', '--from', str(first), str(output))
+    )
+
+    with output.open('r') as f:
+        assert f.read().startswith(first_data)

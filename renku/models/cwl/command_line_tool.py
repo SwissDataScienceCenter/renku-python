@@ -61,7 +61,7 @@ class CommandLineTool(Process, CWLClass):
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
-    def get_output_id(self, path):
+    def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""
         for output in self.outputs:
             if output.type in {'stdout', 'stderr'}:
