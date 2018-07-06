@@ -54,6 +54,10 @@ def detect_registry_url(client, auto_login=True):
     if registry_url:
         # Look in [renku] and [renku "{remote_name}"] for registry_url key.
         url = urlparse(registry_url)
+        # Remove username and password.
+        registry_url = urlunparse(
+            (url[0], url.hostname, url[2], None, None, None)
+        )
     elif remote_url:
         # Use URL based on remote configuration.
         url = urlparse(remote_url)
