@@ -62,7 +62,8 @@ def pull(client, revision, auto_login):
 
     image = '{registry}:{short_sha}'.format(
         registry=registry, short_sha=short_sha
-    )
+    ).lower()
+
     result = subprocess.run(['docker', 'image', 'pull', image])
     if result.returncode != 0:
         raise click.ClickException(
