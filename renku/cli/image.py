@@ -17,17 +17,43 @@
 # limitations under the License.
 """Manipulate images related to the Renku project.
 
+Configure registry
+~~~~~~~~~~~~~~~~~~
+
+First, obtain an access token for the registry from the GitLab by going to
+``<gitlab-URL>/profile/personal_access_tokens``. Select only the
+``read_registry`` scope and copy the access token.
+
+.. code-block:: console
+
+    $ open https://<gitlab-URL>/profile/personal_access_tokens
+    $ export ACCESS_TOKEN=<copy-from-browser>
+
+Find your project's registry path by going to
+``<gitlab-url>/<namespace>/<project>/container_registry``. The string following
+the docker push command is the ``registry-path`` for the project.
+
+    $ open https://<gitlab-url>/<namespace>/<project>/container_registry
+    $ renku config registry https://oauth2:$ACCESS_TOKEN@<registry-path>
+
 Pull image
 ~~~~~~~~~~
 
-If you have an existing project registered on GitLab with a Docker registry
-enabled you can simply type:
+If the image has indeed been built and pushed to the registry, you should be
+able to fetch it with:
 
 .. code-block:: console
 
     $ renku image pull
 
-This pulls an image that was built for the current commit.
+This pulls an image that was built for the current commit. You can also fetch
+a image build for a specific commit with:
+
+.. code-block:: console
+
+    # renku image pull --revision <ref-name>
+    $ renku image pull --revision HEAD~1
+
 """
 
 import subprocess

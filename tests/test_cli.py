@@ -977,20 +977,21 @@ def test_image_pull(project, runner):
     assert 'registry.example.com/repo.git' not in result.output
     assert result.exit_code == 1
 
-    with repo.config_writer() as config:
-        config.set_value(
-            'renku', 'registry', 'http://demo:demo@global.example.com'
-        )
+    result = runner.invoke(
+        cli.cli, ['config', 'registry', 'http://demo:demo@global.example.com']
+    )
+    assert result.exit_code == 0
 
     cmd = ['image', 'pull', '--no-auto-login']
     result = runner.invoke(cli.cli, cmd)
     assert 'global.example.com' in result.output
     assert result.exit_code == 1
 
-    with repo.config_writer() as config:
-        config.set_value(
-            'renku', 'registry', 'http://demo:demo@origin.example.com'
-        )
+    result = runner.invoke(
+        cli.cli,
+        ['config', 'origin.registry', 'http://demo:demo@origin.example.com']
+    )
+    assert result.exit_code == 0
 
     cmd = ['image', 'pull', '--no-auto-login']
     result = runner.invoke(cli.cli, cmd)
