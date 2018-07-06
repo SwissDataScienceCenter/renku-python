@@ -17,10 +17,10 @@
 # limitations under the License.
 """Manipulate images related to the Renku project.
 
-Configure registry
-~~~~~~~~~~~~~~~~~~
+Configure the image registry
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-First, obtain an access token for the registry from the GitLab by going to
+First, obtain an access token for the registry from GitLab by going to
 ``<gitlab-URL>/profile/personal_access_tokens``. Select only the
 ``read_registry`` scope and copy the access token.
 
@@ -33,8 +33,18 @@ Find your project's registry path by going to
 ``<gitlab-url>/<namespace>/<project>/container_registry``. The string following
 the docker push command is the ``registry-path`` for the project.
 
+.. code-block:: console
+
     $ open https://<gitlab-url>/<namespace>/<project>/container_registry
     $ renku config registry https://oauth2:$ACCESS_TOKEN@<registry-path>
+
+You can use any registry with manual authentication step using Docker command
+line.
+
+.. code-block:: console
+
+    $ docker login docker.io
+    $ renku config registry https://docker.io
 
 Pull image
 ~~~~~~~~~~
@@ -47,7 +57,7 @@ able to fetch it with:
     $ renku image pull
 
 This pulls an image that was built for the current commit. You can also fetch
-a image build for a specific commit with:
+an image built for a specific commit with:
 
 .. code-block:: console
 
@@ -80,15 +90,14 @@ def image():
 def pull(client, revision, auto_login):
     """Pull an existing image from the project registry."""
     registry_url = detect_registry_url(client, auto_login=auto_login)
-    registry = registry_url.split('://', 1)[-1]  # remove http(s):// prefix
 
     repo = client.git
     sha = repo.rev_parse(revision).hexsha
     short_sha = repo.git.rev_parse(sha, short=7)
 
     image = '{registry}:{short_sha}'.format(
-        registry=registry, short_sha=short_sha
-    ).lower()
+        registry=registry_url.image, short_sha=short_sha
+    )
 
     result = subprocess.run(['docker', 'image', 'pull', image])
     if result.returncode != 0:

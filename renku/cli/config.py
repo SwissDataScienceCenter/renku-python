@@ -20,7 +20,8 @@
 Set values
 ~~~~~~~~~~
 
-You can set the registry URL to a custom value with:
+You can set various Renku configuration options, for example the image registry
+URL, with a command like:
 
 .. code-block:: console
 
