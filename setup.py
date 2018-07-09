@@ -115,6 +115,7 @@ setup(
             # Please keep the items sorted.
             'dataset=renku.cli.dataset:dataset',
             'deactivate=renku.cli.workon:deactivate',
+            'image=renku.cli.image:image',
             'init=renku.cli.init:init',
             'log=renku.cli.log:log',
             # 'notebooks=renku.cli.notebooks:notebooks',
