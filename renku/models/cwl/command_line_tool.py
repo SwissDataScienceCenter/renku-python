@@ -209,6 +209,18 @@ class CommandLineToolFactory(object):
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
+
+            from .process_requirements import InitialWorkDirRequirement, \
+                InlineJavascriptRequirement
+            initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
+                tool
+            )
+            if initial_work_dir_requirement:
+                tool.requirements.extend([
+                    InlineJavascriptRequirement(),
+                    initial_work_dir_requirement,
+                ])
+
             repo.track_paths_in_storage(*paths)
 
     @command_line.validator

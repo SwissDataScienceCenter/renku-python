@@ -603,11 +603,11 @@ def test_status_with_submodules(base_runner):
 def test_unchanged_output(runner):
     """Test detection of unchanged output."""
     cmd = ['run', 'touch', '1']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 0
 
     cmd = ['run', 'touch', '1']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 1
 
 
@@ -643,7 +643,9 @@ def test_modified_output(project, runner, capsys):
     """Test detection of changed file as output."""
     cwd = Path(project)
     source = cwd / 'source.txt'
-    output = cwd / 'result.txt'
+    data = cwd / 'data' / 'results'
+    data.mkdir(parents=True)
+    output = data / 'result.txt'
 
     repo = git.Repo(project)
     cmd = ['run', 'cp', '-r', str(source), str(output)]

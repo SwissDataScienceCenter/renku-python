@@ -17,6 +17,11 @@
 # limitations under the License.
 """Base classes for Model objects used in Python SDK."""
 
+import os
+from collections import deque
+
+from renku._compat import Path
+
 
 class Model(object):
     """Abstract response of a single object."""
@@ -83,3 +88,46 @@ class LazyResponse(dict):
                 self._called = True
                 return dict.__getitem__(self, key)
             raise
+
+
+class DirectoryTree(dict):
+    r"""Create a safe directory tree from paths.
+
+    Example usage:
+
+    >>> directory = DirectoryTree()
+    >>> directory.add('foo/bar/baz')
+    >>> directory.add('foo/bar/bay')
+    >>> directory.add('foo/fooo/foooo')
+    >>> print('\n'.join(sorted(directory)))
+    foo/bar
+    foo/fooo
+
+    """
+
+    def add(self, value):
+        """Create a safe directory from a value."""
+        path = Path(str(value))
+        directory = path.parent
+        if directory and directory != directory.parent:
+            destination = self
+            for part in directory.parts:
+                destination = destination.setdefault(part, {})
+
+    def __iter__(self):
+        """Yield all stored directories."""
+        filter = {
+            os.path.sep,
+        }
+        queue = deque()
+        queue.append((self, []))
+
+        while queue:
+            data, parents = queue.popleft()
+            for key, value in dict.items(data):
+                if key in filter:
+                    continue
+                if value:
+                    queue.append((value, parents + [key]))
+                else:
+                    yield os.path.sep.join(parents + [key])
