@@ -934,6 +934,88 @@ def test_rerun_with_inputs(project, runner, capsys):
         assert f.read().startswith(first_data)
 
 
+def test_rerun_with_edited_inputs(project, runner, capsys):
+    """Test input modification."""
+    cwd = Path(project)
+    data = cwd / 'examples'
+    data.mkdir()
+    first = data / 'first.txt'
+    second = data / 'second.txt'
+    third = data / 'third.txt'
+
+    def _generate(output, cmd):
+        """Generate an output."""
+        with capsys.disabled():
+            with output.open('wb') as stdout:
+                try:
+                    old_stdout = sys.stdout
+                    sys.stdout = stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdout = old_stdout
+
+    _generate(first, ['run', 'echo', 'hello'])
+    _generate(second, ['run', 'cat', str(first)])
+    _generate(third, ['run', 'echo', '1'])
+
+    with first.open('r') as first_fp:
+        with second.open('r') as second_fp:
+            assert first_fp.read() == second_fp.read()
+
+    # Change the initial input from "hello" to "hola".
+    from click.testing import make_input_stream
+    stdin = make_input_stream('hola\n', 'utf-8')
+    old_stdin = sys.stdin
+    try:
+        sys.stdin = stdin
+        assert 0 == _run_update(
+            runner, capsys, args=('rerun', '--edit-inputs', str(second))
+        )
+    finally:
+        sys.stdin = old_stdin
+
+    with second.open('r') as second_fp:
+        assert 'hola\n' == second_fp.read()
+
+    # Change the input from examples/first.txt to examples/third.txt.
+    stdin = make_input_stream(str(third.name), 'utf-8')
+    old_stdin = sys.stdin
+    old_dir = os.getcwd()
+    try:
+        # Make sure the input path is relative to the current directory.
+        os.chdir(str(data))
+
+        result = runner.invoke(
+            cli.cli,
+            ['rerun', '--show-inputs', '--from',
+             str(first),
+             str(second)],
+            catch_exceptions=False
+        )
+        assert 0 == result.exit_code
+        assert 'input_1: {0}\n'.format(first.name) == result.output
+
+        sys.stdin = stdin
+        assert 0 == _run_update(
+            runner,
+            capsys,
+            args=('rerun', '--edit-inputs', '--from', str(first), str(second))
+        )
+    finally:
+        os.chdir(old_dir)
+        sys.stdin = old_stdin
+
+    with third.open('r') as third_fp:
+        with second.open('r') as second_fp:
+            assert third_fp.read() == second_fp.read()
+
+
 def test_image_pull(project, runner):
     """Test image pulling."""
     cmd = ['image', 'pull']

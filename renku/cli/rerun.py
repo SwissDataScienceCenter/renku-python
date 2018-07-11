@@ -38,16 +38,59 @@ Recreate a specific output file by running:
 
 """
 
+import os
+import sys
 import uuid
 
 import click
 
+from renku._compat import Path
 from renku.models.cwl._ascwl import ascwl
+from renku.models.cwl.types import File
 
 from ._client import pass_local_client
 from ._git import with_git
 from ._graph import Graph
 from ._options import option_siblings
+
+
+def _format_default(client, value):
+    """Format default values."""
+    if isinstance(value, File):
+        return os.path.relpath(
+            str((client.workflow_path / value.path).resolve())
+        )
+    return value
+
+
+def show_inputs(client, workflow):
+    """Show workflow inputs and exit."""
+    for input_ in workflow.inputs:
+        click.echo(
+            '{id}: {default}'.format(
+                id=input_.id,
+                default=_format_default(client, input_.default),
+            )
+        )
+    sys.exit(0)
+
+
+def edit_inputs(client, workflow):
+    """Edit workflow inputs."""
+    types = {
+        'int': int,
+        'string': str,
+        'File': lambda x: File(path=Path(x).resolve()),
+    }
+    for input_ in workflow.inputs:
+        convert = types.get(input_.type, str)
+        input_.default = convert(
+            click.prompt(
+                '{0.id} ({0.type})'.format(input_),
+                default=_format_default(client, input_.default),
+            )
+        )
+    return workflow
 
 
 @click.command()
@@ -60,6 +103,25 @@ from ._options import option_siblings
     help='Start an execution from this file.',
 )
 @option_siblings
+@click.option(
+    '--default-inputs',
+    'inputs',
+    default=True,
+    flag_value=lambda _, workflow: workflow,
+    help="Use default inputs.",
+)
+@click.option(
+    '--show-inputs',
+    'inputs',
+    flag_value=show_inputs,
+    help=show_inputs.__doc__,
+)
+@click.option(
+    '--edit-inputs',
+    'inputs',
+    flag_value=edit_inputs,
+    help=edit_inputs.__doc__,
+)
 @click.argument(
     'paths',
     type=click.Path(exists=True, dir_okay=False),
@@ -69,7 +131,7 @@ from ._options import option_siblings
 @pass_local_client
 @click.pass_context
 @with_git()
-def rerun(ctx, client, revision, roots, siblings, paths):
+def rerun(ctx, client, revision, roots, siblings, inputs, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
     outputs = {
@@ -100,6 +162,10 @@ def rerun(ctx, client, revision, roots, siblings, paths):
     graph.G.remove_nodes_from(clean_parents)
     graph.G.remove_nodes_from([n for n in graph.G if n not in subnodes])
 
+    # Generate workflow and check inputs.
+    # NOTE The workflow creation is done before opening a new file.
+    workflow = inputs(client, graph.ascwl(global_step_outputs=True))
+
     # Store the generated workflow used for updating paths.
     import yaml
 
@@ -108,7 +174,7 @@ def rerun(ctx, client, revision, roots, siblings, paths):
         f.write(
             yaml.dump(
                 ascwl(
-                    graph.ascwl(global_step_outputs=True),
+                    workflow,
                     filter=lambda _, x: x is not None and x != [],
                     basedir=client.workflow_path,
                 ),
