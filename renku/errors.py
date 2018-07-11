@@ -82,6 +82,32 @@ class ConfigurationError(RenkuException, click.ClickException):
     """Raise in case of misconfiguration."""
 
 
+class MissingUsername(ConfigurationError):
+    """Raise when the username is not configured."""
+
+    def __init__(self, message=None):
+        """Build a custom message."""
+        message = message or (
+            'The user name is not configured. '
+            'Please use the "git config" command to configure it.\n\n'
+            '\tgit config --set user.name "John Doe"\n'
+        )
+        super(MissingUsername, self).__init__(message)
+
+
+class MissingEmail(ConfigurationError):
+    """Raise when the email is not configured."""
+
+    def __init__(self, message=None):
+        """Build a custom message."""
+        message = message or (
+            'The email address is not configured. '
+            'Please use the "git config" command to configure it.\n\n'
+            '\tgit config --set user.email "john.doe@example.com"\n'
+        )
+        super(MissingUsername, self).__init__(message)
+
+
 class AuthenticationError(RenkuException, click.ClickException):
     """Raise when there is a problem with authentication."""
 

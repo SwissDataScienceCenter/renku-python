@@ -164,6 +164,10 @@ class RepositoryApiMixin(object):
 
         self.git.description = name or path.name
 
+        # Check that an author can be determined from Git.
+        from renku.models.datasets import Author
+        Author.from_git(self.git)
+
         # TODO read existing gitignore and create a unique set of rules
         import pkg_resources
         gitignore_default = pkg_resources.resource_stream(

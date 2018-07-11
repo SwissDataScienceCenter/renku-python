@@ -17,6 +17,7 @@
 # limitations under the License.
 """Model objects representing datasets."""
 
+import configparser
 import datetime
 import re
 import uuid
@@ -26,6 +27,7 @@ import attr
 from attr.validators import instance_of
 from dateutil.parser import parse as parse_date
 
+from renku import errors
 from renku._compat import Path
 
 from . import _jsonld as jsonld
@@ -84,10 +86,24 @@ class Author(object):
     def from_git(cls, git):
         """Create an instance from a Git repo."""
         git_config = git.config_reader()
-        return cls(
-            name=git_config.get('user', 'name'),
-            email=git_config.get('user', 'email'),
-        )
+        try:
+            name = git_config.get_value('user', 'name', None)
+            email = git_config.get_value('user', 'email', None)
+        except configparser.NoOptionError:  # pragma: no cover
+            raise errors.ConfigurationError(
+                'The user name and email are not configured. '
+                'Please use the "git config" command to configure them.\n\n'
+                '\tgit config --set user.name "John Doe"\n'
+                '\tgit config --set user.email "john.doe@example.com"\n'
+            )
+
+        # Check the git configuration.
+        if name is None:  # pragma: no cover
+            raise errors.MissingUsername()
+        if email is None:  # pragma: no cover
+            raise errors.MissingEmail()
+
+        return cls(name=name, email=email)
 
     @classmethod
     def from_commit(cls, commit):
