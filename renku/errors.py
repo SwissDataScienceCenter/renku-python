@@ -78,6 +78,14 @@ class UsageError(RenkuException):
     """Raise in case of unintended usage of certain function calls."""
 
 
+class ConfigurationError(RenkuException, click.ClickException):
+    """Raise in case of misconfiguration."""
+
+
+class AuthenticationError(RenkuException, click.ClickException):
+    """Raise when there is a problem with authentication."""
+
+
 class DirtyRepository(RenkuException, click.ClickException):
     """Raise when trying to work with dirty repository."""
 

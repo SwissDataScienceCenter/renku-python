@@ -113,8 +113,10 @@ setup(
         'console_scripts': ['renku=renku.cli:cli'],
         'renku.cli': [
             # Please keep the items sorted.
+            'config=renku.cli.config:config',
             'dataset=renku.cli.dataset:dataset',
             'deactivate=renku.cli.workon:deactivate',
+            'image=renku.cli.image:image',
             'init=renku.cli.init:init',
             'log=renku.cli.log:log',
             'login=renku.cli.login:login',

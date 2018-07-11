@@ -946,3 +946,70 @@ def test_rerun_with_inputs(project, runner, capsys):
 
     with output.open('r') as f:
         assert f.read().startswith(first_data)
+
+
+def test_image_pull(project, runner):
+    """Test image pulling."""
+    cmd = ['image', 'pull']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 1
+
+    repo = git.Repo(project)
+    origin = repo.create_remote('origin', project)
+    origin.fetch()
+    repo.heads.master.set_tracking_branch(origin.refs.master)
+
+    cmd = ['image', 'pull']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 1
+
+    call([
+        'git', 'config', 'remote.origin.url', 'http://demo:demo@example.com'
+    ])
+
+    cmd = ['image', 'pull']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 1
+
+    call([
+        'git', 'config', 'remote.origin.url',
+        'http://gitlab.com/example/example.git'
+    ])
+
+    cmd = ['image', 'pull']
+    result = runner.invoke(cli.cli, cmd)
+    assert 'registry.gitlab.com/example/example' in result.output
+    assert 'registry.gitlab.com/example/example.git' not in result.output
+    assert result.exit_code == 1
+
+    call([
+        'git', 'config', 'remote.origin.url',
+        'http://demo:demo@gitlab.example.com/repo.git'
+    ])
+
+    cmd = ['image', 'pull', '--no-auto-login']
+    result = runner.invoke(cli.cli, cmd)
+    assert 'registry.example.com/repo' in result.output
+    assert 'registry.example.com/repo.git' not in result.output
+    assert result.exit_code == 1
+
+    result = runner.invoke(
+        cli.cli, ['config', 'registry', 'http://demo:demo@global.example.com']
+    )
+    assert result.exit_code == 0
+
+    cmd = ['image', 'pull', '--no-auto-login']
+    result = runner.invoke(cli.cli, cmd)
+    assert 'global.example.com' in result.output
+    assert result.exit_code == 1
+
+    result = runner.invoke(
+        cli.cli,
+        ['config', 'origin.registry', 'http://demo:demo@origin.example.com']
+    )
+    assert result.exit_code == 0
+
+    cmd = ['image', 'pull', '--no-auto-login']
+    result = runner.invoke(cli.cli, cmd)
+    assert 'origin.example.com' in result.output
+    assert result.exit_code == 1
