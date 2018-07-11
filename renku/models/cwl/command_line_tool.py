@@ -61,6 +61,22 @@ class CommandLineTool(Process, CWLClass):
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
+    def __str__(self):
+        """Generate a simple representation."""
+        argv = ' '.join(self.to_argv())
+        if self.stdin:
+            assert self.stdin.startswith('$(inputs.')
+            input_id = self.stdin.split('.')[1]
+            for input_ in self.inputs:
+                if input_id == input_.id:
+                    argv += ' < ' + str(input_.default)
+                    break
+        if self.stdout:
+            argv += ' > ' + self.stdout
+        if self.stderr:
+            argv += ' 2> ' + self.stderr
+        return argv
+
     def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""
         for output in self.outputs:
@@ -131,8 +147,11 @@ class CommandLineToolFactory(object):
         if self.stdin:
             input_ = next(self.guess_inputs(self.stdin))
             assert input_.type == 'File'
-            input_.id = 'input_stdin'
-            input_.inputBinding = None  # do not include in tool arguments
+            input_ = attr.evolve(
+                input_,
+                id='input_stdin',
+                inputBinding=None,  # do not include in tool arguments
+            )
             self.inputs.append(input_)
             self.stdin = '$(inputs.{0}.path)'.format(input_.id)
 
