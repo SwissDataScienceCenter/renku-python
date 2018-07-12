@@ -36,7 +36,7 @@ tests_require = [
     'pytest-flake8>=0.9.1',
     'pytest-pep8>=1.0.6',
     'pytest-yapf>=0.1.1',
-    'pytest>=3.2.1',
+    'pytest>=3.6.3',
     'responses>=0.7.0',
     'yapf>=0.22.0',
 ]
