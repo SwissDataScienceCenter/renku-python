@@ -28,7 +28,7 @@ after the execution of step 2.
 
 .. code-block:: text
 
-    A-(step 1)-B-(step 2*)-C
+    A-[step 1]-B-[step 2*]-C
 
 Recreate a specific output file by running:
 
@@ -36,6 +36,9 @@ Recreate a specific output file by running:
 
      $ renku rerun C
 
+If you would like to recreate a file which was one of several produced by
+a tool, then these files must be recreated as well. See the explanation in
+:ref:`updating siblings <cli-update-with-siblings>`.
 """
 
 import os

@@ -79,6 +79,42 @@ of dependent files must be recreated.
 To avoid excesive recreation of the large portion of files which could have
 been affected by a simple change of an input file, consider speficing a single
 file (e.g. ``renku update G``). See also :ref:`cli-status`.
+
+.. _cli-update-with-siblings:
+
+Update siblings
+~~~~~~~~~~~~~~~
+
+If a tool produces multiple output files, these outputs need to be always
+updated together.
+
+.. code-block:: text
+
+                   (B)
+                  /
+    *A*--[step 1]--(C)
+                  \
+                   (D)
+
+An attempt to update a single file would fail with the following error.
+
+.. code-block:: console
+
+   $ renku update C
+   Error: There are missing output siblings:
+
+        B
+        D
+
+   Include the files above in the command or use --with-siblings option.
+
+The following commands will produce the same result.
+
+.. code-block:: console
+
+   $ renku update --with-siblings C
+   $ renku update B C D
+
 """
 
 import sys

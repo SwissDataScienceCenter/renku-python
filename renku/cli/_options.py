@@ -112,7 +112,10 @@ def check_siblings(graph, outputs):
 
     missing = siblings - outputs
     if missing:
-        msg = 'Include the files above or use --with-siblings option.'
+        msg = (
+            'Include the files above in the command '
+            'or use the --with-siblings option.'
+        )
         raise click.ClickException(
             'There are missing output siblings:\n\n'
             '\t{0}\n\n{1}'.format(
