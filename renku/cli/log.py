@@ -44,31 +44,78 @@ Provenance examples
 ``renku log --revision e3f0bd5a D E``
    Show the history of files ``D`` and ``E`` as it looked in the commit
    ``e3f0bd5a``.
+
+Output formats
+~~~~~~~~~~~~~~
+
+Following formats supported when specified with ``--format`` option:
+
+* `ascii`
+* `dot`
+
+You can generate a PNG of the full history of all files in the repository
+using the :program:`dot` program.
+
+.. code-block:: console
+
+   $ FILES=$(git ls-files --no-empty-directory --recurse-submodules)
+   $ renku log --format dot $FILES | dot -Tpng > /tmp/graph.png
+   $ open /tmp/graph.png
+
 """
 
 import click
 
-from ._ascii import DAG
 from ._client import pass_local_client
-from ._echo import echo_via_pager
 from ._graph import Graph, _safe_path
+
+
+def format_ascii(graph):
+    """Format graph as an ASCII art."""
+    from ._ascii import DAG
+    from ._echo import echo_via_pager
+
+    echo_via_pager(DAG(graph))
+
+
+def format_dot(graph):
+    """Format graph as a dot file."""
+    import networkx as nx
+
+    for (_, path), node in graph.G.nodes(data=True):
+        node.setdefault('label', node.get('tool', path))
+    click.echo(nx.nx_pydot.to_pydot(graph.G).to_string())
+
+
+FORMATS = {
+    'ascii': format_ascii,
+    'dot': format_dot,
+}
+"""Valid formatting options."""
 
 
 @click.command()
 @click.option('--revision', default='HEAD')
+@click.option(
+    '--format',
+    type=click.Choice(FORMATS),
+    default='ascii',
+    help='Choose an output format.'
+)
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
 @pass_local_client
-def log(client, revision, paths):
+def log(client, revision, format, paths):
     """Show logs for a file."""
     graph = Graph(client)
-    paths = paths or (
-        path for path in client.git.rev_parse(revision).stats.files.keys()
-        if _safe_path(path)
-    )
+    if not paths:
+        paths = (
+            path for path in client.git.rev_parse(revision).stats.files.keys()
+            if _safe_path(path)
+        )
 
     for path in paths:
         graph.add_file(graph.normalize_path(path), revision=revision)
 
-    echo_via_pager(DAG(graph=graph))
+    FORMATS[format](graph)

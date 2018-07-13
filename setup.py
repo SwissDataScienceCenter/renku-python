@@ -47,10 +47,7 @@ extras_require = {
         'Sphinx>=1.6.3',
         'renku-sphinx-theme>=0.1.0',
     ],
-    'runner': [
-        'cwlref-runner>=1.0',
-        'pydot>=1.2.4',
-    ],
+    'runner': ['cwlref-runner>=1.0', ],
     'notebook': [
         'jupyter>=1.0.0',
         'openid-connect>=0.3.0',
@@ -79,6 +76,7 @@ install_requires = [
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
     'networkx>=2.1',
+    'pydot>=1.2.4',
     'pyld>=0.8.2',
     'python-dateutil>=2.6.1',
     'requests-oauthlib>=0.8.0',

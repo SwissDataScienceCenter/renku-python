@@ -20,7 +20,7 @@ dot:
   stage: build
   image: renku/renku-python:latest
   script:
-    - python -c "import renku, networkx; graph = renku.cli._graph.Graph(renku.LocalClient()); graph.build_status(); [node.setdefault('label', node.get('tool', path)) for (_, path), node in graph.G.nodes(data=True)]; networkx.drawing.nx_pydot.write_dot(graph.G, 'graph.dot')"
+    - renku log --format dot $(git ls-files --no-empty-directory --recurse-submodules) > graph.dot
   artifacts:
     paths:
       - graph.dot

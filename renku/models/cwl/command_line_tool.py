@@ -34,6 +34,16 @@ from .process import Process
 from .types import File
 
 
+def convert_arguments(value):
+    """Convert arguments from various input formats."""
+    if isinstance(value, (list, tuple)):
+        return [
+            CommandLineBinding(**item) if isinstance(item, dict) else item
+            for item in value
+        ]
+    return shlex.split(value)
+
+
 @attr.s
 class CommandLineTool(Process, CWLClass):
     """Represent a command line tool."""
@@ -46,8 +56,7 @@ class CommandLineTool(Process, CWLClass):
     )  # str or list(str) -> shutil.split()
     arguments = attr.ib(
         default=attr.Factory(list),
-        converter=lambda cmd: list(cmd)
-        if isinstance(cmd, (list, tuple)) else shlex.split(cmd),
+        converter=convert_arguments,
     )  # list(string, Expression, CommandLineBinding)
 
     stdin = attr.ib(default=None)
