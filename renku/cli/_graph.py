@@ -190,9 +190,17 @@ class Graph(object):
             })
             step_map[step.id] = tool_key
 
-            self.G.nodes[tool_key]['workflow'] = workflow
-            self.G.nodes[tool_key]['workflow_path'
-                                   ] = path + '#steps/' + step.id
+            # The workflow path must be relative to the current tool since
+            # we might be inside a submodule.
+            workflow_path = os.path.relpath(
+                path, start=os.path.dirname(tool_key[1])
+            )
+            self.G.nodes[tool_key].update({
+                'workflow': workflow,
+                'workflow_path':
+                    '{workflow_path}#steps/{step.id}'
+                    .format(workflow_path=workflow_path, step=step),
+            })
 
         for step in workflow.steps:
             for alias, source in step.in_.items():
@@ -268,20 +276,20 @@ class Graph(object):
             root_submodule = self.G.nodes[root_node].get('submodule', [])
 
             #: Resolve Renku based submodules.
-            original_path = Path(parent_path)
+            original_path = self.client.path / parent_path
             if original_path.is_symlink(
-            ) or str(original_path).startswith('.renku/vendors'):
+            ) or str(parent_path).startswith('.renku/vendors'):
                 original_path = original_path.resolve()
 
                 for submodule in Submodule.iter_items(
                     self.client.git, parent_commit=parent_commit
                 ):
                     try:
-                        subpath = original_path.relative_to(
-                            Path(submodule.path).resolve()
-                        )
+                        submodule_path = (self.client.path /
+                                          submodule.path).resolve()
+                        subpath = original_path.relative_to(submodule_path)
                         subgraph = Graph(
-                            client=LocalClient(path=submodule.path)
+                            client=LocalClient(path=submodule_path)
                         )
                         subnode = subgraph.add_file(
                             str(subpath), revision=submodule.hexsha
@@ -291,6 +299,18 @@ class Graph(object):
                         for _, data in subgraph.G.nodes(data=True):
                             data['submodule'
                                  ] = root_submodule + [submodule.name]
+
+                        #: Make paths relative to parent client.
+                        def change_key(key):
+                            """Rename the path part in the key."""
+                            return key[0], str(
+                                (subgraph.client.path / key[1]).relative_to(
+                                    self.client.path
+                                )
+                            )
+
+                        subnode = change_key(subnode)
+                        nx.relabel_nodes(subgraph.G, change_key, copy=False)
 
                         #: Merge file node with it's symlinked version.
                         self.G = nx.contracted_nodes(

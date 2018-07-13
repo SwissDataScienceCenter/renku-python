@@ -17,14 +17,20 @@
 # limitations under the License.
 """Generate ASCII graph for a DAG."""
 
+import os
+import re
+
+import attr
+import click
+from networkx.algorithms.dag import topological_sort
+
 try:
     from itertools import zip_longest
 except ImportError:
     from itertools import izip_longest as zip_longest
 
-import attr
-import click
-from networkx.algorithms.dag import topological_sort
+_RE_ESC = re.compile(r'\x1b[^m]*m')
+"""Match escape characters."""
 
 
 def _format_sha1(graph, key):
@@ -88,15 +94,21 @@ class DAG(object):
 
     def node_text(self, node):
         """Return text for a given node."""
-        result = [
-            _format_sha1(self.graph, node) + ' ' +
-            self.graph._format_path(node[1])
-        ]
-        workflow = self.graph.G.nodes[node].get('workflow_path')
-        if workflow:
+        formatted_sha1 = _format_sha1(self.graph, node)
+        result = [formatted_sha1 + ' ' + self.graph._format_path(node[1])]
+        workflow_path = self.graph.G.nodes[node].get('workflow_path')
+        if workflow_path:
+            workflow_path = click.style(
+                self.graph._format_path(
+                    os.path.normpath(os.path.join(node[1], workflow_path))
+                ),
+                fg='blue'
+            )
+            prefix = ' ' * len(_RE_ESC.sub('', formatted_sha1))
             result.append(
-                '         (part of {0})'.format(
-                    click.style(workflow, fg='blue')
+                '{prefix} (part of {workflow_path})'.format(
+                    prefix=prefix,
+                    workflow_path=workflow_path,
                 )
             )
         return result
