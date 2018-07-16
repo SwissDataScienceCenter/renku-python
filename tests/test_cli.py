@@ -207,6 +207,16 @@ def test_streams(runner, capsys):
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 0
 
+    # Check that source.txt is not shown in outputs.
+    result = runner.invoke(cli.cli, ['show', 'outputs', 'source.txt'])
+    assert result.exit_code == 1
+
+    result = runner.invoke(cli.cli, ['show', 'outputs'])
+    assert result.exit_code == 0
+    assert {
+        'result.txt',
+    } == set(result.output.strip().split('\n'))
+
     with open('source.txt', 'w') as source:
         source.write('first,second,third,fourth')
 
@@ -736,6 +746,19 @@ def test_only_child(runner):
     result = runner.invoke(cli.cli, cmd)
     assert result.exit_code == 0
     assert 'only_child\n' == result.output
+
+
+def test_outputs(runner):
+    """Test detection of outputs."""
+    siblings = {'brother', 'sister'}
+
+    cmd = ['run', 'touch'] + list(siblings)
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['show', 'outputs'])
+    assert result.exit_code == 0
+    assert siblings == set(result.output.strip().split('\n'))
 
 
 def test_siblings_update(project, runner, capsys):
