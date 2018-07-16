@@ -186,4 +186,10 @@ def rerun(ctx, client, revision, roots, siblings, inputs, paths):
         )
 
     from ._cwl import execute
-    execute(client, output_file, output_paths=output_paths)
+    steps = (node for node, data in graph.G.nodes(data=True) if 'tool' in data)
+    output_paths = {path for _, (_, path) in graph.G.out_edges(steps)}
+    execute(
+        client,
+        output_file,
+        output_paths=output_paths,
+    )
