@@ -114,6 +114,7 @@ setup(
             'config=renku.cli.config:config',
             'dataset=renku.cli.dataset:dataset',
             'deactivate=renku.cli.workon:deactivate',
+            'githooks=renku.cli.githooks:githooks',
             'image=renku.cli.image:image',
             'init=renku.cli.init:init',
             'log=renku.cli.log:log',

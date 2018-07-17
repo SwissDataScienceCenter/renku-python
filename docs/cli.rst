@@ -96,3 +96,8 @@ Renku Command Line
 ---------------
 
 .. automodule:: renku.cli.image
+
+``renku githooks``
+------------------
+
+.. automodule:: renku.cli.githooks

@@ -117,6 +117,11 @@ def init(ctx, client, directory, name, force, use_external_storage):
             'Please use --force flag to use the directory as Renku repository.'
         )
 
+    # Install Git hooks.
+    from .githooks import install
+    ctx.invoke(install, force=force)
+
+    # Create all necessary template files.
     from .runner import template
     ctx.invoke(template)
 

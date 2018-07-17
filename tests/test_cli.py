@@ -139,6 +139,33 @@ def test_run_simple(runner):
     assert result.exit_code == 0
 
 
+def test_git_pre_commit_hook(project, runner, capsys):
+    """Test detection of output edits."""
+    result = runner.invoke(cli.cli, ['githooks', 'install'])
+    assert result.exit_code == 0
+    assert 'Hook already exists.' in result.output
+
+    repo = git.Repo(project)
+    cwd = Path(project)
+    output = cwd / 'output.txt'
+
+    result = runner.invoke(cli.cli, ['run', 'touch', output.name])
+    assert result.exit_code == 0
+
+    with output.open('w') as f:
+        f.write('hello')
+
+    repo.git.add('--all')
+    with pytest.raises(git.HookExecutionError) as error:
+        repo.index.commit('hello')
+        assert output.name in error.stdout
+
+    result = runner.invoke(cli.cli, ['githooks', 'uninstall'])
+    assert result.exit_code == 0
+
+    repo.index.commit('hello')
+
+
 def test_workflow(runner):
     """Test workflow command."""
     result = runner.invoke(cli.cli, ['run', 'touch', 'data.csv'])

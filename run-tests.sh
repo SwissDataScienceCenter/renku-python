@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,9 +17,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# quit on errors:
+set -o errexit
 
-pydocstyle renku tests docs && \
-isort -rc -c -df && \
-check-manifest --ignore ".travis-*" && \
-sphinx-build -qnNW docs docs/_build/html && \
+# quit on unbound symbols:
+set -o nounset
+
+pydocstyle renku tests docs
+isort -rc -c -df
+check-manifest --ignore ".travis-*"
+find . -iname \*.sh -print0 | xargs -0 shellcheck
+sphinx-build -qnNW docs docs/_build/html
 python setup.py test
