@@ -102,18 +102,26 @@ FORMATS = {
     default='ascii',
     help='Choose an output format.'
 )
+@click.option(
+    '--no-output',
+    is_flag=True,
+    default=False,
+    help='Display commands without output files.'
+)
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
 @pass_local_client
-def log(client, revision, format, paths):
+def log(client, revision, format, no_output, paths):
     """Show logs for a file."""
     graph = Graph(client)
     if not paths:
         paths = (
             path for path in client.git.rev_parse(revision).stats.files.keys()
-            if _safe_path(path)
+            if _safe_path(path, can_be_cwl=no_output)
         )
+
+    # NOTE shall we warn when "not no_output and not paths"?
 
     for path in paths:
         graph.add_file(graph.normalize_path(path), revision=revision)

@@ -138,6 +138,14 @@ def test_run_simple(runner):
     result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
     assert result.exit_code == 0
 
+    # There are no output files.
+    result = runner.invoke(cli.cli, ['log'])
+    assert result.output.strip() == ''
+
+    # Display tools with no outputs.
+    result = runner.invoke(cli.cli, ['log', '--no-output'])
+    assert '.renku/workflow/' in result.output
+
 
 def test_git_pre_commit_hook(project, runner, capsys):
     """Test detection of output edits."""

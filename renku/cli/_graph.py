@@ -34,10 +34,20 @@ from renku.models.cwl.types import File
 from renku.models.cwl.workflow import Workflow
 
 
-def _safe_path(filepath, can_be_workflow=False):
+def _safe_path(filepath, can_be_cwl=False):
     """Check if the path should be used in output."""
-    return not filepath.startswith('.renku') and \
-        filepath not in {'.gitignore', '.gitattributes'}
+    # Should not be in ignore paths.
+    if filepath in {'.gitignore', '.gitattributes'}:
+        return False
+
+    # Ignore everything in .renku ...
+    if filepath.startswith('.renku'):
+        # ... unless it can be a CWL.
+        if can_be_cwl and filepath.endswith('.cwl'):
+            return True
+        return False
+
+    return True
 
 
 @attr.s
@@ -94,6 +104,18 @@ class Graph(object):
             cwl = self.find_cwl(commit)
             if cwl:
                 return cwl
+
+    def iter_cwl_without_output(self, revision='HEAD'):
+        """Yield CWL without outputs."""
+        for commit in self.client.git.iter_commits(
+            revistion, paths=self.cwl_prefix
+        ):
+            total = commit.stats.total
+            if (
+                total['files'] == 1 and total['deletions'] == 0 and
+                total['insertions'] == total['lines']
+            ):
+                yield next(commit.stats.files)
 
     def find_latest(self, start, path):
         """Return the latest commit for path."""
