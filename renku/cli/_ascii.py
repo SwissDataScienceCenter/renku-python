@@ -95,8 +95,24 @@ class DAG(object):
     def node_text(self, node):
         """Return text for a given node."""
         formatted_sha1 = _format_sha1(self.graph, node)
-        result = [formatted_sha1 + ' ' + self.graph._format_path(node[1])]
-        workflow_path = self.graph.G.nodes[node].get('workflow_path')
+        data = self.graph.G.nodes[node]
+        latest = data.get('latest')
+        if latest:
+            formatted_latest = (
+                click.style(' (', fg='yellow') +
+                click.style('latest -> ', fg='blue', bold=True) +
+                click.style(str(latest)[:8], fg='red',
+                            bold=True) + click.style(') ', fg='yellow')
+            )
+        else:
+            formatted_latest = ' '
+
+        result = [
+            formatted_sha1 + formatted_latest +
+            self.graph._format_path(node[1])
+        ]
+
+        workflow_path = data.get('workflow_path')
         if workflow_path:
             workflow_path = click.style(
                 self.graph._format_path(
@@ -104,10 +120,10 @@ class DAG(object):
                 ),
                 fg='blue'
             )
-            prefix = ' ' * len(_RE_ESC.sub('', formatted_sha1))
+            indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
             result.append(
-                '{prefix} (part of {workflow_path})'.format(
-                    prefix=prefix,
+                '{indentation} (part of {workflow_path})'.format(
+                    indentation=indentation,
                     workflow_path=workflow_path,
                 )
             )

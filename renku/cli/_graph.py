@@ -180,9 +180,8 @@ class Graph(object):
 
             # Find ALL siblings that MUST be generated in the same commit.
             for output_id, output_path in self.iter_output_files(step_tool):
-                self.G.add_edge(
-                    tool_key, (str(commit), output_path), id=output_id
-                )
+                node_key = self.add_node(commit, path)
+                self.G.add_edge(tool_key, node_key, id=output_id)
 
             output_map.update({
                 step.id + '/' + name: target
@@ -245,7 +244,8 @@ class Graph(object):
 
         # Find ALL siblings that MUST be generated in the same commit.
         for output_id, path in self.iter_output_files(tool):
-            self.G.add_edge(tool_key, (str(commit), path), id=output_id)
+            node_key = self.add_node(commit, path)
+            self.G.add_edge(tool_key, node_key, id=output_id)
 
         return tool_key
 
