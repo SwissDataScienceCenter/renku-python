@@ -78,6 +78,10 @@ class Graph(object):
         """Return a relative path based on the client configuration."""
         return os.path.relpath(str(self.client.path / path))
 
+    def _is_cwl(self, path):
+        """Check if the path is a valid CWL file."""
+        return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
+
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
         key = str(commit), str(path)
@@ -86,13 +90,16 @@ class Graph(object):
             self.G.add_node(
                 key, commit=commit, path=path, latest=latest, **kwargs
             )
+        else:
+            self.G.node[key].update(**kwargs)
+
         return key
 
     def find_cwl(self, commit):
         """Return a CWL."""
         files = [
-            file_ for file_ in commit.stats.files.keys()
-            if file_.startswith(self.cwl_prefix) and file_.endswith('.cwl')
+            file_
+            for file_ in commit.stats.files.keys() if self._is_cwl(file_)
         ]
 
         if len(files) == 1:
@@ -108,7 +115,7 @@ class Graph(object):
     def iter_cwl_without_output(self, revision='HEAD'):
         """Yield CWL without outputs."""
         for commit in self.client.git.iter_commits(
-            revistion, paths=self.cwl_prefix
+            revision, paths=self.cwl_prefix
         ):
             total = commit.stats.total
             if (
@@ -202,7 +209,7 @@ class Graph(object):
 
             # Find ALL siblings that MUST be generated in the same commit.
             for output_id, output_path in self.iter_output_files(step_tool):
-                node_key = self.add_node(commit, path)
+                node_key = self.add_node(commit, output_path)
                 self.G.add_edge(tool_key, node_key, id=output_id)
 
             output_map.update({
@@ -232,7 +239,7 @@ class Graph(object):
                     other_key = step_map[other_step]
                     self.G.add_edge(other_key, output_map[name], id=id_)
 
-        return workflow
+        return tool_key
 
     def add_tool(
         self, commit, path, file_key=None, expand_workflow=True, is_step=False
@@ -283,6 +290,14 @@ class Graph(object):
             )
 
         commit = file_commits[0]
+
+        if self._is_cwl(path):
+            commits = list(
+                self.client.git.iter_commits(
+                    '{0}'.format(revision), paths=path
+                )
+            )
+            return self.add_tool(commits[-1], path)
 
         cwl = self.find_cwl(commit)
         if cwl is not None:
@@ -343,6 +358,11 @@ class Graph(object):
                         break
                     except ValueError:
                         continue
+                    except nx.NetworkXError:
+                        # TODO investigate why the node contration is failing
+                        print('Root node:', root_node)
+                        print('Subnode:  ', subnode)
+                        continue
 
             return root_node
 
@@ -381,7 +401,7 @@ class Graph(object):
             self.G.nodes[key]['_need_update'] = need_update
             visited.add(key)
 
-    def build_status(self, revision='HEAD'):
+    def build_status(self, revision='HEAD', can_be_cwl=False):
         """Return files from the revision grouped by their status."""
         index = self.client.git.index if revision == 'HEAD' \
             else IndexFile.from_tree(self.client.git, revision)
@@ -389,7 +409,7 @@ class Graph(object):
         current_files = set()
 
         for filepath, _ in index.entries.keys():
-            if _safe_path(filepath):
+            if _safe_path(filepath, can_be_cwl=can_be_cwl):
                 self.add_file(filepath, revision=revision)
                 current_files.add(filepath)
 
@@ -412,6 +432,8 @@ class Graph(object):
             nodes = [self.G.nodes[key] for key in keys]
 
             # Any latest version of a file needs an update.
+            # is_outdated = not any(
+            #     len(node.get('_need_update', [])) == 0
             is_outdated = any(
                 len(node.get('_need_update', [])) > 1
                 for node in nodes if node.get('latest') is None
@@ -424,6 +446,8 @@ class Graph(object):
                 status['outdated'][filepath] = updates
             else:
                 status['up-to-date'][filepath] = keys[0][0]
+
+        # TODO remove all up-to-date nodes
 
         return status
 
