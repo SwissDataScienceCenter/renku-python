@@ -18,8 +18,7 @@
 """Graph builder."""
 
 import os
-from itertools import groupby
-from operator import itemgetter
+from collections import defaultdict
 
 import attr
 import networkx as nx
@@ -403,52 +402,52 @@ class Graph(object):
 
     def build_status(self, revision='HEAD', can_be_cwl=False):
         """Return files from the revision grouped by their status."""
+        status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
+
         index = self.client.git.index if revision == 'HEAD' \
             else IndexFile.from_tree(self.client.git, revision)
 
-        current_files = set()
-
-        for filepath, _ in index.entries.keys():
-            if _safe_path(filepath, can_be_cwl=can_be_cwl):
-                self.add_file(filepath, revision=revision)
-                current_files.add(filepath)
+        current_files = {
+            self.add_file(filepath, revision=revision)
+            for filepath, _ in index.entries.keys()
+            if _safe_path(filepath, can_be_cwl=can_be_cwl)
+        }
 
         # Prepare status info for each file.
         self._need_update()
 
-        graph_files = sorted(((commit, filepath)
-                              for (commit, filepath) in self.G
-                              if filepath in current_files),
-                             key=itemgetter(1))
+        # First find all up-to-date nodes.
+        up_to_date = {
+            filepath: commit
+            for (commit,
+                 filepath), need_update in self.G.nodes.data('_need_update')
+            if not need_update
+        }
 
-        status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
-
-        for filepath, keys in groupby(graph_files, itemgetter(1)):
-            keys = list(keys)
-
-            if len(keys) > 1:
-                status['multiple-versions'][filepath] = keys
-
-            nodes = [self.G.nodes[key] for key in keys]
-
-            # Any latest version of a file needs an update.
-            # is_outdated = not any(
-            #     len(node.get('_need_update', [])) == 0
-            is_outdated = any(
-                len(node.get('_need_update', [])) > 1
-                for node in nodes if node.get('latest') is None
-            )
-
-            if is_outdated:
-                updates = list(
-                    self.G.nodes[key]['_need_update'] for key in keys
-                )
-                status['outdated'][filepath] = updates
+        for commit, filepath in current_files:
+            if filepath in up_to_date:  # trick the workflow step
+                # FIXME use the latest commit
+                status['up-to-date'][filepath] = up_to_date[filepath]
             else:
-                status['up-to-date'][filepath] = keys[0][0]
+                need_update = self.G.nodes[(commit, filepath)]['_need_update']
+                status['outdated'][filepath] = [need_update]
 
-        # TODO remove all up-to-date nodes
+        # Merge all versions of used inputs in outdated file.
+        multiple_versions = defaultdict(set)
 
+        for need_updates in status['outdated'].values():
+            for need_update in need_updates:
+                for commit, filepath in need_update:
+                    multiple_versions[filepath].add((commit, filepath))
+
+        for commit, filepath in current_files:
+            if filepath in multiple_versions:
+                multiple_versions[filepath].add((commit, filepath))
+
+        status['multiple-versions'] = {
+            key: value
+            for key, value in multiple_versions.items() if len(value) > 1
+        }
         return status
 
     @property
