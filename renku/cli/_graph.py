@@ -357,11 +357,6 @@ class Graph(object):
                         break
                     except ValueError:
                         continue
-                    except nx.NetworkXError:
-                        # TODO investigate why the node contration is failing
-                        print('Root node:', root_node)
-                        print('Subnode:  ', subnode)
-                        continue
 
             return root_node
 

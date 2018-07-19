@@ -796,6 +796,42 @@ def test_outputs(runner):
     assert siblings == set(result.output.strip().split('\n'))
 
 
+def test_workflow_without_outputs(project, runner, capsys):
+    """Test workflow without outputs."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    input_ = cwd / 'input.txt'
+    with input_.open('w') as f:
+        f.write('first')
+
+    repo.git.add('--all')
+    repo.index.commit('Created input.txt')
+
+    cmd = ['run', 'cat', '--no-output', input_.name]
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['status', '--no-output']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    with input_.open('w') as f:
+        f.write('second')
+
+    repo.git.add('--all')
+    repo.index.commit('Updated input.txt')
+
+    cmd = ['status', '--no-output']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 1
+
+    assert 0 == _run_update(runner, capsys, args=('update', '--no-output'))
+
+    cmd = ['status', '--no-output']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+
 def test_siblings_update(project, runner, capsys):
     """Test detection of siblings during update."""
     cwd = Path(project)

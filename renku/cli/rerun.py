@@ -99,12 +99,6 @@ def edit_inputs(client, workflow):
 @click.command()
 @click.option('--revision', default='HEAD')
 @click.option(
-    '--no-output',
-    is_flag=True,
-    default=False,
-    help='Display commands without output files.'
-)
-@click.option(
     '--from',
     'roots',
     type=click.Path(exists=True, dir_okay=False),
@@ -140,13 +134,9 @@ def edit_inputs(client, workflow):
 @pass_local_client
 @click.pass_context
 @with_git()
-def rerun(ctx, client, revision, no_output, roots, siblings, inputs, paths):
+def rerun(ctx, client, revision, roots, siblings, inputs, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
-    if no_output:  # pragma: no cover
-        # TODO build_status
-        pass
-
     outputs = {
         graph.add_file(graph.normalize_path(path), revision=revision)
         for path in paths
