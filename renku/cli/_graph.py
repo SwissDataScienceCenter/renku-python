@@ -25,6 +25,7 @@ import networkx as nx
 import yaml
 from git import IndexFile, Submodule
 
+from renku import errors
 from renku._compat import Path
 from renku.api import LocalClient
 from renku.models.cwl.command_line_tool import CommandLineTool
@@ -170,6 +171,9 @@ class Graph(object):
 
         workflow = Workflow.from_cwl(cwl)
         basedir = os.path.dirname(path)
+
+        # Default key for a workflow without steps.
+        tool_key = str(commit), path
 
         # Keep track of node identifiers for steps, inputs and outputs:
         step_map = {}
@@ -468,10 +472,17 @@ class Graph(object):
         The key is part of the result set, hence to check if the node has
         siblings you should check the lenght is greater than 1.
         """
+        parents = list(self.G.predecessors(key))
+        if not parents:
+            raise errors.InvalidOutputPath(
+                'The file "{0}" was not created by a renku command. \n\n'
+                'Check the file history using: git log --follow "{0}"'.format(
+                    key[1]
+                )
+            )
         return {
             sibling
-            for parent in self.G.predecessors(key)
-            for sibling in self.G.successors(parent)
+            for parent in parents for sibling in self.G.successors(parent)
         }
 
     def ascwl(self, global_step_outputs=False):

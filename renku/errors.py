@@ -142,6 +142,10 @@ class UnmodifiedOutputs(RenkuException, click.ClickException):
         )
 
 
+class InvalidOutputPath(RenkuException, click.ClickException):
+    """Raise when trying to work with an invalid output path."""
+
+
 class OutputsNotFound(RenkuException, click.ClickException):
     """Raise when there are not any detected outputs in the repository."""
 

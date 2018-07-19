@@ -1177,3 +1177,18 @@ def test_image_pull(project, runner):
     result = runner.invoke(cli.cli, cmd)
     assert 'origin.example.com' in result.output
     assert result.exit_code == 1
+
+
+def test_input_update_and_rerun(project, runner, capsys):
+    """Test update and rerun of an input."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    input_ = cwd / 'input.txt'
+    with input_.open('w') as f:
+        f.write('first')
+
+    repo.git.add('--all')
+    repo.index.commit('Created input.txt')
+
+    assert 1 == _run_update(runner, capsys, args=('update', input_.name))
+    assert 1 == _run_update(runner, capsys, args=('rerun', input_.name))
