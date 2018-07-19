@@ -24,6 +24,7 @@ prune docs/_build
 recursive-include renku *.po *.pot *.mo
 
 # added by check_manifest.py
+include *.py
 include *.rst
 include *.sh
 include *.txt
