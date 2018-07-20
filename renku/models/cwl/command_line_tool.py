@@ -443,6 +443,7 @@ class CommandLineToolFactory(object):
             candidate = self.file_candidate(path)
 
             if candidate is None:
+                continue
                 raise ValueError('Path "{0}" does not exist.'.format(path))
 
             glob = str(candidate.relative_to(self.directory))

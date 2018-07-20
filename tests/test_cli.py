@@ -1192,3 +1192,21 @@ def test_input_update_and_rerun(project, runner, capsys):
 
     assert 1 == _run_update(runner, capsys, args=('update', input_.name))
     assert 1 == _run_update(runner, capsys, args=('rerun', input_.name))
+
+
+def test_deleted_input(project, runner, capsys):
+    """Test deleted input."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    input_ = cwd / 'input.txt'
+    with input_.open('w') as f:
+        f.write('first')
+
+    repo.git.add('--all')
+    repo.index.commit('Created input.txt')
+
+    cmd = ['run', 'mv', input_.name, 'input.mv']
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    assert result.exit_code == 0
+    assert not input_.exists()
+    assert Path('input.mv').exists()
