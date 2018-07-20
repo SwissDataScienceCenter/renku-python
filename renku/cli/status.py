@@ -122,4 +122,23 @@ def status(ctx, client, revision, no_output, path):
 
         click.echo()
 
+    if status['deleted']:
+        click.echo('Deleted files used to generate outputs:')
+        click.echo(
+            '  (use "git show <sha1>:<file>" to see the file content '
+            'for the given revision)'
+        )
+        click.echo()
+
+        for filepath, key in status['deleted'].items():
+            click.echo(
+                '\t{0}: {1}'.format(
+                    click.style(
+                        graph._format_path(filepath), fg='blue', bold=True
+                    ), _format_sha1(graph, key)
+                )
+            )
+
+        click.echo()
+
     ctx.exit(1 if status['outdated'] else 0)

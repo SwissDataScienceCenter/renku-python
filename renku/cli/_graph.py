@@ -129,8 +129,12 @@ class Graph(object):
         commits = list(
             self.client.git.iter_commits('{0}..'.format(start), paths=path)
         )
-        if commits:
-            return commits[-1]
+        for commit in reversed(commits):
+            stats = commit.stats.files.get(path)
+            if not stats or stats['lines'] == stats['deletions']:
+                # Skip deleted files.
+                continue
+            return commit
 
     def iter_input_files(self, tool, basedir):
         """Yield tuples with input id and path."""
@@ -401,7 +405,12 @@ class Graph(object):
 
     def build_status(self, revision='HEAD', can_be_cwl=False):
         """Return files from the revision grouped by their status."""
-        status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
+        status = {
+            'up-to-date': {},
+            'outdated': {},
+            'multiple-versions': {},
+            'deleted': {},
+        }
 
         index = self.client.git.index if revision == 'HEAD' \
             else IndexFile.from_tree(self.client.git, revision)
@@ -446,6 +455,15 @@ class Graph(object):
         status['multiple-versions'] = {
             key: value
             for key, value in multiple_versions.items() if len(value) > 1
+        }
+
+        # Build a list of used files that have been deleted.
+        current_paths = {filepath for _, filepath in current_files}
+        status['deleted'] = {
+            filepath: (commit, filepath)
+            for commit, filepath in self.G.nodes
+            if _safe_path(filepath, can_be_cwl=can_be_cwl) and
+            filepath not in current_paths
         }
         return status
 

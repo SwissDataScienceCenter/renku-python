@@ -207,7 +207,10 @@ class CommandLineToolFactory(object):
             unmodified = set()
             # Possible output paths.
             candidates = set(git.untracked_files)
-            candidates |= {item.a_path for item in git.index.diff(None)}
+            candidates |= {
+                item.a_path
+                for item in git.index.diff(None) if not item.deleted_file
+            }
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
@@ -443,7 +446,6 @@ class CommandLineToolFactory(object):
             candidate = self.file_candidate(path)
 
             if candidate is None:
-                continue
                 raise ValueError('Path "{0}" does not exist.'.format(path))
 
             glob = str(candidate.relative_to(self.directory))
