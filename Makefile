@@ -24,37 +24,21 @@ ifeq ($(DOCKER_LABEL), master)
 	DOCKER_LABEL=latest
 endif
 
-ALL_STACKS:=\
-	minimal-notebook \
-	r-notebook \
-	scipy-notebook \
-	tensorflow-notebook \
-	datascience-notebook \
-	pyspark-notebook \
-	all-spark-notebook
-
-IMAGES=$(ALL_STACKS) gitlab-runner renku-python
-
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
-tag-docker-images: $(IMAGES:%=tag/%)
+.PHONY: docker-build docker-tag docker-push docker-login
 
-build/%-notebook: Dockerfile.notebook.template
-	cat $< | sed "s!%%NOTEBOOK_STACK%%!$(notdir $@)!g;" | docker build --rm --force-rm -t renku/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f - .
+docker-build: Dockerfile
+	docker build --rm --force-rm -t $(DOCKER_PREFIX)renku-python:$(GIT_MASTER_HEAD_SHA) -f $< .
 
-build/%: Dockerfile.%
-	docker build --rm --force-rm -t renku/$(notdir $@):$(GIT_MASTER_HEAD_SHA) -f $< .
+docker-tag: docker-build
+	docker tag $(DOCKER_PREFIX)renku-python:$(GIT_MASTER_HEAD_SHA) $(DOCKER_PREFIX)renku-python:$(DOCKER_LABEL)
 
-push-docker-images: $(IMAGES:%=push/%)
+docker-push: docker-tag
+	docker push $(DOCKER_PREFIX)renku-python:$(DOCKER_LABEL)
+	docker push $(DOCKER_PREFIX)renku-python:$(GIT_MASTER_HEAD_SHA)
 
-tag/%: build/%
-	docker tag $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA) $(DOCKER_PREFIX)$(notdir $@):$(DOCKER_LABEL)
-
-push/%: tag/%
-	docker push $(DOCKER_PREFIX)$(notdir $@):$(DOCKER_LABEL)
-	docker push $(DOCKER_PREFIX)$(notdir $@):$(GIT_MASTER_HEAD_SHA)
-
-login:
+docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
 Pipfile.lock:

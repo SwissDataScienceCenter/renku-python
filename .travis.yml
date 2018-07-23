@@ -76,7 +76,7 @@ deploy:
     condition: $DEPLOY = true
 - provider: script
   skip_cleanup: true
-  script: make login push-docker-images
+  script: make docker-login docker-push
   on:
     all_branches: true
     python: "3.6"
