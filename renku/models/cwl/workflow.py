@@ -49,7 +49,7 @@ class Workflow(Process, CWLClass):
         """Add a workflow step."""
         self.steps.append(WorkflowStep(**kwargs))
 
-    def get_output_id(self, path):
+    def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""
         for output in self.outputs:
             if output.type != 'File':

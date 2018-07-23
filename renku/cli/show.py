@@ -45,9 +45,28 @@ Then the following outputs would be shown.
    $ renku show siblings A
    A
 
+
+Output files
+~~~~~~~~~~~~
+
+You can list all output files generated in the repository by running
+``renku show outputs`` commands. Alternatively, you can check if all
+paths specified as arguments are output files.
+
+.. code-block:: console
+
+   $ renku run wc < source.txt > result.wc
+   $ renku show outputs
+   result.wc
+   $ renku show outputs source.txt
+   $ $?  # last command finished with an error code
+   1
+
 """
 
 import click
+
+from renku._compat import Path
 
 from ._client import pass_local_client
 from ._git import with_git
@@ -68,9 +87,8 @@ def show():
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
 @pass_local_client
-@click.pass_context
 @with_git(clean=False, commit=False)
-def siblings(ctx, client, revision, paths):
+def siblings(client, revision, paths):
     """Show siblings for given paths."""
     graph = Graph(client)
     graph.build_status(revision=revision)
@@ -85,3 +103,39 @@ def siblings(ctx, client, revision, paths):
 
     for _, path in siblings_:
         click.echo(graph._format_path(path))
+
+
+@show.command()
+@click.option('--revision', default='HEAD')
+@click.argument(
+    'paths',
+    type=click.Path(exists=True, dir_okay=False),
+    nargs=-1,
+)
+@pass_local_client
+@click.pass_context
+@with_git(clean=False, commit=False)
+def outputs(ctx, client, revision, paths):
+    r"""Show output files in the repository.
+
+    <PATHS>    Files to show. If no files are given all output files are shown.
+    """
+    graph = Graph(client)
+    filter = None
+
+    if not paths:
+        graph.build_status(revision=revision)
+    else:
+        filter = {
+            graph.add_file(graph.normalize_path(path), revision=revision)
+            for path in paths
+        }
+
+    output_paths = {
+        Path(output_key[1]).resolve()
+        for (tool_key, output_key) in graph.G.edges
+        if 'tool' in graph.G.nodes[tool_key] and
+        (filter is None or output_key in filter)
+    }
+    click.echo('\n'.join(graph._format_path(path) for path in output_paths))
+    ctx.exit(0 if filter is None or len(output_paths) == len(filter) else 1)

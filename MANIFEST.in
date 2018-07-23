@@ -24,6 +24,7 @@ prune docs/_build
 recursive-include renku *.po *.pot *.mo
 
 # added by check_manifest.py
+include *.py
 include *.rst
 include *.sh
 include *.txt
@@ -50,6 +51,7 @@ recursive-include examples *.py
 recursive-include examples *.sh
 recursive-include renku *.default
 recursive-include renku *.html
+recursive-include renku *.sh
 recursive-include renku *.txt
 recursive-include renku *.yml
 recursive-include renku Dockerfile

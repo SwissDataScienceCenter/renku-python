@@ -79,6 +79,42 @@ of dependent files must be recreated.
 To avoid excesive recreation of the large portion of files which could have
 been affected by a simple change of an input file, consider speficing a single
 file (e.g. ``renku update G``). See also :ref:`cli-status`.
+
+.. _cli-update-with-siblings:
+
+Update siblings
+~~~~~~~~~~~~~~~
+
+If a tool produces multiple output files, these outputs need to be always
+updated together.
+
+.. code-block:: text
+
+                   (B)
+                  /
+    *A*--[step 1]--(C)
+                  \
+                   (D)
+
+An attempt to update a single file would fail with the following error.
+
+.. code-block:: console
+
+   $ renku update C
+   Error: There are missing output siblings:
+
+        B
+        D
+
+   Include the files above in the command or use --with-siblings option.
+
+The following commands will produce the same result.
+
+.. code-block:: console
+
+   $ renku update --with-siblings C
+   $ renku update B C D
+
 """
 
 import sys
@@ -90,12 +126,18 @@ from renku.models.cwl._ascwl import ascwl
 
 from ._client import pass_local_client
 from ._git import with_git
-from ._graph import Graph
+from ._graph import Graph, _safe_path
 from ._options import option_siblings
 
 
 @click.command()
 @click.option('--revision', default='HEAD')
+@click.option(
+    '--no-output',
+    is_flag=True,
+    default=False,
+    help='Display commands without output files.'
+)
 @option_siblings
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
@@ -103,10 +145,10 @@ from ._options import option_siblings
 @pass_local_client
 @click.pass_context
 @with_git()
-def update(ctx, client, revision, siblings, paths):
+def update(ctx, client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
-    status = graph.build_status(revision=revision)
+    status = graph.build_status(revision=revision, can_be_cwl=no_output)
     paths = {graph.normalize_path(path) for path in paths} \
         if paths else status['outdated'].keys()
     outputs = {graph.add_file(path, revision=revision) for path in paths}
@@ -119,7 +161,7 @@ def update(ctx, client, revision, siblings, paths):
 
     # Check or extend siblings of outputs.
     outputs = siblings(graph, outputs)
-    output_paths = {path for _, path in outputs}
+    output_paths = {path for _, path in outputs if _safe_path(path)}
 
     # Get parents of all clean nodes
     import networkx as nx
@@ -147,7 +189,7 @@ def update(ctx, client, revision, siblings, paths):
             yaml.dump(
                 ascwl(
                     graph.ascwl(global_step_outputs=True),
-                    filter=lambda _, x: x is not None and x != [],
+                    filter=lambda _, x: x is not None,
                     basedir=client.workflow_path,
                 ),
                 default_flow_style=False

@@ -36,7 +36,7 @@ tests_require = [
     'pytest-flake8>=0.9.1',
     'pytest-pep8>=1.0.6',
     'pytest-yapf>=0.1.1',
-    'pytest>=3.2.1',
+    'pytest>=3.6.3',
     'responses>=0.7.0',
     'yapf>=0.22.0',
 ]
@@ -47,10 +47,7 @@ extras_require = {
         'Sphinx>=1.6.3',
         'renku-sphinx-theme>=0.1.0',
     ],
-    'runner': [
-        'cwlref-runner>=1.0',
-        'pydot>=1.2.4',
-    ],
+    'runner': ['cwlref-runner>=1.0', ],
     'notebook': [
         'jupyter>=1.0.0',
         'openid-connect>=0.3.0',
@@ -79,6 +76,7 @@ install_requires = [
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
     'networkx>=2.1',
+    'pydot>=1.2.4',
     'pyld>=0.8.2',
     'python-dateutil>=2.6.1',
     'requests-oauthlib>=0.8.0',
@@ -113,8 +111,10 @@ setup(
         'console_scripts': ['renku=renku.cli:cli'],
         'renku.cli': [
             # Please keep the items sorted.
+            'config=renku.cli.config:config',
             'dataset=renku.cli.dataset:dataset',
             'deactivate=renku.cli.workon:deactivate',
+            'githooks=renku.cli.githooks:githooks',
             'image=renku.cli.image:image',
             'init=renku.cli.init:init',
             'log=renku.cli.log:log',

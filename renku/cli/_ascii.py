@@ -17,14 +17,20 @@
 # limitations under the License.
 """Generate ASCII graph for a DAG."""
 
+import os
+import re
+
+import attr
+import click
+from networkx.algorithms.dag import topological_sort
+
 try:
     from itertools import zip_longest
 except ImportError:
     from itertools import izip_longest as zip_longest
 
-import attr
-import click
-from networkx.algorithms.dag import topological_sort
+_RE_ESC = re.compile(r'\x1b[^m]*m')
+"""Match escape characters."""
 
 
 def _format_sha1(graph, key):
@@ -88,15 +94,37 @@ class DAG(object):
 
     def node_text(self, node):
         """Return text for a given node."""
+        formatted_sha1 = _format_sha1(self.graph, node)
+        data = self.graph.G.nodes[node]
+        latest = data.get('latest')
+        if latest:
+            formatted_latest = (
+                click.style(' (', fg='yellow') +
+                click.style('latest -> ', fg='blue', bold=True) +
+                click.style(str(latest)[:8], fg='red',
+                            bold=True) + click.style(') ', fg='yellow')
+            )
+        else:
+            formatted_latest = ' '
+
         result = [
-            _format_sha1(self.graph, node) + ' ' +
+            formatted_sha1 + formatted_latest +
             self.graph._format_path(node[1])
         ]
-        workflow = self.graph.G.nodes[node].get('workflow_path')
-        if workflow:
+
+        workflow_path = data.get('workflow_path')
+        if workflow_path:
+            workflow_path = click.style(
+                self.graph._format_path(
+                    os.path.normpath(os.path.join(node[1], workflow_path))
+                ),
+                fg='blue'
+            )
+            indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
             result.append(
-                '         (part of {0})'.format(
-                    click.style(workflow, fg='blue')
+                '{indentation} (part of {workflow_path})'.format(
+                    indentation=indentation,
+                    workflow_path=workflow_path,
                 )
             )
         return result

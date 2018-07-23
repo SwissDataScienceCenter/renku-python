@@ -17,13 +17,14 @@
 # limitations under the License.
 """Represent the Common Workflow Language types."""
 
+import json
 import os
 
 import attr
 
 from renku._compat import Path
 
-from ._ascwl import CWLClass
+from ._ascwl import CWLClass, ascwl
 
 
 @attr.s
@@ -38,3 +39,33 @@ class File(CWLClass):
         return os.path.relpath(
             os.path.realpath(str(self.path)), os.path.realpath(os.getcwd())
         )
+
+
+@attr.s
+class Directory(CWLClass):
+    """Represent a directory."""
+
+    # TODO add validation to allow only directories
+    path = attr.ib(default=None)
+    listing = attr.ib(default=attr.Factory(list))
+
+    def __str__(self):
+        """Simple conversion to string."""
+        # TODO refactor to use `basedir`
+        return os.path.relpath(
+            os.path.realpath(str(self.path)), os.path.realpath(os.getcwd())
+        )
+
+
+DIRECTORY_EXPRESSION = '$({0})'.format(
+    json.dumps(ascwl(Directory(), filter=lambda _, x: x is not None))
+)
+
+
+@attr.s
+class Dirent(object):
+    """Define a file or subdirectory."""
+
+    entryname = attr.ib(default=None)
+    entry = attr.ib(default=None)
+    writable = attr.ib(default=False)

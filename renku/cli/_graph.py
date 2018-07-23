@@ -18,14 +18,14 @@
 """Graph builder."""
 
 import os
-from itertools import groupby
-from operator import itemgetter
+from collections import defaultdict
 
 import attr
 import networkx as nx
 import yaml
 from git import IndexFile, Submodule
 
+from renku import errors
 from renku._compat import Path
 from renku.api import LocalClient
 from renku.models.cwl.command_line_tool import CommandLineTool
@@ -34,10 +34,20 @@ from renku.models.cwl.types import File
 from renku.models.cwl.workflow import Workflow
 
 
-def _safe_path(filepath, can_be_workflow=False):
+def _safe_path(filepath, can_be_cwl=False):
     """Check if the path should be used in output."""
-    return not filepath.startswith('.renku') and \
-        filepath not in {'.gitignore', '.gitattributes'}
+    # Should not be in ignore paths.
+    if filepath in {'.gitignore', '.gitattributes'}:
+        return False
+
+    # Ignore everything in .renku ...
+    if filepath.startswith('.renku'):
+        # ... unless it can be a CWL.
+        if can_be_cwl and filepath.endswith('.cwl'):
+            return True
+        return False
+
+    return True
 
 
 @attr.s
@@ -68,6 +78,10 @@ class Graph(object):
         """Return a relative path based on the client configuration."""
         return os.path.relpath(str(self.client.path / path))
 
+    def _is_cwl(self, path):
+        """Check if the path is a valid CWL file."""
+        return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
+
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
         key = str(commit), str(path)
@@ -76,13 +90,16 @@ class Graph(object):
             self.G.add_node(
                 key, commit=commit, path=path, latest=latest, **kwargs
             )
+        else:
+            self.G.node[key].update(**kwargs)
+
         return key
 
     def find_cwl(self, commit):
         """Return a CWL."""
         files = [
-            file_ for file_ in commit.stats.files.keys()
-            if file_.startswith(self.cwl_prefix) and file_.endswith('.cwl')
+            file_
+            for file_ in commit.stats.files.keys() if self._is_cwl(file_)
         ]
 
         if len(files) == 1:
@@ -94,6 +111,18 @@ class Graph(object):
             cwl = self.find_cwl(commit)
             if cwl:
                 return cwl
+
+    def iter_cwl_without_output(self, revision='HEAD'):
+        """Yield CWL without outputs."""
+        for commit in self.client.git.iter_commits(
+            revision, paths=self.cwl_prefix
+        ):
+            total = commit.stats.total
+            if (
+                total['files'] == 1 and total['deletions'] == 0 and
+                total['insertions'] == total['lines']
+            ):
+                yield next(commit.stats.files)
 
     def find_latest(self, start, path):
         """Return the latest commit for path."""
@@ -143,6 +172,9 @@ class Graph(object):
         workflow = Workflow.from_cwl(cwl)
         basedir = os.path.dirname(path)
 
+        # Default key for a workflow without steps.
+        tool_key = str(commit), path
+
         # Keep track of node identifiers for steps, inputs and outputs:
         step_map = {}
         input_map = {}
@@ -180,9 +212,8 @@ class Graph(object):
 
             # Find ALL siblings that MUST be generated in the same commit.
             for output_id, output_path in self.iter_output_files(step_tool):
-                self.G.add_edge(
-                    tool_key, (str(commit), output_path), id=output_id
-                )
+                node_key = self.add_node(commit, output_path)
+                self.G.add_edge(tool_key, node_key, id=output_id)
 
             output_map.update({
                 step.id + '/' + name: target
@@ -190,9 +221,17 @@ class Graph(object):
             })
             step_map[step.id] = tool_key
 
-            self.G.nodes[tool_key]['workflow'] = workflow
-            self.G.nodes[tool_key]['workflow_path'
-                                   ] = path + '#steps/' + step.id
+            # The workflow path must be relative to the current tool since
+            # we might be inside a submodule.
+            workflow_path = os.path.relpath(
+                path, start=os.path.dirname(tool_key[1])
+            )
+            self.G.nodes[tool_key].update({
+                'workflow': workflow,
+                'workflow_path':
+                    '{workflow_path}#steps/{step.id}'
+                    .format(workflow_path=workflow_path, step=step),
+            })
 
         for step in workflow.steps:
             for alias, source in step.in_.items():
@@ -203,7 +242,7 @@ class Graph(object):
                     other_key = step_map[other_step]
                     self.G.add_edge(other_key, output_map[name], id=id_)
 
-        return workflow
+        return tool_key
 
     def add_tool(
         self, commit, path, file_key=None, expand_workflow=True, is_step=False
@@ -237,7 +276,8 @@ class Graph(object):
 
         # Find ALL siblings that MUST be generated in the same commit.
         for output_id, path in self.iter_output_files(tool):
-            self.G.add_edge(tool_key, (str(commit), path), id=output_id)
+            node_key = self.add_node(commit, path)
+            self.G.add_edge(tool_key, node_key, id=output_id)
 
         return tool_key
 
@@ -254,6 +294,14 @@ class Graph(object):
 
         commit = file_commits[0]
 
+        if self._is_cwl(path):
+            commits = list(
+                self.client.git.iter_commits(
+                    '{0}'.format(revision), paths=path
+                )
+            )
+            return self.add_tool(commits[-1], path)
+
         cwl = self.find_cwl(commit)
         if cwl is not None:
             file_key = self.add_node(commit, path)
@@ -268,20 +316,20 @@ class Graph(object):
             root_submodule = self.G.nodes[root_node].get('submodule', [])
 
             #: Resolve Renku based submodules.
-            original_path = Path(parent_path)
+            original_path = self.client.path / parent_path
             if original_path.is_symlink(
-            ) or str(original_path).startswith('.renku/vendors'):
+            ) or str(parent_path).startswith('.renku/vendors'):
                 original_path = original_path.resolve()
 
                 for submodule in Submodule.iter_items(
                     self.client.git, parent_commit=parent_commit
                 ):
                     try:
-                        subpath = original_path.relative_to(
-                            Path(submodule.path).resolve()
-                        )
+                        submodule_path = (self.client.path /
+                                          submodule.path).resolve()
+                        subpath = original_path.relative_to(submodule_path)
                         subgraph = Graph(
-                            client=LocalClient(path=submodule.path)
+                            client=LocalClient(path=submodule_path)
                         )
                         subnode = subgraph.add_file(
                             str(subpath), revision=submodule.hexsha
@@ -291,6 +339,18 @@ class Graph(object):
                         for _, data in subgraph.G.nodes(data=True):
                             data['submodule'
                                  ] = root_submodule + [submodule.name]
+
+                        #: Make paths relative to parent client.
+                        def change_key(key):
+                            """Rename the path part in the key."""
+                            return key[0], str(
+                                (subgraph.client.path / key[1]).relative_to(
+                                    self.client.path
+                                )
+                            )
+
+                        subnode = change_key(subnode)
+                        nx.relabel_nodes(subgraph.G, change_key, copy=False)
 
                         #: Merge file node with it's symlinked version.
                         self.G = nx.contracted_nodes(
@@ -339,50 +399,54 @@ class Graph(object):
             self.G.nodes[key]['_need_update'] = need_update
             visited.add(key)
 
-    def build_status(self, revision='HEAD'):
+    def build_status(self, revision='HEAD', can_be_cwl=False):
         """Return files from the revision grouped by their status."""
+        status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
+
         index = self.client.git.index if revision == 'HEAD' \
             else IndexFile.from_tree(self.client.git, revision)
 
-        current_files = set()
-
-        for filepath, _ in index.entries.keys():
-            if _safe_path(filepath):
-                self.add_file(filepath, revision=revision)
-                current_files.add(filepath)
+        current_files = {
+            self.add_file(filepath, revision=revision)
+            for filepath, _ in index.entries.keys()
+            if _safe_path(filepath, can_be_cwl=can_be_cwl)
+        }
 
         # Prepare status info for each file.
         self._need_update()
 
-        graph_files = sorted(((commit, filepath)
-                              for (commit, filepath) in self.G
-                              if filepath in current_files),
-                             key=itemgetter(1))
+        # First find all up-to-date nodes.
+        up_to_date = {
+            filepath: commit
+            for (commit,
+                 filepath), need_update in self.G.nodes.data('_need_update')
+            if not need_update
+        }
 
-        status = {'up-to-date': {}, 'outdated': {}, 'multiple-versions': {}}
-
-        for filepath, keys in groupby(graph_files, itemgetter(1)):
-            keys = list(keys)
-
-            if len(keys) > 1:
-                status['multiple-versions'][filepath] = keys
-
-            nodes = [self.G.nodes[key] for key in keys]
-
-            # Any latest version of a file needs an update.
-            is_outdated = any(
-                len(node.get('_need_update', [])) > 1
-                for node in nodes if node.get('latest') is None
-            )
-
-            if is_outdated:
-                updates = list(
-                    self.G.nodes[key]['_need_update'] for key in keys
-                )
-                status['outdated'][filepath] = updates
+        for commit, filepath in current_files:
+            if filepath in up_to_date:  # trick the workflow step
+                # FIXME use the latest commit
+                status['up-to-date'][filepath] = up_to_date[filepath]
             else:
-                status['up-to-date'][filepath] = keys[0][0]
+                need_update = self.G.nodes[(commit, filepath)]['_need_update']
+                status['outdated'][filepath] = [need_update]
 
+        # Merge all versions of used inputs in outdated file.
+        multiple_versions = defaultdict(set)
+
+        for need_updates in status['outdated'].values():
+            for need_update in need_updates:
+                for commit, filepath in need_update:
+                    multiple_versions[filepath].add((commit, filepath))
+
+        for commit, filepath in current_files:
+            if filepath in multiple_versions:
+                multiple_versions[filepath].add((commit, filepath))
+
+        status['multiple-versions'] = {
+            key: value
+            for key, value in multiple_versions.items() if len(value) > 1
+        }
         return status
 
     @property
@@ -408,10 +472,17 @@ class Graph(object):
         The key is part of the result set, hence to check if the node has
         siblings you should check the lenght is greater than 1.
         """
+        parents = list(self.G.predecessors(key))
+        if not parents:
+            raise errors.InvalidOutputPath(
+                'The file "{0}" was not created by a renku command. \n\n'
+                'Check the file history using: git log --follow "{0}"'.format(
+                    key[1]
+                )
+            )
         return {
             sibling
-            for parent in self.G.predecessors(key)
-            for sibling in self.G.successors(parent)
+            for parent in parents for sibling in self.G.successors(parent)
         }
 
     def ascwl(self, global_step_outputs=False):

@@ -34,6 +34,16 @@ from .process import Process
 from .types import File
 
 
+def convert_arguments(value):
+    """Convert arguments from various input formats."""
+    if isinstance(value, (list, tuple)):
+        return [
+            CommandLineBinding(**item) if isinstance(item, dict) else item
+            for item in value
+        ]
+    return shlex.split(value)
+
+
 @attr.s
 class CommandLineTool(Process, CWLClass):
     """Represent a command line tool."""
@@ -46,8 +56,7 @@ class CommandLineTool(Process, CWLClass):
     )  # str or list(str) -> shutil.split()
     arguments = attr.ib(
         default=attr.Factory(list),
-        converter=lambda cmd: list(cmd)
-        if isinstance(cmd, (list, tuple)) else shlex.split(cmd),
+        converter=convert_arguments,
     )  # list(string, Expression, CommandLineBinding)
 
     stdin = attr.ib(default=None)
@@ -60,6 +69,22 @@ class CommandLineTool(Process, CWLClass):
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
+
+    def __str__(self):
+        """Generate a simple representation."""
+        argv = ' '.join(self.to_argv())
+        if self.stdin:
+            assert self.stdin.startswith('$(inputs.')
+            input_id = self.stdin.split('.')[1]
+            for input_ in self.inputs:
+                if input_id == input_.id:
+                    argv += ' < ' + str(input_.default)
+                    break
+        if self.stdout:
+            argv += ' > ' + self.stdout
+        if self.stderr:
+            argv += ' 2> ' + self.stderr
+        return argv
 
     def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""
@@ -131,8 +156,11 @@ class CommandLineToolFactory(object):
         if self.stdin:
             input_ = next(self.guess_inputs(self.stdin))
             assert input_.type == 'File'
-            input_.id = 'input_stdin'
-            input_.inputBinding = None  # do not include in tool arguments
+            input_ = attr.evolve(
+                input_,
+                id='input_stdin',
+                inputBinding=None,  # do not include in tool arguments
+            )
             self.inputs.append(input_)
             self.stdin = '$(inputs.{0}.path)'.format(input_.id)
 
@@ -209,6 +237,18 @@ class CommandLineToolFactory(object):
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
+
+            from .process_requirements import InitialWorkDirRequirement, \
+                InlineJavascriptRequirement
+            initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
+                tool
+            )
+            if initial_work_dir_requirement:
+                tool.requirements.extend([
+                    InlineJavascriptRequirement(),
+                    initial_work_dir_requirement,
+                ])
+
             repo.track_paths_in_storage(*paths)
 
     @command_line.validator

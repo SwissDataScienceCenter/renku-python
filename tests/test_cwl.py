@@ -231,6 +231,7 @@ def test_stdin_and_stdout(argv, instance_path):
         directory=instance_path,
         stdin='input.txt',
         stdout='output.txt',
+        stderr='error.log',
     )
 
     assert factory.stdin
@@ -242,3 +243,5 @@ def test_stdin_and_stdout(argv, instance_path):
 
     tool = factory.generate_tool()
     assert tool.to_argv() == argv
+    std_streams = ' < input.txt > output.txt 2> error.log'
+    assert str(tool) == ' '.join(argv) + std_streams

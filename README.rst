@@ -65,6 +65,48 @@ The latest code can be installed directly from the Git repository:
 
     $ pip install -e git+https://github.com/SwissDataScienceCenter/renku-python.git#egg=renku
 
+Use following installation steps based on your operating system and preferences
+if you would like to work with the command line interface and you do not need
+the Python library to be importable.
+
+MacOS
+~~~~~
+
+The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
+
+::
+
+    $ brew tap swissdatasciencecenter/renku
+    $ brew install renku
+
+..
+  TODO: uncomment one the snap build works.
+
+  Linux
+  ~~~~~
+
+  There are universal *snap* packages available for Renku. Make sure you
+  have the ``snap`` command available or `install snapd
+  <https://docs.snapcraft.io/core/install>`_.
+
+  ::
+
+      $ open https://launchpad.net/~swissdatasciencecenter/+snap/renku/
+      $ snap install renku
+
+Pip Script Installer (``pipsi``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can use `pipsi <https://github.com/mitsuhiko/pipsi>`_ to isolate
+dependencies and to guarantee that there are no version conflicts. Make sure
+you have the ``pipsi`` command correctly installed and ``~/.local/bin`` is in
+your ``$PATH``.
+
+::
+
+    $ pipsi install renku
+    $ which renku
+    ~/.local/bin/renku
 
 Usage
 -----

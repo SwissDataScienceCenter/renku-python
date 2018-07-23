@@ -138,6 +138,41 @@ def test_run_simple(runner):
     result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
     assert result.exit_code == 0
 
+    # There are no output files.
+    result = runner.invoke(cli.cli, ['log'])
+    assert result.output.strip() == ''
+
+    # Display tools with no outputs.
+    result = runner.invoke(cli.cli, ['log', '--no-output'])
+    assert '.renku/workflow/' in result.output
+
+
+def test_git_pre_commit_hook(project, runner, capsys):
+    """Test detection of output edits."""
+    result = runner.invoke(cli.cli, ['githooks', 'install'])
+    assert result.exit_code == 0
+    assert 'Hook already exists.' in result.output
+
+    repo = git.Repo(project)
+    cwd = Path(project)
+    output = cwd / 'output.txt'
+
+    result = runner.invoke(cli.cli, ['run', 'touch', output.name])
+    assert result.exit_code == 0
+
+    with output.open('w') as f:
+        f.write('hello')
+
+    repo.git.add('--all')
+    with pytest.raises(git.HookExecutionError) as error:
+        repo.index.commit('hello')
+        assert output.name in error.stdout
+
+    result = runner.invoke(cli.cli, ['githooks', 'uninstall'])
+    assert result.exit_code == 0
+
+    repo.index.commit('hello')
+
 
 def test_workflow(runner):
     """Test workflow command."""
@@ -206,6 +241,16 @@ def test_streams(runner, capsys):
 
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 0
+
+    # Check that source.txt is not shown in outputs.
+    result = runner.invoke(cli.cli, ['show', 'outputs', 'source.txt'])
+    assert result.exit_code == 1
+
+    result = runner.invoke(cli.cli, ['show', 'outputs'])
+    assert result.exit_code == 0
+    assert {
+        'result.txt',
+    } == set(result.output.strip().split('\n'))
 
     with open('source.txt', 'w') as source:
         source.write('first,second,third,fourth')
@@ -343,7 +388,9 @@ def test_update(project, runner, capsys):
         assert f.read().strip() == '2'
 
     # Make sure the log contains the original parent.
-    result = runner.invoke(cli.cli, ['log'])
+    result = runner.invoke(
+        cli.cli, ['log', '--format', 'dot'], catch_exceptions=False
+    )
     assert source.name in result.output
 
 
@@ -603,11 +650,11 @@ def test_status_with_submodules(base_runner):
 def test_unchanged_output(runner):
     """Test detection of unchanged output."""
     cmd = ['run', 'touch', '1']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 0
 
     cmd = ['run', 'touch', '1']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 1
 
 
@@ -643,7 +690,9 @@ def test_modified_output(project, runner, capsys):
     """Test detection of changed file as output."""
     cwd = Path(project)
     source = cwd / 'source.txt'
-    output = cwd / 'result.txt'
+    data = cwd / 'data' / 'results'
+    data.mkdir(parents=True)
+    output = data / 'result.txt'
 
     repo = git.Repo(project)
     cmd = ['run', 'cp', '-r', str(source), str(output)]
@@ -732,6 +781,55 @@ def test_only_child(runner):
     result = runner.invoke(cli.cli, cmd)
     assert result.exit_code == 0
     assert 'only_child\n' == result.output
+
+
+def test_outputs(runner):
+    """Test detection of outputs."""
+    siblings = {'brother', 'sister'}
+
+    cmd = ['run', 'touch'] + list(siblings)
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['show', 'outputs'])
+    assert result.exit_code == 0
+    assert siblings == set(result.output.strip().split('\n'))
+
+
+def test_workflow_without_outputs(project, runner, capsys):
+    """Test workflow without outputs."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    input_ = cwd / 'input.txt'
+    with input_.open('w') as f:
+        f.write('first')
+
+    repo.git.add('--all')
+    repo.index.commit('Created input.txt')
+
+    cmd = ['run', 'cat', '--no-output', input_.name]
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ['status', '--no-output']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    with input_.open('w') as f:
+        f.write('second')
+
+    repo.git.add('--all')
+    repo.index.commit('Updated input.txt')
+
+    cmd = ['status', '--no-output']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 1
+
+    assert 0 == _run_update(runner, capsys, args=('update', '--no-output'))
+
+    cmd = ['status', '--no-output']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
 
 
 def test_siblings_update(project, runner, capsys):
@@ -932,6 +1030,88 @@ def test_rerun_with_inputs(project, runner, capsys):
         assert f.read().startswith(first_data)
 
 
+def test_rerun_with_edited_inputs(project, runner, capsys):
+    """Test input modification."""
+    cwd = Path(project)
+    data = cwd / 'examples'
+    data.mkdir()
+    first = data / 'first.txt'
+    second = data / 'second.txt'
+    third = data / 'third.txt'
+
+    def _generate(output, cmd):
+        """Generate an output."""
+        with capsys.disabled():
+            with output.open('wb') as stdout:
+                try:
+                    old_stdout = sys.stdout
+                    sys.stdout = stdout
+                    try:
+                        cli.cli.main(
+                            args=cmd,
+                            prog_name=runner.get_default_prog_name(cli.cli),
+                        )
+                    except SystemExit as e:
+                        assert e.code in {None, 0}
+                finally:
+                    sys.stdout = old_stdout
+
+    _generate(first, ['run', 'echo', 'hello'])
+    _generate(second, ['run', 'cat', str(first)])
+    _generate(third, ['run', 'echo', '1'])
+
+    with first.open('r') as first_fp:
+        with second.open('r') as second_fp:
+            assert first_fp.read() == second_fp.read()
+
+    # Change the initial input from "hello" to "hola".
+    from click.testing import make_input_stream
+    stdin = make_input_stream('hola\n', 'utf-8')
+    old_stdin = sys.stdin
+    try:
+        sys.stdin = stdin
+        assert 0 == _run_update(
+            runner, capsys, args=('rerun', '--edit-inputs', str(second))
+        )
+    finally:
+        sys.stdin = old_stdin
+
+    with second.open('r') as second_fp:
+        assert 'hola\n' == second_fp.read()
+
+    # Change the input from examples/first.txt to examples/third.txt.
+    stdin = make_input_stream(str(third.name), 'utf-8')
+    old_stdin = sys.stdin
+    old_dir = os.getcwd()
+    try:
+        # Make sure the input path is relative to the current directory.
+        os.chdir(str(data))
+
+        result = runner.invoke(
+            cli.cli,
+            ['rerun', '--show-inputs', '--from',
+             str(first),
+             str(second)],
+            catch_exceptions=False
+        )
+        assert 0 == result.exit_code
+        assert 'input_1: {0}\n'.format(first.name) == result.output
+
+        sys.stdin = stdin
+        assert 0 == _run_update(
+            runner,
+            capsys,
+            args=('rerun', '--edit-inputs', '--from', str(first), str(second))
+        )
+    finally:
+        os.chdir(old_dir)
+        sys.stdin = old_stdin
+
+    with third.open('r') as third_fp:
+        with second.open('r') as second_fp:
+            assert third_fp.read() == second_fp.read()
+
+
 def test_image_pull(project, runner):
     """Test image pulling."""
     cmd = ['image', 'pull']
@@ -977,22 +1157,38 @@ def test_image_pull(project, runner):
     assert 'registry.example.com/repo.git' not in result.output
     assert result.exit_code == 1
 
-    with repo.config_writer() as config:
-        config.set_value(
-            'renku', 'registry', 'http://demo:demo@global.example.com'
-        )
+    result = runner.invoke(
+        cli.cli, ['config', 'registry', 'http://demo:demo@global.example.com']
+    )
+    assert result.exit_code == 0
 
     cmd = ['image', 'pull', '--no-auto-login']
     result = runner.invoke(cli.cli, cmd)
     assert 'global.example.com' in result.output
     assert result.exit_code == 1
 
-    with repo.config_writer() as config:
-        config.set_value(
-            'renku', 'registry', 'http://demo:demo@origin.example.com'
-        )
+    result = runner.invoke(
+        cli.cli,
+        ['config', 'origin.registry', 'http://demo:demo@origin.example.com']
+    )
+    assert result.exit_code == 0
 
     cmd = ['image', 'pull', '--no-auto-login']
     result = runner.invoke(cli.cli, cmd)
     assert 'origin.example.com' in result.output
     assert result.exit_code == 1
+
+
+def test_input_update_and_rerun(project, runner, capsys):
+    """Test update and rerun of an input."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    input_ = cwd / 'input.txt'
+    with input_.open('w') as f:
+        f.write('first')
+
+    repo.git.add('--all')
+    repo.index.commit('Created input.txt')
+
+    assert 1 == _run_update(runner, capsys, args=('update', input_.name))
+    assert 1 == _run_update(runner, capsys, args=('rerun', input_.name))

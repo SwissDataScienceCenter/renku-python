@@ -27,6 +27,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.init
 
+.. _cli-config:
+
+``renku config``
+----------------
+
+.. automodule:: renku.cli.config
+
 .. _cli-datasets:
 
 ``renku datasets``
@@ -82,3 +89,15 @@ Renku Command Line
 --------------
 
 .. automodule:: renku.cli.show
+
+.. _cli-image:
+
+``renku image``
+---------------
+
+.. automodule:: renku.cli.image
+
+``renku githooks``
+------------------
+
+.. automodule:: renku.cli.githooks

@@ -17,11 +17,99 @@
 # limitations under the License.
 """Wrap Docker API."""
 
+import re
 import subprocess
 from configparser import NoSectionError
-from urllib.parse import urlparse, urlunparse
+
+import attr
 
 from renku import errors
+
+#: Define possible repository URLs.
+_REPOSITORY_URLS = (
+    re.compile(
+        r'^(?P<protocol>https?|git|ssh|rsync)\://'
+        # '(?:(?P<user>.+)@)*'
+        '(?:(?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
+        '(?P<hostname>[a-z0-9_.-]*)'
+        '[:/]*'
+        '(?P<port>[\d]+){0,1}'
+        '(?P<pathname>\/(?P<owner>.+)/(?P<name>.+).git)'
+    ),
+    re.compile(
+        r'(git\+)?'
+        '((?P<protocol>\w+)://)'
+        # '((?P<user>\w+)@)?'
+        '((?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
+        '((?P<hostname>[\w\.\-]+))'
+        '(:(?P<port>\d+))?'
+        '(?P<pathname>(\/(?P<owner>\w+)/)?'
+        '(\/?(?P<name>[\w\-]+)(\.git)?)?)'
+    ),
+    re.compile(
+        r'^(?:(?P<username>.+)@)*'
+        '(?P<hostname>[a-z0-9_.-]*)[:/]*'
+        '(?P<port>[\d]+){0,1}'
+        '[:](?P<pathname>\/?(?P<owner>.+)/(?P<name>.+).git)'
+    ),
+    re.compile(
+        r'((?P<username>\w+)@)?'
+        '((?P<hostname>[\w\.\-]+))'
+        '[\:\/]{1,2}'
+        '(?P<pathname>((?P<owner>\w+)/)?'
+        '((?P<name>[\w\-]+)(\.git)?)?)'
+    ),
+    re.compile(
+        # Simple registry URL like: docker.io
+        r'((?P<hostname>[\w\.\-]+))'
+    ),
+)
+
+
+@attr.s()
+class GitURL(object):
+    """Parser for common Git URLs."""
+
+    # Initial value
+    href = attr.ib()
+    # Parsed protocols
+    pathname = attr.ib(default=None)
+    protocols = attr.ib(default=attr.Factory(list), init=False)
+    protocol = attr.ib(default='ssh')
+    hostname = attr.ib(default=None)
+    username = attr.ib(default=None)
+    password = attr.ib(default=None)
+    port = attr.ib(default=None)
+    owner = attr.ib(default=None)
+    name = attr.ib(default=None)
+
+    def __attrs_post_init__(self):
+        """Derive basic informations."""
+        if self.protocol:
+            self.protocols = self.protocol.split('+')
+
+    @classmethod
+    def parse(cls, href):
+        """Derive basic informations."""
+        for regex in _REPOSITORY_URLS:
+            if re.search(regex, href):
+                matches = re.search(regex, href)
+                print('matched', regex)
+                return cls(href=href, **matches.groupdict())
+        else:
+            raise errors.ConfigurationError(
+                '"{href} is not a valid Git remote.'.format(href=href)
+            )
+
+    @property
+    def image(self):
+        """Return image name."""
+        img = self.hostname
+        if self.owner:
+            img += '/' + self.owner
+        if self.name:
+            img += '/' + self.name
+        return img
 
 
 def detect_registry_url(client, auto_login=True):
@@ -53,33 +141,17 @@ def detect_registry_url(client, auto_login=True):
 
     if registry_url:
         # Look in [renku] and [renku "{remote_name}"] for registry_url key.
-        url = urlparse(registry_url)
-        # Remove username and password.
-        registry_url = urlunparse(
-            (url[0], url.hostname, url[2], None, None, None)
-        )
+        url = GitURL.parse(registry_url)
     elif remote_url:
         # Use URL based on remote configuration.
-        url = urlparse(remote_url)
-
-        # Select last two parts of path and remove .git
-        path = '/'.join(url.path.split('/')[-2:])
-        if path.endswith('.git'):
-            path = path[:-len('.git')]
+        url = GitURL.parse(remote_url)
 
         # Replace gitlab. with registry. unless running on gitlab.com.
-        hostname = url.hostname
-        if not hostname:
-            raise errors.ConfigurationError(
-                'Git remote can not be a local path.'
-            )
-
-        hostname_parts = hostname.split('.')
+        hostname_parts = url.hostname.split('.')
         if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
             hostname_parts = hostname_parts[1:]
         hostname = '.'.join(['registry'] + hostname_parts)
-
-        registry_url = urlunparse((url[0], hostname, path, None, None, None))
+        url = attr.evolve(url, hostname=hostname)
     else:
         raise errors.ConfigurationError(
             'Configure renku.repository_url or Git remote.'
@@ -90,7 +162,7 @@ def detect_registry_url(client, auto_login=True):
             subprocess.run([
                 'docker',
                 'login',
-                registry_url,
+                url.hostname,
                 '-u',
                 url.username,
                 '--password-stdin',
@@ -102,4 +174,4 @@ def detect_registry_url(client, auto_login=True):
                 'Check configuration of password or token in the registry URL'
             )
 
-    return registry_url
+    return url
