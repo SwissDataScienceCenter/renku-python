@@ -46,8 +46,5 @@ parts:
       - "git+https://github.com/SwissDataScienceCenter/python-future.git@fix-read-only#egg=future-0.16.0"
     source: .
     source-type: git
-    build-packages:
-      - python3
     stage-packages:
       - git
-      - python3
