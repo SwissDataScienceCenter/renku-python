@@ -1,4 +1,10 @@
-# renku: v1.dev20180619
+# renku: v1.dev20180723
+
+variables:
+  GIT_STRATEGY: fetch
+  GIT_SSL_NO_VERIFY: "true"
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_LFS_SKIP_SMUDGE: 1
 
 stages:
   - build
