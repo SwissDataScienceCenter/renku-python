@@ -17,7 +17,7 @@
 # limitations under the License.
 
 name: renku
-version: 0.1.0+git
+version: '0.1.0+git'
 summary: A Python library for the Renku collaborative data science platform.
 description: |
   A Python library for the Renku collaborative data science platform. It allows
@@ -25,15 +25,26 @@ description: |
   while performing analysis tasks.
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: classic # use 'strict' once you have the right plugs and slots
+confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   renku:
     command: bin/renku
+    environment:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+    plugs:
+      - home
+      - network
+      - network-bind
 
 parts:
   renku:
     plugin: python
     python-version: python3
+    python-packages:
+      - "git+https://github.com/SwissDataScienceCenter/python-future.git@fix-read-only#egg=future-0.16.0"
     source: .
     source-type: git
+    stage-packages:
+      - git
