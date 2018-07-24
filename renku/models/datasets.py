@@ -89,12 +89,15 @@ class Author(object):
         try:
             name = git_config.get_value('user', 'name', None)
             email = git_config.get_value('user', 'email', None)
-        except configparser.NoOptionError:  # pragma: no cover
+        except (
+            configparser.NoOptionError, configparser.NoSectionError
+        ):  # pragma: no cover
             raise errors.ConfigurationError(
                 'The user name and email are not configured. '
                 'Please use the "git config" command to configure them.\n\n'
-                '\tgit config --set user.name "John Doe"\n'
-                '\tgit config --set user.email "john.doe@example.com"\n'
+                '\tgit config --global --add user.name "John Doe"\n'
+                '\tgit config --global --add user.email '
+                '"john.doe@example.com"\n'
             )
 
         # Check the git configuration.

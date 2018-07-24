@@ -74,8 +74,11 @@ def install(client, force):
             else:
                 hook_path.unlink()
 
-        Path(hook_path).symlink_to(
-            pkg_resources.resource_filename(
+        # Make sure the hooks directory exists.
+        hook_path.parent.mkdir(parents=True, exist_ok=True)
+
+        Path(hook_path).write_bytes(
+            pkg_resources.resource_string(
                 'renku.data', '{hook}.sh'.format(hook=hook)
             )
         )
