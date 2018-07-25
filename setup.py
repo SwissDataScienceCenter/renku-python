@@ -71,7 +71,7 @@ install_requires = [
     'attrs>=17.4.0',
     'click-plugins>=1.0.3',
     'click>=6.7',
-    'cwltool==1.0.20180721142728',
+    'cwltool>=1.0.20180721142728',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
