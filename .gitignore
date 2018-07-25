@@ -62,10 +62,6 @@ target/
 # Vim swapfiles
 .*.sw?
 
-# Ignore Pipenv files
-Pipfile
-Pipfile.lock
-
 # Brew formula
 renku-*.bottle.json
 renku-*.bottle.tar.gz

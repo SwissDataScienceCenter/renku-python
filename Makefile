@@ -41,9 +41,6 @@ docker-push: docker-tag
 docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
-Pipfile.lock:
-	@pipenv install --pre renku
-
 renku.rb: Pipfile.lock brew.py
 	@python brew.py renku > renku.rb
 

@@ -33,6 +33,7 @@ include .style.yapf
 include Dockerfile*
 include LICENSE
 include Makefile
+include Pipfile Pipfile.lock
 include babel.ini
 include brew.py
 include pytest.ini
