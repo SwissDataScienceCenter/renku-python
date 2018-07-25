@@ -66,9 +66,8 @@ def _mapped_std_streams(lookup_paths, streams=('stdin', 'stdout', 'stderr')):
             pass
         # FIXME if not getattr(sys, stream).istty()
 
-    lookup_inos = {(stat.st_dev, stat.st_ino): path
-                   for stat, path in ((os.stat(path), path)
-                                      for path in lookup_paths)}
+    stats = ((os.stat(path), path) for path in lookup_paths)
+    lookup_inos = {(stat.st_dev, stat.st_ino): path for stat, path in stats}
 
     return {
         standard_inos[key]: lookup_inos[key]

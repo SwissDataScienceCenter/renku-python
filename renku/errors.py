@@ -155,8 +155,9 @@ class OutputsNotFound(RenkuException, click.ClickException):
 
         from renku.models.cwl.types import File
         paths = [
-            os.path.relpath(str(input_.default.path))
-            for input_ in inputs if isinstance(input_.default, File)
+            os.path.relpath(str(input_.default.path))  # relative to cur path
+            for input_ in inputs  # only choose files
+            if isinstance(input_.default, File)
         ]
 
         if paths:

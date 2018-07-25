@@ -42,26 +42,62 @@ python:
   - "3.5"
   - "3.6"
 
+matrix:
+  include:
+    - language: generic
+      os: osx
+      osx_image: xcode9.4
+    - language: generic
+      os: osx
+      osx_image: xcode9.2
+    - python: "3.7"
+      os: linux
+      dist: xenial
+      sudo: true
+      language: python
+      env:
+        - REQUIREMENTS=release
+
 before_install:
-  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-  - sudo apt-get update
-  - sudo apt-get -y install docker-ce shellcheck
-  - "travis_retry pip install --upgrade pip setuptools py"
-  - "travis_retry pip install twine wheel coveralls requirements-builder"
-  - "requirements-builder -e all --level=min setup.py > .travis-lowest-requirements.txt"
-  - "requirements-builder -e all --level=pypi setup.py > .travis-release-requirements.txt"
-  - "requirements-builder -e all --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements.txt"
+  - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -;
+        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable";
+        sudo apt-get update;
+        sudo apt-get -y install docker-ce shellcheck;
+        travis_retry python -m pip install --upgrade pip setuptools py;
+        travis_retry python -m pip install twine wheel coveralls requirements-builder;
+        requirements-builder -e all --level=min setup.py > .travis-lowest-requirements.txt;
+        requirements-builder -e all --level=pypi setup.py > .travis-release-requirements.txt;
+        requirements-builder -e all --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements.txt;
+    elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
+        brew update;
+        brew upgrade python;
+        brew unlink python;
+        brew link python;
+        brew install git-lfs pipenv shellcheck;
+        git config --global --add user.name "John Doe";
+        git config --global --add user.email "john.doe@example.com";
+    fi
 
 install:
-  - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
-  - "travis_retry pip install -e .[all]"
+  - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
+        travis_retry python -m pip install -r .travis-${REQUIREMENTS}-requirements.txt;
+        travis_retry python -m pip install -e .[all];
+    elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
+        travis_retry pipenv install --deploy;
+        source "$(pipenv --venv)/bin/activate";
+    fi
 
 script:
   - "./run-tests.sh"
 
 after_success:
   - coveralls
+
+before_deploy:
+  - if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
+        make brew-build-bottle;
+    fi
 
 deploy:
 - provider: pypi
@@ -90,6 +126,6 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
-    python: "3.6"
+    python: "3.7"
     repo: SwissDataScienceCenter/renku-python
-    condition: $DEPLOY = true
+    condition: $TRAVIS_OS_NAME = 'osx'

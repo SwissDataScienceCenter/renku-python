@@ -97,13 +97,13 @@ class Graph(object):
 
     def find_cwl(self, commit):
         """Return a CWL."""
-        files = [
-            file_
-            for file_ in commit.stats.files.keys() if self._is_cwl(file_)
-        ]
-
-        if len(files) == 1:
-            return files[0]
+        cwl = None
+        for file_ in commit.stats.files.keys():
+            if self._is_cwl(file_):
+                if cwl is not None:
+                    raise ValueError(file_)  # duplicate
+                cwl = file_
+        return cwl
 
     def find_latest_cwl(self):
         """Return the latest CWL in the repository."""
@@ -567,8 +567,10 @@ class Graph(object):
                 out=outs,
             )
 
-        output_keys = (key for _, key in self.G.out_edges(steps.keys())
-                       ) if global_step_outputs else self._output_keys
+        if global_step_outputs:
+            output_keys = (key for _, key in self.G.out_edges(steps.keys()))
+        else:
+            output_keys = self._output_keys
 
         for index, key in enumerate(output_keys):
             output_id = 'output_{0}'.format(index)

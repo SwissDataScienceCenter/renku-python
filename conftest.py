@@ -687,8 +687,9 @@ def project(base_runner):
     from renku import cli
 
     with base_runner.isolated_filesystem() as project_path:
-        os.makedirs('data')
-        result = base_runner.invoke(cli.cli, ['init', '.'])
+        result = base_runner.invoke(
+            cli.cli, ['init', '.'], catch_exceptions=False
+        )
         assert result.exit_code == 0
         yield project_path
 

@@ -106,14 +106,15 @@ class CommandLineTool(Process, CWLClass):
 
     def to_argv(self, job=None):
         """Generate arguments for system call."""
-        argv = [self.baseCommand
-                ] if not isinstance(self.baseCommand, list) else list(
-                    self.baseCommand
-                )
+        if not isinstance(self.baseCommand, list):
+            argv = [self.baseCommand]
+        else:
+            argv = list(self.baseCommand)
 
         args = [(a.position, a) for a in self.arguments]
-        args += [(i.inputBinding.position, i)
-                 for i in self.inputs if i.inputBinding]
+        for i in self.inputs:
+            if i.inputBinding:
+                args.append((i.inputBinding.position, i))
 
         for p, v in sorted(args):
             argv.extend(v.to_argv())

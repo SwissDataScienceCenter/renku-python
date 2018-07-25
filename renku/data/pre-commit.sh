@@ -24,7 +24,7 @@ if [ ! "$MODIFIED_FILES" ]; then
 fi
 
 # Verify that renku is installed; if not, warn and exit.
-if [ -z "$(which renku)" ]; then
+if [ -z "$(command -v renku)" ]; then
   echo 'renku not on path; can not format. Please install renku:'
   # TODO add system detection and recommend brew for macOS.
   echo '    pip install renku'

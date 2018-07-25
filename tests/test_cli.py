@@ -322,6 +322,7 @@ def test_update(project, runner, capsys):
     """Test automatic file update."""
     cwd = Path(project)
     data = cwd / 'data'
+    data.mkdir()
     source = cwd / 'source.txt'
     output = data / 'result.txt'
 
@@ -1112,6 +1113,9 @@ def test_rerun_with_edited_inputs(project, runner, capsys):
             assert third_fp.read() == second_fp.read()
 
 
+@pytest.mark.skipif(
+    shutil.which('docker') is None, reason="requires docker command line"
+)
 def test_image_pull(project, runner):
     """Test image pulling."""
     cmd = ['image', 'pull']

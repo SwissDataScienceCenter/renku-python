@@ -32,9 +32,10 @@ def execute(client, output_file, output_paths=None):
 
     import cwltool.factory
     from cwltool import workflow
+    from cwltool.context import LoadingContext, RuntimeContext
     from cwltool.utils import visit_class
 
-    def makeTool(toolpath_object, **kwargs):
+    def construct_tool_object(toolpath_object, *args, **kwargs):
         """Fix missing locations."""
         protocol = 'file://'
 
@@ -43,17 +44,27 @@ def execute(client, output_file, output_paths=None):
                 d['location'] = protocol + d['path']
 
         visit_class(toolpath_object, ('File', 'Directory'), addLocation)
-        return workflow.defaultMakeTool(toolpath_object, **kwargs)
+        return workflow.default_make_tool(toolpath_object, *args, **kwargs)
 
     argv = sys.argv
     sys.argv = ['cwltool']
 
     # Keep all environment variables.
-    execkwargs = {
-        'preserve_entire_environment': True,
-    }
+    runtime_context = RuntimeContext(
+        kwargs={
+            'preserve_entire_environment': True,
+        }
+    )
+    loading_context = LoadingContext(
+        kwargs={
+            'construct_tool_object': construct_tool_object,
+        }
+    )
 
-    factory = cwltool.factory.Factory(makeTool=makeTool, **execkwargs)
+    factory = cwltool.factory.Factory(
+        loading_context=loading_context,
+        runtime_context=runtime_context,
+    )
     process = factory.make(os.path.relpath(str(output_file)))
     outputs = process()
 

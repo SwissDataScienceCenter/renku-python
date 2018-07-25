@@ -98,11 +98,9 @@ from ._git import _mapped_std_streams, with_git
 def run(client, no_output, command_line):
     """Tracking work on a specific problem."""
     working_dir = client.git.working_dir
-    candidates = [
-        os.path.join(working_dir, path)
-        for path in [x[0] for x in client.git.index.entries] +
-        client.git.untracked_files
-    ]
+    paths = [x[0] for x in client.git.index.entries]
+    paths += client.git.untracked_files
+    candidates = [os.path.join(working_dir, path) for path in paths]
     mapped_std = _mapped_std_streams(candidates)
     factory = CommandLineToolFactory(
         command_line=command_line,
