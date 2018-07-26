@@ -132,13 +132,16 @@ class UnmodifiedOutputs(RenkuException, click.ClickException):
     def __init__(self, repo, unmodified):
         """Build a custom message."""
         super(UnmodifiedOutputs, self).__init__(
-            'There are unmodified outputs in the repository.\n'
-            '  (use "git rm <file>..." to remove them first)'
+            'There are no detected new outputs or changes.\n'
+            '\nIf any of the following files should be considered as outputs,'
+            '\nthey need to be removed first in order to be detected '
+            'correctly.'
+            '\n  (use "git rm <file>..." to remove them first)'
             '\n\n' + '\n'.
             join('\t' + click.style(path, fg='green')
-                 for path in unmodified) + '\n\n'
-            'Once you have removed the outputs, '
-            'you can safely rerun the previous command.'
+                 for path in unmodified) + '\n'
+            '\nOnce you have removed the files that should be used as outputs,'
+            '\nyou can safely rerun the previous command.'
         )
 
 
