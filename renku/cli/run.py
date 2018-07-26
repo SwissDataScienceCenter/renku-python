@@ -104,7 +104,8 @@ def run(client, no_output, command_line):
     mapped_std = _mapped_std_streams(candidates)
     factory = CommandLineToolFactory(
         command_line=command_line,
-        directory=working_dir,
+        directory=os.getcwd(),
+        working_dir=working_dir,
         **{
             name: os.path.relpath(path, working_dir)
             for name, path in mapped_std.items()

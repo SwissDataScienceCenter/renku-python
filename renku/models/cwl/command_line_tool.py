@@ -31,7 +31,10 @@ from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
 from .process import Process
-from .types import File
+from .types import Directory, File
+
+PATH_OBJECTS = {'File', 'Directory'}
+PATH_TYPES = (File, Directory)
 
 
 def convert_arguments(value):
@@ -93,7 +96,7 @@ class CommandLineTool(Process, CWLClass):
                 stream = getattr(self, output.type)
                 if stream == path:
                     return output.id
-            elif output.type == 'File':
+            elif output.type in PATH_OBJECTS:
                 glob = output.outputBinding.glob
                 # TODO better support for Expression
                 if glob.startswith('$(inputs.'):
@@ -137,6 +140,10 @@ class CommandLineToolFactory(object):
         default='.',
         converter=lambda path: Path(path).resolve(),
     )
+    working_dir = attr.ib(
+        default='.',
+        converter=lambda path: Path(path).resolve(),
+    )
 
     stdin = attr.ib(default=None)  # null, str, Expression
     stderr = attr.ib(default=None)  # null, str, Expression
@@ -167,7 +174,7 @@ class CommandLineToolFactory(object):
 
         for stream_name in ('stdout', 'stderr'):
             stream = getattr(self, stream_name)
-            if stream and self.file_candidate(stream):
+            if stream and self.file_candidate(self.working_dir / stream):
                 self.outputs.append(
                     CommandOutputParameter(
                         id='output_{0}'.format(stream_name),
@@ -300,6 +307,8 @@ class CommandLineToolFactory(object):
         candidate = self.file_candidate(value, ignore=ignore_filenames)
         if candidate:
             try:
+                if candidate.is_dir():
+                    return Directory(path=candidate), 'Directory', None
                 return File(path=candidate), 'File', None
             except ValueError:
                 # The candidate points to a file outside the working
@@ -425,14 +434,19 @@ class CommandLineToolFactory(object):
 
     def guess_outputs(self, paths):
         """Yield detected output and changed command input parameter."""
+        # Convert input defaults to paths relative to working directory.
         input_candidates = {
-            str(input.default): input
-            for input in self.inputs if input.type != 'File'
+            str((self.directory / str(input.default)).resolve().relative_to(
+                self.working_dir
+            )): input
+            for input in self.inputs if input.type not in PATH_OBJECTS
         }  # inputs that need to be changed if an output is detected
 
         conflicting_paths = {
-            str(input.default): (index, input)
-            for index, input in enumerate(self.inputs) if input.type == 'File'
+            str(input.default.path.relative_to(self.working_dir)):
+            (index, input)
+            for index, input in enumerate(self.inputs)
+            if input.type in PATH_OBJECTS
         }  # names that can not be outputs because they are already inputs
 
         streams = {
@@ -444,12 +458,12 @@ class CommandLineToolFactory(object):
         # TODO group by a common prefix
 
         for position, path in enumerate(paths):
-            candidate = self.file_candidate(path)
+            candidate = self.file_candidate(self.working_dir / path)
 
             if candidate is None:
                 raise ValueError('Path "{0}" does not exist.'.format(path))
 
-            glob = str(candidate.relative_to(self.directory))
+            glob = str(candidate.relative_to(self.working_dir))
 
             if glob in streams:
                 continue
@@ -460,28 +474,35 @@ class CommandLineToolFactory(object):
                 # it means that it is rewriting a file
                 index, input = conflicting_paths[glob]
                 new_input = attr.evolve(input, type='string', default=glob)
-                input_candidates[str(glob)] = new_input
+                input_candidates[glob] = new_input
 
                 del conflicting_paths[glob]
                 # TODO add warning ('Output already exists in inputs.')
 
+            candidate_type = 'Directory' if candidate.is_dir() else 'File'
+
             if glob in input_candidates:
                 input = input_candidates[glob]
+
+                if new_input is None:
+                    new_input = input_candidates[glob] = attr.evolve(
+                        input, type='string', default=glob
+                    )
 
                 yield (
                     CommandOutputParameter(
                         id='output_{0}'.format(position),
-                        type='File',
+                        type=candidate_type,
                         outputBinding=dict(
                             glob='$(inputs.{0})'.format(input.id),
                         ),
-                    ), new_input, path
+                    ), new_input, glob
                 )
             else:
                 yield (
                     CommandOutputParameter(
                         id='output_{0}'.format(position),
-                        type='File',
+                        type=candidate_type,
                         outputBinding=dict(glob=glob, ),
-                    ), None, path
+                    ), None, glob
                 )

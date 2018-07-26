@@ -44,7 +44,7 @@ def test_03_input(instance_path):
         '--file=whale.txt',
     ]
     tool = CommandLineToolFactory(
-        argv, directory=instance_path
+        argv, directory=instance_path, working_dir=instance_path
     ).generate_tool()
 
     assert tool.arguments[0].to_argv() == ['-f']
@@ -74,7 +74,7 @@ def test_base_command_detection(instance_path):
 
     argv = ['tar', 'xf', 'hello.tar']
     tool = CommandLineToolFactory(
-        argv, directory=instance_path
+        argv, directory=instance_path, working_dir=instance_path
     ).generate_tool()
 
     assert tool.baseCommand == ['tar', 'xf']
@@ -102,7 +102,9 @@ def test_04_output(instance_path):
     hello.touch()
 
     argv = ['tar', 'xf', 'hello.tar']
-    factory = CommandLineToolFactory(argv, directory=instance_path)
+    factory = CommandLineToolFactory(
+        argv, directory=instance_path, working_dir=instance_path
+    )
 
     # simulate run
 
@@ -127,6 +129,7 @@ def test_05_stdout(instance_path):
     factory = CommandLineToolFactory(
         argv,
         directory=instance_path,
+        working_dir=instance_path,
         stdout='output.txt',
     )
 
@@ -146,6 +149,7 @@ def test_stdout_with_conflicting_arg(instance_path):
     factory = CommandLineToolFactory(
         argv,
         directory=instance_path,
+        working_dir=instance_path,
         stdout='lalala',
     )
 
@@ -167,6 +171,7 @@ def test_06_params(instance_path):
     factory = CommandLineToolFactory(
         argv,
         directory=instance_path,
+        working_dir=instance_path,
     )
 
     assert factory.inputs[1].default == 'goodbye.txt'
@@ -204,7 +209,7 @@ def test_09_array_inputs(instance_path):
         '-C=seven,eight,nine',
     ]
     tool = CommandLineToolFactory(
-        argv, directory=instance_path
+        argv, directory=instance_path, working_dir=instance_path
     ).generate_tool()
 
     # TODO add grouping for -A and -B
@@ -229,6 +234,7 @@ def test_stdin_and_stdout(argv, instance_path):
     factory = CommandLineToolFactory(
         argv,
         directory=instance_path,
+        working_dir=instance_path,
         stdin='input.txt',
         stdout='output.txt',
         stderr='error.log',
@@ -260,6 +266,7 @@ def test_input_directory(instance_path):
     factory = CommandLineToolFactory(
         argv,
         directory=instance_path,
+        working_dir=instance_path,
     )
 
     src_tar = src / 'src.tar'
