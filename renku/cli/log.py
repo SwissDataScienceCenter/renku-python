@@ -108,9 +108,7 @@ FORMATS = {
     default=False,
     help='Display commands without output files.'
 )
-@click.argument(
-    'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
-)
+@click.argument('paths', type=click.Path(exists=True), nargs=-1)
 @pass_local_client
 def log(client, revision, format, no_output, paths):
     """Show logs for a file."""

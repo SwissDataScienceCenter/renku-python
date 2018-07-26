@@ -19,13 +19,13 @@
 
 import attr
 
-from .types import Directory, File
+from ._ascwl import CWLClass
 
 
 def convert_default(value):
     """Convert a default value."""
     if isinstance(value, dict):
-        return File.from_cwl(value)
+        return CWLClass.from_cwl(value)
     return value
 
 

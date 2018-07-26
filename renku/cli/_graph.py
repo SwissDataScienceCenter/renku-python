@@ -28,9 +28,9 @@ from git import IndexFile, Submodule
 from renku import errors
 from renku._compat import Path
 from renku.api import LocalClient
-from renku.models.cwl.command_line_tool import CommandLineTool
+from renku.models.cwl.command_line_tool import PATH_OBJECTS, PATH_TYPES, \
+    CommandLineTool
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
-from renku.models.cwl.types import File
 from renku.models.cwl.workflow import Workflow
 
 
@@ -142,10 +142,12 @@ class Graph(object):
         if stdin and stdin[0] != '$':  # pragma: no cover
             raise NotImplemented(tool.stdin)
         for input_ in tool.inputs:
-            if input_.type == 'File' and input_.default:
+            if input_.type in PATH_OBJECTS and input_.default:
                 yield (
                     input_.id,
-                    os.path.normpath(str(basedir / input_.default.path))
+                    os.path.normpath(
+                        os.path.join(basedir, str(input_.default.path))
+                    )
                 )
 
     def iter_output_files(self, tool):
@@ -155,7 +157,7 @@ class Graph(object):
                 stream = getattr(tool, output.type)
                 if stream:
                     yield output.id, stream
-            elif output.type == 'File':
+            elif output.type in PATH_OBJECTS:
                 glob = output.outputBinding.glob
                 # TODO better support for Expression
                 if glob.startswith('$(inputs.'):
@@ -255,14 +257,9 @@ class Graph(object):
         data = (commit.tree / path).data_stream.read()
         cwl = yaml.load(data)
 
-        try:
-            tool = CommandLineTool.from_cwl(cwl)
-        except TypeError:
-            if expand_workflow:
-                return self.add_workflow(
-                    commit, path, file_key=file_key, cwl=cwl
-                )
-            tool = Workflow.from_cwl(cwl)
+        tool = CommandLineTool.from_cwl(cwl)
+        if isinstance(tool, Workflow) and expand_workflow:
+            return self.add_workflow(commit, path, file_key=file_key, cwl=cwl)
 
         tool_key = self.add_node(commit, path, tool=tool)
 
@@ -462,8 +459,8 @@ class Graph(object):
         status['deleted'] = {
             filepath: (commit, filepath)
             for commit, filepath in self.G.nodes
-            if _safe_path(filepath, can_be_cwl=can_be_cwl) and
-            filepath not in current_paths
+            if _safe_path(filepath, can_be_cwl=can_be_cwl) and filepath not in
+            current_paths and not (self.client.path / filepath).is_dir()
         }
         return status
 
@@ -524,8 +521,8 @@ class Graph(object):
             return '{0}/{1}'.format(steps[tool_key], node['id'])
 
         def _relative_default(client, default):
-            """Evolve ``File`` path."""
-            if isinstance(default, File):
+            """Evolve ``File`` or ``Directory`` path."""
+            if isinstance(default, PATH_TYPES):
                 path = (client.workflow_path / default.path).resolve()
                 return attr.evolve(default, path=path)
             return default
@@ -574,10 +571,13 @@ class Graph(object):
 
         for index, key in enumerate(output_keys):
             output_id = 'output_{0}'.format(index)
+            # FIXME use the type of step output
+            type_ = 'Directory' if (self.client.path /
+                                    key[0]).is_dir() else 'File'
             workflow.outputs.append(
                 WorkflowOutputParameter(
                     id=output_id,
-                    type='File',
+                    type=type_,
                     outputSource=_source_name(key),
                 )
             )

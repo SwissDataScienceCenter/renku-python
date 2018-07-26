@@ -27,19 +27,27 @@ from attr._make import fields
 from renku._compat import Path
 
 
-class CWLClass(object):
+class CWLType(type):
+    """Register CWL types."""
+
+    def __init__(cls, name, bases, namespace):
+        """Register CWL types."""
+        super(CWLType, cls).__init__(name, bases, namespace)
+        if not hasattr(cls, 'registry'):
+            cls.registry = dict()
+        if name in cls.registry:
+            raise ValueError('Duplicate CWL class {0} definition'.format(name))
+        cls.registry[name] = cls
+
+
+class CWLClass(object, metaclass=CWLType):
     """Include ``class`` field in serialized object."""
 
     @classmethod
     def from_cwl(cls, data):
         """Return an instance from CWL data."""
         class_name = data.get('class', None)
-        if class_name != cls.__name__:
-            raise TypeError(
-                'Got {0} but need {1}'.format(class_name, cls.__name__)
-            )
-        elif 'class' in data:
-            del data['class']
+        cls = cls.registry.get(class_name, cls)
         return cls(**{k: v for k, v in iteritems(data) if k != 'class'})
 
 
