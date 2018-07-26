@@ -11,9 +11,8 @@ stages:
 
 image_build:
   stage: build
-  image: python:3.6
+  image: docker:stable
   before_script:
-    - curl -sSL https://get.docker.com/ | sh
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN http://$CI_REGISTRY
   script:
     - CI_COMMIT_SHA_7=$(echo $CI_COMMIT_SHA | cut -c1-7)
