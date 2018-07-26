@@ -19,7 +19,7 @@
 
 import attr
 
-from .types import File
+from .types import Directory, File
 
 
 def convert_default(value):

@@ -245,3 +245,30 @@ def test_stdin_and_stdout(argv, instance_path):
     assert tool.to_argv() == argv
     std_streams = ' < input.txt > output.txt 2> error.log'
     assert str(tool) == ' '.join(argv) + std_streams
+
+
+def test_input_directory(instance_path):
+    """Test input directory."""
+    cwd = Path(instance_path)
+    src = cwd / 'src'
+    src.mkdir(parents=True)
+
+    for i in range(5):
+        (src / str(i)).touch()
+
+    argv = ['tar', 'czvf', 'src.tar', 'src']
+    factory = CommandLineToolFactory(
+        argv,
+        directory=instance_path,
+    )
+
+    src_tar = src / 'src.tar'
+    src_tar.touch()
+
+    tool = factory.generate_tool()
+    assert tool.to_argv() == argv
+
+    assert tool.inputs[0].type == 'string'
+    assert tool.inputs[0].default == src_tar.name
+    assert tool.inputs[1].type == 'Directory'
+    assert tool.inputs[1].default.path.samefile(src)

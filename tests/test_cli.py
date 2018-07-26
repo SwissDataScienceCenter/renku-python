@@ -1214,3 +1214,33 @@ def test_deleted_input(project, runner, capsys):
     assert result.exit_code == 0
     assert not input_.exists()
     assert Path('input.mv').exists()
+
+
+def test_output_directory(project, runner, capsys):
+    """Test detection of output directory."""
+    cwd = Path(project)
+    data = cwd / 'source' / 'data.txt'
+    source = data.parent
+    source.mkdir(parents=True)
+    data.touch()
+
+    # Empty destination
+    destination = cwd / 'destination'
+    # Non empty destination
+    invalid_destination = cwd / 'invalid_destination'
+    invalid_destination.mkdir(parents=True)
+    (invalid_destination / 'non_empty').touch()
+
+    repo = git.Repo(project)
+    repo.git.add('--all')
+    repo.index.commit('Created source directory')
+
+    cmd = ['run', 'cp', '-r', str(source), str(destination)]
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    assert result.exit_code == 0
+    assert (destination / data.name).exists()
+
+    cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    assert result.exit_code == 0
+    assert (destination / data.name).exists()
