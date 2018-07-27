@@ -96,23 +96,43 @@ class DirectoryTree(dict):
     Example usage:
 
     >>> directory = DirectoryTree()
-    >>> directory.add('foo/bar/baz')
-    >>> directory.add('foo/bar/bay')
-    >>> directory.add('foo/fooo/foooo')
+    >>> directory.add('a/b/c')
+    >>> directory.add('a/b/c/d')
+    >>> directory.add('x/y/z')
+    >>> directory.add('x/y/zz')
     >>> print('\n'.join(sorted(directory)))
-    foo/bar
-    foo/fooo
+    a/b/c/d
+    x/y/z
+    x/y/zz
+    >>> print('\n'.join(sorted(directory.get('x/y'))))
+    z
+    zz
 
     """
 
+    @classmethod
+    def from_list(cls, values):
+        """Construct a tree from a list with paths."""
+        self = cls()
+        for value in values:
+            self.add(value)
+        return self
+
+    def get(self, value):
+        """Return a subtree if exists."""
+        path = value if isinstance(value, Path) else Path(str(value))
+        subtree = self
+        for part in path.parts:
+            subtree = subtree[part]
+        return subtree
+
     def add(self, value):
         """Create a safe directory from a value."""
-        path = Path(str(value))
-        directory = path.parent
-        if directory and directory != directory.parent:
+        path = value if isinstance(value, Path) else Path(str(value))
+        if path and path != path.parent:
             destination = self
-            for part in directory.parts:
-                destination = destination.setdefault(part, {})
+            for part in path.parts:
+                destination = destination.setdefault(part, DirectoryTree())
 
     def __iter__(self):
         """Yield all stored directories."""

@@ -19,6 +19,8 @@
 
 import attr
 
+from renku._compat import Path
+
 from .._datastructures import DirectoryTree
 from ._ascwl import CWLClass
 from .types import DIRECTORY_EXPRESSION, Dirent
@@ -67,9 +69,9 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
                     input_id = glob[len('$(inputs.'):-1]
                     input_ = inputs.get(input_id)
                     if input_ is not None:
-                        directories.add(input_.default)
+                        directories.add(Path(input_.default).parent)
                 elif glob:
-                    directories.add(glob)
+                    directories.add(Path(glob).parent)
             # TODO add Directory
 
         requirement = cls()
