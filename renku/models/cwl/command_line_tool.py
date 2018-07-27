@@ -27,6 +27,7 @@ import attr
 from renku import errors
 from renku._compat import Path
 
+from .._datastructures import DirectoryTree
 from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
@@ -434,20 +435,41 @@ class CommandLineToolFactory(object):
 
     def guess_outputs(self, paths):
         """Yield detected output and changed command input parameter."""
-        # Convert input defaults to paths relative to working directory.
-        input_candidates = {
-            str((self.directory / str(input.default)).resolve().relative_to(
-                self.working_dir
-            )): input
-            for input in self.inputs if input.type not in PATH_OBJECTS
-        }  # inputs that need to be changed if an output is detected
+        # TODO what to do with duplicate paths & inputs with same defauts
+        paths = list(paths)
+        tree = DirectoryTree.from_list(paths)
 
-        conflicting_paths = {
-            str(input.default.path.relative_to(self.working_dir)):
-            (index, input)
-            for index, input in enumerate(self.inputs)
-            if input.type in PATH_OBJECTS
-        }  # names that can not be outputs because they are already inputs
+        input_candidates = {}
+        conflicting_paths = {}
+
+        for index, input in enumerate(self.inputs):
+            # Convert input defaults to paths relative to working directory.
+            if input.type not in PATH_OBJECTS:
+                # inputs that need to be changed if an output is detected
+                try:
+                    input_path = (self.directory /
+                                  str(input.default)).resolve().relative_to(
+                                      self.working_dir
+                                  )
+                except FileNotFoundError:
+                    continue
+
+                if input_path.is_dir():
+                    subpaths = {
+                        str(input_path / path)
+                        for path in tree.get(input_path)
+                    }
+                    # TODO make sure that directory doesn't contain other files
+                    # Remove files from the input directory
+                    paths = [path for path in paths if path not in subpaths]
+                    # Include input path in the paths to check
+                    paths.append(str(input_path))
+
+                input_candidates[str(input_path)] = input
+            else:
+                # names that can not be outputs because they are already inputs
+                input_path = input.default.path.relative_to(self.working_dir)
+                conflicting_paths[str(input_path)] = (index, input)
 
         streams = {
             path
