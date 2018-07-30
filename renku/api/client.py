@@ -25,14 +25,13 @@ import attr
 import requests
 
 from renku import errors
-from renku._compat import Path
 
 from .authorization import AuthorizationMixin
 from .datasets import DatasetsApiMixin
 from .deployer import ContextsApiMixin
 from .explorer import ExplorerApiMixin
 from .projects import ProjectsApiMixin
-from .repository import RepositoryApiMixin
+from .repository import PathMixin, RepositoryApiMixin
 from .storage import BucketsApiMixin, FilesApiMixin
 
 
@@ -121,6 +120,7 @@ class APIClient(
 
 @attr.s
 class LocalClient(
+    PathMixin,
     RepositoryApiMixin,
     DatasetsApiMixin,
 ):
@@ -132,22 +132,3 @@ class LocalClient(
         >>> client = renku.LocalClient('.')
 
     """
-
-    path = attr.ib(converter=lambda arg: Path(arg).resolve().absolute())
-
-    @path.default
-    def _default_path(self):
-        """Return default repository path."""
-        from git import InvalidGitRepositoryError
-        from renku.cli._git import get_git_home
-
-        try:
-            return get_git_home()
-        except InvalidGitRepositoryError:
-            return '.'
-
-    @path.validator
-    def _check_path(self, _, value):
-        """Check the path exists and it is a directory."""
-        if not (value.exists() and value.is_dir()):
-            raise ValueError('Define an existing directory.')

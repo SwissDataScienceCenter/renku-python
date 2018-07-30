@@ -60,6 +60,8 @@ class Directory(CWLClass):
 DIRECTORY_EXPRESSION = '$({0})'.format(
     json.dumps(ascwl(Directory(), filter=lambda _, x: x is not None))
 )
+PATH_OBJECTS = {'File', 'Directory'}
+PATH_TYPES = (File, Directory)
 
 
 @attr.s

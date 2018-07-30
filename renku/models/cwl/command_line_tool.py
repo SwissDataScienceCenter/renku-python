@@ -32,10 +32,7 @@ from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
 from .process import Process
-from .types import Directory, File
-
-PATH_OBJECTS = {'File', 'Directory'}
-PATH_TYPES = (File, Directory)
+from .types import PATH_OBJECTS, Directory, File
 
 
 def convert_arguments(value):

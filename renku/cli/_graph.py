@@ -28,9 +28,9 @@ from git import IndexFile, Submodule
 from renku import errors
 from renku._compat import Path
 from renku.api import LocalClient
-from renku.models.cwl.command_line_tool import PATH_OBJECTS, PATH_TYPES, \
-    CommandLineTool
+from renku.models.cwl.command_line_tool import CommandLineTool
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
+from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
 
 
@@ -61,12 +61,7 @@ class Graph(object):
 
     def __attrs_post_init__(self):
         """Derive basic informations."""
-        self.client.workflow_path.mkdir(
-            parents=True, exist_ok=True
-        )  # for Python 3.5
-        self.cwl_prefix = str(
-            self.client.workflow_path.resolve().relative_to(self.client.path)
-        )
+        self.cwl_prefix = self.client.cwl_prefix
 
     def normalize_path(self, path):
         """Normalize path relative to the Git workdir."""
@@ -99,7 +94,7 @@ class Graph(object):
         """Return a CWL."""
         cwl = None
         for file_ in commit.stats.files.keys():
-            if self._is_cwl(file_):
+            if self.client.is_cwl(file_):
                 if cwl is not None:
                     raise ValueError(file_)  # duplicate
                 cwl = file_
@@ -136,39 +131,6 @@ class Graph(object):
                 continue
             return commit
 
-    def iter_input_files(self, tool, basedir):
-        """Yield tuples with input id and path."""
-        stdin = getattr(tool, 'stdin', None)
-        if stdin and stdin[0] != '$':  # pragma: no cover
-            raise NotImplemented(tool.stdin)
-        for input_ in tool.inputs:
-            if input_.type in PATH_OBJECTS and input_.default:
-                yield (
-                    input_.id,
-                    os.path.normpath(
-                        os.path.join(basedir, str(input_.default.path))
-                    )
-                )
-
-    def iter_output_files(self, tool):
-        """Yield tuples with output id and path."""
-        for output in tool.outputs:
-            if output.type in {'stdout', 'stderr'}:
-                stream = getattr(tool, output.type)
-                if stream:
-                    yield output.id, stream
-            elif output.type in PATH_OBJECTS:
-                glob = output.outputBinding.glob
-                # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
-                    for input_ in tool.inputs:
-                        if input_.id == input_id:
-                            yield output.id, input_.default
-                            break  # out from tool.inputs
-                else:
-                    yield output.id, glob
-
     def add_workflow(self, commit, path, cwl=None, file_key=None):
         """Add a workflow and its dependencies to the graph."""
         if cwl is None:
@@ -187,7 +149,7 @@ class Graph(object):
         output_map = {}
 
         #: First find workflow inputs, but don't connect them yet.
-        for input_id, input_path in self.iter_input_files(workflow, basedir):
+        for input_id, input_path in workflow.iter_input_files(basedir):
             input_key = self.add_file(
                 input_path, revision='{0}^'.format(commit)
             )
@@ -203,9 +165,7 @@ class Graph(object):
 
             step_tool = self.G.nodes[tool_key]['tool']
 
-            for input_id, input_path in self.iter_input_files(
-                step_tool, basedir
-            ):
+            for input_id, input_path in step_tool.iter_input_files(basedir):
                 if input_path in commit.stats.files:
                     #: Check intermediate committed files
                     input_key = self.add_node(commit, input_path)
@@ -217,7 +177,7 @@ class Graph(object):
                     self.G.add_edge(input_map[source], tool_key, id=input_id)
 
             # Find ALL siblings that MUST be generated in the same commit.
-            for output_id, output_path in self.iter_output_files(step_tool):
+            for output_id, output_path in step_tool.iter_output_files():
                 node_key = self.add_node(commit, output_path)
                 self.G.add_edge(tool_key, node_key, id=output_id)
 
@@ -266,8 +226,8 @@ class Graph(object):
         if is_step:
             return tool_key
 
-        for input_id, input_path in self.iter_input_files(
-            tool, os.path.dirname(path)
+        for input_id, input_path in tool.iter_input_files(
+            os.path.dirname(path)
         ):
             input_key = self.add_file(
                 input_path, revision='{0}^'.format(commit)
@@ -276,7 +236,7 @@ class Graph(object):
             self.G.add_edge(input_key, tool_key, id=input_id)
 
         # Find ALL siblings that MUST be generated in the same commit.
-        for output_id, path in self.iter_output_files(tool):
+        for output_id, path in tool.iter_output_files():
             node_key = self.add_node(commit, path)
             self.G.add_edge(tool_key, node_key, id=output_id)
 
@@ -284,18 +244,7 @@ class Graph(object):
 
     def add_file(self, path, revision='HEAD'):
         """Add a file node to the graph."""
-        file_commits = list(self.client.git.iter_commits(revision, paths=path))
-
-        if not file_commits:
-            raise KeyError(
-                'Could not find a file {0} in range {1}'.format(
-                    path, revision
-                )
-            )
-
-        commit = file_commits[0]
-
-        if self._is_cwl(path):
+        if self.client.is_cwl(path):
             commits = list(
                 self.client.git.iter_commits(
                     '{0}'.format(revision), paths=path
@@ -303,6 +252,7 @@ class Graph(object):
             )
             return self.add_tool(commits[-1], path)
 
+        commit = self.client.find_previous_commit(path, revision=revision)
         cwl = self.find_cwl(commit)
         if cwl is not None:
             file_key = self.add_node(commit, path)

@@ -17,10 +17,13 @@
 # limitations under the License.
 """Represent a ``Process`` from the Common Workflow Language."""
 
+import os
+
 import attr
 
 from ._ascwl import mapped
 from .parameter import InputParameter, OutputParameter
+from .types import PATH_OBJECTS
 
 
 @attr.s(init=False)
@@ -35,3 +38,36 @@ class Process(object):
     label = attr.ib(default=None)  # str
     doc = attr.ib(default=None)  # str
     cwlVersion = attr.ib(default='v1.0')  # derive from a parent
+
+    def iter_input_files(self, basedir):
+        """Yield tuples with input id and path."""
+        stdin = getattr(self, 'stdin', None)
+        if stdin and stdin[0] != '$':  # pragma: no cover
+            raise NotImplemented(self.stdin)
+        for input_ in self.inputs:
+            if input_.type in PATH_OBJECTS and input_.default:
+                yield (
+                    input_.id,
+                    os.path.normpath(
+                        os.path.join(basedir, str(input_.default.path))
+                    )
+                )
+
+    def iter_output_files(self):
+        """Yield tuples with output id and path."""
+        for output in self.outputs:
+            if output.type in {'stdout', 'stderr'}:
+                stream = getattr(self, output.type)
+                if stream:
+                    yield output.id, stream
+            elif output.type in PATH_OBJECTS:
+                glob = output.outputBinding.glob
+                # TODO better support for Expression
+                if glob.startswith('$(inputs.'):
+                    input_id = glob[len('$(inputs.'):-1]
+                    for input_ in self.inputs:
+                        if input_.id == input_id:
+                            yield output.id, input_.default
+                            break  # out from self.inputs
+                else:
+                    yield output.id, glob

@@ -27,11 +27,35 @@ import filelock
 import yaml
 from git import InvalidGitRepositoryError
 from git import Repo as GitRepo
-from werkzeug.utils import secure_filename
+from werkzeug.utils import cached_property, secure_filename
 
 from renku._compat import Path
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
+
+
+@attr.s
+class PathMixin(object):
+    """Define a default path attribute."""
+
+    path = attr.ib(converter=lambda arg: Path(arg).resolve().absolute())
+
+    @path.default
+    def _default_path(self):
+        """Return default repository path."""
+        from git import InvalidGitRepositoryError
+        from renku.cli._git import get_git_home
+
+        try:
+            return get_git_home()
+        except InvalidGitRepositoryError:
+            return '.'
+
+    @path.validator
+    def _check_path(self, _, value):
+        """Check the path exists and it is a directory."""
+        if not (value.exists() and value.is_dir()):
+            raise ValueError('Define an existing directory.')
 
 
 @attr.s
@@ -89,6 +113,29 @@ class RepositoryApiMixin(object):
     def workflow_path(self):
         """Return a ``Path`` instance of the workflow folder."""
         return self.renku_path / self.WORKFLOW
+
+    @cached_property
+    def cwl_prefix(self):
+        """Return a CWL prefix."""
+        self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
+        return str(self.workflow_path.resolve().relative_to(self.path))
+
+    def is_cwl(self, path):
+        """Check if the path is a valid CWL file."""
+        return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
+
+    def find_previous_commit(self, paths, revision='HEAD'):
+        """Return a previous commit for a given path."""
+        file_commits = list(self.git.iter_commits(revision, paths=paths))
+
+        if not file_commits:
+            raise KeyError(
+                'Could not find a file {0} in range {1}'.format(
+                    paths, revision
+                )
+            )
+
+        return file_commits[0]
 
     @contextmanager
     def with_metadata(self):
