@@ -1216,7 +1216,7 @@ def test_deleted_input(project, runner, capsys):
     assert Path('input.mv').exists()
 
 
-def test_output_directory(project, runner, capsys):
+def test_output_directory(project, runner):
     """Test detection of output directory."""
     cwd = Path(project)
     data = cwd / 'source' / 'data.txt'
@@ -1240,7 +1240,42 @@ def test_output_directory(project, runner, capsys):
     assert result.exit_code == 0
     assert (destination / data.name).exists()
 
-    cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
-    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert result.exit_code == 0
-    assert (destination / data.name).exists()
+    # FIXME the output directory MUST be empty.
+    # cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
+    # result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    # assert result.exit_code == 1
+    # assert not (invalid_destination / data.name).exists()
+
+
+def test_input_directory(project, runner, capsys):
+    """Test detection of input directory."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    output = cwd / 'output.txt'
+    inputs = cwd / 'inputs'
+    inputs.mkdir(parents=True)
+    (inputs / 'first').touch()
+
+    repo.git.add('--all')
+    repo.index.commit('Created inputs')
+
+    with output.open('w') as stdout:
+        with contextlib.redirect_stdout(stdout):
+            try:
+                cli.cli.main(
+                    args=('run', 'ls', str(inputs)),
+                    prog_name=runner.get_default_prog_name(cli.cli),
+                )
+            except SystemExit as e:
+                assert e.code in {None, 0}
+
+    with output.open('r') as f:
+        assert 'first\n' == f.read()
+
+    (inputs / 'second').touch()
+    repo.git.add('--all')
+    repo.index.commit('Added second input')
+
+    assert 0 == _run_update(runner, capsys, args=('update', output.name))
+    with output.open('r') as f:
+        assert 'first\nsecond\n' == f.read()

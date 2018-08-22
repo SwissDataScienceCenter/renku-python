@@ -125,8 +125,13 @@ class Graph(object):
             self.client.git.iter_commits('{0}..'.format(start), paths=path)
         )
         for commit in reversed(commits):
-            stats = commit.stats.files.get(path)
-            if not stats or stats['lines'] == stats['deletions']:
+            stats = [
+                stat for filepath, stat in commit.stats.files.items()
+                if filepath.startswith(path)
+            ]
+            if not stats or all(
+                stat['lines'] == stat['deletions'] for stat in stats
+            ):
                 # Skip deleted files.
                 continue
             return commit
