@@ -18,6 +18,10 @@
 Changes
 =======
 
-Version 0.1.0 (released TBD)
+Version 0.2.0rc1 (released 2018-08-23)
 
-- Initial public release.
+- Refactored version using Git and Common Workflow Language.
+
+Version 0.1.0 (released 2017-09-06)
+
+- Initial public release as Renga.

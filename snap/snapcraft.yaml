@@ -17,7 +17,7 @@
 # limitations under the License.
 
 name: renku
-version: '0.1.0+git'
+version: '0.2.0rc1'
 summary: A Python library for the Renku collaborative data science platform.
 description: |
   A Python library for the Renku collaborative data science platform. It allows
