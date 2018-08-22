@@ -79,20 +79,17 @@ The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
     $ brew tap swissdatasciencecenter/renku
     $ brew install renku
 
-..
-  TODO: uncomment one the snap build works.
 
-  Linux
-  ~~~~~
+Linux
+~~~~~
 
-  There are universal *snap* packages available for Renku. Make sure you
-  have the ``snap`` command available or `install snapd
-  <https://docs.snapcraft.io/core/install>`_.
+There are universal *snap* packages available for Renku. Make sure you
+have the ``snap`` command available or `install snapd
+<https://docs.snapcraft.io/core/install>`_.
 
-  ::
+::
 
-      $ open https://launchpad.net/~swissdatasciencecenter/+snap/renku/
-      $ snap install renku
+    $ snap install renku --edge
 
 Pip Script Installer (``pipsi``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
