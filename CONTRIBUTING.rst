@@ -126,9 +126,11 @@ Pull Request Guidelines
 
 Before you submit a pull request, check that it meets these guidelines:
 
+0. **Make sure you agree with the license and follow the [legal matter]
+   (https://github.com/SwissDataScienceCenter/documentation/wiki/Legal-matter).**
 1. The pull request should include tests and must not decrease test coverage.
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring.
-3. The pull request should work for Python 2.7, 3.5, and 3.6. Check
+3. The pull request should work for Python 3.5, 3.6 and 3.7. Check
    https://travis-ci.org/SwissDataScienceCenter/renku-python/pull_requests
    and make sure that the tests pass for all supported Python versions.
