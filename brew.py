@@ -114,6 +114,9 @@ for package, settings in lock['default'].items():
 
     pypi = pypi_response.json()
 
+    if settings.get('editable', False):
+        continue
+
     releases = pypi['releases'][settings['version'].lstrip('=')]
     find_release(package, releases, dependencies=dependencies)
 
