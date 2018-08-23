@@ -48,31 +48,33 @@ def _run_update(runner, capsys, args=('update', )):
             raise
 
 
-def test_version(base_runner):
+def test_version(runner):
     """Test cli version."""
-    result = base_runner.invoke(cli.cli, ['--version'])
+    result = runner.invoke(cli.cli, ['--version'])
     assert __version__ in result.output.split('\n')
 
 
 @pytest.mark.parametrize('arg', (('help', ), ('-h', ), ('--help', )))
-def test_help(arg, base_runner):
+def test_help(arg, runner):
     """Test cli help."""
-    result = base_runner.invoke(cli.cli, [arg])
+    result = runner.invoke(cli.cli, [arg])
     assert result.exit_code == 0
     assert 'Show this message and exit.' in result.output
 
 
-def test_config_path(instance_path, base_runner):
+def test_config_path(runner):
     """Test config path."""
-    result = base_runner.invoke(cli.cli, ['--config-path'])
+    from renku.cli._config import RENKU_HOME
+
+    result = runner.invoke(cli.cli, ['--config-path'])
     output = result.output.split('\n')[0]
     assert 'config.yml' in output
-    assert instance_path in output
+    assert RENKU_HOME in output
 
 
-def test_init(base_runner):
+def test_init(isolated_runner):
     """Test project initialization."""
-    runner = base_runner
+    runner = isolated_runner
 
     # 1. the directory must exist
     result = runner.invoke(cli.cli, ['init', 'test-project'])
@@ -115,7 +117,7 @@ def test_init(base_runner):
     assert 'filter "lfs"' in config
 
 
-def test_workon(runner):
+def test_workon(runner, project):
     """Test switching branches."""
     # Create first issue
     result = runner.invoke(cli.cli, ['workon', '1'])
@@ -132,7 +134,7 @@ def test_workon(runner):
     assert result.exit_code == 0
 
 
-def test_run_simple(runner):
+def test_run_simple(runner, project):
     """Test tracking of run command."""
     cmd = ['echo', 'test']
     result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
@@ -147,7 +149,7 @@ def test_run_simple(runner):
     assert '.renku/workflow/' in result.output
 
 
-def test_git_pre_commit_hook(project, runner, capsys):
+def test_git_pre_commit_hook(runner, project, capsys):
     """Test detection of output edits."""
     result = runner.invoke(cli.cli, ['githooks', 'install'])
     assert result.exit_code == 0
@@ -174,7 +176,7 @@ def test_git_pre_commit_hook(project, runner, capsys):
     repo.index.commit('hello')
 
 
-def test_workflow(runner):
+def test_workflow(runner, project):
     """Test workflow command."""
     result = runner.invoke(cli.cli, ['run', 'touch', 'data.csv'])
     assert result.exit_code == 0
@@ -207,7 +209,7 @@ def test_workflow(runner):
     assert result_default.output == result_arg.output
 
 
-def test_streams(runner, capsys):
+def test_streams(runner, project, capsys):
     """Test redirection of std streams."""
     repo = git.Repo('.')
 
@@ -263,7 +265,7 @@ def test_streams(runner, capsys):
     assert 'source.txt' in result.output
 
 
-def test_streams_cleanup(project, runner, capsys):
+def test_streams_cleanup(runner, project, capsys):
     """Test cleanup of standard streams."""
     with open('source.txt', 'w') as source:
         source.write('first,second,third')
@@ -318,7 +320,7 @@ def test_streams_cleanup(project, runner, capsys):
         assert fp.read() == '1'
 
 
-def test_update(project, runner, capsys):
+def test_update(runner, project, capsys):
     """Test automatic file update."""
     cwd = Path(project)
     data = cwd / 'data'
@@ -395,7 +397,7 @@ def test_update(project, runner, capsys):
     assert source.name in result.output
 
 
-def test_streams_and_args_names(runner, capsys):
+def test_streams_and_args_names(runner, project, capsys):
     """Test streams and conflicting argument names."""
     with capsys.disabled():
         with open('lalala', 'wb') as stdout:
@@ -416,7 +418,7 @@ def test_streams_and_args_names(runner, capsys):
     assert result.exit_code == 0
 
 
-def test_datasets(data_file, data_repository, runner):
+def test_datasets(data_file, data_repository, runner, project):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -453,7 +455,7 @@ def test_datasets(data_file, data_repository, runner):
     assert result.exit_code == 0
 
 
-def test_multiple_file_to_dataset(tmpdir, data_repository, runner):
+def test_multiple_file_to_dataset(tmpdir, data_repository, runner, project):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -471,7 +473,7 @@ def test_multiple_file_to_dataset(tmpdir, data_repository, runner):
     assert result.exit_code == 0
 
 
-def test_relative_import_to_dataset(tmpdir, data_repository, runner):
+def test_relative_import_to_dataset(tmpdir, data_repository, runner, project):
     """Test importing data from a directory structure."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -508,7 +510,7 @@ def test_relative_import_to_dataset(tmpdir, data_repository, runner):
     )
 
 
-def test_relative_git_import_to_dataset(tmpdir, project, runner):
+def test_relative_git_import_to_dataset(tmpdir, runner, project):
     """Test importing data from a directory structure."""
     submodule_name = os.path.basename(str(tmpdir))
 
@@ -569,9 +571,9 @@ def test_relative_git_import_to_dataset(tmpdir, project, runner):
     )
 
 
-def test_file_tracking(base_runner):
+def test_file_tracking(isolated_runner):
     """Test .gitattribute handling on renku run."""
-    runner = base_runner
+    runner = isolated_runner
 
     os.mkdir('test-project')
     os.chdir('test-project')
@@ -586,8 +588,10 @@ def test_file_tracking(base_runner):
     assert 'output' in gitattributes
 
 
-def test_status_with_submodules(base_runner):
+def test_status_with_submodules(isolated_runner):
     """Test status calculation with submodules."""
+    runner = isolated_runner
+
     os.mkdir('foo')
     os.mkdir('bar')
 
@@ -595,25 +599,21 @@ def test_status_with_submodules(base_runner):
         f.write('woop')
 
     os.chdir('foo')
-    result = base_runner.invoke(
-        cli.cli, ['init', '-S'], catch_exceptions=False
-    )
+    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
     assert result.exit_code == 0
 
     os.chdir('../bar')
-    result = base_runner.invoke(
-        cli.cli, ['init', '-S'], catch_exceptions=False
-    )
+    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
     assert result.exit_code == 0
 
     os.chdir('../foo')
-    result = base_runner.invoke(
+    result = runner.invoke(
         cli.cli, ['dataset', 'add', 'f', '../woop'], catch_exceptions=False
     )
     assert result.exit_code == 0
 
     os.chdir('../bar')
-    result = base_runner.invoke(
+    result = runner.invoke(
         cli.cli, ['dataset', 'add', 'b', '../foo/data/f/woop'],
         catch_exceptions=False
     )
@@ -625,12 +625,12 @@ def test_status_with_submodules(base_runner):
             try:
                 cli.cli.main(
                     args=('run', 'wc', 'data/b/foo/data/f/woop'),
-                    prog_name=base_runner.get_default_prog_name(cli.cli),
+                    prog_name=runner.get_default_prog_name(cli.cli),
                 )
             except SystemExit as e:
                 assert e.code in {None, 0}
 
-    result = base_runner.invoke(cli.cli, ['status'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
     assert result.exit_code == 0
 
     # Modify the source data.
@@ -644,11 +644,11 @@ def test_status_with_submodules(base_runner):
     call(['git', 'submodule', 'update', '--rebase', '--remote'])
     call(['git', 'commit', '-am', 'update submodule'])
 
-    result = base_runner.invoke(cli.cli, ['status'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
     assert result.exit_code != 0
 
 
-def test_unchanged_output(runner):
+def test_unchanged_output(runner, project):
     """Test detection of unchanged output."""
     cmd = ['run', 'touch', '1']
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
@@ -659,7 +659,7 @@ def test_unchanged_output(runner):
     assert result.exit_code == 1
 
 
-def test_unchanged_stdout(runner, capsys):
+def test_unchanged_stdout(runner, project, capsys):
     """Test detection of unchanged stdout."""
     with capsys.disabled():
         with open('output.txt', 'wb') as stdout:
@@ -687,7 +687,7 @@ def test_unchanged_stdout(runner, capsys):
                 sys.stdout = old_stdout
 
 
-def test_modified_output(project, runner, capsys):
+def test_modified_output(runner, project, capsys):
     """Test detection of changed file as output."""
     cwd = Path(project)
     source = cwd / 'source.txt'
@@ -737,7 +737,7 @@ def test_modified_output(project, runner, capsys):
         assert f.read().strip() == '3'
 
 
-def test_siblings(runner):
+def test_siblings(runner, project):
     """Test detection of siblings."""
     siblings = {'brother', 'sister'}
 
@@ -757,7 +757,7 @@ def test_siblings(runner):
         assert output == siblings, 'Checked {0}'.format(sibling)
 
 
-def test_orphan(project, runner):
+def test_orphan(runner, project):
     """Test detection of an orphan."""
     cwd = Path(project)
     orphan = cwd / 'orphan.txt'
@@ -772,7 +772,7 @@ def test_orphan(project, runner):
     assert 'orphan.txt\n' == result.output
 
 
-def test_only_child(runner):
+def test_only_child(runner, project):
     """Test detection of an only child."""
     cmd = ['run', 'touch', 'only_child']
     result = runner.invoke(cli.cli, cmd)
@@ -784,7 +784,7 @@ def test_only_child(runner):
     assert 'only_child\n' == result.output
 
 
-def test_outputs(runner):
+def test_outputs(runner, project):
     """Test detection of outputs."""
     siblings = {'brother', 'sister'}
 
@@ -797,7 +797,7 @@ def test_outputs(runner):
     assert siblings == set(result.output.strip().split('\n'))
 
 
-def test_workflow_without_outputs(project, runner, capsys):
+def test_workflow_without_outputs(runner, project, capsys):
     """Test workflow without outputs."""
     repo = git.Repo(project)
     cwd = Path(project)
@@ -833,7 +833,7 @@ def test_workflow_without_outputs(project, runner, capsys):
     assert result.exit_code == 0
 
 
-def test_siblings_update(project, runner, capsys):
+def test_siblings_update(runner, project, capsys):
     """Test detection of siblings during update."""
     cwd = Path(project)
     parent = cwd / 'parent.txt'
@@ -911,7 +911,7 @@ def test_siblings_update(project, runner, capsys):
             assert f.read().strip() == '3', sibling
 
 
-def test_simple_rerun(project, runner, capsys):
+def test_simple_rerun(runner, project, capsys):
     """Test simple file recreation."""
     greetings = {'hello', 'hola', 'ahoj'}
 
@@ -975,7 +975,7 @@ def test_simple_rerun(project, runner, capsys):
     assert greeting == new_greeting, "Something is not random"
 
 
-def test_rerun_with_inputs(project, runner, capsys):
+def test_rerun_with_inputs(runner, project, capsys):
     """Test file recreation with specified inputs."""
     cwd = Path(project)
     first = cwd / 'first.txt'
@@ -1031,7 +1031,7 @@ def test_rerun_with_inputs(project, runner, capsys):
         assert f.read().startswith(first_data)
 
 
-def test_rerun_with_edited_inputs(project, runner, capsys):
+def test_rerun_with_edited_inputs(runner, project, capsys):
     """Test input modification."""
     cwd = Path(project)
     data = cwd / 'examples'
@@ -1116,7 +1116,7 @@ def test_rerun_with_edited_inputs(project, runner, capsys):
 @pytest.mark.skipif(
     shutil.which('docker') is None, reason="requires docker command line"
 )
-def test_image_pull(project, runner):
+def test_image_pull(runner, project):
     """Test image pulling."""
     cmd = ['image', 'pull']
     result = runner.invoke(cli.cli, cmd)
@@ -1183,7 +1183,7 @@ def test_image_pull(project, runner):
     assert result.exit_code == 1
 
 
-def test_input_update_and_rerun(project, runner, capsys):
+def test_input_update_and_rerun(runner, project, capsys):
     """Test update and rerun of an input."""
     repo = git.Repo(project)
     cwd = Path(project)
@@ -1198,7 +1198,7 @@ def test_input_update_and_rerun(project, runner, capsys):
     assert 1 == _run_update(runner, capsys, args=('rerun', input_.name))
 
 
-def test_deleted_input(project, runner, capsys):
+def test_deleted_input(runner, project, capsys):
     """Test deleted input."""
     repo = git.Repo(project)
     cwd = Path(project)
@@ -1216,7 +1216,7 @@ def test_deleted_input(project, runner, capsys):
     assert Path('input.mv').exists()
 
 
-def test_output_directory(project, runner):
+def test_output_directory(runner, project):
     """Test detection of output directory."""
     cwd = Path(project)
     data = cwd / 'source' / 'data.txt'
@@ -1247,7 +1247,7 @@ def test_output_directory(project, runner):
     # assert not (invalid_destination / data.name).exists()
 
 
-def test_input_directory(project, runner, capsys):
+def test_input_directory(runner, project, capsys):
     """Test detection of input directory."""
     repo = git.Repo(project)
     cwd = Path(project)

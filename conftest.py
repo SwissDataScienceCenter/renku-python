@@ -45,12 +45,21 @@ def instance_path(monkeypatch):
 
 
 @pytest.fixture()
-def base_runner(instance_path, monkeypatch):
+def runner(monkeypatch):
     """Create a runner on isolated filesystem."""
     from renku.cli._config import RENKU_HOME
-    monkeypatch.setenv('RENKU_CONFIG', os.path.join(instance_path, RENKU_HOME))
-    cli_runner = CliRunner()
-    yield cli_runner
+    monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
+    return CliRunner()
+
+
+@pytest.fixture()
+def isolated_runner(monkeypatch):
+    """Create a runner on isolated filesystem."""
+    from renku.cli._config import RENKU_HOME
+    monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
+    runner_ = CliRunner()
+    with runner_.isolated_filesystem():
+        yield runner_
 
 
 @pytest.fixture()
@@ -61,27 +70,31 @@ def data_file(tmpdir):
     return p
 
 
-@pytest.fixture()
-def project(instance_path, base_runner):
+@pytest.fixture
+def project():
     """Create a test project."""
     from renku import cli
+    runner = CliRunner()
 
-    result = base_runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
-    assert result.exit_code == 0
-    yield instance_path
-
-
-@pytest.fixture()
-def runner(base_runner, project):
-    """Return runner with a new project."""
-    yield base_runner
+    with runner.isolated_filesystem() as project_path:
+        result = runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
+        assert result.exit_code == 0
+        print(project_path)
+        yield project_path
 
 
 @pytest.fixture()
-def client(project):
+def client():
     """Return a Renku repository."""
+    from renku import cli
     from renku.api import LocalClient
-    return LocalClient(path=project)
+    runner = CliRunner()
+
+    with runner.isolated_filesystem() as project_path:
+        result = runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
+        assert result.exit_code == 0
+
+        yield LocalClient(path=project_path)
 
 
 @pytest.fixture()
@@ -152,6 +165,7 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture(autouse=True)
-def add_client(doctest_namespace, client):
+def add_client(doctest_namespace):
     """Add Renku client to doctest namespace."""
-    doctest_namespace['client'] = client
+    from renku.api import LocalClient
+    doctest_namespace['client'] = LocalClient(path=tempfile.mkdtemp())

@@ -17,15 +17,11 @@
 # limitations under the License.
 """Test Python SDK client."""
 
-import pytest
 
-import renku
-
-
-def test_local_client(base_runner):
+def test_local_client(tmpdir):
     """Test a local client."""
     from renku.api.client import LocalClient
-    client = LocalClient('.')
+    client = LocalClient(str(tmpdir.mkdir('project')))
 
     assert client.path
     assert client.git is None
