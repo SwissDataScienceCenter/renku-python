@@ -122,10 +122,9 @@ deploy:
   api_key:
     secure: eJUA1+x21xPnOLlOt2pyPjFgI3lLus1OOVt0Jot+Hnle8UiOYg4wphDAA8abSalN+8vvNLB1+Z/ODFWZJWs4hGMG+0wEpCmWU6x125ijciF/6WH0bN7yNm1xW9+6ve+/zX+IRuUt00Or19/lg9wv835Ce3x91H/c9byVtTtmUVZ5jjRDeB5GmJaBo+kajfZMZu7WDUGxGSyhvQIqivbnjkjjaBKFuzXU8zdLfJoZE9N8T75E0Ug/qfwmgYCB4XIu/7i1ub/zc9GSOFnV0xEYZb8SF4f+Y9RSj2V4/+Ym6K+L4/nhFj81PKOSn850sfyHSklA31KJ07Fe4k9y/EIwmt5sRuLO9Kr9n4ByTkRVgIXOrbn/8Eym3QzkJsuEmdDpvJV5Lea2zhSzITJYoYtrCqCwjEqDKVP/QxfegbUX+AG+eBmPktClLq3S+PQAQRul2kzsP584gQEg2rb8LhHttUocZEa5F67wnVpNPGBC9V0hVW/2vWnBSboS6zk96g/2G0FMKZRsavxCHWuCVes6nRrQr2L+Py+I3ppv1/sf31Jc2sPGemsFXfKSPVxq8kf8H+cpJn2YJ+fUxPkTFLQr9h/FU88NyhWteSXQhugfTRHwG7Trkcnsh1vijJHqzq6nFVLOCrC0BqHW89R4o0AdOQLuog8PVIYjot9ndwR2zMk=
   file_glob: true
-  file: "*.bottle.tar.gz"
+  file: "*.bottle.*"
   skip_cleanup: true
   on:
     tags: true
-    python: "3.7"
     repo: SwissDataScienceCenter/renku-python
     condition: $TRAVIS_OS_NAME = 'osx'
