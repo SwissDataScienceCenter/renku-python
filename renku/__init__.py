@@ -19,16 +19,10 @@
 
 from __future__ import absolute_import, print_function
 
-from .api import APIClient, LocalClient
-from .cli._client import from_config
-from .client import RenkuClient, from_env
+from .api import LocalClient
 from .version import __version__
 
 __all__ = (
-    'APIClient',
-    'RenkuClient',
     'LocalClient',
     '__version__',
-    'from_config',
-    'from_env',
 )

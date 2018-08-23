@@ -17,6 +17,6 @@
 # limitations under the License.
 """HTTP clients for Renku platform."""
 
-from .client import APIClient, LocalClient
+from .client import LocalClient
 
-__all__ = ('APIClient', 'LocalClient')
+__all__ = ('LocalClient', )

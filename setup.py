@@ -76,7 +76,6 @@ install_requires = [
     'pydot>=1.2.4',
     'pyld>=0.8.2',
     'python-dateutil>=2.6.1',
-    'requests-oauthlib>=0.8.0',
     'requests>=2.18.4',
     'tabulate>=0.7.7',
     'werkzeug>=0.12',
@@ -87,7 +86,7 @@ packages = find_packages()
 # Get the version string. Cannot be done with import!
 g = {}
 with open(os.path.join('renku', 'version.py'), 'rt') as fp:
-    exec(fp.read(), g)
+    exec (fp.read(), g)
     version = g['__version__']
 
 setup(

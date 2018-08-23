@@ -69,7 +69,6 @@ line <cli>` instructions.
    projects
    datasets
    cwl
-   client
    api
    contributing
    changes

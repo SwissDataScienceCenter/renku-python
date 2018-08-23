@@ -29,20 +29,14 @@ This API is built on top of REST API endpoints exposed by Renku services.
 .. automodule:: renku.api
    :members:
 
-Projects
+Datasets
 --------
 
-.. automodule:: renku.api.projects
+.. automodule:: renku.api.datasets
    :members:
 
-Storage
--------
+Repository
+----------
 
-.. automodule:: renku.api.storage
-   :members:
-
-Deployer
---------
-
-.. automodule:: renku.api.deployer
+.. automodule:: renku.api.repository
    :members:
