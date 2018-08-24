@@ -43,13 +43,17 @@ def get_git_home():
     return Repo('.', search_parent_directories=True).working_dir
 
 
+def _modified_paths(repo):
+    """Return paths of modified files."""
+    return [item.b_path for item in repo.index.diff(None) if item.b_path]
+
+
 def _dirty_paths(repo):
     """Get paths of dirty files in the repository."""
     repo_path = repo.working_dir
     return {
         os.path.join(repo_path, p)
-        for p in repo.untracked_files +
-        [item.a_path for item in repo.index.diff(None)]
+        for p in repo.untracked_files + _modified_paths(repo)
     }
 
 
@@ -66,13 +70,18 @@ def _mapped_std_streams(lookup_paths, streams=('stdin', 'stdout', 'stderr')):
             pass
         # FIXME if not getattr(sys, stream).istty()
 
-    stats = ((os.stat(path), path) for path in lookup_paths)
-    lookup_inos = {(stat.st_dev, stat.st_ino): path for stat, path in stats}
+    def stream_inos(paths):
+        """Yield tuples with stats and path."""
+        for path in paths:
+            try:
+                stat = os.stat(path)
+                key = (stat.st_dev, stat.st_ino)
+                if key in standard_inos:
+                    yield standard_inos[key], path
+            except FileNotFoundError:  # pragma: no cover
+                pass
 
-    return {
-        standard_inos[key]: lookup_inos[key]
-        for key in set(standard_inos.keys()) & set(lookup_inos.keys())
-    }
+    return dict(stream_inos(lookup_paths)) if standard_inos else {}
 
 
 def _clean_streams(repo, mapped_streams):
