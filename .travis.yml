@@ -97,7 +97,7 @@ after_success:
 
 before_deploy:
   - if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
-        make brew-build-bottle;
+        make brew-commit-formula brew-build-bottle brew-commit-bottle;
     fi
 
 deploy:
