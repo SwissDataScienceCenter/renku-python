@@ -86,6 +86,7 @@ install:
     elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
         travis_retry pipenv install --deploy;
         source "$(pipenv --venv)/bin/activate";
+        travis_retry pip install -e .[all];
     fi
 
 script:

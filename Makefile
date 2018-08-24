@@ -61,7 +61,7 @@ brew-build-bottle:
 
 .PHONY: brew-commit-bottle
 brew-commit-bottle: *.bottle.json
-	brew bottle --merge --keep-old --write $<
+	brew bottle --merge --keep-old --write $< || brew bottle --merge --write $<
 
 brew-release:
 	open "https://github.com/SwissDataScienceCenter/renku-python/releases/new?tag=v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
