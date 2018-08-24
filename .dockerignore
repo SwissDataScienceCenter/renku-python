@@ -1,3 +1,10 @@
+.cache
+.pytest_cache
+__pycache__
+
+build
+dist
+
 .git
 *.gitignore
 
@@ -8,7 +15,8 @@
 *.~
 
 *.egg
-.eggs/
+*.egg-info
+.eggs
 
 .dockerignore
 Dockerfile*
@@ -18,7 +26,3 @@ docker-compose-dev.yml
 Procfile*
 
 Makefile
-
-# FIXME -- no tests in containers...
-docs/conftest.py
-renku/conftest.py
