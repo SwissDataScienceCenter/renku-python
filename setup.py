@@ -48,7 +48,7 @@ extras_require = {
         'renku-sphinx-theme>=0.1.0',
     ],
     'runner': ['cwlref-runner>=1.0', ],
-    'notebook': ['jupyter>=1.0.0', ],
+    'notebook': [],
     'tests': tests_require,
 }
 
@@ -59,7 +59,6 @@ for name, reqs in extras_require.items():
     extras_require['all'].extend(reqs)
 
 setup_requires = [
-    'Babel>=1.3',
     'pytest-runner>=2.6.2',
 ]
 
@@ -86,7 +85,7 @@ packages = find_packages()
 # Get the version string. Cannot be done with import!
 g = {}
 with open(os.path.join('renku', 'version.py'), 'rt') as fp:
-    exec (fp.read(), g)
+    exec(fp.read(), g)
     version = g['__version__']
 
 setup(
