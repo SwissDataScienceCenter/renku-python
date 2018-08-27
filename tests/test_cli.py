@@ -76,9 +76,12 @@ def test_init(isolated_runner):
     """Test project initialization."""
     runner = isolated_runner
 
-    # 1. the directory must exist
-    result = runner.invoke(cli.cli, ['init', 'test-project'])
-    assert result.exit_code == 2
+    # 1. the directory should be automatically created
+    new_project = Path('test-new-project')
+    assert not new_project.exists()
+    result = runner.invoke(cli.cli, ['init', 'test-new-project'])
+    assert result.exit_code == 0
+    assert new_project.exists()
 
     # 2. test project directory creation
     os.mkdir('test-project')

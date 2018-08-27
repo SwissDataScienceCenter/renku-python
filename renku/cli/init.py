@@ -37,6 +37,8 @@ or:
 This creates a new subdirectory named ``.renku`` that contains all the
 necessary files for managing the project configuration.
 
+If provided directory does not exist, it will be created.
+
 Updating an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -66,6 +68,8 @@ import os
 
 import click
 
+from renku._compat import Path
+
 from ._client import pass_local_client
 from ._git import set_git_home, with_git
 
@@ -79,6 +83,7 @@ def validate_name(ctx, param, value):
 
 def store_directory(ctx, param, value):
     """Store directory as a new Git home."""
+    Path(value).mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
 
@@ -88,9 +93,7 @@ def store_directory(ctx, param, value):
     'directory',
     default='.',
     callback=store_directory,
-    type=click.Path(
-        exists=True, writable=True, file_okay=False, resolve_path=True
-    )
+    type=click.Path(writable=True, file_okay=False, resolve_path=True)
 )
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True, help='Override project templates.')
