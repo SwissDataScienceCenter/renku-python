@@ -42,7 +42,7 @@ docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
 renku.rb: Pipfile.lock brew.py
-	@python brew.py renku > renku.rb
+	@python brew.py renku > $@
 
 .PHONY: brew-commit-formula
 brew-commit-formula: renku.rb
@@ -58,6 +58,9 @@ brew-build-bottle:
 
 %.bottle.json:
 	@brew bottle --json --root-url=https://github.com/SwissDataScienceCenter/renku-python/releases/download/v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable') renku || echo 'OK'
+	@echo "Renaming:"
+	@cat $@ | jq -r '.[].bottle.tags[] | select(.local_filename != .filename) | "- \"\(.local_filename)\" to \"\(.filename)\""'
+	@cat $@ | jq -r '.[].bottle.tags[] | select(.local_filename != .filename) | "mv \"\(.local_filename)\" \"\(.filename)\""' | sh || echo "Move was not successfull."
 
 .PHONY: brew-commit-bottle
 brew-commit-bottle: *.bottle.json
