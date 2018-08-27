@@ -203,6 +203,11 @@ class CommandLineToolFactory(object):
         """Watch a Renku repository for changes to detect outputs."""
         tool = self.generate_tool()
         git = repo.git
+        # NOTE consider to use git index instead
+        existing_directories = {
+            str(p.relative_to(repo.path))
+            for p in repo.path.glob('**/')
+        }
 
         yield tool
 
@@ -247,18 +252,19 @@ class CommandLineToolFactory(object):
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
 
-            from .process_requirements import InitialWorkDirRequirement, \
-                InlineJavascriptRequirement
-            initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
-                tool
-            )
-            if initial_work_dir_requirement:
-                tool.requirements.extend([
-                    InlineJavascriptRequirement(),
-                    initial_work_dir_requirement,
-                ])
-
             repo.track_paths_in_storage(*paths)
+
+        # Requirement detection can be done anytime.
+        from .process_requirements import InitialWorkDirRequirement, \
+            InlineJavascriptRequirement
+        initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
+            tool, existing_directories=existing_directories
+        )
+        if initial_work_dir_requirement:
+            tool.requirements.extend([
+                InlineJavascriptRequirement(),
+                initial_work_dir_requirement,
+            ])
 
     @command_line.validator
     def validate_command_line(self, attribute, value):
@@ -454,7 +460,7 @@ class CommandLineToolFactory(object):
                 if input_path.is_dir():
                     subpaths = {
                         str(input_path / path)
-                        for path in tree.get(input_path)
+                        for path in tree.get(input_path, default=[])
                     }
                     # TODO make sure that directory doesn't contain other files
                     # Remove files from the input directory

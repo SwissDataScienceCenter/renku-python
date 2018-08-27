@@ -23,7 +23,7 @@ from renku._compat import Path
 
 from .._datastructures import DirectoryTree
 from ._ascwl import CWLClass
-from .types import DIRECTORY_EXPRESSION, Dirent
+from .types import DIRECTORY_EXPRESSION, PATH_OBJECTS, Dirent
 
 
 class ProcessRequirement(object):
@@ -42,10 +42,15 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
     listing = attr.ib(default=attr.Factory(list))  # File, Directory
 
     @classmethod
-    def from_tool(cls, tool):
+    def from_tool(cls, tool, existing_directories=None):
         """Create a directory structure based on tool inputs and outputs."""
         directories = DirectoryTree()
         inputs = {input_.id: input_ for input_ in tool.inputs}
+
+        converters = {
+            'File': lambda value: Path(value).parent,
+            'Directory': lambda value: Path(value),
+        }
 
         # TODO enable for extra tool inputs when there is no inputBinding
         # for input_ in tool.inputs:
@@ -62,21 +67,25 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
             # if output.type in {'stdout', 'stderr'}:
             #     stream = getattr(tool, output.type)
             #     directories.add(stream)
-            if output.type == 'File':
+            if output.type in PATH_OBJECTS:
                 glob = output.outputBinding.glob
+                convert = converters[output.type]
                 # TODO better support for Expression
                 if glob.startswith('$(inputs.'):
                     input_id = glob[len('$(inputs.'):-1]
                     input_ = inputs.get(input_id)
                     if input_ is not None:
-                        directories.add(Path(input_.default).parent)
+                        directories.add(convert(input_.default))
                 elif glob:
-                    directories.add(Path(glob).parent)
-            # TODO add Directory
+                    directories.add(convert(glob))
 
         requirement = cls()
 
         for directory in directories:
+            if existing_directories and directory not in existing_directories:
+                # Create only existing directories.
+                continue
+
             requirement.listing.append(
                 Dirent(
                     entryname=directory,

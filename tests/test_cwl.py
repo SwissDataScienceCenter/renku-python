@@ -279,3 +279,38 @@ def test_input_directory(instance_path):
     assert tool.inputs[0].default == src_tar.name
     assert tool.inputs[1].type == 'Directory'
     assert tool.inputs[1].default.path.samefile(src)
+
+
+def test_exitings_output_directory(client):
+    """Test input directory."""
+    instance_path = client.path
+    output = client.path / 'output'
+
+    argv = ['script', 'output']
+    factory = CommandLineToolFactory(
+        argv,
+        directory=instance_path,
+        working_dir=instance_path,
+    )
+
+    with factory.watch(repo=client, no_output=True) as tool:
+        # Script creates the directory.
+        output.mkdir(parents=True)
+
+    initial_work_dir_requirement = [
+        r for r in tool.requirements
+        if r.__class__.__name__ == 'InitialWorkDirRequirement'
+    ]
+    assert 0 == len(initial_work_dir_requirement)
+
+    output.mkdir(parents=True, exist_ok=True)
+    with factory.watch(repo=client) as tool:
+        # The directory already exists.
+        (output / 'result.txt').touch()
+
+    initial_work_dir_requirement = [
+        r for r in tool.requirements
+        if r.__class__.__name__ == 'InitialWorkDirRequirement'
+    ]
+    assert 1 == len(initial_work_dir_requirement)
+    assert initial_work_dir_requirement[0].listing[0].entryname == output.name

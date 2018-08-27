@@ -118,12 +118,15 @@ class DirectoryTree(dict):
             self.add(value)
         return self
 
-    def get(self, value):
+    def get(self, value, default=None):
         """Return a subtree if exists."""
         path = value if isinstance(value, Path) else Path(str(value))
         subtree = self
         for part in path.parts:
-            subtree = subtree[part]
+            try:
+                subtree = subtree[part]
+            except KeyError:
+                return default
         return subtree
 
     def add(self, value):
