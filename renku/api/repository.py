@@ -18,6 +18,7 @@
 """Client for handling a local repository."""
 
 import datetime
+import os
 import uuid
 from contextlib import contextmanager
 from subprocess import PIPE, STDOUT, call
@@ -78,6 +79,9 @@ class RepositoryApiMixin(object):
     WORKFLOW = 'workflow'
     """Directory for storing workflow in Renku."""
 
+    CACHE_DIR = os.path.join('.cache', 'renku')
+    """Default name of cache directory."""
+
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         from git import InvalidGitRepositoryError, Repo
@@ -113,6 +117,16 @@ class RepositoryApiMixin(object):
     def workflow_path(self):
         """Return a ``Path`` instance of the workflow folder."""
         return self.renku_path / self.WORKFLOW
+
+    @cached_property
+    def cache_path(self):
+        """Return a ``Path`` instance of the cache directory.
+
+        NOTE: The directory is automatically created on property access.
+        """
+        cache_dir = self.path / self.CACHE_DIR
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
 
     @cached_property
     def cwl_prefix(self):
@@ -271,3 +285,39 @@ class RepositoryApiMixin(object):
                 stderr=STDOUT,
                 cwd=str(self.path),
             )
+
+    def get_index(self, revision='HEAD'):
+        """Return a file index for given revision."""
+        if revision == 'HEAD':
+            return self.git.index
+
+        from git import IndexFile
+        return IndexFile.from_tree(self.client.git, revision)
+
+    def latest_changes(self, revision='HEAD', cache=True):
+        """Return revision of latest change for every file."""
+        commit = self.git.rev_parse(revision)
+        cache_dir = self.cache_path / 'latest_changes'
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        cache_file = (cache_dir / str(commit)).with_suffix('.yaml')
+        changes = None
+
+        if cache and cache_file.exists():
+            try:
+                with cache_file.open('r') as f:
+                    changes = yaml.load(f.read())
+            except Exception:
+                pass
+
+        if changes is None:
+            index = self.get_index(revision=revision)
+            changes = {
+                path: self.git.git.log('-1', '--format=%H', path)
+                for path, _ in index.entries.keys()
+            }
+            if cache:
+                with cache_file.open('w') as f:
+                    f.write(yaml.dump(changes, default_flow_style=False))
+
+        return changes
