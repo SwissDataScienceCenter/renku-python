@@ -21,9 +21,7 @@ import os
 from collections import defaultdict
 
 import attr
-import networkx as nx
 import yaml
-from git import IndexFile, Submodule
 
 from renku import errors
 from renku._compat import Path
@@ -55,13 +53,19 @@ class Graph(object):
     """Represent the provenance graph."""
 
     client = attr.ib()
-    G = attr.ib(default=attr.Factory(nx.DiGraph))
+    G = attr.ib()
 
     cwl_prefix = attr.ib(init=False)
 
     def __attrs_post_init__(self):
         """Derive basic informations."""
         self.cwl_prefix = self.client.cwl_prefix
+
+    @G.default
+    def _default_graph(self):
+        """Return directional graph."""
+        import networkx as nx
+        return nx.DiGraph()
 
     def normalize_path(self, path):
         """Normalize path relative to the Git workdir."""
@@ -277,6 +281,7 @@ class Graph(object):
             ) or str(parent_path).startswith('.renku/vendors'):
                 original_path = original_path.resolve()
 
+                from git import Submodule
                 for submodule in Submodule.iter_items(
                     self.client.git, parent_commit=parent_commit
                 ):
@@ -306,6 +311,8 @@ class Graph(object):
                             )
 
                         subnode = change_key(subnode)
+
+                        import networkx as nx
                         nx.relabel_nodes(subgraph.G, change_key, copy=False)
 
                         #: Merge file node with it's symlinked version.
@@ -327,6 +334,7 @@ class Graph(object):
 
     def _need_update(self):
         """Yield all files that need to be updated."""
+        import networkx as nx
         visited = set()
 
         for key in nx.topological_sort(self.G):
@@ -364,8 +372,11 @@ class Graph(object):
             'deleted': {},
         }
 
-        index = self.client.git.index if revision == 'HEAD' \
-            else IndexFile.from_tree(self.client.git, revision)
+        if revision == 'HEAD':
+            index = self.client.git.index
+        else:
+            from git import IndexFile
+            index = IndexFile.from_tree(self.client.git, revision)
 
         current_files = {
             self.add_file(filepath, revision=revision)
@@ -430,6 +441,8 @@ class Graph(object):
     @property
     def _tool_nodes(self):
         """Yield topologically sorted tools."""
+        import networkx as nx
+
         for key in nx.topological_sort(self.G):
             node = self.G.nodes[key]
             tool = node.get('tool')

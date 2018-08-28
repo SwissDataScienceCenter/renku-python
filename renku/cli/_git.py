@@ -22,7 +22,6 @@ import sys
 from contextlib import contextmanager
 
 import click
-from git import Repo
 
 from renku import errors
 
@@ -40,6 +39,8 @@ def get_git_home():
     ctx = click.get_current_context(silent=True)
     if ctx and GIT_KEY in ctx.meta:
         return ctx.meta[GIT_KEY]
+
+    from git import Repo
     return Repo('.', search_parent_directories=True).working_dir
 
 
@@ -105,6 +106,8 @@ def with_git(
     clean=True, up_to_date=False, commit=True, ignore_std_streams=False
 ):
     """Perform Git checks and operations."""
+    from git import Repo
+
     repo_path = get_git_home()
     current_dir = os.getcwd()
 

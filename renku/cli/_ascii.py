@@ -22,7 +22,6 @@ import re
 
 import attr
 import click
-from networkx.algorithms.dag import topological_sort
 
 try:
     from itertools import zip_longest
@@ -85,6 +84,8 @@ class DAG(object):
 
     def __iter__(self):
         """Generate lines of ASCII representation of a DAG."""
+        from networkx.algorithms.dag import topological_sort
+
         for node in reversed(list(topological_sort(self.graph.G))):
             for node_symbol, lines, column_info in self.iter_edges(node):
                 for line in self.iter_node_lines(

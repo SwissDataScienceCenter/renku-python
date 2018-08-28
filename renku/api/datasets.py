@@ -25,7 +25,6 @@ from contextlib import contextmanager
 from urllib import error, parse
 
 import attr
-import git
 import requests
 import yaml
 
@@ -194,6 +193,8 @@ class DatasetsApiMixin(object):
         The submodules are placed in ``.renku/vendors`` and linked
         to the *path* specified by the user.
         """
+        from git import Repo
+
         # create the submodule
         u = parse.urlparse(url)
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
@@ -204,7 +205,7 @@ class DatasetsApiMixin(object):
         if u.scheme in ('', 'file'):
             warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path
-            r = git.Repo(url, search_parent_directories=True)
+            r = Repo(url, search_parent_directories=True)
             src_repo_path = Path(r.git_dir).parent
             submodule_name = src_repo_path.name
             submodule_path = submodule_path / str(src_repo_path).lstrip('/')
@@ -280,7 +281,7 @@ class DatasetsApiMixin(object):
         os.symlink(os.path.relpath(str(src), str(dst.parent)), str(dst))
 
         # grab all the authors from the commit history
-        git_repo = git.Repo(str(submodule_path.absolute()))
+        git_repo = Repo(str(submodule_path.absolute()))
         authors = []
         for commit in git_repo.iter_commits(paths=target):
             author = Author.from_commit(commit)
@@ -314,9 +315,11 @@ def check_for_git_repo(url):
     if os.path.splitext(u.path)[1] == '.git':
         is_git = True
     elif u.scheme in ('', 'file'):
+        from git import InvalidGitRepositoryError, Repo
+
         try:
-            git.Repo(u.path, search_parent_directories=True)
+            Repo(u.path, search_parent_directories=True)
             is_git = True
-        except git.InvalidGitRepositoryError:
+        except InvalidGitRepositoryError:
             is_git = False
     return is_git

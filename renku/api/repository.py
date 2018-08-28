@@ -25,8 +25,6 @@ from subprocess import PIPE, STDOUT, call
 import attr
 import filelock
 import yaml
-from git import InvalidGitRepositoryError
-from git import Repo as GitRepo
 from werkzeug.utils import cached_property, secure_filename
 
 from renku._compat import Path
@@ -82,6 +80,8 @@ class RepositoryApiMixin(object):
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
+        from git import InvalidGitRepositoryError, Repo
+
         #: Configure Renku path.
         path = Path(self.renku_home)
         if not path.is_absolute():
@@ -92,7 +92,7 @@ class RepositoryApiMixin(object):
 
         #: Create an instance of a Git repository for the given path.
         try:
-            self.git = GitRepo(str(self.path))
+            self.git = Repo(str(self.path))
         except InvalidGitRepositoryError:
             self.git = None
         # TODO except
@@ -197,17 +197,19 @@ class RepositoryApiMixin(object):
         self, name=None, force=False, use_external_storage=True
     ):
         """Initialize a local Renku repository."""
+        from git import Repo
+
         path = self.path.absolute()
         if force:
             self.renku_path.mkdir(parents=True, exist_ok=force)
             if self.git is None:
-                self.git = GitRepo.init(str(path))
+                self.git = Repo.init(str(path))
         else:
             if self.git is not None:
                 raise FileExistsError(self.git.git_dir)
 
             self.renku_path.mkdir(parents=True, exist_ok=force)
-            self.git = GitRepo.init(str(path))
+            self.git = Repo.init(str(path))
 
         self.git.description = name or path.name
 
