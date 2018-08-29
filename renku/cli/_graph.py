@@ -238,7 +238,11 @@ class Graph(object):
             )
             return self.add_tool(commits[-1], path)
 
-        commit = self.client.find_previous_commit(path, revision=revision)
+        try:
+            commit = self.client.find_previous_commit(path, revision=revision)
+        except KeyError:
+            return None
+
         cwl = self.find_cwl(commit)
         if cwl is not None:
             file_key = self.add_node(commit, path)

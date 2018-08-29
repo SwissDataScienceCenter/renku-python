@@ -101,6 +101,9 @@ class RepositoryApiMixin(object):
             self.git = None
         # TODO except
 
+        #: Local caches
+        self._latest_changes = {}
+
     @property
     def lock(self):
         """Create a Renku config lock."""
@@ -292,11 +295,15 @@ class RepositoryApiMixin(object):
             return self.git.index
 
         from git import IndexFile
-        return IndexFile.from_tree(self.client.git, revision)
+        return IndexFile.from_tree(self.git, revision)
 
     def latest_changes(self, revision='HEAD', cache=True):
         """Return revision of latest change for every file."""
         commit = self.git.rev_parse(revision)
+
+        if cache and commit.hexsha in self._latest_changes:
+            return self._latest_changes[commit.hexsha]
+
         cache_dir = self.cache_path / 'latest_changes'
         cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -307,16 +314,44 @@ class RepositoryApiMixin(object):
             try:
                 with cache_file.open('r') as f:
                     changes = yaml.load(f.read())
-            except Exception:
+            except Exception:  # pragma: no cover
+                #: There is a problem with cached file. We'll recreate it.
                 pass
 
         if changes is None:
+            changes = {}
             index = self.get_index(revision=revision)
-            changes = {
-                path: self.git.git.log('-1', '--format=%H', path)
-                for path, _ in index.entries.keys()
-            }
+            paths = {path for path, _ in index.entries.keys()}
+            start = new_start = commit
+
+            while paths:
+                change = 0
+                delta = 10  # len(paths) // 2
+
+                for step in self.git.iter_commits(start, paths=list(paths)):
+                    #: Move the starting point for next iteration.
+                    new_start = step
+                    #: Calling `iter_commits` is expensive. Continue until
+                    #: there are many changes.
+                    if change > delta:
+                        break
+
+                    hexsha = step.hexsha
+                    touched_paths = set(step.stats.files.keys())
+                    paths -= touched_paths
+                    change += len(touched_paths)
+                    for path in touched_paths:
+                        changes.setdefault(path, hexsha)
+
+                #: No progress in the loop
+                if new_start == start:
+                    break
+
+                #: Move the starting point
+                start = new_start
+
             if cache:
+                self._latest_changes[commit.hexsha] = changes
                 with cache_file.open('w') as f:
                     f.write(yaml.dump(changes, default_flow_style=False))
 
