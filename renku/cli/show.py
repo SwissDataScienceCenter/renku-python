@@ -83,9 +83,7 @@ def show():
 
 @show.command()
 @click.option('--revision', default='HEAD')
-@click.argument(
-    'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
-)
+@click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client
 @with_git(clean=False, commit=False)
 def siblings(client, revision, paths):
@@ -109,7 +107,7 @@ def siblings(client, revision, paths):
 @click.option('--revision', default='HEAD')
 @click.argument(
     'paths',
-    type=click.Path(exists=True, dir_okay=False),
+    type=click.Path(exists=True, dir_okay=True),
     nargs=-1,
 )
 @pass_local_client

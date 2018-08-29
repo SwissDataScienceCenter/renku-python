@@ -84,14 +84,8 @@ class Graph(object):
     def add_node(self, commit, path, **kwargs):
         """Add a node representing a file."""
         key = str(commit), str(path)
-        if key not in self.G.node:
-            latest = self.find_latest(commit, path)
-            self.G.add_node(
-                key, commit=commit, path=path, latest=latest, **kwargs
-            )
-        else:
-            self.G.node[key].update(**kwargs)
-
+        self.G.add_node(key)
+        self.G.node[key].update(**kwargs)
         return key
 
     def find_cwl(self, commit):
@@ -122,23 +116,6 @@ class Graph(object):
                 total['insertions'] == total['lines']
             ):
                 yield next(commit.stats.files)
-
-    def find_latest(self, start, path):
-        """Return the latest commit for path."""
-        commits = list(
-            self.client.git.iter_commits('{0}..'.format(start), paths=path)
-        )
-        for commit in reversed(commits):
-            stats = [
-                stat for filepath, stat in commit.stats.files.items()
-                if filepath.startswith(path)
-            ]
-            if not stats or all(
-                stat['lines'] == stat['deletions'] for stat in stats
-            ):
-                # Skip deleted files.
-                continue
-            return commit
 
     def add_workflow(self, commit, path, cwl=None, file_key=None):
         """Add a workflow and its dependencies to the graph."""
@@ -296,6 +273,9 @@ class Graph(object):
                             str(subpath), revision=submodule.hexsha
                         )
 
+                        #: Make sure the latest field is updated.
+                        subgraph.update_latest()
+
                         #: Extend node metadata.
                         for _, data in subgraph.G.nodes(data=True):
                             data['submodule'
@@ -363,6 +343,26 @@ class Graph(object):
             self.G.nodes[key]['_need_update'] = need_update
             visited.add(key)
 
+    def update_latest(self, revision='HEAD'):
+        """Update references to latest changes."""
+        ages = {
+            str(commit): index
+            for index, commit in
+            enumerate(self.client.git.iter_commits(revision))
+        }
+        latest_changes = self.client.latest_changes(revision=revision)
+
+        for (commit, path), data in self.G.nodes.data():
+            current_age = ages.get(commit)
+            if current_age is None:
+                continue
+
+            latest = latest_changes.get(path)
+            latest_age = ages.get(latest, -1)
+
+            if current_age > latest_age:
+                data['latest'] = latest
+
     def build_status(self, revision='HEAD', can_be_cwl=False):
         """Return files from the revision grouped by their status."""
         status = {
@@ -372,17 +372,14 @@ class Graph(object):
             'deleted': {},
         }
 
-        if revision == 'HEAD':
-            index = self.client.git.index
-        else:
-            from git import IndexFile
-            index = IndexFile.from_tree(self.client.git, revision)
-
+        index = self.client.get_index(revision=revision)
         current_files = {
             self.add_file(filepath, revision=revision)
             for filepath, _ in index.entries.keys()
             if _safe_path(filepath, can_be_cwl=can_be_cwl)
         }
+
+        self.update_latest(revision=revision)
 
         # Prepare status info for each file.
         self._need_update()
