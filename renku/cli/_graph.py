@@ -160,7 +160,9 @@ class Graph(object):
                 else:
                     #: Global workflow input
                     source = step.in_[input_id]
-                    self.G.add_edge(input_map[source], tool_key, id=input_id)
+                    input_key = input_map.get(source)
+                    if input_key is not None:
+                        self.G.add_edge(input_key, tool_key, id=input_id)
 
             # Find ALL siblings that MUST be generated in the same commit.
             for output_id, output_path in step_tool.iter_output_files():
@@ -218,8 +220,9 @@ class Graph(object):
             input_key = self.add_file(
                 input_path, revision='{0}^'.format(commit)
             )
-            #: Edge from an input to the tool.
-            self.G.add_edge(input_key, tool_key, id=input_id)
+            if input_key is not None:
+                #: Edge from an input to the tool.
+                self.G.add_edge(input_key, tool_key, id=input_id)
 
         # Find ALL siblings that MUST be generated in the same commit.
         for output_id, path in tool.iter_output_files():
