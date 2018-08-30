@@ -123,5 +123,6 @@ def log(client, revision, format, no_output, paths):
 
     for path in paths:
         graph.add_file(graph.normalize_path(path), revision=revision)
+    graph.update_latest(revision=revision)
 
     FORMATS[format](graph)
