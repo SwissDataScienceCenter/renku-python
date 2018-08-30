@@ -69,7 +69,7 @@ def rerun(client, run, job):
 
     graph = Graph(client)
     # TODO find tool in branch or merge-request range.
-    cwl = graph.find_latest_cwl()
+    cwl = graph.find_cwl(client.git.head.commit)
 
     if not cwl:
         click.secho('No tool was found.', fg='red', file=sys.stderr)

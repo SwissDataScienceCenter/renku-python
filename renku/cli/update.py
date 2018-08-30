@@ -151,13 +151,14 @@ def update(ctx, client, revision, no_output, siblings, paths):
     status = graph.build_status(revision=revision, can_be_cwl=no_output)
     paths = {graph.normalize_path(path) for path in paths} \
         if paths else status['outdated'].keys()
-    outputs = {graph.add_file(path, revision=revision) for path in paths}
 
-    if not outputs:
+    if not paths:
         click.secho(
             'All files were generated from the latest inputs.', fg='green'
         )
         sys.exit(0)
+
+    outputs = graph.build(paths=paths, revision=revision)
 
     # Check or extend siblings of outputs.
     outputs = siblings(graph, outputs)

@@ -25,6 +25,7 @@ import attr
 from ._ascwl import CWLClass, mapped
 from .parameter import WorkflowOutputParameter
 from .process import Process
+from .types import PATH_OBJECTS
 
 
 @attr.s
@@ -76,3 +77,46 @@ class Workflow(Process, CWLClass):
                             return output.id
                 elif fnmatch.fnmatch(path, glob):
                     return output.id
+
+    def iter_output_files(self, basedir, commit=None, **kwargs):
+        """Yield tuples with output id and path."""
+        step_outputs = {}
+
+        if commit:
+            import yaml
+
+            def _load(step):
+                data = (commit.tree / basedir / step.run).data_stream.read()
+                return CWLClass.from_cwl(yaml.load(data))
+
+            tools = getattr(self, '_tools', None)
+            if not tools:
+                tools = {step.id: _load(step) for step in self.steps}
+
+            for step in self.steps:
+                step_outputs[step.id] = dict(
+                    tools[step.id].iter_output_files(basedir, commit=commit)
+                )
+
+            setattr(self, '_tools', tools)
+            setattr(self, '_step_outputs', step_outputs)
+
+        for output in self.outputs:
+            if output.type not in PATH_OBJECTS:
+                continue
+
+            if output.outputSource:
+                step_id, _, source = output.outputSource.partition('/')
+                glob = step_outputs.get(step_id, {}).get(source)
+                if glob:
+                    yield output.id, glob
+            elif output.outputBinding:
+                glob = output.outputBinding.glob
+                # TODO better support for Expression
+                if glob.startswith('$(inputs.'):
+                    input_id = glob[len('$(inputs.'):-1]
+                    for input_ in self.inputs:
+                        if input_.id == input_id:
+                            yield output.id, input_.default
+                else:
+                    yield output.id, glob

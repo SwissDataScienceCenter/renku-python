@@ -69,6 +69,9 @@ class RepositoryApiMixin(object):
     git = attr.ib(init=False)
     """Store an instance of the Git repository."""
 
+    parent = attr.ib(default=None)
+    """Store a pointer to the parent repository."""
+
     METADATA = 'metadata.yml'
     """Default name of Renku config file."""
 

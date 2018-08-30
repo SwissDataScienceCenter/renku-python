@@ -34,17 +34,20 @@ _RE_ESC = re.compile(r'\x1b[^m]*m')
 
 def _format_sha1(graph, key):
     """Return formatted text with the submodule information."""
-    submodules = graph.G.nodes[key].get('submodule', [])
-    for data in graph.G.nodes[key].get('contraction', {}).values():
-        submodules.extend(data.get('submodule', []))
+    try:
+        submodules = graph.G.nodes[key].get('submodule', [])
+        for data in graph.G.nodes[key].get('contraction', {}).values():
+            submodules.extend(data.get('submodule', []))
 
-    if submodules:
-        submodule = ':'.join(submodules)
-        return click.style(
-            submodule, fg='green'
-        ) + '@' + click.style(
-            key[0][:8], fg='yellow'
-        )
+        if submodules:
+            submodule = ':'.join(submodules)
+            return click.style(
+                submodule, fg='green'
+            ) + '@' + click.style(
+                key[0][:8], fg='yellow'
+            )
+    except KeyError:
+        pass
     return click.style(key[0][:8], fg='yellow')
 
 
@@ -117,7 +120,9 @@ class DAG(object):
         if workflow_path:
             workflow_path = click.style(
                 self.graph._format_path(
-                    os.path.normpath(os.path.join(node[1], workflow_path))
+                    os.path.normpath(
+                        os.path.join(os.path.dirname(node[1]), workflow_path)
+                    )
                 ),
                 fg='blue'
             )

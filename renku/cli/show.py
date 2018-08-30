@@ -91,12 +91,8 @@ def show():
 def siblings(client, revision, paths):
     """Show siblings for given paths."""
     graph = Graph(client)
-    graph.build_status(revision=revision)
-
-    nodes = {
-        graph.add_file(graph.normalize_path(path), revision=revision)
-        for path in paths
-    }
+    paths = [graph.normalize_path(path) for path in paths]
+    nodes = graph.build(paths=paths, revision=revision)
     siblings_ = set(nodes)
     for node in nodes:
         siblings_ |= graph.siblings(node)
@@ -121,15 +117,13 @@ def outputs(ctx, client, revision, paths):
     <PATHS>    Files to show. If no files are given all output files are shown.
     """
     graph = Graph(client)
+    paths = [graph.normalize_path(path) for path in paths]
     filter = None
 
     if not paths:
         graph.build_status(revision=revision)
     else:
-        filter = {
-            graph.add_file(graph.normalize_path(path), revision=revision)
-            for path in paths
-        }
+        filter = set(graph.build(paths=paths, revision=revision))
 
     output_paths = {
         Path(output_key[1]).resolve()

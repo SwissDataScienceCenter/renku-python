@@ -43,13 +43,15 @@ def workflow():
     default='-',
     help='Write workflow to the FILE.',
 )
-@click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.argument(
+    'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
+)
 @pass_local_client
-def create(client, output_file, revision, path):
+def create(client, output_file, revision, paths):
     """Create a workflow description for a file."""
     graph = Graph(client)
-    for p in path:
-        graph.add_file(p, revision=revision)
+    paths = [graph.normalize_path(path) for path in paths]
+    graph.build(paths=paths, revision=revision)
 
     output_file.write(
         yaml.dump(

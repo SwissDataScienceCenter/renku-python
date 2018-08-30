@@ -17,8 +17,6 @@
 # limitations under the License.
 """Pytest configuration."""
 
-from __future__ import absolute_import, print_function
-
 import json
 import os
 import shutil
@@ -79,7 +77,6 @@ def project():
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
         assert result.exit_code == 0
-        print(project_path)
         yield project_path
 
 

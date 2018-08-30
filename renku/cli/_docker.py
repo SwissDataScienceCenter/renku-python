@@ -94,7 +94,6 @@ class GitURL(object):
         for regex in _REPOSITORY_URLS:
             if re.search(regex, href):
                 matches = re.search(regex, href)
-                print('matched', regex)
                 return cls(href=href, **matches.groupdict())
         else:
             raise errors.ConfigurationError(

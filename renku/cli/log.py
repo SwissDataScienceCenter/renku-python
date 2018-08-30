@@ -115,13 +115,12 @@ def log(client, revision, format, no_output, paths):
     graph = Graph(client)
     if not paths:
         paths = (
-            path for path in client.git.rev_parse(revision).stats.files.keys()
+            graph.normalize_path(path)
+            for path in client.git.rev_parse(revision).stats.files.keys()
             if _safe_path(path, can_be_cwl=no_output)
         )
 
     # NOTE shall we warn when "not no_output and not paths"?
-
-    for path in paths:
-        graph.add_file(graph.normalize_path(path), revision=revision)
+    graph.build(paths=paths, revision=revision)
 
     FORMATS[format](graph)
