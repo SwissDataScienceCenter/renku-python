@@ -83,8 +83,7 @@ def status(ctx, client, revision, no_output, path):
                         ),
                         _format_sha1(graph, n),
                     ) for n in stts
-                    if not n.path.startswith('.renku/workflow/') and
-                    n.path not in status['outdated']
+                    if n.path not in status['outdated']
                 ) for stts in files
             )
 
