@@ -152,6 +152,23 @@ def test_run_simple(runner, project):
     assert '.renku/workflow/' in result.output
 
 
+_CMD_EXIT_2 = ['bash', '-c', 'exit 2']
+
+
+@pytest.mark.parametrize(
+    'cmd, exit_code', (
+        (_CMD_EXIT_2, 1),
+        (['--success-code', '1', '--no-output'] + _CMD_EXIT_2, 1),
+        (['--success-code', '2', '--no-output'] + _CMD_EXIT_2, 0),
+        (['--success-code', '0', '--no-output', 'echo', 'hola'], 0),
+    )
+)
+def test_exit_code(cmd, exit_code, runner, project):
+    """Test exit-code of run command."""
+    result = runner.invoke(cli.cli, ['run'] + cmd)
+    assert result.exit_code == exit_code
+
+
 def test_git_pre_commit_hook(runner, project, capsys):
     """Test detection of output edits."""
     result = runner.invoke(cli.cli, ['githooks', 'install'])

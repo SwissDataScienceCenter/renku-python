@@ -171,6 +171,8 @@ class CommandLineToolFactory(object):
     inputs = attr.ib(init=False)
     outputs = attr.ib(init=False)
 
+    successCodes = attr.ib(default=attr.Factory(list))  # list(int)
+
     def __attrs_post_init__(self):
         """Derive basic informations."""
         self.baseCommand, detect = self.split_command_and_args()
@@ -215,6 +217,7 @@ class CommandLineToolFactory(object):
             arguments=self.arguments,
             inputs=self.inputs,
             outputs=self.outputs,
+            successCodes=self.successCodes,
         )
 
     @contextmanager

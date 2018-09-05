@@ -181,5 +181,24 @@ class OutputsNotFound(RenkuException, click.ClickException):
         super(OutputsNotFound, self).__init__(msg)
 
 
+class InvalidSuccessCode(RenkuException, click.ClickException):
+    """Raise when the exit-code is not 0 or redefined."""
+
+    def __init__(self, returncode, success_codes=None):
+        """Build a custom message."""
+        if not success_codes:
+            msg = 'Command returned non-zero exit status {0}.'.format(
+                returncode
+            )
+        else:
+            msg = (
+                'Command returned {0} exit status, but it expects {1}'.format(
+                    returncode,
+                    ', '.join((str(code) for code in success_codes))
+                )
+            )
+        super(InvalidSuccessCode, self).__init__(msg)
+
+
 class NotFound(APIError):
     """Raise when an API object is not found."""

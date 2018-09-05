@@ -71,6 +71,23 @@ done when invoking a command:
    $ renku run grep "test" B > C 2> D
 
 .. warning:: Detecting inputs and outputs from pipes ``|`` is not supported.
+
+Exit codes
+~~~~~~~~~~
+
+All Unix commands return a number between 0 and 255 which is called
+"exit code". In case other numbers are returned, they are treaded module 256
+(-10 is equivalent to 246, 257 is equivalent to 1). The exit-code 0 represents
+a *success* and non-zero exit-code indicates a *failure*.
+
+Therefore the command speficied after ``renku run`` is expected to return
+exit-code 0. If the command returns different exit code, you can speficy them
+with ``--success-code=<INT>`` parameter.
+
+.. code-block:: console
+
+   $ renku run --success-code=1 --no-output fail
+
 """
 
 import os
@@ -79,6 +96,7 @@ from subprocess import call
 
 import click
 
+from renku import errors
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
 from ._client import pass_local_client
@@ -90,12 +108,20 @@ from ._git import _mapped_std_streams, with_git
     '--no-output',
     is_flag=True,
     default=False,
-    help='Allow commands without output files.'
+    help='Allow command without output files.',
+)
+@click.option(
+    '--success-code',
+    'success_codes',
+    type=int,
+    multiple=True,
+    callback=lambda _, __, values: [int(value) % 256 for value in values],
+    help='Allowed command exit-code.',
 )
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_local_client
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
-def run(client, no_output, command_line):
+def run(client, no_output, success_codes, command_line):
     """Tracking work on a specific problem."""
     working_dir = client.git.working_dir
     paths = [x[0] for x in client.git.index.entries]
@@ -106,6 +132,7 @@ def run(client, no_output, command_line):
         command_line=command_line,
         directory=os.getcwd(),
         working_dir=working_dir,
+        successCodes=success_codes,
         **{
             name: os.path.relpath(path, working_dir)
             for name, path in mapped_std.items()
@@ -114,12 +141,17 @@ def run(client, no_output, command_line):
 
     with client.with_workflow_storage() as wf:
         with factory.watch(client, no_output=no_output) as tool:
-            call(
+            returncode = call(
                 factory.command_line,
                 cwd=os.getcwd(),
                 **{key: getattr(sys, key)
                    for key in mapped_std.keys()},
             )
+
+            if returncode not in (success_codes or {0}):
+                raise errors.InvalidSuccessCode(
+                    returncode, success_codes=success_codes
+                )
 
             sys.stdout.flush()
             sys.stderr.flush()
