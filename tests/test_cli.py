@@ -31,6 +31,7 @@ import yaml
 
 from renku import __version__, cli
 from renku._compat import Path
+from renku.models.cwl import CWLClass, ascwl
 from renku.models.cwl.workflow import Workflow
 
 
@@ -145,7 +146,7 @@ def test_run_simple(runner, project):
 
     # There are no output files.
     result = runner.invoke(cli.cli, ['log'])
-    assert result.output.strip() == ''
+    assert 1 == len(result.output.strip().split('\n'))
 
     # Display tools with no outputs.
     result = runner.invoke(cli.cli, ['log', '--no-output'])
@@ -764,6 +765,68 @@ def test_modified_output(runner, project, capsys):
 
     with output.open('r') as f:
         assert f.read().strip() == '3'
+
+
+def test_modified_tool(runner, project, capsys):
+    """Test detection of modified tool."""
+    from renku.api import LocalClient
+
+    client = LocalClient(project)
+    repo = client.git
+    greeting = client.path / 'greeting.txt'
+
+    with capsys.disabled():
+        with greeting.open('wb') as stdout:
+            try:
+                old_stdout = sys.stdout
+                sys.stdout = stdout
+                try:
+                    cli.cli.main(args=('run', 'echo', 'hello'), )
+                except SystemExit as e:
+                    assert e.code in {None, 0}
+            finally:
+                sys.stdout = old_stdout
+
+    cmd = ['status']
+    result = runner.invoke(cli.cli, cmd)
+    assert result.exit_code == 0
+
+    # There should be only one command line tool.
+    tools = list(client.workflow_path.glob('*_echo.cwl'))
+    assert 1 == len(tools)
+
+    tool_path = tools[0]
+    with tool_path.open('r') as f:
+        command_line_tool = CWLClass.from_cwl(yaml.load(f))
+
+    # Simulate a manual edit.
+    command_line_tool.inputs[0].default = 'ahoj'
+    command_line_tool.stdout = 'pozdrav.txt'
+
+    with tool_path.open('w') as f:
+        yaml.dump(
+            ascwl(
+                command_line_tool,
+                filter=lambda _, x: x is not None,
+                basedir=client.workflow_path,
+            ),
+            stream=f,
+            default_flow_style=False
+        )
+
+    repo.git.add('--all')
+    repo.index.commit('Modified tool', skip_hooks=True)
+
+    assert 0 == _run_update(runner, capsys)
+
+    output = client.path / 'pozdrav.txt'
+    assert output.exists()
+    with output.open('r') as f:
+        assert 'ahoj\n' == f.read()
+
+    cmd = ['status']
+    result = runner.invoke(cli.cli, cmd)
+    assert 0 == result.exit_code
 
 
 def test_siblings(runner, project):
