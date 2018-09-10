@@ -18,13 +18,14 @@
 """Graph builder."""
 
 import os
-from collections import defaultdict
+from collections import defaultdict, deque
 from functools import lru_cache
 
 import attr
 
 from renku import errors
 from renku._compat import Path
+from renku.models.commit import Activity, Dependency
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
@@ -91,14 +92,29 @@ class Graph(object):
                 cwl = file_
         return cwl
 
+    def process_dependencies(self, dependencies):
+        """Process given dependencies."""
+        graph = self.commits
+        dependencies = deque(dependencies)
+
+        while dependencies:
+            dependency = dependencies.popleft()
+            if dependency.commit in graph:
+                continue
+
+            action = graph[dependency.commit] = Activity.from_git_commit(
+                dependency.commit,
+                client=dependency.client,
+                submodules=dependency.submodules,
+            )
+            dependencies.extendleft(action.inputs.values())
+
     def build(
         self, revision='HEAD', paths=None, dependencies=None, can_be_cwl=False
     ):
         """Build graph from paths and/or revision."""
-        from renku.models.commit import Action, Dependency
-
         if paths is None and dependencies is None:
-            dependencies = Action.dependencies(
+            dependencies = Activity.dependencies(
                 self.client, revision=revision, can_be_cwl=can_be_cwl
             )
         elif dependencies is None:
@@ -112,9 +128,7 @@ class Graph(object):
                          for dependency in dependencies if dependency.path}
         latest_commits = {path: commit for commit, path in current_files}
 
-        self.commits = Action.build_graph(
-            self.client, lookup=dependencies, graph=self.commits
-        )
+        self.process_dependencies(dependencies)
 
         for action in self.commits.values():
             for key, data in action.iter_nodes():
@@ -192,8 +206,8 @@ class Graph(object):
             'deleted': {},
         }
 
-        from renku.models.commit import Action
-        dependencies = Action.dependencies(
+        from renku.models.commit import Activity
+        dependencies = Activity.dependencies(
             self.client, revision=revision, can_be_cwl=can_be_cwl
         )
         current_files = set(self.build(dependencies=dependencies))

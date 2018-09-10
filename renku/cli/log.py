@@ -87,9 +87,16 @@ def format_dot(graph):
     click.echo(nx.nx_pydot.to_pydot(graph.G).to_string())
 
 
+def format_jsonld(graph):
+    """Format graph as JSON-LD file."""
+    import ipdb
+    ipdb.set_trace()
+
+
 FORMATS = {
     'ascii': format_ascii,
     'dot': format_dot,
+    'jsonld': format_jsonld,
 }
 """Valid formatting options."""
 

@@ -457,10 +457,12 @@ def test_datasets(data_file, data_repository, runner, project):
 
     # add data from a git repo via http
     result = runner.invoke(
-        cli.cli, [
+        cli.cli,
+        [
             'dataset', 'add', 'dataset', '--target', 'README.rst',
             'https://github.com/SwissDataScienceCenter/renku-python.git'
-        ]
+        ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
     assert os.stat('data/dataset/renku-python/README.rst')

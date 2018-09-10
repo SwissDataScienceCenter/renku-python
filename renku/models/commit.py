@@ -18,12 +18,13 @@
 """Graph builder."""
 
 import os
-from collections import deque
+from datetime import datetime
 
 import attr
 import yaml
 
 from renku.api import LocalClient
+from renku.models import _jsonld as jsonld
 from renku.models._datastructures import DirectoryTree
 from renku.models.cwl._ascwl import CWLClass
 
@@ -51,9 +52,14 @@ class Dependency(object):
         )
 
 
-@attr.s
-class Action(object):
-    """Represent an action in the repository."""
+@jsonld.s(
+    type='prov:Activity',
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+    },
+)
+class Activity(object):
+    """Represent an activity in the repository."""
 
     commit = attr.ib()
     client = attr.ib()
@@ -67,6 +73,33 @@ class Action(object):
     children = attr.ib(default=attr.Factory(list))
 
     submodules = attr.ib(default=attr.Factory(list))
+
+    used = jsonld.ib(context='prov:used', default=None)
+    generated = jsonld.ib(context='prov:generated', default=attr.Factory(list))
+    started_at_time = jsonld.ib(
+        context={
+            '@id': 'prov:startedAtTime',
+            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+        },
+        default=None
+    )
+
+    ended_at_time = jsonld.ib(
+        context={
+            '@id': 'prov:endedAtTime',
+            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+        },
+        default=None
+    )
+
+    def __attrs_post_init__(self):
+        """Configure calculated properties."""
+        self.started_at_time = datetime.fromtimestamp(
+            self.commit.authored_date
+        ).isoformat()
+        self.ended_at_time = datetime.fromtimestamp(
+            self.commit.committed_date
+        ).isoformat()
 
     def change_key(self, dependency, path=None):
         """Rename the path part in the key."""
@@ -216,7 +249,7 @@ class Action(object):
         inputs = {}
         outputs = {}
         children = {}
-        hierarchy = list(submodules) or []
+        hierarchy = list(submodules) if submodules else []
 
         tree = DirectoryTree()
 
@@ -322,32 +355,6 @@ class Action(object):
             children=children,
             submodules=hierarchy,
         )
-
-    @classmethod
-    def build_graph(cls, client, revision='HEAD', lookup=None, graph=None):
-        """Build a graph for the whole repository."""
-        graph = graph or {}
-        if lookup is None:
-            lookup = deque(
-                Dependency(client=client, commit=commit)
-                for commit in client.git.iter_commits(rev=revision)
-            )
-        else:
-            lookup = deque(lookup)
-
-        while lookup:
-            dependency = lookup.popleft()
-            if dependency.commit in graph:
-                continue
-
-            action = graph[dependency.commit] = cls.from_git_commit(
-                dependency.commit,
-                client=dependency.client,
-                submodules=dependency.submodules,
-            )
-            lookup.extendleft(action.inputs.values())
-
-        return graph
 
     @classmethod
     def dependencies(cls, client, revision='HEAD', can_be_cwl=False):

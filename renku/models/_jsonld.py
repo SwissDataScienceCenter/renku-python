@@ -59,10 +59,9 @@ def attrs(
             jsonld_cls = make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {})
 
         for a in attr.fields(jsonld_cls):
-            try:
-                key = a.name
-                ctx = a.metadata[KEY]
-            except KeyError:
+            key = a.name
+            ctx = a.metadata.get(KEY)
+            if ctx is None:
                 continue
 
             if ':' in ctx:
@@ -89,7 +88,10 @@ def attrs(
         jsonld_cls._jsonld_type = type
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
-        jsonld_cls._jsonld_fields = {a.name for a in attr.fields(jsonld_cls)}
+        jsonld_cls._jsonld_fields = {
+            a.name
+            for a in attr.fields(jsonld_cls) if KEY in a.metadata
+        }
 
         context_doc = '\n'.join(
             '   ' + line for line in json.dumps(context, indent=2).split('\n')
@@ -107,8 +109,7 @@ def attrs(
 def attrib(context=None, **kwargs):
     """Create a new attribute with context."""
     kwargs.setdefault('metadata', {})
-    if context:
-        kwargs['metadata'][KEY] = context
+    kwargs['metadata'][KEY] = context
     return attr.ib(**kwargs)
 
 
@@ -165,7 +166,11 @@ def asjsonld(
     export_context=True,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
-    attrs = fields(inst.__class__)
+    jsonld_fields = inst.__class__._jsonld_fields
+    attrs = tuple(
+        field
+        for field in fields(inst.__class__) if field.name in jsonld_fields
+    )
     rv = dict_factory()
 
     def convert_value(v):
@@ -176,6 +181,7 @@ def asjsonld(
 
     for a in attrs:
         v = getattr(inst, a.name)
+
         # do not export context for containers
         ec = export_context and KEY_CLS not in a.metadata
 
