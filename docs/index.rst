@@ -68,6 +68,7 @@ line <cli>` instructions.
    cli
    projects
    datasets
+   provenance
    cwl
    api
    contributing

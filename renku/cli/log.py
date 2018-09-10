@@ -89,14 +89,45 @@ def format_dot(graph):
 
 def format_jsonld(graph):
     """Format graph as JSON-LD file."""
-    import ipdb
-    ipdb.set_trace()
+    import json
+    from pyld import jsonld
+
+    from renku.models._jsonld import asjsonld
+
+    click.echo(
+        json.dumps(
+            jsonld.expand([
+                asjsonld(action) for action in graph.commits.values()
+            ]),
+            indent=2,
+        )
+    )
+
+
+def format_n_quads(graph):
+    """Normalize a document using the RDF Dataset Normalization Algorithm.
+
+    .. seealso:: http://json-ld.github.io/normalization/spec/
+    """
+    from pyld import jsonld
+    from renku.models._jsonld import asjsonld
+
+    click.echo(
+        jsonld.normalize(
+            [asjsonld(action) for action in graph.commits.values()],
+            {
+                'algorithm': 'URDNA2015',
+                'format': 'application/n-quads'
+            },
+        )
+    )
 
 
 FORMATS = {
     'ascii': format_ascii,
     'dot': format_dot,
-    'jsonld': format_jsonld,
+    'json-ld': format_jsonld,
+    'n-quads': format_n_quads,
 }
 """Valid formatting options."""
 

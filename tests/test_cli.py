@@ -410,11 +410,16 @@ def test_update(runner, project, capsys):
     with output.open('r') as f:
         assert f.read().strip() == '2'
 
-    # Make sure the log contains the original parent.
-    result = runner.invoke(
-        cli.cli, ['log', '--format', 'dot'], catch_exceptions=False
-    )
-    assert source.name in result.output
+    from renku.cli.log import FORMATS
+    for output_format in FORMATS:
+        # Make sure the log contains the original parent.
+        result = runner.invoke(
+            cli.cli,
+            ['log', '--format', output_format],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, output_format
+        assert source.name in result.output, output_format
 
 
 def test_streams_and_args_names(runner, project, capsys):

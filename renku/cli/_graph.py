@@ -18,17 +18,17 @@
 """Graph builder."""
 
 import os
-from collections import defaultdict, deque
+from collections import defaultdict
 from functools import lru_cache
 
 import attr
 
 from renku import errors
 from renku._compat import Path
-from renku.models.commit import Activity, Dependency
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
+from renku.models.provenance import Activity, Dependency
 
 
 def _safe_path(filepath, can_be_cwl=False):
@@ -55,11 +55,36 @@ class Graph(object):
     G = attr.ib()
     commits = attr.ib(default=attr.Factory(dict))
 
+    _sorted_commits = attr.ib(default=attr.Factory(list))
+
     cwl_prefix = attr.ib(init=False)
 
     def __attrs_post_init__(self):
         """Derive basic informations."""
         self.cwl_prefix = self.client.cwl_prefix
+
+    @property
+    def nodes(self):
+        """Yield topologically sorted nodes."""
+        inputs = defaultdict(set)
+        shown = set()
+
+        for commit in reversed(self._sorted_commits):
+            activity = self.commits[commit]
+            # There might be unconnected dependencies.
+            past_inputs = inputs.pop(str(commit), set())
+            for key, data in activity.iter_nodes():
+                if str(commit) == key[0] or 'tool' in data:
+                    past_inputs.discard(key)
+                    if key not in shown:
+                        shown.add(key)
+                        yield key
+                else:
+                    inputs[key[0]].add(key)
+
+            for key in past_inputs - shown:
+                shown.add(key)
+                yield key
 
     @G.default
     def _default_graph(self):
@@ -92,37 +117,83 @@ class Graph(object):
                 cwl = file_
         return cwl
 
+    def dependencies(self, revision='HEAD', can_be_cwl=False, paths=None):
+        """Build a status."""
+        if paths is not None:
+            return [
+                Dependency.from_revision(
+                    self.client, path=path, revision=revision
+                ) for path in paths
+            ]
+
+        if revision == 'HEAD':
+            index = self.client.git.index
+        else:
+            from git import IndexFile
+            index = IndexFile.from_tree(self.client.git, revision)
+
+        return [
+            Dependency.from_revision(
+                client=self.client,
+                path=path,
+                revision=revision,
+            ) for path, _ in index.entries.keys()
+            if _safe_path(path, can_be_cwl=can_be_cwl)
+        ]
+
     def process_dependencies(self, dependencies):
         """Process given dependencies."""
-        graph = self.commits
-        dependencies = deque(dependencies)
+        visited = set()
+        ordered = self._sorted_commits
+        stack = []
 
-        while dependencies:
-            dependency = dependencies.popleft()
-            if dependency.commit in graph:
+        @attr.s
+        class Trick:
+            """Tricky node."""
+
+            commit = attr.ib()
+
+        for dependency in dependencies:
+            # Make sure we visit each commit only once.
+            if dependency.commit in visited:
                 continue
 
-            action = graph[dependency.commit] = Activity.from_git_commit(
-                dependency.commit,
-                client=dependency.client,
-                submodules=dependency.submodules,
-            )
-            dependencies.extendleft(action.inputs.values())
+            visited.add(dependency.commit)
+            # Start DFS with double pushing to calucate topological order.
+            stack.append(dependency)
+
+            while stack:
+                processing = stack.pop()
+
+                if isinstance(processing, Trick):
+                    # The commit has been fully processed.
+                    ordered.append(processing.commit)
+                else:
+                    # Do the node processing here:
+                    activity = Activity.from_git_commit(
+                        processing.commit,
+                        client=processing.client,
+                        submodules=processing.submodules,
+                    )
+                    self.commits[processing.commit] = activity
+
+                    # The double push trick to find end of node processing.
+                    stack.append(Trick(commit=processing.commit))
+
+                    # Iterate over parents.
+                    for input_ in activity.inputs.values():
+                        if input_.commit not in visited:
+                            visited.add(input_.commit)
+                            stack.append(input_)
 
     def build(
         self, revision='HEAD', paths=None, dependencies=None, can_be_cwl=False
     ):
         """Build graph from paths and/or revision."""
-        if paths is None and dependencies is None:
-            dependencies = Activity.dependencies(
-                self.client, revision=revision, can_be_cwl=can_be_cwl
+        if dependencies is None:
+            dependencies = self.dependencies(
+                revision=revision, can_be_cwl=can_be_cwl, paths=paths
             )
-        elif dependencies is None:
-            dependencies = [
-                Dependency.from_revision(
-                    self.client, path=path, revision=revision
-                ) for path in paths
-            ]
 
         current_files = {(dependency.commit.hexsha, dependency.path)
                          for dependency in dependencies if dependency.path}
@@ -130,8 +201,8 @@ class Graph(object):
 
         self.process_dependencies(dependencies)
 
-        for action in self.commits.values():
-            for key, data in action.iter_nodes():
+        for activity in self.commits.values():
+            for key, data in activity.iter_nodes():
                 path = key[1]
                 commit = str(data['commit'])
 
@@ -156,7 +227,7 @@ class Graph(object):
 
                 self.G.add_node(key, **data)
 
-            for source, target, data in action.iter_edges():
+            for source, target, data in activity.iter_edges():
                 self.G.add_edge(source, target, **data)
 
         return current_files
@@ -168,10 +239,9 @@ class Graph(object):
 
     def _need_update(self):
         """Yield all files that need to be updated."""
-        import networkx as nx
         visited = set()
 
-        for key in nx.topological_sort(self.G):
+        for key in reversed(list(self.nodes)):
             assert key not in visited
             need_update = []
             node = self.G.nodes[key]
@@ -206,9 +276,8 @@ class Graph(object):
             'deleted': {},
         }
 
-        from renku.models.commit import Activity
-        dependencies = Activity.dependencies(
-            self.client, revision=revision, can_be_cwl=can_be_cwl
+        dependencies = self.dependencies(
+            revision=revision, can_be_cwl=can_be_cwl
         )
         current_files = set(self.build(dependencies=dependencies))
 
@@ -274,13 +343,14 @@ class Graph(object):
     @property
     def _tool_nodes(self):
         """Yield topologically sorted tools."""
-        import networkx as nx
-
-        for key in nx.topological_sort(self.G):
-            node = self.G.nodes[key]
-            tool = node.get('tool')
-            if tool is not None:
-                yield key, node
+        for key in reversed(list(self.nodes)):
+            try:
+                node = self.G.nodes[key]
+                tool = node.get('tool')
+                if tool is not None:
+                    yield key, node
+            except KeyError:
+                pass
 
     def siblings(self, key):
         """Return siblings for a given key.

@@ -87,9 +87,7 @@ class DAG(object):
 
     def __iter__(self):
         """Generate lines of ASCII representation of a DAG."""
-        from networkx.algorithms.dag import topological_sort
-
-        for node in reversed(list(topological_sort(self.graph.G))):
+        for node in self.graph.nodes:
             for node_symbol, lines, column_info in self.iter_edges(node):
                 for line in self.iter_node_lines(
                     node_symbol, self.node_text(node), column_info
