@@ -122,7 +122,7 @@ class CommandLineTool(Process, CWLClass):
 
         return argv
 
-    def iter_output_files(self, basedir, **kwargs):
+    def iter_output_files(self, basedir=None, **kwargs):
         """Yield tuples with output id and path."""
         for output in self.outputs:
             if output.type in {'stdout', 'stderr'}:

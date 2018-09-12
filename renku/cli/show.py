@@ -66,8 +66,6 @@ paths specified as arguments are output files.
 
 import click
 
-from renku._compat import Path
-
 from ._client import pass_local_client
 from ._git import with_git
 from ._graph import Graph
@@ -118,18 +116,8 @@ def outputs(ctx, client, revision, paths):
     """
     graph = Graph(client)
     paths = [graph.normalize_path(path) for path in paths]
-    filter = None
+    filter = set(graph.build(paths=paths, revision=revision))
+    output_paths = graph.output_paths
 
-    if not paths:
-        graph.build_status(revision=revision)
-    else:
-        filter = set(graph.build(paths=paths, revision=revision))
-
-    output_paths = {
-        Path(output_key[1]).resolve()
-        for (tool_key, output_key) in graph.G.edges
-        if 'tool' in graph.G.nodes[tool_key] and
-        (filter is None or output_key in filter)
-    }
     click.echo('\n'.join(graph._format_path(path) for path in output_paths))
-    ctx.exit(0 if filter is None or len(output_paths) == len(filter) else 1)
+    ctx.exit(0 if not paths or len(output_paths) == len(filter) else 1)

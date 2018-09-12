@@ -56,6 +56,7 @@ class Graph(object):
     commits = attr.ib(default=attr.Factory(dict))
 
     _sorted_commits = attr.ib(default=attr.Factory(list))
+    _nodes = attr.ib(default=attr.Factory(dict))
 
     cwl_prefix = attr.ib(init=False)
 
@@ -70,10 +71,12 @@ class Graph(object):
         shown = set()
 
         for commit in reversed(self._sorted_commits):
-            activity = self.commits[commit]
+            activity = self.commits[commit.hexsha]
             # There might be unconnected dependencies.
             past_inputs = inputs.pop(str(commit), set())
             for key, data in activity.iter_nodes():
+                self._nodes[key] = data
+
                 if str(commit) == key[0] or 'tool' in data:
                     past_inputs.discard(key)
                     if key not in shown:
@@ -106,6 +109,12 @@ class Graph(object):
         """Check if the path is a valid CWL file."""
         return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
 
+    def pred(self, key):
+        """Return all direct parents."""
+        # commit_hexsha, path = key
+        # action = self.commits[commit_hexsha]
+        raise NotImplemented("Implement action.pred(path) first")
+
     @lru_cache(maxsize=1024)
     def find_cwl(self, commit):
         """Return a CWL."""
@@ -118,8 +127,8 @@ class Graph(object):
         return cwl
 
     def dependencies(self, revision='HEAD', can_be_cwl=False, paths=None):
-        """Build a status."""
-        if paths is not None:
+        """Return dependencies from a revision or paths."""
+        if paths:
             return [
                 Dependency.from_revision(
                     self.client, path=path, revision=revision
@@ -175,7 +184,7 @@ class Graph(object):
                         client=processing.client,
                         submodules=processing.submodules,
                     )
-                    self.commits[processing.commit] = activity
+                    self.commits[processing.commit.hexsha] = activity
 
                     # The double push trick to find end of node processing.
                     stack.append(Trick(commit=processing.commit))
@@ -222,6 +231,7 @@ class Graph(object):
 
                 if latest and latest != commit:
                     data['latest'] = latest
+                    self._nodes[key] = data
                     latest_commits.setdefault(path, latest)
                     # current_files.add((latest, path))
 
@@ -236,6 +246,15 @@ class Graph(object):
     def _output_keys(self):
         """Return a list of the output keys."""
         return [n for n, d in self.G.out_degree() if d == 0]
+
+    @property
+    def output_paths(self):
+        """Return all output paths."""
+        paths = set()
+        for activity in self.commits.values():
+            if activity.process_path:
+                paths |= set(activity.outputs.keys())
+        return paths
 
     def _need_update(self):
         """Yield all files that need to be updated."""
@@ -341,7 +360,7 @@ class Graph(object):
                 yield key, node
 
     @property
-    def _tool_nodes(self):
+    def tool_nodes(self):
         """Yield topologically sorted tools."""
         for key in reversed(list(self.nodes)):
             try:
@@ -358,18 +377,49 @@ class Graph(object):
         The key is part of the result set, hence to check if the node has
         siblings you should check the lenght is greater than 1.
         """
-        parents = list(self.G.predecessors(key))
-        if not parents:
+        commit_hexsha, path = key
+        activity = self.commits[commit_hexsha]
+
+        # TODO refactor to .renku/workflows/name#step_id
+        tools = set()
+        if activity.process_path:
+            tools.add(activity.process_path)
+
+            if activity.children:
+                tools |= {
+                    os.path.join(
+                        os.path.dirname(activity.process_path),
+                        step.run,
+                    )
+                    for step in activity.process.steps
+                }
+
+        if not activity.process_path or not (
+            path in tools or path in activity.outputs
+        ):
             raise errors.InvalidOutputPath(
                 'The file "{0}" was not created by a renku command. \n\n'
                 'Check the file history using: git log --follow "{0}"'.format(
                     key[1]
                 )
             )
-        return {
-            sibling
-            for parent in parents for sibling in self.G.successors(parent)
-        }
+
+        elif path in tools:
+            return {key}
+
+        elif activity.children:
+            output_id = activity.outputs[path]
+            steps = {
+                output.id: output.outputSource.split('/')[0]
+                for output in activity.process.outputs
+            }
+            step_id = steps[output_id]
+
+            return {(key[0], output_path)
+                    for output_path, output_id in activity.outputs.items()
+                    if steps[output_id] == step_id}
+
+        return {(key[0], path) for path in activity.outputs.keys()}
 
     def ascwl(self, global_step_outputs=False):
         """Serialize graph to CWL workflow.
@@ -398,7 +448,7 @@ class Graph(object):
                 return attr.evolve(default, path=path)
             return default
 
-        for tool_index, (key, node) in enumerate(self._tool_nodes, 1):
+        for tool_index, (key, node) in enumerate(self.tool_nodes, 1):
             _, path = key
             tool = node['tool']
             step_id = 'step_{0}'.format(tool_index)

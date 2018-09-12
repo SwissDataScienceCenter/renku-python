@@ -159,6 +159,6 @@ def log(client, revision, format, no_output, paths):
         )
 
     # NOTE shall we warn when "not no_output and not paths"?
-    graph.build(paths=paths, revision=revision)
+    graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
 
     FORMATS[format](graph)

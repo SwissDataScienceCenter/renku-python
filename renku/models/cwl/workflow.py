@@ -78,28 +78,31 @@ class Workflow(Process, CWLClass):
                 elif fnmatch.fnmatch(path, glob):
                     return output.id
 
-    def iter_output_files(self, basedir, commit=None, **kwargs):
+    def iter_output_files(self, basedir=None, commit=None, **kwargs):
         """Yield tuples with output id and path."""
         step_outputs = {}
 
-        if commit:
-            import yaml
+        import yaml
 
-            def _load(step):
+        def _load(step):
+            if commit:
                 data = (commit.tree / basedir / step.run).data_stream.read()
-                return CWLClass.from_cwl(yaml.load(data))
+            else:
+                with step.run.open('r') as f:
+                    data = f.read()
+            return CWLClass.from_cwl(yaml.load(data))
 
-            tools = getattr(self, '_tools', None)
-            if not tools:
-                tools = {step.id: _load(step) for step in self.steps}
+        tools = getattr(self, '_tools', None)
+        if not tools:
+            tools = {step.id: _load(step) for step in self.steps}
 
-            for step in self.steps:
-                step_outputs[step.id] = dict(
-                    tools[step.id].iter_output_files(basedir, commit=commit)
-                )
+        for step in self.steps:
+            step_outputs[step.id] = dict(
+                tools[step.id].iter_output_files(basedir, commit=commit)
+            )
 
-            setattr(self, '_tools', tools)
-            setattr(self, '_step_outputs', step_outputs)
+        setattr(self, '_tools', tools)
+        setattr(self, '_step_outputs', step_outputs)
 
         for output in self.outputs:
             if output.type not in PATH_OBJECTS:

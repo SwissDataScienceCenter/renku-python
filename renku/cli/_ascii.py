@@ -35,9 +35,7 @@ _RE_ESC = re.compile(r'\x1b[^m]*m')
 def _format_sha1(graph, key):
     """Return formatted text with the submodule information."""
     try:
-        submodules = graph.G.nodes[key].get('submodule', [])
-        for data in graph.G.nodes[key].get('contraction', {}).values():
-            submodules.extend(data.get('submodule', []))
+        submodules = graph.commits[key[0]].submodules
 
         if submodules:
             submodule = ':'.join(submodules)
@@ -97,7 +95,10 @@ class DAG(object):
     def node_text(self, node):
         """Return text for a given node."""
         formatted_sha1 = _format_sha1(self.graph, node)
-        data = self.graph.G.nodes[node]
+        commit_hexsha, path = node
+        # action = self.graph.commits[commit_sha1]
+
+        data = self.graph._nodes[node]
         latest = data.get('latest')
         if latest:
             formatted_latest = (
@@ -110,8 +111,7 @@ class DAG(object):
             formatted_latest = ' '
 
         result = [
-            formatted_sha1 + formatted_latest +
-            self.graph._format_path(node[1])
+            formatted_sha1 + formatted_latest + self.graph._format_path(path)
         ]
 
         workflow_path = data.get('workflow_path')

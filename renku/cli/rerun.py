@@ -183,9 +183,9 @@ def rerun(ctx, client, revision, roots, siblings, inputs, paths):
             )
         )
 
+    # Execute the workflow and relocate all output files.
     from ._cwl import execute
-    steps = (node for node, data in graph.G.nodes(data=True) if 'tool' in data)
-    output_paths = {path for _, (_, path) in graph.G.out_edges(steps)}
+    output_paths = {path for _, path in workflow.iter_output_files()}
     execute(
         client,
         output_file,
