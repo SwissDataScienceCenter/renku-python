@@ -190,7 +190,7 @@ class Graph(object):
                     stack.append(Trick(commit=processing.commit))
 
                     # Iterate over parents.
-                    for input_ in activity.inputs.values():
+                    for input_ in getattr(activity, 'inputs', {}).values():
                         if input_.commit not in visited:
                             visited.add(input_.commit)
                             stack.append(input_)
@@ -261,7 +261,7 @@ class Graph(object):
         visited = set()
 
         for key in reversed(list(self.nodes)):
-            assert key not in visited
+            assert key not in visited, (key, visited)
             need_update = []
             node = self.G.nodes[key]
             latest = node.get('latest')
