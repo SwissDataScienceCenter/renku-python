@@ -385,7 +385,7 @@ class Graph(object):
         if activity.process_path:
             tools.add(activity.process_path)
 
-            if activity.children:
+            if hasattr(activity, 'children'):
                 tools |= {
                     os.path.join(
                         os.path.dirname(activity.process_path),
@@ -407,7 +407,7 @@ class Graph(object):
         elif path in tools:
             return {key}
 
-        elif activity.children:
+        elif hasattr(activity, 'children'):
             output_id = activity.outputs[path]
             steps = {
                 output.id: output.outputSource.split('/')[0]

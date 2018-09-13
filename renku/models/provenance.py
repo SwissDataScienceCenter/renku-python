@@ -51,9 +51,7 @@ class Dependency(object):
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(
-            self=self
-        )
+        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
 
     @classmethod
     def from_revision(cls, client, path, revision='HEAD', **kwargs):
@@ -179,7 +177,7 @@ class ProcessRun(Activity):
 
     def iter_nodes(self, expand_workflow=True):
         """Yield all graph nodes."""
-        yield from super(ProcessRun, self).iter_nodes():
+        yield from super(ProcessRun, self).iter_nodes()
 
         data = {
             'client': self.client,
@@ -272,13 +270,12 @@ class WorkflowRun(ProcessRun):
             data = {
                 'path': path,
                 'commit':
-                    self.client.find_previous_commit(
-                        path, revision=revision
-                    ),
+                    self.client.find_previous_commit(path, revision=revision),
                 'tool': subprocess,
                 'workflow_path':
-                    '{workflow_path}#steps/{step.id}'
-                    .format(workflow_path=workflow_path, step=step),
+                    '{workflow_path}#steps/{step.id}'.format(
+                        workflow_path=workflow_path, step=step
+                    ),
             }
             data.update(**default_data)
             yield (str(self.commit), path), data
@@ -405,8 +402,8 @@ def from_git_commit(commit, client, submodules=None):
             from git import Submodule
 
             submodules = [
-                submodule for submodule in
-                Submodule.iter_items(client.git, parent_commit=commit)
+                submodule for submodule in Submodule.
+                iter_items(client.git, parent_commit=commit)
             ]
         except (RuntimeError, ValueError):
             # There are no submodules assiciated with the given commit.
