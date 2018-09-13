@@ -214,185 +214,221 @@ class Activity(object):
 
     def iter_edges(self, expand_workflow=True):
         """Yield all graph edges."""
-        if expand_workflow and self.children:
-            commit = self.commit
-            workflow = self.process
-            path = self.process_path
-            basedir = os.path.dirname(self.process_path)
+        return
+        yield  # empty generator
 
-            # Keep track of node identifiers for steps, inputs and outputs:
-            step_map = {}
-            input_map = {
-                dep.id: (str(dep.commit), path)
-                for path, dep in self.inputs.items()
-            }
-            output_map = {}
+    @staticmethod
+    def from_git_commit(commit, client, submodules=None):
+        """Populate information from the given Git commit."""
+        return from_git_commit(commit, client, submodules=submodules)
 
-            for step in workflow.steps:
-                step_tool = self.children[step.id]
-                tool_path = os.path.join(basedir, step.run)
-                tool_key = (str(commit), tool_path)
-                step_map[step.id] = tool_key
 
-                for input_id, input_path in step_tool.iter_input_files(
-                    basedir
-                ):
-                    if input_path in commit.stats.files:
-                        #: Check intermediate committed files
-                        input_key = (str(commit), input_path)
-                        output_map[step.id + '/' + input_id] = input_key
-                        #: Edge from an input to the tool.
-                        yield input_key, tool_key, {'id': input_id}
-                    else:
-                        #: Global workflow input
-                        source = step.in_[input_id]
-                        yield input_map[source], tool_key, {'id': input_id}
+@jsonld.s(
+    type='wfprov:ProcessRun',
+    context={
+        'wfprov': 'http://purl.org/wf4ever/wfprov#',
+    },
+)
+class ProcessRun(Activity):
+    """A process run is a particular execution of a Process description."""
 
-                # Find ALL siblings that MUST be generated in the same commit.
-                step_outputs = workflow._step_outputs.get(step.id)
-                if step_outputs is not None:
-                    step_outputs = step_outputs.items()
+    # process_path = wfprov:describedByProcess
+    # wfprov:wasPartOfWorkflowRun
+
+    def iter_edges(self, expand_workflow=True):
+        """Yield all graph edges."""
+        tool_key = (str(self.commit), self.process_path)
+        for path, dependency in self.inputs.items():
+            input_key = self.change_key(dependency, path=path)
+            #: Edge from an input to the tool.
+            yield input_key, tool_key, {'id': dependency.id}
+
+        for path, output_id in self.outputs.items():
+            node_key = (str(self.commit), path)
+            #: Edge from the tool to an output.
+            yield tool_key, node_key, {'id': output_id}
+
+
+@jsonld.s(
+    type='wfprov:WorkflowRun',
+    context={
+        'wfprov': 'http://purl.org/wf4ever/wfprov#',
+    },
+)
+class WorkflowRun(ProcessRun):
+    """A workflow run typically contains several subprocesses."""
+
+    # @reverse wfprov:wasPartOfWorkflowRun
+
+    def iter_edges(self):
+        """Yield all graph edges."""
+        commit = self.commit
+        workflow = self.process
+        basedir = os.path.dirname(self.process_path)
+
+        # Keep track of node identifiers for steps, inputs and outputs:
+        step_map = {}
+        input_map = {
+            dep.id: (str(dep.commit), path)
+            for path, dep in self.inputs.items()
+        }
+        output_map = {}
+
+        for step in workflow.steps:
+            step_tool = self.children[step.id]
+            tool_path = os.path.join(basedir, step.run)
+            tool_key = (str(commit), tool_path)
+            step_map[step.id] = tool_key
+
+            for input_id, input_path in step_tool.iter_input_files(basedir):
+                if input_path in commit.stats.files:
+                    #: Check intermediate committed files
+                    input_key = (str(commit), input_path)
+                    output_map[step.id + '/' + input_id] = input_key
+                    #: Edge from an input to the tool.
+                    yield input_key, tool_key, {'id': input_id}
                 else:
-                    step_outputs = step_tool.iter_output_files(
-                        basedir, commit=commit
-                    )
+                    #: Global workflow input
+                    source = step.in_[input_id]
+                    yield input_map[source], tool_key, {'id': input_id}
 
-                for output_id, output_path in step_outputs:
-                    node_key = (str(commit), output_path)
-                    yield tool_key, node_key, {'id': output_id}
+            # Find ALL siblings that MUST be generated in the same commit.
+            step_outputs = workflow._step_outputs.get(step.id)
+            if step_outputs is not None:
+                step_outputs = step_outputs.items()
+            else:
+                step_outputs = step_tool.iter_output_files(
+                    basedir, commit=commit
+                )
 
-            for step in workflow.steps:
-                for alias, source in step.in_.items():
-                    name = step.id + '/' + alias
-
-                    if name in output_map and '/' in source:
-                        other_step, id_ = source.split('/')
-                        other_key = step_map[other_step]
-                        yield other_key, output_map[name], {'id': id_}
-
-        elif self.process:
-            tool_key = (str(self.commit), self.process_path)
-            for path, dependency in self.inputs.items():
-                input_key = self.change_key(dependency, path=path)
-                #: Edge from an input to the tool.
-                yield input_key, tool_key, {'id': dependency.id}
-
-            for path, output_id in self.outputs.items():
-                node_key = (str(self.commit), path)
-                #: Edge from the tool to an output.
+            for output_id, output_path in step_outputs:
+                node_key = (str(commit), output_path)
                 yield tool_key, node_key, {'id': output_id}
 
-    @classmethod
-    def from_git_commit(cls, commit, client, submodules=None):
-        """Populate information from the given Git commit."""
-        process = None
-        process_path = None
-        inputs = {}
-        outputs = {}
-        children = {}
-        hierarchy = list(submodules) if submodules else []
+        for step in workflow.steps:
+            for alias, source in step.in_.items():
+                name = step.id + '/' + alias
 
-        tree = DirectoryTree()
+                if name in output_map and '/' in source:
+                    other_step, id_ = source.split('/')
+                    other_key = step_map[other_step]
+                    yield other_key, output_map[name], {'id': id_}
 
-        for file_ in commit.stats.files.keys():
-            # 1.a Find process (CommandLineTool or Workflow);
-            if client.is_cwl(file_):
-                if process_path is not None:
-                    raise ValueError(file_)  # duplicate
-                process_path = file_
+
+def from_git_commit(commit, client, submodules=None):
+    """Populate information from the given Git commit."""
+    cls = Activity
+    process = None
+    process_path = None
+    inputs = {}
+    outputs = {}
+    children = {}
+    hierarchy = list(submodules) if submodules else []
+
+    tree = DirectoryTree()
+
+    for file_ in commit.stats.files.keys():
+        # 1.a Find process (CommandLineTool or Workflow);
+        if client.is_cwl(file_):
+            if process_path is not None:
+                raise ValueError(file_)  # duplicate
+            process_path = file_
+            continue
+
+        # Build tree index.
+        tree.add(file_)
+
+    if process_path:
+        basedir = os.path.dirname(process_path)
+        try:
+            data = (commit.tree / process_path).data_stream.read()
+            process = CWLClass.from_cwl(yaml.load(data))
+        except KeyError:
+            pass
+    else:
+        outputs = {path: None for path in tree}
+
+    # 2. Map all outputs;
+    if process:
+        for output_id, output_path in process.iter_output_files(
+            basedir, commit=commit
+        ):
+            outputs[output_path] = output_id
+
+            # Expand directory entries.
+            for subpath in tree.get(output_path, []):
+                outputs.setdefault(
+                    os.path.join(output_path, subpath), output_id
+                )
+
+        if process.__class__.__name__ == 'Workflow':
+            children = process._tools
+            cls = WorkflowRun
+        else:
+            cls = ProcessRun
+
+    # 3. Identify input files (filepath: (input_id, commit))
+    if process and process_path:
+        revision = '{0}^'.format(commit)
+
+        try:
+            from git import Submodule
+
+            submodules = [
+                submodule for submodule in
+                Submodule.iter_items(client.git, parent_commit=commit)
+            ]
+        except (RuntimeError, ValueError):
+            # There are no submodules assiciated with the given commit.
+            submodules = []
+
+        subclients = {
+            submodule: LocalClient(
+                path=(client.path / submodule.path).resolve(),
+                parent=client,
+            )
+            for submodule in submodules
+        }
+
+        def resolve_submodules(file_, **kwargs):
+            original_path = client.path / file_
+            if original_path.is_symlink(
+            ) or file_.startswith('.renku/vendors'):
+                original_path = original_path.resolve()
+                for submodule, subclient in subclients.items():
+                    try:
+                        subpath = original_path.relative_to(subclient.path)
+                        return Dependency.from_revision(
+                            client=subclient,
+                            path=str(subpath),
+                            revision=submodule.hexsha,
+                            submodules=hierarchy + [submodule.name],
+                            **kwargs
+                        )
+                    except ValueError:
+                        pass
+
+        for input_id, input_path in process.iter_input_files(basedir):
+            try:
+                dependency = resolve_submodules(input_path, id=input_id)
+                if dependency is None:
+                    dependency = Dependency.from_revision(
+                        client=client,
+                        path=input_path,
+                        id=input_id,
+                        revision=revision,
+                    )
+                inputs[input_path] = dependency
+            except KeyError:
                 continue
 
-            # Build tree index.
-            tree.add(file_)
-
-        if process_path:
-            basedir = os.path.dirname(process_path)
-            try:
-                data = (commit.tree / process_path).data_stream.read()
-                process = CWLClass.from_cwl(yaml.load(data))
-            except KeyError:
-                pass
-        else:
-            outputs = {path: None for path in tree}
-
-        # 2. Map all outputs;
-        if process:
-            for output_id, output_path in process.iter_output_files(
-                basedir, commit=commit
-            ):
-                outputs[output_path] = output_id
-
-                # Expand directory entries.
-                for subpath in tree.get(output_path, []):
-                    outputs.setdefault(
-                        os.path.join(output_path, subpath), output_id
-                    )
-
-            if process.__class__.__name__ == 'Workflow':
-                children = process._tools
-
-        # 3. Identify input files (filepath: (input_id, commit))
-        if process and process_path:
-            revision = '{0}^'.format(commit)
-
-            try:
-                from git import Submodule
-
-                submodules = [
-                    submodule for submodule in
-                    Submodule.iter_items(client.git, parent_commit=commit)
-                ]
-            except (RuntimeError, ValueError):
-                # There are no submodules assiciated with the given commit.
-                submodules = []
-
-            subclients = {
-                submodule: LocalClient(
-                    path=(client.path / submodule.path).resolve(),
-                    parent=client,
-                )
-                for submodule in submodules
-            }
-
-            def resolve_submodules(file_, **kwargs):
-                original_path = client.path / file_
-                if original_path.is_symlink(
-                ) or file_.startswith('.renku/vendors'):
-                    original_path = original_path.resolve()
-                    for submodule, subclient in subclients.items():
-                        try:
-                            subpath = original_path.relative_to(subclient.path)
-                            return Dependency.from_revision(
-                                client=subclient,
-                                path=str(subpath),
-                                revision=submodule.hexsha,
-                                submodules=hierarchy + [submodule.name],
-                                **kwargs
-                            )
-                        except ValueError:
-                            pass
-
-            for input_id, input_path in process.iter_input_files(basedir):
-                try:
-                    dependency = resolve_submodules(input_path, id=input_id)
-                    if dependency is None:
-                        dependency = Dependency.from_revision(
-                            client=client,
-                            path=input_path,
-                            id=input_id,
-                            revision=revision,
-                        )
-                    inputs[input_path] = dependency
-                except KeyError:
-                    continue
-
-        return cls(
-            commit=commit,
-            client=client,
-            process=process,
-            process_path=process_path,
-            inputs=inputs,
-            outputs=outputs,
-            children=children,
-            submodules=hierarchy,
-        )
+    return cls(
+        commit=commit,
+        client=client,
+        process=process,
+        process_path=process_path,
+        inputs=inputs,
+        outputs=outputs,
+        children=children,
+        submodules=hierarchy,
+    )

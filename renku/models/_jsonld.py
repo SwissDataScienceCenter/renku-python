@@ -48,6 +48,10 @@ def attrs(
     maybe_cls=None, type=None, context=None, translate=None, **attrs_kwargs
 ):
     """Wrap an attr enabled class."""
+    if isinstance(type, (list, tuple, set)):
+        types = list(type)
+    else:
+        types = [type] if type is not None else []
     context = context or {}
     translate = translate or {}
 
@@ -57,6 +61,20 @@ def attrs(
 
         if not issubclass(jsonld_cls, JSONLDMixin):
             jsonld_cls = make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {})
+
+        # Merge types
+        for subcls in jsonld_cls.mro():
+            subtype = getattr(subcls, '_jsonld_type', None)
+            if subtype:
+                if isinstance(subtype, list):
+                    types.extend(subtype)
+                else:
+                    types.append(subtype)
+
+            for key, value in getattr(subcls, '_jsonld_context', {}).items():
+                if key in context and context[key] != value:
+                    raise TypeError()
+                context.setdefault(key, value)
 
         for a in attr.fields(jsonld_cls):
             key = a.name
@@ -85,7 +103,9 @@ def attrs(
                         )
 
         jsonld_cls.__module__ = cls.__module__
-        jsonld_cls._jsonld_type = type
+        jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
+            set(types)
+        )
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
         jsonld_cls._jsonld_fields = {
