@@ -48,9 +48,10 @@ class Dependency(object):
 
     _id = jsonld.ib(context='@id', init=False)
 
-    def __attrs_post_init__(self):
-        """Configure calculated properties."""
-        self._id = 'url:sha1:{self.commit.hexsha}#{self.path}'.format(
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(
             self=self
         )
 
@@ -84,7 +85,6 @@ class Activity(object):
     outputs = attr.ib(default=attr.Factory(dict))
 
     parent = attr.ib(default=None)
-    children = attr.ib(default=attr.Factory(list))
 
     submodules = attr.ib(default=attr.Factory(list))
 
@@ -113,6 +113,11 @@ class Activity(object):
     _id = jsonld.ib(context='@id', init=False)
     _label = jsonld.ib(context='rdfs:label', init=False)
 
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return 'url:sha1:{self.commit.hexsha}'.format(self=self)
+
     def __attrs_post_init__(self):
         """Configure calculated properties."""
         self.started_at_time = datetime.fromtimestamp(
@@ -122,7 +127,6 @@ class Activity(object):
             self.commit.committed_date
         ).isoformat()
         self.qualified_usage = list(self.inputs.values())
-        self._id = 'url:sha1:' + self.commit.hexsha
         self._label = self.commit.message.split('\n')[0]
 
     def change_key(self, dependency, path=None):
@@ -132,85 +136,14 @@ class Activity(object):
 
     def iter_nodes(self, expand_workflow=True):
         """Yield all graph nodes."""
-        if self.process_path and expand_workflow and self.children:
-            basedir = os.path.dirname(self.process_path)
-            default_data = {
-                'client': self.client,
-                'workflow': self.process,
-                'submodule': self.submodules,
-            }
-            revision = '{0}^'.format(self.commit)
-
-            for step in reversed(self.process.steps):
-                step_id = step.id
-                subprocess = self.children[step_id]
-                path = os.path.join(basedir, step.run)
-                # The workflow path must be relative to the current tool
-                # since we might be inside a submodule.
-                workflow_path = os.path.relpath(
-                    self.process_path, start=os.path.dirname(path)
-                )
-
-                step_outputs = self.process._step_outputs.get(step_id)
-                if step_outputs is not None:
-                    step_outputs = step_outputs.items()
-                else:
-                    step_outputs = subprocess.iter_output_files(
-                        basedir, commit=self.commit
-                    )
-
-                for _, output_path in step_outputs:
-                    data = {
-                        'commit': self.commit,
-                        'path': output_path,
-                        'submodule': self.submodules,
-                        'client': self.client,
-                    }
-                    yield (str(self.commit), output_path), data
-
-                data = {
-                    'path': path,
-                    'commit':
-                        self.client.find_previous_commit(
-                            path, revision=revision
-                        ),
-                    'tool': subprocess,
-                    'workflow_path':
-                        '{workflow_path}#steps/{step.id}'
-                        .format(workflow_path=workflow_path, step=step),
-                }
-                data.update(**default_data)
-                yield (str(self.commit), path), data
-
-        else:
-            for path, _ in self.outputs.items():
-                data = {
-                    'commit': self.commit,
-                    'path': path,
-                    'submodule': self.submodules,
-                    'client': self.client,
-                }
-                yield (str(self.commit), path), data
-
-            if self.process_path:
-                data = {
-                    'client': self.client,
-                    'commit': self.commit,
-                    'path': self.process_path,
-                    'tool': self.process,
-                    'submodule': self.submodules,
-                }
-                # TODO submodule
-                yield (str(self.commit), self.process_path), data
-
-        for path, dependency in self.inputs.items():
+        for path, _ in self.outputs.items():
             data = {
-                'commit': dependency.commit,
-                'path': dependency.path,
-                'submodule': dependency.submodules,
-                'client': dependency.client,
+                'commit': self.commit,
+                'path': path,
+                'submodule': self.submodules,
+                'client': self.client,
             }
-            yield self.change_key(dependency, path=path), data
+            yield (str(self.commit), path), data
 
     def iter_edges(self, expand_workflow=True):
         """Yield all graph edges."""
@@ -234,6 +167,38 @@ class ProcessRun(Activity):
 
     # process_path = wfprov:describedByProcess
     # wfprov:wasPartOfWorkflowRun
+
+    _id = jsonld.ib(context='@id', init=False)
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return 'url:sha1:{self.commit.hexsha}#{self.process_path}'.format(
+            self=self
+        )
+
+    def iter_nodes(self, expand_workflow=True):
+        """Yield all graph nodes."""
+        yield from super(ProcessRun, self).iter_nodes():
+
+        data = {
+            'client': self.client,
+            'commit': self.commit,
+            'path': self.process_path,
+            'tool': self.process,
+            'submodule': self.submodules,
+        }
+        # TODO submodule
+        yield (str(self.commit), self.process_path), data
+
+        for path, dependency in self.inputs.items():
+            data = {
+                'commit': dependency.commit,
+                'path': dependency.path,
+                'submodule': dependency.submodules,
+                'client': dependency.client,
+            }
+            yield self.change_key(dependency, path=path), data
 
     def iter_edges(self, expand_workflow=True):
         """Yield all graph edges."""
@@ -259,6 +224,73 @@ class WorkflowRun(ProcessRun):
     """A workflow run typically contains several subprocesses."""
 
     # @reverse wfprov:wasPartOfWorkflowRun
+
+    children = attr.ib(init=False)
+
+    @children.default
+    def default_children(self):
+        """Load children from process."""
+        return self.process._tools
+
+    def iter_nodes(self):
+        """Yield all graph nodes."""
+        basedir = os.path.dirname(self.process_path)
+        default_data = {
+            'client': self.client,
+            'workflow': self.process,
+            'submodule': self.submodules,
+        }
+        revision = '{0}^'.format(self.commit)
+
+        for step in reversed(self.process.steps):
+            step_id = step.id
+            subprocess = self.children[step_id]
+            path = os.path.join(basedir, step.run)
+            # The workflow path must be relative to the current tool
+            # since we might be inside a submodule.
+            workflow_path = os.path.relpath(
+                self.process_path, start=os.path.dirname(path)
+            )
+
+            step_outputs = self.process._step_outputs.get(step_id)
+            if step_outputs is not None:
+                step_outputs = step_outputs.items()
+            else:
+                step_outputs = subprocess.iter_output_files(
+                    basedir, commit=self.commit
+                )
+
+            for _, output_path in step_outputs:
+                data = {
+                    'commit': self.commit,
+                    'path': output_path,
+                    'submodule': self.submodules,
+                    'client': self.client,
+                }
+                yield (str(self.commit), output_path), data
+
+            data = {
+                'path': path,
+                'commit':
+                    self.client.find_previous_commit(
+                        path, revision=revision
+                    ),
+                'tool': subprocess,
+                'workflow_path':
+                    '{workflow_path}#steps/{step.id}'
+                    .format(workflow_path=workflow_path, step=step),
+            }
+            data.update(**default_data)
+            yield (str(self.commit), path), data
+
+        for path, dependency in self.inputs.items():
+            data = {
+                'commit': dependency.commit,
+                'path': dependency.path,
+                'submodule': dependency.submodules,
+                'client': dependency.client,
+            }
+            yield self.change_key(dependency, path=path), data
 
     def iter_edges(self):
         """Yield all graph edges."""
@@ -322,7 +354,6 @@ def from_git_commit(commit, client, submodules=None):
     process_path = None
     inputs = {}
     outputs = {}
-    children = {}
     hierarchy = list(submodules) if submodules else []
 
     tree = DirectoryTree()
@@ -362,7 +393,6 @@ def from_git_commit(commit, client, submodules=None):
                 )
 
         if process.__class__.__name__ == 'Workflow':
-            children = process._tools
             cls = WorkflowRun
         else:
             cls = ProcessRun
@@ -429,6 +459,5 @@ def from_git_commit(commit, client, submodules=None):
         process_path=process_path,
         inputs=inputs,
         outputs=outputs,
-        children=children,
         submodules=hierarchy,
     )
