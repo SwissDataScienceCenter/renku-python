@@ -104,6 +104,23 @@ def format_jsonld(graph):
     )
 
 
+def format_jsonld_graph(graph):
+    """Format graph as JSON-LD graph file."""
+    import json
+    from pyld import jsonld
+
+    from renku.models._jsonld import asjsonld
+
+    click.echo(
+        json.dumps(
+            jsonld.flatten([
+                asjsonld(action) for action in graph.commits.values()
+            ]),
+            indent=2,
+        )
+    )
+
+
 def format_n_quads(graph):
     """Normalize a document using the RDF Dataset Normalization Algorithm.
 
@@ -127,6 +144,7 @@ FORMATS = {
     'ascii': format_ascii,
     'dot': format_dot,
     'json-ld': format_jsonld,
+    'json-ld-graph': format_jsonld_graph,
     'n-quads': format_n_quads,
 }
 """Valid formatting options."""

@@ -57,6 +57,7 @@ class Graph(object):
 
     _sorted_commits = attr.ib(default=attr.Factory(list))
     _nodes = attr.ib(default=attr.Factory(dict))
+    _latest_commits = attr.ib(default=attr.Factory(dict))
 
     cwl_prefix = attr.ib(init=False)
 
@@ -111,9 +112,35 @@ class Graph(object):
 
     def pred(self, key):
         """Return all direct parents."""
-        # commit_hexsha, path = key
-        # action = self.commits[commit_hexsha]
-        raise NotImplemented("Implement action.pred(path) first")
+        commit_hexsha, path = key
+        action = self.commits[commit_hexsha]
+
+        # TODO move this implementation to Action, ProcessRun, WorkflowRun
+
+        if action.process_path == path:
+            return [
+                action.change_key(dependency, path=path)
+                for path, dependency in action.inputs.items()
+            ]
+        elif path in action.outputs:
+            if action.process_path:
+                return [action.process_path]
+            else:
+                return []
+        elif hasattr(action, 'subprocesses') and path in action.subprocesses:
+
+            # TODO build a map: path -> parents for each action
+
+            # step_outputs = self.process._step_outputs.get(step_id)
+            # if step_outputs is not None:
+            #     step_outputs = step_outputs.items()
+            # else:
+            #     step_outputs = subprocess.iter_output_files(
+            #         basedir, commit=self.commit
+            #     )
+            pass
+
+        raise NotImplementedError(key)
 
     @lru_cache(maxsize=1024)
     def find_cwl(self, commit):
@@ -184,7 +211,9 @@ class Graph(object):
                         client=processing.client,
                         submodules=processing.submodules,
                     )
-                    self.commits[processing.commit.hexsha] = activity
+
+                    commit_hexsha = activity.commit.hexsha
+                    self.commits[commit_hexsha] = activity
 
                     # The double push trick to find end of node processing.
                     stack.append(Trick(commit=processing.commit))
@@ -206,7 +235,11 @@ class Graph(object):
 
         current_files = {(dependency.commit.hexsha, dependency.path)
                          for dependency in dependencies if dependency.path}
-        latest_commits = {path: commit for commit, path in current_files}
+
+        self._latest_commits = latest_commits = {
+            path: commit
+            for commit, path in current_files
+        }
 
         self.process_dependencies(dependencies)
 

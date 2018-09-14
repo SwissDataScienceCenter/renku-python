@@ -105,6 +105,11 @@ class Activity(object):
     _id = jsonld.ib(context='@id', init=False)
     _label = jsonld.ib(context='rdfs:label', init=False)
 
+    @property
+    def paths(self):
+        """Return all paths in the commit."""
+        return set(self.commit.stats.files.keys())
+
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
@@ -135,7 +140,7 @@ class Activity(object):
         path = path or dependency.path
         return str(dependency.commit), path
 
-    def iter_nodes(self, expand_workflow=True):
+    def iter_nodes(self):
         """Yield all graph nodes."""
         for path, _ in self.outputs.items():
             data = {
@@ -146,15 +151,17 @@ class Activity(object):
             }
             yield (str(self.commit), path), data
 
-    def iter_edges(self, expand_workflow=True):
+    def iter_edges(self):
         """Yield all graph edges."""
         return
         yield  # empty generator
 
     @staticmethod
-    def from_git_commit(commit, client, submodules=None):
+    def from_git_commit(commit, client, process_path=None, submodules=None):
         """Populate information from the given Git commit."""
-        return from_git_commit(commit, client, submodules=submodules)
+        return from_git_commit(
+            commit, client, process_path=None, submodules=submodules
+        )
 
 
 @jsonld.s(
@@ -276,7 +283,7 @@ class ProcessRun(Activity):
 
         return outputs
 
-    def iter_nodes(self, expand_workflow=True):
+    def iter_nodes(self):
         """Yield all graph nodes."""
         yield from super(ProcessRun, self).iter_nodes()
 
@@ -299,7 +306,7 @@ class ProcessRun(Activity):
             }
             yield self.change_key(dependency, path=path), data
 
-    def iter_edges(self, expand_workflow=True):
+    def iter_edges(self):
         """Yield all graph edges."""
         tool_key = (str(self.commit), self.process_path)
         for path, dependency in self.inputs.items():
@@ -341,25 +348,30 @@ class WorkflowRun(ProcessRun):
     def default_subprocesses(self):
         """Load subprocesses."""
         basedir = os.path.dirname(self.process_path)
+        revision = '{0}^'.format(self.commit)
 
-        subprocesses = []
-        return
+        subprocesses = {}
+
         for step in self.process.steps:
             path = os.path.join(basedir, step.run)
+            process = self.children[step.id]
 
-            if step.__class__.__name__ == 'Workflow':
+            if process.__class__.__name__ == 'Workflow':
                 cls = WorkflowRun
             else:
                 cls = ProcessRun
 
-            subprocesses.append(
-                cls(
-                    commit=self.commit,
-                    client=self.client,
-                    process=self.children[step.id],
-                    process_path=path,
-                )
+            subprocess = cls(
+                commit=self.client.find_previous_commit(
+                    path, revision=revision
+                ),
+                client=self.client,
+                process=process,
+                process_path=path,
+                submodules=self.submodules,
             )
+            subprocesses[path] = (step, subprocess)
+
         return subprocesses
 
     def iter_nodes(self):
@@ -475,20 +487,22 @@ class WorkflowRun(ProcessRun):
                     yield other_key, output_map[name], {'id': id_}
 
 
-def from_git_commit(commit, client, submodules=None):
+def from_git_commit(commit, client, process_path=None, submodules=None):
     """Populate information from the given Git commit."""
     cls = Activity
     process = None
-    process_path = None
     hierarchy = list(submodules) if submodules else []
 
-    for file_ in commit.stats.files.keys():
-        # 1.a Find process (CommandLineTool or Workflow);
-        if client.is_cwl(file_):
-            if process_path is not None:
-                raise ValueError(file_)  # duplicate
-            process_path = file_
-            continue
+    if process_path is None:
+        for file_ in commit.stats.files.keys():
+            # 1.a Find process (CommandLineTool or Workflow);
+            if client.is_cwl(file_):
+                if process_path is not None:
+                    raise ValueError(file_)  # duplicate
+                process_path = file_
+                continue
+    else:
+        assert process_path in set(commit.stats.files.keys())
 
     if process_path:
         try:

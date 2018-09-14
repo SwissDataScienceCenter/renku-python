@@ -17,7 +17,6 @@
 # limitations under the License.
 """Generate ASCII graph for a DAG."""
 
-import os
 import re
 
 import attr
@@ -94,13 +93,17 @@ class DAG(object):
 
     def node_text(self, node):
         """Return text for a given node."""
+        from renku.models.provenance import WorkflowRun
+
         formatted_sha1 = _format_sha1(self.graph, node)
         commit_hexsha, path = node
-        # action = self.graph.commits[commit_sha1]
+        activity = self.graph.commits[commit_hexsha]
+        latest = self.graph._latest_commits.get(path)
 
         data = self.graph._nodes[node]
-        latest = data.get('latest')
-        if latest:
+        assert data.get('latest', latest) == latest
+
+        if latest and latest != commit_hexsha:
             formatted_latest = (
                 click.style(' (', fg='yellow') +
                 click.style('latest -> ', fg='blue', bold=True) +
@@ -114,15 +117,15 @@ class DAG(object):
             formatted_sha1 + formatted_latest + self.graph._format_path(path)
         ]
 
-        workflow_path = data.get('workflow_path')
-        if workflow_path:
+        if isinstance(activity, WorkflowRun) and path in activity.subprocesses:
             workflow_path = click.style(
-                self.graph._format_path(
-                    os.path.normpath(
-                        os.path.join(os.path.dirname(node[1]), workflow_path)
-                    )
+                '{workflow_path}#steps/{step.id}'.format(
+                    workflow_path=self.graph._format_path(
+                        activity.process_path
+                    ),
+                    step=activity.subprocesses[path][0],
                 ),
-                fg='blue'
+                fg='blue',
             )
             indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
             result.append(
@@ -141,6 +144,7 @@ class DAG(object):
 
         column_index = self.columns.index(node)
         parents = self.graph.G.pred[node]
+        # FIXME parents = self.graph.pred(node)
 
         # Define node_symbol for node and root node.
         node_symbol = self.NODE if parents else self.ROOT_NODE
