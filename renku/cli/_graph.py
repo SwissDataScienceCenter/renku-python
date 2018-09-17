@@ -427,9 +427,10 @@ class Graph(object):
 
         :param global_step_outputs: Make all step outputs global.
         """
-        workflow = Workflow()
+        if output_paths is None:
+            output_paths = {path for _, path in outputs if _safe_path(path)}
 
-        input_index = 1
+        workflow = Workflow()
 
         def find_process_run(commit_hexsha, path):
             """Return a process run."""
@@ -462,7 +463,7 @@ class Graph(object):
 
             for path, dependency in action.inputs.items():
                 # Do not follow defined input paths.
-                if path in input_paths:
+                if input_paths and path in input_paths:
                     continue
 
                 commit_hexsha = dependency.commit.hexsha
@@ -496,6 +497,8 @@ class Graph(object):
                 return attr.evolve(default, path=path)
             return default
 
+        input_index = 1
+
         for action, step_id in steps.items():
             tool = action.process
             ins = {
@@ -527,9 +530,11 @@ class Graph(object):
                 out=outs,
             )
 
-        for index, key in enumerate(outputs):
-            id_ = 'output_{0}'.format(index)
+        for index, key in enumerate(
+            (key for key in outputs if key[1] in output_paths)
+        ):
             commit_hexsha, path = key
+            id_ = 'output_{0}'.format(index)
             process_run = find_process_run(commit_hexsha, path)
             output_id = process_run.outputs[path]
             type_ = next(

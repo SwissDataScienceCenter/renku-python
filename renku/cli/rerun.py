@@ -144,9 +144,7 @@ def rerun(ctx, client, revision, roots, siblings, inputs, paths):
     outputs = siblings(graph, outputs)
     output_paths = {path for _, path in outputs}
 
-    # Get parents of all new roots
-    import networkx as nx
-
+    # Normalize and check all starting paths.
     roots = {graph.normalize_path(root) for root in roots}
     assert not roots & output_paths, "--from colides with output paths"
 

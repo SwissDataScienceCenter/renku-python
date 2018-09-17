@@ -212,7 +212,9 @@ def test_workflow(runner, project):
                 assert e.code in {None, 0}
 
     result = runner.invoke(
-        cli.cli, ['workflow', 'create', 'counted.txt', '-o', 'workflow.cwl']
+        cli.cli,
+        ['workflow', 'create', 'counted.txt', '-o', 'workflow.cwl'],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
 
