@@ -70,6 +70,7 @@ class Dependency(object):
         'prov': 'http://www.w3.org/ns/prov#',
         'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
     },
+    cmp=False,
 )
 class Activity(object):
     """Represent an activity in the repository."""
@@ -173,6 +174,7 @@ class Activity(object):
     context={
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
     },
+    cmp=False,
 )
 class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
@@ -339,6 +341,7 @@ class ProcessRun(Activity):
     context={
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
     },
+    cmp=False,
 )
 class WorkflowRun(ProcessRun):
     """A workflow run typically contains several subprocesses."""

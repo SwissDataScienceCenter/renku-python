@@ -168,22 +168,8 @@ def update(ctx, client, revision, no_output, siblings, paths):
     outputs = siblings(graph, outputs)
     output_paths = {path for _, path in outputs if _safe_path(path)}
 
-    # Get parents of all clean nodes
-    import networkx as nx
-
-    clean_paths = set(status['up-to-date'].keys()) - output_paths
-    clean_nodes = {(c, p) for (c, p) in graph.G if p in clean_paths}
-    clean_parents = set()
-    for key in clean_nodes:
-        clean_parents |= nx.ancestors(graph.G, key)
-
-    subnodes = set()
-    for key in outputs:
-        if key in graph.G:
-            subnodes |= nx.shortest_path_length(graph.G, target=key).keys()
-
-    graph.G.remove_nodes_from(clean_parents)
-    graph.G.remove_nodes_from([n for n in graph.G if n not in subnodes])
+    # Get all clean nodes
+    input_paths = set(status['up-to-date'].keys()) - output_paths
 
     # Store the generated workflow used for updating paths.
     import yaml
@@ -193,7 +179,11 @@ def update(ctx, client, revision, no_output, siblings, paths):
         f.write(
             yaml.dump(
                 ascwl(
-                    graph.ascwl(global_step_outputs=True),
+                    graph.ascwl(
+                        input_paths=input_paths,
+                        output_paths=output_paths,
+                        outputs=outputs,
+                    ),
                     filter=lambda _, x: x is not None,
                     basedir=client.workflow_path,
                 ),

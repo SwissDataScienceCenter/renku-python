@@ -150,22 +150,16 @@ def rerun(ctx, client, revision, roots, siblings, inputs, paths):
     roots = {graph.normalize_path(root) for root in roots}
     assert not roots & output_paths, "--from colides with output paths"
 
-    clean_nodes = {(c, p) for (c, p) in graph.G if p in roots}
-    clean_parents = set()
-    for key in clean_nodes:
-        clean_parents |= nx.ancestors(graph.G, key)
-
-    subnodes = set()
-    for key in outputs:
-        if key in graph.G:
-            subnodes |= nx.shortest_path_length(graph.G, target=key).keys()
-
-    graph.G.remove_nodes_from(clean_parents)
-    graph.G.remove_nodes_from([n for n in graph.G if n not in subnodes])
-
     # Generate workflow and check inputs.
     # NOTE The workflow creation is done before opening a new file.
-    workflow = inputs(client, graph.ascwl(global_step_outputs=True))
+    workflow = inputs(
+        client,
+        graph.ascwl(
+            input_paths=roots,
+            output_paths=output_paths,
+            outputs=outputs,
+        )
+    )
 
     # Store the generated workflow used for updating paths.
     import yaml

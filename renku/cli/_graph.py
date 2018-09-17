@@ -110,38 +110,6 @@ class Graph(object):
         """Check if the path is a valid CWL file."""
         return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
 
-    def pred(self, key):
-        """Return all direct parents."""
-        commit_hexsha, path = key
-        action = self.commits[commit_hexsha]
-
-        # TODO move this implementation to Action, ProcessRun, WorkflowRun
-
-        if action.process_path == path:
-            return [
-                action.change_key(dependency, path=path)
-                for path, dependency in action.inputs.items()
-            ]
-        elif path in action.outputs:
-            if action.process_path:
-                return [action.process_path]
-            else:
-                return []
-        elif hasattr(action, 'subprocesses') and path in action.subprocesses:
-
-            # TODO build a map: path -> parents for each action
-
-            # step_outputs = self.process._step_outputs.get(step_id)
-            # if step_outputs is not None:
-            #     step_outputs = step_outputs.items()
-            # else:
-            #     step_outputs = subprocess.iter_output_files(
-            #         basedir, commit=self.commit
-            #     )
-            pass
-
-        raise NotImplementedError(key)
-
     @lru_cache(maxsize=1024)
     def find_cwl(self, commit):
         """Return a CWL."""
@@ -454,7 +422,7 @@ class Graph(object):
 
         return {(key[0], path) for path in activity.outputs.keys()}
 
-    def ascwl(self, global_step_outputs=False):
+    def ascwl(self, input_paths=None, output_paths=None, outputs=None):
         """Serialize graph to CWL workflow.
 
         :param global_step_outputs: Make all step outputs global.
@@ -462,17 +430,64 @@ class Graph(object):
         workflow = Workflow()
 
         input_index = 1
-        steps = {}
 
-        def _source_name(key):
-            """Find source name for a node."""
-            if self.G.in_degree(key) == 0:
+        def find_process_run(commit_hexsha, path):
+            """Return a process run."""
+            activity = self.commits[commit_hexsha]
+            parents = activity.pred(path)
+
+            if not parents:
                 return None
 
-            assert self.G.in_degree(key) == 1
+            assert len(parents) == 1
 
-            tool_key, node = list(self.G.pred[key].items())[0]
-            return '{0}/{1}'.format(steps[tool_key], node['id'])
+            if hasattr(activity, 'subprocesses'):
+                return activity.subprocesses[parents[0][1]][1]
+            return activity
+
+        processes = set()
+        stack = []
+
+        for commit_hexsha, path in outputs:
+            process_run = find_process_run(commit_hexsha, path)
+            if process_run and process_run not in processes:
+                stack.append(process_run)
+                processes.add(process_run)
+
+        while stack:
+            action = stack.pop()
+
+            if not hasattr(action, 'inputs'):
+                continue
+
+            for path, dependency in action.inputs.items():
+                # Do not follow defined input paths.
+                if path in input_paths:
+                    continue
+
+                commit_hexsha = dependency.commit.hexsha
+                process_run = find_process_run(commit_hexsha, path)
+
+                # Skip existing commits
+                if process_run and process_run not in processes:
+                    stack.append(process_run)
+                    processes.add(process_run)
+
+        steps = {
+            tool: 'step_{0}'.format(tool_index)
+            for tool_index, tool in enumerate(processes, 1)
+        }
+
+        def _source_name(commit_hexsha, path):
+            """Find source name for a node."""
+            try:
+                process_run = find_process_run(commit_hexsha, path)
+                if not process_run:
+                    return
+                output_id = process_run.outputs[path]
+                return '{0}/{1}'.format(steps[process_run], output_id)
+            except KeyError:
+                pass
 
         def _relative_default(client, default):
             """Evolve ``File`` or ``Directory`` path."""
@@ -481,19 +496,13 @@ class Graph(object):
                 return attr.evolve(default, path=path)
             return default
 
-        for tool_index, (key, node) in enumerate(self.tool_nodes, 1):
-            _, path = key
-            tool = node['tool']
-            step_id = 'step_{0}'.format(tool_index)
-            steps[key] = step_id
-
+        for action, step_id in steps.items():
+            tool = action.process
             ins = {
-                edge_id: _source_name(target_id)
-                for target_id, _, edge_id in self.G.in_edges(key, data='id')
+                dependency.id: _source_name(dependency.commit.hexsha, path)
+                for path, dependency in action.inputs.items()
             }
-            outs = [
-                edge_id for _, _, edge_id in self.G.out_edges(key, data='id')
-            ]
+            outs = list(set(action.outputs.values()))
 
             for input_ in tool.inputs:
                 input_mapping = ins.get(input_.id)
@@ -512,27 +521,29 @@ class Graph(object):
                     ins[input_.id] = input_id
 
             workflow.add_step(
-                run=self.client.path / path,
+                run=self.client.path / action.process_path,
                 id=step_id,
                 in_=ins,
                 out=outs,
             )
 
-        if global_step_outputs:
-            output_keys = (key for _, key in self.G.out_edges(steps.keys()))
-        else:
-            output_keys = self._output_keys
+        for index, key in enumerate(outputs):
+            id_ = 'output_{0}'.format(index)
+            commit_hexsha, path = key
+            process_run = find_process_run(commit_hexsha, path)
+            output_id = process_run.outputs[path]
+            type_ = next(
+                output for output in process_run.process.outputs
+                if output.id == output_id
+            ).type
+            type_ = type_ if type_ == 'Directory' else 'File'
+            output_source = _source_name(commit_hexsha, path)
 
-        for index, key in enumerate(output_keys):
-            output_id = 'output_{0}'.format(index)
-            # FIXME use the type of step output
-            type_ = 'Directory' if (self.client.path /
-                                    key[0]).is_dir() else 'File'
             workflow.outputs.append(
                 WorkflowOutputParameter(
-                    id=output_id,
+                    id=id_,
                     type=type_,
-                    outputSource=_source_name(key),
+                    outputSource=output_source,
                 )
             )
 

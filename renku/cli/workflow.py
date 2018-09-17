@@ -51,12 +51,12 @@ def create(client, output_file, revision, paths):
     """Create a workflow description for a file."""
     graph = Graph(client)
     paths = [graph.normalize_path(path) for path in paths]
-    graph.build(paths=paths, revision=revision)
+    outputs = graph.build(paths=paths, revision=revision)
 
     output_file.write(
         yaml.dump(
             ascwl(
-                graph.ascwl(),
+                graph.ascwl(outputs=outputs),
                 filter=lambda _, x: x is not None and x != [],
                 basedir=os.path.dirname(getattr(output_file, 'name', '.')) or
                 '.',
