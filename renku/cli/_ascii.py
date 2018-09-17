@@ -143,8 +143,7 @@ class DAG(object):
             self.columns.append(node)
 
         column_index = self.columns.index(node)
-        parents = self.graph.G.pred[node]
-        # FIXME parents = self.graph.pred(node)
+        parents = self.graph.commits[node[0]].pred(node[1])
 
         # Define node_symbol for node and root node.
         node_symbol = self.NODE if parents else self.ROOT_NODE

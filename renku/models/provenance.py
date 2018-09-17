@@ -156,6 +156,10 @@ class Activity(object):
         return
         yield  # empty generator
 
+    def pred(self, path):
+        """Return a list of parents."""
+        return []
+
     @staticmethod
     def from_git_commit(commit, client, process_path=None, submodules=None):
         """Populate information from the given Git commit."""
@@ -318,6 +322,16 @@ class ProcessRun(Activity):
             node_key = (str(self.commit), path)
             #: Edge from the tool to an output.
             yield tool_key, node_key, {'id': output_id}
+
+    def pred(self, path):
+        """Return a list of parents."""
+        if path == self.process_path:
+            return [
+                self.change_key(dependency, path=path)
+                for path, dependency in self.inputs.items()
+            ]
+        assert path in self.outputs
+        return [(self.commit.hexsha, self.process_path)]
 
 
 @jsonld.s(
@@ -485,6 +499,50 @@ class WorkflowRun(ProcessRun):
                     other_step, id_ = source.split('/')
                     other_key = step_map[other_step]
                     yield other_key, output_map[name], {'id': id_}
+
+    def pred(self, path):
+        """Return a list of parents."""
+        parents = []
+        ins = {
+            dependency.id: dependency
+            for path, dependency in self.inputs.items()
+        }
+        outputs_ = {id_: path_ for path_, id_ in self.outputs.items()}
+        outs = {
+            output.outputSource: outputs_[output.id]
+            for output in self.process.outputs
+        }
+
+        if path in self.subprocesses:
+            step, activity = self.subprocesses[path]
+
+            for alias, source in step.in_.items():
+                if source in ins:
+                    dependency = ins[source]
+                    parents.append((dependency.commit.hexsha, dependency.path))
+                elif source in outs:
+                    parents.append((self.commit.hexsha, outs[source]))
+                elif ins:
+                    raise NotImplemented()
+
+        elif path in self.outputs:
+            # TODO consider recursive call to subprocesses
+            output_id = self.outputs[path]
+            output = next(
+                output
+                for output in self.process.outputs if output.id == output_id
+            )
+            step_id, _, source = output.outputSource.partition('/')
+            step_path = next(
+                path_ for path_, (step, activity) in self.subprocesses.items()
+                if step.id == step_id
+            )
+            parents.append((self.commit.hexsha, step_path))
+
+        else:
+            raise NotImplemented()
+
+        return parents
 
 
 def from_git_commit(commit, client, process_path=None, submodules=None):
