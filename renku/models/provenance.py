@@ -139,18 +139,17 @@ class Activity(object):
     def change_key(self, dependency, path=None):
         """Rename the path part in the key."""
         path = path or dependency.path
-        return str(dependency.commit), path
+        return dependency.commit, path
 
-    def iter_nodes(self):
-        """Yield all graph nodes."""
-        for path, _ in self.outputs.items():
-            data = {
-                'commit': self.commit,
-                'path': path,
-                'submodule': self.submodules,
-                'client': self.client,
-            }
-            yield (str(self.commit), path), data
+    @property
+    def nodes(self):
+        """Return topologically sorted nodes."""
+        return [((self.commit, path), {
+            'commit': self.commit,
+            'path': path,
+            'submodule': self.submodules,
+            'client': self.client,
+        }) for path, _ in self.outputs.items()]
 
     def iter_edges(self):
         """Yield all graph edges."""
@@ -289,10 +288,8 @@ class ProcessRun(Activity):
 
         return outputs
 
-    def iter_nodes(self):
-        """Yield all graph nodes."""
-        yield from super(ProcessRun, self).iter_nodes()
-
+    @property
+    def nodes(self):
         data = {
             'client': self.client,
             'commit': self.commit,
@@ -300,28 +297,19 @@ class ProcessRun(Activity):
             'tool': self.process,
             'submodule': self.submodules,
         }
-        # TODO submodule
-        yield (str(self.commit), self.process_path), data
-
-        for path, dependency in self.inputs.items():
-            data = {
-                'commit': dependency.commit,
-                'path': dependency.path,
-                'submodule': dependency.submodules,
-                'client': dependency.client,
-            }
-            yield self.change_key(dependency, path=path), data
+        return super(ProcessRun,
+                     self).nodes + [((self.commit, self.process_path), data)]
 
     def iter_edges(self):
         """Yield all graph edges."""
-        tool_key = (str(self.commit), self.process_path)
+        tool_key = (self.commit, self.process_path)
         for path, dependency in self.inputs.items():
             input_key = self.change_key(dependency, path=path)
             #: Edge from an input to the tool.
             yield input_key, tool_key, {'id': dependency.id}
 
         for path, output_id in self.outputs.items():
-            node_key = (str(self.commit), path)
+            node_key = (self.commit, path)
             #: Edge from the tool to an output.
             yield tool_key, node_key, {'id': output_id}
 
@@ -333,7 +321,7 @@ class ProcessRun(Activity):
                 for path, dependency in self.inputs.items()
             ]
         assert path in self.outputs
-        return [(self.commit.hexsha, self.process_path)]
+        return [(self.commit, self.process_path)]
 
 
 @jsonld.s(
@@ -391,7 +379,8 @@ class WorkflowRun(ProcessRun):
 
         return subprocesses
 
-    def iter_nodes(self):
+    @property
+    def nodes(self):
         """Yield all graph nodes."""
         basedir = os.path.dirname(self.process_path)
         default_data = {
@@ -426,7 +415,7 @@ class WorkflowRun(ProcessRun):
                     'submodule': self.submodules,
                     'client': self.client,
                 }
-                yield (str(self.commit), output_path), data
+                yield (self.commit, output_path), data
 
             data = {
                 'path': path,
@@ -438,27 +427,19 @@ class WorkflowRun(ProcessRun):
                     .format(workflow_path=workflow_path, step=step),
             }
             data.update(**default_data)
-            yield (str(self.commit), path), data
-
-        for path, dependency in self.inputs.items():
-            data = {
-                'commit': dependency.commit,
-                'path': dependency.path,
-                'submodule': dependency.submodules,
-                'client': dependency.client,
-            }
-            yield self.change_key(dependency, path=path), data
+            yield (self.commit, path), data
 
     def iter_edges(self):
         """Yield all graph edges."""
         commit = self.commit
+        files = commit.stats.files
         workflow = self.process
         basedir = os.path.dirname(self.process_path)
 
         # Keep track of node identifiers for steps, inputs and outputs:
         step_map = {}
         input_map = {
-            dep.id: (str(dep.commit), path)
+            dep.id: (dep.commit, path)
             for path, dep in self.inputs.items()
         }
         output_map = {}
@@ -466,13 +447,13 @@ class WorkflowRun(ProcessRun):
         for step in workflow.steps:
             step_tool = self.children[step.id]
             tool_path = os.path.join(basedir, step.run)
-            tool_key = (str(commit), tool_path)
+            tool_key = (commit, tool_path)
             step_map[step.id] = tool_key
 
             for input_id, input_path in step_tool.iter_input_files(basedir):
-                if input_path in commit.stats.files:
+                if input_path in files:
                     #: Check intermediate committed files
-                    input_key = (str(commit), input_path)
+                    input_key = (commit, input_path)
                     output_map[step.id + '/' + input_id] = input_key
                     #: Edge from an input to the tool.
                     yield input_key, tool_key, {'id': input_id}
@@ -491,7 +472,7 @@ class WorkflowRun(ProcessRun):
                 )
 
             for output_id, output_path in step_outputs:
-                node_key = (str(commit), output_path)
+                node_key = (commit, output_path)
                 yield tool_key, node_key, {'id': output_id}
 
         for step in workflow.steps:
@@ -522,11 +503,11 @@ class WorkflowRun(ProcessRun):
             for alias, source in step.in_.items():
                 if source in ins:
                     dependency = ins[source]
-                    parents.append((dependency.commit.hexsha, dependency.path))
+                    parents.append((dependency.commit, dependency.path))
                 elif source in outs:
-                    parents.append((self.commit.hexsha, outs[source]))
-                elif ins:
-                    raise NotImplemented()
+                    parents.append((self.commit, outs[source]))
+                # elif ins:
+                #     raise NotImplemented()
 
         elif path in self.outputs:
             # TODO consider recursive call to subprocesses
@@ -540,10 +521,12 @@ class WorkflowRun(ProcessRun):
                 path_ for path_, (step, activity) in self.subprocesses.items()
                 if step.id == step_id
             )
-            parents.append((self.commit.hexsha, step_path))
+            parents.append((self.commit, step_path))
 
         else:
-            raise NotImplemented()
+            # import ipdb; ipdb.set_trace()
+            # raise NotImplemented()
+            pass
 
         return parents
 

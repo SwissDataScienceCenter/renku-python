@@ -142,7 +142,7 @@ def format_n_quads(graph):
 
 FORMATS = {
     'ascii': format_ascii,
-    'dot': format_dot,
+    # 'dot': format_dot,
     'json-ld': format_jsonld,
     'json-ld-graph': format_jsonld_graph,
     'n-quads': format_n_quads,

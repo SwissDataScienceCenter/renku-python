@@ -41,11 +41,11 @@ def _format_sha1(graph, key):
             return click.style(
                 submodule, fg='green'
             ) + '@' + click.style(
-                key[0][:8], fg='yellow'
+                str(key[0])[:8], fg='yellow'
             )
     except KeyError:
         pass
-    return click.style(key[0][:8], fg='yellow')
+    return click.style(str(key[0])[:8], fg='yellow')
 
 
 @attr.s
@@ -96,14 +96,11 @@ class DAG(object):
         from renku.models.provenance import WorkflowRun
 
         formatted_sha1 = _format_sha1(self.graph, node)
-        commit_hexsha, path = node
-        activity = self.graph.commits[commit_hexsha]
-        latest = self.graph._latest_commits.get(path)
+        commit, path = node
+        activity = self.graph.commits[commit]
+        latest = self.graph._nodes[node].get('latest')
 
-        data = self.graph._nodes[node]
-        assert data.get('latest', latest) == latest
-
-        if latest and latest != commit_hexsha:
+        if latest:
             formatted_latest = (
                 click.style(' (', fg='yellow') +
                 click.style('latest -> ', fg='blue', bold=True) +

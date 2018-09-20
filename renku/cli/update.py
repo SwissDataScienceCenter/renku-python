@@ -159,7 +159,7 @@ def update(ctx, client, revision, no_output, siblings, paths):
         sys.exit(0)
 
     outputs = {
-        (str(dependency.commit), dependency.path)
+        (dependency.commit, dependency.path)
         for dependency in graph.
         dependencies(revision=revision, can_be_cwl=no_output, paths=paths)
     }
