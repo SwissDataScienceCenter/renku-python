@@ -29,6 +29,51 @@ from renku.models._datastructures import DirectoryTree
 from renku.models.cwl._ascwl import CWLClass
 
 
+@attr.s(cmp=False)
+class CommitMixin:
+    """Represent a commit mixin."""
+
+    commit = attr.ib(kw_only=True)
+    client = attr.ib(kw_only=True)
+    submodules = attr.ib(default=attr.Factory(list), kw_only=True)
+
+
+@jsonld.s(
+    type='prov:Association',
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+    },
+)
+class Association:
+    """Assign responsibility to an agent for an activity."""
+
+    plan = jsonld.ib(context='prov:hadPlan')
+
+
+@jsonld.s(
+    type=[
+        'prov:Entity',
+        'wfprov:Artifact',
+    ],
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+        'wfprov': 'http://purl.org/wf4ever/wfprov#',
+    }
+)
+class Entity(CommitMixin):
+    """Represent a data value or item."""
+
+    path = attr.ib(kw_only=True)
+
+    _parent = attr.ib(default=None, kw_only=True)
+    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
+
+
 @jsonld.s(
     type='prov:Usage',
     context={
@@ -38,30 +83,45 @@ from renku.models.cwl._ascwl import CWLClass
 class Dependency(object):
     """Represent a dependent path."""
 
-    commit = attr.ib()
-    client = attr.ib()
+    entity = jsonld.ib(context='prov:entity', kw_only=True)
+    id = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
 
-    path = jsonld.ib(context='prov:entity', default=None)
-    id = jsonld.ib(context='prov:hadRole', default=None)
-
-    submodules = attr.ib(default=attr.Factory(list))
-
-    _id = jsonld.ib(context='@id', init=False)
-
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
+    def __getattribute__(self, name):
+        """Proxy entity attributes."""
+        entity = object.__getattribute__(self, 'entity')
+        if name not in {'id', 'entity', '__class__'} and hasattr(entity, name):
+            return getattr(self.entity, name)
+        return object.__getattribute__(self, name)
 
     @classmethod
     def from_revision(cls, client, path, revision='HEAD', **kwargs):
         """Return dependency from given path and revision."""
+        id_ = kwargs.pop('id', None)
         return cls(
-            client=client,
-            commit=client.find_previous_commit(path, revision=revision),
-            path=path,
-            **kwargs
+            entity=Entity(
+                client=client,
+                commit=client.find_previous_commit(path, revision=revision),
+                path=path,
+                **kwargs
+            ),
+            id=id_,
         )
+
+
+@jsonld.s(
+    type='prov:Generation',
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+    },
+)
+class Generation(object):
+    """Represent an act of generating a file."""
+
+    # activity = attr.ib()
+    entity = jsonld.ib(context={
+        '@reverse': 'prov:qualifiedGeneration',
+    })
+    id = jsonld.ib(context='prov:hadRole', default=None)
 
 
 @jsonld.s(
@@ -72,28 +132,20 @@ class Dependency(object):
     },
     cmp=False,
 )
-class Activity(object):
+class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
-    commit = attr.ib()
-    client = attr.ib()
+    process = attr.ib(default=None, kw_only=True)
+    process_path = attr.ib(default=None, kw_only=True)
+    outputs = attr.ib(kw_only=True)
 
-    process = attr.ib(default=None)
-    process_path = jsonld.ib(context='prov:hadPlan', default=None)
-    outputs = attr.ib()
-
-    parent = attr.ib(default=None)
-
-    submodules = attr.ib(default=attr.Factory(list))
-
-    used = jsonld.ib(context='prov:used', default=None)
-
-    generated = jsonld.ib(context='prov:generated', init=False)
+    generated = jsonld.ib(context='prov:generated', init=False, kw_only=True)
     started_at_time = jsonld.ib(
         context={
             '@id': 'prov:startedAtTime',
             '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
         },
+        kw_only=True,
     )
 
     ended_at_time = jsonld.ib(
@@ -101,20 +153,27 @@ class Activity(object):
             '@id': 'prov:endedAtTime',
             '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
         },
+        kw_only=True,
     )
 
-    _id = jsonld.ib(context='@id', init=False)
-    _label = jsonld.ib(context='rdfs:label', init=False)
+    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+    _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
 
     def __attrs_post_init__(self):
         """Calculate default values."""
         # FIXME create a proper JSON-LD object
-        self.generated = [{
-            '@id':
-                'url:sha1:{self.commit.hexsha}#{path}'
-                .format(self=self, path=path),
-            '@type': 'prov:Usage',
-        } for path in self.outputs]
+        self.generated = [
+            Generation(
+                entity=Entity(
+                    commit=self.commit,
+                    client=self.client,
+                    submodules=self.submodules,
+                    path=path,
+                    parent=self,
+                ),
+                id=id_,
+            ) for path, id_ in self.outputs.items()
+        ]
 
     @property
     def paths(self):
@@ -169,6 +228,33 @@ class Activity(object):
 
 
 @jsonld.s(
+    type=[
+        'wfdesc:Process',
+        'prov:Entity',
+        'prov:Plan',
+    ],
+    context={
+        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
+        'prov': 'http://www.w3.org/ns/prov#',
+    }
+)
+class Process(CommitMixin):
+    """Represent a process."""
+
+    path = attr.ib(kw_only=True)
+    activity = attr.ib(default=None, kw_only=True)
+
+    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return 'url:sha1:{self.commit.hexsha}#{self.path}$Process'.format(
+            self=self
+        )
+
+
+@jsonld.s(
     type='wfprov:ProcessRun',
     context={
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
@@ -178,21 +264,44 @@ class Activity(object):
 class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
 
+    # parent = jsonld.ib(
+    #     context='wfprov:wasPartOfWorkflowRun', default=None, kw_only=True,
+    # )
+
     # process_path = wfprov:describedByProcess
     # wfprov:wasPartOfWorkflowRun
 
-    inputs = attr.ib()
-    outputs = attr.ib()
+    inputs = attr.ib(kw_only=True)
+    outputs = attr.ib(kw_only=True)
 
-    _id = jsonld.ib(context='@id', init=False)
+    association = jsonld.ib(
+        context='prov:qualifiedAssociation',
+        init=False,
+        kw_only=True,
+    )
 
-    qualified_usage = jsonld.ib(context='prov:qualifiedUsage')
+    _id = jsonld.ib(context='@id', kw_only=True)
+
+    qualified_usage = jsonld.ib(context='prov:qualifiedUsage', kw_only=True)
 
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
         return 'url:sha1:{self.commit.hexsha}#{self.process_path}'.format(
             self=self
+        )
+
+    @association.default
+    def default_association(self):
+        """Create a default association."""
+        return Association(
+            plan=Process(
+                commit=self.commit,
+                client=self.client,
+                submodules=self.submodules,
+                path=self.process_path,
+                activity=self,
+            )
         )
 
     @inputs.default
@@ -311,6 +420,43 @@ class ProcessRun(Activity):
 
 
 @jsonld.s(
+    type=[
+        'wfdesc:Workflow',
+        'prov:Entity',
+        'prov:Plan',
+    ],
+    context={
+        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
+        'prov': 'http://www.w3.org/ns/prov#',
+    }
+)
+class Workflow(CommitMixin):
+    """Represent workflow with subprocesses."""
+
+    path = attr.ib(kw_only=True)
+    activity = attr.ib(default=None, kw_only=True)
+
+    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+
+    subprocesses = jsonld.ib(context='wfdesc:hasSubProcess', kw_only=True)
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return 'url:sha1:{self.commit.hexsha}#{self.path}$Workflow'.format(
+            self=self
+        )
+
+    @subprocesses.default
+    def default_subprocesses(self):
+        """Load subprocesses."""
+        return [
+            subprocess.association.plan
+            for _, subprocess in self.activity.subprocesses.values()
+        ]
+
+
+@jsonld.s(
     type='wfprov:WorkflowRun',
     context={
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
@@ -322,12 +468,21 @@ class WorkflowRun(ProcessRun):
 
     # @reverse wfprov:wasPartOfWorkflowRun
 
-    children = attr.ib(init=False)
+    children = attr.ib(init=False, kw_only=True)
 
-    subprocesses = jsonld.ib(
+    _processes = jsonld.ib(
         context={
             '@reverse': 'wfprov:wasPartOfWorkflowRun',
-        }, init=False
+        },
+        default=attr.Factory(list),
+        kw_only=True,
+    )
+    subprocesses = attr.ib(init=False, kw_only=True)
+
+    association = jsonld.ib(
+        context='prov:qualifiedAssociation',
+        init=False,
+        kw_only=True,
     )
 
     @children.default
@@ -357,13 +512,34 @@ class WorkflowRun(ProcessRun):
                     path, revision=revision
                 ),
                 client=self.client,
+                # parent=self,
                 process=process,
                 process_path=path,
+                id=self._id + '#step/' + step.id,
                 submodules=self.submodules,
             )
             subprocesses[path] = (step, subprocess)
+            self._processes.append(subprocess)
 
         return subprocesses
+
+    @association.default
+    def default_association(self):
+        """Create a default association."""
+        # import ipdb; ipdb.set_trace()
+        subprocesses = [
+            subprocess.association.plan
+            for _, subprocess in self.subprocesses.values()
+        ]
+        return Association(
+            plan=Workflow(
+                commit=self.commit,
+                client=self.client,
+                submodules=self.submodules,
+                path=self.process_path,
+                activity=self,
+            )
+        )
 
     @property
     def nodes(self):
@@ -386,6 +562,7 @@ class WorkflowRun(ProcessRun):
                 self.process_path, start=os.path.dirname(path)
             )
 
+            # Reuse outputs from workflow
             step_outputs = self.process._step_outputs.get(step_id)
             if step_outputs is not None:
                 step_outputs = step_outputs.items()
