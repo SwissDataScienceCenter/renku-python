@@ -64,6 +64,8 @@ using the :program:`dot` program.
 
 """
 
+import sys
+
 import click
 
 from ._client import pass_local_client
@@ -80,11 +82,24 @@ def format_ascii(graph):
 
 def format_dot(graph):
     """Format graph as a dot file."""
-    import networkx as nx
+    from pyld import jsonld
+    from rdflib import ConjunctiveGraph
+    from rdflib.tools.rdf2dot import rdf2dot
 
-    for (_, path), node in graph.G.nodes(data=True):
-        node.setdefault('label', node.get('tool', path))
-    click.echo(nx.nx_pydot.to_pydot(graph.G).to_string())
+    from renku.models._jsonld import asjsonld
+
+    g = ConjunctiveGraph()
+    g.parse(
+        data=jsonld.normalize(
+            [asjsonld(action) for action in graph.commits.values()],
+            {
+                'algorithm': 'URDNA2015',
+                'format': 'application/n-quads'
+            },
+        ),
+        format="nquads"
+    )
+    rdf2dot(g, sys.stdout)
 
 
 def format_jsonld(graph):
@@ -140,12 +155,24 @@ def format_n_quads(graph):
     )
 
 
+def format_rdf(graph):
+    """Output the graph as RDF."""
+    from pyld import jsonld
+    from renku.models._jsonld import asjsonld
+
+    click.echo(
+        jsonld.to_rdf([asjsonld(action)
+                       for action in graph.commits.values()], )
+    )
+
+
 FORMATS = {
     'ascii': format_ascii,
-    # 'dot': format_dot,
+    'dot': format_dot,
     'json-ld': format_jsonld,
     'json-ld-graph': format_jsonld_graph,
     'n-quads': format_n_quads,
+    'rdf': format_rdf,
 }
 """Valid formatting options."""
 
