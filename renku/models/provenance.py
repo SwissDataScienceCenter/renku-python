@@ -88,7 +88,7 @@ class Activity(object):
 
     used = jsonld.ib(context='prov:used', default=None)
 
-    generated = jsonld.ib(context='prov:generated', default=attr.Factory(list))
+    generated = jsonld.ib(context='prov:generated', init=False)
     started_at_time = jsonld.ib(
         context={
             '@id': 'prov:startedAtTime',
@@ -105,6 +105,16 @@ class Activity(object):
 
     _id = jsonld.ib(context='@id', init=False)
     _label = jsonld.ib(context='rdfs:label', init=False)
+
+    def __attrs_post_init__(self):
+        """Calculate default values."""
+        # FIXME create a proper JSON-LD object
+        self.generated = [{
+            '@id':
+                'url:sha1:{self.commit.hexsha}#{path}'
+                .format(self=self, path=path),
+            '@type': 'prov:Usage',
+        } for path in self.outputs]
 
     @property
     def paths(self):
@@ -135,11 +145,6 @@ class Activity(object):
     def default_ended_at_time(self):
         """Configure calculated properties."""
         return datetime.fromtimestamp(self.commit.committed_date).isoformat()
-
-    def change_key(self, dependency, path=None):
-        """Rename the path part in the key."""
-        path = path or dependency.path
-        return dependency.commit, path
 
     @property
     def nodes(self):
@@ -290,6 +295,7 @@ class ProcessRun(Activity):
 
     @property
     def nodes(self):
+        """Return topologically sorted nodes."""
         data = {
             'client': self.client,
             'commit': self.commit,
@@ -304,7 +310,7 @@ class ProcessRun(Activity):
         """Yield all graph edges."""
         tool_key = (self.commit, self.process_path)
         for path, dependency in self.inputs.items():
-            input_key = self.change_key(dependency, path=path)
+            input_key = dependency.commit, path
             #: Edge from an input to the tool.
             yield input_key, tool_key, {'id': dependency.id}
 
@@ -316,10 +322,8 @@ class ProcessRun(Activity):
     def pred(self, path):
         """Return a list of parents."""
         if path == self.process_path:
-            return [
-                self.change_key(dependency, path=path)
-                for path, dependency in self.inputs.items()
-            ]
+            return [(dependency.commit, path)
+                    for path, dependency in self.inputs.items()]
         assert path in self.outputs
         return [(self.commit, self.process_path)]
 
