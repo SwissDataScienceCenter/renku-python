@@ -156,11 +156,6 @@ class Activity(object):
             'client': self.client,
         }) for path, _ in self.outputs.items()]
 
-    def iter_edges(self):
-        """Yield all graph edges."""
-        return
-        yield  # empty generator
-
     def pred(self, path):
         """Return a list of parents."""
         return []
@@ -306,19 +301,6 @@ class ProcessRun(Activity):
         return super(ProcessRun,
                      self).nodes + [((self.commit, self.process_path), data)]
 
-    def iter_edges(self):
-        """Yield all graph edges."""
-        tool_key = (self.commit, self.process_path)
-        for path, dependency in self.inputs.items():
-            input_key = dependency.commit, path
-            #: Edge from an input to the tool.
-            yield input_key, tool_key, {'id': dependency.id}
-
-        for path, output_id in self.outputs.items():
-            node_key = (self.commit, path)
-            #: Edge from the tool to an output.
-            yield tool_key, node_key, {'id': output_id}
-
     def pred(self, path):
         """Return a list of parents."""
         if path == self.process_path:
@@ -432,61 +414,6 @@ class WorkflowRun(ProcessRun):
             }
             data.update(**default_data)
             yield (self.commit, path), data
-
-    def iter_edges(self):
-        """Yield all graph edges."""
-        commit = self.commit
-        files = commit.stats.files
-        workflow = self.process
-        basedir = os.path.dirname(self.process_path)
-
-        # Keep track of node identifiers for steps, inputs and outputs:
-        step_map = {}
-        input_map = {
-            dep.id: (dep.commit, path)
-            for path, dep in self.inputs.items()
-        }
-        output_map = {}
-
-        for step in workflow.steps:
-            step_tool = self.children[step.id]
-            tool_path = os.path.join(basedir, step.run)
-            tool_key = (commit, tool_path)
-            step_map[step.id] = tool_key
-
-            for input_id, input_path in step_tool.iter_input_files(basedir):
-                if input_path in files:
-                    #: Check intermediate committed files
-                    input_key = (commit, input_path)
-                    output_map[step.id + '/' + input_id] = input_key
-                    #: Edge from an input to the tool.
-                    yield input_key, tool_key, {'id': input_id}
-                else:
-                    #: Global workflow input
-                    source = step.in_[input_id]
-                    yield input_map[source], tool_key, {'id': input_id}
-
-            # Find ALL siblings that MUST be generated in the same commit.
-            step_outputs = workflow._step_outputs.get(step.id)
-            if step_outputs is not None:
-                step_outputs = step_outputs.items()
-            else:
-                step_outputs = step_tool.iter_output_files(
-                    basedir, commit=commit
-                )
-
-            for output_id, output_path in step_outputs:
-                node_key = (commit, output_path)
-                yield tool_key, node_key, {'id': output_id}
-
-        for step in workflow.steps:
-            for alias, source in step.in_.items():
-                name = step.id + '/' + alias
-
-                if name in output_map and '/' in source:
-                    other_step, id_ = source.split('/')
-                    other_key = step_map[other_step]
-                    yield other_key, output_map[name], {'id': id_}
 
     def pred(self, path):
         """Return a list of parents."""
