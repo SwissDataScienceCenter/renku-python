@@ -35,7 +35,7 @@ DOC_TPL = (
     "{cls.__doc__}\n\n"
     "**Type:**\n\n"
     ".. code-block:: json\n\n"
-    "    \"{jsonld_cls._jsonld_type}\"\n\n"
+    "    {type}\n\n"
     "**Context:**\n\n"
     ".. code-block:: json\n\n"
     "{context}\n"
@@ -117,7 +117,9 @@ def attrs(
             '   ' + line for line in json.dumps(context, indent=2).split('\n')
         )
         jsonld_cls.__doc__ = DOC_TPL.format(
-            cls=cls, jsonld_cls=jsonld_cls, context=context_doc
+            cls=cls,
+            type=json.dumps(jsonld_cls._jsonld_type),
+            context=context_doc,
         )
         return jsonld_cls
 
