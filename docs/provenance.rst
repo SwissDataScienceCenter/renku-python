@@ -53,3 +53,11 @@ Entities and Plans
 .. autoclass:: Workflow
    :members:
    :inherited-members:
+
+
+Relations
+---------
+
+.. autoclass:: Usage
+   :members:
+   :inherited-members:

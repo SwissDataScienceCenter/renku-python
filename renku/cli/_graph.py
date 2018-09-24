@@ -27,7 +27,7 @@ from renku._compat import Path
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
-from renku.models.provenance import Activity, Dependency
+from renku.models.provenance import Activity, Usage
 
 
 def _safe_path(filepath, can_be_cwl=False):
@@ -90,7 +90,7 @@ class Graph(object):
 
                 latest = _latest_commits.get(path)
                 if latest is None:
-                    latest = Dependency.from_revision(
+                    latest = Usage.from_revision(
                         activity.client,
                         path=data['path'],
                         # revision='{0}'.format(key[0]),
@@ -125,9 +125,8 @@ class Graph(object):
         """Return dependencies from a revision or paths."""
         if paths:
             return [
-                Dependency.from_revision(
-                    self.client, path=path, revision=revision
-                ) for path in paths
+                Usage.from_revision(self.client, path=path, revision=revision)
+                for path in paths
             ]
 
         if revision == 'HEAD':
@@ -137,7 +136,7 @@ class Graph(object):
             index = IndexFile.from_tree(self.client.git, revision)
 
         return [
-            Dependency.from_revision(
+            Usage.from_revision(
                 client=self.client,
                 path=path,
                 revision=revision,

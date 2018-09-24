@@ -74,17 +74,8 @@ class Entity(CommitMixin):
         return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
 
 
-@jsonld.s(
-    type='prov:Usage',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
-)
-class Dependency(object):
-    """Represent a dependent path."""
-
-    entity = jsonld.ib(context='prov:entity', kw_only=True)
-    id = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
+class EntityProxyMixin:
+    """Implement proxy to entity attribute."""
 
     def __getattribute__(self, name):
         """Proxy entity attributes."""
@@ -92,6 +83,19 @@ class Dependency(object):
         if name not in {'id', 'entity', '__class__'} and hasattr(entity, name):
             return getattr(self.entity, name)
         return object.__getattribute__(self, name)
+
+
+@jsonld.s(
+    type='prov:Usage',
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+    },
+)
+class Usage(EntityProxyMixin):
+    """Represent a dependent path."""
+
+    entity = jsonld.ib(context='prov:entity', kw_only=True)
+    id = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
 
     @classmethod
     def from_revision(cls, client, path, revision='HEAD', **kwargs):
@@ -114,7 +118,7 @@ class Dependency(object):
         'prov': 'http://www.w3.org/ns/prov#',
     },
 )
-class Generation(object):
+class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
     # activity = attr.ib()
@@ -352,7 +356,7 @@ class ProcessRun(Activity):
                 for submodule, subclient in subclients.items():
                     try:
                         subpath = original_path.relative_to(subclient.path)
-                        return Dependency.from_revision(
+                        return Usage.from_revision(
                             client=subclient,
                             path=str(subpath),
                             revision=submodule.hexsha,
@@ -366,7 +370,7 @@ class ProcessRun(Activity):
             try:
                 dependency = resolve_submodules(input_path, id=input_id)
                 if dependency is None:
-                    dependency = Dependency.from_revision(
+                    dependency = Usage.from_revision(
                         client=client,
                         path=input_path,
                         id=input_id,
@@ -531,7 +535,7 @@ class WorkflowRun(ProcessRun):
                     inputs[dependency.path] = dependency
                 elif source in outs:
                     input_path = outs[source]
-                    inputs[path] = Dependency(
+                    inputs[path] = Usage(
                         entity=Entity(
                             commit=self.commit,
                             client=self.client,
