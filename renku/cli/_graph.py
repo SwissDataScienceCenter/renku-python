@@ -69,10 +69,9 @@ class Graph(object):
         """Build node index."""
         _nodes = OrderedDict()
         self._latest_commits = _latest_commits = {}
-
         for commit in reversed(self._sorted_commits):
             activity = self.commits[commit]
-            activity_nodes = list(activity.nodes)
+            activity_nodes = reversed(list(activity.nodes))
 
             need_update = []
             for path, dependency in getattr(activity, 'inputs', {}).items():
@@ -99,7 +98,7 @@ class Graph(object):
                     ).commit
                     _latest_commits[path] = latest
 
-                data.setdefault('_need_update', list(need_update))
+                data['_need_update'] = list(need_update)
                 if latest and latest != data['commit']:
                     data['latest'] = latest
                     data['_need_update'].append(key)
@@ -111,7 +110,7 @@ class Graph(object):
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        return self._nodes.keys()
+        return reversed(self._nodes.keys())
 
     def normalize_path(self, path):
         """Normalize path relative to the Git workdir."""
@@ -420,10 +419,13 @@ class Graph(object):
 
         for action, step_id in steps.items():
             tool = action.process
-            ins = {
-                dependency.id: _source_name(dependency.commit, path)
-                for path, dependency in action.inputs.items()
-            }
+
+            ins = {}
+            for path, dependency in action.inputs.items():
+                alias = _source_name(dependency.commit, path)
+                if alias:
+                    ins[dependency.id] = alias
+
             outs = list(set(action.outputs.values()))
 
             for input_ in tool.inputs:

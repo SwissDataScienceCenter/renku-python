@@ -139,7 +139,8 @@ class Activity(CommitMixin):
     process_path = attr.ib(default=None, kw_only=True)
     outputs = attr.ib(kw_only=True)
 
-    generated = jsonld.ib(context='prov:generated', init=False, kw_only=True)
+    generated = jsonld.ib(context='prov:generated', kw_only=True)
+
     started_at_time = jsonld.ib(
         context={
             '@id': 'prov:startedAtTime',
@@ -159,10 +160,10 @@ class Activity(CommitMixin):
     _id = jsonld.ib(context='@id', init=False, kw_only=True)
     _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
 
-    def __attrs_post_init__(self):
+    @generated.default
+    def default_generated(self):
         """Calculate default values."""
-        # FIXME create a proper JSON-LD object
-        self.generated = [
+        return [
             Generation(
                 entity=Entity(
                     commit=self.commit,
@@ -274,6 +275,8 @@ class ProcessRun(Activity):
     inputs = attr.ib(kw_only=True)
     outputs = attr.ib(kw_only=True)
 
+    generated = jsonld.ib(context='prov:generated', kw_only=True)
+
     association = jsonld.ib(
         context='prov:qualifiedAssociation',
         init=False,
@@ -283,6 +286,22 @@ class ProcessRun(Activity):
     _id = jsonld.ib(context='@id', kw_only=True)
 
     qualified_usage = jsonld.ib(context='prov:qualifiedUsage', kw_only=True)
+
+    @generated.default
+    def default_generated(self):
+        """Calculate default values."""
+        return [
+            Generation(
+                entity=Entity(
+                    commit=self.commit,
+                    client=self.client,
+                    submodules=self.submodules,
+                    path=path,
+                    parent=self,
+                ),
+                id=id_,
+            ) for path, id_ in self.outputs.items()
+        ]
 
     @_id.default
     def default_id(self):
@@ -496,6 +515,20 @@ class WorkflowRun(ProcessRun):
         basedir = os.path.dirname(self.process_path)
         revision = '{0}^'.format(self.commit)
 
+        ins = {
+            dependency.id: dependency
+            for path, dependency in self.inputs.items()
+        }
+        entities = {
+            generation.entity.path: generation.entity
+            for generation in self.generated
+        }
+        outputs_ = {id_: path_ for path_, id_ in self.outputs.items()}
+        outs = {
+            output.outputSource: outputs_[output.id]
+            for output in self.process.outputs
+        }
+
         subprocesses = {}
 
         for step in self.process.steps:
@@ -507,6 +540,40 @@ class WorkflowRun(ProcessRun):
             else:
                 cls = ProcessRun
 
+            inputs = {}
+            for alias, source in step.in_.items():
+                if source in ins:
+                    dependency = ins[source]
+                    inputs[dependency.path] = dependency
+                elif source in outs:
+                    input_path = outs[source]
+                    inputs[path] = Dependency(
+                        entity=Entity(
+                            commit=self.commit,
+                            client=self.client,
+                            submodules=self.submodules,
+                            path=input_path,
+                        ),
+                        id=alias,
+                    )
+                else:
+                    # TODO check that it is not Path or Directory
+                    pass
+
+            outputs = {}
+            generated = []
+            for source in step.out:
+                output_source = step.id + '/' + source
+                output_path = outs.get(output_source)
+                if output_path:
+                    outputs[output_path] = source
+                    generated.append(
+                        Generation(
+                            entity=entities[output_path],
+                            id=source,
+                        )
+                    )
+
             subprocess = cls(
                 commit=self.client.find_previous_commit(
                     path, revision=revision
@@ -515,6 +582,9 @@ class WorkflowRun(ProcessRun):
                 # parent=self,
                 process=process,
                 process_path=path,
+                inputs=inputs,
+                outputs=outputs,
+                generated=generated,
                 id=self._id + '#step/' + step.id,
                 submodules=self.submodules,
             )
@@ -526,11 +596,11 @@ class WorkflowRun(ProcessRun):
     @association.default
     def default_association(self):
         """Create a default association."""
-        # import ipdb; ipdb.set_trace()
-        subprocesses = [
-            subprocess.association.plan
-            for _, subprocess in self.subprocesses.values()
-        ]
+        # TODO avoid loading of steps and sub-workflows
+        # subprocesses = [
+        #     subprocess.association.plan
+        #     for _, subprocess in self.subprocesses.values()
+        # ]
         return Association(
             plan=Workflow(
                 commit=self.commit,
@@ -544,34 +614,17 @@ class WorkflowRun(ProcessRun):
     @property
     def nodes(self):
         """Yield all graph nodes."""
-        basedir = os.path.dirname(self.process_path)
         default_data = {
             'client': self.client,
             'workflow': self.process,
             'submodule': self.submodules,
         }
-        revision = '{0}^'.format(self.commit)
 
-        for step in reversed(self.process.steps):
-            step_id = step.id
-            subprocess = self.children[step_id]
-            path = os.path.join(basedir, step.run)
-            # The workflow path must be relative to the current tool
-            # since we might be inside a submodule.
-            workflow_path = os.path.relpath(
-                self.process_path, start=os.path.dirname(path)
-            )
+        for subprocess in reversed(self._processes):
+            path = subprocess.process_path
+            step, _ = self.subprocesses[path]
 
-            # Reuse outputs from workflow
-            step_outputs = self.process._step_outputs.get(step_id)
-            if step_outputs is not None:
-                step_outputs = step_outputs.items()
-            else:
-                step_outputs = subprocess.iter_output_files(
-                    basedir, commit=self.commit
-                )
-
-            for _, output_path in step_outputs:
+            for output_path in subprocess.outputs:
                 data = {
                     'commit': self.commit,
                     'path': output_path,
@@ -582,12 +635,11 @@ class WorkflowRun(ProcessRun):
 
             data = {
                 'path': path,
-                'commit':
-                    self.client.find_previous_commit(path, revision=revision),
+                'commit': subprocess.commit,
                 'tool': subprocess,
                 'workflow_path':
                     '{workflow_path}#steps/{step.id}'
-                    .format(workflow_path=workflow_path, step=step),
+                    .format(workflow_path=self.process_path, step=step),
             }
             data.update(**default_data)
             yield (self.commit, path), data
@@ -595,27 +647,11 @@ class WorkflowRun(ProcessRun):
     def pred(self, path):
         """Return a list of parents."""
         parents = []
-        ins = {
-            dependency.id: dependency
-            for path, dependency in self.inputs.items()
-        }
-        outputs_ = {id_: path_ for path_, id_ in self.outputs.items()}
-        outs = {
-            output.outputSource: outputs_[output.id]
-            for output in self.process.outputs
-        }
 
         if path in self.subprocesses:
             step, activity = self.subprocesses[path]
-
-            for alias, source in step.in_.items():
-                if source in ins:
-                    dependency = ins[source]
-                    parents.append((dependency.commit, dependency.path))
-                elif source in outs:
-                    parents.append((self.commit, outs[source]))
-                # elif ins:
-                #     raise NotImplemented()
+            for dependency in activity.inputs.values():
+                parents.append((dependency.commit, dependency.path))
 
         elif path in self.outputs:
             # TODO consider recursive call to subprocesses
