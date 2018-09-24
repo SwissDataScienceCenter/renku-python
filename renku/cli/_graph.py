@@ -19,7 +19,6 @@
 
 import os
 from collections import OrderedDict, defaultdict, deque
-from functools import lru_cache
 
 import attr
 
@@ -121,21 +120,6 @@ class Graph(object):
     def _format_path(self, path):
         """Return a relative path based on the client configuration."""
         return os.path.relpath(str(self.client.path / path))
-
-    def _is_cwl(self, path):
-        """Check if the path is a valid CWL file."""
-        return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
-
-    @lru_cache(maxsize=1024)
-    def find_cwl(self, commit):
-        """Return a CWL."""
-        cwl = None
-        for file_ in commit.stats.files.keys():
-            if self.client.is_cwl(file_):
-                if cwl is not None:
-                    raise ValueError(file_)  # duplicate
-                cwl = file_
-        return cwl
 
     def dependencies(self, revision='HEAD', can_be_cwl=False, paths=None):
         """Return dependencies from a revision or paths."""

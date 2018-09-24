@@ -65,18 +65,15 @@ def template(client):
 @pass_local_client
 def rerun(client, run, job):
     """Re-run existing workflow or tool using CWL runner."""
-    from ._graph import Graph
+    from renku.models.provenance import ProcessRun, from_git_commit
+    activity = from_git_commit(commit=client.git.head.commit, client=client)
 
-    graph = Graph(client)
-    # TODO find tool in branch or merge-request range.
-    cwl = graph.find_cwl(client.git.head.commit)
-
-    if not cwl:
+    if not isinstance(activity, ProcessRun):
         click.secho('No tool was found.', fg='red', file=sys.stderr)
         return
 
     try:
-        args = ['cwl-runner', cwl]
+        args = ['cwl-runner', activity.process_path]
         if job:
             job_file = tempfile.NamedTemporaryFile(
                 suffix='.yml', dir=os.getcwd(), delete=False
