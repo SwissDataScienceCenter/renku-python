@@ -23,17 +23,33 @@ Provenance
 Extract provenance information from the repository.
 
 
-Activity object
----------------
+Activities
+----------
 
 .. autoclass:: Activity
    :members:
    :inherited-members:
 
+.. autoclass:: ProcessRun
+   :members:
+   :inherited-members:
 
-Dependency file
----------------
+.. autoclass:: WorkflowRun
+   :members:
+   :inherited-members:
 
-.. autoclass:: Dependency
+
+Entities and Plans
+------------------
+
+.. autoclass:: Entity
+   :members:
+   :inherited-members:
+
+.. autoclass:: Process
+   :members:
+   :inherited-members:
+
+.. autoclass:: Workflow
    :members:
    :inherited-members:
