@@ -157,7 +157,7 @@ class Activity(CommitMixin):
         kw_only=True,
     )
 
-    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+    _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
 
     @generated.default
@@ -250,9 +250,7 @@ class Process(CommitMixin):
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.path}$Process'.format(
-            self=self
-        )
+        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
 
 
 @jsonld.s(
@@ -264,6 +262,8 @@ class Process(CommitMixin):
 )
 class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
+
+    __association_cls__ = Process
 
     # parent = jsonld.ib(
     #     context='wfprov:wasPartOfWorkflowRun', default=None, kw_only=True,
@@ -283,8 +283,6 @@ class ProcessRun(Activity):
         kw_only=True,
     )
 
-    _id = jsonld.ib(context='@id', kw_only=True)
-
     qualified_usage = jsonld.ib(context='prov:qualifiedUsage', kw_only=True)
 
     @generated.default
@@ -303,18 +301,10 @@ class ProcessRun(Activity):
             ) for path, id_ in self.outputs.items()
         ]
 
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.process_path}'.format(
-            self=self
-        )
-
-    @association.default
-    def default_association(self):
-        """Create a default association."""
-        return Association(
-            plan=Process(
+    def __attrs_post_init__(self):
+        """Calculate properties."""
+        self.association = Association(
+            plan=self.__association_cls__(
                 commit=self.commit,
                 client=self.client,
                 submodules=self.submodules,
@@ -462,9 +452,7 @@ class Workflow(CommitMixin):
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.path}$Workflow'.format(
-            self=self
-        )
+        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
 
     @subprocesses.default
     def default_subprocesses(self):
@@ -485,6 +473,8 @@ class Workflow(CommitMixin):
 class WorkflowRun(ProcessRun):
     """A workflow run typically contains several subprocesses."""
 
+    __association_cls__ = Workflow
+
     # @reverse wfprov:wasPartOfWorkflowRun
 
     children = attr.ib(init=False, kw_only=True)
@@ -497,12 +487,6 @@ class WorkflowRun(ProcessRun):
         kw_only=True,
     )
     subprocesses = attr.ib(init=False, kw_only=True)
-
-    association = jsonld.ib(
-        context='prov:qualifiedAssociation',
-        init=False,
-        kw_only=True,
-    )
 
     @children.default
     def default_children(self):
@@ -585,31 +569,13 @@ class WorkflowRun(ProcessRun):
                 inputs=inputs,
                 outputs=outputs,
                 generated=generated,
-                id=self._id + '#step/' + step.id,
+                id=self._id + '#steps/' + step.id,
                 submodules=self.submodules,
             )
             subprocesses[path] = (step, subprocess)
             self._processes.append(subprocess)
 
         return subprocesses
-
-    @association.default
-    def default_association(self):
-        """Create a default association."""
-        # TODO avoid loading of steps and sub-workflows
-        # subprocesses = [
-        #     subprocess.association.plan
-        #     for _, subprocess in self.subprocesses.values()
-        # ]
-        return Association(
-            plan=Workflow(
-                commit=self.commit,
-                client=self.client,
-                submodules=self.submodules,
-                path=self.process_path,
-                activity=self,
-            )
-        )
 
     @property
     def nodes(self):
