@@ -39,10 +39,16 @@ class CommitMixin:
     path = attr.ib(default=None, kw_only=True)
 
     _id = jsonld.ib(context='@id', init=False, kw_only=True)
+    _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
 
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
+        return 'url:sha1:{self.commit.hexsha}/{self.path}'.format(self=self)
+
+    @_label.default
+    def default_label(self):
+        """Generate a default label."""
         return '{self.path}@{self.commit.hexsha}'.format(self=self)
 
 
@@ -263,13 +269,6 @@ class Process(CommitMixin):
     """Represent a process."""
 
     activity = attr.ib(default=None, kw_only=True)
-
-    _id = jsonld.ib(context='@id', init=False, kw_only=True)
-
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        return '{self.path}@{self.commit.hexsha}'.format(self=self)
 
 
 @jsonld.s(
@@ -575,7 +574,7 @@ class WorkflowRun(ProcessRun):
                 inputs=inputs,
                 outputs=outputs,
                 generated=generated,
-                id=self._id + '#steps/' + step.id,
+                id=self._id + 'steps/' + step.id,
                 submodules=self.submodules,
             )
             # FIXME refactor
