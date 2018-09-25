@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -18,7 +18,7 @@
 Changes
 =======
 
-Version 0.2.0rc1 (released 2018-08-23)
+Version 0.2.0 (released 2018-09-25)
 
 - Refactored version using Git and Common Workflow Language.
 

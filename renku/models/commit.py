@@ -112,8 +112,9 @@ class Action(object):
                             ),
                         'tool': subprocess,
                         'workflow_path':
-                            '{workflow_path}#steps/{step.id}'
-                            .format(workflow_path=workflow_path, step=step),
+                            '{workflow_path}#steps/{step.id}'.format(
+                                workflow_path=workflow_path, step=step
+                            ),
                     }
                     data.update(**default_data)
                     yield (str(self.commit), path), data
@@ -264,8 +265,8 @@ class Action(object):
                 from git import Submodule
 
                 submodules = [
-                    submodule for submodule in
-                    Submodule.iter_items(client.git, parent_commit=commit)
+                    submodule for submodule in Submodule.
+                    iter_items(client.git, parent_commit=commit)
                 ]
             except (RuntimeError, ValueError):
                 # There are no submodules assiciated with the given commit.

@@ -46,11 +46,11 @@ def raises(error):
 
 
 @pytest.mark.parametrize(
-    'scheme, path, error',
-    [('', 'temp', None), ('file://', 'temp', None),
-     ('', 'tempp', git.NoSuchPathError), ('http://', 'example.com/file', None),
-     ('https://', 'example.com/file', None),
-     ('bla://', 'file', NotImplementedError)]
+    'scheme, path, error', [('', 'temp', None), ('file://', 'temp', None),
+                            ('', 'tempp', git.NoSuchPathError),
+                            ('http://', 'example.com/file', None),
+                            ('https://', 'example.com/file', None),
+                            ('bla://', 'file', NotImplementedError)]
 )
 def test_data_add(
     scheme, path, error, client, data_file, directory_tree, dataset_responses

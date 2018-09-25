@@ -164,7 +164,7 @@ class Dataset(object):
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
 
-    name = jsonld.ib(type='string', context='dcterms:name')
+    name = jsonld.ib(type=str, context='dcterms:name')
 
     created = jsonld.ib(
         converter=_parse_date,

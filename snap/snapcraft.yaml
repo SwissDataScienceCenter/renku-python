@@ -17,14 +17,14 @@
 # limitations under the License.
 
 name: renku
-version: '0.2.0rc1'
+version: '0.2.0'
 summary: A Python library for the Renku collaborative data science platform.
 description: |
   A Python library for the Renku collaborative data science platform. It allows
   the user to create projects, manage datasets, and capture data provenance
   while performing analysis tasks.
 
-grade: devel # must be 'stable' to release into candidate/stable channels
+grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:

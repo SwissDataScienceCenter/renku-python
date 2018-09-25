@@ -38,7 +38,7 @@ tests_require = [
     'pytest-yapf>=0.1.1',
     'pytest>=3.6.3,!=3.7.3',
     'responses>=0.7.0',
-    'yapf>=0.22.0',
+    'yapf>=0.24.0',
 ]
 
 extras_require = {
@@ -64,15 +64,15 @@ setup_requires = [
 
 install_requires = [
     'PyYAML>=3.12',
-    'attrs>=17.4.0',
+    'attrs>=18.2.0',
     'click>=6.7',
-    'cwltool>=1.0.20180820141117',
+    'cwltool==1.0.20180820141117',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
     'networkx>=2.1',
     'pydot>=1.2.4',
-    'pyld>=0.8.2',
+    'pyld>=1.0.3',
     'python-dateutil>=2.6.1',
     'requests>=2.18.4',
     'tabulate>=0.7.7',

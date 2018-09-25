@@ -231,8 +231,8 @@ class RepositoryApiMixin(object):
 
             gitignore.write(
                 '\n' + str(
-                    self.renku_path.relative_to(self.path)
-                    .with_suffix(self.LOCK_SUFFIX)
+                    self.renku_path.relative_to(self.path).
+                    with_suffix(self.LOCK_SUFFIX)
                 ) + '\n'
             )
 
