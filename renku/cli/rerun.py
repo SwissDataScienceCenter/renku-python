@@ -142,7 +142,7 @@ def rerun(ctx, client, revision, roots, siblings, inputs, paths):
 
     # Check or extend siblings of outputs.
     outputs = siblings(graph, outputs)
-    output_paths = {path for _, path in outputs}
+    output_paths = {node.path for node in outputs}
 
     # Normalize and check all starting paths.
     roots = {graph.normalize_path(root) for root in roots}

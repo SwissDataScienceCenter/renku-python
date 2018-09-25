@@ -95,7 +95,8 @@ def siblings(client, revision, paths):
     for node in nodes:
         siblings_ |= graph.siblings(node)
 
-    for _, path in siblings_:
+    paths = {node.path for node in siblings_}
+    for path in paths:
         click.echo(graph._format_path(path))
 
 
@@ -116,7 +117,7 @@ def outputs(ctx, client, revision, paths):
     """
     graph = Graph(client)
     paths = [graph.normalize_path(path) for path in paths]
-    filter = set(graph.build(paths=paths, revision=revision))
+    filter = graph.build(paths=paths, revision=revision)
     output_paths = graph.output_paths
 
     click.echo('\n'.join(graph._format_path(path) for path in output_paths))

@@ -110,7 +110,9 @@ def check_siblings(graph, outputs):
     for node in outputs:
         siblings |= graph.siblings(node)
 
-    missing = siblings - outputs
+    siblings = {node.path for node in siblings}
+    missing = siblings - {node.path for node in outputs}
+
     if missing:
         msg = (
             'Include the files above in the command '
@@ -119,9 +121,7 @@ def check_siblings(graph, outputs):
         raise click.ClickException(
             'There are missing output siblings:\n\n'
             '\t{0}\n\n{1}'.format(
-                '\n\t'.join(
-                    click.style(path, fg='red') for _, path in missing
-                ),
+                '\n\t'.join(click.style(path, fg='red') for path in missing),
                 msg,
             ),
         )

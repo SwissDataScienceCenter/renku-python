@@ -36,6 +36,14 @@ class CommitMixin:
     commit = attr.ib(kw_only=True)
     client = attr.ib(kw_only=True)
     submodules = attr.ib(default=attr.Factory(list), kw_only=True)
+    path = attr.ib(default=None, kw_only=True)
+
+    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return '{self.path}@{self.commit.hexsha}'.format(self=self)
 
 
 @jsonld.s(
@@ -58,20 +66,13 @@ class Association:
     context={
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
-    }
+    },
+    cmp=False,
 )
 class Entity(CommitMixin):
     """Represent a data value or item."""
 
-    path = attr.ib(kw_only=True)
-
     _parent = attr.ib(default=None, kw_only=True)
-    _id = jsonld.ib(context='@id', init=False, kw_only=True)
-
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
 
 
 class EntityProxyMixin:
@@ -90,6 +91,7 @@ class EntityProxyMixin:
     context={
         'prov': 'http://www.w3.org/ns/prov#',
     },
+    cmp=False,
 )
 class Usage(EntityProxyMixin):
     """Represent a dependent path."""
@@ -111,21 +113,33 @@ class Usage(EntityProxyMixin):
             id=id_,
         )
 
+    @property
+    def parents(self):
+        """Return parent nodes."""
+        # TODO connect files to an input directory
+        return []
+
 
 @jsonld.s(
     type='prov:Generation',
     context={
         'prov': 'http://www.w3.org/ns/prov#',
     },
+    cmp=False,
 )
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
-    # activity = attr.ib()
+    activity = attr.ib()
     entity = jsonld.ib(context={
         '@reverse': 'prov:qualifiedGeneration',
     })
     id = jsonld.ib(context='prov:hadRole', default=None)
+
+    @property
+    def parents(self):
+        """Return list of parents."""
+        return [self.activity]
 
 
 @jsonld.s(
@@ -139,8 +153,9 @@ class Generation(EntityProxyMixin):
 class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
+    part_of = attr.ib(default=None, kw_only=True)
+
     process = attr.ib(default=None, kw_only=True)
-    process_path = attr.ib(default=None, kw_only=True)
     outputs = attr.ib(kw_only=True)
 
     generated = jsonld.ib(context='prov:generated', kw_only=True)
@@ -169,6 +184,7 @@ class Activity(CommitMixin):
         """Calculate default values."""
         return [
             Generation(
+                activity=self,
                 entity=Entity(
                     commit=self.commit,
                     client=self.client,
@@ -188,7 +204,7 @@ class Activity(CommitMixin):
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}'.format(self=self)
+        return 'url:sha1:{self.commit.hexsha}#'.format(self=self)
 
     @_label.default
     def default_label(self):
@@ -213,22 +229,22 @@ class Activity(CommitMixin):
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        return [((self.commit, path), {
-            'commit': self.commit,
-            'path': path,
-            'submodule': self.submodules,
-            'client': self.client,
-        }) for path, _ in self.outputs.items()]
+        return self.generated
+
+    @property
+    def parents(self):
+        """Return a list of parents."""
+        return []
 
     def pred(self, path):
         """Return a list of parents."""
         return []
 
     @staticmethod
-    def from_git_commit(commit, client, process_path=None, submodules=None):
+    def from_git_commit(commit, client, path=None, submodules=None):
         """Populate information from the given Git commit."""
         return from_git_commit(
-            commit, client, process_path=None, submodules=submodules
+            commit, client, path=None, submodules=submodules
         )
 
 
@@ -246,7 +262,6 @@ class Activity(CommitMixin):
 class Process(CommitMixin):
     """Represent a process."""
 
-    path = attr.ib(kw_only=True)
     activity = attr.ib(default=None, kw_only=True)
 
     _id = jsonld.ib(context='@id', init=False, kw_only=True)
@@ -254,7 +269,7 @@ class Process(CommitMixin):
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
+        return '{self.path}@{self.commit.hexsha}'.format(self=self)
 
 
 @jsonld.s(
@@ -268,13 +283,6 @@ class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
 
     __association_cls__ = Process
-
-    # parent = jsonld.ib(
-    #     context='wfprov:wasPartOfWorkflowRun', default=None, kw_only=True,
-    # )
-
-    # process_path = wfprov:describedByProcess
-    # wfprov:wasPartOfWorkflowRun
 
     inputs = attr.ib(kw_only=True)
     outputs = attr.ib(kw_only=True)
@@ -294,6 +302,7 @@ class ProcessRun(Activity):
         """Calculate default values."""
         return [
             Generation(
+                activity=self,
                 entity=Entity(
                     commit=self.commit,
                     client=self.client,
@@ -312,7 +321,7 @@ class ProcessRun(Activity):
                 commit=self.commit,
                 client=self.client,
                 submodules=self.submodules,
-                path=self.process_path,
+                path=self.path,
                 activity=self,
             )
         )
@@ -320,7 +329,7 @@ class ProcessRun(Activity):
     @inputs.default
     def default_inputs(self):
         """Guess default inputs from a process."""
-        basedir = os.path.dirname(self.process_path)
+        basedir = os.path.dirname(self.path)
         commit = self.commit
         client = self.client
         process = self.process
@@ -390,7 +399,7 @@ class ProcessRun(Activity):
     @outputs.default
     def default_outputs(self):
         """Guess default outputs from a process."""
-        basedir = os.path.dirname(self.process_path)
+        basedir = os.path.dirname(self.path)
         tree = DirectoryTree.from_list((
             path for path in super(ProcessRun, self).default_outputs()
             if not self.client.is_cwl(path)
@@ -413,23 +422,24 @@ class ProcessRun(Activity):
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        data = {
-            'client': self.client,
-            'commit': self.commit,
-            'path': self.process_path,
-            'tool': self.process,
-            'submodule': self.submodules,
-        }
-        return super(ProcessRun,
-                     self).nodes + [((self.commit, self.process_path), data)]
+        yield from super(ProcessRun, self).nodes
+        yield self
+        for node in self.inputs.values():
+            if (node.client.path / node.path).is_dir():
+                yield node
+
+    @property
+    def parents(self):
+        """Return a list of parents."""
+        return self.qualified_usage
 
     def pred(self, path):
         """Return a list of parents."""
-        if path == self.process_path:
+        if path == self.path:
             return [(dependency.commit, path)
                     for path, dependency in self.inputs.items()]
         assert path in self.outputs
-        return [(self.commit, self.process_path)]
+        return [(self.commit, self.path)]
 
 
 @jsonld.s(
@@ -446,17 +456,8 @@ class ProcessRun(Activity):
 class Workflow(CommitMixin):
     """Represent workflow with subprocesses."""
 
-    path = attr.ib(kw_only=True)
     activity = attr.ib(default=None, kw_only=True)
-
-    _id = jsonld.ib(context='@id', init=False, kw_only=True)
-
     subprocesses = jsonld.ib(context='wfdesc:hasSubProcess', kw_only=True)
-
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#{self.path}'.format(self=self)
 
     @subprocesses.default
     def default_subprocesses(self):
@@ -500,7 +501,7 @@ class WorkflowRun(ProcessRun):
     @subprocesses.default
     def default_subprocesses(self):
         """Load subprocesses."""
-        basedir = os.path.dirname(self.process_path)
+        basedir = os.path.dirname(self.path)
         revision = '{0}^'.format(self.commit)
 
         ins = {
@@ -557,6 +558,7 @@ class WorkflowRun(ProcessRun):
                     outputs[output_path] = source
                     generated.append(
                         Generation(
+                            activity=None,
                             entity=entities[output_path],
                             id=source,
                         )
@@ -567,15 +569,19 @@ class WorkflowRun(ProcessRun):
                     path, revision=revision
                 ),
                 client=self.client,
-                # parent=self,
+                part_of=self,
                 process=process,
-                process_path=path,
+                path=path,
                 inputs=inputs,
                 outputs=outputs,
                 generated=generated,
                 id=self._id + '#steps/' + step.id,
                 submodules=self.submodules,
             )
+            # FIXME refactor
+            for generation in generated:
+                generation.activity = subprocess
+
             subprocesses[path] = (step, subprocess)
             self._processes.append(subprocess)
 
@@ -584,35 +590,8 @@ class WorkflowRun(ProcessRun):
     @property
     def nodes(self):
         """Yield all graph nodes."""
-        default_data = {
-            'client': self.client,
-            'workflow': self.process,
-            'submodule': self.submodules,
-        }
-
         for subprocess in reversed(self._processes):
-            path = subprocess.process_path
-            step, _ = self.subprocesses[path]
-
-            for output_path in subprocess.outputs:
-                data = {
-                    'commit': self.commit,
-                    'path': output_path,
-                    'submodule': self.submodules,
-                    'client': self.client,
-                }
-                yield (self.commit, output_path), data
-
-            data = {
-                'path': path,
-                'commit': subprocess.commit,
-                'tool': subprocess,
-                'workflow_path':
-                    '{workflow_path}#steps/{step.id}'
-                    .format(workflow_path=self.process_path, step=step),
-            }
-            data.update(**default_data)
-            yield (self.commit, path), data
+            yield from subprocess.nodes
 
     def pred(self, path):
         """Return a list of parents."""
@@ -645,26 +624,26 @@ class WorkflowRun(ProcessRun):
         return parents
 
 
-def from_git_commit(commit, client, process_path=None, submodules=None):
+def from_git_commit(commit, client, path=None, submodules=None):
     """Populate information from the given Git commit."""
     cls = Activity
     process = None
     hierarchy = list(submodules) if submodules else []
 
-    if process_path is None:
+    if path is None:
         for file_ in commit.stats.files.keys():
             # 1.a Find process (CommandLineTool or Workflow);
             if client.is_cwl(file_):
-                if process_path is not None:
+                if path is not None:
                     raise ValueError(file_)  # duplicate
-                process_path = file_
+                path = file_
                 continue
     else:
-        assert process_path in set(commit.stats.files.keys())
+        assert path in set(commit.stats.files.keys())
 
-    if process_path:
+    if path:
         try:
-            data = (commit.tree / process_path).data_stream.read()
+            data = (commit.tree / path).data_stream.read()
             process = CWLClass.from_cwl(yaml.load(data))
 
             if process.__class__.__name__ == 'Workflow':
@@ -676,7 +655,7 @@ def from_git_commit(commit, client, process_path=None, submodules=None):
                 commit=commit,
                 client=client,
                 process=process,
-                process_path=process_path,
+                path=path,
                 submodules=hierarchy,
             )
         except KeyError:

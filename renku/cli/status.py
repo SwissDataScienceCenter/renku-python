@@ -78,12 +78,13 @@ def status(ctx, client, revision, no_output, path):
             outdated = (
                 ', '.join(
                     '{0}#{1}'.format(
-                        click.
-                        style(graph._format_path(p), fg='blue', bold=True),
-                        _format_sha1(graph, (c, p)),
-                    ) for c, p in stts
-                    if not p.startswith('.renku/workflow/') and
-                    p not in status['outdated']
+                        click.style(
+                            graph._format_path(n.path), fg='blue', bold=True
+                        ),
+                        _format_sha1(graph, n),
+                    ) for n in stts
+                    if not n.path.startswith('.renku/workflow/') and
+                    n.path not in status['outdated']
                 ) for stts in files
             )
 
@@ -130,12 +131,12 @@ def status(ctx, client, revision, no_output, path):
         )
         click.echo()
 
-        for filepath, key in status['deleted'].items():
+        for filepath, node in status['deleted'].items():
             click.echo(
                 '\t{0}: {1}'.format(
                     click.style(
                         graph._format_path(filepath), fg='blue', bold=True
-                    ), _format_sha1(graph, key)
+                    ), _format_sha1(graph, node)
                 )
             )
 

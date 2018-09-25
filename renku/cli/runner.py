@@ -73,7 +73,7 @@ def rerun(client, run, job):
         return
 
     try:
-        args = ['cwl-runner', activity.process_path]
+        args = ['cwl-runner', activity.path]
         if job:
             job_file = tempfile.NamedTemporaryFile(
                 suffix='.yml', dir=os.getcwd(), delete=False

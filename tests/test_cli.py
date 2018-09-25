@@ -1223,7 +1223,7 @@ def test_input_update_and_rerun(runner, project, capsys):
     repo.git.add('--all')
     repo.index.commit('Created input.txt')
 
-    assert 1 == _run_update(runner, capsys, args=('update', input_.name))
+    assert 0 == _run_update(runner, capsys, args=('update', input_.name))
     assert 1 == _run_update(runner, capsys, args=('rerun', input_.name))
 
 

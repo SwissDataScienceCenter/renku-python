@@ -27,7 +27,7 @@ from renku._compat import Path
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
-from renku.models.provenance import Activity, Usage
+from renku.models.provenance import Activity, ProcessRun, Usage
 
 
 def _safe_path(filepath, can_be_cwl=False):
@@ -56,6 +56,7 @@ class Graph(object):
     _sorted_commits = attr.ib(default=attr.Factory(list))
     _nodes = attr.ib()
     _latest_commits = attr.ib(default=attr.Factory(dict))
+    _need_update = attr.ib(default=None)
 
     cwl_prefix = attr.ib(init=False)
 
@@ -67,44 +68,56 @@ class Graph(object):
     def default_nodes(self):
         """Build node index."""
         _nodes = OrderedDict()
+        _need_update = self._need_update = {}
         self._latest_commits = _latest_commits = {}
+
+        def _update_node(node, need_update, store_node=True):
+            path = node.path
+            latest = _latest_commits.get(path)
+
+            if latest is None:
+                latest = Usage.from_revision(
+                    node.client,
+                    path=node.path,
+                    # revision='{0}'.format(key[0]),
+                ).commit
+                _latest_commits[path] = latest
+
+            data = {}
+            _need_update[node._id] = list(need_update)
+            if latest and latest != node.commit:
+                data['latest'] = latest
+                _need_update[node._id].append(node)
+
+            if store_node:
+                _nodes[node] = data
+
+            return _need_update[node._id]
+
         for commit in reversed(self._sorted_commits):
             activity = self.commits[commit]
-            activity_nodes = reversed(list(activity.nodes))
 
             need_update = []
             for path, dependency in getattr(activity, 'inputs', {}).items():
-                try:
-                    need_update.extend(
-                        _nodes[(dependency.commit,
-                                dependency.path)]['_need_update']
+                need_update.extend(
+                    _need_update.get(
+                        dependency._id,
+                        _update_node(dependency, [], store_node=False),
                     )
-                except KeyError:
-                    # Process a directory input
-                    for (c, p), data in _nodes.items():
-                        if c == commit and p.startswith(path):
-                            need_update.extend(data['_need_update'])
+                )
 
-            for key, data in activity_nodes:
-                path = key[1]
-
-                latest = _latest_commits.get(path)
-                if latest is None:
-                    latest = Usage.from_revision(
-                        activity.client,
-                        path=data['path'],
-                        # revision='{0}'.format(key[0]),
-                    ).commit
-                    _latest_commits[path] = latest
-
-                data['_need_update'] = list(need_update)
-                if latest and latest != data['commit']:
-                    data['latest'] = latest
-                    data['_need_update'].append(key)
-
-                _nodes[key] = data
+            for node in reversed(list(activity.nodes)):
+                _update_node(node, need_update)
 
         return _nodes
+
+    def need_update(self, node):
+        """Return out-dated nodes."""
+        try:
+            return self._need_update[node._id]
+        except KeyError:
+            node = self.commits[node.commit]
+            return self._need_update[node._id]
 
     @property
     def nodes(self):
@@ -124,10 +137,10 @@ class Graph(object):
     def dependencies(self, revision='HEAD', can_be_cwl=False, paths=None):
         """Return dependencies from a revision or paths."""
         if paths:
-            return [
+            return {
                 Usage.from_revision(self.client, path=path, revision=revision)
-                for path in paths
-            ]
+                for path in paths if _safe_path(path, can_be_cwl=can_be_cwl)
+            }
 
         if revision == 'HEAD':
             index = self.client.git.index
@@ -135,14 +148,15 @@ class Graph(object):
             from git import IndexFile
             index = IndexFile.from_tree(self.client.git, revision)
 
-        return [
+        return {
             Usage.from_revision(
                 client=self.client,
                 path=path,
                 revision=revision,
-            ) for path, _ in index.entries.keys()
+            )
+            for path, _ in index.entries.keys()
             if _safe_path(path, can_be_cwl=can_be_cwl)
-        ]
+        }
 
     def process_dependencies(self, dependencies):
         """Process given dependencies."""
@@ -193,19 +207,16 @@ class Graph(object):
                 revision=revision, can_be_cwl=can_be_cwl, paths=paths
             )
 
-        current_files = {(dependency.commit, dependency.path)
-                         for dependency in dependencies if dependency.path}
-
         self.process_dependencies(dependencies)
 
-        return current_files
+        return {dependency for dependency in dependencies}
 
     @property
     def output_paths(self):
         """Return all output paths."""
         paths = set()
         for activity in self.commits.values():
-            if activity.process_path:
+            if activity.path:
                 paths |= set(activity.outputs.keys())
         return paths
 
@@ -221,24 +232,23 @@ class Graph(object):
         dependencies = self.dependencies(
             revision=revision, can_be_cwl=can_be_cwl
         )
-        current_files = set(self.build(dependencies=dependencies))
+        current_files = self.build(dependencies=dependencies)
 
         # First find all up-to-date nodes.
         up_to_date = {
-            filepath: commit
-            for (commit, filepath), data in self._nodes.items()
-            if not data.get('_need_update')
+            node.path: node.commit
+            for node, data in self._nodes.items()
+            if not self.need_update(node)
         }
 
-        for commit, filepath in current_files:
-            if filepath in up_to_date:  # trick the workflow step
+        for node in current_files:
+            if node.path in up_to_date:  # trick the workflow step
                 # FIXME use the latest commit
-                status['up-to-date'][filepath] = up_to_date[filepath]
+                status['up-to-date'][node.path] = up_to_date[node.path]
             else:
                 try:
-                    need_update = self._nodes[(commit,
-                                               filepath)]['_need_update']
-                    status['outdated'][filepath] = [need_update]
+                    need_update = self.need_update(node)
+                    status['outdated'][node.path] = [need_update]
                 except KeyError:
                     pass
 
@@ -247,12 +257,12 @@ class Graph(object):
 
         for need_updates in status['outdated'].values():
             for need_update in need_updates:
-                for commit, filepath in need_update:
-                    multiple_versions[filepath].add((commit, filepath))
+                for node in need_update:
+                    multiple_versions[node.path].add(node)
 
-        for commit, filepath in current_files:
-            if filepath in multiple_versions:
-                multiple_versions[filepath].add((commit, filepath))
+        for node in current_files:
+            if node.path in multiple_versions:
+                multiple_versions[node.path].add(node)
 
         status['multiple-versions'] = {
             key: value
@@ -260,65 +270,41 @@ class Graph(object):
         }
 
         # Build a list of used files that have been deleted.
-        current_paths = {filepath for _, filepath in current_files}
+        current_paths = {node.path for node in current_files}
         status['deleted'] = {
-            filepath: (commit, filepath)
-            for commit, filepath in self.nodes
-            if _safe_path(filepath, can_be_cwl=can_be_cwl) and filepath not in
-            current_paths and not ((self.client.path / filepath).exists() or
-                                   (self.client.path / filepath).is_dir())
+            node.path: node
+            for node in self.nodes
+            if _safe_path(node.path, can_be_cwl=can_be_cwl) and
+            node.path not in current_paths and
+            not ((self.client.path / node.path).exists() or
+                 (self.client.path / node.path).is_dir())
         }
         return status
 
-    def siblings(self, key):
-        """Return siblings for a given key.
+    def siblings(self, node):
+        """Return siblings for a given node.
 
         The key is part of the result set, hence to check if the node has
         siblings you should check the lenght is greater than 1.
         """
-        commit, path = key
-        activity = self.commits[commit]
+        from renku.models.provenance import Generation, Usage
 
-        # TODO refactor to .renku/workflows/name#step_id
-        tools = set()
-        if activity.process_path:
-            tools.add(activity.process_path)
+        parent = None
 
-            if hasattr(activity, 'children'):
-                tools |= {
-                    os.path.join(
-                        os.path.dirname(activity.process_path),
-                        step.run,
-                    )
-                    for step in activity.process.steps
-                }
+        if isinstance(node, Generation):
+            parent = node.activity
+        elif isinstance(node, Usage):
+            parent = self.commits[node.commit]
 
-        if not activity.process_path or not (
-            path in tools or path in activity.outputs
-        ):
+        if parent is None or not isinstance(parent, ProcessRun):
             raise errors.InvalidOutputPath(
                 'The file "{0}" was not created by a renku command. \n\n'
                 'Check the file history using: git log --follow "{0}"'.format(
-                    key[1]
+                    node.path
                 )
             )
 
-        elif path in tools:
-            return {key}
-
-        elif hasattr(activity, 'children'):
-            output_id = activity.outputs[path]
-            steps = {
-                output.id: output.outputSource.split('/')[0]
-                for output in activity.process.outputs
-            }
-            step_id = steps[output_id]
-
-            return {(key[0], output_path)
-                    for output_path, output_id in activity.outputs.items()
-                    if steps[output_id] == step_id}
-
-        return {(key[0], path) for path in activity.outputs.keys()}
+        return set(parent.generated)
 
     def ascwl(self, input_paths=None, output_paths=None, outputs=None):
         """Serialize graph to CWL workflow.
@@ -326,29 +312,29 @@ class Graph(object):
         :param global_step_outputs: Make all step outputs global.
         """
         if output_paths is None:
-            output_paths = {path for _, path in outputs if _safe_path(path)}
+            output_paths = {
+                node.path
+                for node in outputs if _safe_path(node.path)
+            }
 
         workflow = Workflow()
-
-        def find_process_run(commit, path):
-            """Return a process run."""
-            activity = self.commits[commit]
-            parents = activity.pred(path)
-
-            if not parents:
-                return None
-
-            assert len(parents) == 1
-
-            if hasattr(activity, 'subprocesses'):
-                return activity.subprocesses[parents[0][1]][1]
-            return activity
 
         processes = set()
         stack = []
 
-        for commit, path in outputs:
-            process_run = find_process_run(commit, path)
+        output_keys = {(node.commit, node.path) for node in outputs}
+        nodes = {(node.commit, node.path): node for node in self.nodes}
+
+        for node in self.nodes:
+            if (node.commit, node.path) not in output_keys:
+                continue
+
+            process_run = None
+            if isinstance(node, ProcessRun):
+                process_run = node
+            elif isinstance(node.activity, ProcessRun):
+                process_run = node.activity
+
             if process_run and process_run not in processes:
                 stack.append(process_run)
                 processes.add(process_run)
@@ -365,13 +351,14 @@ class Graph(object):
                     continue
 
                 try:
-                    process_run = find_process_run(dependency.commit, path)
-                except Exception:
-                    # import ipdb; ipdb.set_trace()
-                    process_run = None
+                    process_run = nodes[(dependency.commit,
+                                         dependency.path)].activity
+                except AttributeError:
+                    continue
 
                 # Skip existing commits
-                if process_run and process_run not in processes:
+                if isinstance(process_run, ProcessRun) and \
+                        process_run not in processes:
                     stack.append(process_run)
                     processes.add(process_run)
 
@@ -383,12 +370,10 @@ class Graph(object):
         def _source_name(commit, path):
             """Find source name for a node."""
             try:
-                process_run = find_process_run(commit, path)
-                if not process_run:
-                    return
+                process_run = nodes[(commit, path)].activity
                 output_id = process_run.outputs[path]
                 return '{0}/{1}'.format(steps[process_run], output_id)
-            except KeyError:
+            except (KeyError, AttributeError):
                 pass
 
         def _relative_default(client, default):
@@ -428,18 +413,18 @@ class Graph(object):
                     ins[input_.id] = input_id
 
             workflow.add_step(
-                run=self.client.path / action.process_path,
+                run=self.client.path / action.path,
                 id=step_id,
                 in_=ins,
                 out=outs,
             )
 
-        for index, key in enumerate(
-            (key for key in outputs if key[1] in output_paths)
+        for index, node in enumerate(
+            (node for node in outputs if node.path in output_paths)
         ):
-            commit, path = key
+            commit, path = node.commit, node.path
             id_ = 'output_{0}'.format(index)
-            process_run = find_process_run(commit, path)
+            process_run = nodes[(commit, path)].activity
             output_id = process_run.outputs[path]
             type_ = next(
                 output for output in process_run.process.outputs

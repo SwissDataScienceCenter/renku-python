@@ -148,28 +148,21 @@ from ._options import option_siblings
 def update(ctx, client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
-    status = graph.build_status(revision=revision, can_be_cwl=no_output)
-    paths = {graph.normalize_path(path) for path in paths} \
-        if paths else status['outdated'].keys()
+    outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
+    outputs = {node for node in outputs if graph.need_update(node)}
 
-    if not paths:
+    if not outputs:
         click.secho(
             'All files were generated from the latest inputs.', fg='green'
         )
         sys.exit(0)
 
-    outputs = {
-        (dependency.commit, dependency.path)
-        for dependency in graph.
-        dependencies(revision=revision, can_be_cwl=no_output, paths=paths)
-    }
-
     # Check or extend siblings of outputs.
     outputs = siblings(graph, outputs)
-    output_paths = {path for _, path in outputs if _safe_path(path)}
+    output_paths = {node.path for node in outputs if _safe_path(node.path)}
 
     # Get all clean nodes
-    input_paths = set(status['up-to-date'].keys()) - output_paths
+    input_paths = {node.path for node in graph._nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
     import yaml
