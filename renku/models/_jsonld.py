@@ -18,6 +18,7 @@
 """Support JSON-LD context in models."""
 
 import json
+import weakref
 from copy import deepcopy
 
 import attr
@@ -203,6 +204,10 @@ def asjsonld(
 
     for a in attrs:
         v = getattr(inst, a.name)
+
+        # skip proxies
+        if isinstance(v, weakref.ReferenceType):
+            continue
 
         # do not export context for containers
         ec = export_context and KEY_CLS not in a.metadata

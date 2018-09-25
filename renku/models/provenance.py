@@ -18,6 +18,7 @@
 """Graph builder."""
 
 import os
+import weakref
 from datetime import datetime
 
 import attr
@@ -78,7 +79,17 @@ class Association:
 class Entity(CommitMixin):
     """Represent a data value or item."""
 
-    _parent = attr.ib(default=None, kw_only=True)
+    _parent = attr.ib(
+        default=None,
+        kw_only=True,
+        converter=lambda value: weakref.ref(value)
+        if value is not None else None,
+    )
+
+    @property
+    def parent(self):
+        """Return the parent object."""
+        return self._parent() if self._parent is not None else None
 
 
 class EntityProxyMixin:
@@ -136,11 +147,24 @@ class Usage(EntityProxyMixin):
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
-    activity = attr.ib()
-    entity = jsonld.ib(context={
-        '@reverse': 'prov:qualifiedGeneration',
-    })
+    entity = jsonld.ib(
+        context={
+            '@reverse': 'prov:qualifiedGeneration',
+        },
+    )
     id = jsonld.ib(context='prov:hadRole', default=None)
+
+    _activity = attr.ib(
+        default=None,
+        kw_only=True,
+        converter=lambda value: weakref.ref(value)
+        if value is not None else None,
+    )
+
+    @property
+    def activity(self):
+        """Return the activity object."""
+        return self._activity() if self._activity is not None else None
 
     @property
     def parents(self):
@@ -164,7 +188,11 @@ class Activity(CommitMixin):
     process = attr.ib(default=None, kw_only=True)
     outputs = attr.ib(kw_only=True)
 
-    generated = jsonld.ib(context='prov:generated', kw_only=True)
+    generated = jsonld.ib(
+        context={
+            '@reverse': 'prov:activity',
+        }, kw_only=True, hash=False
+    )
 
     started_at_time = jsonld.ib(
         context={
@@ -268,7 +296,16 @@ class Activity(CommitMixin):
 class Process(CommitMixin):
     """Represent a process."""
 
-    activity = attr.ib(default=None, kw_only=True)
+    _activity = jsonld.ib(
+        context='prov:activity',
+        kw_only=True,
+        converter=weakref.ref,
+    )
+
+    @property
+    def activity(self):
+        """Return the activity object."""
+        return self._activity()
 
 
 @jsonld.s(
@@ -286,7 +323,13 @@ class ProcessRun(Activity):
     inputs = attr.ib(kw_only=True)
     outputs = attr.ib(kw_only=True)
 
-    generated = jsonld.ib(context='prov:generated', kw_only=True)
+    generated = jsonld.ib(
+        context={
+            '@reverse': 'prov:activity',
+        },
+        kw_only=True,
+        hash=False,
+    )
 
     association = jsonld.ib(
         context='prov:qualifiedAssociation',
@@ -452,10 +495,9 @@ class ProcessRun(Activity):
         'prov': 'http://www.w3.org/ns/prov#',
     }
 )
-class Workflow(CommitMixin):
+class Workflow(Process):
     """Represent workflow with subprocesses."""
 
-    activity = attr.ib(default=None, kw_only=True)
     subprocesses = jsonld.ib(context='wfdesc:hasSubProcess', kw_only=True)
 
     @subprocesses.default
@@ -579,7 +621,7 @@ class WorkflowRun(ProcessRun):
             )
             # FIXME refactor
             for generation in generated:
-                generation.activity = subprocess
+                generation._activity = weakref.ref(subprocess)
 
             subprocesses[path] = (step, subprocess)
             self._processes.append(subprocess)
