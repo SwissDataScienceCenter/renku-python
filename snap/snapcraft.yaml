@@ -45,7 +45,7 @@ parts:
       - libxml2-dev
     python-version: python3
     python-packages:
-      - "git+https://github.com/SwissDataScienceCenter/python-future.git@fix-read-only#egg=future-0.16.0"
+      - "git+https://github.com/SwissDataScienceCenter/python-future.git#egg=future"
     source: .
     source-type: git
     stage-packages:
