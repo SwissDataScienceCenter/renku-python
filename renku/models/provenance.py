@@ -561,7 +561,20 @@ class WorkflowRun(ProcessRun):
 
         subprocesses = {}
 
-        for step in self.process.steps:
+        step_map = {step.id: step for step in self.process.steps}
+        steps = {
+            step.id: [
+                source.split('/')[0]
+                for source in step.in_.values() if '/' in source
+            ]
+            for step in self.process.steps
+        }
+
+        from ._sort import topological
+
+        for step in (
+            step_map[step_id] for step_id in reversed(topological(steps))
+        ):
             path = os.path.join(basedir, step.run)
             process = self.children[step.id]
 

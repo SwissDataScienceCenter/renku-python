@@ -396,6 +396,11 @@ class Graph(object):
 
             outs = list(set(action.outputs.values()))
 
+            for generated in action.generated:
+                if generated.entity.path not in output_paths:
+                    output_paths.add(generated.entity.path)
+                    outputs.add(generated.entity)
+
             for input_ in tool.inputs:
                 input_mapping = ins.get(input_.id)
                 if input_mapping is None:
