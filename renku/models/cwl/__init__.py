@@ -18,3 +18,5 @@
 """Define models for Common Workflow Language."""
 
 from ._ascwl import CWLClass, ascwl
+
+__all__ = ('CWLClass', 'ascwl')

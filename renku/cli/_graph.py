@@ -76,11 +76,14 @@ class Graph(object):
             latest = _latest_commits.get(path)
 
             if latest is None:
-                latest = Usage.from_revision(
-                    node.client,
-                    path=node.path,
-                    # revision='{0}'.format(key[0]),
-                ).commit
+                try:
+                    latest = Usage.from_revision(
+                        node.client,
+                        path=node.path,
+                        # revision='{0}'.format(key[0]),
+                    ).commit
+                except KeyError:
+                    pass
                 _latest_commits[path] = latest
 
             data = {}
@@ -97,16 +100,16 @@ class Graph(object):
         for commit in reversed(self._sorted_commits):
             activity = self.commits[commit]
 
-            need_update = []
-            for path, dependency in getattr(activity, 'inputs', {}).items():
-                need_update.extend(
-                    _need_update.get(
-                        dependency._id,
-                        _update_node(dependency, [], store_node=False),
-                    )
-                )
-
             for node in reversed(list(activity.nodes)):
+                need_update = []
+
+                for parent in node.parents:
+                    need_update.extend(
+                        _need_update.get(
+                            parent._id,
+                            _update_node(parent, [], store_node=False),
+                        )
+                    )
                 _update_node(node, need_update)
 
         return _nodes

@@ -168,15 +168,17 @@ def update(ctx, client, revision, no_output, siblings, paths):
     import yaml
 
     output_file = client.workflow_path / '{0}.cwl'.format(uuid.uuid4().hex)
+    workflow = graph.ascwl(
+        input_paths=input_paths,
+        output_paths=output_paths,
+        outputs=outputs,
+    )
+
     with output_file.open('w') as f:
         f.write(
             yaml.dump(
                 ascwl(
-                    graph.ascwl(
-                        input_paths=input_paths,
-                        output_paths=output_paths,
-                        outputs=outputs,
-                    ),
+                    workflow,
                     filter=lambda _, x: x is not None,
                     basedir=client.workflow_path,
                 ),
