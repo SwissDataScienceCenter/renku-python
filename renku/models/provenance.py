@@ -87,7 +87,7 @@ class Entity(CommitMixin):
     )
 
     @property
-    def parent(self):
+    def parent(self):  # pragma: no cover
         """Return the parent object."""
         return self._parent() if self._parent is not None else None
 
@@ -134,7 +134,7 @@ class Usage(EntityProxyMixin):
     def parents(self):
         """Return parent nodes."""
         # TODO connect files to an input directory
-        return []
+        return []  # pragma: no cover
 
 
 @jsonld.s(
@@ -267,10 +267,6 @@ class Activity(CommitMixin):
 
     @property
     def parents(self):
-        """Return a list of parents."""
-        return []
-
-    def pred(self, path):
         """Return a list of parents."""
         return []
 
@@ -475,14 +471,6 @@ class ProcessRun(Activity):
         """Return a list of parents."""
         return self.qualified_usage
 
-    def pred(self, path):
-        """Return a list of parents."""
-        if path == self.path:
-            return [(dependency.commit, path)
-                    for path, dependency in self.inputs.items()]
-        assert path in self.outputs
-        return [(self.commit, self.path)]
-
 
 @jsonld.s(
     type=[
@@ -561,27 +549,9 @@ class WorkflowRun(ProcessRun):
 
         subprocesses = {}
 
-        step_map = {step.id: step for step in self.process.steps}
-        steps = {
-            step.id: [
-                source.split('/')[0]
-                for source in step.in_.values() if '/' in source
-            ]
-            for step in self.process.steps
-        }
-
-        from ._sort import topological
-
-        for step in (
-            step_map[step_id] for step_id in reversed(topological(steps))
-        ):
+        for step in reversed(self.process.topological_steps):
             path = os.path.join(basedir, step.run)
             process = self.children[step.id]
-
-            if process.__class__.__name__ == 'Workflow':
-                cls = WorkflowRun
-            else:
-                cls = ProcessRun
 
             inputs = {}
             for alias, source in step.in_.items():
@@ -590,7 +560,7 @@ class WorkflowRun(ProcessRun):
                     inputs[dependency.path] = dependency
                 elif source in outs:
                     input_path = outs[source]
-                    inputs[path] = Usage(
+                    inputs[input_path] = Usage(
                         entity=Entity(
                             commit=self.commit,
                             client=self.client,
@@ -618,7 +588,7 @@ class WorkflowRun(ProcessRun):
                         )
                     )
 
-            subprocess = cls(
+            subprocess = process.create_run(
                 commit=self.client.find_previous_commit(
                     path, revision=revision
                 ),
@@ -647,36 +617,6 @@ class WorkflowRun(ProcessRun):
         for subprocess in reversed(self._processes):
             yield from subprocess.nodes
 
-    def pred(self, path):
-        """Return a list of parents."""
-        parents = []
-
-        if path in self.subprocesses:
-            step, activity = self.subprocesses[path]
-            for dependency in activity.inputs.values():
-                parents.append((dependency.commit, dependency.path))
-
-        elif path in self.outputs:
-            # TODO consider recursive call to subprocesses
-            output_id = self.outputs[path]
-            output = next(
-                output
-                for output in self.process.outputs if output.id == output_id
-            )
-            step_id, _, source = output.outputSource.partition('/')
-            step_path = next(
-                path_ for path_, (step, activity) in self.subprocesses.items()
-                if step.id == step_id
-            )
-            parents.append((self.commit, step_path))
-
-        else:
-            # import ipdb; ipdb.set_trace()
-            # raise NotImplemented()
-            pass
-
-        return parents
-
 
 def from_git_commit(commit, client, path=None, submodules=None):
     """Populate information from the given Git commit."""
@@ -692,27 +632,17 @@ def from_git_commit(commit, client, path=None, submodules=None):
                     raise ValueError(file_)  # duplicate
                 path = file_
                 continue
-    else:
-        assert path in set(commit.stats.files.keys())
 
     if path:
-        try:
-            data = (commit.tree / path).data_stream.read()
-            process = CWLClass.from_cwl(yaml.load(data))
+        data = (commit.tree / path).data_stream.read()
+        process = CWLClass.from_cwl(yaml.load(data))
 
-            if process.__class__.__name__ == 'Workflow':
-                cls = WorkflowRun
-            else:
-                cls = ProcessRun
-
-            return cls(
-                commit=commit,
-                client=client,
-                process=process,
-                path=path,
-                submodules=hierarchy,
-            )
-        except KeyError:
-            pass
+        return process.create_run(
+            commit=commit,
+            client=client,
+            process=process,
+            path=path,
+            submodules=hierarchy,
+        )
 
     return cls(commit=commit, client=client, submodules=hierarchy)

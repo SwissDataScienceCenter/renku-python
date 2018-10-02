@@ -209,7 +209,11 @@ class Graph(object):
 
         self.process_dependencies(dependencies)
 
-        return {dependency for dependency in dependencies}
+        nodes = {(n.commit, n.path): n for n in self.nodes}
+        return {
+            nodes.get((dependency.commit, dependency.path), dependency)
+            for dependency in dependencies
+        }
 
     @property
     def output_paths(self):
@@ -295,6 +299,8 @@ class Graph(object):
             parent = node.activity
         elif isinstance(node, Usage):
             parent = self.commits[node.commit]
+        elif isinstance(node, ProcessRun):
+            return {node}
 
         if parent is None or not isinstance(parent, ProcessRun):
             raise errors.InvalidOutputPath(

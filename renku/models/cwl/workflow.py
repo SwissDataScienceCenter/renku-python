@@ -22,6 +22,7 @@ import uuid
 
 import attr
 
+from .._sort import topological
 from ._ascwl import CWLClass, mapped
 from .parameter import WorkflowOutputParameter
 from .process import Process
@@ -45,6 +46,24 @@ class Workflow(Process, CWLClass):
 
     outputs = mapped(WorkflowOutputParameter)
     steps = mapped(WorkflowStep)
+
+    @property
+    def topological_steps(self):
+        """Return topologically sorted steps."""
+        step_map = {step.id: step for step in self.steps}
+        steps = {
+            step.id: [
+                source.split('/')[0]
+                for source in step.in_.values() if '/' in source
+            ]
+            for step in self.steps
+        }
+        return [step_map[step_id] for step_id in topological(steps)]
+
+    def create_run(self, **kwargs):
+        """Return an instance of process run."""
+        from renku.models.provenance import WorkflowRun
+        return WorkflowRun(**kwargs)
 
     def add_step(self, **kwargs):
         """Add a workflow step."""
