@@ -54,8 +54,8 @@ class Graph(object):
     commits = attr.ib(default=attr.Factory(dict))
 
     _sorted_commits = attr.ib(default=attr.Factory(list))
-    _nodes = attr.ib()
     _latest_commits = attr.ib(default=attr.Factory(dict))
+    _nodes = attr.ib()
     _need_update = attr.ib(default=None)
 
     cwl_prefix = attr.ib(init=False)
@@ -69,7 +69,7 @@ class Graph(object):
         """Build node index."""
         _nodes = OrderedDict()
         _need_update = self._need_update = {}
-        self._latest_commits = _latest_commits = {}
+        _latest_commits = self._latest_commits
 
         def _update_node(node, need_update, store_node=True):
             path = node.path
@@ -160,6 +160,9 @@ class Graph(object):
 
     def process_dependencies(self, dependencies):
         """Process given dependencies."""
+        for dependency in dependencies:
+            self._latest_commits[dependency.path] = dependency.commit
+
         visited = set()
         queue = deque(dependencies)
 

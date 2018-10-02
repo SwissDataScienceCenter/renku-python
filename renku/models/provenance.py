@@ -557,16 +557,14 @@ class WorkflowRun(ProcessRun):
             for alias, source in step.in_.items():
                 if source in ins:
                     dependency = ins[source]
-                    inputs[dependency.path] = dependency
+                    inputs[dependency.path] = attr.evolve(
+                        dependency,
+                        id=alias  #
+                    )
                 elif source in outs:
                     input_path = outs[source]
                     inputs[input_path] = Usage(
-                        entity=Entity(
-                            commit=self.commit,
-                            client=self.client,
-                            submodules=self.submodules,
-                            path=input_path,
-                        ),
+                        entity=entities[input_path],
                         id=alias,
                     )
                 else:
