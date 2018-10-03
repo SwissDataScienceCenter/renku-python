@@ -253,7 +253,7 @@ class DatasetsApiMixin(object):
                 target = src.relative_to(submodule_path / relative_to)
 
         # link the target into the data directory
-        dst = self.path / path / submodule_name / (target or '')
+        dst = self.path / path / (target or '')
 
         # if we have a directory, recurse
         if src.is_dir():
