@@ -64,117 +64,11 @@ using the :program:`dot` program.
 
 """
 
-import sys
-
 import click
 
 from ._client import pass_local_client
+from ._format import FORMATS
 from ._graph import Graph, _safe_path
-
-
-def format_ascii(graph):
-    """Format graph as an ASCII art."""
-    from ._ascii import DAG
-    from ._echo import echo_via_pager
-
-    echo_via_pager(DAG(graph))
-
-
-def format_dot(graph):
-    """Format graph as a dot file."""
-    from pyld import jsonld
-    from rdflib import ConjunctiveGraph
-    from rdflib.tools.rdf2dot import rdf2dot
-
-    from renku.models._jsonld import asjsonld
-
-    g = ConjunctiveGraph()
-    g.parse(
-        data=jsonld.normalize(
-            [asjsonld(action) for action in graph.commits.values()],
-            {
-                'algorithm': 'URDNA2015',
-                'format': 'application/n-quads'
-            },
-        ),
-        format="nquads"
-    )
-    rdf2dot(g, sys.stdout)
-
-
-def format_jsonld(graph):
-    """Format graph as JSON-LD file."""
-    import json
-    from pyld import jsonld
-
-    from renku.models._jsonld import asjsonld
-
-    click.echo(
-        json.dumps(
-            jsonld.expand([
-                asjsonld(action) for action in graph.commits.values()
-            ]),
-            indent=2,
-        )
-    )
-
-
-def format_jsonld_graph(graph):
-    """Format graph as JSON-LD graph file."""
-    import json
-    from pyld import jsonld
-
-    from renku.models._jsonld import asjsonld
-
-    click.echo(
-        json.dumps(
-            jsonld.flatten([
-                asjsonld(action) for action in graph.commits.values()
-            ]),
-            indent=2,
-        )
-    )
-
-
-def format_n_quads(graph):
-    """Normalize a document using the RDF Dataset Normalization Algorithm.
-
-    .. seealso:: http://json-ld.github.io/normalization/spec/
-    """
-    from pyld import jsonld
-    from renku.models._jsonld import asjsonld
-
-    click.echo(
-        jsonld.normalize(
-            [asjsonld(action) for action in graph.commits.values()],
-            {
-                'algorithm': 'URDNA2015',
-                'format': 'application/n-quads'
-            },
-        )
-    )
-
-
-def format_rdf(graph):
-    """Output the graph as RDF."""
-    from pyld import jsonld
-    from renku.models._jsonld import asjsonld
-
-    click.echo(
-        jsonld.to_rdf([asjsonld(action)
-                       for action in graph.commits.values()], )
-    )
-
-
-FORMATS = {
-    'ascii': format_ascii,
-    'dot': format_dot,
-    'json-ld': format_jsonld,
-    'json-ld-graph': format_jsonld_graph,
-    'n-quads': format_n_quads,
-    'rdf': format_rdf,
-}
-"""Valid formatting options."""
 
 
 @click.command()

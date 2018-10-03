@@ -45,7 +45,7 @@ class CommitMixin:
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}/{self.path}'.format(self=self)
+        return '{self.commit.hexsha}/{self.path}'.format(self=self)
 
     @_label.default
     def default_label(self):
@@ -238,7 +238,7 @@ class Activity(CommitMixin):
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#'.format(self=self)
+        return '{self.commit.hexsha}#'.format(self=self)
 
     @_label.default
     def default_label(self):
