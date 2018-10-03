@@ -18,6 +18,7 @@
 """Graph builder."""
 
 import os
+import re
 import weakref
 from datetime import datetime
 
@@ -54,6 +55,49 @@ class CommitMixin:
 
 
 @jsonld.s(
+    type=[
+        'prov:Person',
+        'foaf:Person',
+    ],
+    context={
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'prov': 'http://purl.org/dc/terms/',
+        'scoro': 'http://purl.org/spar/scoro/',
+    },
+    frozen=True,
+    slots=True,
+)
+class Person(object):
+    """Represent a person."""
+
+    name = jsonld.ib(context='foaf:name')
+    email = jsonld.ib(context='foaf:mbox')
+
+    _id = jsonld.ib(context='@id', init=False)
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return 'mailto:{self.email}'.format(self=self)
+
+    @email.validator
+    def check_email(self, attribute, value):
+        """Check that the email is valid."""
+        if not (
+            isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)
+        ):
+            raise ValueError('Email address is invalid.')
+
+    @classmethod
+    def from_commit(cls, commit):
+        """Create an instance from a Git commit."""
+        return cls(
+            name=commit.author.name,
+            email=commit.author.email,
+        )
+
+
+@jsonld.s(
     type='prov:Association',
     context={
         'prov': 'http://www.w3.org/ns/prov#',
@@ -63,6 +107,21 @@ class Association:
     """Assign responsibility to an agent for an activity."""
 
     plan = jsonld.ib(context='prov:hadPlan')
+    agent = jsonld.ib(context='prov:agent', default=None)
+
+    @classmethod
+    def from_activity(cls, activity):
+        """Create an instance from the activity."""
+        return cls(
+            plan=activity.__association_cls__(
+                commit=activity.commit,
+                client=activity.client,
+                submodules=activity.submodules,
+                path=activity.path,
+                activity=activity,
+            ),
+            agent=Person.from_commit(activity.commit),
+        )
 
 
 @jsonld.s(
@@ -354,15 +413,7 @@ class ProcessRun(Activity):
 
     def __attrs_post_init__(self):
         """Calculate properties."""
-        self.association = Association(
-            plan=self.__association_cls__(
-                commit=self.commit,
-                client=self.client,
-                submodules=self.submodules,
-                path=self.path,
-                activity=self,
-            )
-        )
+        self.association = Association.from_activity(self)
 
     @inputs.default
     def default_inputs(self):
