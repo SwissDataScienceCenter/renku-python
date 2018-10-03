@@ -34,6 +34,48 @@ Adding data to the dataset:
 
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
+
+To add data from a git repository, you can specify it via https or git+ssh
+URL schemes. For example,
+
+.. code-block:: console
+
+    $ renku dataset add my-dataset git+ssh://host.io/namespace/project.git
+
+Sometimes you want to import just a specific path within the parent project.
+In this case, use the ``--target`` flag:
+
+.. code-block:: console
+
+    $ renku dataset add my-dataset --target relative-path/datafile \
+        git+ssh://host.io/namespace/project.git
+
+To trim part of the path from the parent directory, use the ``--relative-to``
+option. For example, the command above will result in a structure like
+
+.. code-block:: console
+
+    data/
+      my-dataset/
+        relative-path/
+          datafile
+
+Using instead
+
+.. code-block:: console
+
+    $ renku dataset add my-dataset \
+        --target relative-path/datafile \
+        --relative-to relative-path \
+        git+ssh://host.io/namespace/project.git
+
+will yield:
+
+.. code-block:: console
+
+    data/
+      my-dataset/
+        datafile
 """
 
 import click
