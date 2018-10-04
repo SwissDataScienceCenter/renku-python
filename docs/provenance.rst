@@ -55,9 +55,21 @@ Entities and Plans
    :inherited-members:
 
 
+Agents
+------
+
+.. autoclass:: Person
+   :members:
+   :inherited-members:
+
+
 Relations
 ---------
 
 .. autoclass:: Usage
+   :members:
+   :inherited-members:
+
+.. autoclass:: Generation
    :members:
    :inherited-members:
