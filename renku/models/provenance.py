@@ -87,7 +87,6 @@ class CommitMixin:
     context={
         'foaf': 'http://xmlns.com/foaf/0.1/',
         'prov': 'http://purl.org/dc/terms/',
-        'scoro': 'http://purl.org/spar/scoro/',
     },
     frozen=True,
     slots=True,
@@ -96,14 +95,17 @@ class Person(object):
     """Represent a person."""
 
     name = jsonld.ib(context='foaf:name')
-    email = jsonld.ib(context='foaf:mbox')
+    email = jsonld.ib(context={
+        '@type': '@id',
+        '@id': 'foaf:mbox',
+    })
 
-    _id = jsonld.ib(context='@id', init=False)
+    _id = jsonld.ib(context='@id', init=False, kw_only=True)
 
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'mailto:{self.email}'.format(self=self)
+        return self.email
 
     @email.validator
     def check_email(self, attribute, value):
@@ -118,7 +120,7 @@ class Person(object):
         """Create an instance from a Git commit."""
         return cls(
             name=commit.author.name,
-            email=commit.author.email,
+            email='mailto:{0}'.format(commit.author.email),
         )
 
 
