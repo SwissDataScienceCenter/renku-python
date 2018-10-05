@@ -145,7 +145,7 @@ class RepositoryApiMixin(object):
         if url:
             remote_url = 'https://' + url.hostname
             if url.pathname:
-                remote_url += url.pathname
+                remote_url += '/' + url.pathname
 
             if remote_url.endswith('.git'):
                 remote_url = remote_url[:-4]
