@@ -31,6 +31,24 @@ from renku.models._datastructures import DirectoryTree
 from renku.models.cwl._ascwl import CWLClass
 
 
+@jsonld.s(
+    type=[
+        'prov:Location',
+        'foaf:Project',
+    ],
+    context={
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'prov': 'http://purl.org/dc/terms/',
+    },
+    frozen=True,
+    slots=True,
+)
+class Project(object):
+    """Represent a project."""
+
+    _id = jsonld.ib(context='@id', kw_only=True)
+
+
 @attr.s(cmp=False)
 class CommitMixin:
     """Represent a commit mixin."""
@@ -42,6 +60,7 @@ class CommitMixin:
 
     _id = jsonld.ib(context='@id', init=False, kw_only=True)
     _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
+    _location = jsonld.ib(context='prov:atLocation', init=False, kw_only=True)
 
     @_id.default
     def default_id(self):
@@ -52,6 +71,11 @@ class CommitMixin:
     def default_label(self):
         """Generate a default label."""
         return '{self.path}@{self.commit.hexsha}'.format(self=self)
+
+    @_location.default
+    def default_location(self):
+        """Generate a default location."""
+        return self.client.project
 
 
 @jsonld.s(

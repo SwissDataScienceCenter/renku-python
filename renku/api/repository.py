@@ -123,6 +123,36 @@ class RepositoryApiMixin(object):
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
 
+    @cached_property
+    def project(self):
+        """Return FOAF/PROV representation of the project."""
+        from renku.cli._docker import GitURL
+        from renku.models.provenance import Project
+
+        remote_name = 'origin'
+        try:
+            remote_branch = self.git.head.reference.tracking_branch()
+            if remote_branch is not None:
+                remote_name = remote_branch.remote_name
+        except TypeError:
+            pass
+
+        try:
+            url = GitURL.parse(self.git.remotes[remote_name].url)
+        except IndexError:
+            url = None
+
+        if url:
+            remote_url = 'https://' + url.hostname
+            if url.pathname:
+                remote_url += url.pathname
+
+            if remote_url.endswith('.git'):
+                remote_url = remote_url[:-4]
+            return Project(id=remote_url)
+
+        return Project(id='file://{0}'.format(self.path))
+
     def is_cwl(self, path):
         """Check if the path is a valid CWL file."""
         return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
