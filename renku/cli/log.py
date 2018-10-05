@@ -65,10 +65,11 @@ using the :program:`dot` program.
 """
 
 import click
+from git import NULL_TREE
 
 from ._client import pass_local_client
 from ._format import FORMATS
-from ._graph import Graph, _safe_path
+from ._graph import Graph
 
 
 @click.command()
@@ -91,10 +92,10 @@ def log(client, revision, format, no_output, paths):
     """Show logs for a file."""
     graph = Graph(client)
     if not paths:
+        commit = client.git.rev_parse(revision)
         paths = (
-            graph.normalize_path(path)
-            for path in client.git.rev_parse(revision).stats.files.keys()
-            if _safe_path(path, can_be_cwl=no_output)
+            item.a_path for item in commit.diff(commit.parents or NULL_TREE)
+            # if not item.deleted_file
         )
 
     # NOTE shall we warn when "not no_output and not paths"?

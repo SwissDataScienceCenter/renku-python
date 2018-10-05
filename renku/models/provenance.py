@@ -24,6 +24,7 @@ from datetime import datetime
 
 import attr
 import yaml
+from git import NULL_TREE
 
 from renku.api import LocalClient
 from renku.models import _jsonld as jsonld
@@ -316,7 +317,11 @@ class Activity(CommitMixin):
     @property
     def paths(self):
         """Return all paths in the commit."""
-        return set(self.commit.stats.files.keys())
+        return {
+            item.a_path
+            for item in self.commit.diff(self.commit.parents or NULL_TREE)
+            # if not item.deleted_file
+        }
 
     @_id.default
     def default_id(self):
@@ -331,7 +336,7 @@ class Activity(CommitMixin):
     @outputs.default
     def default_outputs(self):
         """Guess default outputs from a commit."""
-        return {path: None for path in self.commit.stats.files.keys()}
+        return {path: None for path in self.paths}
 
     @started_at_time.default
     def default_started_at_time(self):
@@ -634,7 +639,7 @@ class WorkflowRun(ProcessRun):
                     dependency = ins[source]
                     inputs[dependency.path] = attr.evolve(
                         dependency,
-                        id=alias  #
+                        id=alias,
                     )
                 elif source in outs:
                     input_path = outs[source]
