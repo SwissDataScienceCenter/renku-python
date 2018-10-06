@@ -18,16 +18,36 @@
 """Graph builder."""
 
 import os
+import re
 import weakref
 from datetime import datetime
 
 import attr
 import yaml
+from git import NULL_TREE
 
 from renku.api import LocalClient
 from renku.models import _jsonld as jsonld
 from renku.models._datastructures import DirectoryTree
 from renku.models.cwl._ascwl import CWLClass
+
+
+@jsonld.s(
+    type=[
+        'prov:Location',
+        'foaf:Project',
+    ],
+    context={
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'prov': 'http://purl.org/dc/terms/',
+    },
+    frozen=True,
+    slots=True,
+)
+class Project(object):
+    """Represent a project."""
+
+    _id = jsonld.ib(context='@id', kw_only=True)
 
 
 @attr.s(cmp=False)
@@ -41,16 +61,65 @@ class CommitMixin:
 
     _id = jsonld.ib(context='@id', init=False, kw_only=True)
     _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
+    _location = jsonld.ib(context='prov:atLocation', init=False, kw_only=True)
 
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}/{self.path}'.format(self=self)
+        return '{self.commit.hexsha}/{self.path}'.format(self=self)
 
     @_label.default
     def default_label(self):
         """Generate a default label."""
         return '{self.path}@{self.commit.hexsha}'.format(self=self)
+
+    @_location.default
+    def default_location(self):
+        """Generate a default location."""
+        return self.client.project
+
+
+@jsonld.s(
+    type=[
+        'prov:Person',
+        'foaf:Person',
+    ],
+    context={
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'prov': 'http://purl.org/dc/terms/',
+    },
+    frozen=True,
+    slots=True,
+)
+class Person(object):
+    """Represent a person."""
+
+    name = jsonld.ib(context='foaf:name')
+    email = jsonld.ib(context={
+        '@type': '@id',
+        '@id': 'foaf:mbox',
+    })
+
+    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return self.email
+
+    @email.validator
+    def check_email(self, attribute, value):
+        """Check that the email is valid."""
+        if not (isinstance(value, str) and re.match(r"[^@]+@[^@]+", value)):
+            raise ValueError('Email address "{0}" is invalid.'.format(value))
+
+    @classmethod
+    def from_commit(cls, commit):
+        """Create an instance from a Git commit."""
+        return cls(
+            name=commit.author.name,
+            email='mailto:{0}'.format(commit.author.email),
+        )
 
 
 @jsonld.s(
@@ -63,6 +132,21 @@ class Association:
     """Assign responsibility to an agent for an activity."""
 
     plan = jsonld.ib(context='prov:hadPlan')
+    agent = jsonld.ib(context='prov:agent', default=None)
+
+    @classmethod
+    def from_activity(cls, activity):
+        """Create an instance from the activity."""
+        return cls(
+            plan=activity.__association_cls__(
+                commit=activity.commit,
+                client=activity.client,
+                submodules=activity.submodules,
+                path=activity.path,
+                activity=activity,
+            ),
+            agent=Person.from_commit(activity.commit),
+        )
 
 
 @jsonld.s(
@@ -233,12 +317,16 @@ class Activity(CommitMixin):
     @property
     def paths(self):
         """Return all paths in the commit."""
-        return set(self.commit.stats.files.keys())
+        return {
+            item.a_path
+            for item in self.commit.diff(self.commit.parents or NULL_TREE)
+            # if not item.deleted_file
+        }
 
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'url:sha1:{self.commit.hexsha}#'.format(self=self)
+        return '{self.commit.hexsha}#'.format(self=self)
 
     @_label.default
     def default_label(self):
@@ -248,7 +336,7 @@ class Activity(CommitMixin):
     @outputs.default
     def default_outputs(self):
         """Guess default outputs from a commit."""
-        return {path: None for path in self.commit.stats.files.keys()}
+        return {path: None for path in self.paths}
 
     @started_at_time.default
     def default_started_at_time(self):
@@ -354,15 +442,7 @@ class ProcessRun(Activity):
 
     def __attrs_post_init__(self):
         """Calculate properties."""
-        self.association = Association(
-            plan=self.__association_cls__(
-                commit=self.commit,
-                client=self.client,
-                submodules=self.submodules,
-                path=self.path,
-                activity=self,
-            )
-        )
+        self.association = Association.from_activity(self)
 
     @inputs.default
     def default_inputs(self):
@@ -559,7 +639,7 @@ class WorkflowRun(ProcessRun):
                     dependency = ins[source]
                     inputs[dependency.path] = attr.evolve(
                         dependency,
-                        id=alias  #
+                        id=alias,
                     )
                 elif source in outs:
                     input_path = outs[source]

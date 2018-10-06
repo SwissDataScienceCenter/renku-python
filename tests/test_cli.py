@@ -1220,6 +1220,30 @@ def test_input_update_and_rerun(runner, project, capsys):
     assert 1 == _run_update(runner, capsys, args=('rerun', input_.name))
 
 
+def test_moved_file(runner, project):
+    """Test that moved files are displayed correctly."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    input_ = cwd / 'input.txt'
+    with input_.open('w') as f:
+        f.write('first')
+
+    repo.git.add('--all')
+    repo.index.commit('Created input.txt')
+
+    result = runner.invoke(cli.cli, ['log'])
+    assert 0 == result.exit_code
+    assert input_.name in result.output
+
+    repo.git.mv(input_.name, 'renamed.txt')
+    repo.index.commit('Renamed input')
+
+    result = runner.invoke(cli.cli, ['log'])
+    assert 0 == result.exit_code
+    assert input_.name not in result.output
+    assert 'renamed.txt' in result.output
+
+
 def test_deleted_input(runner, project, capsys):
     """Test deleted input."""
     repo = git.Repo(project)
