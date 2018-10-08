@@ -139,16 +139,23 @@ class RepositoryApiMixin(object):
 
         try:
             url = GitURL.parse(self.git.remotes[remote_name].url)
+
+            # Remove gitlab. unless running on gitlab.com.
+            hostname_parts = url.hostname.split('.')
+            if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
+                hostname_parts = hostname_parts[1:]
+            url = attr.evolve(url, hostname='.'.join(hostname_parts))
         except IndexError:
             url = None
 
         if url:
             remote_url = 'https://' + url.hostname
-            if url.pathname:
-                remote_url += '/' + url.pathname
 
-            if remote_url.endswith('.git'):
-                remote_url = remote_url[:-4]
+            if url.owner:
+                remote_url += '/' + url.owner
+            if url.name:
+                remote_url += '/' + url.name
+
             return Project(id=remote_url)
 
         return Project(id='file://{0}'.format(self.path))
