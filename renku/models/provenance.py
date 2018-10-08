@@ -253,7 +253,7 @@ class Generation(EntityProxyMixin):
     @property
     def parents(self):
         """Return list of parents."""
-        return [self.activity]
+        return [self.activity] if isinstance(self.activity, ProcessRun) else []
 
 
 @jsonld.s(

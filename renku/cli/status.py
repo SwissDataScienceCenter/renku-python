@@ -74,7 +74,7 @@ def status(ctx, client, revision, no_output, path):
         )
         click.echo()
 
-        for filepath, files in status['outdated'].items():
+        for filepath, stts in status['outdated'].items():
             outdated = (
                 ', '.join(
                     '{0}#{1}'.format(
@@ -84,14 +84,14 @@ def status(ctx, client, revision, no_output, path):
                         _format_sha1(graph, n),
                     ) for n in stts
                     if n.path and n.path not in status['outdated']
-                ) for stts in files
+                )
             )
 
             click.echo(
                 '\t{0}: {1}'.format(
                     click.style(
                         graph._format_path(filepath), fg='red', bold=True
-                    ), ', '.join(outdated)
+                    ), outdated
                 )
             )
 

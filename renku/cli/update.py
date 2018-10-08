@@ -162,7 +162,7 @@ def update(ctx, client, revision, no_output, siblings, paths):
     output_paths = {node.path for node in outputs if _safe_path(node.path)}
 
     # Get all clean nodes
-    input_paths = {node.path for node in graph._nodes} - output_paths
+    input_paths = {node.path for node in graph.nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
     import yaml
