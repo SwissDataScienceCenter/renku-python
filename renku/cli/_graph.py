@@ -399,7 +399,7 @@ class Graph(object):
             for path, dependency in action.inputs.items():
                 alias = _source_name(dependency.commit, path)
                 if alias:
-                    ins[dependency.id] = alias
+                    ins[dependency.role] = alias
 
             outs = list(set(action.outputs.values()))
 
