@@ -76,6 +76,7 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
                     input_ = inputs.get(input_id)
                     if input_ is not None:
                         directories.add(convert(input_.default))
+                        # TODO parametrize directory name directories.add(glob)
                 elif glob:
                     directories.add(convert(glob))
 

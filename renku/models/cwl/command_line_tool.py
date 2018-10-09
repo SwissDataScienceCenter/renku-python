@@ -250,6 +250,9 @@ class CommandLineToolFactory(object):
                 for item in git.index.diff(None) if not item.deleted_file
             }
 
+            from renku.cli._graph import _safe_path
+            candidates = {path for path in candidates if _safe_path(path)}
+
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
 
@@ -475,7 +478,6 @@ class CommandLineToolFactory(object):
         for index, input in enumerate(self.inputs):
             # Convert input defaults to paths relative to working directory.
             if input.type not in PATH_OBJECTS:
-                # inputs that need to be changed if an output is detected
                 try:
                     input_path = (self.directory /
                                   str(input.default)).resolve().relative_to(
@@ -483,22 +485,27 @@ class CommandLineToolFactory(object):
                                   )
                 except FileNotFoundError:
                     continue
+            else:
+                input_path = input.default.path.relative_to(self.working_dir)
 
-                if input_path.is_dir():
-                    subpaths = {
-                        str(input_path / path)
-                        for path in tree.get(input_path, default=[])
-                    }
-                    # TODO make sure that directory doesn't contain other files
-                    # Remove files from the input directory
-                    paths = [path for path in paths if path not in subpaths]
-                    # Include input path in the paths to check
-                    paths.append(str(input_path))
+            if input_path.is_dir() and tree.get(input_path):
+                # The directory might exist before running the script
+                subpaths = {
+                    str(input_path / path)
+                    for path in tree.get(input_path, default=[])
+                }
+                # TODO make sure that directory doesn't contain other files
+                # Remove files from the input directory
+                paths = [path for path in paths if path not in subpaths]
+                # Include input path in the paths to check
+                paths.append(str(input_path))
 
                 input_candidates[str(input_path)] = input
+            elif input.type not in PATH_OBJECTS:
+                # Input need to be changed if an output is detected
+                input_candidates[str(input_path)] = input
             else:
-                # names that can not be outputs because they are already inputs
-                input_path = input.default.path.relative_to(self.working_dir)
+                # Names that can not be outputs because they are already inputs
                 conflicting_paths[str(input_path)] = (index, input)
 
         streams = {
