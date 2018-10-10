@@ -18,7 +18,7 @@
 """Graph builder."""
 
 import os
-from collections import OrderedDict, defaultdict, deque
+from collections import defaultdict, deque
 
 import attr
 
@@ -56,7 +56,7 @@ class Graph(object):
     _sorted_commits = attr.ib(default=attr.Factory(list))
     _latest_commits = attr.ib(default=attr.Factory(dict))
     _nodes = attr.ib()
-    _need_update = attr.ib(default=None)
+    _need_update = attr.ib(default=attr.Factory(dict))
 
     cwl_prefix = attr.ib(init=False)
 
@@ -67,62 +67,56 @@ class Graph(object):
     @_nodes.default
     def default_nodes(self):
         """Build node index."""
-        _nodes = OrderedDict()
-        _need_update = self._need_update = {}
-        _latest_commits = self._latest_commits
-
-        def _update_node(node, need_update, store_node=True):
-            path = node.path
-            latest = _latest_commits.get(path)
-
-            if latest is None:
-                latest = Usage.from_revision(
-                    node.client,
-                    path=node.path,
-                    # revision='{0}'.format(key[0]),
-                ).commit
-                _latest_commits[path] = latest
-
-            data = {}
-            _need_update[node._id] = list(need_update)
-            if latest and latest != node.commit:
-                data['latest'] = latest
-                _need_update[node._id].append(node)
-
-            if store_node:
-                _nodes[node] = data
-
-            return _need_update[node._id]
-
+        nodes = []
         for commit in reversed(self._sorted_commits):
-            activity = self.commits[commit]
-
-            need_update = []
-            for path, dependency in getattr(activity, 'inputs', {}).items():
-                need_update.extend(
-                    _need_update.get(
-                        dependency._id,
-                        _update_node(dependency, [], store_node=False),
-                    )
-                )
-
-            for node in reversed(list(activity.nodes)):
-                _update_node(node, need_update)
-
-        return _nodes
+            try:
+                activity = self.commits[commit]
+                nodes.extend(reversed(list(activity.nodes)))
+            except KeyError:
+                pass
+        return nodes
 
     def need_update(self, node):
         """Return out-dated nodes."""
-        try:
+        if node._id in self._need_update:
             return self._need_update[node._id]
-        except KeyError:
-            node = self.commits[node.commit]
-            return self._need_update[node._id]
+
+        latest = self.latest(node)
+        if latest:
+            return self._need_update.setdefault(node._id, [node])
+
+        need_update_ = []
+        for parent in node.parents:
+            parent_updates = self.need_update(parent)
+            if parent_updates:
+                need_update_.extend(parent_updates)
+
+        return self._need_update.setdefault(node._id, need_update_)
+
+    def latest(self, node):
+        """Return a latest commit where the node was modified."""
+        if node.path not in self._latest_commits:
+            try:
+                latest = Usage.from_revision(
+                    node.client,
+                    path=node.path,
+                    # TODO support range queries
+                    # revision='{0}'.format(node.commit.hexsha),
+                ).commit
+            except KeyError:
+                latest = None
+
+            self._latest_commits[node.path] = latest
+        else:
+            latest = self._latest_commits[node.path]
+
+        if latest and latest != node.commit:
+            return latest
 
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        return reversed(self._nodes.keys())
+        return reversed(self._nodes)
 
     def normalize_path(self, path):
         """Normalize path relative to the Git workdir."""
@@ -134,12 +128,12 @@ class Graph(object):
         """Return a relative path based on the client configuration."""
         return os.path.relpath(str(self.client.path / path))
 
-    def dependencies(self, revision='HEAD', can_be_cwl=False, paths=None):
+    def dependencies(self, revision='HEAD', paths=None):
         """Return dependencies from a revision or paths."""
         if paths:
             return {
                 Usage.from_revision(self.client, path=path, revision=revision)
-                for path in paths if _safe_path(path, can_be_cwl=can_be_cwl)
+                for path in paths
             }
 
         if revision == 'HEAD':
@@ -155,7 +149,6 @@ class Graph(object):
                 revision=revision,
             )
             for path, _ in index.entries.keys()
-            if _safe_path(path, can_be_cwl=can_be_cwl)
         }
 
     def process_dependencies(self, dependencies):
@@ -195,7 +188,7 @@ class Graph(object):
                 activity.commit: [
                     input_.commit
                     for input_ in getattr(activity, 'inputs', {}).values()
-                ]
+                ] + list(activity.commit.parents)
                 for activity in self.commits.values()
             })
         )
@@ -206,16 +199,15 @@ class Graph(object):
     ):
         """Build graph from paths and/or revision."""
         if dependencies is None:
-            dependencies = self.dependencies(
-                revision=revision, can_be_cwl=can_be_cwl, paths=paths
-            )
+            dependencies = self.dependencies(revision=revision, paths=paths)
 
         self.process_dependencies(dependencies)
 
-        nodes = {(n.commit, n.path): n for n in self.nodes}
+        nodes = {(n.commit, n.path): n for n in self._nodes}
         return {
             nodes.get((dependency.commit, dependency.path), dependency)
             for dependency in dependencies
+            if _safe_path(dependency.path, can_be_cwl=can_be_cwl)
         }
 
     @property
@@ -236,36 +228,27 @@ class Graph(object):
             'deleted': {},
         }
 
-        dependencies = self.dependencies(
-            revision=revision, can_be_cwl=can_be_cwl
+        dependencies = self.dependencies(revision=revision)
+        current_files = self.build(
+            dependencies=dependencies,
+            can_be_cwl=can_be_cwl,
         )
-        current_files = self.build(dependencies=dependencies)
 
         # First find all up-to-date nodes.
-        up_to_date = {
-            node.path: node.commit
-            for node, data in self._nodes.items()
-            if not self.need_update(node)
-        }
-
         for node in current_files:
-            if node.path in up_to_date:  # trick the workflow step
-                # FIXME use the latest commit
-                status['up-to-date'][node.path] = up_to_date[node.path]
+            need_update = self.need_update(node)
+
+            if need_update:
+                status['outdated'][node.path] = need_update
             else:
-                try:
-                    need_update = self.need_update(node)
-                    status['outdated'][node.path] = [need_update]
-                except KeyError:
-                    pass
+                status['up-to-date'][node.path] = node.commit
 
         # Merge all versions of used inputs in outdated file.
         multiple_versions = defaultdict(set)
 
-        for need_updates in status['outdated'].values():
-            for need_update in need_updates:
-                for node in need_update:
-                    multiple_versions[node.path].add(node)
+        for need_update in status['outdated'].values():
+            for node in need_update:
+                multiple_versions[node.path].add(node)
 
         for node in current_files:
             if node.path in multiple_versions:
@@ -315,7 +298,13 @@ class Graph(object):
 
         return set(parent.generated)
 
-    def ascwl(self, input_paths=None, output_paths=None, outputs=None):
+    def ascwl(
+        self,
+        input_paths=None,
+        output_paths=None,
+        outputs=None,
+        use_latest=True,
+    ):
         """Serialize graph to CWL workflow.
 
         :param global_step_outputs: Make all step outputs global.
@@ -344,9 +333,14 @@ class Graph(object):
             elif isinstance(node.activity, ProcessRun):
                 process_run = node.activity
 
-            if process_run and process_run not in processes:
-                stack.append(process_run)
-                processes.add(process_run)
+            if process_run:
+                latest = self.latest(process_run)
+                if use_latest and latest:
+                    process_run = nodes[(latest, process_run.path)]
+
+                if process_run not in processes:
+                    stack.append(process_run)
+                    processes.add(process_run)
 
         while stack:
             action = stack.pop()
@@ -366,10 +360,14 @@ class Graph(object):
                     continue
 
                 # Skip existing commits
-                if isinstance(process_run, ProcessRun) and \
-                        process_run not in processes:
-                    stack.append(process_run)
-                    processes.add(process_run)
+                if process_run and isinstance(process_run, ProcessRun):
+                    latest = self.latest(process_run)
+                    if use_latest and latest:
+                        process_run = nodes[(latest, process_run.path)]
+
+                    if process_run not in processes:
+                        stack.append(process_run)
+                        processes.add(process_run)
 
         steps = {
             tool: 'step_{0}'.format(tool_index)
@@ -401,7 +399,7 @@ class Graph(object):
             for path, dependency in action.inputs.items():
                 alias = _source_name(dependency.commit, path)
                 if alias:
-                    ins[dependency.id] = alias
+                    ins[dependency.role] = alias
 
             outs = list(set(action.outputs.values()))
 
@@ -439,6 +437,10 @@ class Graph(object):
             commit, path = node.commit, node.path
             id_ = 'output_{0}'.format(index)
             process_run = nodes[(commit, path)].activity
+
+            if process_run.process is None:
+                continue
+
             output_id = process_run.outputs[path]
             type_ = next(
                 output for output in process_run.process.outputs
@@ -446,6 +448,9 @@ class Graph(object):
             ).type
             type_ = type_ if type_ == 'Directory' else 'File'
             output_source = _source_name(commit, path)
+
+            if output_source is None:
+                continue
 
             workflow.outputs.append(
                 WorkflowOutputParameter(

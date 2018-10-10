@@ -16,3 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Define models for Common Workflow Language."""
+
+from ._ascwl import CWLClass, ascwl
+
+__all__ = ('CWLClass', 'ascwl')

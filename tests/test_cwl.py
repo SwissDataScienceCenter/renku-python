@@ -282,7 +282,7 @@ def test_input_directory(instance_path):
 
 
 def test_exitings_output_directory(client):
-    """Test input directory."""
+    """Test creation of InitialWorkDirRequirement for output directory."""
     instance_path = client.path
     output = client.path / 'output'
 
@@ -314,3 +314,6 @@ def test_exitings_output_directory(client):
     ]
     assert 1 == len(initial_work_dir_requirement)
     assert initial_work_dir_requirement[0].listing[0].entryname == output.name
+
+    assert 1 == len(tool.inputs)
+    assert 1 == len(tool.outputs)

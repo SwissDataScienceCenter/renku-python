@@ -95,7 +95,7 @@ class DAG(object):
         """Return text for a given node."""
         formatted_sha1 = _format_sha1(self.graph, node)
         path = node.path
-        latest = self.graph._nodes[node].get('latest')
+        latest = self.graph.latest(node)
         part_of = getattr(node, 'part_of', None)
 
         if latest:

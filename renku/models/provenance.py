@@ -59,14 +59,14 @@ class CommitMixin:
     submodules = attr.ib(default=attr.Factory(list), kw_only=True)
     path = attr.ib(default=None, kw_only=True)
 
-    _id = jsonld.ib(context='@id', init=False, kw_only=True)
-    _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
+    _id = jsonld.ib(context='@id', kw_only=True)
+    _label = jsonld.ib(context='rdfs:label', kw_only=True)
     _location = jsonld.ib(context='prov:atLocation', init=False, kw_only=True)
 
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return '{self.commit.hexsha}/{self.path}'.format(self=self)
+        return 'blob/{self.commit.hexsha}/{self.path}'.format(self=self)
 
     @_label.default
     def default_label(self):
@@ -134,9 +134,12 @@ class Association:
     plan = jsonld.ib(context='prov:hadPlan')
     agent = jsonld.ib(context='prov:agent', default=None)
 
+    _id = jsonld.ib(context='@id', kw_only=True)
+
     @classmethod
     def from_activity(cls, activity):
         """Create an instance from the activity."""
+        agent = Person.from_commit(activity.commit)
         return cls(
             plan=activity.__association_cls__(
                 commit=activity.commit,
@@ -145,7 +148,8 @@ class Association:
                 path=activity.path,
                 activity=activity,
             ),
-            agent=Person.from_commit(activity.commit),
+            agent=agent,
+            id=activity._id + '/association',  # add plan and agent
         )
 
 
@@ -182,7 +186,8 @@ class EntityProxyMixin:
     def __getattribute__(self, name):
         """Proxy entity attributes."""
         entity = object.__getattribute__(self, 'entity')
-        if name not in {'id', 'entity', '__class__'} and hasattr(entity, name):
+        if name not in {'_id', 'role', 'entity', '__class__'
+                        } and hasattr(entity, name):
             return getattr(self.entity, name)
         return object.__getattribute__(self, name)
 
@@ -198,20 +203,23 @@ class Usage(EntityProxyMixin):
     """Represent a dependent path."""
 
     entity = jsonld.ib(context='prov:entity', kw_only=True)
-    id = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
+    role = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
+
+    _id = jsonld.ib(context='@id', default=None, kw_only=True)
 
     @classmethod
-    def from_revision(cls, client, path, revision='HEAD', **kwargs):
+    def from_revision(
+        cls, client, path, submodules=None, revision='HEAD', **kwargs
+    ):
         """Return dependency from given path and revision."""
-        id_ = kwargs.pop('id', None)
         return cls(
             entity=Entity(
                 client=client,
                 commit=client.find_previous_commit(path, revision=revision),
+                submodules=submodules or [],
                 path=path,
-                **kwargs
             ),
-            id=id_,
+            **kwargs
         )
 
     @property
@@ -236,7 +244,7 @@ class Generation(EntityProxyMixin):
             '@reverse': 'prov:qualifiedGeneration',
         },
     )
-    id = jsonld.ib(context='prov:hadRole', default=None)
+    role = jsonld.ib(context='prov:hadRole', default=None)
 
     _activity = attr.ib(
         default=None,
@@ -244,6 +252,7 @@ class Generation(EntityProxyMixin):
         converter=lambda value: weakref.ref(value)
         if value is not None else None,
     )
+    _id = jsonld.ib(context='@id', kw_only=True)
 
     @property
     def activity(self):
@@ -253,7 +262,18 @@ class Generation(EntityProxyMixin):
     @property
     def parents(self):
         """Return list of parents."""
-        return [self.activity]
+        return [self.activity] if isinstance(self.activity, ProcessRun) else []
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        if self.role:
+            return '{self.activity._id}/outputs/{self.role}'.format(
+                self=self,
+            )
+        return '{self.activity._id}/tree/{self.entity.path}'.format(
+            self=self,
+        )
 
 
 @jsonld.s(
@@ -266,6 +286,9 @@ class Generation(EntityProxyMixin):
 )
 class Activity(CommitMixin):
     """Represent an activity in the repository."""
+
+    _id = jsonld.ib(context='@id', kw_only=True)
+    _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
 
     part_of = attr.ib(default=None, kw_only=True)
 
@@ -294,9 +317,6 @@ class Activity(CommitMixin):
         kw_only=True,
     )
 
-    _id = jsonld.ib(context='@id', kw_only=True)
-    _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
-
     @generated.default
     def default_generated(self):
         """Calculate default values."""
@@ -310,8 +330,8 @@ class Activity(CommitMixin):
                     path=path,
                     parent=self,
                 ),
-                id=id_,
-            ) for path, id_ in self.outputs.items()
+                role=role,
+            ) for path, role in self.outputs.items()
         ]
 
     @property
@@ -326,7 +346,7 @@ class Activity(CommitMixin):
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return '{self.commit.hexsha}#'.format(self=self)
+        return 'commit/{self.commit.hexsha}'.format(self=self)
 
     @_label.default
     def default_label(self):
@@ -426,18 +446,29 @@ class ProcessRun(Activity):
     @generated.default
     def default_generated(self):
         """Calculate default values."""
+        if self.part_of is not None:
+            entities = {
+                generation.entity.path: generation.entity
+                for generation in self.part_of.generated
+            }
+        else:
+            entities = {}
+
         return [
             Generation(
                 activity=self,
-                entity=Entity(
-                    commit=self.commit,
-                    client=self.client,
-                    submodules=self.submodules,
-                    path=path,
-                    parent=self,
+                entity=entities.get(
+                    path,
+                    Entity(
+                        commit=self.commit,
+                        client=self.client,
+                        submodules=self.submodules,
+                        path=path,
+                        parent=self,
+                    ),
                 ),
-                id=id_,
-            ) for path, id_ in self.outputs.items()
+                role=role,
+            ) for path, role in self.outputs.items()
         ]
 
     def __attrs_post_init__(self):
@@ -495,13 +526,19 @@ class ProcessRun(Activity):
 
         for input_id, input_path in process.iter_input_files(basedir):
             try:
-                dependency = resolve_submodules(input_path, id=input_id)
+                usage_id = self._id + '/inputs/' + input_id
+                dependency = resolve_submodules(
+                    input_path,
+                    role=input_id,
+                    id=usage_id,
+                )
                 if dependency is None:
                     dependency = Usage.from_revision(
                         client=client,
                         path=input_path,
-                        id=input_id,
+                        role=input_id,
                         revision=revision,
+                        id=usage_id,
                     )
                 inputs[input_path] = dependency
             except KeyError:
@@ -614,7 +651,7 @@ class WorkflowRun(ProcessRun):
         revision = '{0}^'.format(self.commit)
 
         ins = {
-            dependency.id: dependency
+            dependency.role: dependency
             for path, dependency in self.inputs.items()
         }
         entities = {
@@ -632,39 +669,35 @@ class WorkflowRun(ProcessRun):
         for step in reversed(self.process.topological_steps):
             path = os.path.join(basedir, step.run)
             process = self.children[step.id]
+            subprocess_id = self._id + '/steps/' + step.id
 
             inputs = {}
             for alias, source in step.in_.items():
+                usage_id = subprocess_id + '/inputs/' + alias
                 if source in ins:
                     dependency = ins[source]
                     inputs[dependency.path] = attr.evolve(
                         dependency,
-                        id=alias,
+                        role=alias,
+                        id=usage_id,
                     )
                 elif source in outs:
                     input_path = outs[source]
                     inputs[input_path] = Usage(
                         entity=entities[input_path],
-                        id=alias,
+                        role=alias,
+                        id=usage_id,
                     )
                 else:
                     # TODO check that it is not Path or Directory
                     pass
 
             outputs = {}
-            generated = []
             for source in step.out:
                 output_source = step.id + '/' + source
                 output_path = outs.get(output_source)
                 if output_path:
                     outputs[output_path] = source
-                    generated.append(
-                        Generation(
-                            activity=None,
-                            entity=entities[output_path],
-                            id=source,
-                        )
-                    )
 
             subprocess = process.create_run(
                 commit=self.client.find_previous_commit(
@@ -676,13 +709,9 @@ class WorkflowRun(ProcessRun):
                 path=path,
                 inputs=inputs,
                 outputs=outputs,
-                generated=generated,
-                id=self._id + 'steps/' + step.id,
+                id=subprocess_id,
                 submodules=self.submodules,
             )
-            # FIXME refactor
-            for generation in generated:
-                generation._activity = weakref.ref(subprocess)
 
             subprocesses[path] = (step, subprocess)
             self._processes.append(subprocess)
