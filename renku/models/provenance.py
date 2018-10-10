@@ -94,7 +94,7 @@ class CommitMixin:
 class Person(object):
     """Represent a person."""
 
-    name = jsonld.ib(context='foaf:name')
+    name = jsonld.ib(context='rdfs:label')
     email = jsonld.ib(context={
         '@type': '@id',
         '@id': 'foaf:mbox',
@@ -288,7 +288,12 @@ class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
     _id = jsonld.ib(context='@id', kw_only=True)
-    _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
+    _message = jsonld.ib(context='rdfs:comment', init=False, kw_only=True)
+    _was_informed_by = jsonld.ib(
+        context='prov:wasInformedBy',
+        init=False,
+        kw_only=True,
+    )
 
     part_of = attr.ib(default=None, kw_only=True)
 
@@ -343,15 +348,27 @@ class Activity(CommitMixin):
             # if not item.deleted_file
         }
 
+    @classmethod
+    def generate_id(cls, commit):
+        """Calculate action ID."""
+        return 'commit/{commit.hexsha}'.format(commit=commit)
+
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'commit/{self.commit.hexsha}'.format(self=self)
+        return self.generate_id(self.commit)
 
-    @_label.default
-    def default_label(self):
-        """Generate a default label."""
-        return self.commit.message.split('\n')[0]
+    @_message.default
+    def default_message(self):
+        """Generate a default message."""
+        return self.commit.message
+
+    @_was_informed_by.default
+    def default_was_informed_by(self):
+        """List parent actions."""
+        return [{
+            '@id': self.generate_id(parent),
+        } for parent in self.commit.parents]
 
     @outputs.default
     def default_outputs(self):
