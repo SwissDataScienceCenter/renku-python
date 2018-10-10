@@ -91,7 +91,7 @@ class CommitMixin:
     frozen=True,
     slots=True,
 )
-class Person(object):
+class Person:
     """Represent a person."""
 
     name = jsonld.ib(context='rdfs:label')
@@ -123,6 +123,43 @@ class Person(object):
 
 
 @jsonld.s(
+    type=[
+        'prov:SoftwareAgent',
+        'wfprov:WorkflowEngine',
+    ],
+    context={
+        'prov': 'http://purl.org/dc/terms/',
+        'wfprov': 'http://purl.org/wf4ever/wfprov#',
+    },
+    frozen=True,
+    slots=True,
+)
+class SoftwareAgent:
+    """Represent a person."""
+
+    label = jsonld.ib(context='rdfs:label', kw_only=True)
+    was_started_by = jsonld.ib(
+        context='prov:wasStartedBy',
+        default=None,
+        kw_only=True,
+    )
+
+    _id = jsonld.ib(context='@id', kw_only=True)
+
+    @classmethod
+    def from_commit(cls, commit):
+        """Create an instance from a Git commit."""
+        author = Person.from_commit(commit)
+        if commit.author != commit.committer:
+            return cls(
+                label=commit.committer.name,
+                id='mailto:{0}'.format(commit.committer.email),
+                was_started_by=author,
+            )
+        return author
+
+
+@jsonld.s(
     type='prov:Association',
     context={
         'prov': 'http://www.w3.org/ns/prov#',
@@ -139,7 +176,7 @@ class Association:
     @classmethod
     def from_activity(cls, activity):
         """Create an instance from the activity."""
-        agent = Person.from_commit(activity.commit)
+        agent = SoftwareAgent.from_commit(activity.commit)
         return cls(
             plan=activity.__association_cls__(
                 commit=activity.commit,
