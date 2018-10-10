@@ -26,6 +26,8 @@ Extract provenance information from the repository.
 Activities
 ----------
 
+.. py:module:: renku.models.provenance.activities
+
 .. autoclass:: Activity
    :members:
    :inherited-members:
@@ -41,6 +43,8 @@ Activities
 
 Entities and Plans
 ------------------
+
+.. py:module:: renku.models.provenance.entities
 
 .. autoclass:: Entity
    :members:
@@ -58,7 +62,13 @@ Entities and Plans
 Agents
 ------
 
+.. py:module:: renku.models.provenance.agents
+
 .. autoclass:: Person
+   :members:
+   :inherited-members:
+
+.. autoclass:: SoftwareAgent
    :members:
    :inherited-members:
 
@@ -66,10 +76,22 @@ Agents
 Relations
 ---------
 
+.. py:module:: renku.models.provenance.qualified
+
 .. autoclass:: Usage
    :members:
    :inherited-members:
 
 .. autoclass:: Generation
+   :members:
+   :inherited-members:
+
+
+Expanded
+--------
+
+.. py:module:: renku.models.provenance.expanded
+
+.. autoclass:: Project
    :members:
    :inherited-members:
