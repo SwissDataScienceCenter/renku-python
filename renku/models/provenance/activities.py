@@ -18,7 +18,6 @@
 """Represent a Git commit."""
 
 import os
-from datetime import datetime
 
 import attr
 import yaml
@@ -135,12 +134,12 @@ class Activity(CommitMixin):
     @started_at_time.default
     def default_started_at_time(self):
         """Configure calculated properties."""
-        return datetime.fromtimestamp(self.commit.authored_date).isoformat()
+        return self.commit.authored_datetime.isoformat()
 
     @ended_at_time.default
     def default_ended_at_time(self):
         """Configure calculated properties."""
-        return datetime.fromtimestamp(self.commit.committed_date).isoformat()
+        return self.commit.committed_datetime.isoformat()
 
     @property
     def nodes(self):
