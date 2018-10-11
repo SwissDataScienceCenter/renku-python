@@ -127,7 +127,7 @@ def edit_inputs(client, workflow):
 )
 @click.argument(
     'paths',
-    type=click.Path(exists=True, dir_okay=False),
+    type=click.Path(exists=True, dir_okay=True),
     nargs=-1,
     required=True,
 )

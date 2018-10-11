@@ -25,10 +25,9 @@ from git import NULL_TREE
 
 from renku.api import LocalClient
 from renku.models import _jsonld as jsonld
-from renku.models._datastructures import DirectoryTree
 from renku.models.cwl._ascwl import CWLClass
 
-from .entities import CommitMixin, Entity, Process, Workflow
+from .entities import Collection, CommitMixin, Entity, Process, Workflow
 from .qualified import Association, Generation, Usage
 
 
@@ -201,18 +200,26 @@ class ProcessRun(Activity):
         else:
             entities = {}
 
+        def entity(self, path):
+            """Generate entity or collection."""
+            cls = Entity
+            if (self.client.path / path).is_dir():
+                cls = Collection
+
+            return cls(
+                commit=self.commit,
+                client=self.client,
+                submodules=self.submodules,
+                path=path,
+                parent=self,
+            )
+
         return [
             Generation(
                 activity=self,
                 entity=entities.get(
                     path,
-                    Entity(
-                        commit=self.commit,
-                        client=self.client,
-                        submodules=self.submodules,
-                        path=path,
-                        parent=self,
-                    ),
+                    entity(self, path),
                 ),
                 role=role,
             ) for path, role in self.outputs.items()
@@ -302,30 +309,26 @@ class ProcessRun(Activity):
     def default_outputs(self):
         """Guess default outputs from a process."""
         basedir = os.path.dirname(self.path)
-        tree = DirectoryTree.from_list((
-            path for path in super().default_outputs()
-            if not self.client.is_cwl(path)
-        ))
-        outputs = {}
-
-        for output_id, output_path in self.process.iter_output_files(
-            basedir, commit=self.commit
-        ):
-            outputs[output_path] = output_id
-
-            # Expand directory entries.
-            for subpath in tree.get(output_path, []):
-                outputs.setdefault(
-                    os.path.join(output_path, subpath), output_id
-                )
-
-        return outputs
+        return {
+            output_path: output_id
+            for output_id, output_path in self.process.
+            iter_output_files(basedir, commit=self.commit)
+        }
 
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        yield from super().nodes
+        # Outputs go first
+        for output in super().nodes:
+
+            # NOTE refactor so all outputs behave the same
+            if isinstance(output.entity, Collection):
+                yield from output.entity.members
+
+            yield output
+        # Activity itself
         yield self
+        # Input directories might not be exported otherwise
         for node in self.inputs.values():
             if (node.client.path / node.path).is_dir():
                 yield node
@@ -380,7 +383,10 @@ class WorkflowRun(ProcessRun):
             generation.entity.path: generation.entity
             for generation in self.generated
         }
-        outputs_ = {id_: path_ for path_, id_ in self.outputs.items()}
+        outputs_ = {
+            generation.role: generation.path
+            for generation in self.generated
+        }
         outs = {
             output.outputSource: outputs_[output.id]
             for output in self.process.outputs

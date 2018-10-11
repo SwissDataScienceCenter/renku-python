@@ -111,6 +111,7 @@ class DAG(object):
         result = [
             formatted_sha1 + formatted_latest + self.graph._format_path(path)
         ]
+        indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
 
         if part_of:
             workflow_path = click.style(
@@ -120,7 +121,7 @@ class DAG(object):
                 ),
                 fg='blue',
             )
-            indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
+
             result.append(
                 '{indentation} (part of {hexsha} {workflow_path})'.format(
                     indentation=indentation,
@@ -128,6 +129,20 @@ class DAG(object):
                     workflow_path=workflow_path,
                 )
             )
+
+        parent = getattr(node, 'parent', None)
+
+        if parent and hasattr(parent, 'members'):
+            result.append(
+                '{indentation} (part of {parent_path} directory)'.format(
+                    indentation=indentation,
+                    parent_path=click.style(
+                        parent.path,
+                        fg='blue',
+                    ),
+                )
+            )
+
         return result
 
     def iter_edges(self, node):

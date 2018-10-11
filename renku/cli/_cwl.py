@@ -93,7 +93,11 @@ def execute(client, output_file, output_paths=None):
                     output_path = location[len(output_dir):].lstrip(
                         os.path.sep
                     )
-                    shutil.move(location, str(client.path / output_path))
+                    destination = client.path / output_path
+                    if destination.is_dir():
+                        shutil.rmtree(str(destination))
+                        destination = destination.parent
+                    shutil.move(location, str(destination))
                     continue
 
     # Keep only unchanged files in the output paths.
@@ -108,7 +112,7 @@ def execute(client, output_file, output_paths=None):
     # Fix tracking of unchanged files by removing them first.
     if unchanged_paths:
         client.git.index.remove(
-            unchanged_paths, cached=True, ignore_unmatch=True
+            unchanged_paths, cached=True, r=True, ignore_unmatch=True
         )
         client.git.index.commit('renku: automatic removal of unchanged files')
         client.git.index.add(unchanged_paths)

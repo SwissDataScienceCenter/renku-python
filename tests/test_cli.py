@@ -1325,7 +1325,7 @@ def test_deleted_input(runner, project, capsys):
     assert Path('input.mv').exists()
 
 
-def test_output_directory(runner, project):
+def test_output_directory(runner, project, capsys):
     """Test detection of output directory."""
     cwd = Path(project)
     data = cwd / 'source' / 'data.txt'
@@ -1348,6 +1348,15 @@ def test_output_directory(runner, project):
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 0
     assert (destination / data.name).exists()
+
+    # Make sure the output directory can be recreated
+    assert 0 == _run_update(runner, capsys, args=('rerun', str(destination)))
+    assert {data.name} == {path.name for path in destination.iterdir()}
+
+    cmd = ['log', str(destination / data.name)]
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    assert str((destination / data.name).relative_to(cwd)) in result.output
+    assert ' directory)' in result.output
 
     cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)

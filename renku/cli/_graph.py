@@ -215,7 +215,7 @@ class Graph(object):
         """Return all output paths."""
         paths = set()
         for activity in self.commits.values():
-            if activity.path:
+            if isinstance(activity, ProcessRun):
                 paths |= set(activity.outputs.keys())
         return paths
 

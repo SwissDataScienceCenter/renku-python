@@ -79,6 +79,47 @@ class Entity(CommitMixin):
         """Return the parent object."""
         return self._parent() if self._parent is not None else None
 
+    @property
+    def parents(self):
+        """Return list of parents."""
+        return [self.parent]
+
+
+@jsonld.s(
+    type=[
+        'prov:Collection',
+    ],
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+    },
+    cmp=False,
+)
+class Collection(Entity):
+    """Represent a directory with files."""
+
+    members = jsonld.ib(context='prov:hadMember', kw_only=True)
+
+    @members.default
+    def default_members(self):
+        """Generate default members as entities from current path."""
+        dir_path = self.client.path / self.path
+        assert dir_path.is_dir()
+
+        members = []
+        for path in dir_path.rglob('*'):
+            if path.name == '.gitignore':
+                continue
+            members.append(
+                Entity(
+                    commit=self.commit,
+                    client=self.client,
+                    submodules=self.submodules,
+                    path=str(path.relative_to(self.client.path)),
+                    parent=self,
+                )
+            )
+        return members
+
 
 @jsonld.s(
     type=[
