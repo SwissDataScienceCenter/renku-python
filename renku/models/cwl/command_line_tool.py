@@ -23,6 +23,7 @@ import shlex
 from contextlib import contextmanager
 
 import attr
+import click
 
 from renku import errors
 from renku._compat import Path
@@ -494,7 +495,26 @@ class CommandLineToolFactory(object):
                     str(input_path / path)
                     for path in tree.get(input_path, default=[])
                 }
-                # TODO make sure that directory doesn't contain other files
+                content = {
+                    str(path)
+                    for path in input_path.rglob('*')
+                    if path.name != '.gitkeep'
+                }
+                extra_paths = content - subpaths
+                if extra_paths:
+                    raise errors.InvalidOutputPath(
+                        'The output directory "{0}" is not empty. \n\n'
+                        'Delete existing files before running the command:'
+                        '\n  (use "git rm <file>..." to remove them first)'
+                        '\n\n'.format(input_path) + '\n'.join(
+                            '\t' + click.style(path, fg='yellow')
+                            for path in extra_paths
+                        ) + '\n\n'
+                        'Once you have removed files that should be used '
+                        'as outputs,\n'
+                        'you can safely rerun the previous command.'
+                    )
+
                 # Remove files from the input directory
                 paths = [path for path in paths if path not in subpaths]
                 # Include input path in the paths to check
