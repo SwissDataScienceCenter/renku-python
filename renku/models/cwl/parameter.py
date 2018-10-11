@@ -33,7 +33,7 @@ def convert_default(value):
 class _IdMixin(object):
     """Define id field."""
 
-    id = attr.ib()
+    id = attr.ib(default=None)
 
 
 @attr.s
@@ -111,6 +111,13 @@ class CommandInputParameter(InputParameter):
             data, CommandLineBinding
         ) and data is not None else data,
     )
+
+    @classmethod
+    def from_cwl(cls, data):
+        """Create instance from type definition."""
+        if not isinstance(data, dict):
+            data = {'type': data}
+        return cls(**data)
 
     def to_argv(self):
         """Format command input parameter as shell argument."""

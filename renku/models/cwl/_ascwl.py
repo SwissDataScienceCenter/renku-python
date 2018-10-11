@@ -62,8 +62,11 @@ def mapped(cls, key='id', **kwargs):
         if isinstance(value, dict):
             result = []
             for k, v in iteritems(value):
-                vv = dict(v)
-                vv[key] = k
+                if not hasattr(cls, 'from_cwl'):
+                    vv = dict(v)
+                    vv[key] = k
+                else:
+                    vv = attr.evolve(cls.from_cwl(v), **{key: k})
                 result.append(vv)
         else:
             result = value

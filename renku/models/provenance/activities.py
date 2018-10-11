@@ -222,7 +222,7 @@ class ProcessRun(Activity):
                     entity(self, path),
                 ),
                 role=role,
-            ) for path, role in self.outputs.items()
+            ) for path, role in self.outputs.items() if path is not None
         ]
 
     def __attrs_post_init__(self):

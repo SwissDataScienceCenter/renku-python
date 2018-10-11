@@ -17,8 +17,10 @@
 # limitations under the License.
 
 import pytest
+import yaml
 
 from renku._compat import Path
+from renku.models.cwl import CWLClass
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
 
@@ -317,3 +319,29 @@ def test_exitings_output_directory(client):
 
     assert 1 == len(tool.inputs)
     assert 1 == len(tool.outputs)
+
+
+LINK_CWL = """
+class: CommandLineTool
+cwlVersion: v1.0
+requirements:
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - class: Directory
+        listing: $(inputs.indir.listing)
+baseCommand: ["true"]
+inputs:
+  indir: Directory
+  filename: string
+outputs:
+  outlist:
+    type: File
+    outputBinding:
+      glob: $(inputs.filename)
+"""
+
+
+def test_load_inputs_defined_as_type():
+    """Test loading of CWL definition with specific input parameters."""
+    assert CWLClass.from_cwl(yaml.load(LINK_CWL))
