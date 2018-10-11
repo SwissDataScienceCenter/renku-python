@@ -15,12 +15,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Graph builder."""
+"""Represent a Git commit."""
 
 import os
-import re
-import weakref
-from datetime import datetime
 
 import attr
 import yaml
@@ -31,249 +28,8 @@ from renku.models import _jsonld as jsonld
 from renku.models._datastructures import DirectoryTree
 from renku.models.cwl._ascwl import CWLClass
 
-
-@jsonld.s(
-    type=[
-        'prov:Location',
-        'foaf:Project',
-    ],
-    context={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
-        'prov': 'http://purl.org/dc/terms/',
-    },
-    frozen=True,
-    slots=True,
-)
-class Project(object):
-    """Represent a project."""
-
-    _id = jsonld.ib(context='@id', kw_only=True)
-
-
-@attr.s(cmp=False)
-class CommitMixin:
-    """Represent a commit mixin."""
-
-    commit = attr.ib(kw_only=True)
-    client = attr.ib(kw_only=True)
-    submodules = attr.ib(default=attr.Factory(list), kw_only=True)
-    path = attr.ib(default=None, kw_only=True)
-
-    _id = jsonld.ib(context='@id', kw_only=True)
-    _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _location = jsonld.ib(context='prov:atLocation', init=False, kw_only=True)
-
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        return 'blob/{self.commit.hexsha}/{self.path}'.format(self=self)
-
-    @_label.default
-    def default_label(self):
-        """Generate a default label."""
-        return '{self.path}@{self.commit.hexsha}'.format(self=self)
-
-    @_location.default
-    def default_location(self):
-        """Generate a default location."""
-        return self.client.project
-
-
-@jsonld.s(
-    type=[
-        'prov:Person',
-        'foaf:Person',
-    ],
-    context={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
-        'prov': 'http://purl.org/dc/terms/',
-    },
-    frozen=True,
-    slots=True,
-)
-class Person(object):
-    """Represent a person."""
-
-    name = jsonld.ib(context='foaf:name')
-    email = jsonld.ib(context={
-        '@type': '@id',
-        '@id': 'foaf:mbox',
-    })
-
-    _id = jsonld.ib(context='@id', init=False, kw_only=True)
-
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        return self.email
-
-    @email.validator
-    def check_email(self, attribute, value):
-        """Check that the email is valid."""
-        if not (isinstance(value, str) and re.match(r"[^@]+@[^@]+", value)):
-            raise ValueError('Email address "{0}" is invalid.'.format(value))
-
-    @classmethod
-    def from_commit(cls, commit):
-        """Create an instance from a Git commit."""
-        return cls(
-            name=commit.author.name,
-            email='mailto:{0}'.format(commit.author.email),
-        )
-
-
-@jsonld.s(
-    type='prov:Association',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
-)
-class Association:
-    """Assign responsibility to an agent for an activity."""
-
-    plan = jsonld.ib(context='prov:hadPlan')
-    agent = jsonld.ib(context='prov:agent', default=None)
-
-    _id = jsonld.ib(context='@id', kw_only=True)
-
-    @classmethod
-    def from_activity(cls, activity):
-        """Create an instance from the activity."""
-        agent = Person.from_commit(activity.commit)
-        return cls(
-            plan=activity.__association_cls__(
-                commit=activity.commit,
-                client=activity.client,
-                submodules=activity.submodules,
-                path=activity.path,
-                activity=activity,
-            ),
-            agent=agent,
-            id=activity._id + '/association',  # add plan and agent
-        )
-
-
-@jsonld.s(
-    type=[
-        'prov:Entity',
-        'wfprov:Artifact',
-    ],
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-        'wfprov': 'http://purl.org/wf4ever/wfprov#',
-    },
-    cmp=False,
-)
-class Entity(CommitMixin):
-    """Represent a data value or item."""
-
-    _parent = attr.ib(
-        default=None,
-        kw_only=True,
-        converter=lambda value: weakref.ref(value)
-        if value is not None else None,
-    )
-
-    @property
-    def parent(self):  # pragma: no cover
-        """Return the parent object."""
-        return self._parent() if self._parent is not None else None
-
-
-class EntityProxyMixin:
-    """Implement proxy to entity attribute."""
-
-    def __getattribute__(self, name):
-        """Proxy entity attributes."""
-        entity = object.__getattribute__(self, 'entity')
-        if name not in {'_id', 'role', 'entity', '__class__'
-                        } and hasattr(entity, name):
-            return getattr(self.entity, name)
-        return object.__getattribute__(self, name)
-
-
-@jsonld.s(
-    type='prov:Usage',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
-    cmp=False,
-)
-class Usage(EntityProxyMixin):
-    """Represent a dependent path."""
-
-    entity = jsonld.ib(context='prov:entity', kw_only=True)
-    role = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
-
-    _id = jsonld.ib(context='@id', default=None, kw_only=True)
-
-    @classmethod
-    def from_revision(
-        cls, client, path, submodules=None, revision='HEAD', **kwargs
-    ):
-        """Return dependency from given path and revision."""
-        return cls(
-            entity=Entity(
-                client=client,
-                commit=client.find_previous_commit(path, revision=revision),
-                submodules=submodules or [],
-                path=path,
-            ),
-            **kwargs
-        )
-
-    @property
-    def parents(self):
-        """Return parent nodes."""
-        # TODO connect files to an input directory
-        return []  # pragma: no cover
-
-
-@jsonld.s(
-    type='prov:Generation',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
-    cmp=False,
-)
-class Generation(EntityProxyMixin):
-    """Represent an act of generating a file."""
-
-    entity = jsonld.ib(
-        context={
-            '@reverse': 'prov:qualifiedGeneration',
-        },
-    )
-    role = jsonld.ib(context='prov:hadRole', default=None)
-
-    _activity = attr.ib(
-        default=None,
-        kw_only=True,
-        converter=lambda value: weakref.ref(value)
-        if value is not None else None,
-    )
-    _id = jsonld.ib(context='@id', kw_only=True)
-
-    @property
-    def activity(self):
-        """Return the activity object."""
-        return self._activity() if self._activity is not None else None
-
-    @property
-    def parents(self):
-        """Return list of parents."""
-        return [self.activity] if isinstance(self.activity, ProcessRun) else []
-
-    @_id.default
-    def default_id(self):
-        """Configure calculated ID."""
-        if self.role:
-            return '{self.activity._id}/outputs/{self.role}'.format(
-                self=self,
-            )
-        return '{self.activity._id}/tree/{self.entity.path}'.format(
-            self=self,
-        )
+from .entities import CommitMixin, Entity, Process, Workflow
+from .qualified import Association, Generation, Usage
 
 
 @jsonld.s(
@@ -288,7 +44,12 @@ class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
     _id = jsonld.ib(context='@id', kw_only=True)
-    _label = jsonld.ib(context='rdfs:label', init=False, kw_only=True)
+    _message = jsonld.ib(context='rdfs:comment', init=False, kw_only=True)
+    _was_informed_by = jsonld.ib(
+        context='prov:wasInformedBy',
+        init=False,
+        kw_only=True,
+    )
 
     part_of = attr.ib(default=None, kw_only=True)
 
@@ -343,15 +104,27 @@ class Activity(CommitMixin):
             # if not item.deleted_file
         }
 
+    @classmethod
+    def generate_id(cls, commit):
+        """Calculate action ID."""
+        return 'commit/{commit.hexsha}'.format(commit=commit)
+
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'commit/{self.commit.hexsha}'.format(self=self)
+        return self.generate_id(self.commit)
 
-    @_label.default
-    def default_label(self):
-        """Generate a default label."""
-        return self.commit.message.split('\n')[0]
+    @_message.default
+    def default_message(self):
+        """Generate a default message."""
+        return self.commit.message
+
+    @_was_informed_by.default
+    def default_was_informed_by(self):
+        """List parent actions."""
+        return [{
+            '@id': self.generate_id(parent),
+        } for parent in self.commit.parents]
 
     @outputs.default
     def default_outputs(self):
@@ -361,12 +134,12 @@ class Activity(CommitMixin):
     @started_at_time.default
     def default_started_at_time(self):
         """Configure calculated properties."""
-        return datetime.fromtimestamp(self.commit.authored_date).isoformat()
+        return self.commit.authored_datetime.isoformat()
 
     @ended_at_time.default
     def default_ended_at_time(self):
         """Configure calculated properties."""
-        return datetime.fromtimestamp(self.commit.committed_date).isoformat()
+        return self.commit.committed_datetime.isoformat()
 
     @property
     def nodes(self):
@@ -384,32 +157,6 @@ class Activity(CommitMixin):
         return from_git_commit(
             commit, client, path=None, submodules=submodules
         )
-
-
-@jsonld.s(
-    type=[
-        'wfdesc:Process',
-        'prov:Entity',
-        'prov:Plan',
-    ],
-    context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    }
-)
-class Process(CommitMixin):
-    """Represent a process."""
-
-    _activity = jsonld.ib(
-        context='prov:activity',
-        kw_only=True,
-        converter=weakref.ref,
-    )
-
-    @property
-    def activity(self):
-        """Return the activity object."""
-        return self._activity()
 
 
 @jsonld.s(
@@ -556,7 +303,7 @@ class ProcessRun(Activity):
         """Guess default outputs from a process."""
         basedir = os.path.dirname(self.path)
         tree = DirectoryTree.from_list((
-            path for path in super(ProcessRun, self).default_outputs()
+            path for path in super().default_outputs()
             if not self.client.is_cwl(path)
         ))
         outputs = {}
@@ -577,7 +324,7 @@ class ProcessRun(Activity):
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        yield from super(ProcessRun, self).nodes
+        yield from super().nodes
         yield self
         for node in self.inputs.values():
             if (node.client.path / node.path).is_dir():
@@ -587,31 +334,6 @@ class ProcessRun(Activity):
     def parents(self):
         """Return a list of parents."""
         return self.qualified_usage
-
-
-@jsonld.s(
-    type=[
-        'wfdesc:Workflow',
-        'prov:Entity',
-        'prov:Plan',
-    ],
-    context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    }
-)
-class Workflow(Process):
-    """Represent workflow with subprocesses."""
-
-    subprocesses = jsonld.ib(context='wfdesc:hasSubProcess', kw_only=True)
-
-    @subprocesses.default
-    def default_subprocesses(self):
-        """Load subprocesses."""
-        return [
-            subprocess.association.plan
-            for _, subprocess in self.activity.subprocesses.values()
-        ]
 
 
 @jsonld.s(

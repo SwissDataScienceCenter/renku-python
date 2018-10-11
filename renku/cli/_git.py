@@ -20,12 +20,19 @@
 import os
 import sys
 from contextlib import contextmanager
+from email.utils import formatdate
 
 import click
+from git import Actor
 
 from renku import errors
+from renku.version import __version__
 
 GIT_KEY = 'renku.git'
+COMMITTER = Actor(
+    'renku {0}'.format(__version__),
+    'renku+{0}@datascience.ch'.format(__version__),
+)
 
 
 def set_git_home(value):
@@ -136,6 +143,8 @@ def with_git(
         # is_ancestor('origin/master', 'HEAD')
         pass
 
+    author_date = formatdate(localtime=True)
+
     yield
 
     if commit:
@@ -145,7 +154,12 @@ def with_git(
             repo.git.add('--all')
             argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
             # Ignore pre-commit hooks since we have already done everything.
-            repo.index.commit(' '.join(argv), skip_hooks=True)
+            repo.index.commit(
+                ' '.join(argv),
+                author_date=author_date,
+                committer=COMMITTER,
+                skip_hooks=True,
+            )
         finally:
             os.chdir(current_dir)
 

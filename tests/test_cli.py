@@ -1349,11 +1349,10 @@ def test_output_directory(runner, project):
     assert result.exit_code == 0
     assert (destination / data.name).exists()
 
-    # FIXME the output directory MUST be empty.
-    # cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
-    # result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    # assert result.exit_code == 1
-    # assert not (invalid_destination / data.name).exists()
+    cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    assert result.exit_code == 1
+    assert not (invalid_destination / data.name).exists()
 
 
 def test_input_directory(runner, project, capsys):
