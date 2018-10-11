@@ -162,7 +162,7 @@ def _parse_date(value):
 class Dataset(object):
     """Repesent a dataset."""
 
-    SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
+    SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
     name = jsonld.ib(type=str, context='dcterms:name')
 

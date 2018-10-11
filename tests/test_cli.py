@@ -473,12 +473,12 @@ def test_datasets(data_file, data_repository, runner, project):
         catch_exceptions=False,
     )
     assert result.exit_code == 0
-    assert os.stat('data/dataset/renku-python/README.rst')
+    assert os.stat('data/dataset/README.rst')
 
     # add data from local git repo
     result = runner.invoke(
         cli.cli, [
-            'dataset', 'add', 'dataset', '-t', 'file', '-t', 'file2',
+            'dataset', 'add', 'dataset', '-t', 'file2', '-t', 'file3',
             os.path.dirname(data_repository.git_dir)
         ]
     )
@@ -542,7 +542,6 @@ def test_relative_import_to_dataset(tmpdir, data_repository, runner, project):
 
 def test_relative_git_import_to_dataset(tmpdir, runner, project):
     """Test importing data from a directory structure."""
-    submodule_name = os.path.basename(str(tmpdir))
 
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -579,10 +578,8 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project):
     )
     assert result.exit_code == 0
 
-    assert os.stat(os.path.join('data', 'dataset', submodule_name, 'data.txt'))
-    assert os.stat(
-        os.path.join('data', 'dataset', submodule_name, 'second', 'data.txt')
-    )
+    assert os.stat(os.path.join('data', 'dataset', 'data.txt'))
+    assert os.stat(os.path.join('data', 'dataset', 'second', 'data.txt'))
 
     # add data in subdirectory
     result = runner.invoke(
@@ -593,12 +590,8 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project):
     )
     assert result.exit_code == 0
 
-    assert os.stat(
-        os.path.join('data', 'relative', submodule_name, 'data.txt')
-    )
-    assert os.stat(
-        os.path.join('data', 'relative', submodule_name, 'second', 'data.txt')
-    )
+    assert os.stat(os.path.join('data', 'relative', 'data.txt'))
+    assert os.stat(os.path.join('data', 'relative', 'second', 'data.txt'))
 
 
 def test_file_tracking(isolated_runner):
@@ -654,7 +647,7 @@ def test_status_with_submodules(isolated_runner):
         with contextlib.redirect_stdout(stdout):
             try:
                 cli.cli.main(
-                    args=('run', 'wc', 'data/b/foo/data/f/woop'),
+                    args=('run', 'wc', 'data/b/data/f/woop'),
                     prog_name=runner.get_default_prog_name(cli.cli),
                 )
             except SystemExit as e:

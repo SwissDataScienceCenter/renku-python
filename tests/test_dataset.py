@@ -129,19 +129,16 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
         dataset,
         os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
     )
-    assert os.stat('data/dataset/directory_tree/dir2/file2')
-    assert 'directory_tree/dir2/file2' in dataset.files
+    assert os.stat('data/dataset/dir2/file2')
+    assert 'dir2/file2' in dataset.files
     assert os.stat('.renku/vendors/local')
 
     # check that the authors are properly parsed from commits
     client.add_data_to_dataset(
         dataset, os.path.dirname(data_repository.git_dir), target='file'
     )
-    assert len(dataset.files['directory_tree/file'].authors) == 2
-    assert all(
-        x.name in ('me', 'me2')
-        for x in dataset.files['directory_tree/file'].authors
-    )
+    assert len(dataset.files['file'].authors) == 2
+    assert all(x.name in ('me', 'me2') for x in dataset.files['file'].authors)
 
 
 @pytest.mark.parametrize(

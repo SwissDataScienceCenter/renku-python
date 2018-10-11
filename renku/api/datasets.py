@@ -220,7 +220,7 @@ class DatasetsApiMixin(object):
                 else:
                     target = top_target
                 url = src_repo_path.as_posix()
-        elif u.scheme in ('http', 'https'):
+        elif u.scheme in {'http', 'https', 'git+https', 'git+ssh'}:
             submodule_name = os.path.splitext(os.path.basename(u.path))[0]
             submodule_path = submodule_path.joinpath(
                 os.path.dirname(u.path).lstrip('/'), submodule_name
@@ -233,6 +233,10 @@ class DatasetsApiMixin(object):
         # FIXME: do a proper check that the repos are not the same
         if submodule_name not in (s.name for s in self.git.submodules):
             # new submodule to add
+            if u.scheme == 'git+ssh':
+                url = 'git@{netloc}:{path}'.format(
+                    netloc=u.netloc, path=u.path[1:]
+                )
             self.git.create_submodule(
                 name=submodule_name, path=submodule_path.as_posix(), url=url
             )
@@ -253,7 +257,7 @@ class DatasetsApiMixin(object):
                 target = src.relative_to(submodule_path / relative_to)
 
         # link the target into the data directory
-        dst = self.path / path / submodule_name / (target or '')
+        dst = self.path / path / (target or '')
 
         # if we have a directory, recurse
         if src.is_dir():
