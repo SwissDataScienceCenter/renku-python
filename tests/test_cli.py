@@ -1344,7 +1344,7 @@ def test_output_directory(runner, project, capsys):
     repo.git.add('--all')
     repo.index.commit('Created source directory')
 
-    cmd = ['run', 'cp', '-r', str(source), str(destination)]
+    cmd = ['run', 'cp', '-LRf', str(source), str(destination)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 0
     assert (destination / data.name).exists()
@@ -1353,9 +1353,10 @@ def test_output_directory(runner, project, capsys):
     assert 0 == _run_update(runner, capsys, args=('rerun', str(destination)))
     assert {data.name} == {path.name for path in destination.iterdir()}
 
-    cmd = ['log', str(destination / data.name)]
+    destination_data = str(Path('destination') / 'data.txt')
+    cmd = ['log', destination_data]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert str(Path('destination') / 'data.txt') in result.output
+    assert destination_data in result.output, cmd
     assert ' directory)' in result.output
 
     cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
