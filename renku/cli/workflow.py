@@ -48,7 +48,6 @@ def workflow():
 def create(client, output_file, revision, paths):
     """Create a workflow description for a file."""
     graph = Graph(client)
-    paths = [graph.normalize_path(path) for path in paths]
     outputs = graph.build(paths=paths, revision=revision)
 
     output_file.write(

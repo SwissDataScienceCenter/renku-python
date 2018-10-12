@@ -137,7 +137,6 @@ def edit_inputs(client, workflow):
 def rerun(ctx, client, revision, roots, siblings, inputs, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
-    paths = [graph.normalize_path(path) for path in paths]
     outputs = graph.build(paths=paths, revision=revision)
 
     # Check or extend siblings of outputs.

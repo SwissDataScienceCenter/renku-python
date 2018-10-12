@@ -160,7 +160,11 @@ class Graph(object):
         """Return dependencies from a revision or paths."""
         if paths:
             return {
-                Usage.from_revision(self.client, path=path, revision=revision)
+                Usage.from_revision(
+                    self.client,
+                    path=self.normalize_path(path),
+                    revision=revision,
+                )
                 for path in paths
             }
 
