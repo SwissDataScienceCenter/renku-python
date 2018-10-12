@@ -18,5 +18,9 @@
 """Define models for Common Workflow Language."""
 
 from ._ascwl import CWLClass, ascwl
+from .command_line_tool import CommandLineTool
+from .workflow import Workflow
 
-__all__ = ('CWLClass', 'ascwl')
+WORKFLOW_STEP_RUN_TYPES = (CommandLineTool, Workflow)
+
+__all__ = ('CommandLineTool', 'CWLClass', 'Workflow', 'ascwl')

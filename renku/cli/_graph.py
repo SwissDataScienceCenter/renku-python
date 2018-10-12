@@ -24,10 +24,38 @@ import attr
 
 from renku import errors
 from renku._compat import Path
+from renku.models.cwl.command_line_tool import CommandLineTool
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
-from renku.models.provenance import Activity, ProcessRun, Usage
+from renku.models.provenance import Activity, Generation, ProcessRun, Usage
+from renku.models.provenance.entities import Entity
+
+LINK_CWL = CommandLineTool(
+    baseCommand=['true'],
+    requirements=[
+        {
+            'class': 'InlineJavascriptRequirement',
+        },
+        {
+            'class': 'InitialWorkDirRequirement',
+            'listing': '$(inputs.input_directory.listing)',
+        },
+    ],
+    inputs={
+        'input_directory': 'Directory',
+        'filename': 'string',
+    },
+    outputs={
+        'output_file': {
+            'type': 'File',
+            'outputBinding': {
+                'glob': '$(inputs.filename)',
+                # .slice(inputs.input_directory.basename.length)
+            },
+        },
+    },
+)
 
 
 def _safe_path(filepath, can_be_cwl=False):
@@ -277,11 +305,12 @@ class Graph(object):
         The key is part of the result set, hence to check if the node has
         siblings you should check the lenght is greater than 1.
         """
-        from renku.models.provenance import Generation, Usage
-
         parent = None
 
-        if isinstance(node, Generation):
+        if isinstance(node, Entity):
+            parent_siblings = self.siblings(node.parent) - {node.parent}
+            return set(node.parent.members) | parent_siblings
+        elif isinstance(node, Generation):
             parent = node.activity
         elif isinstance(node, Usage):
             parent = self.commits[node.commit]
@@ -323,6 +352,42 @@ class Graph(object):
         output_keys = {(node.commit, node.path) for node in outputs}
         nodes = {(node.commit, node.path): node for node in self.nodes}
 
+        def connect_file_to_directory(node):
+            """Return step connecting file to a directory."""
+            process = attr.evolve(
+                LINK_CWL,
+                inputs={
+                    'input_directory': 'Directory',
+                    'filename': {
+                        'type': 'string',
+                        'default':
+                            str(Path(node.path).relative_to(node.parent.path)),
+                    },
+                }
+            )
+            process_run = ProcessRun(
+                commit=node.commit,
+                client=node.client,
+                submodules=node.submodules,
+                path=None,
+                process=process,
+                inputs={
+                    node.parent.path:
+                        Usage(
+                            entity=node.parent,
+                            role='input_directory',
+                        ),
+                },
+                outputs={
+                    node.path: 'output_file',
+                },
+            )
+
+            for generated in process_run.generated:
+                nodes[(generated.commit, generated.path)] = generated
+
+            return process_run
+
         for node in self.nodes:
             if (node.commit, node.path) not in output_keys:
                 continue
@@ -330,6 +395,14 @@ class Graph(object):
             process_run = None
             if isinstance(node, ProcessRun):
                 process_run = node
+            elif isinstance(node, Entity) and not hasattr(node, 'activity'):
+                process_run = connect_file_to_directory(node)
+
+                stack.append(process_run)
+                processes.add(process_run)
+
+                process_run = None
+
             elif isinstance(node.activity, ProcessRun):
                 process_run = node.activity
 
@@ -353,16 +426,19 @@ class Graph(object):
                 if input_paths and path in input_paths:
                     continue
 
-                try:
-                    process_run = nodes[(dependency.commit,
-                                         dependency.path)].activity
-                except AttributeError:
-                    continue
+                node = nodes[(dependency.commit, dependency.path)]
+
+                if isinstance(node, Generation):
+                    process_run = node.activity
+                elif isinstance(node, Entity):
+                    process_run = connect_file_to_directory(node)
+                else:
+                    process_run = None
 
                 # Skip existing commits
                 if process_run and isinstance(process_run, ProcessRun):
                     latest = self.latest(process_run)
-                    if use_latest and latest:
+                    if process_run.path and use_latest and latest:
                         process_run = nodes[(latest, process_run.path)]
 
                     if process_run not in processes:
@@ -425,7 +501,7 @@ class Graph(object):
                     ins[input_.id] = input_id
 
             workflow.add_step(
-                run=self.client.path / action.path,
+                run=self.client.path / action.path if action.path else tool,
                 id=step_id,
                 in_=ins,
                 out=outs,
@@ -438,7 +514,7 @@ class Graph(object):
             id_ = 'output_{0}'.format(index)
             process_run = nodes[(commit, path)].activity
 
-            if process_run.process is None:
+            if process_run.process is None or process_run.path is None:
                 continue
 
             output_id = process_run.outputs[path]

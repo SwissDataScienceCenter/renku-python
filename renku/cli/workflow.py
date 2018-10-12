@@ -43,7 +43,7 @@ def workflow():
     default='-',
     help='Write workflow to the FILE.',
 )
-@click.argument('paths', type=click.Path(dir_okay=False), nargs=-1)
+@click.argument('paths', type=click.Path(dir_okay=True), nargs=-1)
 @pass_local_client
 def create(client, output_file, revision, paths):
     """Create a workflow description for a file."""

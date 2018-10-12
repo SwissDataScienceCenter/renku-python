@@ -29,11 +29,18 @@ from .process import Process
 from .types import PATH_OBJECTS
 
 
+def convert_run(value):
+    """Convert value to CWLClass if dict is given."""
+    if isinstance(value, dict):
+        return CWLClass.from_cwl(value)
+    return value
+
+
 @attr.s
 class WorkflowStep(object):
     """Define an executable element of a workflow."""
 
-    run = attr.ib()  # string, Process
+    run = attr.ib(converter=convert_run)  # string, Process
     id = attr.ib(default=attr.Factory(uuid.uuid4))
 
     in_ = attr.ib(default=None)
@@ -104,6 +111,9 @@ class Workflow(Process, CWLClass):
         import yaml
 
         def _load(step):
+            if isinstance(step.run, Process):
+                return step.run
+
             if commit:
                 data = (commit.tree / basedir / step.run).data_stream.read()
             else:

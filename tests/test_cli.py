@@ -1355,7 +1355,7 @@ def test_output_directory(runner, project, capsys):
 
     cmd = ['log', str(destination / data.name)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert str((destination / data.name).relative_to(cwd)) in result.output
+    assert str(Path('destination') / 'data.txt') in result.output
     assert ' directory)' in result.output
 
     cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]

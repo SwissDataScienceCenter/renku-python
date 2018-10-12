@@ -25,6 +25,7 @@ from git import NULL_TREE
 
 from renku.api import LocalClient
 from renku.models import _jsonld as jsonld
+from renku.models.cwl import WORKFLOW_STEP_RUN_TYPES
 from renku.models.cwl._ascwl import CWLClass
 
 from .entities import Collection, CommitMixin, Entity, Process, Workflow
@@ -323,7 +324,9 @@ class ProcessRun(Activity):
 
             # NOTE refactor so all outputs behave the same
             if isinstance(output.entity, Collection):
-                yield from output.entity.members
+                for entity in output.entity.members:
+                    yield attr.evolve(entity, parent=output)
+                # yield from output.entity.members
 
             yield output
         # Activity itself
@@ -379,10 +382,18 @@ class WorkflowRun(ProcessRun):
             dependency.role: dependency
             for path, dependency in self.inputs.items()
         }
-        entities = {
-            generation.entity.path: generation.entity
-            for generation in self.generated
-        }
+
+        entities = {}
+        for generation in self.generated:
+            entity = generation.entity
+            entities[entity.path] = entity
+
+            if isinstance(entity, Collection):
+                entities.update(
+                    **{member.path: member
+                       for member in entity.members}
+                )
+
         outputs_ = {
             generation.role: generation.path
             for generation in self.generated
@@ -395,8 +406,13 @@ class WorkflowRun(ProcessRun):
         subprocesses = {}
 
         for step in reversed(self.process.topological_steps):
-            path = os.path.join(basedir, step.run)
-            process = self.children[step.id]
+            if isinstance(step.run, WORKFLOW_STEP_RUN_TYPES):
+                path = None
+                process = step.run
+            else:
+                path = os.path.join(basedir, step.run)
+                process = self.children[step.id]
+
             subprocess_id = self._id + '/steps/' + step.id
 
             inputs = {}
@@ -426,6 +442,19 @@ class WorkflowRun(ProcessRun):
                 output_path = outs.get(output_source)
                 if output_path:
                     outputs[output_path] = source
+                elif path is None:
+                    # FIXME only works for linking directory to file
+                    for output_id, output_path in process.iter_output_files(
+                        basedir=basedir
+                    ):
+                        if output_id == source:
+                            outs[output_source] = os.path.join(
+                                next(
+                                    path for path, usage in inputs.items()
+                                    if usage.role == 'input_directory'
+                                ), output_path
+                            )
+                            break
 
             subprocess = process.create_run(
                 commit=self.client.find_previous_commit(
@@ -450,6 +479,9 @@ class WorkflowRun(ProcessRun):
     def nodes(self):
         """Yield all graph nodes."""
         for subprocess in reversed(self._processes):
+            if subprocess.path is None:
+                # skip nodes connecting directory to file
+                continue
             yield from subprocess.nodes
 
 
