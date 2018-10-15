@@ -292,6 +292,13 @@ def test_streams(runner, project, capsys):
         'result.txt',
     } == set(result.output.strip().split('\n'))
 
+    # Check that source.txt is shown in inputs.
+    result = runner.invoke(cli.cli, ['show', 'inputs'])
+    assert result.exit_code == 0
+    assert {
+        'source.txt',
+    } == set(result.output.strip().split('\n'))
+
     with open('source.txt', 'w') as source:
         source.write('first,second,third,fourth')
 

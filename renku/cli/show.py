@@ -46,20 +46,23 @@ Then the following outputs would be shown.
    A
 
 
-Output files
-~~~~~~~~~~~~
+Input and output files
+~~~~~~~~~~~~~~~~~~~~~~
 
-You can list all output files generated in the repository by running
-``renku show outputs`` commands. Alternatively, you can check if all
-paths specified as arguments are output files.
+You can list input and output files generated in the repository by running
+``renku show inputs`` and ``renku show outputs`` commands. Alternatively,
+you can check if all paths specified as arguments are input or output files
+respectively.
 
 .. code-block:: console
 
    $ renku run wc < source.txt > result.wc
+   $ renku show inputs
+   source.txt
    $ renku show outputs
    result.wc
    $ renku show outputs source.txt
-   $ $?  # last command finished with an error code
+   $ echo $?  # last command finished with an error code
    1
 
 """
@@ -97,6 +100,46 @@ def siblings(client, revision, paths):
     paths = {node.path for node in siblings_}
     for path in paths:
         click.echo(graph._format_path(path))
+
+
+@show.command()
+@click.option('--revision', default='HEAD')
+@click.argument(
+    'paths',
+    type=click.Path(exists=True, dir_okay=False),
+    nargs=-1,
+)
+@pass_local_client
+@click.pass_context
+@with_git(clean=False, commit=False)
+def inputs(ctx, client, revision, paths):
+    r"""Show inputs files in the repository.
+
+    <PATHS>    Files to show. If no files are given all input files are shown.
+    """
+    from renku.models.provenance import ProcessRun
+
+    graph = Graph(client)
+    paths = set(paths)
+    nodes = graph.build(revision=revision)
+
+    commits = {node.commit for node in nodes}
+    candidates = {(node.commit, node.path)
+                  for node in nodes if not paths or node.path in paths}
+
+    input_paths = set()
+
+    for commit in commits:
+        activity = graph.commits[commit]
+
+        if isinstance(activity, ProcessRun):
+            for path, usage in activity.inputs.items():
+                usage_key = (usage.commit, usage.path)
+                if path not in input_paths and usage_key in candidates:
+                    input_paths.add(path)
+
+    click.echo('\n'.join(graph._format_path(path) for path in input_paths))
+    ctx.exit(0 if not paths or len(input_paths) == len(paths) else 1)
 
 
 @show.command()

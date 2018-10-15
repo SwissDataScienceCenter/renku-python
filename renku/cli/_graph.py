@@ -248,7 +248,7 @@ class Graph(object):
         paths = set()
         for activity in self.commits.values():
             if isinstance(activity, ProcessRun):
-                paths |= set(activity.outputs.keys())
+                paths |= {path for path in activity.outputs.keys() if path}
         return paths
 
     def build_status(self, revision='HEAD', can_be_cwl=False):
