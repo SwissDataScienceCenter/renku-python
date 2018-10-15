@@ -120,3 +120,63 @@ def outputs(ctx, client, revision, paths):
 
     click.echo('\n'.join(graph._format_path(path) for path in output_paths))
     ctx.exit(0 if not paths or len(output_paths) == len(filter) else 1)
+
+
+def _context_names():
+    """Return list of valid context names."""
+    import inspect
+
+    from renku.models import provenance
+    from renku.models._jsonld import JSONLDMixin
+
+    for name in dir(provenance):
+        cls = getattr(provenance, name)
+        if inspect.isclass(cls) and issubclass(cls, JSONLDMixin):
+            yield name
+
+
+def print_context_names(ctx, param, value):
+    """Print all possible types."""
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo('\n'.join(_context_names()))
+    ctx.exit()
+
+
+def _context_json(name):
+    """Return JSON-LD string for given context name."""
+    from renku.models import provenance
+
+    cls = getattr(provenance, name)
+    return {
+        '@context': cls._jsonld_context,
+        '@type': cls._jsonld_type,
+    }
+
+
+@show.command()
+@click.argument(
+    'names',
+    type=click.Choice(_context_names()),
+    nargs=-1,
+)
+@click.option(
+    '--list',
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=print_context_names,
+    help=print_context_names.__doc__,
+)
+def context(names):
+    """Show JSON-LD context for repository objects."""
+    import json
+
+    contexts = [_context_json(name) for name in set(names)]
+    if contexts:
+        click.echo(
+            json.dumps(
+                contexts[0] if len(contexts) == 1 else contexts,
+                indent=2,
+            )
+        )
