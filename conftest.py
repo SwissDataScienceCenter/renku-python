@@ -29,17 +29,22 @@ import responses
 from click.testing import CliRunner
 
 
-@pytest.fixture()
-def instance_path(monkeypatch):
+@pytest.fixture(scope='module')
+def renku_path(tmpdir_factory):
     """Temporary instance path."""
-    path = os.path.realpath(tempfile.mkdtemp())
+    path = str(tmpdir_factory.mktemp('renku'))
+    yield path
+    shutil.rmtree(path)
+
+
+@pytest.fixture()
+def instance_path(renku_path, monkeypatch):
+    """Temporary instance path."""
     orig_pwd = os.getcwd()
 
     with monkeypatch.context() as m:
-        m.chdir(path)
-        yield path
-
-    shutil.rmtree(path)
+        m.chdir(renku_path)
+        yield renku_path
 
 
 @pytest.fixture()
@@ -68,21 +73,9 @@ def data_file(tmpdir):
     return p
 
 
-@pytest.fixture
-def project():
-    """Create a test project."""
-    from renku import cli
-    runner = CliRunner()
-
-    with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
-        assert result.exit_code == 0
-        yield project_path
-
-
-@pytest.fixture()
-def client():
-    """Return a Renku repository."""
+@pytest.fixture(scope='module')
+def repository():
+    """Yield a Renku repository."""
     from renku import cli
     from renku.api import LocalClient
     runner = CliRunner()
@@ -91,7 +84,41 @@ def client():
         result = runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
         assert result.exit_code == 0
 
-        yield LocalClient(path=project_path)
+        yield project_path
+
+
+@pytest.fixture
+def project(repository):
+    """Create a test project."""
+    from git import Repo
+
+    repo = Repo(repository)
+    commit = repo.head.commit
+
+    os.chdir(repository)
+    yield repository
+    os.chdir(repository)
+    repo.head.reset(commit, index=True, working_tree=True)
+    # remove any extra non-tracked files (.pyc, etc)
+    repo.git.clean('-xdff')
+
+
+@pytest.fixture()
+def client(repository):
+    """Return a Renku repository."""
+    from git import Repo
+
+    from renku.api import LocalClient
+
+    repo = Repo(repository)
+    commit = repo.head.commit
+
+    os.chdir(repository)
+    yield LocalClient(path=repository)
+    os.chdir(repository)
+    repo.head.reset(commit, index=True, working_tree=True)
+    # remove any extra non-tracked files (.pyc, etc)
+    repo.git.clean('-xdff')
 
 
 @pytest.fixture()
@@ -126,18 +153,18 @@ def dataset_responses():
         yield rsps
 
 
-@pytest.fixture()
-def directory_tree(tmpdir):
+@pytest.fixture(scope='module')
+def directory_tree(tmpdir_factory):
     """Create a test directory tree."""
     # initialize
-    p = tmpdir.mkdir('directory_tree')
+    p = tmpdir_factory.mktemp('directory_tree')
     p.join('file').write('1234')
     p.join('dir2').mkdir()
     p.join('dir2/file2').write('5678')
     return p
 
 
-@pytest.fixture()
+@pytest.fixture(scope='module')
 def data_repository(directory_tree):
     """Create a test repo."""
     from git import Repo, Actor
