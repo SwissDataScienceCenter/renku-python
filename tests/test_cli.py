@@ -73,6 +73,21 @@ def test_config_path(runner):
     assert RENKU_HOME in output
 
 
+def test_show_context(runner):
+    """Test context generation."""
+    import json
+
+    result = runner.invoke(cli.cli, ['show', 'context', '--list'])
+    contexts = [name for name in result.output.split('\n') if name]
+    assert 0 == result.exit_code
+    assert 1 < len(contexts)
+
+    result = runner.invoke(cli.cli, ['show', 'context'] + contexts)
+    data = json.loads(result.output)
+    assert 0 == result.exit_code
+    assert len(contexts) == len(data)
+
+
 def test_init(isolated_runner):
     """Test project initialization."""
     runner = isolated_runner

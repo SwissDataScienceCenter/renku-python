@@ -50,6 +50,10 @@ Entities and Plans
    :members:
    :inherited-members:
 
+.. autoclass:: Collection
+   :members:
+   :inherited-members:
+
 .. autoclass:: Process
    :members:
    :inherited-members:

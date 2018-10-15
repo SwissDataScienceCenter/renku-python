@@ -20,16 +20,24 @@
 .. seealso:: https://www.w3.org/TR/prov-o/
 """
 
+from .agents import Person, SoftwareAgent
 from .activities import Activity, ProcessRun, WorkflowRun, from_git_commit
+from .entities import Entity, Collection, Process, Workflow
 from .expanded import Project
 from .qualified import Generation, Usage
 
 __all__ = (
     'Activity',
+    'Entity',
+    'Collection',
     'Generation',
+    'Person',
+    'Process',
     'ProcessRun',
     'Project',
+    'SoftwareAgent',
     'Usage',
+    'Workflow',
     'WorkflowRun',
     'from_git_commit',
 )
