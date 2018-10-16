@@ -44,10 +44,9 @@ class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
     _id = jsonld.ib(context='@id', kw_only=True)
-    _message = jsonld.ib(context='rdfs:comment', init=False, kw_only=True)
+    _message = jsonld.ib(context='rdfs:comment', kw_only=True)
     _was_informed_by = jsonld.ib(
         context='prov:wasInformedBy',
-        init=False,
         kw_only=True,
     )
 
@@ -184,7 +183,6 @@ class ProcessRun(Activity):
 
     association = jsonld.ib(
         context='prov:qualifiedAssociation',
-        init=False,
         kw_only=True,
     )
 
@@ -233,13 +231,18 @@ class ProcessRun(Activity):
     @inputs.default
     def default_inputs(self):
         """Guess default inputs from a process."""
-        basedir = os.path.dirname(self.path)
+        inputs = {}
+
+        try:
+            basedir = os.path.dirname(self.path)
+        except TypeError:
+            return inputs
+
         commit = self.commit
         client = self.client
         process = self.process
         hierarchy = self.submodules
 
-        inputs = {}
         revision = '{0}^'.format(commit)
 
         try:
@@ -309,7 +312,11 @@ class ProcessRun(Activity):
     @outputs.default
     def default_outputs(self):
         """Guess default outputs from a process."""
-        basedir = os.path.dirname(self.path)
+        try:
+            basedir = os.path.dirname(self.path)
+        except TypeError:
+            return {}
+
         return {
             output_path: output_id
             for output_id, output_path in self.process.
@@ -356,7 +363,7 @@ class WorkflowRun(ProcessRun):
 
     # @reverse wfprov:wasPartOfWorkflowRun
 
-    children = attr.ib(init=False, kw_only=True)
+    children = attr.ib(kw_only=True)
 
     _processes = jsonld.ib(
         context={
@@ -365,7 +372,7 @@ class WorkflowRun(ProcessRun):
         default=attr.Factory(list),
         kw_only=True,
     )
-    subprocesses = attr.ib(init=False, kw_only=True)
+    subprocesses = attr.ib(kw_only=True)
 
     @children.default
     def default_children(self):

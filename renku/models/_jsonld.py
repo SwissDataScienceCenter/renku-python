@@ -67,7 +67,7 @@ def attrs(
         for subcls in jsonld_cls.mro():
             subtype = getattr(subcls, '_jsonld_type', None)
             if subtype:
-                if isinstance(subtype, list):
+                if isinstance(subtype, (tuple, list)):
                     types.extend(subtype)
                 else:
                     types.append(subtype)
@@ -105,7 +105,7 @@ def attrs(
 
         jsonld_cls.__module__ = cls.__module__
         jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
-            set(types)
+            sorted(set(types))
         )
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
@@ -122,6 +122,27 @@ def attrs(
             type=json.dumps(jsonld_cls._jsonld_type),
             context=context_doc,
         )
+
+        # Register class for given JSON-LD @type
+        try:
+            type_ = ld.expand({
+                '@type': jsonld_cls._jsonld_type,
+                '@context': context
+            })[0]['@type']
+            if isinstance(type_, list):
+                type_ = tuple(sorted(type_))
+        except Exception:
+            # FIXME make sure all classes have @id defined
+            return jsonld_cls
+
+        if type_ in jsonld_cls.__type_registry__:
+            raise TypeError(
+                'Type {0!r} is already registered for class {1!r}.'.format(
+                    jsonld_cls._jsonld_type,
+                    jsonld_cls.__type_registry__[jsonld_cls._jsonld_type],
+                )
+            )
+        jsonld_cls.__type_registry__[type_] = jsonld_cls
         return jsonld_cls
 
     if maybe_cls is None:
@@ -255,6 +276,8 @@ def asjsonld(
 class JSONLDMixin(object):
     """Mixin for loading a JSON-LD data."""
 
+    __type_registry__ = {}
+
     @classmethod
     def from_jsonld(cls, data):
         """Instantiate a JSON-LD class from data."""
@@ -264,11 +287,17 @@ class JSONLDMixin(object):
         if not isinstance(data, dict):
             raise ValueError(data)
 
+        type_ = tuple(sorted(data['@type']))
+        if getattr(cls, '_jsonld_type', None) != type_:
+            new_cls = cls.__type_registry__[type_]
+            if cls != new_cls:
+                return new_cls.from_jsonld(data)
+
         if cls._jsonld_translate:
             data = ld.compact(data, {'@context': cls._jsonld_translate})
             data.pop('@context', None)
 
-        if '@context' in data and data['@context'] != cls._jsonld_context:
+        if '@context' not in data or data['@context'] != cls._jsonld_context:
             compacted = ld.compact(data, cls._jsonld_context)
         else:
             compacted = data
@@ -276,7 +305,10 @@ class JSONLDMixin(object):
         # assert compacted['@type'] == cls._jsonld_type, '@type must be equal'
         # TODO update self(not cls)._jsonld_context with data['@context']
         fields = cls._jsonld_fields
-        return cls(**{k: v for k, v in compacted.items() if k in fields})
+        return cls(
+            **{k.lstrip('_'): v
+               for k, v in compacted.items() if k in fields}
+        )
 
 
 s = attrs
