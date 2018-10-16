@@ -27,6 +27,7 @@ from renku.api import LocalClient
 from renku.models import _jsonld as jsonld
 from renku.models.cwl import WORKFLOW_STEP_RUN_TYPES
 from renku.models.cwl._ascwl import CWLClass
+from renku.models.cwl.types import PATH_OBJECTS
 
 from .entities import Collection, CommitMixin, Entity, Process, Workflow
 from .qualified import Association, Generation, Usage
@@ -183,6 +184,7 @@ class ProcessRun(Activity):
 
     association = jsonld.ib(
         context='prov:qualifiedAssociation',
+        default=None,
         kw_only=True,
     )
 
@@ -191,42 +193,32 @@ class ProcessRun(Activity):
     @generated.default
     def default_generated(self):
         """Calculate default values."""
-        if self.part_of is not None:
-            entities = {
-                generation.entity.path: generation.entity
-                for generation in self.part_of.generated
-            }
-        else:
-            entities = {}
-
-        def entity(self, path):
-            """Generate entity or collection."""
-            cls = Entity
-            if (self.client.path / path).is_dir():
-                cls = Collection
-
-            return cls(
-                commit=self.commit,
-                client=self.client,
-                submodules=self.submodules,
-                path=path,
-                parent=self,
-            )
-
+        # TODO refactor to remove outputs property
         return [
-            Generation(
+            Generation.from_activity_path(
                 activity=self,
-                entity=entities.get(
-                    path,
-                    entity(self, path),
-                ),
+                path=path,
                 role=role,
             ) for path, role in self.outputs.items() if path is not None
         ]
 
     def __attrs_post_init__(self):
         """Calculate properties."""
-        self.association = Association.from_activity(self)
+        if self.association is None:
+            self.association = Association.from_activity(self)
+
+        if self.path is None:
+            # FIXME only works for linking directory to file
+            existing_outputs = set(self.outputs.values())
+            for output_id, output_path in self.iter_output_files():
+                if output_id not in existing_outputs:
+                    self.outputs[os.path.join(
+                        next(
+                            path for path, usage in self.inputs.items()
+                            if usage.role == 'input_directory'
+                        ), output_path
+                    )] = output_id
+                    break
 
     @inputs.default
     def default_inputs(self):
@@ -309,18 +301,35 @@ class ProcessRun(Activity):
         """Generate list of used artifacts."""
         return list(self.inputs.values())
 
+    def iter_output_files(self, commit=None):
+        """Yield tuples with output id and path."""
+        process = self.process
+
+        for output in process.outputs:
+            if output.type in {'stdout', 'stderr'}:
+                stream = getattr(process, output.type)
+                if stream:
+                    yield output.id, stream
+            elif output.type in PATH_OBJECTS:
+                glob = output.outputBinding.glob
+                # TODO better support for Expression
+                if glob.startswith('$(inputs.'):
+                    input_id = glob[len('$(inputs.'):-1]
+                    for input_ in process.inputs:
+                        if input_.id == input_id:
+                            yield output.id, input_.default
+                            break  # out from process.inputs
+                else:
+                    yield output.id, glob
+
     @outputs.default
     def default_outputs(self):
         """Guess default outputs from a process."""
-        try:
-            basedir = os.path.dirname(self.path)
-        except TypeError:
+        if self.path is None:
             return {}
-
         return {
             output_path: output_id
-            for output_id, output_path in self.process.
-            iter_output_files(basedir, commit=self.commit)
+            for output_id, output_path in self.iter_output_files()
         }
 
     @property
@@ -337,7 +346,7 @@ class ProcessRun(Activity):
 
             yield output
         # Activity itself
-        yield self
+        yield self.association.plan
         # Input directories might not be exported otherwise
         for node in self.inputs.values():
             if (node.client.path / node.path).is_dir():
@@ -374,15 +383,48 @@ class WorkflowRun(ProcessRun):
     )
     subprocesses = attr.ib(kw_only=True)
 
+    outputs = attr.ib(kw_only=True)
+    generated = jsonld.ib(
+        context={
+            '@reverse': 'prov:activity',
+        },
+        kw_only=True,
+        hash=False,
+    )
+
     @children.default
     def default_children(self):
         """Load children from process."""
-        return self.process._tools
+        import yaml
+
+        try:
+            basedir = os.path.dirname(self.path)
+        except TypeError:
+            basedir = None
+
+        def _load(step):
+            """Load step definition."""
+            if isinstance(step.run, WORKFLOW_STEP_RUN_TYPES):
+                return step.run
+
+            if self.commit:
+                data = (self.commit.tree / basedir /
+                        step.run).data_stream.read()
+            else:
+                with step.run.open('r') as f:
+                    data = f.read()
+            return CWLClass.from_cwl(yaml.load(data))
+
+        return {step.id: _load(step) for step in self.process.steps}
 
     @subprocesses.default
     def default_subprocesses(self):
         """Load subprocesses."""
-        basedir = os.path.dirname(self.path)
+        try:
+            basedir = os.path.dirname(self.path)
+        except TypeError:
+            return
+
         revision = '{0}^'.format(self.commit)
 
         ins = {
@@ -391,25 +433,7 @@ class WorkflowRun(ProcessRun):
         }
 
         entities = {}
-        for generation in self.generated:
-            entity = generation.entity
-            entities[entity.path] = entity
-
-            if isinstance(entity, Collection):
-                entities.update(
-                    **{member.path: member
-                       for member in entity.members}
-                )
-
-        outputs_ = {
-            generation.role: generation.path
-            for generation in self.generated
-        }
-        outs = {
-            output.outputSource: outputs_[output.id]
-            for output in self.process.outputs
-        }
-
+        outs = {}
         subprocesses = {}
 
         for step in reversed(self.process.topological_steps):
@@ -443,44 +467,99 @@ class WorkflowRun(ProcessRun):
                     # TODO check that it is not Path or Directory
                     pass
 
-            outputs = {}
-            for source in step.out:
-                output_source = step.id + '/' + source
-                output_path = outs.get(output_source)
-                if output_path:
-                    outputs[output_path] = source
-                elif path is None:
-                    # FIXME only works for linking directory to file
-                    for output_id, output_path in process.iter_output_files(
-                        basedir=basedir
-                    ):
-                        if output_id == source:
-                            outs[output_source] = os.path.join(
-                                next(
-                                    path for path, usage in inputs.items()
-                                    if usage.role == 'input_directory'
-                                ), output_path
-                            )
-                            break
-
+            subprocess_entity_commit = self.client.find_previous_commit(
+                path, revision=revision
+            )
             subprocess = process.create_run(
-                commit=self.client.find_previous_commit(
-                    path, revision=revision
-                ),
+                commit=self.commit,
                 client=self.client,
                 part_of=self,
                 process=process,
                 path=path,
                 inputs=inputs,
-                outputs=outputs,
                 id=subprocess_id,
                 submodules=self.submodules,
             )
 
-            subprocesses[path] = (step, subprocess)
+            subprocess.association = Association.from_activity(
+                subprocess,
+                commit=subprocess_entity_commit,
+            )
+
+            for output_path, source in subprocess.outputs.items():
+                outs.setdefault(step.id + '/' + source, output_path)
+
+            for generation in subprocess.generated:
+                entity = generation.entity
+                entities[entity.path] = entity
+
+                if isinstance(entity, Collection):
+                    entities.update(
+                        **{member.path: member
+                           for member in entity.members}
+                    )
+
+            subprocesses[step.id] = subprocess
             self._processes.append(subprocess)
 
         return subprocesses
+
+    def iter_output_files(self, commit=None):
+        """Yield tuples with output id and path."""
+        commit = commit or self.commit
+
+        tools = self.default_children()
+        setattr(self, 'children', tools)
+
+        for output in self.process.outputs:
+            if output.type not in PATH_OBJECTS:
+                continue
+
+            if output.outputSource:
+                step_id, _, source = output.outputSource.partition('/')
+                subprocess = self.subprocesses[step_id]
+                for glob, output_id in subprocess.outputs.items():
+                    if output.id == output_id:
+                        yield output.id, glob
+                        break
+            elif output.outputBinding:
+                glob = output.outputBinding.glob
+                # TODO better support for Expression
+                if glob.startswith('$(inputs.'):
+                    input_id = glob[len('$(inputs.'):-1]
+                    for input_ in self.inputs:
+                        if input_.id == input_id:
+                            yield output.id, input_.default
+                else:
+                    yield output.id, glob
+
+    @outputs.default
+    def default_outputs(self):
+        """Guess default outputs from a workflow."""
+        return super().default_outputs()
+
+    @generated.default
+    def default_generated(self):
+        """Calculate default values."""
+        results = []
+        for output in self.process.outputs:
+            step_id, _, source = output.outputSource.partition('/')
+            assert step_id in self.children
+
+            for generated in self.subprocesses[step_id].generated:
+                if generated.role == source:
+                    results.append(
+                        attr.evolve(
+                            generated,
+                            role=output.id,
+                            activity=self,
+                        )
+                    )
+                    break
+            else:
+                raise KeyError(output)
+
+        return results
 
     @property
     def nodes(self):

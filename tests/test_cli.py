@@ -477,8 +477,10 @@ def test_datasets(data_file, data_repository, runner, project):
 
     # add data
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'dataset',
-                  str(data_file)]
+        cli.cli,
+        ['dataset', 'add', 'dataset',
+         str(data_file)],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
     assert os.stat(
@@ -521,7 +523,11 @@ def test_multiple_file_to_dataset(tmpdir, data_repository, runner, project):
         paths.append(str(new_file))
 
     # add data
-    result = runner.invoke(cli.cli, ['dataset', 'add', 'dataset'] + paths)
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset'] + paths,
+        catch_exceptions=False,
+    )
     assert result.exit_code == 0
 
 

@@ -114,10 +114,14 @@ class DAG(object):
         indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
 
         if part_of:
+            step_id = next(
+                step_id for step_id, subprocess in part_of.subprocesses.items()
+                if subprocess.path == path
+            )
             workflow_path = click.style(
-                '{workflow_path}#steps/{step.id}'.format(
+                '{workflow_path}#steps/{step_id}'.format(
                     workflow_path=self.graph._format_path(part_of.path),
-                    step=part_of.subprocesses[path][0],
+                    step_id=step_id,
                 ),
                 fg='blue',
             )

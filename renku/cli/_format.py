@@ -25,7 +25,7 @@ def ascii(graph):
     from ._ascii import DAG
     from ._echo import echo_via_pager
 
-    echo_via_pager(DAG(graph))
+    echo_via_pager(str(DAG(graph)))
 
 
 def _jsonld(graph, format, *args, **kwargs):

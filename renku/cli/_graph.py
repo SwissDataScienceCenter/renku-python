@@ -29,7 +29,7 @@ from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
 from renku.models.provenance import Activity, Generation, ProcessRun, Usage
-from renku.models.provenance.entities import Entity
+from renku.models.provenance.entities import Entity, Process
 
 LINK_CWL = CommandLineTool(
     baseCommand=['true'],
@@ -106,6 +106,9 @@ class Graph(object):
 
     def need_update(self, node):
         """Return out-dated nodes."""
+        if isinstance(node, ProcessRun):
+            node = node.association.plan
+
         if node._id in self._need_update:
             return self._need_update[node._id]
 
@@ -318,7 +321,7 @@ class Graph(object):
             parent = node.activity
         elif isinstance(node, Usage):
             parent = self.commits[node.commit]
-        elif isinstance(node, ProcessRun):
+        elif isinstance(node, Process):
             return {node}
 
         if parent is None or not isinstance(parent, ProcessRun):
@@ -397,23 +400,22 @@ class Graph(object):
                 continue
 
             process_run = None
-            if isinstance(node, ProcessRun):
-                process_run = node
-            elif isinstance(node, Entity) and not hasattr(node, 'activity'):
+            if isinstance(node, Entity) and not hasattr(node, 'activity'):
                 process_run = connect_file_to_directory(node)
 
                 stack.append(process_run)
                 processes.add(process_run)
 
-                process_run = None
+            else:
+                assert hasattr(node, 'activity'), node
+                assert isinstance(node.activity, ProcessRun)
 
-            elif isinstance(node.activity, ProcessRun):
-                process_run = node.activity
-
-            if process_run:
-                latest = self.latest(process_run)
+                plan = node.activity.association.plan
+                latest = self.latest(plan)
                 if use_latest and latest:
-                    process_run = nodes[(latest, process_run.path)]
+                    plan = nodes[(latest, plan.path)]
+
+                process_run = plan.activity
 
                 if process_run not in processes:
                     stack.append(process_run)
@@ -441,9 +443,12 @@ class Graph(object):
 
                 # Skip existing commits
                 if process_run and isinstance(process_run, ProcessRun):
-                    latest = self.latest(process_run)
+                    plan = process_run.association.plan
+                    latest = self.latest(plan)
                     if process_run.path and use_latest and latest:
-                        process_run = nodes[(latest, process_run.path)]
+                        plan = nodes[(latest, plan.path)]
+
+                    process_run = plan.activity
 
                     if process_run not in processes:
                         stack.append(process_run)

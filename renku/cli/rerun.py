@@ -176,7 +176,8 @@ def rerun(ctx, client, revision, roots, siblings, inputs, paths):
 
     # Execute the workflow and relocate all output files.
     from ._cwl import execute
-    output_paths = {path for _, path in workflow.iter_output_files()}
+    # FIXME get new output paths for edited tools
+    # output_paths = {path for _, path in workflow.iter_output_files()}
     execute(
         client,
         output_file,

@@ -287,18 +287,23 @@ class JSONLDMixin(object):
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        type_ = tuple(sorted(data['@type']))
-        if getattr(cls, '_jsonld_type', None) != type_:
-            new_cls = cls.__type_registry__[type_]
-            if cls != new_cls:
-                return new_cls.from_jsonld(data)
+        if '@type' in data:
+            type_ = tuple(sorted(data['@type']))
+            if type_ in cls.__type_registry__ and getattr(
+                cls, '_jsonld_type', None
+            ) != type_:
+                new_cls = cls.__type_registry__[type_]
+                if cls != new_cls:
+                    return new_cls.from_jsonld(data)
 
         if cls._jsonld_translate:
             data = ld.compact(data, {'@context': cls._jsonld_translate})
             data.pop('@context', None)
 
-        if '@context' not in data or data['@context'] != cls._jsonld_context:
-            compacted = ld.compact(data, cls._jsonld_context)
+        data.setdefault('@context', cls._jsonld_context)
+
+        if data['@context'] != cls._jsonld_context:
+            compacted = ld.compact(data, {'@context': cls._jsonld_context})
         else:
             compacted = data
 

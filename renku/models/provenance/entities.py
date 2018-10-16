@@ -130,7 +130,8 @@ class Collection(Entity):
     context={
         'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
         'prov': 'http://www.w3.org/ns/prov#',
-    }
+    },
+    cmp=False,
 )
 class Process(CommitMixin):
     """Represent a process."""
@@ -146,6 +147,11 @@ class Process(CommitMixin):
         """Return the activity object."""
         return self._activity()
 
+    @property
+    def parents(self):
+        """Return all parents."""
+        return self.activity.parents
+
 
 @jsonld.s(
     type=[
@@ -156,7 +162,8 @@ class Process(CommitMixin):
     context={
         'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
         'prov': 'http://www.w3.org/ns/prov#',
-    }
+    },
+    cmp=False,
 )
 class Workflow(Process):
     """Represent workflow with subprocesses."""
@@ -168,5 +175,5 @@ class Workflow(Process):
         """Load subprocesses."""
         return [
             subprocess.association.plan
-            for _, subprocess in self.activity.subprocesses.values()
+            for subprocess in self.activity.subprocesses.values()
         ]

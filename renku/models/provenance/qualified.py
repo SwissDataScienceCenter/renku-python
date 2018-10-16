@@ -39,14 +39,14 @@ class Association:
     _id = jsonld.ib(context='@id', kw_only=True)
 
     @classmethod
-    def from_activity(cls, activity):
+    def from_activity(cls, activity, commit=None):
         """Create an instance from the activity."""
         from .agents import SoftwareAgent
 
         agent = SoftwareAgent.from_commit(activity.commit)
         return cls(
             plan=activity.__association_cls__(
-                commit=activity.commit,
+                commit=commit or activity.commit,
                 client=activity.client,
                 submodules=activity.submodules,
                 path=activity.path,
@@ -145,7 +145,9 @@ class Generation(EntityProxyMixin):
         """Return list of parents."""
         from .activities import ProcessRun
 
-        return [self.activity] if isinstance(self.activity, ProcessRun) else []
+        if isinstance(self.activity, ProcessRun):
+            return [self.activity.association.plan]
+        return []
 
     @_id.default
     def default_id(self):
@@ -157,3 +159,21 @@ class Generation(EntityProxyMixin):
         return '{self.activity._id}/tree/{self.entity.path}'.format(
             self=self,
         )
+
+    @classmethod
+    def from_activity_path(cls, activity, path, **kwargs):
+        """Create an instance from activity and path."""
+        from .entities import Collection, Entity
+
+        entity_cls = Entity
+        if (activity.client.path / path).is_dir():
+            entity_cls = Collection
+
+        entity = entity_cls(
+            commit=activity.commit,
+            client=activity.client,
+            submodules=activity.submodules,
+            path=path,
+            parent=activity,
+        )
+        return cls(activity=activity, entity=entity, **kwargs)
