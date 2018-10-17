@@ -35,20 +35,6 @@ from renku.models.cwl import CWLClass, ascwl
 from renku.models.cwl.workflow import Workflow
 
 
-def _run_update(runner, capsys, args=('update', )):
-    """Run the update command."""
-    with capsys.disabled():
-        try:
-            cli.cli.main(
-                args=args,
-                prog_name=runner.get_default_prog_name(cli.cli),
-            )
-        except SystemExit as e:
-            return 0 if e.code is None else e.code
-        except Exception:
-            raise
-
-
 def test_version(runner):
     """Test cli version."""
     result = runner.invoke(cli.cli, ['--version'])
@@ -310,62 +296,45 @@ def test_streams(runner, project, capsys):
     assert 'source.txt' in result.output
 
 
-def test_streams_cleanup(runner, project, capsys):
+def test_streams_cleanup(runner, project, run):
     """Test cleanup of standard streams."""
-    with open('source.txt', 'w') as source:
-        source.write('first,second,third')
+    source = Path(project) / 'source.txt'
+    stdout = Path(project) / 'result.txt'
+
+    with source.open('w') as fp:
+        fp.write('first,second,third')
 
     # File outside the Git index should be deleted.
-    with capsys.disabled():
-        with open('result.txt', 'wb') as stdout:
-            try:
-                old_stdout = sys.stdout
-                sys.stdout = stdout
-                try:
-                    cli.cli.main(
-                        args=('run', 'cat', 'source.txt'),
-                        prog_name=runner.get_default_prog_name(cli.cli),
-                    )
-                except SystemExit as e:
-                    assert e.code in {None, 1}, 'The repo must be dirty.'
-            finally:
-                sys.stdout = old_stdout
+    assert 1 == run(
+        args=('run', 'cat', source.name),
+        stdout=stdout,
+    ), 'The repo must be dirty.'
 
-    with open('source.txt', 'r') as source:
-        assert source.read() == 'first,second,third'
+    with source.open('r') as fp:
+        assert fp.read() == 'first,second,third'
 
-    assert not Path('result.txt').exists()
+    assert not stdout.exists()
 
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 1
 
     # File from the Git index should be restored.
     repo = git.Repo(project)
-    with open('result.txt', 'w') as fp:
+    with stdout.open('w') as fp:
         fp.write('1')
 
     repo.index.add(['result.txt'])
 
-    with capsys.disabled():
-        with open('result.txt', 'wb') as stdout:
-            try:
-                old_stdout = sys.stdout
-                sys.stdout = stdout
-                try:
-                    cli.cli.main(
-                        args=('run', 'cat', 'source.txt'),
-                        prog_name=runner.get_default_prog_name(cli.cli),
-                    )
-                except SystemExit as e:
-                    assert e.code in {None, 1}, 'The repo must be dirty.'
-            finally:
-                sys.stdout = old_stdout
+    assert 1 == run(
+        args=('run', 'cat', 'source.txt'),
+        stdout=stdout,
+    ), 'The repo must be dirty.'
 
-    with open('result.txt', 'r') as fp:
+    with stdout.open('r') as fp:
         assert fp.read() == '1'
 
 
-def test_update(runner, project, capsys):
+def test_update(runner, project, run):
     """Test automatic file update."""
     cwd = Path(project)
     data = cwd / 'data'
@@ -385,22 +354,7 @@ def test_update(runner, project, capsys):
 
     update_source('1')
 
-    with capsys.disabled():
-        with source.open('rb') as stdin:
-            with output.open('wb') as stdout:
-                try:
-                    old_stdin, old_stdout = sys.stdin, sys.stdout
-                    sys.stdin, sys.stdout = stdin, stdout
-
-                    try:
-                        cli.cli.main(
-                            args=('run', 'wc', '-c'),
-                            prog_name=runner.get_default_prog_name(cli.cli),
-                        )
-                    except SystemExit as e:
-                        assert e.code in {None, 0}
-                finally:
-                    sys.stdin, sys.stdout = old_stdin, old_stdout
+    assert 0 == run(args=('run', 'wc', '-c'), stdin=source, stdout=output)
 
     with output.open('r') as f:
         assert f.read().strip() == '1'
@@ -413,7 +367,7 @@ def test_update(runner, project, capsys):
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 1
 
-    assert _run_update(runner, capsys) == 0
+    assert 0 == run()
 
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 0
@@ -427,7 +381,7 @@ def test_update(runner, project, capsys):
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 1
 
-    assert _run_update(runner, capsys) == 0
+    assert 0 == run()
 
     result = runner.invoke(cli.cli, ['status'])
     assert result.exit_code == 0
@@ -738,7 +692,7 @@ def test_unchanged_stdout(runner, project, capsys):
                 sys.stdout = old_stdout
 
 
-def test_modified_output(runner, project, capsys):
+def test_modified_output(runner, project, run):
     """Test detection of changed file as output."""
     cwd = Path(project)
     source = cwd / 'source.txt'
@@ -782,13 +736,13 @@ def test_modified_output(runner, project, capsys):
 
     # The input has been modifed and we check that the previous
     # run command correctly recognized output.txt.
-    assert _run_update(runner, capsys) == 0
+    assert 0 == run()
 
     with output.open('r') as f:
         assert f.read().strip() == '3'
 
 
-def test_modified_tool(runner, project, capsys):
+def test_modified_tool(runner, project, run):
     """Test detection of modified tool."""
     from renku.api import LocalClient
 
@@ -796,17 +750,7 @@ def test_modified_tool(runner, project, capsys):
     repo = client.git
     greeting = client.path / 'greeting.txt'
 
-    with capsys.disabled():
-        with greeting.open('wb') as stdout:
-            try:
-                old_stdout = sys.stdout
-                sys.stdout = stdout
-                try:
-                    cli.cli.main(args=('run', 'echo', 'hello'), )
-                except SystemExit as e:
-                    assert e.code in {None, 0}
-            finally:
-                sys.stdout = old_stdout
+    assert 0 == run(args=('run', 'echo', 'hello'), stdout=greeting)
 
     cmd = ['status']
     result = runner.invoke(cli.cli, cmd)
@@ -838,7 +782,7 @@ def test_modified_tool(runner, project, capsys):
     repo.git.add('--all')
     repo.index.commit('Modified tool', skip_hooks=True)
 
-    assert 0 == _run_update(runner, capsys)
+    assert 0 == run()
 
     output = client.path / 'pozdrav.txt'
     assert output.exists()
@@ -910,7 +854,7 @@ def test_outputs(runner, project):
     assert siblings == set(result.output.strip().split('\n'))
 
 
-def test_workflow_without_outputs(runner, project, capsys):
+def test_workflow_without_outputs(runner, project, run):
     """Test workflow without outputs."""
     repo = git.Repo(project)
     cwd = Path(project)
@@ -939,14 +883,14 @@ def test_workflow_without_outputs(runner, project, capsys):
     result = runner.invoke(cli.cli, cmd)
     assert result.exit_code == 1
 
-    assert 0 == _run_update(runner, capsys, args=('update', '--no-output'))
+    assert 0 == run(args=('update', '--no-output'))
 
     cmd = ['status', '--no-output']
     result = runner.invoke(cli.cli, cmd)
     assert result.exit_code == 0
 
 
-def test_siblings_update(runner, project, capsys):
+def test_siblings_update(runner, project, run):
     """Test detection of siblings during update."""
     cwd = Path(project)
     parent = cwd / 'parent.txt'
@@ -970,22 +914,7 @@ def test_siblings_update(runner, project, capsys):
     assert not any(sibling.exists() for sibling in siblings)
 
     cmd = ['run', 'tee', 'brother.txt']
-
-    with capsys.disabled():
-        with parent.open('rb') as stdin:
-            with sister.open('wb') as stdout:
-                try:
-                    old_stdin, old_stdout = sys.stdin, sys.stdout
-                    sys.stdin, sys.stdout = stdin, stdout
-                    try:
-                        cli.cli.main(
-                            args=cmd,
-                            prog_name=runner.get_default_prog_name(cli.cli),
-                        )
-                    except SystemExit as e:
-                        assert e.code in {None, 0}
-                finally:
-                    sys.stdin, sys.stdout = old_stdin, old_stdout
+    assert 0 == run(args=cmd, stdin=parent, stdout=sister)
 
     # The output file is copied from the source.
     for sibling in siblings:
@@ -996,12 +925,10 @@ def test_siblings_update(runner, project, capsys):
 
     # Siblings must be updated together.
     for sibling in siblings:
-        assert 1 == _run_update(runner, capsys, args=('update', sibling.name))
+        assert 1 == run(args=('update', sibling.name))
 
     # Update brother and check the sister has not been changed.
-    assert 0 == _run_update(
-        runner, capsys, args=('update', '--with-siblings', brother.name)
-    )
+    assert 0 == run(args=('update', '--with-siblings', brother.name))
 
     for sibling in siblings:
         with sibling.open('r') as f:
@@ -1016,15 +943,15 @@ def test_siblings_update(runner, project, capsys):
     assert not brother.exists()
 
     # Update should find also missing siblings.
-    assert 1 == _run_update(runner, capsys, args=('update', ))
-    assert 0 == _run_update(runner, capsys, args=('update', '--with-siblings'))
+    assert 1 == run(args=('update', ))
+    assert 0 == run(args=('update', '--with-siblings'))
 
     for sibling in siblings:
         with sibling.open('r') as f:
             assert f.read().strip() == '3', sibling
 
 
-def test_simple_rerun(runner, project, capsys):
+def test_simple_rerun(runner, project, run):
     """Test simple file recreation."""
     greetings = {'hello', 'hola', 'ahoj'}
 
@@ -1045,21 +972,7 @@ def test_simple_rerun(runner, project, capsys):
         'import sys, random; print(random.choice(sys.stdin.readlines()))'
     ]
 
-    with capsys.disabled():
-        with source.open('rb') as stdin:
-            with selected.open('wb') as stdout:
-                try:
-                    old_stdin, old_stdout = sys.stdin, sys.stdout
-                    sys.stdin, sys.stdout = stdin, stdout
-                    try:
-                        cli.cli.main(
-                            args=cmd,
-                            prog_name=runner.get_default_prog_name(cli.cli),
-                        )
-                    except SystemExit as e:
-                        assert e.code in {None, 0}
-                finally:
-                    sys.stdin, sys.stdout = old_stdin, old_stdout
+    assert 0 == run(cmd, stdin=source, stdout=selected)
 
     with selected.open('r') as f:
         greeting = f.read().strip()
@@ -1067,9 +980,9 @@ def test_simple_rerun(runner, project, capsys):
 
     def _rerun():
         """Return greeting after reruning."""
-        assert 0 == _run_update(runner, capsys, args=('rerun', str(selected)))
-        with selected.open('r') as f:
-            greeting = f.read().strip()
+        assert 0 == run(args=('rerun', str(selected)))
+        with selected.open('r') as fp:
+            greeting = fp.read().strip()
             assert greeting in greetings
             return greeting
 
@@ -1088,7 +1001,7 @@ def test_simple_rerun(runner, project, capsys):
     assert greeting == new_greeting, "Something is not random"
 
 
-def test_rerun_with_inputs(runner, project, capsys):
+def test_rerun_with_inputs(runner, project, run):
     """Test file recreation with specified inputs."""
     cwd = Path(project)
     first = cwd / 'first.txt'
@@ -1101,50 +1014,31 @@ def test_rerun_with_inputs(runner, project, capsys):
         'run', 'python', '-S', '-c', 'import random; print(random.random())'
     ]
 
-    def _generate(output, cmd):
-        """Generate an output."""
-        with capsys.disabled():
-            with output.open('wb') as stdout:
-                try:
-                    old_stdout = sys.stdout
-                    sys.stdout = stdout
-                    try:
-                        cli.cli.main(
-                            args=cmd,
-                            prog_name=runner.get_default_prog_name(cli.cli),
-                        )
-                    except SystemExit as e:
-                        assert e.code in {None, 0}
-                finally:
-                    sys.stdout = old_stdout
-
     for file_ in inputs:
-        _generate(file_, cmd)
+        assert 0 == run(args=cmd, stdout=file_), 'Random number generation.'
 
     cmd = ['run', 'cat'] + [str(path) for path in inputs]
-    _generate(output, cmd)
+    assert 0 == run(args=cmd, stdout=output)
 
     with output.open('r') as f:
         initial_data = f.read()
 
-    assert 0 == _run_update(runner, capsys, args=('rerun', str(output)))
+    assert 0 == run(args=('rerun', str(output)))
 
     with output.open('r') as f:
-        assert f.read() != initial_data, "The output should have changed."
+        assert f.read() != initial_data, 'The output should have changed.'
 
     # Keep the first file unchanged.
     with first.open('r') as f:
         first_data = f.read()
 
-    assert 0 == _run_update(
-        runner, capsys, args=('rerun', '--from', str(first), str(output))
-    )
+    assert 0 == run(args=('rerun', '--from', str(first), str(output)))
 
     with output.open('r') as f:
         assert f.read().startswith(first_data)
 
 
-def test_rerun_with_edited_inputs(runner, project, capsys):
+def test_rerun_with_edited_inputs(runner, project, run):
     """Test input modification."""
     cwd = Path(project)
     data = cwd / 'examples'
@@ -1153,26 +1047,9 @@ def test_rerun_with_edited_inputs(runner, project, capsys):
     second = data / 'second.txt'
     third = data / 'third.txt'
 
-    def _generate(output, cmd):
-        """Generate an output."""
-        with capsys.disabled():
-            with output.open('wb') as stdout:
-                try:
-                    old_stdout = sys.stdout
-                    sys.stdout = stdout
-                    try:
-                        cli.cli.main(
-                            args=cmd,
-                            prog_name=runner.get_default_prog_name(cli.cli),
-                        )
-                    except SystemExit as e:
-                        assert e.code in {None, 0}
-                finally:
-                    sys.stdout = old_stdout
-
-    _generate(first, ['run', 'echo', 'hello'])
-    _generate(second, ['run', 'cat', str(first)])
-    _generate(third, ['run', 'echo', '1'])
+    run(args=['run', 'echo', 'hello'], stdout=first)
+    run(args=['run', 'cat', str(first)], stdout=second)
+    run(args=['run', 'echo', '1'], stdout=third)
 
     with first.open('r') as first_fp:
         with second.open('r') as second_fp:
@@ -1181,21 +1058,13 @@ def test_rerun_with_edited_inputs(runner, project, capsys):
     # Change the initial input from "hello" to "hola".
     from click.testing import make_input_stream
     stdin = make_input_stream('hola\n', 'utf-8')
-    old_stdin = sys.stdin
-    try:
-        sys.stdin = stdin
-        assert 0 == _run_update(
-            runner, capsys, args=('rerun', '--edit-inputs', str(second))
-        )
-    finally:
-        sys.stdin = old_stdin
+    assert 0 == run(args=('rerun', '--edit-inputs', str(second)), stdin=stdin)
 
     with second.open('r') as second_fp:
         assert 'hola\n' == second_fp.read()
 
     # Change the input from examples/first.txt to examples/third.txt.
     stdin = make_input_stream(str(third.name), 'utf-8')
-    old_stdin = sys.stdin
     old_dir = os.getcwd()
     try:
         # Make sure the input path is relative to the current directory.
@@ -1211,15 +1080,12 @@ def test_rerun_with_edited_inputs(runner, project, capsys):
         assert 0 == result.exit_code
         assert 'input_1: {0}\n'.format(first.name) == result.output
 
-        sys.stdin = stdin
-        assert 0 == _run_update(
-            runner,
-            capsys,
-            args=('rerun', '--edit-inputs', '--from', str(first), str(second))
+        assert 0 == run(
+            args=('rerun', '--edit-inputs', '--from', str(first), str(second)),
+            stdin=stdin
         )
     finally:
         os.chdir(old_dir)
-        sys.stdin = old_stdin
 
     with third.open('r') as third_fp:
         with second.open('r') as second_fp:
@@ -1296,7 +1162,7 @@ def test_image_pull(runner, project):
     assert result.exit_code == 1
 
 
-def test_input_update_and_rerun(runner, project, capsys):
+def test_input_update_and_rerun(runner, project, run):
     """Test update and rerun of an input."""
     repo = git.Repo(project)
     cwd = Path(project)
@@ -1307,8 +1173,8 @@ def test_input_update_and_rerun(runner, project, capsys):
     repo.git.add('--all')
     repo.index.commit('Created input.txt')
 
-    assert 0 == _run_update(runner, capsys, args=('update', input_.name))
-    assert 1 == _run_update(runner, capsys, args=('rerun', input_.name))
+    assert 0 == run(args=('update', input_.name))
+    assert 1 == run(args=('rerun', input_.name))
 
 
 def test_moved_file(runner, project):
@@ -1353,7 +1219,7 @@ def test_deleted_input(runner, project, capsys):
     assert Path('input.mv').exists()
 
 
-def test_output_directory(runner, project, capsys):
+def test_output_directory(runner, project, run):
     """Test detection of output directory."""
     cwd = Path(project)
     data = cwd / 'source' / 'data.txt'
@@ -1378,7 +1244,7 @@ def test_output_directory(runner, project, capsys):
     assert (destination / data.name).exists()
 
     # Make sure the output directory can be recreated
-    assert 0 == _run_update(runner, capsys, args=('rerun', str(destination)))
+    assert 0 == run(args=('rerun', str(destination)))
     assert {data.name} == {path.name for path in destination.iterdir()}
 
     destination_data = str(Path('destination') / 'data.txt')
@@ -1393,7 +1259,7 @@ def test_output_directory(runner, project, capsys):
     assert not (invalid_destination / data.name).exists()
 
 
-def test_input_directory(runner, project, capsys):
+def test_input_directory(runner, project, run):
     """Test detection of input directory."""
     repo = git.Repo(project)
     cwd = Path(project)
@@ -1405,23 +1271,15 @@ def test_input_directory(runner, project, capsys):
     repo.git.add('--all')
     repo.index.commit('Created inputs')
 
-    with output.open('w') as stdout:
-        with contextlib.redirect_stdout(stdout):
-            try:
-                cli.cli.main(
-                    args=('run', 'ls', str(inputs)),
-                    prog_name=runner.get_default_prog_name(cli.cli),
-                )
-            except SystemExit as e:
-                assert e.code in {None, 0}
+    assert 0 == run(args=('run', 'ls', str(inputs)), stdout=output)
 
-    with output.open('r') as f:
-        assert 'first\n' == f.read()
+    with output.open('r') as fp:
+        assert 'first\n' == fp.read()
 
     (inputs / 'second').touch()
     repo.git.add('--all')
     repo.index.commit('Added second input')
 
-    assert 0 == _run_update(runner, capsys, args=('update', output.name))
-    with output.open('r') as f:
-        assert 'first\nsecond\n' == f.read()
+    assert 0 == run(args=('update', output.name))
+    with output.open('r') as fp:
+        assert 'first\nsecond\n' == fp.read()
