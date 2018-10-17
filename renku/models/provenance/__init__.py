@@ -20,9 +20,9 @@
 .. seealso:: https://www.w3.org/TR/prov-o/
 """
 
-from .agents import Person, SoftwareAgent
 from .activities import Activity, ProcessRun, WorkflowRun, from_git_commit
-from .entities import Entity, Collection, Process, Workflow
+from .agents import Person, SoftwareAgent
+from .entities import Collection, Entity, Process, Workflow
 from .expanded import Project
 from .qualified import Generation, Usage
 

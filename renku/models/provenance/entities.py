@@ -108,7 +108,7 @@ class Collection(Entity):
         members = []
         for path in dir_path.rglob('*'):
             if path.name == '.gitignore':
-                continue
+                continue  # ignore empty directories in Git repository
             members.append(
                 Entity(
                     commit=self.commit,

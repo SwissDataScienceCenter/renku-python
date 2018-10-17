@@ -224,11 +224,7 @@ class ProcessRun(Activity):
     def default_inputs(self):
         """Guess default inputs from a process."""
         inputs = {}
-
-        try:
-            basedir = os.path.dirname(self.path)
-        except TypeError:
-            return inputs
+        basedir = os.path.dirname(self.path)
 
         commit = self.commit
         client = self.client
@@ -397,10 +393,7 @@ class WorkflowRun(ProcessRun):
         """Load children from process."""
         import yaml
 
-        try:
-            basedir = os.path.dirname(self.path)
-        except TypeError:
-            basedir = None
+        basedir = os.path.dirname(self.path) if self.path is not None else None
 
         def _load(step):
             """Load step definition."""
@@ -420,11 +413,7 @@ class WorkflowRun(ProcessRun):
     @subprocesses.default
     def default_subprocesses(self):
         """Load subprocesses."""
-        try:
-            basedir = os.path.dirname(self.path)
-        except TypeError:
-            return
-
+        basedir = os.path.dirname(self.path)
         revision = '{0}^'.format(self.commit)
 
         ins = {

@@ -1229,6 +1229,7 @@ def test_output_directory(runner, project, run):
 
     # Empty destination
     destination = cwd / 'destination'
+    source_wc = cwd / 'destination_source.wc'
     # Non empty destination
     invalid_destination = cwd / 'invalid_destination'
     invalid_destination.mkdir(parents=True)
@@ -1241,15 +1242,19 @@ def test_output_directory(runner, project, run):
     cmd = ['run', 'cp', '-LRf', str(source), str(destination)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 0
-    assert (destination / data.name).exists()
+    destination_source = destination / data.name
+    assert destination_source.exists()
+
+    cmd = ['run', 'wc']
+    assert 0 == run(args=cmd, stdin=destination_source, stdout=source_wc)
 
     # Make sure the output directory can be recreated
-    assert 0 == run(args=('rerun', str(destination)))
+    assert 0 == run(args=('rerun', str(source_wc)))
     assert {data.name} == {path.name for path in destination.iterdir()}
 
-    destination_data = str(Path('destination') / 'data.txt')
-    cmd = ['log', destination_data]
+    cmd = ['log', str(source_wc)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    destination_data = str(Path('destination') / 'data.txt')
     assert destination_data in result.output, cmd
     assert ' directory)' in result.output
 
@@ -1266,12 +1271,22 @@ def test_input_directory(runner, project, run):
     output = cwd / 'output.txt'
     inputs = cwd / 'inputs'
     inputs.mkdir(parents=True)
+
+    gitignore = inputs / '.gitignore'
+    gitignore.touch()
+    repo.git.add('--all')
+    repo.index.commit('Empty inputs directory')
+
+    assert 0 == run(args=('run', 'ls', str(inputs)), stdout=output)
+    with output.open('r') as fp:
+        assert '' == fp.read().strip()
+
     (inputs / 'first').touch()
 
     repo.git.add('--all')
     repo.index.commit('Created inputs')
 
-    assert 0 == run(args=('run', 'ls', str(inputs)), stdout=output)
+    assert 0 == run(args=('update', output.name))
 
     with output.open('r') as fp:
         assert 'first\n' == fp.read()
