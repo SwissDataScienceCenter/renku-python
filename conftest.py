@@ -63,6 +63,16 @@ def run(runner, capsys):
 
     from renku import cli
 
+    @contextlib.contextmanager
+    def chdir(path):
+        """Change the current working directory."""
+        cwd = os.getcwd()
+        os.chdir(path)
+        try:
+            yield
+        finally:
+            os.chdir(cwd)
+
     class redirect_stdin(contextlib.ContextDecorator):
         """Implement missing redirect stdin based on ``contextlib.py``."""
 
@@ -93,12 +103,15 @@ def run(runner, capsys):
             ),
     }
 
-    def generate(args=('update', ), **streams):
+    def generate(args=('update', ), cwd=None, **streams):
         """Generate an output."""
 
         with capsys.disabled(), contextlib.ExitStack() as stack:
             for name, stream in streams.items():
                 stack.enter_context(managers[name](stream))
+
+            if cwd is not None:
+                stack.enter_context(chdir(str(cwd)))
 
             try:
                 cli.cli.main(

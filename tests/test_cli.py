@@ -576,6 +576,34 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project):
     assert os.stat(os.path.join('data', 'relative', 'second', 'data.txt'))
 
 
+def test_show_inputs(tmpdir_factory, project, runner, run):
+    """Test show inputs with submodules."""
+    second_project = Path(str(tmpdir_factory.mktemp('second_project')))
+
+    assert 0 == run(args=('init', str(second_project)))
+
+    woop = second_project / 'woop'
+    with woop.open('w') as fp:
+        fp.write('woop')
+
+    second_repo = git.Repo(str(second_project))
+    second_repo.git.add('--all')
+    second_repo.index.commit('Added woop file')
+
+    assert 0 == run(args=('dataset', 'create', 'foo'))
+    assert 0 == run(args=('dataset', 'add', 'foo', str(woop)))
+
+    imported_woop = Path(project) / 'data' / 'foo' / woop.name
+    assert imported_woop.exists()
+
+    woop_wc = Path(project) / 'woop.wc'
+    assert 0 == run(args=('run', 'wc'), stdin=imported_woop, stdout=woop_wc)
+
+    result = runner.invoke(cli.cli, ['show', 'inputs'])
+    assert {str(imported_woop.resolve().relative_to(Path(project).resolve()))
+            } == set(result.output.strip().split('\n'))
+
+
 def test_file_tracking(isolated_runner):
     """Test .gitattribute handling on renku run."""
     runner = isolated_runner

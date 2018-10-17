@@ -48,7 +48,6 @@ class Association:
             plan=activity.__association_cls__(
                 commit=commit or activity.commit,
                 client=activity.client,
-                submodules=activity.submodules,
                 path=activity.path,
                 activity=activity,
             ),
@@ -87,19 +86,17 @@ class Usage(EntityProxyMixin):
     _id = jsonld.ib(context='@id', default=None, kw_only=True)
 
     @classmethod
-    def from_revision(
-        cls, client, path, submodules=None, revision='HEAD', **kwargs
-    ):
+    def from_revision(cls, client, path, revision='HEAD', **kwargs):
         """Return dependency from given path and revision."""
         from .entities import Entity
 
+        client, commit, path = client.resolve_in_submodules(
+            client.find_previous_commit(path, revision=revision),
+            path,
+        )
+
         return cls(
-            entity=Entity(
-                client=client,
-                commit=client.find_previous_commit(path, revision=revision),
-                submodules=submodules or [],
-                path=path,
-            ),
+            entity=Entity(client=client, commit=commit, path=str(path)),
             **kwargs
         )
 
@@ -163,6 +160,7 @@ class Generation(EntityProxyMixin):
     @classmethod
     def from_activity_path(cls, activity, path, **kwargs):
         """Create an instance from activity and path."""
+        # TODO posibly resolve submodules
         from .entities import Collection, Entity
 
         entity_cls = Entity
@@ -172,7 +170,6 @@ class Generation(EntityProxyMixin):
         entity = entity_cls(
             commit=activity.commit,
             client=activity.client,
-            submodules=activity.submodules,
             path=path,
             parent=activity,
         )

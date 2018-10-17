@@ -126,7 +126,7 @@ class Graph(object):
 
     def latest(self, node):
         """Return a latest commit where the node was modified."""
-        if node.path not in self._latest_commits:
+        if node.path and node.path not in self._latest_commits:
             try:
                 latest = Usage.from_revision(
                     node.client,
@@ -139,7 +139,7 @@ class Graph(object):
 
             self._latest_commits[node.path] = latest
         else:
-            latest = self._latest_commits[node.path]
+            latest = self._latest_commits.get(node.path)
 
         if latest and latest != node.commit:
             return latest
@@ -207,7 +207,6 @@ class Graph(object):
             activity = Activity.from_git_commit(
                 processing.commit,
                 client=processing.client,
-                submodules=processing.submodules,
             )
 
             self.commits[activity.commit] = activity
@@ -375,7 +374,6 @@ class Graph(object):
             process_run = ProcessRun(
                 commit=node.commit,
                 client=node.client,
-                submodules=node.submodules,
                 path=None,
                 process=process,
                 inputs={

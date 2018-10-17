@@ -93,6 +93,8 @@ class RepositoryApiMixin(object):
         path.relative_to(path)
         self.renku_path = path
 
+        self._subclients = {}
+
         #: Create an instance of a Git repository for the given path.
         try:
             self.git = Repo(str(self.path))
@@ -176,6 +178,59 @@ class RepositoryApiMixin(object):
             )
 
         return file_commits[0]
+
+    @cached_property
+    def submodules(self):
+        """Return list of submodules it belongs to."""
+        if self.parent:
+            client, submodule = self.parent
+            return client.submodules + [submodule.name]
+        return []
+
+    def subclients(self, parent_commit):
+        """Return mapping from submodule to client."""
+        if parent_commit in self._subclients:
+            return self._subclients[parent_commit]
+
+        try:
+            from git import Submodule
+
+            submodules = [
+                submodule for submodule in Submodule.
+                iter_items(self.git, parent_commit=parent_commit)
+            ]
+        except (RuntimeError, ValueError):
+            # There are no submodules assiciated with the given commit.
+            submodules = []
+
+        return self._subclients.setdefault(
+            parent_commit, {
+                submodule: self.__class__(
+                    path=(self.path / submodule.path).resolve(),
+                    parent=(self, submodule),
+                )
+                for submodule in submodules
+            }
+        )
+
+    def resolve_in_submodules(self, commit, path):
+        """Resolve filename in submodules."""
+        original_path = self.path / path
+        if original_path.is_symlink() or str(path
+                                             ).startswith('.renku/vendors'):
+            original_path = original_path.resolve()
+            for submodule, subclient in self.subclients(commit).items():
+                try:
+                    subpath = original_path.relative_to(subclient.path)
+                    return (
+                        subclient,
+                        subclient.find_previous_commit(subpath),
+                        subpath,
+                    )
+                except ValueError:
+                    pass
+
+        return self, commit, path
 
     @contextmanager
     def with_metadata(self):

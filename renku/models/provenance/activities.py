@@ -23,7 +23,6 @@ import attr
 import yaml
 from git import NULL_TREE
 
-from renku.api import LocalClient
 from renku.models import _jsonld as jsonld
 from renku.models.cwl import WORKFLOW_STEP_RUN_TYPES
 from renku.models.cwl._ascwl import CWLClass
@@ -81,19 +80,25 @@ class Activity(CommitMixin):
     @generated.default
     def default_generated(self):
         """Calculate default values."""
-        return [
-            Generation(
-                activity=self,
-                entity=Entity(
-                    commit=self.commit,
-                    client=self.client,
-                    submodules=self.submodules,
-                    path=path,
-                    parent=self,
-                ),
-                role=role,
-            ) for path, role in self.outputs.items()
-        ]
+        results = []
+        for path, role in self.outputs.items():
+            client, commit, path = self.client.resolve_in_submodules(
+                self.commit,
+                path,
+            )
+            results.append(
+                Generation(
+                    activity=self,
+                    entity=Entity(
+                        commit=commit,
+                        client=client,
+                        path=str(path),
+                        parent=self,
+                    ),
+                    role=role,
+                )
+            )
+        return results
 
     @property
     def paths(self):
@@ -152,11 +157,9 @@ class Activity(CommitMixin):
         return []
 
     @staticmethod
-    def from_git_commit(commit, client, path=None, submodules=None):
+    def from_git_commit(commit, client, path=None):
         """Populate information from the given Git commit."""
-        return from_git_commit(
-            commit, client, path=None, submodules=submodules
-        )
+        return from_git_commit(commit, client, path=None)
 
 
 @jsonld.s(
@@ -229,28 +232,9 @@ class ProcessRun(Activity):
         commit = self.commit
         client = self.client
         process = self.process
-        hierarchy = self.submodules
 
         revision = '{0}^'.format(commit)
-
-        try:
-            from git import Submodule
-
-            submodules = [
-                submodule for submodule in Submodule.
-                iter_items(client.git, parent_commit=commit)
-            ]
-        except (RuntimeError, ValueError):
-            # There are no submodules assiciated with the given commit.
-            submodules = []
-
-        subclients = {
-            submodule: LocalClient(
-                path=(client.path / submodule.path).resolve(),
-                parent=client,
-            )
-            for submodule in submodules
-        }
+        subclients = self.client.subclients(commit)
 
         def resolve_submodules(file_, **kwargs):
             original_path = client.path / file_
@@ -264,7 +248,6 @@ class ProcessRun(Activity):
                             client=subclient,
                             path=str(subpath),
                             revision=submodule.hexsha,
-                            submodules=hierarchy + [submodule.name],
                             **kwargs
                         )
                     except ValueError:
@@ -467,7 +450,6 @@ class WorkflowRun(ProcessRun):
                 path=path,
                 inputs=inputs,
                 id=subprocess_id,
-                submodules=self.submodules,
             )
 
             subprocess.association = Association.from_activity(
@@ -560,11 +542,10 @@ class WorkflowRun(ProcessRun):
             yield from subprocess.nodes
 
 
-def from_git_commit(commit, client, path=None, submodules=None):
+def from_git_commit(commit, client, path=None):
     """Populate information from the given Git commit."""
     cls = Activity
     process = None
-    hierarchy = list(submodules) if submodules else []
 
     if path is None:
         for file_ in commit.stats.files.keys():
@@ -584,7 +565,6 @@ def from_git_commit(commit, client, path=None, submodules=None):
             client=client,
             process=process,
             path=path,
-            submodules=hierarchy,
         )
 
-    return cls(commit=commit, client=client, submodules=hierarchy)
+    return cls(commit=commit, client=client)

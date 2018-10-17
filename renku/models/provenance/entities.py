@@ -30,12 +30,16 @@ class CommitMixin:
 
     commit = attr.ib(default=None, kw_only=True)
     client = attr.ib(default=None, kw_only=True)
-    submodules = attr.ib(default=attr.Factory(list), kw_only=True)
     path = attr.ib(default=None, kw_only=True)
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
     _location = jsonld.ib(context='prov:atLocation', kw_only=True)
+
+    @property
+    def submodules(self):
+        """Proxy to client submodules."""
+        return self.client.submodules
 
     @_id.default
     def default_id(self):
@@ -113,7 +117,6 @@ class Collection(Entity):
                 Entity(
                     commit=self.commit,
                     client=self.client,
-                    submodules=self.submodules,
                     path=str(path.relative_to(self.client.path)),
                     parent=self,
                 )
