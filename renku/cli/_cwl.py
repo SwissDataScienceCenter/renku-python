@@ -52,6 +52,8 @@ def execute(client, output_file, output_paths=None):
     # Keep all environment variables.
     runtime_context = RuntimeContext(
         kwargs={
+            'rm_tmpdir': False,
+            'move_outputs': 'leave',
             'preserve_entire_environment': True,
         }
     )
