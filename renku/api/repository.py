@@ -224,7 +224,9 @@ class RepositoryApiMixin(object):
                     subpath = original_path.relative_to(subclient.path)
                     return (
                         subclient,
-                        subclient.find_previous_commit(subpath),
+                        subclient.find_previous_commit(
+                            subpath, revision=submodule.hexsha
+                        ),
                         subpath,
                     )
                 except ValueError:

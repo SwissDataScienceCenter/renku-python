@@ -234,42 +234,22 @@ class ProcessRun(Activity):
         process = self.process
 
         revision = '{0}^'.format(commit)
-        subclients = self.client.subclients(commit)
-
-        def resolve_submodules(file_, **kwargs):
-            original_path = client.path / file_
-            if original_path.is_symlink(
-            ) or file_.startswith('.renku/vendors'):
-                original_path = original_path.resolve()
-                for submodule, subclient in subclients.items():
-                    try:
-                        subpath = original_path.relative_to(subclient.path)
-                        return Usage.from_revision(
-                            client=subclient,
-                            path=str(subpath),
-                            revision=submodule.hexsha,
-                            **kwargs
-                        )
-                    except ValueError:
-                        pass
 
         for input_id, input_path in process.iter_input_files(basedir):
             try:
                 usage_id = self._id + '/inputs/' + input_id
-                dependency = resolve_submodules(
-                    input_path,
+                dependency = Usage.from_revision(
+                    client=client,
+                    path=input_path,
                     role=input_id,
+                    revision=revision,
                     id=usage_id,
                 )
-                if dependency is None:
-                    dependency = Usage.from_revision(
-                        client=client,
-                        path=input_path,
-                        role=input_id,
-                        revision=revision,
-                        id=usage_id,
-                    )
                 inputs[input_path] = dependency
+
+                for entity in getattr(dependency.entity, 'members', []):
+                    inputs.setdefault(entity.path, entity)
+
             except KeyError:
                 continue
 
@@ -402,6 +382,7 @@ class WorkflowRun(ProcessRun):
         ins = {
             dependency.role: dependency
             for path, dependency in self.inputs.items()
+            if isinstance(dependency, Usage)
         }
 
         entities = {}

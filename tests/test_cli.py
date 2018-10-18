@@ -1326,3 +1326,9 @@ def test_input_directory(runner, project, run):
     assert 0 == run(args=('update', output.name))
     with output.open('r') as fp:
         assert 'first\nsecond\n' == fp.read()
+
+    result = runner.invoke(cli.cli, ['show', 'inputs'])
+    assert set(
+        str(p.relative_to(cwd))
+        for p in inputs.rglob('*') if p.name != '.gitignore'
+    ) == set(result.output.strip().split('\n'))

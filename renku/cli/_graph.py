@@ -106,6 +106,9 @@ class Graph(object):
 
     def need_update(self, node):
         """Return out-dated nodes."""
+        if node is None:
+            return
+
         if isinstance(node, ProcessRun):
             node = node.association.plan
 

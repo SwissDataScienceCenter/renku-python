@@ -21,6 +21,7 @@ import weakref
 
 import attr
 
+from renku._compat import Path
 from renku.models import _jsonld as jsonld
 
 
@@ -88,23 +89,48 @@ class Usage(EntityProxyMixin):
     @classmethod
     def from_revision(cls, client, path, revision='HEAD', **kwargs):
         """Return dependency from given path and revision."""
-        from .entities import Entity
+        from .entities import Collection, Entity
 
         client, commit, path = client.resolve_in_submodules(
             client.find_previous_commit(path, revision=revision),
             path,
         )
 
-        return cls(
-            entity=Entity(client=client, commit=commit, path=str(path)),
-            **kwargs
-        )
+        path_ = Path(path)
+        if path != '.' and path_.is_dir():
+            member_paths = (
+                str(p) for p in path_.rglob('*') if p.name != '.gitignore'
+            )
+            members = []
+            for member in member_paths:
+                try:
+                    m_client, m_commit, m_path = client.resolve_in_submodules(
+                        client.find_previous_commit(member, revision=commit),
+                        member,
+                    )
+                    members.append(
+                        Entity(
+                            client=m_client, commit=m_commit, path=str(m_path)
+                        )
+                    )
+                except KeyError:
+                    pass
+
+            entity = Collection(
+                client=client,
+                commit=commit,
+                path=str(path),
+                members=members,
+            )
+        else:
+            entity = Entity(client=client, commit=commit, path=str(path))
+
+        return cls(entity=entity, **kwargs)
 
     @property
     def parents(self):
         """Return parent nodes."""
-        # TODO connect files to an input directory
-        return []  # pragma: no cover
+        return getattr(self.entity, 'members', [])
 
 
 @jsonld.s(
