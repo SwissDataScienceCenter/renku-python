@@ -29,35 +29,34 @@ from renku import errors
 _REPOSITORY_URLS = (
     re.compile(
         r'^(?P<protocol>https?|git|ssh|rsync)\://'
-        # '(?:(?P<user>.+)@)*'
-        '(?:(?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
-        '(?P<hostname>[a-z0-9_.-]*)'
-        '[:/]*'
-        '(?P<port>[\d]+){0,1}'
-        '(?P<pathname>\/(?P<owner>.+)/(?P<name>.+).git)'
+        r'(?:(?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
+        r'(?P<hostname>[a-z0-9_.-]*)'
+        r'[:/]*'
+        r'(?P<port>[\d]+){0,1}'
+        r'(?P<pathname>\/(?P<owner>.+)/(?P<name>.+).git)'
     ),
     re.compile(
         r'(git\+)?'
-        '((?P<protocol>\w+)://)'
+        r'((?P<protocol>\w+)://)'
         # '((?P<user>\w+)@)?'
-        '((?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
-        '((?P<hostname>[\w\.\-]+))'
-        '(:(?P<port>\d+))?'
-        '(?P<pathname>(\/(?P<owner>\w+)/)?'
-        '(\/?(?P<name>[\w\-]+)(\.git)?)?)'
+        r'((?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
+        r'((?P<hostname>[\w\.\-]+))'
+        r'(:(?P<port>\d+))?'
+        r'(?P<pathname>(\/(?P<owner>\w+)/)?'
+        r'(\/?(?P<name>[\w\-]+)(\.git)?)?)'
     ),
     re.compile(
         r'^(?:(?P<username>.+)@)*'
-        '(?P<hostname>[a-z0-9_.-]*)[:/]*'
-        '(?P<port>[\d]+){0,1}'
-        '[:](?P<pathname>\/?(?P<owner>.+)/(?P<name>.+).git)'
+        r'(?P<hostname>[a-z0-9_.-]*)[:/]*'
+        r'(?P<port>[\d]+){0,1}'
+        r'[:](?P<pathname>\/?(?P<owner>.+)/(?P<name>.+).git)'
     ),
     re.compile(
         r'((?P<username>\w+)@)?'
-        '((?P<hostname>[\w\.\-]+))'
-        '[\:\/]{1,2}'
-        '(?P<pathname>((?P<owner>\w+)/)?'
-        '((?P<name>[\w\-]+)(\.git)?)?)'
+        r'((?P<hostname>[\w\.\-]+))'
+        r'[\:\/]{1,2}'
+        r'(?P<pathname>((?P<owner>\w+)/)?'
+        r'((?P<name>[\w\-]+)(\.git)?)?)'
     ),
     re.compile(
         # Simple registry URL like: docker.io
