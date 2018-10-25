@@ -28,7 +28,12 @@ def pull():
 
 
 @pull.command()
-@click.argument('filename', type=click.Path(exists=True))
+@click.argument(
+    'paths',
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
+)
 @pass_local_client
 def file(client, filename):
     """Create an empty dataset in the current repo."""
