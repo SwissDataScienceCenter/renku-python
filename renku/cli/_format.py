@@ -41,7 +41,7 @@ def _jsonld(graph, format, *args, **kwargs):
     return json.dumps(output, indent=2)
 
 
-def dot(graph):
+def dot_old(graph):
     """Format graph as a dot file."""
     import sys
 
@@ -55,6 +55,131 @@ def dot(graph):
         data=_jsonld(graph, 'expand'),
         format='json-ld',
     )
+    rdf2dot(g, sys.stdout)
+
+
+def dot(graph):
+    """A reduced dot graph."""
+    import cgi
+    import collections
+    import sys
+
+    import rdflib
+
+    from rdflib import ConjunctiveGraph
+    from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
+
+    g = ConjunctiveGraph().parse(
+        data=_jsonld(graph, 'expand'),
+        format='json-ld',
+    )
+    g.bind('prov', 'http://www.w3.org/ns/prov#')
+    g.bind('wfdesc', 'http://purl.org/wf4ever/wfdesc#')
+    g.bind('wf', 'http://www.w3.org/2005/01/wf/flow#')
+    g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
+
+    def rdf2dot(g, stream, opts={}):
+        """Convert the RDF graph to DOT.
+
+        source: https://rdflib.readthedocs.io/en/stable/_modules/\
+                rdflib/tools/rdf2dot.html
+        """
+        types = collections.defaultdict(set)
+        fields = collections.defaultdict(set)
+        nodes = {}
+
+        def node(x):
+            """Return a name of the given node."""
+            return nodes.setdefault(x, 'node{0}'.format(len(nodes)))
+
+        def label(x, g):
+            """Generate a label for the node."""
+            for labelProp in LABEL_PROPERTIES:
+                label_ = g.value(x, labelProp)
+                if label_:
+                    return label_
+
+            try:
+                return g.namespace_manager.compute_qname(x)[2]
+            except Exception:
+                return x
+
+        def formatliteral(l, g):
+            """Format and escape literal."""
+            v = cgi.escape(l)
+            if l.datatype:
+                return '&quot;%s&quot;^^%s' % (v, qname(l.datatype, g))
+            elif l.language:
+                return '&quot;%s&quot;@%s' % (v, l.language)
+            return '&quot;%s&quot;' % v
+
+        def qname(x, g):
+            """Compute qname."""
+            try:
+                q = g.compute_qname(x)
+                return q[0] + ":" + q[2]
+            except Exception:
+                return x
+
+        def color(p):
+            """Choose node color."""
+            return "BLACK"
+
+        stream.write(
+            'digraph { \n node [ fontname="DejaVu Sans" ] ; \n '
+            'rankdir="LR" \n'
+        )
+
+        for s, p, o in g:
+            # import ipdb; ipdb.set_trace()
+            sn = node(s)
+            if p == rdflib.RDFS.label:
+                continue
+
+            # inject the type predicate into the node itself
+            if p == rdflib.RDF.type:
+                types[sn].add((qname(p, g), cgi.escape(o)))
+                continue
+            if p == rdflib.term.URIRef('http://www.w3.org/ns/prov#atLocation'):
+                fields[sn].add((qname(p, g), cgi.escape(o)))
+                continue
+            if p == rdflib.term.URIRef(
+                'http://www.w3.org/ns/prov#wasInformedBy'
+            ):
+                continue
+
+            if isinstance(o, (rdflib.URIRef, rdflib.BNode)):
+                on = node(o)
+                opstr = (
+                    '\t%s -> %s [ color=%s, label=< <font point-size="12" '
+                    'color="#336633">%s</font> > ] ;\n'
+                )
+                stream.write(opstr % (sn, on, color(p), qname(p, g)))
+            else:
+                fields[sn].add((qname(p, g), formatliteral(o, g)))
+
+        for u, n in nodes.items():
+            stream.write(u"# %s %s\n" % (u, n))
+            f = [
+                '<tr><td align="left"><b>%s</b></td><td align="left">'
+                '<b>%s</b></td></tr>' % x for x in sorted(types[n])
+            ]
+            f += [
+                '<tr><td align="left">%s</td><td align="left">%s</td></tr>' % x
+                for x in sorted(fields[n])
+            ]
+            opstr = (
+                '%s [ shape=none, color=%s label=< <table color="#666666"'
+                ' cellborder="0" cellspacing="0" border="1"><tr>'
+                '<td colspan="2" bgcolor="grey"><B>%s</B></td></tr><tr>'
+                '<td href="%s" bgcolor="#eeeeee" colspan="2">'
+                '<font point-size="12" color="#6666ff">%s</font></td>'
+                '</tr>%s</table> > ] \n'
+            )
+            stream.write(opstr % (n, NODECOLOR, label(u, g), u, u, ''.join(f)))
+
+        stream.write('}\n')
+
     rdf2dot(g, sys.stdout)
 
 
