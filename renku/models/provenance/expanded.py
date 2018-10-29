@@ -27,7 +27,7 @@ from renku.models import _jsonld as jsonld
     ],
     context={
         'foaf': 'http://xmlns.com/foaf/0.1/',
-        'prov': 'http://purl.org/dc/terms/',
+        'prov': 'http://www.w3.org/ns/prov#',
     },
     frozen=True,
     slots=True,
