@@ -65,7 +65,7 @@ class Collection(object):
     def list(self):
         """Return a list if the collection is iterable."""
         if not hasattr(self, '__iter__'):
-            raise NotImplemented('The collection is not iterable.')
+            raise NotImplementedError('The collection is not iterable.')
         return list(self)
 
 

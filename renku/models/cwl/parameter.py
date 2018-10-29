@@ -68,7 +68,7 @@ class CommandLineBinding(object):
         """Format command line binding as shell argument."""
         if self.valueFrom is not None:
             if self.valueFrom.startswith('$('):
-                raise NotImplemented()
+                raise NotImplementedError()
             value = self.valueFrom
         else:
             value = default

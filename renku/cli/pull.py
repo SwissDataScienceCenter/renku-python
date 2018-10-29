@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,23 +15,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage notebooks."""
+"""Pull data from external storage."""
 
 import click
 
+from ._client import pass_local_client
+
 
 @click.group()
-def notebooks():
-    """Manage notebooks."""
+def pull():
+    """Pull data from external storage."""
 
 
-@notebooks.command()
-def list():
-    """Show running notebooks."""
-    raise NotImplementedError()
-
-
-@notebooks.command()
-def launch():
-    """Launch a new notebook."""
-    raise NotImplementedError()
+@pull.command()
+@click.argument(
+    'paths',
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
+)
+@pass_local_client
+def path(client, paths):
+    """Pull the specified path from external storage."""
+    for p in paths:
+        client.pull_path(p)
