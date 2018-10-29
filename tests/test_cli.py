@@ -1309,8 +1309,8 @@ def test_input_directory(runner, project, run):
     inputs = cwd / 'inputs'
     inputs.mkdir(parents=True)
 
-    gitignore = inputs / '.gitignore'
-    gitignore.touch()
+    gitkeep = inputs / '.gitkeep'
+    gitkeep.touch()
     repo.git.add('--all')
     repo.index.commit('Empty inputs directory')
 
@@ -1339,5 +1339,5 @@ def test_input_directory(runner, project, run):
     result = runner.invoke(cli.cli, ['show', 'inputs'])
     assert set(
         str(p.relative_to(cwd))
-        for p in inputs.rglob('*') if p.name != '.gitignore'
+        for p in inputs.rglob('*') if p.name != '.gitkeep'
     ) == set(result.output.strip().split('\n'))

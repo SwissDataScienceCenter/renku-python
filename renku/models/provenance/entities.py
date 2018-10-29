@@ -86,7 +86,7 @@ class Entity(CommitMixin):
     @property
     def parents(self):
         """Return list of parents."""
-        return [self.parent]
+        return [self.parent] if self.parent is not None else []
 
 
 @jsonld.s(
@@ -111,7 +111,7 @@ class Collection(Entity):
 
         members = []
         for path in dir_path.rglob('*'):
-            if path.name == '.gitignore':
+            if path.name == '.gitkeep':
                 continue  # ignore empty directories in Git repository
             members.append(
                 Entity(

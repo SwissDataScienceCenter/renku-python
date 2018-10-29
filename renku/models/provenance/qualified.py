@@ -99,7 +99,7 @@ class Usage(EntityProxyMixin):
         path_ = Path(path)
         if path != '.' and path_.is_dir():
             member_paths = (
-                str(p) for p in path_.rglob('*') if p.name != '.gitignore'
+                str(p) for p in path_.rglob('*') if p.name != '.gitkeep'
             )
             members = []
             for member in member_paths:

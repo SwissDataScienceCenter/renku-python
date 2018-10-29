@@ -479,7 +479,7 @@ class CommandLineToolFactory(object):
                 content = {
                     str(path)
                     for path in input_path.rglob('*')
-                    if path.name != '.gitkeep'
+                    if not path.is_dir() and path.name != '.gitkeep'
                 }
                 extra_paths = content - subpaths
                 if extra_paths:
