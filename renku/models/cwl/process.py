@@ -43,7 +43,7 @@ class Process(object):
         """Yield tuples with input id and path."""
         stdin = getattr(self, 'stdin', None)
         if stdin and stdin[0] != '$':  # pragma: no cover
-            raise NotImplemented(self.stdin)
+            raise NotImplementedError(self.stdin)
         for input_ in self.inputs:
             if input_.type in PATH_OBJECTS and input_.default:
                 yield (

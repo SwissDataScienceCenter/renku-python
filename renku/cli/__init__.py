@@ -82,6 +82,7 @@ from .githooks import githooks
 from .image import image
 from .init import init
 from .log import log
+from .pull import pull
 from .rerun import rerun
 from .run import run
 from .runner import runner
@@ -165,6 +166,7 @@ cli.add_command(githooks)
 cli.add_command(image)
 cli.add_command(init)
 cli.add_command(log)
+cli.add_command(pull)
 cli.add_command(rerun)
 cli.add_command(run)
 cli.add_command(runner)

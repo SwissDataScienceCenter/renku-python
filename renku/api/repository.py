@@ -20,7 +20,7 @@
 import datetime
 import uuid
 from contextlib import contextmanager
-from subprocess import PIPE, STDOUT, call
+from subprocess import PIPE, STDOUT, call, run
 
 import attr
 import filelock
@@ -368,3 +368,11 @@ class RepositoryApiMixin(object):
                 stderr=STDOUT,
                 cwd=str(self.path),
             )
+
+    def pull_path(self, path):
+        """Pull a path from LFS."""
+        client, commit, path = self.resolve_in_submodules(
+            self.git.commit(), path
+        )
+        cmd = ['git', 'lfs', 'pull', 'origin', '-I', str(path)]
+        run(cmd, cwd=client.path, check=True)
