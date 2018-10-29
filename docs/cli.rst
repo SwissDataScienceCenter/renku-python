@@ -44,7 +44,7 @@ Renku Command Line
 .. _cli-pull:
 
 ``renku pull``
-----------------
+--------------
 
 .. automodule:: renku.cli.pull
 
