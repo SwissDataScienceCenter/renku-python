@@ -20,7 +20,7 @@
 import click
 
 
-def ascii(graph):
+def ascii(graph, **kwargs):
     """Format graph as an ASCII art."""
     from ._ascii import DAG
     from ._echo import echo_via_pager
@@ -41,7 +41,7 @@ def _jsonld(graph, format, *args, **kwargs):
     return json.dumps(output, indent=2)
 
 
-def dot_old(graph):
+def dot(graph, simple=False):
     """Format graph as a dot file."""
     import sys
 
@@ -55,145 +55,134 @@ def dot_old(graph):
         data=_jsonld(graph, 'expand'),
         format='json-ld',
     )
-    rdf2dot(g, sys.stdout)
 
-
-def dot(graph):
-    """A reduced dot graph."""
-    import cgi
-    import collections
-    import sys
-
-    import rdflib
-
-    from rdflib import ConjunctiveGraph
-    from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
-
-    g = ConjunctiveGraph().parse(
-        data=_jsonld(graph, 'expand'),
-        format='json-ld',
-    )
     g.bind('prov', 'http://www.w3.org/ns/prov#')
     g.bind('wfdesc', 'http://purl.org/wf4ever/wfdesc#')
     g.bind('wf', 'http://www.w3.org/2005/01/wf/flow#')
     g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
 
-    def rdf2dot(g, stream, opts={}):
-        """Convert the RDF graph to DOT.
-
-        source: https://rdflib.readthedocs.io/en/stable/_modules/\
-                rdflib/tools/rdf2dot.html
-        """
-        types = collections.defaultdict(set)
-        fields = collections.defaultdict(set)
-        nodes = {}
-
-        def node(x):
-            """Return a name of the given node."""
-            return nodes.setdefault(x, 'node{0}'.format(len(nodes)))
-
-        def label(x, g):
-            """Generate a label for the node."""
-            for labelProp in LABEL_PROPERTIES:
-                label_ = g.value(x, labelProp)
-                if label_:
-                    return label_
-
-            try:
-                return g.namespace_manager.compute_qname(x)[2]
-            except Exception:
-                return x
-
-        def formatliteral(l, g):
-            """Format and escape literal."""
-            v = cgi.escape(l)
-            if l.datatype:
-                return '&quot;%s&quot;^^%s' % (v, qname(l.datatype, g))
-            elif l.language:
-                return '&quot;%s&quot;@%s' % (v, l.language)
-            return '&quot;%s&quot;' % v
-
-        def qname(x, g):
-            """Compute qname."""
-            try:
-                q = g.compute_qname(x)
-                return q[0] + ":" + q[2]
-            except Exception:
-                return x
-
-        def color(p):
-            """Choose node color."""
-            return "BLACK"
-
-        stream.write(
-            'digraph { \n node [ fontname="DejaVu Sans" ] ; \n '
-            'rankdir="LR" \n'
-        )
-
-        for s, p, o in g:
-            # import ipdb; ipdb.set_trace()
-            sn = node(s)
-            if p == rdflib.RDFS.label:
-                continue
-
-            # inject the type predicate into the node itself
-            if p == rdflib.RDF.type:
-                types[sn].add((qname(p, g), cgi.escape(o)))
-                continue
-            if p == rdflib.term.URIRef('http://www.w3.org/ns/prov#atLocation'):
-                fields[sn].add((qname(p, g), cgi.escape(o)))
-                continue
-            if p == rdflib.term.URIRef(
-                'http://www.w3.org/ns/prov#wasInformedBy'
-            ):
-                continue
-
-            if isinstance(o, (rdflib.URIRef, rdflib.BNode)):
-                on = node(o)
-                opstr = (
-                    '\t%s -> %s [ color=%s, label=< <font point-size="12" '
-                    'color="#336633">%s</font> > ] ;\n'
-                )
-                stream.write(opstr % (sn, on, color(p), qname(p, g)))
-            else:
-                fields[sn].add((qname(p, g), formatliteral(o, g)))
-
-        for u, n in nodes.items():
-            stream.write(u"# %s %s\n" % (u, n))
-            f = [
-                '<tr><td align="left"><b>%s</b></td><td align="left">'
-                '<b>%s</b></td></tr>' % x for x in sorted(types[n])
-            ]
-            f += [
-                '<tr><td align="left">%s</td><td align="left">%s</td></tr>' % x
-                for x in sorted(fields[n])
-            ]
-            opstr = (
-                '%s [ shape=none, color=%s label=< <table color="#666666"'
-                ' cellborder="0" cellspacing="0" border="1"><tr>'
-                '<td colspan="2" bgcolor="grey"><B>%s</B></td></tr><tr>'
-                '<td href="%s" bgcolor="#eeeeee" colspan="2">'
-                '<font point-size="12" color="#6666ff">%s</font></td>'
-                '</tr>%s</table> > ] \n'
-            )
-            stream.write(opstr % (n, NODECOLOR, label(u, g), u, u, ''.join(f)))
-
-        stream.write('}\n')
-
+    if simple:
+        rdf2dot_simple(g, sys.stdout)
+        return
     rdf2dot(g, sys.stdout)
 
 
-def jsonld(graph):
+def rdf2dot_simple(g, stream):
+    """Create a simple graph of processes and artifacts."""
+    stream.write(
+        'digraph { \n node [ fontname="DejaVu Sans" ] ; \n '
+        'rankdir="LR" \n'
+    )
+
+    import re
+
+    path_re = re.compile(
+        r'file:///(?P<type>[a-zA-Z]+)/'
+        r'(?P<commit>\w+)'
+        r'(?P<path>.+)?'
+    )
+
+    processes = g.query(
+        """
+        SELECT ?process
+        WHERE {
+            ?process rdf:type wfprov:ProcessRun
+            FILTER NOT EXISTS {?process rdf:type wfprov:WorkflowRun}
+        }
+        """
+    )
+    for process, in processes:
+        inputs = g.query(
+            """
+            SELECT ?role ?dependency
+            WHERE {{
+                <{process}> (prov:qualifiedUsage/prov:entity) ?dependency .
+                <{process}> prov:qualifiedUsage ?qual .
+                ?qual prov:hadRole ?role .
+                ?qual prov:entity ?dependency .
+            }}
+            """.format(process=process)
+        )
+        outputs = g.query(
+            """
+        SELECT ?role ?dependent
+        WHERE {{
+            ?dependent (prov:qualifiedGeneration/prov:activity) <{process}>  .
+            ?dependent prov:qualifiedGeneration ?qual .
+            ?qual prov:hadRole ?role .
+            ?qual prov:activity <{process}>
+        }}
+        """.format(process=process)
+        )
+        comment = list(
+            g.query(
+                """
+            SELECT ?comment
+            WHERE {{
+                <{process}> rdfs:comment ?comment .
+            }}
+            """.format(process=process)
+            )
+        )[0]
+
+        proc_path = path_re.match(process)
+
+        # write the process node
+        stream.write(
+            '"{proc_commit}:{proc_path}"'
+            '[shape=box label=<{comment}<br/>'
+            '#{proc_commit}<br/>{proc_path}>] \n'.format(
+                proc_commit=proc_path.group('commit')[:7],
+                proc_path=proc_path.group('path') or '',
+                comment=str(comment[0])
+            )
+        )
+
+        # write the input nodes
+        for role, dependency in inputs:
+            dep_path = path_re.match(dependency)
+            stream.write(
+                '"{dep_commit}:{dep_path}"'
+                '[label=<{dep_path}<br/>#{dep_commit}> \n]'
+                '\t"{dep_commit}:{dep_path}" -> "{proc_commit}:{proc_path}" '
+                '[label = "used as {role}"];\n'.format(
+                    proc_commit=proc_path.group('commit')[:7],
+                    proc_path=proc_path.group('path') or '',
+                    dep_path=dep_path.group('path'),
+                    dep_commit=dep_path.group('commit')[:7],
+                    role=str(role)
+                )
+            )
+
+        # write the output nodes
+        for role, dependent in outputs:
+            dep_path = path_re.match(dependent)
+            stream.write(
+                '"{dep_commit}:{dep_path}"'
+                '[label=<{dep_path}<br/>#{dep_commit}> \n]'
+                '\t"{proc_commit}:{proc_path}" -> "{dep_commit}:{dep_path}"'
+                '[label="generated as {role}"];\n'.format(
+                    proc_path=proc_path.group('path') or '',
+                    proc_commit=proc_path.group('commit')[:7],
+                    dep_path=dep_path.group('path'),
+                    dep_commit=dep_path.group('commit')[:7],
+                    role=str(role)
+                )
+            )
+    stream.write('}\n')
+
+
+def jsonld(graph, **kwargs):
     """Format graph as JSON-LD file."""
     click.echo(_jsonld(graph, 'expand'))
 
 
-def jsonld_graph(graph):
+def jsonld_graph(graph, **kwargs):
     """Format graph as JSON-LD graph file."""
     click.echo(_jsonld(graph, 'flatten'))
 
 
-def nt(graph):
+def nt(graph, **kwargs):
     """Format graph as n-tuples."""
     from rdflib import ConjunctiveGraph
     from rdflib.plugin import register, Parser
@@ -208,7 +197,7 @@ def nt(graph):
     )
 
 
-def rdf(graph):
+def rdf(graph, **kwargs):
     """Output the graph as RDF."""
     from rdflib import ConjunctiveGraph
     from rdflib.plugin import register, Parser
