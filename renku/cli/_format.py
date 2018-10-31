@@ -41,7 +41,7 @@ def _jsonld(graph, format, *args, **kwargs):
     return json.dumps(output, indent=2)
 
 
-def dot(graph, simple=False):
+def dot(graph, simple=False, landscape=True):
     """Format graph as a dot file."""
     import sys
 
@@ -62,17 +62,16 @@ def dot(graph, simple=False):
     g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
 
     if simple:
-        rdf2dot_simple(g, sys.stdout)
+        rdf2dot_simple(g, sys.stdout, landscape)
         return
     rdf2dot(g, sys.stdout)
 
 
-def rdf2dot_simple(g, stream):
+def rdf2dot_simple(g, stream, landscape=True):
     """Create a simple graph of processes and artifacts."""
-    stream.write(
-        'digraph { \n node [ fontname="DejaVu Sans" ] ; \n '
-        'rankdir="LR" \n'
-    )
+    stream.write('digraph { \n node [ fontname="DejaVu Sans" ] ; \n ')
+    if landscape:
+        stream.write('rankdir="LR" \n')
 
     import re
 
