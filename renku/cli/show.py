@@ -133,10 +133,15 @@ def inputs(ctx, client, revision, paths):
         activity = graph.commits[commit]
 
         if isinstance(activity, ProcessRun):
-            for path, usage in activity.inputs.items():
-                usage_key = (usage.commit, usage.path)
-                if path not in input_paths and usage_key in candidates:
-                    input_paths.add(path)
+            for usage in activity.qualified_usage:
+                for entity in usage.entity.entities:
+                    path = str((usage.client.path / entity.path).relative_to(
+                        client.path
+                    ))
+                    usage_key = (entity.commit, entity.path)
+
+                    if path not in input_paths and usage_key in candidates:
+                        input_paths.add(path)
 
     click.echo('\n'.join(graph._format_path(path) for path in input_paths))
     ctx.exit(0 if not paths or len(input_paths) == len(paths) else 1)

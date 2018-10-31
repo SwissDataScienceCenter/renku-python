@@ -18,7 +18,7 @@
 """Graph builder."""
 
 import os
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict, deque
 
 import attr
 
@@ -29,7 +29,7 @@ from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
 from renku.models.cwl.workflow import Workflow
 from renku.models.provenance import Activity, Generation, ProcessRun, Usage
-from renku.models.provenance.entities import Entity, Process
+from renku.models.provenance.entities import Collection, Entity, Process
 
 LINK_CWL = CommandLineTool(
     baseCommand=['true'],
@@ -95,11 +95,18 @@ class Graph(object):
     @_nodes.default
     def default_nodes(self):
         """Build node index."""
-        nodes = []
+        nodes = OrderedDict()
         for commit in reversed(self._sorted_commits):
             try:
                 activity = self.commits[commit]
-                nodes.extend(reversed(list(activity.nodes)))
+                for node in reversed(list(activity.nodes)):
+                    key = (node.commit, node.path)
+                    if key in nodes:
+                        # FIXME better link input directories
+                        # if node._parent is None:
+                        #     node._parent = nodes[key]._parent
+                        del nodes[key]
+                    nodes[key] = node
             except KeyError:
                 pass
         return nodes
@@ -109,8 +116,10 @@ class Graph(object):
         if node is None:
             return
 
+        skip = True
         if isinstance(node, ProcessRun):
             node = node.association.plan
+            skip = False
 
         if node._id in self._need_update:
             return self._need_update[node._id]
@@ -120,7 +129,12 @@ class Graph(object):
             return self._need_update.setdefault(node._id, [node])
 
         need_update_ = []
+
         for parent in node.parents:
+            # Skip Collections if it is not an input
+            if skip and isinstance(parent, Collection):
+                continue
+
             parent_updates = self.need_update(parent)
             if parent_updates:
                 need_update_.extend(parent_updates)
@@ -150,7 +164,7 @@ class Graph(object):
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        return reversed(self._nodes)
+        return reversed(self._nodes.values())
 
     def normalize_path(self, path):
         """Normalize path relative to the Git workdir."""
@@ -192,6 +206,9 @@ class Graph(object):
     def process_dependencies(self, dependencies):
         """Process given dependencies."""
         for dependency in dependencies:
+            # We can't simply reuse information from submodules
+            if dependency.client != self.client:
+                continue
             self._latest_commits[dependency.path] = dependency.commit
 
         visited = set()
@@ -240,9 +257,8 @@ class Graph(object):
 
         self.process_dependencies(dependencies)
 
-        nodes = {(n.commit, n.path): n for n in self._nodes}
         return {
-            nodes.get((dependency.commit, dependency.path), dependency)
+            self._nodes.get((dependency.commit, dependency.path), dependency)
             for dependency in dependencies
             if _safe_path(dependency.path, can_be_cwl=can_be_cwl)
         }
@@ -271,9 +287,24 @@ class Graph(object):
             can_be_cwl=can_be_cwl,
         )
 
+        # TODO check only outputs
+        paths = {}
+        for commit in reversed(self._sorted_commits):
+            activity = self.commits.get(commit)
+
+            if isinstance(activity, ProcessRun):
+                nodes = activity.nodes if can_be_cwl else activity.generated
+
+                for node in nodes:
+                    paths[node.path] = node
+
         # First find all up-to-date nodes.
-        for node in current_files:
-            need_update = self.need_update(node)
+        for node in paths.values():
+            # for node in current_files:
+            need_update = [
+                dependency for dependency in self.need_update(node)
+                if dependency.path != node.path
+            ]
 
             if need_update:
                 status['outdated'][node.path] = need_update

@@ -24,13 +24,18 @@ import attr
 from renku.models import _jsonld as jsonld
 
 
+def _str_or_none(data):
+    """Return str representation or None."""
+    return str(data) if data is not None else data
+
+
 @attr.s(cmp=False)
 class CommitMixin:
     """Represent a commit mixin."""
 
     commit = attr.ib(default=None, kw_only=True)
     client = attr.ib(default=None, kw_only=True)
-    path = attr.ib(default=None, kw_only=True)
+    path = attr.ib(default=None, kw_only=True, converter=_str_or_none)
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
@@ -78,6 +83,50 @@ class Entity(CommitMixin):
         if value is not None else None,
     )
 
+    @classmethod
+    def from_revision(cls, client, path, revision='HEAD', parent=None):
+        """Return dependency from given path and revision."""
+        client, commit, path = client.resolve_in_submodules(
+            client.find_previous_commit(path, revision=revision),
+            path,
+        )
+
+        path_ = client.path / path
+        if path != '.' and path_.is_dir():
+            entity = Collection(
+                client=client,
+                commit=commit,
+                path=path,
+                members=[],
+                parent=parent,
+            )
+
+            for member in path_.iterdir():
+                if member.name == '.gitkeep':
+                    continue
+
+                try:
+                    entity.members.append(
+                        cls.from_revision(
+                            client,
+                            str(member.relative_to(client.path)),
+                            commit,
+                            parent=entity
+                        )
+                    )
+                except KeyError:
+                    pass
+
+        else:
+            entity = Entity(
+                client=client,
+                commit=commit,
+                path=str(path),
+                parent=parent,
+            )
+
+        return entity
+
     @property
     def parent(self):  # pragma: no cover
         """Return the parent object."""
@@ -87,6 +136,11 @@ class Entity(CommitMixin):
     def parents(self):
         """Return list of parents."""
         return [self.parent] if self.parent is not None else []
+
+    @property
+    def entities(self):
+        """Yield itself."""
+        yield self
 
 
 @jsonld.s(
@@ -110,11 +164,12 @@ class Collection(Entity):
         assert dir_path.is_dir()
 
         members = []
-        for path in dir_path.rglob('*'):
+        for path in dir_path.iterdir():
             if path.name == '.gitkeep':
                 continue  # ignore empty directories in Git repository
+            cls = Collection if path.is_dir() else Entity
             members.append(
-                Entity(
+                cls(
                     commit=self.commit,
                     client=self.client,
                     path=str(path.relative_to(self.client.path)),
@@ -122,6 +177,12 @@ class Collection(Entity):
                 )
             )
         return members
+
+    @property
+    def entities(self):
+        """Recursively return all files."""
+        for member in self.members:
+            yield from member.entities
 
 
 @jsonld.s(

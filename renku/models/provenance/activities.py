@@ -32,6 +32,21 @@ from .entities import Collection, CommitMixin, Entity, Process, Workflow
 from .qualified import Association, Generation, Usage
 
 
+def _nodes(output, parent=None):
+    """Yield nodes from entities."""
+    # NOTE refactor so all outputs behave the same
+    entity = getattr(output, 'entity', output)
+
+    if isinstance(entity, Collection):
+        for member in entity.members:
+            if parent is not None:
+                member = attr.evolve(member, parent=parent)
+            yield from _nodes(member)
+        yield output
+    else:
+        yield output
+
+
 @jsonld.s(
     type='prov:Activity',
     context={
@@ -149,7 +164,8 @@ class Activity(CommitMixin):
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
-        return self.generated
+        for output in self.generated:
+            yield from _nodes(output, parent=output)
 
     @property
     def parents(self):
@@ -247,8 +263,8 @@ class ProcessRun(Activity):
                 )
                 inputs[input_path] = dependency
 
-                for entity in getattr(dependency.entity, 'members', []):
-                    inputs.setdefault(entity.path, entity)
+                # for entity in getattr(dependency.entity, 'members', []):
+                #     inputs.setdefault(entity.path, entity)
 
             except KeyError:
                 continue
@@ -295,21 +311,16 @@ class ProcessRun(Activity):
     def nodes(self):
         """Return topologically sorted nodes."""
         # Outputs go first
-        for output in super().nodes:
+        yield from super().nodes
 
-            # NOTE refactor so all outputs behave the same
-            if isinstance(output.entity, Collection):
-                for entity in output.entity.members:
-                    yield attr.evolve(entity, parent=output)
-                # yield from output.entity.members
-
-            yield output
         # Activity itself
         yield self.association.plan
+
         # Input directories might not be exported otherwise
         for node in self.inputs.values():
-            if (node.client.path / node.path).is_dir():
-                yield node
+            node_path = node.client.path / node.path
+            if node_path.is_dir():
+                yield from _nodes(node)
 
     @property
     def parents(self):
