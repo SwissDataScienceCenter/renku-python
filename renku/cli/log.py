@@ -92,15 +92,9 @@ from ._graph import Graph
     default=False,
     help='Generate a simplified graph.'
 )
-@click.option(
-    '--landscape/--portrait',
-    is_flag=True,
-    default=True,
-    help='Generate a landscape-oriented graph'
-)
 @click.argument('paths', type=click.Path(exists=True), nargs=-1)
 @pass_local_client
-def log(client, revision, format, no_output, simple, landscape, paths):
+def log(client, revision, format, no_output, simple, paths):
     """Show logs for a file."""
     graph = Graph(client)
     if not paths:
@@ -113,4 +107,4 @@ def log(client, revision, format, no_output, simple, landscape, paths):
     # NOTE shall we warn when "not no_output and not paths"?
     graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
 
-    FORMATS[format](graph, simple=simple, landscape=landscape)
+    FORMATS[format](graph, simple=simple)

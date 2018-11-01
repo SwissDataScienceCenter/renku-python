@@ -17,6 +17,8 @@
 # limitations under the License.
 """Serializers for graph data."""
 
+import functools
+
 import click
 
 
@@ -62,12 +64,17 @@ def dot(graph, simple=False, landscape=True):
     g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
 
     if simple:
-        rdf2dot_simple(g, sys.stdout, landscape)
+        _rdf2dot_simple(g, sys.stdout, landscape)
         return
     rdf2dot(g, sys.stdout)
 
 
-def rdf2dot_simple(g, stream, landscape=True):
+dot_landscape = functools.partial(dot, landscape=True)
+
+dot_portrait = functools.partial(dot, landscape=False)
+
+
+def _rdf2dot_simple(g, stream, landscape=True):
     """Create a simple graph of processes and artifacts."""
     from itertools import chain
 
@@ -145,8 +152,8 @@ def rdf2dot_simple(g, stream, landscape=True):
         node_path = path_re.match(node).groupdict()
         stream.write(
             '\t"{commit}:{path}" '
-            '[shape=box label=<{comment}<br/>'
-            '#{commit}<br/>{path}>] \n'.format(
+            '[shape=box label="{comment}<br/>'
+            '#{commit}<br/>{path}"] \n'.format(
                 comment=content['comment'],
                 commit=node_path['commit'][:5],
                 path=node_path.get('path') or ''
@@ -156,7 +163,7 @@ def rdf2dot_simple(g, stream, landscape=True):
         node_path = path_re.match(node).groupdict()
         stream.write(
             '\t"{commit}:{path}" '
-            '[label=<{path}<br/>#{commit}>] \n'.format(
+            '[label="{path}<br/>#{commit}"] \n'.format(
                 commit=node_path['commit'][:5],
                 path=node_path.get('path') or ''
             )
@@ -207,6 +214,8 @@ def rdf(graph, **kwargs):
 FORMATS = {
     'ascii': ascii,
     'dot': dot,
+    'dot-landscape': dot_landscape,
+    'dot-portrait': dot_portrait,
     'json-ld': jsonld,
     'json-ld-graph': jsonld_graph,
     'nt': nt,
