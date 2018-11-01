@@ -152,8 +152,7 @@ def _rdf2dot_simple(g, stream, landscape=True):
         node_path = path_re.match(node).groupdict()
         stream.write(
             '\t"{commit}:{path}" '
-            '[shape=box label="{comment}<br/>'
-            '#{commit}<br/>{path}"] \n'.format(
+            '[shape=box label="#{commit}:{path}:{comment}"] \n'.format(
                 comment=content['comment'],
                 commit=node_path['commit'][:5],
                 path=node_path.get('path') or ''
@@ -163,7 +162,7 @@ def _rdf2dot_simple(g, stream, landscape=True):
         node_path = path_re.match(node).groupdict()
         stream.write(
             '\t"{commit}:{path}" '
-            '[label="{path}<br/>#{commit}"] \n'.format(
+            '[label="#{commit}:{path}"] \n'.format(
                 commit=node_path['commit'][:5],
                 path=node_path.get('path') or ''
             )
