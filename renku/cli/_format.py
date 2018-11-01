@@ -69,6 +69,8 @@ def dot(graph, simple=False, landscape=True):
 
 def rdf2dot_simple(g, stream, landscape=True):
     """Create a simple graph of processes and artifacts."""
+    from itertools import chain
+
     stream.write('digraph { \n node [ fontname="DejaVu Sans" ] ; \n ')
     if landscape:
         stream.write('rankdir="LR" \n')
@@ -81,93 +83,84 @@ def rdf2dot_simple(g, stream, landscape=True):
         r'(?P<path>.+)?'
     )
 
-    processes = g.query(
+    inputs = g.query(
         """
-        SELECT ?process
+        SELECT ?input ?role ?activity ?comment
         WHERE {
-            ?process rdf:type wfprov:ProcessRun
-            FILTER NOT EXISTS {?process rdf:type wfprov:WorkflowRun}
+            ?activity (prov:qualifiedUsage/prov:entity) ?input .
+            ?activity prov:qualifiedUsage ?qual .
+            ?qual prov:hadRole ?role .
+            ?qual prov:entity ?input .
+            ?qual rdf:type ?type .
+            ?activity rdf:type wfprov:ProcessRun .
+            ?activity rdfs:comment ?comment .
+            FILTER NOT EXISTS {?activity rdf:type wfprov:WorkflowRun}
         }
         """
     )
-    for process, in processes:
-        inputs = g.query(
-            """
-            SELECT ?role ?dependency
-            WHERE {{
-                <{process}> (prov:qualifiedUsage/prov:entity) ?dependency .
-                <{process}> prov:qualifiedUsage ?qual .
-                ?qual prov:hadRole ?role .
-                ?qual prov:entity ?dependency .
-            }}
-            """.format(process=process)
-        )
-        outputs = g.query(
-            """
-        SELECT ?role ?dependent
-        WHERE {{
-            ?dependent (prov:qualifiedGeneration/prov:activity) <{process}>  .
-            ?dependent prov:qualifiedGeneration ?qual .
+    outputs = g.query(
+        """
+        SELECT ?activity ?role ?output ?comment
+        WHERE {
+            ?output (prov:qualifiedGeneration/prov:activity) ?activity .
+            ?output prov:qualifiedGeneration ?qual .
             ?qual prov:hadRole ?role .
-            ?qual prov:activity <{process}>
-        }}
-        """.format(process=process)
-        )
-        comment = list(
-            g.query(
-                """
-            SELECT ?comment
-            WHERE {{
-                <{process}> rdfs:comment ?comment .
-            }}
-            """.format(process=process)
-            )
-        )[0]
+            ?qual prov:activity ?activity .
+            ?qual rdf:type ?type .
+            ?activity rdf:type wfprov:ProcessRun ;
+                      rdfs:comment ?comment .
+            FILTER NOT EXISTS {?activity rdf:type wfprov:WorkflowRun}
+        }
+        """
+    )
 
-        proc_path = path_re.match(process)
+    activity_nodes = {}
+    artifact_nodes = {}
+    for source, role, target, comment, in chain(inputs, outputs):
+        # extract the pieces of the process URI
+        src_path = path_re.match(source).groupdict()
+        tgt_path = path_re.match(target).groupdict()
 
-        # write the process node
+        # write the edge
         stream.write(
-            '"{proc_commit}:{proc_path}"'
-            '[shape=box label=<{comment}<br/>'
-            '#{proc_commit}<br/>{proc_path}>] \n'.format(
-                proc_commit=proc_path.group('commit')[:7],
-                proc_path=proc_path.group('path') or '',
-                comment=str(comment[0])
+            '\t"{src_commit}:{src_path}" -> '
+            '"{tgt_commit}:{tgt_path}" '
+            '[label={role}] \n'.format(
+                src_commit=src_path['commit'][:5],
+                src_path=src_path.get('path') or '',
+                tgt_commit=tgt_path['commit'][:5],
+                tgt_path=tgt_path.get('path') or '',
+                role=role
             )
         )
+        if src_path.get('type') == 'commit':
+            activity_nodes.setdefault(source, {'comment': comment})
+            artifact_nodes.setdefault(target, {})
+        if tgt_path.get('type') == 'commit':
+            activity_nodes.setdefault(target, {'comment': comment})
+            artifact_nodes.setdefault(source, {})
 
-        # write the input nodes
-        for role, dependency in inputs:
-            dep_path = path_re.match(dependency)
-            stream.write(
-                '"{dep_commit}:{dep_path}"'
-                '[label=<{dep_path}<br/>#{dep_commit}> \n]'
-                '\t"{dep_commit}:{dep_path}" -> "{proc_commit}:{proc_path}" '
-                '[label = "used as {role}"];\n'.format(
-                    proc_commit=proc_path.group('commit')[:7],
-                    proc_path=proc_path.group('path') or '',
-                    dep_path=dep_path.group('path'),
-                    dep_commit=dep_path.group('commit')[:7],
-                    role=str(role)
-                )
+    # customize the nodes
+    for node, content in activity_nodes.items():
+        node_path = path_re.match(node).groupdict()
+        stream.write(
+            '\t"{commit}:{path}" '
+            '[shape=box label=<{comment}<br/>'
+            '#{commit}<br/>{path}>] \n'.format(
+                comment=content['comment'],
+                commit=node_path['commit'][:5],
+                path=node_path.get('path') or ''
             )
-
-        # write the output nodes
-        for role, dependent in outputs:
-            dep_path = path_re.match(dependent)
-            stream.write(
-                '"{dep_commit}:{dep_path}"'
-                '[label=<{dep_path}<br/>#{dep_commit}> \n]'
-                '\t"{proc_commit}:{proc_path}" -> "{dep_commit}:{dep_path}"'
-                '[label="generated as {role}"];\n'.format(
-                    proc_path=proc_path.group('path') or '',
-                    proc_commit=proc_path.group('commit')[:7],
-                    dep_path=dep_path.group('path'),
-                    dep_commit=dep_path.group('commit')[:7],
-                    role=str(role)
-                )
+        )
+    for node, content in artifact_nodes.items():
+        node_path = path_re.match(node).groupdict()
+        stream.write(
+            '\t"{commit}:{path}" '
+            '[label=<{path}<br/>#{commit}>] \n'.format(
+                commit=node_path['commit'][:5],
+                path=node_path.get('path') or ''
             )
+        )
     stream.write('}\n')
 
 
