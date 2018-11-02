@@ -133,11 +133,6 @@ class Entity(CommitMixin):
         return self._parent() if self._parent is not None else None
 
     @property
-    def parents(self):
-        """Return list of parents."""
-        return [self.parent] if self.parent is not None else []
-
-    @property
     def entities(self):
         """Yield itself."""
         yield self
@@ -210,11 +205,6 @@ class Process(CommitMixin):
     def activity(self):
         """Return the activity object."""
         return self._activity()
-
-    @property
-    def parents(self):
-        """Return all parents."""
-        return self.activity.parents
 
 
 @jsonld.s(

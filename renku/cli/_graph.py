@@ -79,7 +79,8 @@ class Graph(object):
     """Represent the provenance graph."""
 
     client = attr.ib()
-    commits = attr.ib(default=attr.Factory(dict))
+    activities = attr.ib(default=attr.Factory(dict))
+    generated = attr.ib(default=attr.Factory(dict))
 
     _sorted_commits = attr.ib(default=attr.Factory(list))
     _latest_commits = attr.ib(default=attr.Factory(dict))
@@ -95,20 +96,28 @@ class Graph(object):
     @_nodes.default
     def default_nodes(self):
         """Build node index."""
+        self.generated = {}
         nodes = OrderedDict()
+
         for commit in reversed(self._sorted_commits):
             try:
-                activity = self.commits[commit]
+                activity = self.activities[commit]
+
                 for node in reversed(list(activity.nodes)):
                     key = (node.commit, node.path)
                     if key in nodes:
-                        # FIXME better link input directories
-                        # if node._parent is None:
-                        #     node._parent = nodes[key]._parent
                         del nodes[key]
                     nodes[key] = node
+
+                if isinstance(activity, ProcessRun):
+                    self.generated.update({
+                        generation.entity._id: generation
+                        for generation in activity.generated
+                    })
+
             except KeyError:
                 pass
+
         return nodes
 
     def need_update(self, node):
@@ -130,7 +139,7 @@ class Graph(object):
 
         need_update_ = []
 
-        for parent in node.parents:
+        for parent in self.parents(node):
             # Skip Collections if it is not an input
             if skip and isinstance(parent, Collection):
                 continue
@@ -140,6 +149,47 @@ class Graph(object):
                 need_update_.extend(parent_updates)
 
         return self._need_update.setdefault(node._id, need_update_)
+
+    def parents(self, node):
+        """Return parents for a given node."""
+        import warnings
+
+        def _from_entity(entity, check_parents=True):
+            """Find parent from entity."""
+            try:
+                return [self.generated[entity._id].activity]
+            except KeyError:
+                id_ = Path(entity._id)
+                while check_parents and id_ != id_.parent:
+                    try:
+                        # TODO include selection step here
+                        return [self.generated[str(id_)]]
+                    except KeyError:
+                        id_ = id_.parent
+                return []
+
+        if isinstance(node, Generation):
+            if node.activity and isinstance(node.activity, ProcessRun):
+                return [node.activity.association.plan]
+            return []
+        elif isinstance(node, Usage):
+            return _from_entity(node.entity)
+        elif isinstance(node, Entity):
+            # Link files and directories and generations.
+            return ([node.parent]
+                    if node.parent is not None else []) + _from_entity(
+                        node, check_parents=False
+                    )
+        elif isinstance(node, Process):
+            # warnings.warn('Called on run {0}'.format(node), stacklevel=2)
+            return self.parents(node.activity)
+        elif isinstance(node, ProcessRun):
+            return node.qualified_usage
+        elif isinstance(node, Activity):
+            warnings.warn('Called parents on {0}'.format(node), stacklevel=2)
+            return []
+
+        raise NotImplementedError(node)
 
     def latest(self, node):
         """Return a latest commit where the node was modified."""
@@ -229,23 +279,23 @@ class Graph(object):
                 client=processing.client,
             )
 
-            self.commits[activity.commit] = activity
+            if activity is None:
+                continue
+
+            self.activities[activity.commit] = activity
 
             # Iterate over parents.
-            for input_ in getattr(activity, 'inputs', {}).values():
-                if input_.commit not in visited:
-                    queue.append(input_)
+            if isinstance(activity, ProcessRun):
+                for entity in activity.qualified_usage:
+                    for member in entity.entities:
+                        if member.commit not in visited:
+                            queue.append(member)
 
         from renku.models._sort import topological
-        self._sorted_commits = list(
-            topological({
-                activity.commit: [
-                    input_.commit
-                    for input_ in getattr(activity, 'inputs', {}).values()
-                ] + list(activity.commit.parents)
-                for activity in self.commits.values()
-            })
-        )
+        self._sorted_commits = topological({
+            commit: activity.parents
+            for commit, activity in self.activities.items()
+        })
         self._nodes = self.default_nodes()
 
     def build(
@@ -267,7 +317,7 @@ class Graph(object):
     def output_paths(self):
         """Return all output paths."""
         paths = set()
-        for activity in self.commits.values():
+        for activity in self.activities.values():
             if isinstance(activity, ProcessRun):
                 paths |= {path for path in activity.outputs.keys() if path}
         return paths
@@ -290,7 +340,7 @@ class Graph(object):
         # TODO check only outputs
         paths = {}
         for commit in reversed(self._sorted_commits):
-            activity = self.commits.get(commit)
+            activity = self.activities.get(commit)
 
             if isinstance(activity, ProcessRun):
                 nodes = activity.nodes if can_be_cwl else activity.generated
@@ -353,7 +403,7 @@ class Graph(object):
         elif isinstance(node, Generation):
             parent = node.activity
         elif isinstance(node, Usage):
-            parent = self.commits[node.commit]
+            parent = self.activities[node.commit]
         elif isinstance(node, Process):
             return {node}
 

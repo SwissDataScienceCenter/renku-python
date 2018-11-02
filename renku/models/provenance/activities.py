@@ -108,12 +108,16 @@ class Activity(CommitMixin):
                         commit=commit,
                         client=client,
                         path=str(path),
-                        parent=self,
                     ),
                     role=role,
                 )
             )
         return results
+
+    @property
+    def parents(self):
+        """Return parent commits."""
+        return list(self.commit.parents)
 
     @property
     def paths(self):
@@ -166,11 +170,6 @@ class Activity(CommitMixin):
         """Return topologically sorted nodes."""
         for output in self.generated:
             yield from _nodes(output, parent=output)
-
-    @property
-    def parents(self):
-        """Return a list of parents."""
-        return []
 
     @staticmethod
     def from_git_commit(commit, client, path=None):
@@ -262,10 +261,6 @@ class ProcessRun(Activity):
                     id=usage_id,
                 )
                 inputs[input_path] = dependency
-
-                # for entity in getattr(dependency.entity, 'members', []):
-                #     inputs.setdefault(entity.path, entity)
-
             except KeyError:
                 continue
 
@@ -307,6 +302,15 @@ class ProcessRun(Activity):
             for output_id, output_path in self.iter_output_files()
         }
 
+    # @property
+    # def parents(self):
+    #     """Return parent commits."""
+    #     return [
+    #         member.commit
+    #         for usage in self.qualified_usage
+    #         for member in usage.entity.entities
+    #     ] + super().parents
+
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
@@ -321,11 +325,6 @@ class ProcessRun(Activity):
             node_path = node.client.path / node.path
             if node_path.is_dir():
                 yield from _nodes(node)
-
-    @property
-    def parents(self):
-        """Return a list of parents."""
-        return self.qualified_usage
 
 
 @jsonld.s(
@@ -536,6 +535,10 @@ class WorkflowRun(ProcessRun):
 
 def from_git_commit(commit, client, path=None):
     """Populate information from the given Git commit."""
+    # Ignore merge commits
+    if len(commit.parents) > 1:
+        return
+
     cls = Activity
     process = None
 

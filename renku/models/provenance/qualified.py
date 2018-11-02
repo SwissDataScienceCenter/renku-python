@@ -94,11 +94,6 @@ class Usage(EntityProxyMixin):
             entity=Entity.from_revision(client, path, revision), **kwargs
         )
 
-    @property
-    def parents(self):
-        """Return parent nodes."""
-        return getattr(self.entity, 'parents', [])
-
 
 @jsonld.s(
     type='prov:Generation',
@@ -129,15 +124,6 @@ class Generation(EntityProxyMixin):
     def activity(self):
         """Return the activity object."""
         return self._activity() if self._activity is not None else None
-
-    @property
-    def parents(self):
-        """Return list of parents."""
-        from .activities import ProcessRun
-
-        if isinstance(self.activity, ProcessRun):
-            return [self.activity.association.plan]
-        return []
 
     @_id.default
     def default_id(self):

@@ -157,7 +157,7 @@ class DAG(object):
             self.columns.append(key)
 
         column_index = self.columns.index(key)
-        parents = [(p.commit, p.path) for p in node.parents]
+        parents = [(p.commit, p.path) for p in self.graph.parents(node)]
 
         # Define node_symbol for node and root node.
         node_symbol = self.NODE if parents else self.ROOT_NODE

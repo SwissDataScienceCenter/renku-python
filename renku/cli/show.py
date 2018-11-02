@@ -130,7 +130,7 @@ def inputs(ctx, client, revision, paths):
     input_paths = set()
 
     for commit in commits:
-        activity = graph.commits[commit]
+        activity = graph.activities[commit]
 
         if isinstance(activity, ProcessRun):
             for usage in activity.qualified_usage:

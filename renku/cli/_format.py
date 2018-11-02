@@ -38,7 +38,7 @@ def _jsonld(graph, format, *args, **kwargs):
     from renku.models._jsonld import asjsonld
 
     output = getattr(jsonld, format)([
-        asjsonld(action) for action in graph.commits.values()
+        asjsonld(action) for action in graph.activities.values()
     ])
     return json.dumps(output, indent=2)
 
