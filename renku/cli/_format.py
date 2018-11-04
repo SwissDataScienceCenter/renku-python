@@ -22,7 +22,7 @@ import functools
 import click
 
 
-def ascii(graph, **kwargs):
+def ascii(graph):
     """Format graph as an ASCII art."""
     from ._ascii import DAG
     from ._echo import echo_via_pager
@@ -43,7 +43,7 @@ def _jsonld(graph, format, *args, **kwargs):
     return json.dumps(output, indent=2)
 
 
-def dot(graph, simple=False, landscape=True):
+def dot(graph, simple=True, landscape=False):
     """Format graph as a dot file."""
     import sys
 
@@ -65,13 +65,14 @@ def dot(graph, simple=False, landscape=True):
 
     if simple:
         _rdf2dot_simple(g, sys.stdout, landscape)
-        return
-    rdf2dot(g, sys.stdout)
+    else:
+        rdf2dot(g, sys.stdout)
 
 
-dot_landscape = functools.partial(dot, landscape=True)
-
-dot_portrait = functools.partial(dot, landscape=False)
+# define the various dot options
+dot_full = functools.partial(dot, simple=False, landscape=False)
+dot_landscape = functools.partial(dot, simple=True, landscape=True)
+dot_full_landscape = functools.partial(dot, simple=False, landscape=True)
 
 
 def _rdf2dot_simple(g, stream, landscape=True):
@@ -170,17 +171,17 @@ def _rdf2dot_simple(g, stream, landscape=True):
     stream.write('}\n')
 
 
-def jsonld(graph, **kwargs):
+def jsonld(graph):
     """Format graph as JSON-LD file."""
     click.echo(_jsonld(graph, 'expand'))
 
 
-def jsonld_graph(graph, **kwargs):
+def jsonld_graph(graph):
     """Format graph as JSON-LD graph file."""
     click.echo(_jsonld(graph, 'flatten'))
 
 
-def nt(graph, **kwargs):
+def nt(graph):
     """Format graph as n-tuples."""
     from rdflib import ConjunctiveGraph
     from rdflib.plugin import register, Parser
@@ -195,7 +196,7 @@ def nt(graph, **kwargs):
     )
 
 
-def rdf(graph, **kwargs):
+def rdf(graph):
     """Output the graph as RDF."""
     from rdflib import ConjunctiveGraph
     from rdflib.plugin import register, Parser
@@ -213,8 +214,9 @@ def rdf(graph, **kwargs):
 FORMATS = {
     'ascii': ascii,
     'dot': dot,
+    'dot-full': dot_full,
     'dot-landscape': dot_landscape,
-    'dot-portrait': dot_portrait,
+    'dot-full-landscape': dot_full_landscape,
     'json-ld': jsonld,
     'json-ld-graph': jsonld_graph,
     'nt': nt,
