@@ -22,8 +22,8 @@ from __future__ import absolute_import, print_function
 import contextlib
 import os
 import shutil
+import subprocess
 import sys
-from subprocess import call
 
 import git
 import pytest
@@ -671,11 +671,11 @@ def test_status_with_submodules(isolated_runner):
     with open('data/f/woop', 'w') as f:
         f.write('woop2')
 
-    call(['git', 'commit', '-am', 'commiting changes to woop'])
+    subprocess.call(['git', 'commit', '-am', 'commiting changes to woop'])
 
     os.chdir('../bar')
-    call(['git', 'submodule', 'update', '--rebase', '--remote'])
-    call(['git', 'commit', '-am', 'update submodule'])
+    subprocess.call(['git', 'submodule', 'update', '--rebase', '--remote'])
+    subprocess.call(['git', 'commit', '-am', 'update submodule'])
 
     result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
     assert result.exit_code != 0
@@ -1138,7 +1138,7 @@ def test_image_pull(runner, project):
     result = runner.invoke(cli.cli, cmd)
     assert result.exit_code == 1
 
-    call([
+    subprocess.call([
         'git', 'config', 'remote.origin.url', 'http://demo:demo@example.com'
     ])
 
@@ -1146,7 +1146,7 @@ def test_image_pull(runner, project):
     result = runner.invoke(cli.cli, cmd)
     assert result.exit_code == 1
 
-    call([
+    subprocess.call([
         'git', 'config', 'remote.origin.url',
         'http://gitlab.com/example/example.git'
     ])
@@ -1157,7 +1157,7 @@ def test_image_pull(runner, project):
     assert 'registry.gitlab.com/example/example.git' not in result.output
     assert result.exit_code == 1
 
-    call([
+    subprocess.call([
         'git', 'config', 'remote.origin.url',
         'http://demo:demo@gitlab.example.com/repo.git'
     ])
@@ -1253,7 +1253,7 @@ def test_output_directory(runner, project, run):
     data = cwd / 'source' / 'data.txt'
     source = data.parent
     source.mkdir(parents=True)
-    data.touch()
+    data.write_text('data')
 
     # Empty destination
     destination = cwd / 'destination'
@@ -1270,8 +1270,17 @@ def test_output_directory(runner, project, run):
     cmd = ['run', 'cp', '-LRf', str(source), str(destination)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert result.exit_code == 0
+
     destination_source = destination / data.name
     assert destination_source.exists()
+
+    # check that the output in subdir is added to LFS
+    with (cwd / '.gitattributes').open() as f:
+        gitattr = f.read()
+    assert str(destination.relative_to(cwd)) + '/**' in gitattr
+    assert destination_source.name in subprocess.check_output([
+        'git', 'lfs', 'ls-files'
+    ]).decode()
 
     cmd = ['run', 'wc']
     assert 0 == run(args=cmd, stdin=destination_source, stdout=source_wc)
