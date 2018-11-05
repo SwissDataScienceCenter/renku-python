@@ -118,10 +118,18 @@ from ._git import _mapped_std_streams, with_git
     callback=lambda _, __, values: [int(value) % 256 for value in values],
     help='Allowed command exit-code.',
 )
+@click.option(
+    'use_external_storage',
+    '--external-storage/--no-external-storage',
+    ' /-S',
+    is_flag=True,
+    default=True,
+    help='Configure the file storage service.'
+)
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_local_client
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
-def run(client, no_output, success_codes, command_line):
+def run(client, no_output, success_codes, use_external_storage, command_line):
     """Tracking work on a specific problem."""
     working_dir = client.git.working_dir
     paths = [x[0] for x in client.git.index.entries]
@@ -140,7 +148,11 @@ def run(client, no_output, success_codes, command_line):
     )
 
     with client.with_workflow_storage() as wf:
-        with factory.watch(client, no_output=no_output) as tool:
+        with factory.watch(
+            client,
+            no_output=no_output,
+            use_external_storage=use_external_storage
+        ) as tool:
             returncode = call(
                 factory.command_line,
                 cwd=os.getcwd(),

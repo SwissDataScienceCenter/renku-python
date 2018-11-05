@@ -604,6 +604,29 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
             } == set(result.output.strip().split('\n'))
 
 
+def test_configuration_of_external_storage(isolated_runner):
+    """Test the LFS requirement for renku run."""
+    runner = isolated_runner
+
+    os.mkdir('test-project')
+    os.chdir('test-project')
+    result = runner.invoke(cli.cli, ['init', '--no-external-storage'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
+    assert result.exit_code == 1
+    subprocess.call(['git', 'clean', '-df'])
+
+    result = runner.invoke(cli.cli, ['run', '-S', 'touch', 'output'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['init', '--force'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['run', 'touch', 'output2'])
+    assert result.exit_code == 0
+
+
 def test_file_tracking(isolated_runner):
     """Test .gitattribute handling on renku run."""
     runner = isolated_runner
@@ -641,13 +664,14 @@ def test_status_with_submodules(isolated_runner):
 
     os.chdir('../foo')
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'f', '../woop'], catch_exceptions=False
+        cli.cli, ['dataset', 'add', '-S', 'f', '../woop'],
+        catch_exceptions=False
     )
     assert result.exit_code == 0
 
     os.chdir('../bar')
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'b', '../foo/data/f/woop'],
+        cli.cli, ['dataset', 'add', '-S', 'b', '../foo/data/f/woop'],
         catch_exceptions=False
     )
     assert result.exit_code == 0
@@ -657,7 +681,7 @@ def test_status_with_submodules(isolated_runner):
         with contextlib.redirect_stdout(stdout):
             try:
                 cli.cli.main(
-                    args=('run', 'wc', 'data/b/data/f/woop'),
+                    args=('run', 'wc', '-S', 'data/b/data/f/woop'),
                     prog_name=runner.get_default_prog_name(cli.cli),
                 )
             except SystemExit as e:

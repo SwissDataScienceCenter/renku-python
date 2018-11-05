@@ -27,6 +27,7 @@ import filelock
 import yaml
 from werkzeug.utils import cached_property, secure_filename
 
+from renku import errors
 from renku._compat import Path
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
@@ -353,10 +354,16 @@ class RepositoryApiMixin(object):
             cwd=str(self.path.absolute()),
         )
 
-    def track_paths_in_storage(self, *paths):
+    @property
+    def external_storage_installed(self):
+        """Check that Large File Storage is installed."""
+        return HAS_LFS and self.git.config_reader(
+            config_level='repository'
+        ).has_section('filter "lfs"')
+
+    def track_paths_in_storage(self, *paths, use_external_storage=True):
         """Track paths in the external storage."""
-        if HAS_LFS and self.git.config_reader(config_level='repository'
-                                              ).has_section('filter "lfs"'):
+        if use_external_storage and self.external_storage_installed():
             track_paths = []
             for path in paths:
                 path = Path(path)
@@ -372,6 +379,8 @@ class RepositoryApiMixin(object):
                 stderr=STDOUT,
                 cwd=str(self.path),
             )
+        elif use_external_storage:
+            raise errors.ExternalStorageNotInstalled(self.git)
 
     def pull_path(self, path):
         """Pull a path from LFS."""

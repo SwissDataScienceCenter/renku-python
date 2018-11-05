@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from email.utils import formatdate
 
 import click
+import git
 from git import Actor
 
 from renku import errors
@@ -134,6 +135,8 @@ def with_git(
             elif repo.is_dirty(untracked_files=True):
                 _clean_streams(repo, mapped_streams)
                 raise errors.DirtyRepository(repo)
+        except git.exc.InvalidGitRepositoryError:
+            raise errors.UninitializedProject(repo_path)
         finally:
             os.chdir(current_dir)
 
