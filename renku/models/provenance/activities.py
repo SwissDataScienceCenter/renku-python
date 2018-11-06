@@ -18,6 +18,7 @@
 """Represent a Git commit."""
 
 import os
+from collections import OrderedDict
 
 import attr
 import yaml
@@ -70,6 +71,9 @@ class Activity(CommitMixin):
     process = attr.ib(default=None, kw_only=True)
     outputs = attr.ib(kw_only=True)
 
+    _collections = attr.ib(
+        default=attr.Factory(OrderedDict), init=False, kw_only=True
+    )
     generated = jsonld.ib(
         context={
             '@reverse': 'prov:activity',
@@ -101,14 +105,46 @@ class Activity(CommitMixin):
                 self.commit,
                 path,
             )
+
+            output_path = client.path / path
+            parents = list(output_path.relative_to(client.path).parents)
+
+            collection = None
+            members = []
+            for parent in reversed(parents[:-1]):
+                if str(parent) in self._collections:
+                    collection = self._collections[str(parent)]
+                else:
+                    collection = Collection(
+                        client=client,
+                        commit=commit,
+                        path=str(parent),
+                        members=[],
+                        parent=collection,
+                    )
+                    members.append(collection)
+                    self._collections[str(parent)] = collection
+
+                members = collection.members
+
+            entity_cls = Entity
+            if (self.client.path / path).is_dir():
+                entity_cls = Collection
+
+            entity = entity_cls(
+                commit=commit,
+                client=client,
+                path=str(path),
+                parent=collection,
+            )
+
+            if collection:
+                collection.members.append(entity)
+
             results.append(
                 Generation(
                     activity=self,
-                    entity=Entity(
-                        commit=commit,
-                        client=client,
-                        path=str(path),
-                    ),
+                    entity=entity,
                     role=role,
                 )
             )
@@ -168,8 +204,20 @@ class Activity(CommitMixin):
     @property
     def nodes(self):
         """Return topologically sorted nodes."""
+        collections = OrderedDict()
+
+        def _parents(node):
+            if node.parent:
+                yield from _parents(node.parent)
+                yield node.parent
+
         for output in self.generated:
-            yield from _nodes(output, parent=output)
+            for parent in _parents(output.entity):
+                collections[parent.path] = parent
+
+            yield from _nodes(output)
+
+        yield from reversed(collections.values())
 
     @staticmethod
     def from_git_commit(commit, client, path=None):
@@ -211,14 +259,7 @@ class ProcessRun(Activity):
     @generated.default
     def default_generated(self):
         """Calculate default values."""
-        # TODO refactor to remove outputs property
-        return [
-            Generation.from_activity_path(
-                activity=self,
-                path=path,
-                role=role,
-            ) for path, role in self.outputs.items() if path is not None
-        ]
+        return super().default_generated()
 
     def __attrs_post_init__(self):
         """Calculate properties."""
@@ -302,14 +343,13 @@ class ProcessRun(Activity):
             for output_id, output_path in self.iter_output_files()
         }
 
-    # @property
-    # def parents(self):
-    #     """Return parent commits."""
-    #     return [
-    #         member.commit
-    #         for usage in self.qualified_usage
-    #         for member in usage.entity.entities
-    #     ] + super().parents
+    @property
+    def parents(self):
+        """Return parent commits."""
+        return [
+            member.commit for usage in self.qualified_usage
+            for member in usage.entity.entities
+        ] + super().parents
 
     @property
     def nodes(self):
@@ -319,12 +359,6 @@ class ProcessRun(Activity):
 
         # Activity itself
         yield self.association.plan
-
-        # Input directories might not be exported otherwise
-        for node in self.inputs.values():
-            node_path = node.client.path / node.path
-            if node_path.is_dir():
-                yield from _nodes(node)
 
 
 @jsonld.s(

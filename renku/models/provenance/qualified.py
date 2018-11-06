@@ -135,21 +135,3 @@ class Generation(EntityProxyMixin):
         return '{self.activity._id}/tree/{self.entity.path}'.format(
             self=self,
         )
-
-    @classmethod
-    def from_activity_path(cls, activity, path, **kwargs):
-        """Create an instance from activity and path."""
-        # TODO posibly resolve submodules
-        from .entities import Collection, Entity
-
-        entity_cls = Entity
-        if (activity.client.path / path).is_dir():
-            entity_cls = Collection
-
-        entity = entity_cls(
-            commit=activity.commit,
-            client=activity.client,
-            path=path,
-            parent=activity,
-        )
-        return cls(activity=activity, entity=entity, **kwargs)

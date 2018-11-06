@@ -178,6 +178,7 @@ class Collection(Entity):
         """Recursively return all files."""
         for member in self.members:
             yield from member.entities
+        yield self
 
 
 @jsonld.s(

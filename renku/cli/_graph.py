@@ -103,11 +103,14 @@ class Graph(object):
             try:
                 activity = self.activities[commit]
 
-                for node in reversed(list(activity.nodes)):
-                    key = (node.commit, node.path)
-                    if key in nodes:
-                        del nodes[key]
-                    nodes[key] = node
+                # for node in reversed(list(activity.nodes)):
+                #     key = (node.commit, node.path)
+                #     if key in nodes:
+                #         del nodes[key]
+                #     nodes[key] = node
+
+                nodes.update(((node.commit, node.path), node)
+                             for node in reversed(list(activity.nodes)))
 
                 if isinstance(activity, ProcessRun):
                     self.generated.update({
@@ -169,9 +172,10 @@ class Graph(object):
                 return []
 
         if isinstance(node, Generation):
+            result = [node.parent] if node.parent is not None else []
             if node.activity and isinstance(node.activity, ProcessRun):
-                return [node.activity.association.plan]
-            return []
+                return result + [node.activity.association.plan]
+            return result
         elif isinstance(node, Usage):
             return _from_entity(node.entity)
         elif isinstance(node, Entity):
@@ -514,11 +518,14 @@ class Graph(object):
                 if input_paths and path in input_paths:
                     continue
 
-                node = nodes[(dependency.commit, dependency.path)]
+                node = nodes.get((dependency.commit, dependency.path),
+                                 dependency)
 
                 if isinstance(node, Generation):
                     process_run = node.activity
-                elif isinstance(node, Entity):
+                elif isinstance(node, Collection) and node.parent:
+                    raise NotImplementedError('Can not connect subdirectory')
+                elif isinstance(node, Entity) and node.parent:
                     process_run = connect_file_to_directory(node)
                 else:
                     process_run = None
