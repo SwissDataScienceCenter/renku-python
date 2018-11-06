@@ -66,7 +66,7 @@ install_requires = [
     'PyYAML>=3.12',
     'attrs>=18.2.0',
     'click>=6.7',
-    'cwltool>=1.0.20181012180214',
+    'cwltool==1.0.20181012180214',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
