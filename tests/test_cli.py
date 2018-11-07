@@ -111,7 +111,7 @@ def test_init(isolated_runner):
     shutil.rmtree('test-project')
     os.mkdir('test-project')
     os.chdir('test-project')
-    result = runner.invoke(cli.cli, ['init', '--no-external-storage'])
+    result = runner.invoke(cli.cli, ['-S', 'init'])
     with open('.git/config') as f:
         config = f.read()
     assert 'filter "lfs"' not in config
@@ -610,14 +610,14 @@ def test_configuration_of_external_storage(isolated_runner):
 
     os.mkdir('test-project')
     os.chdir('test-project')
-    result = runner.invoke(cli.cli, ['init', '--no-external-storage'])
+    result = runner.invoke(cli.cli, ['-S', 'init'])
     assert result.exit_code == 0
 
     result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
     assert result.exit_code == 1
     subprocess.call(['git', 'clean', '-df'])
 
-    result = runner.invoke(cli.cli, ['run', '-S', 'touch', 'output'])
+    result = runner.invoke(cli.cli, ['-S', 'run', 'touch', 'output'])
     assert result.exit_code == 0
 
     result = runner.invoke(cli.cli, ['init', '--force'])
@@ -655,23 +655,29 @@ def test_status_with_submodules(isolated_runner):
         f.write('woop')
 
     os.chdir('foo')
-    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['-S', 'init'], catch_exceptions=False)
     assert result.exit_code == 0
 
     os.chdir('../bar')
-    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['-S', 'init'], catch_exceptions=False)
     assert result.exit_code == 0
 
     os.chdir('../foo')
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', '-S', 'f', '../woop'],
+        cli.cli, ['dataset', 'add', 'f', '../woop'], catch_exceptions=False
+    )
+    assert result.exit_code == 1
+    subprocess.call(['git', 'clean', '-dff'])
+
+    result = runner.invoke(
+        cli.cli, ['-S', 'dataset', 'add', 'f', '../woop'],
         catch_exceptions=False
     )
     assert result.exit_code == 0
 
     os.chdir('../bar')
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', '-S', 'b', '../foo/data/f/woop'],
+        cli.cli, ['-S', 'dataset', 'add', 'b', '../foo/data/f/woop'],
         catch_exceptions=False
     )
     assert result.exit_code == 0
@@ -681,7 +687,7 @@ def test_status_with_submodules(isolated_runner):
         with contextlib.redirect_stdout(stdout):
             try:
                 cli.cli.main(
-                    args=('run', 'wc', '-S', 'data/b/data/f/woop'),
+                    args=('-S', 'run', 'wc', 'data/b/data/f/woop'),
                     prog_name=runner.get_default_prog_name(cli.cli),
                 )
             except SystemExit as e:

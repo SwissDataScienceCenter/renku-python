@@ -122,17 +122,9 @@ def create(client, name):
     multiple=True,
     help='Target path in the git repo.'
 )
-@click.option(
-    'use_external_storage',
-    '--external-storage/--no-external-storage',
-    ' /-S',
-    is_flag=True,
-    default=True,
-    help='Configure the file storage service.'
-)
 @pass_local_client
 @with_git()
-def add(client, name, urls, nocopy, relative_to, target, use_external_storage):
+def add(client, name, urls, nocopy, relative_to, target):
     """Add data to a dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
@@ -145,7 +137,6 @@ def add(client, name, urls, nocopy, relative_to, target, use_external_storage):
                         nocopy=nocopy,
                         target=target,
                         relative_to=relative_to,
-                        use_external_storage=use_external_storage,
                     )
     except FileNotFoundError:
         raise BadParameter('Could not process {0}'.format(url))

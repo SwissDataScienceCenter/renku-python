@@ -44,7 +44,6 @@ class PathMixin(object):
         """Return default repository path."""
         from git import InvalidGitRepositoryError
         from renku.cli._git import get_git_home
-
         try:
             return get_git_home()
         except InvalidGitRepositoryError:
@@ -69,6 +68,9 @@ class RepositoryApiMixin(object):
 
     git = attr.ib(init=False)
     """Store an instance of the Git repository."""
+
+    use_external_storage = attr.ib(default=True)
+    """Use external storage (e.g. LFS)."""
 
     parent = attr.ib(default=None)
     """Store a pointer to the parent repository."""
@@ -291,9 +293,7 @@ class RepositoryApiMixin(object):
                         default_flow_style=False
                     )
 
-    def init_repository(
-        self, name=None, force=False, use_external_storage=True
-    ):
+    def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""
         from git import Repo
 
@@ -336,7 +336,7 @@ class RepositoryApiMixin(object):
             metadata.updated = datetime.datetime.utcnow()
 
         # initialize LFS if it is requested and installed
-        if use_external_storage and HAS_LFS:
+        if self.use_external_storage and HAS_LFS:
             self.init_external_storage(force=force)
 
         return str(path)
@@ -361,9 +361,9 @@ class RepositoryApiMixin(object):
             config_level='repository'
         ).has_section('filter "lfs"')
 
-    def track_paths_in_storage(self, *paths, use_external_storage=True):
+    def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
-        if use_external_storage and self.external_storage_installed():
+        if self.use_external_storage and self.external_storage_installed:
             track_paths = []
             for path in paths:
                 path = Path(path)
@@ -379,7 +379,7 @@ class RepositoryApiMixin(object):
                 stderr=STDOUT,
                 cwd=str(self.path),
             )
-        elif use_external_storage:
+        elif self.use_external_storage:
             raise errors.ExternalStorageNotInstalled(self.git)
 
     def pull_path(self, path):

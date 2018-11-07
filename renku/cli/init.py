@@ -66,6 +66,7 @@ was not installed previously.
 
 import os
 
+import attr
 import click
 
 from renku._compat import Path
@@ -97,23 +98,15 @@ def store_directory(ctx, param, value):
 )
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True, help='Override project templates.')
-@click.option(
-    'use_external_storage',
-    '--external-storage/--no-external-storage',
-    ' /-S',
-    is_flag=True,
-    default=True,
-    help='Configure the file storage service.'
-)
 @pass_local_client
 @click.pass_context
 @with_git(clean=False)
-def init(ctx, client, directory, name, force, use_external_storage):
+def init(ctx, client, directory, name, force):
     """Initialize a project."""
     try:
-        project_config_path = client.init_repository(
-            name=name, force=force, use_external_storage=use_external_storage
-        )
+        client = attr.evolve(client, path=directory)
+        ctx.obj = client
+        project_config_path = client.init_repository(name=name, force=force)
     except FileExistsError:
         raise click.UsageError(
             'Renku repository is not empty. '

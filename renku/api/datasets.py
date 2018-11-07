@@ -174,7 +174,7 @@ class DatasetsApiMixin(object):
         mode = dst.stat().st_mode & 0o777
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
-        self.track_paths_in_storage(str(dst.relative_to(self.path)), **kwargs)
+        self.track_paths_in_storage(str(dst.relative_to(self.path)))
         dataset_path = self.path / self.datadir / dataset.name
         result = dst.relative_to(dataset_path).as_posix()
         return {

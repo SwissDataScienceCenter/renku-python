@@ -208,7 +208,7 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, repo=None, no_output=False, use_external_storage=True):
+    def watch(self, repo=None, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         tool = self.generate_tool()
         git = repo.git
@@ -264,9 +264,7 @@ class CommandLineToolFactory(object):
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
 
-            repo.track_paths_in_storage(
-                *paths, use_external_storage=use_external_storage
-            )
+            repo.track_paths_in_storage(*paths)
 
         # Requirement detection can be done anytime.
         from .process_requirements import InitialWorkDirRequirement, \

@@ -209,13 +209,15 @@ class ExternalStorageNotInstalled(RenkuException, click.ClickException):
 
     def __init__(self, repo):
         """Build a custom message."""
-        msg = 'Git-LFS is either not installed or not configured '\
-              'for this repo.\n'\
-              'By running this command without LFS you could be committing\n'\
-              'large files directly to the git repository.\n\n'\
-              'If this is your intention, please repeat the command with '\
-              'the --no-external-storage flag, otherwise install LFS with '\
-              '"git lfs install --local".'
+        msg = (
+            'Git-LFS is either not installed or not configured '
+            'for this repo.\n'
+            'By running this command without LFS you could be committing\n'
+            'large files directly to the git repository.\n\n'
+            'If this is your intention, please repeat the command with '
+            'the -S flag (e.g. renku -S run <cmd>), \n'
+            'otherwise install LFS with "git lfs install --local".'
+        )
 
         super(ExternalStorageNotInstalled, self).__init__(msg)
 
@@ -225,6 +227,8 @@ class UninitializedProject(RenkuException, click.ClickException):
 
     def __init__(self, repo_path):
         """Build a custom message."""
-        msg = '{repo_path} does not seem to be a Renku project.\n'\
-              'Initialize it with "renku init"'.format(repo_path=repo_path)
+        msg = (
+            '{repo_path} does not seem to be a Renku project.\n'
+            'Initialize it with "renku init"'.format(repo_path=repo_path)
+        )
         super(UninitializedProject, self).__init__(msg)
