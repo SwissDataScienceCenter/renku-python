@@ -357,9 +357,7 @@ class RepositoryApiMixin(object):
     @property
     def external_storage_installed(self):
         """Check that Large File Storage is installed."""
-        return HAS_LFS and self.git.config_reader(
-            config_level='repository'
-        ).has_section('filter "lfs"')
+        return HAS_LFS and self.git.config_reader().has_section('filter "lfs"')
 
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
