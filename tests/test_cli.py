@@ -609,7 +609,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
             } == set(result.output.strip().split('\n'))
 
 
-def test_configuration_of_external_storage(isolated_runner):
+def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     """Test the LFS requirement for renku run."""
     runner = isolated_runner
 
@@ -619,10 +619,13 @@ def test_configuration_of_external_storage(isolated_runner):
     result = runner.invoke(cli.cli, ['-S', 'init'])
     assert result.exit_code == 0
 
-    # TODO - test correct detection of missing lfs config section
-    # result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
-    # assert result.exit_code == 1
-    # subprocess.call(['git', 'clean', '-df'])
+    with monkeypatch.context() as m:
+        from renku.api.repository import RepositoryApiMixin
+        m.setattr(RepositoryApiMixin, 'external_storage_installed', False)
+
+        result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
+        assert result.exit_code == 1
+        subprocess.call(['git', 'clean', '-df'])
 
     result = runner.invoke(cli.cli, ['-S', 'run', 'touch', 'output'])
     assert result.exit_code == 0
@@ -651,7 +654,7 @@ def test_file_tracking(isolated_runner):
     assert 'output' in gitattributes
 
 
-def test_status_with_submodules(isolated_runner):
+def test_status_with_submodules(isolated_runner, monkeypatch):
     """Test status calculation with submodules."""
     runner = isolated_runner
 
@@ -669,12 +672,17 @@ def test_status_with_submodules(isolated_runner):
     result = runner.invoke(cli.cli, ['-S', 'init'], catch_exceptions=False)
     assert result.exit_code == 0
 
-    os.chdir('../foo')
-    result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'f', '../woop'], catch_exceptions=False
-    )
-    assert result.exit_code == 1
-    subprocess.call(['git', 'clean', '-dff'])
+    with monkeypatch.context() as m:
+        from renku.api.repository import RepositoryApiMixin
+        m.setattr(RepositoryApiMixin, 'external_storage_installed', False)
+
+        os.chdir('../foo')
+        result = runner.invoke(
+            cli.cli, ['dataset', 'add', 'f', '../woop'],
+            catch_exceptions=False
+        )
+        assert result.exit_code == 1
+        subprocess.call(['git', 'clean', '-dff'])
 
     result = runner.invoke(
         cli.cli, ['-S', 'dataset', 'add', 'f', '../woop'],
