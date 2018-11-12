@@ -725,6 +725,12 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
     result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
     assert result.exit_code != 0
 
+    # Test relative log output
+    cmd = ['--path', '../foo', 'log']
+    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    assert '../foo/data/f/woop' in result.output
+    assert 0 == result.exit_code
+
 
 def test_unchanged_output(runner, project):
     """Test detection of unchanged output."""

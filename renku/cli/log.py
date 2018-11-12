@@ -94,7 +94,8 @@ def log(client, revision, format, no_output, paths):
     if not paths:
         commit = client.git.rev_parse(revision)
         paths = (
-            item.a_path for item in commit.diff(commit.parents or NULL_TREE)
+            str(client.path / item.a_path)
+            for item in commit.diff(commit.parents or NULL_TREE)
             # if not item.deleted_file
         )
 
