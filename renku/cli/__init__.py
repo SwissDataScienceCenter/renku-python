@@ -30,13 +30,19 @@ execute ``renku help``:
 
     Check common Renku commands used in various situations.
 
+
     Options:
-      --version            Print version number.
-      --config PATH        Location of client config files.
-      --config-path        Print application config path.
-      --path <path>        Location of a Renku repository.  [default: .]
-      --renku-home <path>  Location of Renku directory.  [default: .renku]
-      -h, --help           Show this message and exit.
+      --version                       Print version number.
+      --config PATH                   Location of client config files.
+      --config-path                   Print application config path.
+      --install-completion            Install completion for the current shell.
+      --path <path>                   Location of a Renku repository.
+                                      [default: (dynamic)]
+      --renku-home <path>             Location of the Renku directory.
+                                      [default: .renku]
+      --external-storage / -S, --no-external-storage
+                                      Use an external file storage service.
+      -h, --help                      Show this message and exit.
 
     Commands:
       # [...]
@@ -72,12 +78,13 @@ directory when running the ``init`` command.
 import uuid
 
 import click
+import click_completion
 import yaml
 
 from ..api.client import LocalClient
 from ..api.repository import default_path
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
-from ._options import option_use_external_storage
+from ._options import install_completion, option_use_external_storage
 from ._version import print_version
 from .config import config
 from .dataset import dataset
@@ -94,6 +101,9 @@ from .status import status
 from .update import update
 from .workflow import workflow
 from .workon import deactivate, workon
+
+#: Monkeypatch Click application.
+click_completion.init()
 
 
 def _uuid_representer(dumper, data):
@@ -133,6 +143,14 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     expose_value=False,
     is_eager=True,
     help=print_app_config_path.__doc__
+)
+@click.option(
+    '--install-completion',
+    is_flag=True,
+    callback=install_completion,
+    expose_value=False,
+    is_eager=True,
+    help=install_completion.__doc__,
 )
 @click.option(
     '--path',
