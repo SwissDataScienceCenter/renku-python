@@ -75,7 +75,9 @@ import click
 import yaml
 
 from ..api.client import LocalClient
+from ..api.repository import default_path
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
+from ._options import option_use_external_storage
 from ._version import print_version
 from .config import config
 from .dataset import dataset
@@ -136,7 +138,7 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     '--path',
     show_default=True,
     metavar='<path>',
-    default='.',
+    default=default_path,
     help='Location of a Renku repository.'
 )
 @click.option(
@@ -147,19 +149,14 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     default=RENKU_HOME,
     help='Location of the Renku directory.'
 )
-@click.option(
-    'use_external_storage',
-    '--external-storage/--no-external-storage',
-    ' /-S',
-    is_flag=True,
-    default=True,
-    help='Use an external file storage service.'
-)
+@option_use_external_storage
 @click.pass_context
 def cli(ctx, path, renku_home, use_external_storage):
     """Check common Renku commands used in various situations."""
     ctx.obj = LocalClient(
-        renku_home=renku_home, use_external_storage=use_external_storage
+        path=path,
+        renku_home=renku_home,
+        use_external_storage=use_external_storage,
     )
 
 

@@ -33,21 +33,24 @@ from renku._compat import Path
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
 
+def default_path():
+    """Return default repository path."""
+    from git import InvalidGitRepositoryError
+    from renku.cli._git import get_git_home
+    try:
+        return get_git_home()
+    except InvalidGitRepositoryError:
+        return '.'
+
+
 @attr.s
 class PathMixin(object):
     """Define a default path attribute."""
 
-    path = attr.ib(converter=lambda arg: Path(arg).resolve().absolute())
-
-    @path.default
-    def _default_path(self):
-        """Return default repository path."""
-        from git import InvalidGitRepositoryError
-        from renku.cli._git import get_git_home
-        try:
-            return get_git_home()
-        except InvalidGitRepositoryError:
-            return '.'
+    path = attr.ib(
+        default=default_path,
+        converter=lambda arg: Path(arg).resolve().absolute(),
+    )
 
     @path.validator
     def _check_path(self, _, value):

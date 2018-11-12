@@ -73,6 +73,7 @@ from renku._compat import Path
 
 from ._client import pass_local_client
 from ._git import set_git_home, with_git
+from ._options import option_use_external_storage
 
 
 def validate_name(ctx, param, value):
@@ -98,14 +99,7 @@ def store_directory(ctx, param, value):
 )
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True, help='Override project templates.')
-@click.option(
-    'use_external_storage',
-    '--external-storage/--no-external-storage',
-    ' /-S',
-    is_flag=True,
-    default=True,
-    help='Configure the file storage service.'
-)
+@option_use_external_storage
 @pass_local_client
 @click.pass_context
 @with_git(clean=False)
@@ -114,10 +108,11 @@ def init(ctx, client, directory, name, force, use_external_storage):
     if not client.use_external_storage:
         use_external_storage = False
     try:
-        client = attr.evolve(
-            client, path=directory, use_external_storage=use_external_storage
+        ctx.obj = client = attr.evolve(
+            client,
+            path=directory,
+            use_external_storage=use_external_storage,
         )
-        ctx.obj = client
         project_config_path = client.init_repository(name=name, force=force)
     except FileExistsError:
         raise click.UsageError(

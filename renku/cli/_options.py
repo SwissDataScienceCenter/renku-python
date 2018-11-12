@@ -155,3 +155,13 @@ option_with_siblings = click.option(
 def option_siblings(func):
     """Combine siblings options."""
     return option_check_siblings(option_with_siblings(func))
+
+
+option_use_external_storage = click.option(
+    'use_external_storage',
+    '--external-storage/--no-external-storage',
+    ' /-S',
+    is_flag=True,
+    default=True,
+    help='Use an external file storage service.'
+)

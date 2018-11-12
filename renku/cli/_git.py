@@ -42,14 +42,14 @@ def set_git_home(value):
     ctx.meta[GIT_KEY] = value
 
 
-def get_git_home():
+def get_git_home(path='.'):
     """Get Git path from current context."""
     ctx = click.get_current_context(silent=True)
     if ctx and GIT_KEY in ctx.meta:
         return ctx.meta[GIT_KEY]
 
     from git import Repo
-    return Repo('.', search_parent_directories=True).working_dir
+    return Repo(path, search_parent_directories=True).working_dir
 
 
 def _modified_paths(repo):

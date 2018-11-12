@@ -111,7 +111,7 @@ def test_init(isolated_runner):
     shutil.rmtree('test-project')
     os.mkdir('test-project')
     os.chdir('test-project')
-    result = runner.invoke(cli.cli, ['-S', 'init'])
+    result = runner.invoke(cli.cli, ['init', '--no-external-storage'])
     with open('.git/config') as f:
         config = f.read()
     assert 'filter "lfs"' not in config
@@ -665,18 +665,18 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
         f.write('woop')
 
     os.chdir('foo')
-    result = runner.invoke(cli.cli, ['-S', 'init'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
     assert result.exit_code == 0
 
     os.chdir('../bar')
-    result = runner.invoke(cli.cli, ['-S', 'init'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
     assert result.exit_code == 0
 
+    os.chdir('../foo')
     with monkeypatch.context() as m:
         from renku.api.repository import RepositoryApiMixin
         m.setattr(RepositoryApiMixin, 'external_storage_installed', False)
 
-        os.chdir('../foo')
         result = runner.invoke(
             cli.cli, ['dataset', 'add', 'f', '../woop'],
             catch_exceptions=False
