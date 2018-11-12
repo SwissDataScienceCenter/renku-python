@@ -73,7 +73,7 @@ install_requires = [
     'pyld>=1.0.3',
     'python-dateutil>=2.6.1',
     'rdflib-jsonld>=0.4.0',
-    'requests>=2.18.4',
+    'requests>=2.20.1',
     'tabulate>=0.7.7',
     'werkzeug>=0.12',
 ]
