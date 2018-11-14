@@ -174,25 +174,15 @@ def project(repository):
     repo.git.clean('-xdff')
 
 
-@pytest.fixture()
-def client(repository):
+@pytest.fixture
+def client(project):
     """Return a Renku repository."""
-    from git import Repo
-
     from renku.api import LocalClient
 
-    repo = Repo(repository)
-    commit = repo.head.commit
-
-    os.chdir(repository)
-    yield LocalClient(path=repository)
-    os.chdir(repository)
-    repo.head.reset(commit, index=True, working_tree=True)
-    # remove any extra non-tracked files (.pyc, etc)
-    repo.git.clean('-xdff')
+    yield LocalClient(path=project)
 
 
-@pytest.fixture()
+@pytest.fixture
 def dataset(client):
     """Create a dataset."""
     with client.with_dataset(name='dataset') as dataset:
@@ -203,7 +193,7 @@ def dataset(client):
     return dataset
 
 
-@pytest.fixture()
+@pytest.fixture
 def dataset_responses():
     """Authentication responses."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:

@@ -74,7 +74,7 @@ class InvalidFileOperation(RenkuException):
     """Raise when trying to perfrom invalid file operation."""
 
 
-class UsageError(RenkuException):
+class UsageError(RenkuException, click.UsageError):
     """Raise in case of unintended usage of certain function calls."""
 
 
