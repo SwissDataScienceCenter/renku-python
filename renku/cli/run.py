@@ -20,40 +20,68 @@
 Capture command line execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Tracking exection of your command line script is done by simply adding the
-``renku run`` command before the previous arguments. The command will detect:
+Tracking execution of your command line script is done by simply adding the
+``renku run`` command before the actual command. This will enable detection of:
 
 * arguments (flags),
 * string and integer options,
-* input files if linked to existing files in the repository,
-* output files if modified or created while running the command.
+* input files or directories if linked to existing paths in the repository,
+* output files or directories if modified or created while running the command.
 
-.. note:: If there were uncommitted changes then the command fails.
-   See :program:`git status` for details.
+.. note:: If there were uncommitted changes in the repository, then the
+   ``renku run`` command fails. See :program:`git status` for details.
 
-Detecting input files
+.. warning:: Input and output paths can only be detected if they are passed as
+   arguments to ``renku run``.
+
+Detecting input paths
 ~~~~~~~~~~~~~~~~~~~~~
 
-An argument is identified as an input file only if its path matches an existing
-file in the repository. There might be several situations when the detection
-might not work as expected:
+Any path passed as an argument to ``renku run``, which was not changed during
+the execution, is identified as an input path. The identification only works if
+the path associated with the argument matches an existing file or directory
+in the repository.
 
-* If the file is modified during the execution, then it is stored as an output;
-* If the path points to a directory, then it is stored as a string option;
-* The input file is not defined as the tool argument.
+The detection might not work as expected
+if:
 
-Detecting output files
+* a file is **modified** during the execution. In this case it will be stored
+  as an **output**;
+* a path is not passed as an argument to ``renku run``.
+
+Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Any file which is modified or created after the execution will be added as an
-output. If the program does not produce any outputs, you can specify the
-``--no-output`` option.
+Any path **modified** or **created** during the execution will be added as an
+output.
 
-There might be situations where an existing output file has not been changed
-when the command has been executed with different parameters. The execution
-ends with an error: ``Error: There are not any detected outputs in the
-repository.`` In order to resolve it remove any proposed input file from the
-list first.
+Because the output path detection is based on the Git repository state after
+the execution of ``renku run`` command, it is good to have a basic understading
+of the underlying principles and limitations of tracking files in Git.
+
+Git tracks not only the paths in a repository, but also the content stored in
+those paths. Therefore:
+
+* a recreated file with the same content is not considered an output file,
+  but instead is kept as an input;
+* file moves are detected based on their content and can cause problems;
+* directories cannot be empty.
+
+.. note:: When in doubt whether the outputs will be detected, remove all
+  outputs using ``git rm <path>`` followed by ``git commit`` before running
+  the ``renku run`` command.
+
+.. topic:: Command does not produce any files (``--no-output``)
+
+   If the program does not produce any outputs, the execution ends with an
+   error:
+
+   .. code-block:: text
+
+      Error: There are not any detected outputs in the repository.
+
+   You can specify the ``--no-output`` option to force tracking of such
+   an execution.
 
 .. cli-run-std
 
