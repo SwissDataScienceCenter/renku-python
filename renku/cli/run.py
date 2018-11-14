@@ -28,32 +28,47 @@ Tracking exection of your command line script is done by simply adding the
 * input files if linked to existing files in the repository,
 * output files if modified or created while running the command.
 
+Input and output files and folders can only be detected, if they are passed as
+arguments to ``renku run``.
+
 .. note:: If there were uncommitted changes then the command fails.
    See :program:`git status` for details.
 
-Detecting input files
-~~~~~~~~~~~~~~~~~~~~~
+Detecting input files and folders
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An argument is identified as an input file only if its path matches an existing
-file in the repository. There might be several situations when the detection
-might not work as expected:
+Any file, passed as an argument to ``renku run``, which was not changed during 
+the execution is identified as an input file. The identification only works if 
+the path associated with the argument matches an existing file in the repository. 
 
-* If the file is modified during the execution, then it is stored as an output;
-* If the path points to a directory, then it is stored as a string option;
-* The input file is not defined as the tool argument.
+??? how are folders detected?
 
-Detecting output files
-~~~~~~~~~~~~~~~~~~~~~~
+There might be several situations when the detection might not work as expected
+if:
+
+* a file is modified during the execution, it will be stored as an output;
+* an input file is not passed as an argument to ``renku run``.
+
+Detecting output files and folders
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Any file which is modified or created after the execution will be added as an
 output. If the program does not produce any outputs, you can specify the
 ``--no-output`` option.
 
-There might be situations where an existing output file has not been changed
-when the command has been executed with different parameters. The execution
-ends with an error: ``Error: There are not any detected outputs in the
-repository.`` In order to resolve it remove any proposed input file from the
-list first.
+There might be situations where an existing output file was not changed when the 
+command has been executed with different parameters. This file is then recognized
+as an input file.
+
+1. If there are no other output files, the execution ends with an error: 
+``Error: There are not any detected outputs in the repository.`` In order to 
+resolve it remove any proposed input file from the list first.
+??? which list?
+
+2. If there are other output files, the execution does not end with the above error.
+??? What to do here? Maybe I want to keep the file as it is and another change to the
+code could change the file and I want to capture that.
+ 
 
 .. cli-run-std
 
