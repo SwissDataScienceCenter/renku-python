@@ -581,6 +581,42 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project):
     assert os.stat(os.path.join('data', 'relative', 'second', 'data.txt'))
 
 
+def test_submodule_init(tmpdir_factory, runner, run, project):
+    """Test initializing submodules."""
+
+    src_project = Path(str(tmpdir_factory.mktemp('src_project')))
+
+    assert 0 == run(args=('init', str(src_project)))
+
+    woop = src_project / 'woop'
+    with woop.open('w') as fp:
+        fp.write('woop')
+
+    repo = git.Repo(str(src_project))
+    repo.git.add('--all')
+    repo.index.commit('Added woop file')
+
+    assert 0 == run(args=('dataset', 'create', 'foo'))
+    assert 0 == run(args=('dataset', 'add', 'foo', str(woop)))
+
+    imported_woop = Path(project) / 'data' / 'foo' / woop.name
+    assert imported_woop.exists()
+
+    dst_project = Path(str(tmpdir_factory.mktemp('dst_project')))
+    subprocess.call(['git', 'clone', project, str(dst_project)])
+    dst_woop = Path(dst_project) / 'data' / 'foo' / 'woop'
+    assert not dst_woop.exists()
+
+    assert 0 == run(
+        args=[
+            '--path',
+            str(dst_project), 'run', 'wc',
+            str(dst_woop.absolute())
+        ],
+        stdout=Path(dst_project) / 'woop.wc'
+    )
+
+
 def test_show_inputs(tmpdir_factory, project, runner, run):
     """Test show inputs with submodules."""
     second_project = Path(str(tmpdir_factory.mktemp('second_project')))

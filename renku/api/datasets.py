@@ -206,7 +206,7 @@ class DatasetsApiMixin(object):
             warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path
             r = Repo(url, search_parent_directories=True)
-            src_repo_path = Path(r.git_dir).parent
+            src_repo_path = Path(r.git_dir).parent.resolve()
             submodule_name = src_repo_path.name
             submodule_path = submodule_path / str(src_repo_path).lstrip('/')
 
