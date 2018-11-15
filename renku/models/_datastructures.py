@@ -90,6 +90,90 @@ class LazyResponse(dict):
             raise
 
 
+class IndexedList(list):
+    """List allowing to query items by id or by named index.
+
+    Example:
+
+    >>> from collections import namedtuple
+    >>> Item = namedtuple('Item', 'key, value')
+    >>> items = IndexedList(Item('a', 1), Item('b', 2), attr='key')
+    >>> items[0].value
+    1
+    >>> items['a'].value
+    1
+    >>> items.b.value
+    2
+    >>> items[0] in items
+    True
+    >>> 'a' in items
+    True
+    >>> 'c' not in items
+    True
+
+    The attribute name must be always defined.
+
+    >>> IndexedList()
+    Traceback (most recent call last):
+    ...
+    ValueError: The attribute name must be defined.
+
+    """
+
+    __slots__ = ('_attr_name', '_prefix')
+
+    def __new__(cls, *args, attr=None, prefix=''):
+        """Call list constructor."""
+        return super().__new__(cls)
+
+    def __init__(self, *args, attr=None, prefix=''):
+        """Store index information."""
+        if attr is None:
+            raise ValueError('The attribute name must be defined.')
+
+        self._attr_name = attr
+        self._prefix = prefix
+
+        self.extend(args)
+
+    def __contains__(self, attr):
+        """Check existence of attribute value or object itself."""
+        #: Check if the instance is in the list.
+        rval = list.__contains__(self, attr)
+        if rval:
+            return rval
+
+        #: Find item by attribute value.
+        try:
+            getattr(self, attr)
+            return True
+        except (AttributeError, TypeError):
+            return False
+
+    def __getattr__(self, attr):
+        """Find item by named index."""
+        attr_name = self._prefix + attr
+        for item in self:
+            #: Find object by attribute value.
+            if getattr(item, self._attr_name) == attr_name:
+                return item
+
+        #: Return instance attrubutes.
+        return list.__getattribute__(self, attr)
+
+    def __getitem__(self, index):
+        """Find item by named index."""
+        if isinstance(index, int):
+            return list.__getitem__(self, index)
+
+        try:
+            return getattr(self, index)
+        except AttributeError:
+            raise IndexError(
+                "No item found with id {0}".format(self._prefix + index)
+            )
+
+
 class DirectoryTree(dict):
     r"""Create a safe directory tree from paths.
 
