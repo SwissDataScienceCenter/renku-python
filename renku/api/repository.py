@@ -19,6 +19,7 @@
 
 import datetime
 import uuid
+from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import PIPE, STDOUT, call, run
 
@@ -29,6 +30,7 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku import errors
 from renku._compat import Path
+from renku.models.refs import LinkReference
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
@@ -184,6 +186,14 @@ class RepositoryApiMixin(object):
             )
 
         return file_commits[0]
+
+    @cached_property
+    def workflow_names(self):
+        """Return index of workflow names."""
+        names = defaultdict(list)
+        for ref in LinkReference.iter_items(self, common_path='workflows'):
+            names[str(ref.reference.relative_to(self.path))].append(ref.name)
+        return names
 
     @cached_property
     def submodules(self):

@@ -98,6 +98,16 @@ class DAG(object):
         latest = self.graph.latest(node)
         part_of = getattr(node, 'part_of', None)
 
+        # TODO move reference names to entity objects
+        from .workflow import _deref
+        refs = node.client.workflow_names[node.path]
+        formatted_refs = (
+            click.style(' (', fg='yellow') + ', '.join(
+                click.style(_deref(name), fg='green', bold=True)
+                for name in refs
+            ) + click.style(')', fg='yellow')
+        ) if refs else ''
+
         if latest:
             formatted_latest = (
                 click.style(' (', fg='yellow') +
@@ -109,7 +119,8 @@ class DAG(object):
             formatted_latest = ' '
 
         result = [
-            formatted_sha1 + formatted_latest + self.graph._format_path(path)
+            formatted_sha1 + formatted_refs + formatted_latest +
+            self.graph._format_path(path)
         ]
         indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
 
