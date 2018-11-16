@@ -26,9 +26,8 @@ _REPOSITORY_URLS = (
         r'^(?P<protocol>https?|git|ssh|rsync)\://'
         r'(?:(?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
         r'(?P<hostname>[a-z0-9_.-]*)'
-        r'[:/]*'
-        r'(?P<port>[\d]+){0,1}'
-        r'(?P<pathname>\/(?P<owner>.+)/(?P<name>.+).git)'
+        r'(:(?P<port>\d+))?'
+        r'(?P<pathname>(\/(?P<owner>\w+)/)?(\/?(?P<name>[\w\-]+)(\.git)?)?)'
     ),
     re.compile(
         r'(git\+)?'
@@ -37,8 +36,7 @@ _REPOSITORY_URLS = (
         r'((?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
         r'((?P<hostname>[\w\.\-]+))'
         r'(:(?P<port>\d+))?'
-        r'(?P<pathname>(\/(?P<owner>\w+)/)?'
-        r'(\/?(?P<name>[\w\-]+)(\.git)?)?)'
+        r'(?P<pathname>(\/(?P<owner>\w+)/)?(\/?(?P<name>[\w\-]+)(\.git)?)?)'
     ),
     re.compile(
         r'^(?:(?P<username>.+)@)*'
