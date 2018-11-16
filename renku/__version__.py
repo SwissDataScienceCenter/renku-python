@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,12 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Version information for Renku."""
+"""Make lazy renku.__version__."""
 
-from pkg_resources import DistributionNotFound, get_distribution
+import sys
 
-try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
-    from setuptools_scm import get_version
-    __version__ = get_version(root='..', relative_to=__file__)
+from .version import __version__
+
+
+class str_module(str):
+    """Keep module information."""
+
+    __name__ = __name__
+    __file__ = __file__
+
+
+sys.modules[__name__] = str_module(__version__)

@@ -17,15 +17,13 @@
 # limitations under the License.
 """Python SDK and CLI for the Renku platform."""
 
-import os
-
 from setuptools import find_packages, setup
 
 readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
 
 tests_require = [
-    'check-manifest>=0.25',
+    'check-manifest>=0.37',
     'coverage>=4.0',
     'flake8>=3.5',
     'freezegun>=0.3.9',
@@ -52,15 +50,16 @@ extras_require = {
     'tests': tests_require,
 }
 
-extras_require['all'] = []
+setup_requires = [
+    'pytest-runner>=2.6.2',
+    'setuptools_scm>=3.1.0',
+]
+
+extras_require['all'] = list(setup_requires)
 for name, reqs in extras_require.items():
     if name.startswith(':'):
         continue
     extras_require['all'].extend(reqs)
-
-setup_requires = [
-    'pytest-runner>=2.6.2',
-]
 
 install_requires = [
     'PyYAML>=3.12',
@@ -82,15 +81,9 @@ install_requires = [
 
 packages = find_packages()
 
-# Get the version string. Cannot be done with import!
-g = {}
-with open(os.path.join('renku', 'version.py'), 'rt') as fp:
-    exec(fp.read(), g)
-    version = g['__version__']
-
 setup(
     name='renku',
-    version=version,
+    use_scm_version=True,
     description=__doc__,
     long_description=readme + '\n\n' + history,
     keywords='Renku CLI',

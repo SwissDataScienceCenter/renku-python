@@ -27,13 +27,8 @@ import git
 from git import Actor
 
 from renku import errors
-from renku.version import __version__
 
 GIT_KEY = 'renku.git'
-COMMITTER = Actor(
-    'renku {0}'.format(__version__),
-    'renku+{0}@datascience.ch'.format(__version__),
-)
 
 
 def set_git_home(value):
@@ -152,6 +147,12 @@ def with_git(
 
     if commit:
         try:
+            from renku.version import __version__
+            committer = Actor(
+                'renku {0}'.format(__version__),
+                'renku+{0}@datascience.ch'.format(__version__),
+            )
+
             os.chdir(repo_path)
             repo = Repo(get_git_home())
             repo.git.add('--all')
@@ -160,7 +161,7 @@ def with_git(
             repo.index.commit(
                 ' '.join(argv),
                 author_date=author_date,
-                committer=COMMITTER,
+                committer=committer,
                 skip_hooks=True,
             )
         finally:

@@ -24,6 +24,9 @@ sudo: required
 services:
   - docker
 
+git:
+  depth: false
+
 language: python
 
 matrix:
@@ -46,7 +49,7 @@ matrix:
   include:
     - language: generic
       os: osx
-      osx_image: xcode9.4
+      osx_image: xcode10.1
     - language: generic
       os: osx
       osx_image: xcode9.2
@@ -59,6 +62,7 @@ matrix:
         - REQUIREMENTS=release
 
 before_install:
+  - git fetch --tags
   - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -;
         sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable";
@@ -101,31 +105,36 @@ before_deploy:
     fi
 
 deploy:
-- provider: pypi
-  user: jirikuncar
-  password:
-    secure: "YOHhWCF25Od6HJGhtKtL6/qX/pcIx/0kqGvz3lyTgxWYAkKYk0maQovHgkGukNCPu9FKcWNuKXmNvOsXIW5fm5Aav+yJqkQSQEXpVxmKYmgNWiAtgnDYUomtAQ9uRJnfxV32QFggJ2/d7lThWE7a8/LmEK9z+Nvhr1Y32RUu0ZAmp3FgJJERUONBJyL+G20jLlM/VWVD/XFeC3zQohiNxDFaMpHHb+H23VWjFVwjfqgpj4FSZ1GvtHBgISQFic06EaUv7F20tF/BtS4J7PhH8OwRCy2jLY/LF02lchrfZKomQ7ZkcK5U1DHxHI8SBdTOkIgt1OafvHstWIt8UJZeB43O7iT+W157b8B5K8sKtAhflfY2NqIhBw4LcktsYDH9ZXApgbCuIU6LioFsXKUD8fR+3or2/AB2SRfsiRLejq4ZX/zGo9a9pbXrD4ZAvaJJreHK+HZHcJdn4/2sEU5JrMqUauBB4tvvBINshgjb/7N6AghjV7B7wcWooZZcuGaoSBl3QgUufAAxAwNDoI3N0904ZIzTxfKkd7CEyx5rEhA+HPdc5HzWwvSGNr1xOnH0zgANM7RskS7g3Ab+2EdzvhdskHpE0wxRcR5upcuTMcYBrauA4rZwjD4aefgtFLZM8aE/Se5OQOymFQBBy2+fTrkSJt/T5J1tJBDoIWvcam8="
-  distributions: "sdist bdist_wheel"
-  on:
-    tags: true
-    python: "3.6"
-    repo: SwissDataScienceCenter/renku-python
-    condition: $DEPLOY = true
-- provider: script
-  skip_cleanup: true
-  script: make docker-login docker-push
-  on:
-    all_branches: true
-    python: "3.6"
-    repo: SwissDataScienceCenter/renku-python
-    condition: $DEPLOY = true
-- provider: releases
-  api_key:
-    secure: eJUA1+x21xPnOLlOt2pyPjFgI3lLus1OOVt0Jot+Hnle8UiOYg4wphDAA8abSalN+8vvNLB1+Z/ODFWZJWs4hGMG+0wEpCmWU6x125ijciF/6WH0bN7yNm1xW9+6ve+/zX+IRuUt00Or19/lg9wv835Ce3x91H/c9byVtTtmUVZ5jjRDeB5GmJaBo+kajfZMZu7WDUGxGSyhvQIqivbnjkjjaBKFuzXU8zdLfJoZE9N8T75E0Ug/qfwmgYCB4XIu/7i1ub/zc9GSOFnV0xEYZb8SF4f+Y9RSj2V4/+Ym6K+L4/nhFj81PKOSn850sfyHSklA31KJ07Fe4k9y/EIwmt5sRuLO9Kr9n4ByTkRVgIXOrbn/8Eym3QzkJsuEmdDpvJV5Lea2zhSzITJYoYtrCqCwjEqDKVP/QxfegbUX+AG+eBmPktClLq3S+PQAQRul2kzsP584gQEg2rb8LhHttUocZEa5F67wnVpNPGBC9V0hVW/2vWnBSboS6zk96g/2G0FMKZRsavxCHWuCVes6nRrQr2L+Py+I3ppv1/sf31Jc2sPGemsFXfKSPVxq8kf8H+cpJn2YJ+fUxPkTFLQr9h/FU88NyhWteSXQhugfTRHwG7Trkcnsh1vijJHqzq6nFVLOCrC0BqHW89R4o0AdOQLuog8PVIYjot9ndwR2zMk=
-  file_glob: true
-  file: "*.bottle.*"
-  skip_cleanup: true
-  on:
-    tags: true
-    repo: SwissDataScienceCenter/renku-python
-    condition: $TRAVIS_OS_NAME = 'osx'
+  - &pypi
+    provider: pypi
+    user: jirikuncar
+    password:
+      secure: "YOHhWCF25Od6HJGhtKtL6/qX/pcIx/0kqGvz3lyTgxWYAkKYk0maQovHgkGukNCPu9FKcWNuKXmNvOsXIW5fm5Aav+yJqkQSQEXpVxmKYmgNWiAtgnDYUomtAQ9uRJnfxV32QFggJ2/d7lThWE7a8/LmEK9z+Nvhr1Y32RUu0ZAmp3FgJJERUONBJyL+G20jLlM/VWVD/XFeC3zQohiNxDFaMpHHb+H23VWjFVwjfqgpj4FSZ1GvtHBgISQFic06EaUv7F20tF/BtS4J7PhH8OwRCy2jLY/LF02lchrfZKomQ7ZkcK5U1DHxHI8SBdTOkIgt1OafvHstWIt8UJZeB43O7iT+W157b8B5K8sKtAhflfY2NqIhBw4LcktsYDH9ZXApgbCuIU6LioFsXKUD8fR+3or2/AB2SRfsiRLejq4ZX/zGo9a9pbXrD4ZAvaJJreHK+HZHcJdn4/2sEU5JrMqUauBB4tvvBINshgjb/7N6AghjV7B7wcWooZZcuGaoSBl3QgUufAAxAwNDoI3N0904ZIzTxfKkd7CEyx5rEhA+HPdc5HzWwvSGNr1xOnH0zgANM7RskS7g3Ab+2EdzvhdskHpE0wxRcR5upcuTMcYBrauA4rZwjD4aefgtFLZM8aE/Se5OQOymFQBBy2+fTrkSJt/T5J1tJBDoIWvcam8="
+    distributions: "sdist bdist_wheel"
+    on: &pypi_on
+      branch: master
+      python: "3.6"
+      repo: SwissDataScienceCenter/renku-python
+      condition: $DEPLOY = true
+  - <<: *pypi
+    on:
+      <<: *pypi_on
+      tags: true
+  - provider: script
+    skip_cleanup: true
+    script: make docker-login docker-push
+    on:
+      all_branches: true
+      python: "3.6"
+      repo: SwissDataScienceCenter/renku-python
+      condition: $DEPLOY = true
+  - provider: releases
+    api_key:
+      secure: eJUA1+x21xPnOLlOt2pyPjFgI3lLus1OOVt0Jot+Hnle8UiOYg4wphDAA8abSalN+8vvNLB1+Z/ODFWZJWs4hGMG+0wEpCmWU6x125ijciF/6WH0bN7yNm1xW9+6ve+/zX+IRuUt00Or19/lg9wv835Ce3x91H/c9byVtTtmUVZ5jjRDeB5GmJaBo+kajfZMZu7WDUGxGSyhvQIqivbnjkjjaBKFuzXU8zdLfJoZE9N8T75E0Ug/qfwmgYCB4XIu/7i1ub/zc9GSOFnV0xEYZb8SF4f+Y9RSj2V4/+Ym6K+L4/nhFj81PKOSn850sfyHSklA31KJ07Fe4k9y/EIwmt5sRuLO9Kr9n4ByTkRVgIXOrbn/8Eym3QzkJsuEmdDpvJV5Lea2zhSzITJYoYtrCqCwjEqDKVP/QxfegbUX+AG+eBmPktClLq3S+PQAQRul2kzsP584gQEg2rb8LhHttUocZEa5F67wnVpNPGBC9V0hVW/2vWnBSboS6zk96g/2G0FMKZRsavxCHWuCVes6nRrQr2L+Py+I3ppv1/sf31Jc2sPGemsFXfKSPVxq8kf8H+cpJn2YJ+fUxPkTFLQr9h/FU88NyhWteSXQhugfTRHwG7Trkcnsh1vijJHqzq6nFVLOCrC0BqHW89R4o0AdOQLuog8PVIYjot9ndwR2zMk=
+    file_glob: true
+    file: "*.bottle.*"
+    skip_cleanup: true
+    on:
+      tags: true
+      repo: SwissDataScienceCenter/renku-python
+      condition: $TRAVIS_OS_NAME = 'osx'

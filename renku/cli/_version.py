@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,12 +19,12 @@
 
 import click
 
-from renku.version import __version__
-
 
 def print_version(ctx, param, value):
     """Print version number."""
     if not value or ctx.resilient_parsing:
         return
+
+    from renku.version import __version__
     click.echo(__version__)
     ctx.exit()

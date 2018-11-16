@@ -19,9 +19,8 @@
 
 from __future__ import print_function
 
-import os
-
 import sphinx.environment
+from pkg_resources import get_distribution
 
 # -- General configuration ------------------------------------------------
 
@@ -67,13 +66,8 @@ author = u'Swiss Data Science Center'
 #
 # The short X.Y version.
 
-# Get the version string. Cannot be done with import!
-g = {}
-with open(
-    os.path.join(os.path.dirname(__file__), '..', 'renku', 'version.py'), 'rt'
-) as fp:
-    exec(fp.read(), g)
-    version = g['__version__']
+# Get the version string.
+version = get_distribution('renku').version
 
 # The full version, including alpha/beta/rc tags.
 release = version
