@@ -463,7 +463,8 @@ def test_datasets(data_file, data_repository, runner, project):
         cli.cli, [
             'dataset', 'add', 'dataset', '-t', 'file2', '-t', 'file3',
             os.path.dirname(data_repository.git_dir)
-        ]
+        ],
+        catch_exceptions=False
     )
     assert result.exit_code == 0
 

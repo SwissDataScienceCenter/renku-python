@@ -106,12 +106,11 @@ class RepositoryApiMixin(object):
         #: Create an instance of a Git repository for the given path.
         try:
             self.git = Repo(str(self.path))
-            # initialize submodules
-            if self.git.submodules:
-                for s in self.git.submodules:
-                    s.update(recursive=True, init=True)
         except InvalidGitRepositoryError:
             self.git = None
+        # initialize submodules
+        if self.git:
+            self.git.git.submodule(['update', '--init', '--recursive'])
         # TODO except
 
     @property

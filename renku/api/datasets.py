@@ -21,6 +21,7 @@ import os
 import shutil
 import stat
 import warnings
+from configparser import NoSectionError
 from contextlib import contextmanager
 from urllib import error, parse
 
@@ -29,6 +30,7 @@ import requests
 import yaml
 
 from renku._compat import Path
+from renku.api._git import GitURL
 from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
 
 
@@ -196,6 +198,9 @@ class DatasetsApiMixin(object):
         from git import Repo
 
         # create the submodule
+        if url.startswith('git@'):
+            url = 'git+ssh://' + url
+
         u = parse.urlparse(url)
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
 
@@ -232,14 +237,15 @@ class DatasetsApiMixin(object):
 
         # FIXME: do a proper check that the repos are not the same
         if submodule_name not in (s.name for s in self.git.submodules):
-            # new submodule to add
-            if u.scheme == 'git+ssh':
-                url = 'git@{netloc}:{path}'.format(
-                    netloc=u.netloc, path=u.path[1:]
-                )
-            self.git.create_submodule(
-                name=submodule_name, path=submodule_path.as_posix(), url=url
-            )
+            if u.scheme in {'http', 'https', 'git+https', 'git+ssh'}:
+                url = self.get_relative_url(url)
+
+            # Submodule in python git does some custom magic that does not
+            # allow for relative URLs, so we call the git function directly
+            self.git.git.submodule([
+                'add', '--name', submodule_name, url,
+                submodule_path.relative_to(self.path).as_posix()
+            ])
 
         src = submodule_path / (target or '')
 
@@ -309,6 +315,39 @@ class DatasetsApiMixin(object):
                     dataset=dataset.name,  # TODO detect original dataset
                 )
         }
+
+    def get_relative_url(self, url):
+        """Determine if the repo url should be relative."""
+        # Check if the default remote of the branch we are on is on
+        # the same server as the submodule. If so, use a relative path
+        # instead of an absolute URL.
+        try:
+            branch_remote = self.git.config_reader().get(
+                'branch "{}"'.format(self.git.active_branch.name), 'remote'
+            )
+        except NoSectionError:
+            branch_remote = 'origin'
+
+        try:
+            remote = self.git.remote(branch_remote)
+        except ValueError:
+            warnings.warn(
+                'Remote {} not found, cannot check for relative URL.'.
+                format(branch_remote)
+            )
+            return url
+
+        remote_url = GitURL.parse(remote.url)
+        submodule_url = GitURL.parse(url)
+
+        if remote_url.hostname == submodule_url.hostname:
+            # construct the relative path
+            url = Path(
+                '../../{}'.format(submodule_url.owner) if remote_url.owner ==
+                submodule_url.owner else '..'
+            )
+            url = str(url / submodule_url.name)
+        return url
 
 
 def check_for_git_repo(url):
