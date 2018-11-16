@@ -243,7 +243,7 @@ class DatasetsApiMixin(object):
             # Submodule in python git does some custom magic that does not
             # allow for relative URLs, so we call the git function directly
             self.git.git.submodule([
-                'add', '--name', submodule_name, url,
+                'add', '--force', '--name', submodule_name, url,
                 submodule_path.relative_to(self.path).as_posix()
             ])
 
