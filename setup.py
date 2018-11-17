@@ -86,6 +86,7 @@ setup(
     use_scm_version=True,
     description=__doc__,
     long_description=readme + '\n\n' + history,
+    long_description_content_type='text/x-rst',
     keywords='Renku CLI',
     license='Apache License 2.0',
     author='Swiss Data Science Center',
