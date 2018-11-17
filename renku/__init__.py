@@ -20,5 +20,9 @@
 from __future__ import absolute_import, print_function
 
 from .api import LocalClient
+from .version import __version__
 
-__all__ = ('LocalClient', )
+__all__ = (
+    'LocalClient',
+    '__version__',
+)
