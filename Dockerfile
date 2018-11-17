@@ -1,5 +1,17 @@
-FROM python:3.6-alpine
+FROM python:3.6-alpine as base
 
+RUN apk add --no-cache git
+
+FROM base as builder
+
+COPY . /code/renku
+WORKDIR /code/renku
+
+RUN python setup.py bdist_wheel
+
+RUN apk del --purge $BUILD_DEPS
+
+FROM base
 ENV BUILD_DEPS "alpine-sdk g++ gcc linux-headers libxslt-dev zeromq-dev"
 
 RUN apk add --no-cache $BUILD_DEPS && \
@@ -10,10 +22,10 @@ RUN apk add --no-cache $BUILD_DEPS && \
     git-lfs && \
     git lfs install
 
-COPY . /code/renku
-WORKDIR /code/renku
-RUN pip install --no-cache -e .[all]
+COPY --from=builder /code/renku/dist /install
 
-RUN apk del --purge $BUILD_DEPS
+RUN pip install --no-cache --upgrade pip && \
+    pip install --no-cache /install/renku-*.whl && \
+    rm /install/renku-*.whl
 
-WORKDIR /
+CMD ["renku"]
