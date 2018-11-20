@@ -608,14 +608,14 @@ def test_submodule_init(tmpdir_factory, runner, run, project):
     dst_woop = Path(dst_project) / 'data' / 'foo' / 'woop'
     assert not dst_woop.exists()
 
-    assert 0 == run(
-        args=[
+    result = runner.invoke(
+        cli.cli, [
             '--path',
-            str(dst_project), 'run', 'wc',
+            str(dst_project), 'run', '--no-output', 'wc',
             str(dst_woop.absolute())
-        ],
-        stdout=Path(dst_project) / 'woop.wc'
+        ]
     )
+    assert result.exit_code == 0
 
 
 def test_show_inputs(tmpdir_factory, project, runner, run):
