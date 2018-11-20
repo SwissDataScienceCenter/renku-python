@@ -30,7 +30,7 @@ import requests
 import yaml
 
 from renku._compat import Path
-from renku.api._git import GitURL
+from renku.models._git import GitURL
 from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
 
 

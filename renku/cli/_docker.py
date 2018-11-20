@@ -23,7 +23,7 @@ from configparser import NoSectionError
 import attr
 
 from renku import errors
-from renku.api._git import GitURL
+from renku.models._git import GitURL
 
 
 def detect_registry_url(client, auto_login=True):
