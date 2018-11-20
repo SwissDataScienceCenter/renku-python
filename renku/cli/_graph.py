@@ -24,6 +24,7 @@ import attr
 
 from renku import errors
 from renku._compat import Path
+from renku.models._git import Range
 from renku.models.cwl.command_line_tool import CommandLineTool
 from renku.models.cwl.parameter import InputParameter, WorkflowOutputParameter
 from renku.models.cwl.types import PATH_TYPES
@@ -232,32 +233,32 @@ class Graph(object):
 
     def dependencies(self, revision='HEAD', paths=None):
         """Return dependencies from a revision or paths."""
-        if paths:
-            return {
-                Usage.from_revision(
-                    self.client,
-                    path=self.normalize_path(path),
-                    revision=revision,
+        result = []
+
+        if not paths:
+            if revision == 'HEAD':
+                index = self.client.git.index
+            else:
+                from git import IndexFile
+                index = IndexFile.from_tree(self.client.git, revision)
+
+            paths = (path for path, _ in index.entries.keys())
+
+        for path in paths:
+            try:
+                result.append(
+                    Usage.from_revision(
+                        self.client,
+                        path=self.normalize_path(path),
+                        revision=revision,
+                    )
                 )
-                for path in paths
-            }
+            except KeyError:
+                continue
 
-        if revision == 'HEAD':
-            index = self.client.git.index
-        else:
-            from git import IndexFile
-            index = IndexFile.from_tree(self.client.git, revision)
+        return result
 
-        return {
-            Usage.from_revision(
-                client=self.client,
-                path=path,
-                revision=revision,
-            )
-            for path, _ in index.entries.keys()
-        }
-
-    def process_dependencies(self, dependencies):
+    def process_dependencies(self, dependencies, visited=None):
         """Process given dependencies."""
         for dependency in dependencies:
             # We can't simply reuse information from submodules
@@ -265,7 +266,7 @@ class Graph(object):
                 continue
             self._latest_commits[dependency.path] = dependency.commit
 
-        visited = set()
+        visited = visited or set()
         queue = deque(dependencies)
 
         while queue:
@@ -306,10 +307,17 @@ class Graph(object):
         self, revision='HEAD', paths=None, dependencies=None, can_be_cwl=False
     ):
         """Build graph from paths and/or revision."""
+        interval = Range.rev_parse(self.client.git, revision)
+
         if dependencies is None:
             dependencies = self.dependencies(revision=revision, paths=paths)
 
-        self.process_dependencies(dependencies)
+        ignore = {
+            commit
+            for commit in self.client.git.iter_commits(interval.start)
+        } if interval.start else set()
+
+        self.process_dependencies(dependencies, visited=ignore)
 
         return {
             self._nodes.get((dependency.commit, dependency.path), dependency)

@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -101,3 +104,31 @@ class GitURL(object):
         if self.name:
             img += '/' + self.name
         return img
+
+
+@attr.s
+class Range:
+    """Represent parsed Git revision as an interval."""
+
+    start = attr.ib()
+    stop = attr.ib()
+
+    @classmethod
+    def rev_parse(cls, git, revision):
+        """Parse revision string."""
+        start, is_range, stop = revision.partition('..')
+        if not is_range:
+            start, stop = None, start
+        elif not stop:
+            stop = 'HEAD'
+
+        return cls(
+            start=git.rev_parse(start) if start else None,
+            stop=git.rev_parse(stop),
+        )
+
+    def __str__(self):
+        """Format range."""
+        if self.start:
+            return '{self.start}..{self.stop}'.format(self=self)
+        return str(self.stop)
