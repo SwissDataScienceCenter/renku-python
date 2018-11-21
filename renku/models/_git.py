@@ -23,40 +23,59 @@ import attr
 
 from renku import errors
 
+_RE_PROTOCOL = r'(git\+)?(?P<protocol>https?|git|ssh|rsync)\://'
+
+_RE_USERNAME = r'(?:(?P<username>.+)@)*'
+
+_RE_USERNAME_PASSWORD = r'(?:(?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
+
+# RFC 1123 compliant hostname regex
+_RE_HOSTNAME = (
+    r'(?P<hostname>'
+    r'([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}'
+    r'[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}'
+    r'[a-zA-Z0-9]))*)'
+)
+
+_RE_PORT = r':(?P<port>\d+)'
+
+_RE_PATHNAME = (
+    r'/(?P<pathname>'
+    r'(((?P<owner>[\w-]+)/)?(?P<name>[\w\-]+)(\.git)?)?)'
+)
+
+_RE_PREFIXED_PATHNAME = (
+    r'/(?P<pathname>(([\w-]+)/)+'
+    r'(?P<owner>[\w-]+)/(?P<name>[\w\-]+)(\.git)?)'
+)
+
 #: Define possible repository URLs.
 _REPOSITORY_URLS = (
     re.compile(
-        r'^(?P<protocol>https?|git|ssh|rsync)\://'
-        r'(?:(?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
-        r'(?P<hostname>[a-z0-9_.-]*)'
-        r'(:(?P<port>\d+))?'
-        r'(?P<pathname>(\/(?P<owner>\w+)/)?(\/?(?P<name>[\w\-]+)(\.git)?)?)'
+        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME +
+        _RE_PATHNAME + r'$'
     ),
     re.compile(
-        r'(git\+)?'
-        r'((?P<protocol>\w+)://)'
-        # '((?P<user>\w+)@)?'
-        r'((?P<username>[^:]+)(:(?P<password>[^@]+))?@)?'
-        r'((?P<hostname>[\w\.\-]+))'
-        r'(:(?P<port>\d+))?'
-        r'(?P<pathname>(\/(?P<owner>\w+)/)?(\/?(?P<name>[\w\-]+)(\.git)?)?)'
+        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME +
+        _RE_PREFIXED_PATHNAME + r'$'
+    ),
+    re.compile(r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PATHNAME + r'$'),
+    re.
+    compile(r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PREFIXED_PATHNAME + r'$'),
+    re.compile(
+        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME + _RE_PORT +
+        _RE_PATHNAME + r'$'
     ),
     re.compile(
-        r'^(?:(?P<username>.+)@)*'
-        r'(?P<hostname>[a-z0-9_.-]*)[:/]*'
-        r'(?P<port>[\d]+){0,1}'
-        r'[:](?P<pathname>\/?(?P<owner>.+)/(?P<name>.+).git)'
+        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME + _RE_PORT +
+        _RE_PREFIXED_PATHNAME + r'$'
     ),
     re.compile(
-        r'((?P<username>\w+)@)?'
-        r'((?P<hostname>[\w\.\-]+))'
-        r'[\:\/]{1,2}'
-        r'(?P<pathname>((?P<owner>\w+)/)?'
-        r'((?P<name>[\w\-]+)(\.git)?)?)'
+        r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PORT + _RE_PATHNAME + r'$'
     ),
     re.compile(
-        # Simple registry URL like: docker.io
-        r'((?P<hostname>[\w\.\-]+))'
+        r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PORT + _RE_PREFIXED_PATHNAME +
+        r'$'
     ),
 )
 
