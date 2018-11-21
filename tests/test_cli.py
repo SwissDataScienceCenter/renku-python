@@ -605,15 +605,16 @@ def test_submodule_init(tmpdir_factory, runner, run, project):
 
     dst_project = Path(str(tmpdir_factory.mktemp('dst_project')))
     subprocess.call(['git', 'clone', project, str(dst_project)])
+    subprocess.call(['git', 'lfs', 'install', '--local'], cwd=str(dst_project))
     dst_woop = Path(dst_project) / 'data' / 'foo' / 'woop'
     assert not dst_woop.exists()
-
     result = runner.invoke(
         cli.cli, [
             '--path',
             str(dst_project), 'run', '--no-output', 'wc',
             str(dst_woop.absolute())
-        ]
+        ],
+        catch_exceptions=False
     )
     assert result.exit_code == 0
 

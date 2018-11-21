@@ -21,7 +21,7 @@ import datetime
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
-from subprocess import PIPE, STDOUT, call, run
+from subprocess import PIPE, STDOUT, call, check_output, run
 
 import attr
 import filelock
@@ -110,7 +110,10 @@ class RepositoryApiMixin(object):
             self.git = None
         # initialize submodules
         if self.git:
-            self.git.git.submodule(['update', '--init', '--recursive'])
+            check_output([
+                'git', 'submodule', 'update', '--init', '--recursive'
+            ],
+                         cwd=str(self.path))
         # TODO except
 
     @property
