@@ -91,6 +91,17 @@ from renku.models._git import GitURL
             'port': '1234'
         },
         {
+            'href': 'git+ssh://user:pass@example.com:1234/owner/repo.git',
+            'protocol': 'ssh',
+            'hostname': 'example.com',
+            'name': 'repo',
+            'pathname': 'owner/repo.git',
+            'owner': 'owner',
+            'port': '1234',
+            'username': 'user',
+            'password': 'pass'
+        },
+        {
             'href': 'git@example.com/repo.git',
             'protocol': 'ssh',
             'hostname': 'example.com',
@@ -126,6 +137,14 @@ from renku.models._git import GitURL
             'owner': 'owner',
             'port': '1234',
             'username': 'git'
+        },
+        {
+            'href': '/path/to/repo',
+            'pathname': '/path/to/repo'
+        },
+        {
+            'href': '../relative/path/to/repo',
+            'pathname': '../relative/path/to/repo'
         },
     ]
 )

@@ -49,6 +49,11 @@ _RE_PREFIXED_PATHNAME = (
     r'(?P<owner>[\w-]+)/(?P<name>[\w\-]+)(\.git)?)'
 )
 
+_RE_UNIXPATH = (
+    r'(?P<pathname>\/$|(^(?=\/)|^\.|^\.\.)'
+    r'(\/(?=[^/\0])[^/\0]+)*\/?)'
+)
+
 #: Define possible repository URLs.
 _REPOSITORY_URLS = (
     re.compile(
@@ -58,8 +63,7 @@ _REPOSITORY_URLS = (
     re.compile(
         r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME +
         _RE_PREFIXED_PATHNAME + r'$'
-    ),
-    re.compile(r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PATHNAME + r'$'),
+    ), re.compile(r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PATHNAME + r'$'),
     re.
     compile(r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PREFIXED_PATHNAME + r'$'),
     re.compile(
@@ -76,7 +80,7 @@ _REPOSITORY_URLS = (
     re.compile(
         r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PORT + _RE_PREFIXED_PATHNAME +
         r'$'
-    ),
+    ), re.compile(r'^' + _RE_UNIXPATH + r'$')
 )
 
 
@@ -90,7 +94,7 @@ class GitURL(object):
     pathname = attr.ib(default=None)
     protocols = attr.ib(default=attr.Factory(list), init=False)
     protocol = attr.ib(default='ssh')
-    hostname = attr.ib(default=None)
+    hostname = attr.ib(default='localhost')
     username = attr.ib(default=None)
     password = attr.ib(default=None)
     port = attr.ib(default=None)

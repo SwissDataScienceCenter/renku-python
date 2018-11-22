@@ -641,8 +641,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
 
     woop_wc = Path(project) / 'woop.wc'
     assert 0 == run(args=('run', 'wc'), stdin=imported_woop, stdout=woop_wc)
-
-    result = runner.invoke(cli.cli, ['show', 'inputs'])
+    result = runner.invoke(cli.cli, ['show', 'inputs'], catch_exceptions=False)
     assert {str(imported_woop.resolve().relative_to(Path(project).resolve()))
             } == set(result.output.strip().split('\n'))
 
