@@ -108,6 +108,17 @@ your ``$PATH``.
     $ which renku
     ~/.local/bin/renku
 
+Docker
+~~~~~~
+
+The containerized version of the CLI can launched using Docker command.
+
+::
+
+    $ docker run -it -v "$PWD":"$PWD" -w="$PWD" renku/renku-python renku
+
+It makes sure your current directory is mounted to same place in the container.
+
 Usage
 -----
 
