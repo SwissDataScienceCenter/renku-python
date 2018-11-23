@@ -165,7 +165,7 @@ from renku.models._git import GitURL
             'href': 'file://../relative/path/to/repo',
             'pathname': '../relative/path/to/repo',
         },
-        pytest.mark.xfail(
+        pytest.param(
             {
                 'href': 'https://example.com:1234:repo.git',
                 'protocol': 'https',
@@ -174,10 +174,10 @@ from renku.models._git import GitURL
                 'name': 'repo',
                 'pathname': 'repo.git',
             },
-            raises=errors.ConfigurationError,
-            strict=True,
+            marks=pytest.mark.
+            xfail(raises=errors.ConfigurationError, strict=True),
         ),
-        pytest.mark.xfail(
+        pytest.param(
             {
                 'href': 'https://example.com:1234:owner/repo.git',
                 'protocol': 'https',
@@ -187,10 +187,10 @@ from renku.models._git import GitURL
                 'pathname': 'repo.git',
                 'owner': 'owner',
             },
-            raises=errors.ConfigurationError,
-            strict=True,
+            marks=pytest.mark.
+            xfail(raises=errors.ConfigurationError, strict=True),
         ),
-        pytest.mark.xfail(
+        pytest.param(
             {
                 'href': 'git@example.com:1234:owner/repo.git',
                 'protocol': 'https',
@@ -200,8 +200,8 @@ from renku.models._git import GitURL
                 'pathname': 'repo.git',
                 'owner': 'owner',
             },
-            raises=errors.ConfigurationError,
-            strict=True,
+            marks=pytest.mark.
+            xfail(raises=errors.ConfigurationError, strict=True),
         ),
     ]
 )
