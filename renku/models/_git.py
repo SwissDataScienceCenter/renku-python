@@ -23,7 +23,7 @@ import attr
 
 from renku import errors
 
-_RE_PROTOCOL = r'(git\+)?(?P<protocol>https?|git|ssh|rsync)\://'
+_RE_PROTOCOL = r'(?P<protocol>(git\+)?(https?|git|ssh|rsync))\://'
 
 _RE_USERNAME = r'(?:(?P<username>.+)@)*'
 
@@ -45,42 +45,39 @@ _RE_PATHNAME = (
 )
 
 _RE_PREFIXED_PATHNAME = (
-    r'/(?P<pathname>(([\w-]+)/)+'
+    r'/(?P<pathname>(([\w\-\~]+)/)+'
     r'(?P<owner>[\w-]+)/(?P<name>[\w\-]+)(\.git)?)'
 )
 
 _RE_UNIXPATH = (
-    r'(?P<pathname>\/$|(^(?=\/)|^\.|^\.\.)'
+    r'(file\://)?(?P<pathname>\/$|((?=\/)|\.|\.\.)'
     r'(\/(?=[^/\0])[^/\0]+)*\/?)'
 )
 
+
+def _build(*parts):
+    """Assemble the regex."""
+    return re.compile(r'^' + r''.join(parts) + r'$')
+
+
 #: Define possible repository URLs.
 _REPOSITORY_URLS = (
-    re.compile(
-        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME +
-        _RE_PATHNAME + r'$'
+    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PATHNAME),
+    _build(
+        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME,
+        _RE_PREFIXED_PATHNAME
+    ), _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PATHNAME),
+    _build(
+        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT,
+        _RE_PATHNAME
     ),
-    re.compile(
-        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME +
-        _RE_PREFIXED_PATHNAME + r'$'
-    ), re.compile(r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PATHNAME + r'$'),
-    re.
-    compile(r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PREFIXED_PATHNAME + r'$'),
-    re.compile(
-        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME + _RE_PORT +
-        _RE_PATHNAME + r'$'
-    ),
-    re.compile(
-        r'^' + _RE_PROTOCOL + _RE_USERNAME_PASSWORD + _RE_HOSTNAME + _RE_PORT +
-        _RE_PREFIXED_PATHNAME + r'$'
-    ),
-    re.compile(
-        r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PORT + _RE_PATHNAME + r'$'
-    ),
-    re.compile(
-        r'^' + _RE_USERNAME + _RE_HOSTNAME + _RE_PORT + _RE_PREFIXED_PATHNAME +
-        r'$'
-    ), re.compile(r'^' + _RE_UNIXPATH + r'$')
+    _build(
+        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT,
+        _RE_PREFIXED_PATHNAME
+    ), _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PREFIXED_PATHNAME),
+    _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PORT, _RE_PATHNAME),
+    _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PORT, _RE_PREFIXED_PATHNAME),
+    _build(_RE_UNIXPATH)
 )
 
 
@@ -100,11 +97,14 @@ class GitURL(object):
     port = attr.ib(default=None)
     owner = attr.ib(default=None)
     name = attr.ib(default=None)
+    _regex = attr.ib(default=None, cmp=False)
 
     def __attrs_post_init__(self):
         """Derive basic informations."""
         if self.protocol:
-            self.protocols = self.protocol.split('+')
+            protocols = self.protocol.split('+')
+            self.protocols = protocols
+            self.protocol = protocols[-1]
 
     @classmethod
     def parse(cls, href):
@@ -112,7 +112,7 @@ class GitURL(object):
         for regex in _REPOSITORY_URLS:
             if re.search(regex, href):
                 matches = re.search(regex, href)
-                return cls(href=href, **matches.groupdict())
+                return cls(href=href, regex=regex, **matches.groupdict())
         else:
             raise errors.ConfigurationError(
                 '"{href} is not a valid Git remote.'.format(href=href)

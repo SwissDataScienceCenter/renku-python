@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,6 +19,7 @@
 
 import pytest
 
+from renku import errors
 from renku.models._git import GitURL
 
 
@@ -29,14 +30,14 @@ from renku.models._git import GitURL
             'protocol': 'https',
             'hostname': 'example.com',
             'name': 'repo',
-            'pathname': 'repo.git'
+            'pathname': 'repo.git',
         },
         {
             'href': 'https://example.com/repo',
             'protocol': 'https',
             'hostname': 'example.com',
             'name': 'repo',
-            'pathname': 'repo'
+            'pathname': 'repo',
         },
         {
             'href': 'https://example.com/owner/repo.git',
@@ -44,7 +45,7 @@ from renku.models._git import GitURL
             'hostname': 'example.com',
             'name': 'repo',
             'pathname': 'owner/repo.git',
-            'owner': 'owner'
+            'owner': 'owner',
         },
         {
             'href': 'https://example.com:1234/repo.git',
@@ -52,7 +53,7 @@ from renku.models._git import GitURL
             'hostname': 'example.com',
             'name': 'repo',
             'pathname': 'repo.git',
-            'port': '1234'
+            'port': '1234',
         },
         {
             'href': 'https://example.com:1234/owner/repo.git',
@@ -61,7 +62,7 @@ from renku.models._git import GitURL
             'name': 'repo',
             'pathname': 'owner/repo.git',
             'owner': 'owner',
-            'port': '1234'
+            'port': '1234',
         },
         {
             'href': 'https://example.com:1234/prefix/owner/repo.git',
@@ -70,36 +71,46 @@ from renku.models._git import GitURL
             'name': 'repo',
             'pathname': 'prefix/owner/repo.git',
             'owner': 'owner',
-            'port': '1234'
+            'port': '1234',
         },
         {
             'href': 'git+https://example.com:1234/owner/repo.git',
-            'protocol': 'https',
+            'protocol': 'git+https',
             'hostname': 'example.com',
             'name': 'repo',
             'pathname': 'owner/repo.git',
             'owner': 'owner',
-            'port': '1234'
+            'port': '1234',
         },
         {
             'href': 'git+ssh://example.com:1234/owner/repo.git',
-            'protocol': 'ssh',
+            'protocol': 'git+ssh',
             'hostname': 'example.com',
             'name': 'repo',
             'pathname': 'owner/repo.git',
             'owner': 'owner',
-            'port': '1234'
+            'port': '1234',
         },
         {
             'href': 'git+ssh://user:pass@example.com:1234/owner/repo.git',
-            'protocol': 'ssh',
+            'protocol': 'git+ssh',
             'hostname': 'example.com',
             'name': 'repo',
             'pathname': 'owner/repo.git',
             'owner': 'owner',
             'port': '1234',
             'username': 'user',
-            'password': 'pass'
+            'password': 'pass',
+        },
+        {
+            'href': 'ssh://user:pass@example.com/~user/owner/repo.git',
+            'protocol': 'ssh',
+            'hostname': 'example.com',
+            'name': 'repo',
+            'pathname': '~user/owner/repo.git',
+            'owner': 'owner',
+            'username': 'user',
+            'password': 'pass',
         },
         {
             'href': 'git@example.com/repo.git',
@@ -107,7 +118,7 @@ from renku.models._git import GitURL
             'hostname': 'example.com',
             'name': 'repo',
             'pathname': 'repo.git',
-            'username': 'git'
+            'username': 'git',
         },
         {
             'href': 'git@example.com/owner/repo.git',
@@ -116,7 +127,7 @@ from renku.models._git import GitURL
             'name': 'repo',
             'pathname': 'owner/repo.git',
             'owner': 'owner',
-            'username': 'git'
+            'username': 'git',
         },
         {
             'href': 'git@example.com:1234/owner/repo.git',
@@ -126,7 +137,7 @@ from renku.models._git import GitURL
             'pathname': 'owner/repo.git',
             'owner': 'owner',
             'port': '1234',
-            'username': 'git'
+            'username': 'git',
         },
         {
             'href': 'git@example.com:1234/prefix/owner/repo.git',
@@ -136,18 +147,65 @@ from renku.models._git import GitURL
             'pathname': 'prefix/owner/repo.git',
             'owner': 'owner',
             'port': '1234',
-            'username': 'git'
+            'username': 'git',
         },
         {
             'href': '/path/to/repo',
-            'pathname': '/path/to/repo'
+            'pathname': '/path/to/repo',
+        },
+        {
+            'href': 'file:///path/to/repo',
+            'pathname': '/path/to/repo',
         },
         {
             'href': '../relative/path/to/repo',
-            'pathname': '../relative/path/to/repo'
+            'pathname': '../relative/path/to/repo',
         },
+        {
+            'href': 'file://../relative/path/to/repo',
+            'pathname': '../relative/path/to/repo',
+        },
+        pytest.mark.xfail(
+            {
+                'href': 'https://example.com:1234:repo.git',
+                'protocol': 'https',
+                'hostname': 'example.com',
+                'port': '1234',
+                'name': 'repo',
+                'pathname': 'repo.git',
+            },
+            raises=errors.ConfigurationError,
+            strict=True,
+        ),
+        pytest.mark.xfail(
+            {
+                'href': 'https://example.com:1234:owner/repo.git',
+                'protocol': 'https',
+                'hostname': 'example.com',
+                'port': '1234',
+                'name': 'repo',
+                'pathname': 'repo.git',
+                'owner': 'owner',
+            },
+            raises=errors.ConfigurationError,
+            strict=True,
+        ),
+        pytest.mark.xfail(
+            {
+                'href': 'git@example.com:1234:owner/repo.git',
+                'protocol': 'https',
+                'hostname': 'example.com',
+                'port': '1234',
+                'name': 'repo',
+                'pathname': 'repo.git',
+                'owner': 'owner',
+            },
+            raises=errors.ConfigurationError,
+            strict=True,
+        ),
     ]
 )
 def test_valid_href(fields):
     """Test the various repo regexes."""
+    fields.pop('protocols', None)
     assert GitURL(**fields) == GitURL.parse(fields['href'])
