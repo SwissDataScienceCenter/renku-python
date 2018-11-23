@@ -37,6 +37,14 @@ RESOURCE = """  resource "{package}" do
   end
 """
 
+DEPENDENCY = '  depends_on "{package}"'
+
+DEPENDENCIES = (
+    'python',
+    'git-lfs',
+    'libxml2',
+)
+
 FORMULA = """class {formula} < Formula
   include Language::Python::Virtualenv
 
@@ -48,10 +56,9 @@ FORMULA = """class {formula} < Formula
   version_scheme 1
   head "{homepage}"
 
-  depends_on "python"
-  depends_on "git-lfs"
-
 {dependencies}
+
+{resources}
   def install
     venv = virtualenv_create(libexec, "python3")
     venv.pip_install resources
@@ -123,6 +130,9 @@ for package, settings in lock['default'].items():
 print(
     FORMULA.format(
         dependencies='\n'.join(
+            DEPENDENCY.format(package=package) for package in DEPENDENCIES
+        ),
+        resources='\n'.join(
             RESOURCE.format(**package)
             for name, package in dependencies.items() if name != NAME
         ),
