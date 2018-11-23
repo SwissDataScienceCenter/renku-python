@@ -59,10 +59,13 @@ The latest release is available on PyPI and can be installed using
 
     $ pip install renku
 
-The latest code can be installed directly from the Git repository:
+The latest development versions are available on PyPI or from the Git
+repository:
 
 ::
 
+    $ pip install --dev renku
+    # - OR -
     $ pip install -e git+https://github.com/SwissDataScienceCenter/renku-python.git#egg=renku
 
 Use following installation steps based on your operating system and preferences
@@ -111,13 +114,13 @@ your ``$PATH``.
 Docker
 ~~~~~~
 
-The containerized version of the CLI can launched using Docker command.
+The containerized version of the CLI can be launched using Docker command.
 
 ::
 
     $ docker run -it -v "$PWD":"$PWD" -w="$PWD" renku/renku-python renku
 
-It makes sure your current directory is mounted to same place in the container.
+It makes sure your current directory is mounted to the same place in the container.
 
 Usage
 -----

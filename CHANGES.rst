@@ -18,10 +18,32 @@
 Changes
 =======
 
-Version 0.2.0 (released 2018-09-25)
+``v0.3.0``
+----------
+
+*(released 2018-11-26)*
+
+- Adds JSON-LD context to objects extracted from the Git repository
+  (see ``renku show context --list``).
+- Uses PROV-O and WFPROV as provenance vocabularies and generates "stable"
+  object identifiers (``@id``) for RDF and JSON-LD output formats.
+- Refactors the log output to allow linking files and directories.
+- Adds support for aliasing tools and workflows.
+- Adds option to install shell completion (``renku --install-completion``).
+- Fixes initialization of Git submodules.
+- Uses relative submodule paths when appropriate.
+- Simplifies external storage configuration.
+
+``v0.2.0``
+----------
+
+*(released 2018-09-25)*
 
 - Refactored version using Git and Common Workflow Language.
 
-Version 0.1.0 (released 2017-09-06)
+``v0.1.0``
+----------
+
+*(released 2017-09-06)*
 
 - Initial public release as Renga.
