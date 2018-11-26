@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,12 +15,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Support for ``python -m renku``."""
+"""Wrap Git client."""
 
-import sys
+import attr
 
-from .cli import cli
 
-if __name__ == '__main__':  # pragma: no cover
-    sys.argv[0] = 'python -m renku'
-    cli()
+@attr.s
+class GitCore:
+    """Wrap Git client."""
+
+    repo = attr.ib(init=False)
+    """Store an instance of the Git repository."""
+
+    def __attrs_post_init__(self):
+        """Initialize computed attributes."""
+        from git import InvalidGitRepositoryError, Repo
+
+        #: Create an instance of a Git repository for the given path.
+        try:
+            self.repo = Repo(str(self.path))
+        except InvalidGitRepositoryError:
+            self.repo = None

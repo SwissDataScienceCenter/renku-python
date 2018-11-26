@@ -28,7 +28,7 @@ from renku.models._git import GitURL
 
 def detect_registry_url(client, auto_login=True):
     """Return a URL of the Docker registry."""
-    repo = client.git
+    repo = client.repo
     config = repo.config_reader()
 
     # Find registry URL in .git/config

@@ -295,7 +295,7 @@ def test_exitings_output_directory(client):
         working_dir=instance_path,
     )
 
-    with factory.watch(repo=client, no_output=True) as tool:
+    with factory.watch(client, no_output=True) as tool:
         # Script creates the directory.
         output.mkdir(parents=True)
 
@@ -306,7 +306,7 @@ def test_exitings_output_directory(client):
     assert 0 == len(initial_work_dir_requirement)
 
     output.mkdir(parents=True, exist_ok=True)
-    with factory.watch(repo=client) as tool:
+    with factory.watch(client) as tool:
         # The directory already exists.
         (output / 'result.txt').touch()
 

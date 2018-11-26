@@ -29,7 +29,7 @@ from ._git import _safe_issue_checkout, with_git
 @with_git(clean=True, up_to_date=True, commit=False)
 def workon(client, issue):
     """Activate environment for tracking work on a specific problem."""
-    _safe_issue_checkout(client.git, issue=issue)
+    _safe_issue_checkout(client.repo, issue=issue)
 
 
 @click.command()
@@ -37,4 +37,4 @@ def workon(client, issue):
 @with_git(clean=True, up_to_date=True, commit=False)
 def deactivate(client):
     """Deactivate environment for tracking work on a specific problem."""
-    _safe_issue_checkout(client.git)
+    _safe_issue_checkout(client.repo)

@@ -146,14 +146,20 @@ from ._git import _mapped_std_streams, with_git
     callback=lambda _, __, values: [int(value) % 256 for value in values],
     help='Allowed command exit-code.',
 )
+@click.option(
+    '--isolation',
+    is_flag=True,
+    default=False,
+    help='Set up the isolation for invoking of the given command.',
+)
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_local_client
 @with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
-def run(client, no_output, success_codes, command_line):
+def run(client, no_output, success_codes, isolation, command_line):
     """Tracking work on a specific problem."""
-    working_dir = client.git.working_dir
-    paths = [x[0] for x in client.git.index.entries]
-    paths += client.git.untracked_files
+    working_dir = client.repo.working_dir
+    paths = [x[0] for x in client.repo.index.entries]
+    paths += client.repo.untracked_files
     candidates = [os.path.join(working_dir, path) for path in paths]
     mapped_std = _mapped_std_streams(candidates)
     factory = CommandLineToolFactory(

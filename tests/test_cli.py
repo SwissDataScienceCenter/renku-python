@@ -658,8 +658,8 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     assert result.exit_code == 0
 
     with monkeypatch.context() as m:
-        from renku.api.repository import RepositoryApiMixin
-        m.setattr(RepositoryApiMixin, 'external_storage_installed', False)
+        from renku.api.storage import StorageApiMixin
+        m.setattr(StorageApiMixin, 'external_storage_installed', False)
 
         result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
         assert result.exit_code == 1
@@ -712,8 +712,8 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
 
     os.chdir('../foo')
     with monkeypatch.context() as m:
-        from renku.api.repository import RepositoryApiMixin
-        m.setattr(RepositoryApiMixin, 'external_storage_installed', False)
+        from renku.api.storage import StorageApiMixin
+        m.setattr(StorageApiMixin, 'external_storage_installed', False)
 
         result = runner.invoke(
             cli.cli, ['dataset', 'add', 'f', '../woop'],
@@ -864,7 +864,7 @@ def test_modified_tool(runner, project, run):
     from renku.api import LocalClient
 
     client = LocalClient(project)
-    repo = client.git
+    repo = client.repo
     greeting = client.path / 'greeting.txt'
 
     assert 0 == run(args=('run', 'echo', 'hello'), stdout=greeting)

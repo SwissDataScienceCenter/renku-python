@@ -237,10 +237,10 @@ class Graph(object):
 
         if not paths:
             if revision == 'HEAD':
-                index = self.client.git.index
+                index = self.client.repo.index
             else:
                 from git import IndexFile
-                index = IndexFile.from_tree(self.client.git, revision)
+                index = IndexFile.from_tree(self.client.repo, revision)
 
             paths = (path for path, _ in index.entries.keys())
 
@@ -307,14 +307,14 @@ class Graph(object):
         self, revision='HEAD', paths=None, dependencies=None, can_be_cwl=False
     ):
         """Build graph from paths and/or revision."""
-        interval = Range.rev_parse(self.client.git, revision)
+        interval = Range.rev_parse(self.client.repo, revision)
 
         if dependencies is None:
             dependencies = self.dependencies(revision=revision, paths=paths)
 
         ignore = {
             commit
-            for commit in self.client.git.iter_commits(interval.start)
+            for commit in self.client.repo.iter_commits(interval.start)
         } if interval.start else set()
 
         self.process_dependencies(dependencies, visited=ignore)

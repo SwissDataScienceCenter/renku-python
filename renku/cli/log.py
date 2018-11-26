@@ -98,7 +98,7 @@ def log(client, revision, format, no_output, paths):
         elif not stop:
             stop = 'HEAD'
 
-        commit = client.git.rev_parse(stop)
+        commit = client.repo.rev_parse(stop)
         paths = (
             str(client.path / item.a_path)
             for item in commit.diff(commit.parents or NULL_TREE)

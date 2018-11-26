@@ -21,18 +21,17 @@ import datetime
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
-from subprocess import PIPE, STDOUT, call, check_output, run
+from subprocess import check_output
 
 import attr
 import filelock
 import yaml
 from werkzeug.utils import cached_property, secure_filename
 
-from renku import errors
 from renku._compat import Path
 from renku.models.refs import LinkReference
 
-HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
+from ._git import GitCore
 
 
 def default_path():
@@ -46,7 +45,7 @@ def default_path():
 
 
 @attr.s
-class PathMixin(object):
+class PathMixin:
     """Define a default path attribute."""
 
     path = attr.ib(
@@ -62,7 +61,7 @@ class PathMixin(object):
 
 
 @attr.s
-class RepositoryApiMixin(object):
+class RepositoryApiMixin(GitCore):
     """Client for handling a local repository."""
 
     renku_home = attr.ib(default='.renku')
@@ -70,12 +69,6 @@ class RepositoryApiMixin(object):
 
     renku_path = attr.ib(init=False)
     """Store a ``Path`` instance of the Renku folder."""
-
-    git = attr.ib(init=False)
-    """Store an instance of the Git repository."""
-
-    use_external_storage = attr.ib(default=True)
-    """Use external storage (e.g. LFS)."""
 
     parent = attr.ib(default=None)
     """Store a pointer to the parent repository."""
@@ -91,8 +84,6 @@ class RepositoryApiMixin(object):
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
-        from git import InvalidGitRepositoryError, Repo
-
         #: Configure Renku path.
         path = Path(self.renku_home)
         if not path.is_absolute():
@@ -103,13 +94,10 @@ class RepositoryApiMixin(object):
 
         self._subclients = {}
 
-        #: Create an instance of a Git repository for the given path.
-        try:
-            self.git = Repo(str(self.path))
-        except InvalidGitRepositoryError:
-            self.git = None
+        super().__attrs_post_init__()
+
         # initialize submodules
-        if self.git:
+        if self.repo:
             check_output([
                 'git', 'submodule', 'update', '--init', '--recursive'
             ],
@@ -147,14 +135,14 @@ class RepositoryApiMixin(object):
 
         remote_name = 'origin'
         try:
-            remote_branch = self.git.head.reference.tracking_branch()
+            remote_branch = self.repo.head.reference.tracking_branch()
             if remote_branch is not None:
                 remote_name = remote_branch.remote_name
         except TypeError:
             pass
 
         try:
-            url = GitURL.parse(self.git.remotes[remote_name].url)
+            url = GitURL.parse(self.repo.remotes[remote_name].url)
 
             # Remove gitlab. unless running on gitlab.com.
             hostname_parts = url.hostname.split('.')
@@ -182,7 +170,7 @@ class RepositoryApiMixin(object):
 
     def find_previous_commit(self, paths, revision='HEAD'):
         """Return a previous commit for a given path."""
-        file_commits = list(self.git.iter_commits(revision, paths=paths))
+        file_commits = list(self.repo.iter_commits(revision, paths=paths))
 
         if not file_commits:
             raise KeyError(
@@ -219,7 +207,7 @@ class RepositoryApiMixin(object):
 
             submodules = [
                 submodule for submodule in Submodule.
-                iter_items(self.git, parent_commit=parent_commit)
+                iter_items(self.repo, parent_commit=parent_commit)
             ]
         except (RuntimeError, ValueError):
             # There are no submodules assiciated with the given commit.
@@ -319,20 +307,20 @@ class RepositoryApiMixin(object):
         path = self.path.absolute()
         if force:
             self.renku_path.mkdir(parents=True, exist_ok=force)
-            if self.git is None:
-                self.git = Repo.init(str(path))
+            if self.repo is None:
+                self.repo = Repo.init(str(path))
         else:
-            if self.git is not None:
-                raise FileExistsError(self.git.git_dir)
+            if self.repo is not None:
+                raise FileExistsError(self.repo.git_dir)
 
             self.renku_path.mkdir(parents=True, exist_ok=force)
-            self.git = Repo.init(str(path))
+            self.repo = Repo.init(str(path))
 
-        self.git.description = name or path.name
+        self.repo.description = name or path.name
 
         # Check that an author can be determined from Git.
         from renku.models.datasets import Author
-        Author.from_git(self.git)
+        Author.from_git(self.repo)
 
         # TODO read existing gitignore and create a unique set of rules
         import pkg_resources
@@ -354,55 +342,4 @@ class RepositoryApiMixin(object):
             metadata.name = name
             metadata.updated = datetime.datetime.utcnow()
 
-        # initialize LFS if it is requested and installed
-        if self.use_external_storage and HAS_LFS:
-            self.init_external_storage(force=force)
-
         return str(path)
-
-    def init_external_storage(self, force=False):
-        """Initialize the external storage for data."""
-        cmd = ['git', 'lfs', 'install', '--local']
-        if force:
-            cmd.append('--force')
-
-        call(
-            cmd,
-            stdout=PIPE,
-            stderr=STDOUT,
-            cwd=str(self.path.absolute()),
-        )
-
-    @property
-    def external_storage_installed(self):
-        """Check that Large File Storage is installed."""
-        return HAS_LFS and self.git.config_reader().has_section('filter "lfs"')
-
-    def track_paths_in_storage(self, *paths):
-        """Track paths in the external storage."""
-        if self.use_external_storage and self.external_storage_installed:
-            track_paths = []
-            for path in paths:
-                path = Path(path)
-                if path.is_dir():
-                    track_paths.append(str(path / '**'))
-                elif path.suffix != '.ipynb':
-                    # TODO create configurable filter and follow .gitattributes
-                    track_paths.append(str(path))
-
-            call(
-                ['git', 'lfs', 'track'] + track_paths,
-                stdout=PIPE,
-                stderr=STDOUT,
-                cwd=str(self.path),
-            )
-        elif self.use_external_storage:
-            raise errors.ExternalStorageNotInstalled(self.git)
-
-    def pull_path(self, path):
-        """Pull a path from LFS."""
-        client, commit, path = self.resolve_in_submodules(
-            self.git.commit(), path
-        )
-        cmd = ['git', 'lfs', 'pull', 'origin', '-I', str(path)]
-        run(cmd, cwd=client.path, check=True)

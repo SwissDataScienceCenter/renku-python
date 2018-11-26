@@ -208,28 +208,28 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, repo=None, no_output=False):
+    def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         tool = self.generate_tool()
-        git = repo.git
+        repo = client.repo
         # NOTE consider to use git index instead
         existing_directories = {
-            str(p.relative_to(repo.path))
-            for p in repo.path.glob('**/')
+            str(p.relative_to(client.path))
+            for p in client.path.glob('**/')
         }
 
         yield tool
 
-        if git:
+        if repo:
             # List of all output paths.
             paths = []
             # Keep track of unmodified output files.
             unmodified = set()
             # Possible output paths.
-            candidates = set(git.untracked_files)
+            candidates = set(repo.untracked_files)
             candidates |= {
                 item.a_path
-                for item in git.index.diff(None) if not item.deleted_file
+                for item in repo.index.diff(None) if not item.deleted_file
             }
 
             from renku.cli._graph import _safe_path
@@ -264,7 +264,7 @@ class CommandLineToolFactory(object):
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
 
-            repo.track_paths_in_storage(*paths)
+            client.track_paths_in_storage(*paths)
 
         # Requirement detection can be done anytime.
         from .process_requirements import InitialWorkDirRequirement, \

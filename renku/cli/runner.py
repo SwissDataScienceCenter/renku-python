@@ -66,7 +66,7 @@ def template(client):
 def rerun(client, run, job):
     """Re-run existing workflow or tool using CWL runner."""
     from renku.models.provenance import ProcessRun, from_git_commit
-    activity = from_git_commit(commit=client.git.head.commit, client=client)
+    activity = from_git_commit(commit=client.repo.head.commit, client=client)
 
     if not isinstance(activity, ProcessRun):
         click.secho('No tool was found.', fg='red', file=sys.stderr)

@@ -85,7 +85,7 @@ def validate_path(ctx, param, value):
     if value is None:
         from renku.models.provenance import ProcessRun, from_git_commit
         activity = from_git_commit(
-            commit=client.git.head.commit, client=client
+            commit=client.repo.head.commit, client=client
         )
 
         if not isinstance(activity, ProcessRun):

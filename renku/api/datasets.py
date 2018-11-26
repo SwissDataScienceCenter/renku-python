@@ -236,13 +236,13 @@ class DatasetsApiMixin(object):
             )
 
         # FIXME: do a proper check that the repos are not the same
-        if submodule_name not in (s.name for s in self.git.submodules):
+        if submodule_name not in (s.name for s in self.repo.submodules):
             if u.scheme in {'http', 'https', 'git+https', 'git+ssh'}:
                 url = self.get_relative_url(url)
 
             # Submodule in python git does some custom magic that does not
             # allow for relative URLs, so we call the git function directly
-            self.git.git.submodule([
+            self.repo.git.submodule([
                 'add', '--force', '--name', submodule_name, url,
                 submodule_path.relative_to(self.path).as_posix()
             ])
@@ -322,14 +322,14 @@ class DatasetsApiMixin(object):
         # the same server as the submodule. If so, use a relative path
         # instead of an absolute URL.
         try:
-            branch_remote = self.git.config_reader().get(
-                'branch "{}"'.format(self.git.active_branch.name), 'remote'
+            branch_remote = self.repo.config_reader().get(
+                'branch "{}"'.format(self.repo.active_branch.name), 'remote'
             )
         except NoSectionError:
             branch_remote = 'origin'
 
         try:
-            remote = self.git.remote(branch_remote)
+            remote = self.repo.remote(branch_remote)
         except ValueError:
             warnings.warn(
                 'Remote {} not found, cannot check for relative URL.'.

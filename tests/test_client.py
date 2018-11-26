@@ -24,4 +24,4 @@ def test_local_client(tmpdir):
     client = LocalClient(str(tmpdir.mkdir('project')))
 
     assert client.path
-    assert client.git is None
+    assert client.repo is None
