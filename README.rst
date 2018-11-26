@@ -50,7 +50,7 @@ analysis tasks.
    <https://renku.readthedocs.io/en/latest/user/setup.html>`_.
 
 Installation
-------------
+============
 
 The latest release is available on PyPI and can be installed using
 ``pip``:
@@ -73,7 +73,7 @@ if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
 MacOS
-~~~~~
+-----
 
 The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
 
@@ -86,7 +86,7 @@ The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
   TODO: uncomment one the snap build works.
 
   Linux
-  ~~~~~
+  -----
 
   There are universal *snap* packages available for Renku. Make sure you
   have the ``snap`` command available or `install snapd
@@ -98,7 +98,7 @@ The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
       $ snap install renku
 
 Pip Script Installer (``pipsi``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
 You can use `pipsi <https://github.com/mitsuhiko/pipsi>`_ to isolate
 dependencies and to guarantee that there are no version conflicts. Make sure
@@ -112,7 +112,7 @@ your ``$PATH``.
     ~/.local/bin/renku
 
 Docker
-~~~~~~
+------
 
 The containerized version of the CLI can be launched using Docker command.
 
@@ -123,7 +123,7 @@ The containerized version of the CLI can be launched using Docker command.
 It makes sure your current directory is mounted to the same place in the container.
 
 Usage
------
+=====
 
 Initialize a renku project:
 
