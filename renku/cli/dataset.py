@@ -85,7 +85,6 @@ from renku.models.datasets import Author
 
 from ._client import pass_local_client
 from ._echo import progressbar
-from ._git import with_git
 
 
 @click.group()
@@ -98,8 +97,7 @@ def dataset(ctx, datadir):
 
 @dataset.command()
 @click.argument('name')
-@pass_local_client
-@with_git()
+@pass_local_client(clean=True, commit=True)
 def create(client, name):
     """Create an empty dataset in the current repo."""
     with client.with_dataset(name=name) as dataset:
@@ -107,6 +105,7 @@ def create(client, name):
         author = Author.from_git(client.repo)
         if author not in dataset.authors:
             dataset.authors.append(author)
+
     click.secho('OK', fg='green')
 
 
@@ -122,8 +121,7 @@ def create(client, name):
     multiple=True,
     help='Target path in the git repo.'
 )
-@pass_local_client
-@with_git()
+@pass_local_client(clean=True, commit=True)
 def add(client, name, urls, nocopy, relative_to, target):
     """Add data to a dataset."""
     try:

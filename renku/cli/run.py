@@ -125,10 +125,10 @@ from subprocess import call
 import click
 
 from renku import errors
+from renku.api._git import _mapped_std_streams
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
 from ._client import pass_local_client
-from ._git import _mapped_std_streams, with_git
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
@@ -153,8 +153,9 @@ from ._git import _mapped_std_streams, with_git
     help='Set up the isolation for invoking of the given command.',
 )
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
-@pass_local_client
-@with_git(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
+@pass_local_client(
+    clean=True, up_to_date=True, commit=True, ignore_std_streams=True
+)
 def run(client, no_output, success_codes, isolation, command_line):
     """Tracking work on a specific problem."""
     working_dir = client.repo.working_dir

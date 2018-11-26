@@ -39,7 +39,6 @@ import yaml
 from renku.models.cwl._ascwl import ascwl
 
 from ._client import pass_local_client
-from ._git import with_git
 from ._graph import Graph
 
 
@@ -107,8 +106,7 @@ def validate_path(ctx, param, value):
     required=False,
 )
 @click.option('--force', is_flag=True, help='Override the existence check.')
-@pass_local_client
-@with_git(clean=True, commit=True)
+@pass_local_client(clean=True, commit=True)
 def set_name(client, name, path, force):
     """Sets the <name> for remote <path>."""
     from renku.models.refs import LinkReference
@@ -121,8 +119,7 @@ def set_name(client, name, path, force):
 @click.argument('old', metavar='<old>')
 @click.argument('new', metavar='<new>')
 @click.option('--force', is_flag=True, help='Override the existence check.')
-@pass_local_client
-@with_git(clean=True, commit=True)
+@pass_local_client(clean=True, commit=True)
 def rename(client, old, new, force):
     """Rename the workflow named <old> to <new>."""
     from renku.models.refs import LinkReference
@@ -131,8 +128,7 @@ def rename(client, old, new, force):
 
 @workflow.command()
 @click.argument('name', metavar='<name>')
-@pass_local_client
-@with_git(clean=True, commit=True)
+@pass_local_client(clean=True, commit=True)
 def remove(client, name):
     """Remove the remote named <name>."""
     from renku.models.refs import LinkReference

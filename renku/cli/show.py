@@ -70,7 +70,6 @@ respectively.
 import click
 
 from ._client import pass_local_client
-from ._git import with_git
 from ._graph import Graph
 
 
@@ -88,7 +87,6 @@ def show():
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
 @pass_local_client
-@with_git(clean=False, commit=False)
 def siblings(client, revision, paths):
     """Show siblings for given paths."""
     graph = Graph(client)
@@ -111,7 +109,6 @@ def siblings(client, revision, paths):
 )
 @pass_local_client
 @click.pass_context
-@with_git(clean=False, commit=False)
 def inputs(ctx, client, revision, paths):
     r"""Show inputs files in the repository.
 
@@ -156,7 +153,6 @@ def inputs(ctx, client, revision, paths):
 )
 @pass_local_client
 @click.pass_context
-@with_git(clean=False, commit=False)
 def outputs(ctx, client, revision, paths):
     r"""Show output files in the repository.
 

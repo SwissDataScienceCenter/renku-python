@@ -17,7 +17,57 @@
 # limitations under the License.
 """Wrap Git client."""
 
+import os
+import sys
+from contextlib import contextmanager
+from email.utils import formatdate
+
 import attr
+
+from renku import errors
+
+
+def _mapped_std_streams(lookup_paths, streams=('stdin', 'stdout', 'stderr')):
+    """Get a mapping of standard streams to given paths."""
+    # FIXME add device number too
+    standard_inos = {}
+    for stream in streams:
+        try:
+            stream_stat = os.fstat(getattr(sys, stream).fileno())
+            key = stream_stat.st_dev, stream_stat.st_ino
+            standard_inos[key] = stream
+        except Exception:  # FIXME UnsupportedOperation
+            pass
+        # FIXME if not getattr(sys, stream).istty()
+
+    def stream_inos(paths):
+        """Yield tuples with stats and path."""
+        for path in paths:
+            try:
+                stat = os.stat(path)
+                key = (stat.st_dev, stat.st_ino)
+                if key in standard_inos:
+                    yield standard_inos[key], path
+            except FileNotFoundError:  # pragma: no cover
+                pass
+
+    return dict(stream_inos(lookup_paths)) if standard_inos else {}
+
+
+def _clean_streams(repo, mapped_streams):
+    """Clean mapped standard streams."""
+    for stream_name in ('stdout', 'stderr'):
+        stream = mapped_streams.get(stream_name)
+        if not stream:
+            continue
+
+        path = os.path.relpath(stream, start=repo.working_dir)
+        if (path, 0) not in repo.index.entries:
+            os.remove(stream)
+        else:
+            blob = repo.index.entries[(path, 0)].to_blob(repo)
+            with open(path, 'wb') as fp:
+                fp.write(blob.data_stream.read())
 
 
 @attr.s
@@ -36,3 +86,82 @@ class GitCore:
             self.repo = Repo(str(self.path))
         except InvalidGitRepositoryError:
             self.repo = None
+
+    @property
+    def modified_paths(self):
+        """Return paths of modified files."""
+        return [
+            item.b_path for item in self.repo.index.diff(None) if item.b_path
+        ]
+
+    @property
+    def dirty_paths(self):
+        """Get paths of dirty files in the repository."""
+        repo_path = self.repo.working_dir
+        return {
+            os.path.join(repo_path, p)
+            for p in self.repo.untracked_files + self.modified_paths
+        }
+
+    def ensure_clean(self, ignore_std_streams=False):
+        """Make sure the repository is clean."""
+        dirty_paths = self.dirty_paths
+        mapped_streams = _mapped_std_streams(dirty_paths)
+
+        if ignore_std_streams:
+            if dirty_paths - set(mapped_streams.values()):
+                _clean_streams(self.repo, mapped_streams)
+                raise errors.DirtyRepository(self.repo)
+
+        elif self.repo.is_dirty(untracked_files=True):
+            _clean_streams(self.repo, mapped_streams)
+            raise errors.DirtyRepository(self.repo)
+
+    @contextmanager
+    def commit(self, author_date=None):
+        """Automatic commit."""
+        from git import Actor
+        from renku.version import __version__
+
+        author_date = author_date or formatdate(localtime=True)
+
+        yield
+
+        committer = Actor(
+            'renku {0}'.format(__version__),
+            'renku+{0}@datascience.ch'.format(__version__),
+        )
+
+        self.repo.git.add('--all')
+        argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
+        # Ignore pre-commit hooks since we have already done everything.
+        self.repo.index.commit(
+            ' '.join(argv),
+            author_date=author_date,
+            committer=committer,
+            skip_hooks=True,
+        )
+
+    @contextmanager
+    def transaction(
+        self,
+        clean=True,
+        up_to_date=False,
+        commit=True,
+        ignore_std_streams=False
+    ):
+        """Perform Git checks and operations."""
+        if clean:
+            self.ensure_clean(ignore_std_streams=ignore_std_streams)
+
+        if up_to_date:
+            # TODO
+            # Fetch origin/master
+            # is_ancestor('origin/master', 'HEAD')
+            pass
+
+        if commit:
+            with self.commit():
+                yield self
+        else:
+            yield self

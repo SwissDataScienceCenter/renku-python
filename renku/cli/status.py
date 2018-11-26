@@ -38,7 +38,6 @@ import click
 
 from ._ascii import _format_sha1
 from ._client import pass_local_client
-from ._git import with_git
 from ._graph import Graph
 
 
@@ -55,9 +54,8 @@ from ._graph import Graph
     help='Display commands without output files.'
 )
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_local_client
+@pass_local_client(clean=True, commit=False)
 @click.pass_context
-@with_git(commit=False)
 def status(ctx, client, revision, no_output, path):
     """Show a status of the repository."""
     graph = Graph(client)

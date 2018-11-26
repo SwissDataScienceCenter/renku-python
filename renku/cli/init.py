@@ -72,7 +72,7 @@ import click
 from renku._compat import Path
 
 from ._client import pass_local_client
-from ._git import set_git_home, with_git
+from ._git import set_git_home
 from ._options import option_use_external_storage
 
 
@@ -102,7 +102,6 @@ def store_directory(ctx, param, value):
 @option_use_external_storage
 @pass_local_client
 @click.pass_context
-@with_git(clean=False)
 def init(ctx, client, directory, name, force, use_external_storage):
     """Initialize a project."""
     if not client.use_external_storage:
@@ -117,15 +116,17 @@ def init(ctx, client, directory, name, force, use_external_storage):
     except FileExistsError:
         raise click.UsageError(
             'Renku repository is not empty. '
-            'Please use --force flag to use the directory as Renku repository.'
+            'Please use --force flag to use the directory as Renku '
+            'repository.'
         )
 
-    # Install Git hooks.
-    from .githooks import install
-    ctx.invoke(install, force=force)
+    with client.commit():
+        # Install Git hooks.
+        from .githooks import install
+        ctx.invoke(install, force=force)
 
-    # Create all necessary template files.
-    from .runner import template
-    ctx.invoke(template)
+        # Create all necessary template files.
+        from .runner import template
+        ctx.invoke(template)
 
     click.echo('Initialized empty project in {0}'.format(project_config_path))

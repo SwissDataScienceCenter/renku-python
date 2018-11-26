@@ -125,7 +125,6 @@ import click
 from renku.models.cwl._ascwl import ascwl
 
 from ._client import pass_local_client
-from ._git import with_git
 from ._graph import Graph, _safe_path
 from ._options import option_siblings
 
@@ -142,9 +141,8 @@ from ._options import option_siblings
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
-@pass_local_client
+@pass_local_client(clean=True, commit=True)
 @click.pass_context
-@with_git()
 def update(ctx, client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
