@@ -161,10 +161,7 @@ from ._git import set_git_isolation
 def run(client, no_output, success_codes, isolation, command_line):
     """Tracking work on a specific problem."""
     working_dir = client.repo.working_dir
-    paths = [x[0] for x in client.repo.index.entries]
-    paths += client.repo.untracked_files
-    candidates = [os.path.join(working_dir, path) for path in paths]
-    mapped_std = _mapped_std_streams(candidates)
+    mapped_std = _mapped_std_streams(client.candidate_paths)
     factory = CommandLineToolFactory(
         command_line=command_line,
         directory=os.getcwd(),

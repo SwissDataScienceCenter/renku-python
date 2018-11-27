@@ -168,7 +168,9 @@ class CommandLineToolFactory(object):
         self.outputs = []
 
         if self.stdin:
-            input_ = next(self.guess_inputs(self.stdin))
+            input_ = next(
+                self.guess_inputs(str(self.working_dir / self.stdin))
+            )
             assert input_.type == 'File'
             input_ = attr.evolve(
                 input_,

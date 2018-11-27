@@ -17,6 +17,7 @@
 # limitations under the License.
 """Wrap Git client."""
 
+import itertools
 import os
 import shutil
 import sys
@@ -107,6 +108,17 @@ class GitCore:
             for p in self.repo.untracked_files + self.modified_paths
         }
 
+    @property
+    def candidate_paths(self):
+        """Return all paths in the index and untracked files."""
+        repo_path = self.repo.working_dir
+        return [
+            os.path.join(repo_path, path) for path in itertools.chain(
+                (x[0] for x in self.repo.index.entries),
+                self.repo.untracked_files,
+            )
+        ]
+
     def ensure_clean(self, ignore_std_streams=False):
         """Make sure the repository is clean."""
         dirty_paths = self.dirty_paths
@@ -175,15 +187,31 @@ class GitCore:
         """Create new worktree."""
         from renku._contexts import Isolation
 
-        # TODO handle streams
-        # TODO sys.argv
-
-        relative = Path('.').resolve().relative_to(self.path)
-
         delete = path is None
         path = path or tempfile.mkdtemp()
         branch_name = branch_name or 'renku/run/isolation/' + uuid.uuid4().hex
+
+        # Keep current directory relative to repository root.
+        relative = Path('.').resolve().relative_to(self.path)
+
         self.repo.git.worktree('add', '-b', branch_name, path)
+
+        # Reroute standard streams
+        original_mapped_std = _mapped_std_streams(self.candidate_paths)
+        mapped_std = {}
+        for name, stream in original_mapped_std.items():
+            stream_path = Path(path) / (Path(stream).relative_to(self.path))
+            stream_path = stream_path.absolute()
+
+            if not stream_path.exists():
+                stream_path.parent.mkdir(parents=True, exist_ok=True)
+                stream_path.touch()
+
+            mapped_std[name] = stream_path
+
+        _clean_streams(self.repo, original_mapped_std)
+
+        # TODO sys.argv
 
         client = attr.evolve(self, path=path)
         client.repo.config_reader = self.repo.config_reader
@@ -191,7 +219,7 @@ class GitCore:
         new_cwd = Path(path) / relative
         new_cwd.mkdir(parents=True, exist_ok=True)
 
-        with Isolation(cwd=str(new_cwd)):
+        with Isolation(cwd=str(new_cwd), **mapped_std):
             yield client
 
         self.repo.git.merge(branch_name, ff_only=True)
