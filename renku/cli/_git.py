@@ -20,6 +20,7 @@
 import click
 
 GIT_KEY = 'renku.git'
+GIT_ISOLATION = 'renku.worktree'
 
 
 def set_git_home(value):
@@ -29,13 +30,26 @@ def set_git_home(value):
 
 
 def get_git_home(path='.'):
-    """Get Git path from current context."""
+    """Get Git path from the current context."""
     ctx = click.get_current_context(silent=True)
     if ctx and GIT_KEY in ctx.meta:
         return ctx.meta[GIT_KEY]
 
     from git import Repo
     return Repo(path, search_parent_directories=True).working_dir
+
+
+def set_git_isolation(value):
+    """Set Git isolation."""
+    ctx = click.get_current_context()
+    ctx.meta[GIT_ISOLATION] = value
+
+
+def get_git_isolation():
+    """Get Git isolation from the current context."""
+    ctx = click.get_current_context(silent=True)
+    if ctx and GIT_ISOLATION in ctx.meta:
+        return ctx.meta[GIT_ISOLATION]
 
 
 def _safe_issue_checkout(repo, issue=None):

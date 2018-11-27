@@ -18,13 +18,17 @@
 """Wrap Git client."""
 
 import os
+import shutil
 import sys
+import tempfile
+import uuid
 from contextlib import contextmanager
 from email.utils import formatdate
 
 import attr
 
 from renku import errors
+from renku._compat import Path
 
 
 def _mapped_std_streams(lookup_paths, streams=('stdin', 'stdout', 'stderr')):
@@ -165,3 +169,32 @@ class GitCore:
                 yield self
         else:
             yield self
+
+    @contextmanager
+    def worktree(self, path=None, branch_name=None):
+        """Create new worktree."""
+        from renku._contexts import Isolation
+
+        # TODO handle streams
+        # TODO sys.argv
+
+        relative = Path('.').resolve().relative_to(self.path)
+
+        delete = path is None
+        path = path or tempfile.mkdtemp()
+        branch_name = branch_name or 'renku/run/isolation/' + uuid.uuid4().hex
+        self.repo.git.worktree('add', '-b', branch_name, path)
+
+        client = attr.evolve(self, path=path)
+        client.repo.config_reader = self.repo.config_reader
+
+        new_cwd = Path(path) / relative
+        new_cwd.mkdir(parents=True, exist_ok=True)
+
+        with Isolation(cwd=str(new_cwd)):
+            yield client
+
+        self.repo.git.merge(branch_name, ff_only=True)
+        if delete:
+            shutil.rmtree(path)
+            self.repo.git.worktree('prune')

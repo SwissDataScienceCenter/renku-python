@@ -129,6 +129,7 @@ from renku.api._git import _mapped_std_streams
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
 from ._client import pass_local_client
+from ._git import set_git_isolation
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
@@ -150,6 +151,7 @@ from ._client import pass_local_client
     '--isolation',
     is_flag=True,
     default=False,
+    callback=lambda ctx, param, value: set_git_isolation(value),
     help='Set up the isolation for invoking of the given command.',
 )
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)

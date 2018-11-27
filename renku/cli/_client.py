@@ -17,6 +17,7 @@
 # limitations under the License.
 """Client utilities."""
 
+import contextlib
 import functools
 import uuid
 
@@ -24,6 +25,8 @@ import click
 import yaml
 
 from renku.api import LocalClient
+
+from ._git import get_git_isolation
 
 
 def _uuid_representer(dumper, data):
@@ -54,12 +57,22 @@ def pass_local_client(
     def new_func(*args, **kwargs):
         ctx = click.get_current_context()
         client = ctx.ensure_object(LocalClient)
-        with client.transaction(
+        stack = contextlib.ExitStack()
+
+        # Handle --isolation option:
+        if get_git_isolation():
+            client = stack.enter_context(client.worktree())
+
+        transaction = client.transaction(
             clean=clean,
             up_to_date=up_to_date,
             commit=commit,
             ignore_std_streams=ignore_std_streams
-        ):
-            return ctx.invoke(method, client, *args, **kwargs)
+        )
+        stack.enter_context(transaction)
+
+        with stack:
+            result = ctx.invoke(method, client, *args, **kwargs)
+        return result
 
     return functools.update_wrapper(new_func, method)
