@@ -74,6 +74,14 @@ from renku.models._git import GitURL
             'port': '1234',
         },
         {
+            'href': 'https://example.com/pre.fix/owner.name/repo.name.git',
+            'protocol': 'https',
+            'hostname': 'example.com',
+            'pathname': 'pre.fix/owner.name/repo.name.git',
+            'owner': 'owner.name',
+            'name': 'repo.name',
+        },
+        {
             'href': 'git+https://example.com:1234/owner/repo.git',
             'protocol': 'git+https',
             'hostname': 'example.com',
