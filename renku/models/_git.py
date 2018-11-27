@@ -41,12 +41,12 @@ _RE_PORT = r':(?P<port>\d+)'
 
 _RE_PATHNAME = (
     r'/(?P<pathname>'
-    r'(((?P<owner>[\w-]+)/)?(?P<name>[\w\-]+)(\.git)?)?)'
+    r'(((?P<owner>[\w\-\.]+)/)?(?P<name>[\w\-\.]+)(\.git)?)?)'
 )
 
 _RE_PREFIXED_PATHNAME = (
-    r'/(?P<pathname>(([\w\-\~]+)/)+'
-    r'(?P<owner>[\w-]+)/(?P<name>[\w\-]+)(\.git)?)'
+    r'/(?P<pathname>(([\w\-\~\.]+)/)+'
+    r'(?P<owner>[\w\-\.]+)/(?P<name>[\w\-\.]+)(\.git)?)'
 )
 
 _RE_UNIXPATH = (
@@ -81,6 +81,13 @@ _REPOSITORY_URLS = (
 )
 
 
+def filter_repo_name(repo_name):
+    """Remove the .git extension from the repo name."""
+    if repo_name is not None and repo_name.endswith('.git'):
+        return repo_name[:-len('.git')]
+    return repo_name
+
+
 @attr.s()
 class GitURL(object):
     """Parser for common Git URLs."""
@@ -96,7 +103,7 @@ class GitURL(object):
     password = attr.ib(default=None)
     port = attr.ib(default=None)
     owner = attr.ib(default=None)
-    name = attr.ib(default=None)
+    name = attr.ib(default=None, converter=filter_repo_name)
     _regex = attr.ib(default=None, cmp=False)
 
     def __attrs_post_init__(self):
