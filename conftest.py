@@ -62,57 +62,11 @@ def run(runner, capsys):
     import contextlib
 
     from renku import cli
-
-    @contextlib.contextmanager
-    def chdir(path):
-        """Change the current working directory."""
-        cwd = os.getcwd()
-        os.chdir(path)
-        try:
-            yield
-        finally:
-            os.chdir(cwd)
-
-    class redirect_stdin(contextlib.ContextDecorator):
-        """Implement missing redirect stdin based on ``contextlib.py``."""
-
-        _stream = 'stdin'
-
-        def __init__(self, new_target):
-            """Keep the original stream."""
-            self._new_target = new_target
-            # We use a list of old targets to make this CM re-entrant
-            self._old_targets = []
-
-        def __enter__(self):
-            """Change the stream value."""
-            self._old_targets.append(getattr(sys, self._stream))
-            setattr(sys, self._stream, self._new_target)
-            return self._new_target
-
-        def __exit__(self, exctype, excinst, exctb):
-            """Restore the stream value."""
-            setattr(sys, self._stream, self._old_targets.pop())
-
-    managers = {
-        'stdout': lambda path: contextlib.redirect_stdout(path.open('wb')),
-        'stderr': lambda path: contextlib.redirect_stderr(path.open('wb')),
-        'stdin':
-            lambda path: redirect_stdin(
-                path.open('rb') if not hasattr(path, 'read') else path
-            ),
-    }
+    from renku._contexts import Isolation
 
     def generate(args=('update', ), cwd=None, **streams):
         """Generate an output."""
-
-        with capsys.disabled(), contextlib.ExitStack() as stack:
-            for name, stream in streams.items():
-                stack.enter_context(managers[name](stream))
-
-            if cwd is not None:
-                stack.enter_context(chdir(str(cwd)))
-
+        with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
                 cli.cli.main(
                     args=args,
