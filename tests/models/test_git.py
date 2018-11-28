@@ -120,8 +120,33 @@ from renku.models._git import GitURL
             'username': 'user',
             'password': 'pass',
         },
+        pytest.param(
+            {
+                'href': 'git@example.com/repo.git',
+                'protocol': 'ssh',
+                'hostname': 'example.com',
+                'name': 'repo',
+                'pathname': 'repo.git',
+                'username': 'git',
+            },
+            marks=pytest.mark.
+            xfail(raises=errors.ConfigurationError, strict=True),
+        ),
+        pytest.param(
+            {
+                'href': 'git@example.com/owner/repo.git',
+                'protocol': 'ssh',
+                'hostname': 'example.com',
+                'name': 'repo',
+                'pathname': 'owner/repo.git',
+                'owner': 'owner',
+                'username': 'git',
+            },
+            marks=pytest.mark.
+            xfail(raises=errors.ConfigurationError, strict=True),
+        ),
         {
-            'href': 'git@example.com/repo.git',
+            'href': 'git@example.com:repo.git',
             'protocol': 'ssh',
             'hostname': 'example.com',
             'name': 'repo',
@@ -129,7 +154,7 @@ from renku.models._git import GitURL
             'username': 'git',
         },
         {
-            'href': 'git@example.com/owner/repo.git',
+            'href': 'git@example.com:owner/repo.git',
             'protocol': 'ssh',
             'hostname': 'example.com',
             'name': 'repo',
@@ -138,23 +163,12 @@ from renku.models._git import GitURL
             'username': 'git',
         },
         {
-            'href': 'git@example.com:1234/owner/repo.git',
-            'protocol': 'ssh',
-            'hostname': 'example.com',
-            'name': 'repo',
-            'pathname': 'owner/repo.git',
-            'owner': 'owner',
-            'port': '1234',
-            'username': 'git',
-        },
-        {
-            'href': 'git@example.com:1234/prefix/owner/repo.git',
+            'href': 'git@example.com:prefix/owner/repo.git',
             'protocol': 'ssh',
             'hostname': 'example.com',
             'name': 'repo',
             'pathname': 'prefix/owner/repo.git',
             'owner': 'owner',
-            'port': '1234',
             'username': 'git',
         },
         {
@@ -201,7 +215,7 @@ from renku.models._git import GitURL
         pytest.param(
             {
                 'href': 'git@example.com:1234:owner/repo.git',
-                'protocol': 'https',
+                'protocol': 'ssh',
                 'hostname': 'example.com',
                 'port': '1234',
                 'name': 'repo',
@@ -211,6 +225,15 @@ from renku.models._git import GitURL
             marks=pytest.mark.
             xfail(raises=errors.ConfigurationError, strict=True),
         ),
+        {
+            'href': 'git@example.com:1234/prefix/owner/repo.git',
+            'username': 'git',
+            'protocol': 'ssh',
+            'hostname': 'example.com',
+            'name': 'repo',
+            'pathname': '1234/prefix/owner/repo.git',
+            'owner': 'owner',
+        },
     ]
 )
 def test_valid_href(fields):
