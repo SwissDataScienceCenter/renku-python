@@ -40,12 +40,12 @@ _RE_HOSTNAME = (
 _RE_PORT = r':(?P<port>\d+)'
 
 _RE_PATHNAME = (
-    r'/(?P<pathname>'
+    r'(?P<pathname>'
     r'(((?P<owner>[\w\-\.]+)/)?(?P<name>[\w\-\.]+)(\.git)?)?)'
 )
 
 _RE_PREFIXED_PATHNAME = (
-    r'/(?P<pathname>(([\w\-\~\.]+)/)+'
+    r'(?P<pathname>(([\w\-\~\.]+)/)+'
     r'(?P<owner>[\w\-\.]+)/(?P<name>[\w\-\.]+)(\.git)?)'
 )
 
@@ -62,21 +62,36 @@ def _build(*parts):
 
 #: Define possible repository URLs.
 _REPOSITORY_URLS = (
-    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PATHNAME),
+    # https://user:pass@example.com/owner/repo.git
     _build(
-        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME,
+        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, r'/', _RE_PATHNAME
+    ),
+
+    # https://user:pass@example.com/prefix/owner/repo.git
+    _build(
+        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, r'/',
         _RE_PREFIXED_PATHNAME
-    ), _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PATHNAME),
+    ),
+
+    # https://user:pass@example.com:1234/owner/repo.git
     _build(
-        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT,
+        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT, r'/',
         _RE_PATHNAME
     ),
+
+    # https://user:pass@example.com:1234/prefix/owner/repo.git
     _build(
-        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT,
+        _RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT, r'/',
         _RE_PREFIXED_PATHNAME
-    ), _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PREFIXED_PATHNAME),
-    _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PORT, _RE_PATHNAME),
-    _build(_RE_USERNAME, _RE_HOSTNAME, _RE_PORT, _RE_PREFIXED_PATHNAME),
+    ),
+
+    # git@example.com:owner/repo.git
+    _build(_RE_USERNAME, _RE_HOSTNAME, r':', _RE_PATHNAME),
+
+    # git@example.com:prefix/owner/repo.git
+    _build(_RE_USERNAME, _RE_HOSTNAME, r':', _RE_PREFIXED_PATHNAME),
+
+    # /path/to/repo
     _build(_RE_UNIXPATH)
 )
 
