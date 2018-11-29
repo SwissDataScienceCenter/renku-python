@@ -191,7 +191,7 @@ def data_repository(directory_tree):
     repo.index.commit('test commit', author=Actor('me', 'me@example.com'))
 
     # commit changes to the same file with a different user
-    directory_tree.join('file').write('5678')
+    directory_tree.join('file').write('56789')
     repo.index.add([directory_tree.join('file').strpath])
     repo.index.commit('test commit', author=Actor('me2', 'me2@example.com'))
 
