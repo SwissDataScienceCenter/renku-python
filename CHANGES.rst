@@ -18,6 +18,13 @@
 Changes
 =======
 
+``v0.3.1``
+----------
+
+*(released 2018-11-29)*
+
+- Fixes issues with parsing remote Git URLs.
+
 ``v0.3.0``
 ----------
 
