@@ -170,16 +170,16 @@ class RepositoryApiMixin(GitCore):
 
     def find_previous_commit(self, paths, revision='HEAD'):
         """Return a previous commit for a given path."""
-        file_commits = list(self.repo.iter_commits(revision, paths=paths))
-
-        if not file_commits:
+        for commit in self.repo.iter_commits(revision, paths=paths):
+            if len(commit.parents) > 1:
+                continue
+            return commit
+        else:
             raise KeyError(
                 'Could not find a file {0} in range {1}'.format(
                     paths, revision
                 )
             )
-
-        return file_commits[0]
 
     @cached_property
     def workflow_names(self):

@@ -571,7 +571,8 @@ def from_git_commit(commit, client, path=None):
     """Populate information from the given Git commit."""
     # Ignore merge commits
     if len(commit.parents) > 1:
-        return
+        # TODO try all parents
+        return from_git_commit(commit.parents[0], client, path=path)
 
     cls = Activity
     process = None
