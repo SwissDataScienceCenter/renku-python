@@ -19,6 +19,7 @@
 
 import datetime
 import uuid
+import re
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
@@ -32,6 +33,11 @@ from renku._compat import Path
 from renku.models.refs import LinkReference
 
 from ._git import GitCore
+
+_RE_GIT_SUBTREE = re.compile(
+    r'git-subtree-dir: (?P<dir>.*)\n',
+    re.MULTILINE,
+)
 
 
 def default_path():
@@ -172,6 +178,10 @@ class RepositoryApiMixin(GitCore):
         """Return a previous commit for a given path."""
         for commit in self.repo.iter_commits(revision, paths=paths):
             if len(commit.parents) > 1:
+                # Missing peace to git log --follow with subtrees.
+                subtree = _RE_GIT_SUBTREE.search(commit.message)
+                if subtree:
+                    return commit
                 continue
             return commit
         else:
@@ -241,6 +251,20 @@ class RepositoryApiMixin(GitCore):
                     )
                 except ValueError:
                     pass
+
+        if len(commit.parents) > 1:
+            # Missing peace to git log --follow with subtrees.
+            subtree = _RE_GIT_SUBTREE.search(commit.message)
+            if subtree:
+                prefix = subtree['dir'] + '/'
+                assert path.startswith(prefix)
+
+                subpath = path[len(prefix):]
+                # TODO add prefix to the client
+                return self, self.find_previous_commit(
+                    subpath,
+                    revision=commit.parents[-1].hexsha,
+                ), subpath
 
         return self, commit, path
 

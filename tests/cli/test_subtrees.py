@@ -25,6 +25,7 @@ def test_imported_data_repository(data_repository, runner, client, run):
     branch = data_repository.create_head('test_subtree', 'HEAD~2')
     client.repo.git.subtree(
         'add',
+        # TODO '--squash',
         '--prefix',
         'data',
         data_repository.working_dir,
@@ -51,7 +52,7 @@ def test_imported_data_repository(data_repository, runner, client, run):
     client.repo.git.set_persistent_git_options(c='merge.ff=0')
     client.repo.git.subtree(
         'pull',
-        '--squash',
+        # TODO '--squash',
         '--prefix',
         'data',
         data_repository.working_dir,

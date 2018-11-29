@@ -200,12 +200,13 @@ class Graph(object):
         """Return a latest commit where the node was modified."""
         if node.path and node.path not in self._latest_commits:
             try:
-                latest = Usage.from_revision(
-                    node.client,
-                    path=node.path,
-                    # TODO support range queries
-                    # revision='{0}'.format(node.commit.hexsha),
-                ).commit
+                latest = node.client.find_previous_commit(node.path)
+                # latest = Usage.from_revision(
+                #     node.client,
+                #     path=node.path,
+                #     # TODO support range queries
+                #     # revision='{0}'.format(node.commit.hexsha),
+                # ).commit
             except KeyError:
                 latest = None
 
