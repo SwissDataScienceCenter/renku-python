@@ -42,7 +42,7 @@ docker-login:
 	@echo "${DOCKER_PASSWORD}" | docker login -u="${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY}
 
 renku.rb: Pipfile.lock brew.py
-	@python brew.py renku > $@
+	@python3 brew.py renku > $@
 
 .PHONY: brew-commit-formula
 brew-commit-formula: renku.rb

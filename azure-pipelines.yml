@@ -1,0 +1,18 @@
+jobs:
+- job: macOS
+  pool:
+    vmImage: xcode9-macos10.13
+  steps:
+    - bash: |
+        brew update
+        brew upgrade python
+        brew unlink python
+        brew link python
+        brew install git-lfs jq pipenv shellcheck
+        git config --global --add user.name "John Doe"
+        git config --global --add user.email "john.doe@example.com"
+        pipenv install --deploy
+        source "$(pipenv --venv)/bin/activate"
+        pip install -e .[all]
+        make brew-commit-formula brew-build-bottle brew-commit-bottle
+      displayName: Brew formula
