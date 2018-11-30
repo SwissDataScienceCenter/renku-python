@@ -380,6 +380,9 @@ def test_update(runner, project, run):
     with output.open('r') as f:
         assert f.read().strip() == '2'
 
+    result = runner.invoke(cli.cli, ['log'], catch_exceptions=False)
+    assert '(part of' in result.output, result.output
+
     # Source has been updated but output is unchanged.
     update_source('34')
 

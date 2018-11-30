@@ -96,7 +96,6 @@ class DAG(object):
         formatted_sha1 = _format_sha1(self.graph, node)
         path = node.path
         latest = self.graph.latest(node)
-        part_of = getattr(node, 'part_of', None)
 
         # TODO move reference names to entity objects
         from .workflow import _deref
@@ -124,11 +123,15 @@ class DAG(object):
         ]
         indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
 
+        # Handle subprocesses of a workflow.
+        from renku.models.provenance.entities import Process
+
+        part_of = None
+        if isinstance(node, Process):
+            part_of = getattr(node.activity, 'part_of', None)
+
         if part_of:
-            step_id = next(
-                step_id for step_id, subprocess in part_of.subprocesses.items()
-                if subprocess.path == path
-            )
+            step_id = node.activity._id.split('/')[-1]
             workflow_path = click.style(
                 '{workflow_path}#steps/{step_id}'.format(
                     workflow_path=self.graph._format_path(part_of.path),
