@@ -45,10 +45,10 @@
         },
         "certifi": {
             "hashes": [
-                "sha256:339dc09518b07e2fa7eda5450740925974815557727d6bd35d319c1524a04a4c",
-                "sha256:6d58c986d22b038c8c0df30d639f23a3e6d172a05c3583e766f4c0b785c0986a"
+                "sha256:47f9c83ef4c0c621eaef743f133f09fa8a74a9b75f037e8624f83bd1b6626cb7",
+                "sha256:993f830721089fef441cdfeb4b2c8c9df86f0c63239f06bd025a76a7daddb033"
             ],
-            "version": "==2018.10.15"
+            "version": "==2018.11.29"
         },
         "chardet": {
             "hashes": [
@@ -98,12 +98,13 @@
             ],
             "version": "==3.0.10"
         },
-        "future": {
+        "future-nodefix": {
             "hashes": [
-                "sha256:67045236dcfd6816dc439556d009594abf643e5eb48992e36beac09c2ca659b8"
+                "sha256:1e7c6fc8b2532e94fdc60bcfbcc765e36b1ba66e399cfa4960665a776a03fc97",
+                "sha256:66404d64aef899cd2e5548b2b52779afec7496905bae0adac78aab26780ed67f"
             ],
             "markers": "python_version >= '3'",
-            "version": "==0.17.1"
+            "version": "==0.17.0"
         },
         "gitdb2": {
             "hashes": [
@@ -361,10 +362,10 @@
         },
         "schema-salad": {
             "hashes": [
-                "sha256:4c63930d0fc222e1bc16d6d0c735648fe4bf1d11135bd37ed13395d1fd09b8c8",
-                "sha256:a7f50aa39f2e37e942bb9bd6ae778f036dd68c4f7720f5850216d43d260cff01"
+                "sha256:9c4dc0bb38830e8c324575ee11a2c28a1409361790a5ccabcbf3690475c27c8d",
+                "sha256:e6750e18f571bb41fd617fd58f2f5651a30b5ce14bb03c2da815a63c7107162a"
             ],
-            "version": "==2.7.20181017120439"
+            "version": "==2.7.20181126142424"
         },
         "shellescape": {
             "hashes": [
