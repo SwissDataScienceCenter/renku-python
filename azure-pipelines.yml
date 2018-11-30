@@ -14,5 +14,5 @@ jobs:
         pipenv install --deploy
         source "$(pipenv --venv)/bin/activate"
         pip install -e .[all]
-        make brew-commit-formula brew-build-bottle brew-commit-bottle
+        PY_BREW_VERSION=0.3.2.post1 make brew-commit-formula brew-build-bottle brew-commit-bottle
       displayName: Brew formula
