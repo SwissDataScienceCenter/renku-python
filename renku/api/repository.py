@@ -18,8 +18,8 @@
 """Client for handling a local repository."""
 
 import datetime
-import uuid
 import re
+import uuid
 from collections import defaultdict
 from contextlib import contextmanager
 from subprocess import check_output
@@ -174,9 +174,24 @@ class RepositoryApiMixin(GitCore):
         """Check if the path is a valid CWL file."""
         return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
 
-    def find_previous_commit(self, paths, revision='HEAD'):
+    def find_previous_commit(self, paths, revision='HEAD', follow=False):
         """Return a previous commit for a given path."""
-        for commit in self.repo.iter_commits(revision, paths=paths):
+        if paths and follow:
+            paths = paths if isinstance(paths, (list, tuple)) else (paths, )
+            hexshas = self.repo.git.log(
+                '--format=%H', '--follow', revision, '--', *paths
+            )
+            commits = (
+                self.repo.rev_parse(hexsha)
+                for hexsha in hexshas.strip().split('\n')
+            )
+        else:
+            commits = (
+                commit
+                for commit in self.repo.iter_commits(revision, paths=paths)
+            )
+
+        for commit in commits:
             if len(commit.parents) > 1:
                 # Missing peace to git log --follow with subtrees.
                 subtree = _RE_GIT_SUBTREE.search(commit.message)
@@ -256,7 +271,7 @@ class RepositoryApiMixin(GitCore):
             # Missing peace to git log --follow with subtrees.
             subtree = _RE_GIT_SUBTREE.search(commit.message)
             if subtree:
-                prefix = subtree['dir'] + '/'
+                prefix = subtree.groupdict()['dir'] + '/'
                 assert path.startswith(prefix)
 
                 subpath = path[len(prefix):]

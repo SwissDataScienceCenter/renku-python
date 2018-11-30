@@ -200,7 +200,9 @@ class Graph(object):
         """Return a latest commit where the node was modified."""
         if node.path and node.path not in self._latest_commits:
             try:
-                latest = node.client.find_previous_commit(node.path)
+                latest = node.client.find_previous_commit(
+                    node.path, follow=True
+                )
                 # latest = Usage.from_revision(
                 #     node.client,
                 #     path=node.path,
@@ -265,7 +267,8 @@ class Graph(object):
             # We can't simply reuse information from submodules
             if dependency.client != self.client:
                 continue
-            self._latest_commits[dependency.path] = dependency.commit
+            # FIXME we can't reuse information from subtrees (prefixed client)
+            # self._latest_commits[dependency.path] = dependency.commit
 
         visited = visited or set()
         queue = deque(dependencies)
