@@ -47,7 +47,8 @@ renku.rb: Pipfile.lock brew.py
 .PHONY: brew-commit-formula
 brew-commit-formula: renku.rb
 	brew tap swissdatasciencecenter/renku
-	cp $< $(shell brew formula renku)
+	brew formula renku
+	cp $< /usr/local/Homebrew/Library/Taps/swissdatasciencecenter/homebrew-renku/renku.rb
 	cd $(shell brew --repo swissdatasciencecenter/renku) && git commit -a -m "renku: release $(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
 
 .PHONY: brew-build-bottle
