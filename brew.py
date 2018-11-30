@@ -18,9 +18,11 @@
 """Generate of Homebrew formulas."""
 
 import json
+import os
 import sys
 
 import requests
+from pkg_resources import get_distribution
 
 if len(sys.argv) > 1:
     NAME = sys.argv[1]
@@ -102,7 +104,7 @@ if response.status_code != 200:
     sys.exit(1)
 
 description = response.json()
-version = description['info']['version']
+version = os.environ.get('PY_BREW_VERSION', get_distribution(NAME).version)
 release = find_release(NAME, description['releases'][version])
 
 with open('Pipfile.lock') as f:

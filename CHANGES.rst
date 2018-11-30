@@ -18,6 +18,13 @@
 Changes
 =======
 
+``v0.3.2``
+----------
+
+*(released 2018-11-29)*
+
+- Fixes display of workflows in ``renku log``.
+
 ``v0.3.1``
 ----------
 
