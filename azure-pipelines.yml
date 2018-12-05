@@ -1,0 +1,15 @@
+- task: Docker@1
+  displayName: 'Build an image'
+  inputs:
+    imageName: 'renkuhub/renku-python:$(Build.SourceVersion)'
+- task: Docker@1
+  displayName: Login
+  inputs:
+    containerregistrytype: 'Container Registry'
+    dockerRegistryEndpoint: Docker
+    command: login
+- task: Docker@1
+  displayName: 'Push an image'
+  inputs:
+    command: 'push'
+    imageName: 'renkuhub/renku-python:$(Build.SourceVersion)'
