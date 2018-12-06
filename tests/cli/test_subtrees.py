@@ -59,8 +59,11 @@ def test_imported_data_repository(data_repository, runner, client, run):
         branch.name,
     )
 
+    result = runner.invoke(cli.cli, ['log', 'file.wc'])
+    log_output = result.output
+
     result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
-    assert 1 == result.exit_code, result.output
+    assert 1 == result.exit_code, log_output
     assert 0 == run(args=('update', 'file.wc'))
 
     with (client.path / 'file.wc').open('r') as fp:
