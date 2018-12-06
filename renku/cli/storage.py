@@ -15,25 +15,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Pull latest data from server."""
+"""Manage an external storage."""
 
 import click
 
+from ._client import pass_local_client
+
 
 @click.group()
-def pull():
-    """Pull latest data from server."""
+def storage():
+    """Manage an external storage."""
 
 
-@pull.command()
+@storage.command()
 @click.argument(
     'paths',
     type=click.Path(exists=True, dir_okay=True),
     nargs=-1,
     required=True,
 )
-@click.pass_context
-def path(ctx, paths):
-    """DEPRECATED: use 'renku storage pull'."""
-    click.secho('Use "renku storage pull" instead.', fg='red', err=True)
-    ctx.exit(2)
+@pass_local_client
+def pull(client, paths):
+    """Pull the specified paths from external storage."""
+    for p in paths:
+        client.pull_path(p)

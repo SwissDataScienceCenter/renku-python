@@ -41,13 +41,6 @@ Renku Command Line
 
 .. automodule:: renku.cli.dataset
 
-.. _cli-pull:
-
-``renku pull``
---------------
-
-.. automodule:: renku.cli.pull
-
 .. _cli-run:
 
 ``renku run``
@@ -96,6 +89,13 @@ Renku Command Line
 --------------
 
 .. automodule:: renku.cli.show
+
+.. _cli-storage:
+
+``renku storage``
+-----------------
+
+.. automodule:: renku.cli.storage
 
 .. _cli-image:
 
