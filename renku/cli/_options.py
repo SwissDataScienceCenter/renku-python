@@ -19,6 +19,8 @@
 
 import click
 
+from ._git import set_git_isolation
+
 
 class Endpoint(str):
     """Track endpoint source."""
@@ -115,6 +117,14 @@ option_endpoint = click.option(
     default=None,
     callback=validate_endpoint,
     help=validate_endpoint.__doc__,
+)
+
+option_isolation = click.option(
+    '--isolation',
+    is_flag=True,
+    default=False,
+    callback=lambda ctx, param, value: set_git_isolation(value),
+    help='Set up the isolation for invoking of the given command.',
 )
 
 
