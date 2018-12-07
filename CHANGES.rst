@@ -18,6 +18,15 @@
 Changes
 =======
 
+``v0.3.3``
+----------
+
+*(released 2018-12-07)*
+
+- Fixes generated Homebrew formula.
+- Renames ``renku pull path`` to ``renku storage pull`` with deprecation
+  warning.
+
 ``v0.3.2``
 ----------
 

@@ -132,8 +132,8 @@ class GitURL(object):
     def parse(cls, href):
         """Derive basic informations."""
         for regex in _REPOSITORY_URLS:
-            if re.search(regex, href):
-                matches = re.search(regex, href)
+            matches = re.search(regex, href)
+            if matches:
                 return cls(href=href, regex=regex, **matches.groupdict())
         else:
             raise errors.ConfigurationError(

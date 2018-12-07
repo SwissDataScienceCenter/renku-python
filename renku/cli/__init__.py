@@ -98,6 +98,7 @@ from .run import run
 from .runner import runner
 from .show import show
 from .status import status
+from .storage import storage
 from .update import update
 from .workflow import workflow
 from .workon import deactivate, workon
@@ -197,8 +198,9 @@ cli.add_command(pull)
 cli.add_command(rerun)
 cli.add_command(run)
 cli.add_command(runner)
-cli.add_command(status)
 cli.add_command(show)
+cli.add_command(status)
+cli.add_command(storage)
 cli.add_command(update)
 cli.add_command(workflow)
 cli.add_command(workon)
