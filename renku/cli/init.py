@@ -64,6 +64,7 @@ was not installed previously.
 
 """
 
+import contextlib
 import os
 
 import attr
@@ -106,13 +107,43 @@ def init(ctx, client, directory, name, force, use_external_storage):
     """Initialize a project."""
     if not client.use_external_storage:
         use_external_storage = False
-    try:
-        ctx.obj = client = attr.evolve(
-            client,
-            path=directory,
-            use_external_storage=use_external_storage,
+
+    ctx.obj = client = attr.evolve(
+        client,
+        path=directory,
+        use_external_storage=use_external_storage,
+    )
+
+    msg = 'Initialized empty project in {path}'
+    branch_name = None
+
+    stack = contextlib.ExitStack()
+
+    if force:
+        msg = 'Initialized project in {path} (branch {branch_name})'
+        merge_args = ['--no-ff', '-s', 'recursive', '-X', 'ours']
+
+        try:
+            commit = client.find_previous_commit(
+                str(client.renku_metadata_path),
+            )
+            branch_name = 'renku/init/' + str(commit)
+        except KeyError:
+            from git import NULL_TREE
+            commit = NULL_TREE
+            branch_name = 'renku/init/root'
+            merge_args.append('--allow-unrelated-histories')
+
+        ctx.obj = client = stack.enter_context(
+            client.worktree(
+                branch_name=branch_name,
+                commit=commit,
+                merge_args=merge_args,
+            )
         )
-        project_config_path = client.init_repository(name=name, force=force)
+
+    try:
+        path = client.init_repository(name=name, force=force)
     except FileExistsError:
         raise click.UsageError(
             'Renku repository is not empty. '
@@ -120,7 +151,9 @@ def init(ctx, client, directory, name, force, use_external_storage):
             'repository.'
         )
 
-    with client.commit():
+    stack.enter_context(client.commit())
+
+    with stack:
         # Install Git hooks.
         from .githooks import install
         ctx.invoke(install, force=force)
@@ -129,4 +162,4 @@ def init(ctx, client, directory, name, force, use_external_storage):
         from .runner import template
         ctx.invoke(template)
 
-    click.echo('Initialized empty project in {0}'.format(project_config_path))
+    click.echo(msg.format(path=path, branch_name=branch_name))

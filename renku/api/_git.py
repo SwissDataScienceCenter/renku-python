@@ -183,18 +183,40 @@ class GitCore:
             yield self
 
     @contextmanager
-    def worktree(self, path=None, branch_name=None):
+    def worktree(
+        self,
+        path=None,
+        branch_name=None,
+        commit=None,
+        merge_args=('--ff-only', ),
+    ):
         """Create new worktree."""
+        from git import GitCommandError, NULL_TREE
         from renku._contexts import Isolation
 
         delete = path is None
         path = path or tempfile.mkdtemp()
         branch_name = branch_name or 'renku/run/isolation/' + uuid.uuid4().hex
 
+        # TODO sys.argv
+
+        if commit is NULL_TREE:
+            args = ['add', '--detach', path]
+            self.repo.git.worktree(*args)
+            client = attr.evolve(self, path=path)
+            client.repo.git.checkout('--orphan', branch_name)
+            client.repo.git.rm('-rf', '*')
+        else:
+            args = ['add', '-b', branch_name, path]
+            if commit:
+                args.append(commit)
+            self.repo.git.worktree(*args)
+            client = attr.evolve(self, path=path)
+
+        client.repo.config_reader = self.repo.config_reader
+
         # Keep current directory relative to repository root.
         relative = Path('.').resolve().relative_to(self.path)
-
-        self.repo.git.worktree('add', '-b', branch_name, path)
 
         # Reroute standard streams
         original_mapped_std = _mapped_std_streams(self.candidate_paths)
@@ -211,18 +233,17 @@ class GitCore:
 
         _clean_streams(self.repo, original_mapped_std)
 
-        # TODO sys.argv
-
-        client = attr.evolve(self, path=path)
-        client.repo.config_reader = self.repo.config_reader
-
         new_cwd = Path(path) / relative
         new_cwd.mkdir(parents=True, exist_ok=True)
 
         with Isolation(cwd=str(new_cwd), **mapped_std):
             yield client
 
-        self.repo.git.merge(branch_name, ff_only=True)
+        try:
+            self.repo.git.merge(branch_name, *merge_args)
+        except GitCommandError:
+            raise errors.FailedMerge(self.repo)
+
         if delete:
             shutil.rmtree(path)
             self.repo.git.worktree('prune')

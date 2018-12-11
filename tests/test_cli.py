@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -72,59 +72,6 @@ def test_show_context(runner):
     data = json.loads(result.output)
     assert 0 == result.exit_code
     assert len(contexts) == len(data)
-
-
-def test_init(isolated_runner):
-    """Test project initialization."""
-    runner = isolated_runner
-
-    # 1. the directory should be automatically created
-    new_project = Path('test-new-project')
-    assert not new_project.exists()
-    result = runner.invoke(cli.cli, ['init', 'test-new-project'])
-    assert result.exit_code == 0
-    assert new_project.exists()
-
-    # 2. test project directory creation
-    os.mkdir('test-project')
-    result = runner.invoke(cli.cli, ['init', 'test-project'])
-    assert result.exit_code == 0
-    assert os.stat(os.path.join('test-project', '.git'))
-    assert os.stat(os.path.join('test-project', '.renku'))
-
-    # 3. test project init from already existing renku repository
-    os.chdir('test-project')
-    result = runner.invoke(cli.cli, ['init'])
-    assert result.exit_code != 0
-
-    # 4. in case of init failure because of existing .git folder
-    #    .renku directory should not exist
-    assert not os.path.exists(os.path.join('test-project', '.renku'))
-
-    result = runner.invoke(cli.cli, ['init', '--force'])
-    assert result.exit_code == 0
-    assert os.stat(os.path.join('.git'))
-    assert os.stat(os.path.join('.renku'))
-
-    # 4. check git lfs init options
-    os.chdir('../')
-    shutil.rmtree('test-project')
-    os.mkdir('test-project')
-    os.chdir('test-project')
-    result = runner.invoke(cli.cli, ['init', '--no-external-storage'])
-    with open('.git/config') as f:
-        config = f.read()
-    assert 'filter "lfs"' not in config
-
-    result = runner.invoke(cli.cli, ['init', '-S'])
-    with open('.git/config') as f:
-        config = f.read()
-    assert 'filter "lfs"' not in config
-
-    result = runner.invoke(cli.cli, ['init', '--force'])
-    with open('.git/config') as f:
-        config = f.read()
-    assert 'filter "lfs"' in config
 
 
 def test_workon(runner, project):

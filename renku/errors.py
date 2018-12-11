@@ -126,6 +126,18 @@ class DirtyRepository(RenkuException, click.ClickException):
         )
 
 
+class FailedMerge(RenkuException, click.ClickException):
+    """Raise when automatic merge failed."""
+
+    def __init__(self, repo):
+        """Build a custom message."""
+        super(DirtyRepository, self).__init__(
+            'The automatic merge failed.\n\n'
+            'Please use the "git" command to clean resolve it.'
+            '\n\n' + str(repo.git.status())
+        )
+
+
 class UnmodifiedOutputs(RenkuException, click.ClickException):
     """Raise when there are unmodified outputs in the repository."""
 
