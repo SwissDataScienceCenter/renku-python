@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,6 +17,7 @@
 # limitations under the License.
 """Python SDK and CLI for the Renku platform."""
 
+import datetime
 import os
 
 from setuptools import find_packages, setup
@@ -86,7 +87,7 @@ packages = find_packages()
 version_template = """\
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-%d - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -104,7 +105,7 @@ version_template = """\
 \"\"\"Version information for Renku.\"\"\"
 
 __version__ = {version!r}
-"""
+""" % (datetime.date.today().year, )
 
 setup(
     name='renku',
