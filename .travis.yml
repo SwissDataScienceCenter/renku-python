@@ -79,6 +79,7 @@ before_install:
         brew unlink python;
         brew link python;
         brew install git-lfs jq node pipenv shellcheck;
+        brew upgrade node;
         git config --global --add user.name "John Doe";
         git config --global --add user.email "john.doe@example.com";
     fi
