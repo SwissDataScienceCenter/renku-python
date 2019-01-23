@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -118,6 +118,15 @@ class GitCore:
                 self.repo.untracked_files,
             )
         ]
+
+    def find_ignored_paths(self, *paths):
+        """Return ignored paths matching ``.gitignore`` file."""
+        from git.exc import GitCommandError
+
+        try:
+            return self.repo.git.check_ignore(*paths).split()
+        except GitCommandError:
+            pass
 
     def ensure_clean(self, ignore_std_streams=False):
         """Make sure the repository is clean."""
