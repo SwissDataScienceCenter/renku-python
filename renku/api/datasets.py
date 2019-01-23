@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -29,6 +29,7 @@ import attr
 import requests
 import yaml
 
+from renku import errors
 from renku._compat import Path
 from renku.models._git import GitURL
 from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
@@ -85,7 +86,9 @@ class DatasetsApiMixin(object):
             with path.open('w') as f:
                 yaml.dump(source, f, default_flow_style=False)
 
-    def add_data_to_dataset(self, dataset, url, git=False, **kwargs):
+    def add_data_to_dataset(
+        self, dataset, url, git=False, force=False, **kwargs
+    ):
         """Import the data into the data directory."""
         dataset_path = self.path / self.datadir / dataset.name
         git = git or check_for_git_repo(url)
@@ -94,22 +97,31 @@ class DatasetsApiMixin(object):
 
         if git:
             if isinstance(target, (str, NoneType)):
-                dataset.files.update(
-                    self._add_from_git(
-                        dataset, dataset_path, url, target, **kwargs
-                    )
+                files = self._add_from_git(
+                    dataset, dataset_path, url, target, **kwargs
                 )
             else:
+                files = {}
                 for t in target:
-                    dataset.files.update(
+                    files.update(
                         self._add_from_git(
                             dataset, dataset_path, url, t, **kwargs
                         )
                     )
         else:
-            dataset.files.update(
-                self._add_from_url(dataset, dataset_path, url, **kwargs)
-            )
+            files = self._add_from_url(dataset, dataset_path, url, **kwargs)
+
+        ignored = self.find_ignored_paths(
+            *[str(dataset_path / key) for key in files.keys()]
+        )
+
+        if ignored:
+            if force:
+                self.repo.git.add(*ignored, force=True)
+            else:
+                raise errors.IgnoredFiles(ignored)
+
+        dataset.files.update(files)
 
     def _add_from_url(self, dataset, path, url, nocopy=False, **kwargs):
         """Process an add from url and return the location on disk."""

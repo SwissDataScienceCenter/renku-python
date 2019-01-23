@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -126,12 +126,26 @@ class DirtyRepository(RenkuException, click.ClickException):
         )
 
 
+class IgnoredFiles(RenkuException, click.ClickException):
+    """Raise when trying to work with ignored files."""
+
+    def __init__(self, ignored):
+        """Build a custom message."""
+        super(IgnoredFiles, self).__init__(
+            'The following paths are ignored by one of your .gitignore files:'
+            '\n\n' + '\n'.
+            join('\t' + click.style(path, fg='yellow')
+                 for path in ignored) + '\n'
+            'Please use the "--force" option if you really want to add them.'
+        )
+
+
 class FailedMerge(RenkuException, click.ClickException):
     """Raise when automatic merge failed."""
 
     def __init__(self, repo):
         """Build a custom message."""
-        super(DirtyRepository, self).__init__(
+        super(FailedMerge, self).__init__(
             'The automatic merge failed.\n\n'
             'Please use the "git" command to clean resolve it.'
             '\n\n' + str(repo.git.status())

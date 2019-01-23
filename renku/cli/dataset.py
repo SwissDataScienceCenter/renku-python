@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -121,8 +121,11 @@ def create(client, name):
     multiple=True,
     help='Target path in the git repo.'
 )
+@click.option(
+    '--force', is_flag=True, help='Allow adding otherwise ignored files.'
+)
 @pass_local_client(clean=True, commit=True)
-def add(client, name, urls, nocopy, relative_to, target):
+def add(client, name, urls, nocopy, relative_to, target, force):
     """Add data to a dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
@@ -135,6 +138,7 @@ def add(client, name, urls, nocopy, relative_to, target):
                         nocopy=nocopy,
                         target=target,
                         relative_to=relative_to,
+                        force=force,
                     )
     except FileNotFoundError:
         raise BadParameter('Could not process {0}'.format(url))
