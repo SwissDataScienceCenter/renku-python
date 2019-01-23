@@ -64,15 +64,14 @@ def status(ctx, client, revision, no_output, path):
 
     click.echo('On branch {0}'.format(client.repo.active_branch))
     if status['outdated']:
-        click.echo('Files generated from newer inputs:')
-        click.echo('  (use "renku log [<file>...]" to see the full lineage)')
         click.echo(
+            'Files generated from newer inputs:\n'
+            '  (use "renku log [<file>...]" to see the full lineage)\n'
             '  (use "renku update [<file>...]" to '
-            'generate the file from its latest inputs)'
+            'generate the file from its latest inputs)\n'
         )
-        click.echo()
 
-        for filepath, stts in status['outdated'].items():
+        for filepath, stts in sorted(status['outdated'].items()):
             outdated = (
                 ', '.join(
                     '{0}#{1}'.format(
@@ -101,15 +100,15 @@ def status(ctx, client, revision, no_output, path):
         )
 
     if status['multiple-versions']:
-        click.echo('Input files used in different versions:')
         click.echo(
+            'Input files used in different versions:\n'
             '  (use "renku log --revision <sha1> <file>" to see a lineage '
-            'for the given revision)'
+            'for the given revision)\n'
         )
-        click.echo()
 
-        for filepath, files in status['multiple-versions'].items():
-            commits = (_format_sha1(graph, key) for key in files)
+        for filepath, files in sorted(status['multiple-versions'].items()):
+            # Do not show duplicated commits!  (see #387)
+            commits = {_format_sha1(graph, key) for key in files}
             click.echo(
                 '\t{0}: {1}'.format(
                     click.style(
@@ -121,12 +120,11 @@ def status(ctx, client, revision, no_output, path):
         click.echo()
 
     if status['deleted']:
-        click.echo('Deleted files used to generate outputs:')
         click.echo(
+            'Deleted files used to generate outputs:\n'
             '  (use "git show <sha1>:<file>" to see the file content '
-            'for the given revision)'
+            'for the given revision)\n'
         )
-        click.echo()
 
         for filepath, node in status['deleted'].items():
             click.echo(
