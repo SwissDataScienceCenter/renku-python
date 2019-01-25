@@ -134,6 +134,12 @@ from ._options import option_isolation
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
 @click.option(
+    'outputs',
+    '--output',
+    multiple=True,
+    help='Force a path to be an output.',
+)
+@click.option(
     '--no-output',
     is_flag=True,
     default=False,
@@ -152,7 +158,7 @@ from ._options import option_isolation
 @pass_local_client(
     clean=True, up_to_date=True, commit=True, ignore_std_streams=True
 )
-def run(client, no_output, success_codes, isolation, command_line):
+def run(client, outputs, no_output, success_codes, isolation, command_line):
     """Tracking work on a specific problem."""
     working_dir = client.repo.working_dir
     mapped_std = _mapped_std_streams(client.candidate_paths)
@@ -168,7 +174,9 @@ def run(client, no_output, success_codes, isolation, command_line):
     )
 
     with client.with_workflow_storage() as wf:
-        with factory.watch(client, no_output=no_output) as tool:
+        with factory.watch(
+            client, no_output=no_output, outputs=outputs
+        ) as tool:
             returncode = call(
                 factory.command_line,
                 cwd=os.getcwd(),

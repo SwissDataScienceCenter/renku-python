@@ -210,10 +210,24 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, client, no_output=False):
+    def watch(self, client, no_output=False, outputs=None):
         """Watch a Renku repository for changes to detect outputs."""
         tool = self.generate_tool()
         repo = client.repo
+
+        if outputs:
+            directories = [
+                output for output in outputs if Path(output).is_dir()
+            ]
+
+            client.repo.git.rm(
+                *outputs, r=True, force=True, ignore_unmatch=True
+            )
+            client.repo.index.commit('renku: automatic removal of outputs')
+
+            for directory in directories:
+                Path(directory).mkdir(parents=True, exist_ok=True)
+
         # NOTE consider to use git index instead
         existing_directories = {
             str(p.relative_to(client.path))
