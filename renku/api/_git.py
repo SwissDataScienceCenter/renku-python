@@ -75,6 +75,17 @@ def _clean_streams(repo, mapped_streams):
                 fp.write(blob.data_stream.read())
 
 
+def _expand_directories(paths):
+    """Expand directory with all files it contains."""
+    for path in paths:
+        path_ = Path(path)
+        if path_.is_dir():
+            for expanded in path_.rglob('*'):
+                yield str(expanded)
+        else:
+            yield path
+
+
 @attr.s
 class GitCore:
     """Wrap Git client."""
@@ -127,6 +138,31 @@ class GitCore:
             return self.repo.git.check_ignore(*paths).split()
         except GitCommandError:
             pass
+
+    def remove_unmodified(self, paths, autocommit=True):
+        """Remove unmodified paths and return their names."""
+        tested_paths = set(_expand_directories(paths))
+
+        # Keep only unchanged files in the output paths.
+        tracked_paths = {
+            diff.b_path
+            for diff in self.repo.index.diff(None)
+            if diff.change_type in {'A', 'R', 'M', 'T'} and
+            diff.b_path in tested_paths
+        }
+        unchanged_paths = tested_paths - tracked_paths
+
+        # Fix tracking of unchanged files by removing them first.
+        if autocommit and unchanged_paths:
+            self.repo.index.remove(
+                unchanged_paths, cached=True, r=True, ignore_unmatch=True
+            )
+            self.repo.index.commit(
+                'renku: automatic removal of unchanged files'
+            )
+            self.repo.index.add(unchanged_paths)
+
+        return unchanged_paths
 
     def ensure_clean(self, ignore_std_streams=False):
         """Make sure the repository is clean."""

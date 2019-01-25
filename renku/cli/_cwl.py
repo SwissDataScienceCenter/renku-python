@@ -102,23 +102,8 @@ def execute(client, output_file, output_paths=None):
                     shutil.move(location, str(destination))
                     continue
 
-    # Keep only unchanged files in the output paths.
-    tracked_paths = {
-        diff.b_path
-        for diff in client.repo.index.diff(None)
-        if diff.change_type in {'A', 'R', 'M', 'T'} and
-        diff.b_path in output_paths
-    }
-    unchanged_paths = output_paths - tracked_paths
-
-    # Fix tracking of unchanged files by removing them first.
+    unchanged_paths = client.remove_unmodified(output_paths)
     if unchanged_paths:
-        client.repo.index.remove(
-            unchanged_paths, cached=True, r=True, ignore_unmatch=True
-        )
-        client.repo.index.commit('renku: automatic removal of unchanged files')
-        client.repo.index.add(unchanged_paths)
-
         click.echo(
             'Unchanged files:\n\n\t{0}'.format(
                 '\n\t'.join(
