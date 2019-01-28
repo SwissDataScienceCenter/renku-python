@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,6 +17,8 @@
 # limitations under the License.
 """Test Python SDK client."""
 
+import pytest
+
 
 def test_local_client(tmpdir):
     """Test a local client."""
@@ -25,3 +27,15 @@ def test_local_client(tmpdir):
 
     assert client.path
     assert client.repo is None
+
+
+@pytest.mark.parametrize(
+    'paths, ignored', (
+        (['.renku.lock'], ['.renku.lock']),
+        (['not ignored', 'lib/foo', 'build/html'], ['lib/foo', 'build/html']),
+        (['not ignored'], None),
+    )
+)
+def test_ignored_paths(paths, ignored, client):
+    """Test resolution of ignored paths."""
+    assert client.find_ignored_paths(*paths) == ignored
