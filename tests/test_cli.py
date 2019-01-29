@@ -286,76 +286,6 @@ def test_streams_cleanup(runner, project, run):
         assert fp.read() == '1'
 
 
-def test_update(runner, project, run):
-    """Test automatic file update."""
-    cwd = Path(project)
-    data = cwd / 'data'
-    data.mkdir()
-    source = cwd / 'source.txt'
-    output = data / 'result.txt'
-
-    repo = git.Repo(project)
-
-    def update_source(data):
-        """Update source.txt."""
-        with source.open('w') as fp:
-            fp.write(data)
-
-        repo.git.add('--all')
-        repo.index.commit('Updated source.txt')
-
-    update_source('1')
-
-    assert 0 == run(args=('run', 'wc', '-c'), stdin=source, stdout=output)
-
-    with output.open('r') as f:
-        assert f.read().strip() == '1'
-
-    result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
-
-    update_source('12')
-
-    result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 1
-
-    assert 0 == run()
-
-    result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
-
-    with output.open('r') as f:
-        assert f.read().strip() == '2'
-
-    result = runner.invoke(cli.cli, ['log'], catch_exceptions=False)
-    assert '(part of' in result.output, result.output
-
-    # Source has been updated but output is unchanged.
-    update_source('34')
-
-    result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 1
-
-    assert 0 == run()
-
-    result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
-
-    with output.open('r') as f:
-        assert f.read().strip() == '2'
-
-    from renku.cli.log import FORMATS
-    for output_format in FORMATS:
-        # Make sure the log contains the original parent.
-        result = runner.invoke(
-            cli.cli,
-            ['log', '--format', output_format],
-            catch_exceptions=False,
-        )
-        assert result.exit_code == 0, output_format
-        assert source.name in result.output, output_format
-
-
 def test_streams_and_args_names(runner, project, capsys):
     """Test streams and conflicting argument names."""
     with capsys.disabled():
@@ -921,103 +851,6 @@ def test_outputs(runner, project):
     assert siblings == set(result.output.strip().split('\n'))
 
 
-def test_workflow_without_outputs(runner, project, run):
-    """Test workflow without outputs."""
-    repo = git.Repo(project)
-    cwd = Path(project)
-    input_ = cwd / 'input.txt'
-    with input_.open('w') as f:
-        f.write('first')
-
-    repo.git.add('--all')
-    repo.index.commit('Created input.txt')
-
-    cmd = ['run', 'cat', '--no-output', input_.name]
-    result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
-
-    cmd = ['status', '--no-output']
-    result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
-
-    with input_.open('w') as f:
-        f.write('second')
-
-    repo.git.add('--all')
-    repo.index.commit('Updated input.txt')
-
-    cmd = ['status', '--no-output']
-    result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 1
-
-    assert 0 == run(args=('update', '--no-output'))
-
-    cmd = ['status', '--no-output']
-    result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
-
-
-def test_siblings_update(runner, project, run):
-    """Test detection of siblings during update."""
-    cwd = Path(project)
-    parent = cwd / 'parent.txt'
-    brother = cwd / 'brother.txt'
-    sister = cwd / 'sister.txt'
-    siblings = {brother, sister}
-
-    repo = git.Repo(project)
-
-    def update_source(data):
-        """Update parent.txt."""
-        with parent.open('w') as fp:
-            fp.write(data)
-
-        repo.git.add('--all')
-        repo.index.commit('Updated parent.txt')
-
-    update_source('1')
-
-    # The output files do not exist.
-    assert not any(sibling.exists() for sibling in siblings)
-
-    cmd = ['run', 'tee', 'brother.txt']
-    assert 0 == run(args=cmd, stdin=parent, stdout=sister)
-
-    # The output file is copied from the source.
-    for sibling in siblings:
-        with sibling.open('r') as f:
-            assert f.read().strip() == '1', sibling
-
-    update_source('2')
-
-    # Siblings must be updated together.
-    for sibling in siblings:
-        assert 1 == run(args=('update', sibling.name))
-
-    # Update brother and check the sister has not been changed.
-    assert 0 == run(args=('update', '--with-siblings', brother.name))
-
-    for sibling in siblings:
-        with sibling.open('r') as f:
-            assert f.read().strip() == '2', sibling
-
-    update_source('3')
-
-    # Siblings kept together even when one is removed.
-    repo.index.remove([brother.name], working_tree=True)
-    repo.index.commit('Brother removed')
-
-    assert not brother.exists()
-
-    # Update should find also missing siblings.
-    assert 1 == run(args=('update', ))
-    assert 0 == run(args=('update', '--with-siblings'))
-
-    for sibling in siblings:
-        with sibling.open('r') as f:
-            assert f.read().strip() == '3', sibling
-
-
 def test_simple_rerun(runner, project, run):
     """Test simple file recreation."""
     greetings = {'hello', 'hola', 'ahoj'}
@@ -1229,7 +1062,8 @@ def test_image_pull(runner, project):
     assert result.exit_code == 1
 
 
-def test_input_update_and_rerun(runner, project, run):
+@pytest.mark.parametrize('cmd, exit_code', (('update', 0), ('rerun', 1)))
+def test_input_update_and_rerun(cmd, exit_code, runner, project, run):
     """Test update and rerun of an input."""
     repo = git.Repo(project)
     cwd = Path(project)
@@ -1240,8 +1074,7 @@ def test_input_update_and_rerun(runner, project, run):
     repo.git.add('--all')
     repo.index.commit('Created input.txt')
 
-    assert 0 == run(args=('update', input_.name))
-    assert 1 == run(args=('rerun', input_.name))
+    assert exit_code == run(args=(cmd, input_.name))
 
 
 def test_moved_file(runner, project):
