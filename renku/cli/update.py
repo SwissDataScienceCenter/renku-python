@@ -138,9 +138,7 @@ from ._options import option_siblings
     help='Display commands without output files.'
 )
 @option_siblings
-@click.argument(
-    'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
-)
+@click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client(clean=True, commit=True)
 @click.pass_context
 def update(ctx, client, revision, no_output, siblings, paths):

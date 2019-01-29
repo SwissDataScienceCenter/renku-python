@@ -188,3 +188,57 @@ def test_siblings_update(runner, project, run):
     for sibling in siblings:
         with sibling.open('r') as f:
             assert f.read().strip() == '3', sibling
+
+
+def test_siblings_in_output_directory(runner, project, run):
+    """Files in output directory are linked or removed after update."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    source = cwd / 'source.txt'
+    output = cwd / 'output'
+
+    files = [
+        ('first', '1'),
+        ('second', '2'),
+        ('third', '3'),
+    ]
+
+    def write_source():
+        """Write source from files."""
+        with source.open('w') as fp:
+            fp.write('\n'.join(' '.join(line) for line in files) + '\n')
+
+        repo.git.add('--all')
+        repo.index.commit('Update source.txt')
+
+    def check_files():
+        """Check file content."""
+        assert len(files) == len(list(output.rglob('*')))
+
+        for name, content in files:
+            with (output / name).open() as fp:
+                assert content == fp.read().strip(), name
+
+    write_source()
+
+    script = (
+        'mkdir -p "$0"; '
+        'cat - | while read -r name content; do '
+        'echo "$content" > "$0/$name"; done'
+    )
+    base_sh = ['sh', '-c', script, 'output']
+
+    assert not output.exists()
+    assert 0 == run(args=['run'] + base_sh + ['output'], stdin=source)
+    assert output.exists()
+    check_files()
+
+    files = [
+        ('first', '11'),
+        ('third', '3'),
+        ('fourth', '4'),
+    ]
+    write_source()
+
+    assert 0 == run(args=['update', 'output'])
+    check_files()
