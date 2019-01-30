@@ -137,7 +137,7 @@ from ._options import option_isolation
     'outputs',
     '--output',
     multiple=True,
-    help='Force a path to be an output.',
+    help='Force a path to be considered an output.',
 )
 @click.option(
     '--no-output',
