@@ -28,7 +28,7 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'check-manifest>=0.37',
     'coverage>=4.0',
-    'flake8>=3.5',
+    'flake8>=3.5,<3.7',  # remove with pytest-flake8>=1.0.4
     'freezegun>=0.3.9',
     'isort>=4.3.4',
     'pydocstyle>=3.0.0',
