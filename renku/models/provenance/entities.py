@@ -35,7 +35,12 @@ class CommitMixin:
 
     commit = attr.ib(default=None, kw_only=True)
     client = attr.ib(default=None, kw_only=True)
-    path = attr.ib(default=None, kw_only=True, converter=_str_or_none)
+    path = jsonld.ib(
+        context='prov:atLocation',
+        default=None,
+        kw_only=True,
+        converter=_str_or_none
+    )
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
@@ -68,6 +73,7 @@ class CommitMixin:
         'wfprov:Artifact',
     ],
     context={
+        'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
     },

@@ -51,6 +51,7 @@ def _nodes(output, parent=None):
 @jsonld.s(
     type='prov:Activity',
     context={
+        'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#',
         'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
     },
@@ -78,6 +79,10 @@ class Activity(CommitMixin):
         context={
             '@reverse': 'prov:activity',
         }, kw_only=True, hash=False
+    )
+    influenced = jsonld.ib(
+        context='prov:influenced',
+        kw_only=True,
     )
 
     started_at_time = jsonld.ib(
@@ -149,6 +154,11 @@ class Activity(CommitMixin):
                 )
             )
         return results
+
+    @influenced.default
+    def default_influenced(self):
+        """Calculate default values."""
+        return list(self._collections.values())
 
     @property
     def parents(self):
