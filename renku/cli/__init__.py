@@ -86,7 +86,7 @@ from ..api.repository import default_path
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
 from ._exc import IssueFromTraceback
 from ._options import install_completion, option_use_external_storage
-from ._version import print_version
+from ._version import check_version, print_version
 from .config import config
 from .dataset import dataset
 from .githooks import githooks
@@ -171,6 +171,15 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     help='Location of the Renku directory.'
 )
 @option_use_external_storage
+@click.option(
+    '--disable-version-check',
+    envvar='RENKU_DISABLE_VERSION_CHECK',
+    is_flag=True,
+    default=False,
+    callback=check_version,
+    expose_value=False,
+    help='Do not periodically check PyPI for a new version of renku.',
+)
 @click.pass_context
 def cli(ctx, path, renku_home, use_external_storage):
     """Check common Renku commands used in various situations."""
