@@ -46,14 +46,14 @@ class IssueFromTraceback(click.Group):
                     fg='red',
                     bold=True,
                 ) + click.style(
-                    '1. You can open and issue by typing "open";\n',
+                    '1. Open an issue by typing "open";\n',
                     fg='green',
                 ) + click.style(
-                    '2. You can print human readable information by typing '
+                    '2. Print human-readable information by typing '
                     '"print";\n',
                     fg='yellow',
                 ) + click.style(
-                    '3. See full traceback without submiting details '
+                    '3. See the full traceback without submitting details '
                     '(default: "ignore").\n\n',
                     fg='red',
                 ) + 'Please select an action by typing its name',
