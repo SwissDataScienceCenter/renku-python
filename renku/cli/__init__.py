@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -84,6 +84,7 @@ import yaml
 from ..api.client import LocalClient
 from ..api.repository import default_path
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
+from ._exc import IssueFromTraceback
 from ._options import install_completion, option_use_external_storage
 from ._version import print_version
 from .config import config
@@ -116,6 +117,7 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
 
 
 @click.group(
+    cls=IssueFromTraceback,
     context_settings={
         'auto_envvar_prefix': 'RENKU',
         'help_option_names': ['-h', '--help'],
