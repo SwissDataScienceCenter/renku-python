@@ -44,7 +44,7 @@ class CommitMixin:
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _location = jsonld.ib(context='prov:atLocation', kw_only=True)
+    _project = jsonld.ib(context='dcterms:isPartOf', kw_only=True)
 
     @property
     def submodules(self):
@@ -63,8 +63,8 @@ class CommitMixin:
             return '{self.path}@{self.commit.hexsha}'.format(self=self)
         return '{self.commit.hexsha}'.format(self=self)
 
-    @_location.default
-    def default_location(self):
+    @_project.default
+    def default_project(self):
         """Generate a default location."""
         return self.client.project
 
@@ -75,7 +75,7 @@ class CommitMixin:
         'wfprov:Artifact',
     ],
     context={
-        'schema': 'http://schema.org/',
+        'dcterms': 'http://purl.org/dc/terms/',
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
     },
