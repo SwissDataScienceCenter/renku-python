@@ -66,6 +66,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'PyYAML>=3.12',
+    'appdirs>=1.4.3',
     'attrs>=18.2.0',
     'click>=6.7',
     'click-completion>=0.5.0',
