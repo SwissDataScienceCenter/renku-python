@@ -40,6 +40,9 @@ class IssueFromTraceback(click.Group):
         try:
             return super().main(*args, **kwargs)
         except Exception:
+            if not (sys.stdin.isatty() and sys.stdout.isatty()):
+                raise
+
             value = click.prompt(
                 click.style(
                     'Ahhhhhhhh! You have found a bug. 🐞\n\n',
