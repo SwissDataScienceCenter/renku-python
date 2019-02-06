@@ -59,7 +59,9 @@ class CommitMixin:
     @_label.default
     def default_label(self):
         """Generate a default label."""
-        return '{self.path}@{self.commit.hexsha}'.format(self=self)
+        if self.path:
+            return '{self.path}@{self.commit.hexsha}'.format(self=self)
+        return '{self.commit.hexsha}'.format(self=self)
 
     @_location.default
     def default_location(self):

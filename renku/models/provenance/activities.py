@@ -579,21 +579,18 @@ class WorkflowRun(ProcessRun):
 
 def from_git_commit(commit, client, path=None):
     """Populate information from the given Git commit."""
-    # Ignore merge commits
     if len(commit.parents) > 1:
-        return
-
-    cls = Activity
-    process = None
+        return Activity(commit=commit, client=client)
 
     if path is None:
         for file_ in commit.stats.files.keys():
             # 1.a Find process (CommandLineTool or Workflow);
             if client.is_cwl(file_):
                 if path is not None:
-                    raise ValueError(file_)  # duplicate
+                    # This is a regular activity since it edits two CWL files
+                    return Activity(commit=commit, client=client)
+
                 path = file_
-                continue
 
     if path:
         data = (commit.tree / path).data_stream.read()
@@ -606,4 +603,4 @@ def from_git_commit(commit, client, path=None):
             path=path,
         )
 
-    return cls(commit=commit, client=client)
+    return Activity(commit=commit, client=client)
