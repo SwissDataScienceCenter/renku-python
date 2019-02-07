@@ -119,7 +119,7 @@ def init(ctx, client, directory, name, force, use_external_storage):
 
     stack = contextlib.ExitStack()
 
-    if force:
+    if force and client.repo:
         msg = 'Initialized project in {path} (branch {branch_name})'
         merge_args = ['--no-ff', '-s', 'recursive', '-X', 'ours']
 
