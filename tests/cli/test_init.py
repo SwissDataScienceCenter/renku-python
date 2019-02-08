@@ -77,6 +77,32 @@ def test_init(isolated_runner):
     assert 'filter "lfs"' in config
 
 
+def test_do_not_override_existing_files(isolated_runner):
+    """Run init with existing files."""
+    runner = isolated_runner
+
+    dockerfile = Path('Dockerfile')
+    dockerfile_content = 'FROM alpine'
+    with dockerfile.open('w') as fp:
+        fp.write(dockerfile_content)
+
+    requirements = Path('requirements.txt')
+    requirements_content = 'pandas'
+    with requirements.open('w') as fp:
+        fp.write(requirements_content)
+
+    # The order of answers depends on CI_TEMPLATES.
+    # from renku.cli.runner import CI_TEMPLATES
+    result = runner.invoke(cli.cli, ['init'], input='y\nn\n')
+    assert 1 == result.exit_code
+
+    with dockerfile.open() as fp:
+        assert dockerfile_content != fp.read().strip()
+
+    with requirements.open() as fp:
+        assert requirements_content == fp.read().strip()
+
+
 def test_init_on_cloned_repo(isolated_runner, data_repository):
     """Run init on a cloned repository."""
     runner = isolated_runner
