@@ -160,6 +160,6 @@ def init(ctx, client, directory, name, force, use_external_storage):
 
         # Create all necessary template files.
         from .runner import template
-        ctx.invoke(template)
+        ctx.invoke(template, force=force)
 
     click.echo(msg.format(path=path, branch_name=branch_name))
