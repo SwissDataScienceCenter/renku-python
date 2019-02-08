@@ -117,3 +117,13 @@ def test_init_on_cloned_repo(isolated_runner, data_repository):
 
     result = runner.invoke(cli.cli, ['init', '--force'])
     assert 0 == result.exit_code
+
+
+def test_init_force_in_empty_dir(isolated_runner):
+    """Run init --force in empty directory."""
+    runner = isolated_runner
+
+    new_project = Path('test-new-project')
+    assert not new_project.exists()
+    result = runner.invoke(cli.cli, ['init', '--force', 'test-new-project'])
+    assert 0 == result.exit_code
