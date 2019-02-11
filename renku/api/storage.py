@@ -40,6 +40,8 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_TRACK = ['git', 'lfs', 'track']
 
+    _CMD_STORAGE_CHECKOUT = ['git', 'lfs', 'checkout']
+
     _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', 'origin', '-I']
 
     def init_external_storage(self, force=False):
@@ -88,6 +90,17 @@ class StorageApiMixin(RepositoryApiMixin):
             cwd=str(client.path.absolute()),
             check=True
         )
+
+    def checkout_paths_from_storage(self, *paths):
+        """Checkout a paths from LFS."""
+        if self.use_external_storage and self.external_storage_installed:
+            run(
+                self._CMD_STORAGE_CHECKOUT + list(paths),
+                cwd=str(self.path.absolute()),
+                stdout=PIPE,
+                stderr=STDOUT,
+                check=True,
+            )
 
     def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""

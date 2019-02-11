@@ -115,7 +115,9 @@ def test_init_on_cloned_repo(isolated_runner, data_repository):
     result = runner.invoke(cli.cli, ['init'])
     assert 0 != result.exit_code
 
-    result = runner.invoke(cli.cli, ['init', '--force'])
+    result = runner.invoke(
+        cli.cli, ['init', '--force'], catch_exceptions=False
+    )
     assert 0 == result.exit_code
 
 
