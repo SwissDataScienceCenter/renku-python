@@ -43,7 +43,7 @@ def _jsonld(graph, format, *args, **kwargs):
     return json.dumps(output, indent=2)
 
 
-def dot(graph, simple=True, landscape=False):
+def dot(graph, simple=True, debug=False, landscape=False):
     """Format graph as a dot file."""
     import sys
 
@@ -63,25 +63,29 @@ def dot(graph, simple=True, landscape=False):
     g.bind('wf', 'http://www.w3.org/2005/01/wf/flow#')
     g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
 
-    if simple:
-        _rdf2dot_simple(g, sys.stdout, landscape)
-    else:
+    if debug:
         rdf2dot(g, sys.stdout)
+        return
+
+    sys.stdout.write('digraph { \n node [ fontname="DejaVu Sans" ] ; \n ')
+    if landscape:
+        sys.stdout.write('rankdir="LR" \n')
+    if simple:
+        _rdf2dot_simple(g, sys.stdout)
+        return
+    _rdf2dot_reduced(g, sys.stdout)
 
 
 # define the various dot options
 dot_full = functools.partial(dot, simple=False, landscape=False)
 dot_landscape = functools.partial(dot, simple=True, landscape=True)
 dot_full_landscape = functools.partial(dot, simple=False, landscape=True)
+dot_debug = functools.partial(dot, debug=True)
 
 
-def _rdf2dot_simple(g, stream, landscape=True):
+def _rdf2dot_simple(g, stream):
     """Create a simple graph of processes and artifacts."""
     from itertools import chain
-
-    stream.write('digraph { \n node [ fontname="DejaVu Sans" ] ; \n ')
-    if landscape:
-        stream.write('rankdir="LR" \n')
 
     import re
 
@@ -171,6 +175,109 @@ def _rdf2dot_simple(g, stream, landscape=True):
     stream.write('}\n')
 
 
+def _rdf2dot_reduced(g, stream):
+    """
+    A reduced dot graph.
+
+    Adapted from original source:
+    https://rdflib.readthedocs.io/en/stable/_modules/rdflib/tools/rdf2dot.html
+    """
+    import cgi
+    import collections
+
+    import rdflib
+
+    from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
+
+    types = collections.defaultdict(set)
+    fields = collections.defaultdict(set)
+    nodes = {}
+
+    def node(x):
+        """Return a name of the given node."""
+        return nodes.setdefault(x, 'node{0}'.format(len(nodes)))
+
+    def label(x, g):
+        """Generate a label for the node."""
+        for labelProp in LABEL_PROPERTIES:
+            label_ = g.value(x, labelProp)
+            if label_:
+                return label_
+
+        try:
+            return g.namespace_manager.compute_qname(x)[2]
+        except Exception:
+            return x
+
+    def formatliteral(l, g):
+        """Format and escape literal."""
+        v = cgi.escape(l)
+        if l.datatype:
+            return '&quot;%s&quot;^^%s' % (v, qname(l.datatype, g))
+        elif l.language:
+            return '&quot;%s&quot;@%s' % (v, l.language)
+        return '&quot;%s&quot;' % v
+
+    def qname(x, g):
+        """Compute qname."""
+        try:
+            q = g.compute_qname(x)
+            return q[0] + ":" + q[2]
+        except Exception:
+            return x
+
+    def color(p):
+        """Choose node color."""
+        return "BLACK"
+
+    for s, p, o in g:
+        sn = node(s)
+        if p == rdflib.RDFS.label:
+            continue
+
+        # inject the type predicate into the node itself
+        if p == rdflib.RDF.type:
+            types[sn].add((qname(p, g), cgi.escape(o)))
+            continue
+        if p == rdflib.term.URIRef('http://purl.org/dc/terms/isPartOf'):
+            fields[sn].add((qname(p, g), cgi.escape(o)))
+            continue
+        if p == rdflib.term.URIRef('http://www.w3.org/ns/prov#wasInformedBy'):
+            continue
+
+        if isinstance(o, (rdflib.URIRef, rdflib.BNode)):
+            on = node(o)
+            opstr = (
+                '\t%s -> %s [ color=%s, label=< <font point-size="12" '
+                'color="#336633">%s</font> > ] ;\n'
+            )
+            stream.write(opstr % (sn, on, color(p), qname(p, g)))
+        else:
+            fields[sn].add((qname(p, g), formatliteral(o, g)))
+
+    for u, n in nodes.items():
+        stream.write(u"# %s %s\n" % (u, n))
+        f = [
+            '<tr><td align="left"><b>%s</b></td><td align="left">'
+            '<b>%s</b></td></tr>' % x for x in sorted(types[n])
+        ]
+        f += [
+            '<tr><td align="left">%s</td><td align="left">%s</td></tr>' % x
+            for x in sorted(fields[n])
+        ]
+        opstr = (
+            '%s [ shape=none, color=%s label=< <table color="#666666"'
+            ' cellborder="0" cellspacing="0" border="1"><tr>'
+            '<td colspan="2" bgcolor="grey"><B>%s</B></td></tr><tr>'
+            '<td href="%s" bgcolor="#eeeeee" colspan="2">'
+            '<font point-size="12" color="#6666ff">%s</font></td>'
+            '</tr>%s</table> > ] \n'
+        )
+        stream.write(opstr % (n, NODECOLOR, label(u, g), u, u, ''.join(f)))
+
+    stream.write('}\n')
+
+
 def jsonld(graph):
     """Format graph as JSON-LD file."""
     click.echo(_jsonld(graph, 'expand'))
@@ -217,6 +324,7 @@ FORMATS = {
     'dot-full': dot_full,
     'dot-landscape': dot_landscape,
     'dot-full-landscape': dot_full_landscape,
+    'dot-debug': dot_debug,
     'json-ld': jsonld,
     'json-ld-graph': jsonld_graph,
     'nt': nt,
