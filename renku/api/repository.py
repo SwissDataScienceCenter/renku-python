@@ -206,8 +206,8 @@ class RepositoryApiMixin(GitCore):
             from git import Submodule
 
             submodules = [
-                submodule for submodule in Submodule.
-                iter_items(self.repo, parent_commit=parent_commit)
+                submodule for submodule in
+                Submodule.iter_items(self.repo, parent_commit=parent_commit)
             ]
         except (RuntimeError, ValueError):
             # There are no submodules assiciated with the given commit.

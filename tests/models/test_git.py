@@ -129,8 +129,9 @@ from renku.models._git import GitURL
                 'pathname': 'repo.git',
                 'username': 'git',
             },
-            marks=pytest.mark.
-            xfail(raises=errors.ConfigurationError, strict=True),
+            marks=pytest.mark.xfail(
+                raises=errors.ConfigurationError, strict=True
+            ),
         ),
         pytest.param(
             {
@@ -142,8 +143,9 @@ from renku.models._git import GitURL
                 'owner': 'owner',
                 'username': 'git',
             },
-            marks=pytest.mark.
-            xfail(raises=errors.ConfigurationError, strict=True),
+            marks=pytest.mark.xfail(
+                raises=errors.ConfigurationError, strict=True
+            ),
         ),
         {
             'href': 'git@example.com:repo.git',
@@ -196,8 +198,9 @@ from renku.models._git import GitURL
                 'name': 'repo',
                 'pathname': 'repo.git',
             },
-            marks=pytest.mark.
-            xfail(raises=errors.ConfigurationError, strict=True),
+            marks=pytest.mark.xfail(
+                raises=errors.ConfigurationError, strict=True
+            ),
         ),
         pytest.param(
             {
@@ -209,8 +212,9 @@ from renku.models._git import GitURL
                 'pathname': 'repo.git',
                 'owner': 'owner',
             },
-            marks=pytest.mark.
-            xfail(raises=errors.ConfigurationError, strict=True),
+            marks=pytest.mark.xfail(
+                raises=errors.ConfigurationError, strict=True
+            ),
         ),
         pytest.param(
             {
@@ -222,8 +226,9 @@ from renku.models._git import GitURL
                 'pathname': 'repo.git',
                 'owner': 'owner',
             },
-            marks=pytest.mark.
-            xfail(raises=errors.ConfigurationError, strict=True),
+            marks=pytest.mark.xfail(
+                raises=errors.ConfigurationError, strict=True
+            ),
         ),
         {
             'href': 'git@example.com:1234/prefix/owner/repo.git',

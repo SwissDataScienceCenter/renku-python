@@ -39,7 +39,7 @@ tests_require = [
     'pytest-yapf>=0.1.1',
     'pytest>=4.0.0',
     'responses>=0.7.0',
-    'yapf>=0.24.0',
+    'yapf>=0.26.0',
 ]
 
 extras_require = {
