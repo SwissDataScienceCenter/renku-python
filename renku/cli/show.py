@@ -148,7 +148,7 @@ def inputs(ctx, client, revision, paths):
 @click.option('--revision', default='HEAD')
 @click.argument(
     'paths',
-    type=click.Path(exists=True, dir_okay=False),
+    type=click.Path(exists=True, dir_okay=True),
     nargs=-1,
 )
 @pass_local_client
@@ -163,7 +163,18 @@ def outputs(ctx, client, revision, paths):
     output_paths = graph.output_paths
 
     click.echo('\n'.join(graph._format_path(path) for path in output_paths))
-    ctx.exit(0 if not paths or len(output_paths) == len(filter) else 1)
+
+    if paths:
+        if not output_paths:
+            ctx.exit(1)
+
+        from renku.models._datastructures import DirectoryTree
+        tree = DirectoryTree.from_list(item.path for item in filter)
+
+        for output in output_paths:
+            if tree.get(output) is None:
+                ctx.exit(1)
+                return
 
 
 def _context_names():

@@ -72,7 +72,7 @@ def test_output_directory_with_output_option(runner, client, run):
     assert 1 == run(args=['run'] + base_sh + ['output', 'foo'])
     assert 0 == run(args=['run', '--no-output'] + base_sh + ['output', 'foo'])
 
-    # There should be two command line tool.
+    # There should be two command line tools.
     tools = list(client.workflow_path.glob('*_sh.cwl'))
     assert 2 == len(tools)
 
@@ -102,7 +102,7 @@ def test_output_directory_without_separate_outputs(runner, client, run):
     assert 0 == run(args=['run'] + base_sh + ['output', 'foo'])
     assert (client.path / 'output' / 'foo').exists()
 
-    # There should be two command line tool.
+    # There should be only one command line tool.
     tools = list(client.workflow_path.glob('*_sh.cwl'))
     assert 1 == len(tools)
 
