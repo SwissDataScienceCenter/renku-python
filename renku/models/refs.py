@@ -45,7 +45,7 @@ class LinkReference:
         - any path component of it begins with ".", or
         - it has double dots "..", or
         - it has ASCII control characters, or
-        - it has ":", "?", "[", "\", "^", "~", SP, or TAB anywhere, or
+        - it has ":", "?", "\[", "\\", "^", "~", SP, or TAB anywhere, or
         - it has "*" anywhere, or
         - it ends with a "/", or
         - it ends with ".lock", or
