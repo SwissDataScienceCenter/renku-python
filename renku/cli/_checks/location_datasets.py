@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,33 +15,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Custom console echo."""
-
-import functools
-import os
 
 import click
 
-WARNING = click.style('Warning: ', bold=True, fg='yellow')
+from .._echo import WARNING
 
 
-def echo_via_pager(*args, **kwargs):
-    """Display pager only if it does not fit in one terminal screen.
+def check_dataset_metadata(client):
+    """Check location of dataset metadata."""
+    # Find pre 0.3.4 metadata files.
+    old_metadata = list((client.path / 'data').rglob('metadata.yml'))
 
-    NOTE: The feature is available only on ``less``-based pager.
-    """
-    try:
-        restore = 'LESS' not in os.environ
-        os.environ.setdefault('LESS', '-iXFR')
-        click.echo_via_pager(*args, **kwargs)
-    finally:
-        if restore:
-            os.environ.pop('LESS', None)
+    if not old_metadata:
+        return True
 
+    click.secho(
+        WARNING + 'There are metadata files in the old location.'
+        '\n  (use "renku migrate datasets" to move them)\n\n\t' + '\n\t'.join(
+            click.style(str(path.relative_to(client.path)), fg='yellow')
+            for path in old_metadata
+        ) + '\n'
+    )
 
-progressbar = functools.partial(
-    click.progressbar,
-    fill_char=click.style(u' ', bg='green'),
-    show_pos=True,
-    item_show_func=lambda x: x,
-)
+    return False

@@ -89,6 +89,7 @@ from ._options import install_completion, option_use_external_storage
 from ._version import check_version, print_version
 from .config import config
 from .dataset import dataset
+from .doctor import doctor
 from .githooks import githooks
 from .image import image
 from .init import init
@@ -201,6 +202,7 @@ def help(ctx):
 cli.add_command(config)
 cli.add_command(dataset)
 cli.add_command(deactivate)
+cli.add_command(doctor)
 cli.add_command(githooks)
 cli.add_command(image)
 cli.add_command(init)
