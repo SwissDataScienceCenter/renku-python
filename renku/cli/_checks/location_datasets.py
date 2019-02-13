@@ -15,16 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Check location of dataset metedata files."""
 
 import click
 
 from .._echo import WARNING
 
 
+def _dataset_metadata_pre_0_3_4(client):
+    """Return paths of dataset metadata for pre 0.3.4."""
+    return (client.path / 'data').rglob('metadata.yml')
+
+
 def check_dataset_metadata(client):
     """Check location of dataset metadata."""
     # Find pre 0.3.4 metadata files.
-    old_metadata = list((client.path / 'data').rglob('metadata.yml'))
+    old_metadata = list(_dataset_metadata_pre_0_3_4(client))
 
     if not old_metadata:
         return True

@@ -79,12 +79,7 @@ class DatasetsApiMixin(object):
 
             yield dataset
 
-            source.update(
-                **asjsonld(
-                    dataset,
-                    filter=lambda attr, _: attr.name != 'datadir',
-                )
-            )
+            source.update(**asjsonld(dataset))
 
             # TODO
             # if path is None:

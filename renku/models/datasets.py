@@ -37,7 +37,6 @@ NoneType = type(None)
 _path_attr = partial(
     jsonld.ib,
     converter=Path,
-    validator=lambda i, arg, val: Path(val).absolute().is_file()
 )
 
 
