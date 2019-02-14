@@ -63,7 +63,13 @@ class StorageApiMixin(RepositoryApiMixin):
         """Track paths in the external storage."""
         if self.use_external_storage and self.external_storage_installed:
             track_paths = []
+            attrs = self.find_attr(*paths)
+
             for path in paths:
+                # Do not add files with filter=lfs in .gitattributes
+                if attrs.get(path, {}).get('filter') == 'lfs':
+                    continue
+
                 path = Path(path)
                 if path.is_dir():
                     track_paths.append(str(path / '**'))

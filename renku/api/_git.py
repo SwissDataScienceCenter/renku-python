@@ -23,8 +23,10 @@ import shutil
 import sys
 import tempfile
 import uuid
+from collections import defaultdict
 from contextlib import contextmanager
 from email.utils import formatdate
+from itertools import zip_longest
 
 import attr
 
@@ -138,6 +140,22 @@ class GitCore:
             return self.repo.git.check_ignore(*paths).split()
         except GitCommandError:
             pass
+
+    def find_attr(self, *paths):
+        """Return map with path and its attributes."""
+        from git.exc import GitCommandError
+
+        attrs = defaultdict(dict)
+        try:
+            data = self.repo.git.check_attr('-z', '-a', '--', *paths)
+            for file, name, value in zip_longest(
+                *[iter(data.strip('\0').split('\0'))] * 3
+            ):
+                attrs[file][name] = value
+        except GitCommandError:
+            pass
+
+        return attrs
 
     def remove_unmodified(self, paths, autocommit=True):
         """Remove unmodified paths and return their names."""
