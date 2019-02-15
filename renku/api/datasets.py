@@ -32,6 +32,7 @@ import yaml
 from renku import errors
 from renku._compat import Path
 from renku.models._git import GitURL
+from renku.models._jsonld import asjsonld
 from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
 
 
@@ -50,12 +51,19 @@ class DatasetsApiMixin(object):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
         return self.renku_path.joinpath(self.DATASETS)
 
+    @property
+    def datasets(self):
+        """Return mapping from path to dataset."""
+        result = {}
+        for path in self.renku_datasets_path.rglob(self.METADATA):
+            with path.open('r') as fp:
+                result[path] = Dataset.from_jsonld(yaml.load(fp))
+        return result
+
     @contextmanager
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
         with self.lock:
-            from renku.models._jsonld import asjsonld
-            from renku.models.datasets import Dataset
             path = None
             dataset = None
 

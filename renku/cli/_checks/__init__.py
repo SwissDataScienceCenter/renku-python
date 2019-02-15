@@ -17,7 +17,11 @@
 # limitations under the License.
 """Define repository checks for :program:`renku doctor`."""
 
+from .files_in_datasets import check_missing_files
 from .location_datasets import check_dataset_metadata
 
 # Checks will be executed in the order as they are listed in __all__
-__all__ = ('check_dataset_metadata', )
+__all__ = (
+    'check_dataset_metadata',
+    'check_missing_files',
+)
