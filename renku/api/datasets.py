@@ -42,6 +42,14 @@ class DatasetsApiMixin(object):
     datadir = attr.ib(default='data', converter=str)
     """Define a name of the folder for storing datasets."""
 
+    DATASETS = 'datasets'
+    """Directory for storing dataset metadata in Renku."""
+
+    @property
+    def renku_datasets_path(self):
+        """Return a ``Path`` instance of Renku dataset metadata folder."""
+        return self.renku_path.joinpath(self.DATASETS)
+
     @contextmanager
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
@@ -54,7 +62,7 @@ class DatasetsApiMixin(object):
             dataset_path = self.path / self.datadir / name
 
             if name:
-                path = dataset_path / self.METADATA
+                path = self.renku_datasets_path / name / self.METADATA
                 if path.exists():
                     with path.open('r') as f:
                         source = yaml.load(f) or {}
@@ -63,19 +71,15 @@ class DatasetsApiMixin(object):
             if dataset is None:
                 source = {}
                 dataset = Dataset(name=name)
-                try:
-                    dataset_path.mkdir(parents=True, exist_ok=True)
-                except FileExistsError:
-                    raise FileExistsError('This dataset already exists.')
+
+            (self.renku_datasets_path / name).mkdir(
+                parents=True, exist_ok=True
+            )
+            dataset_path.mkdir(parents=True, exist_ok=True)
 
             yield dataset
 
-            source.update(
-                **asjsonld(
-                    dataset,
-                    filter=lambda attr, _: attr.name != 'datadir',
-                )
-            )
+            source.update(**asjsonld(dataset))
 
             # TODO
             # if path is None:
@@ -112,7 +116,12 @@ class DatasetsApiMixin(object):
             files = self._add_from_url(dataset, dataset_path, url, **kwargs)
 
         ignored = self.find_ignored_paths(
-            *[str(dataset_path / key) for key in files.keys()]
+            *[
+                os.path.relpath(
+                    str(self.renku_datasets_path / dataset.name / key),
+                    start=str(self.path),
+                ) for key in files.keys()
+            ]
         )
 
         if ignored:
@@ -189,8 +198,8 @@ class DatasetsApiMixin(object):
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
         self.track_paths_in_storage(str(dst.relative_to(self.path)))
-        dataset_path = self.path / self.datadir / dataset.name
-        result = dst.relative_to(dataset_path).as_posix()
+        dataset_path = self.renku_datasets_path / dataset.name
+        result = os.path.relpath(str(dst), start=str(dataset_path))
         return {
             result:
                 DatasetFile(
@@ -310,8 +319,8 @@ class DatasetsApiMixin(object):
             if author not in authors:
                 authors.append(author)
 
-        dataset_path = self.path / self.datadir / dataset.name
-        result = dst.relative_to(dataset_path).as_posix()
+        dataset_path = self.renku_datasets_path / dataset.name
+        result = os.path.relpath(str(dst), start=str(dataset_path))
 
         if u.scheme in ('', 'file'):
             url = None

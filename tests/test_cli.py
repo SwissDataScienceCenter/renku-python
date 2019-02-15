@@ -307,12 +307,12 @@ def test_streams_and_args_names(runner, project, capsys):
     assert result.exit_code == 0
 
 
-def test_datasets(data_file, data_repository, runner, project):
+def test_datasets(data_file, data_repository, runner, project, client):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert os.stat('data/dataset/metadata.yml')
+    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
 
     # add data
     result = runner.invoke(
@@ -349,12 +349,14 @@ def test_datasets(data_file, data_repository, runner, project):
     assert result.exit_code == 0
 
 
-def test_multiple_file_to_dataset(tmpdir, data_repository, runner, project):
+def test_multiple_file_to_dataset(
+    tmpdir, data_repository, runner, project, client
+):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert os.stat('data/dataset/metadata.yml')
+    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
 
     paths = []
     for i in range(3):
@@ -371,12 +373,14 @@ def test_multiple_file_to_dataset(tmpdir, data_repository, runner, project):
     assert result.exit_code == 0
 
 
-def test_relative_import_to_dataset(tmpdir, data_repository, runner, project):
+def test_relative_import_to_dataset(
+    tmpdir, data_repository, runner, project, client
+):
     """Test importing data from a directory structure."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert os.stat('data/dataset/metadata.yml')
+    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
 
     zero_data = tmpdir.join('data.txt')
     zero_data.write('zero')
@@ -408,13 +412,13 @@ def test_relative_import_to_dataset(tmpdir, data_repository, runner, project):
     )
 
 
-def test_relative_git_import_to_dataset(tmpdir, runner, project):
+def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     """Test importing data from a directory structure."""
 
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert os.stat('data/dataset/metadata.yml')
+    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
 
     data_repo = git.Repo.init(str(tmpdir))
 

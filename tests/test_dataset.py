@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,6 +27,15 @@ import pytest
 import yaml
 
 from renku.models.datasets import Author, Dataset, DatasetFile
+
+
+def _key(client, dataset, filename):
+    """Return key in dataset for a given filename."""
+    dataset_path = client.renku_datasets_path / dataset.name
+    return os.path.relpath(
+        str(client.path / client.datadir / dataset.name / filename),
+        start=str(dataset_path),
+    )
 
 
 def raises(error):
@@ -72,7 +81,7 @@ def test_data_add(
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
-        assert d.files.get('file')
+        assert _key(client, d, 'file') in d.files
 
         # check that the imported file is read-only
         assert not os.access(
@@ -102,7 +111,7 @@ def test_data_add_recursive(directory_tree, client):
             'email': 'me@example.com',
         }]
         client.add_data_to_dataset(d, directory_tree.join('dir2').strpath)
-    assert 'dir2/file2' in d.files
+    assert _key(client, d, 'dir2/file2') in d.files
 
 
 def dataset_serialization(client, dataset, data_file):
@@ -130,15 +139,16 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
         os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
     )
     assert os.stat('data/dataset/dir2/file2')
-    assert 'dir2/file2' in dataset.files
+    assert _key(client, dataset, 'dir2/file2') in dataset.files
     assert os.stat('.renku/vendors/local')
 
     # check that the authors are properly parsed from commits
     client.add_data_to_dataset(
         dataset, os.path.dirname(data_repository.git_dir), target='file'
     )
-    assert len(dataset.files['file'].authors) == 2
-    assert all(x.name in ('me', 'me2') for x in dataset.files['file'].authors)
+    file = _key(client, dataset, 'file')
+    assert len(dataset.files[file].authors) == 2
+    assert all(x.name in ('me', 'me2') for x in dataset.files[file].authors)
 
 
 @pytest.mark.parametrize(
