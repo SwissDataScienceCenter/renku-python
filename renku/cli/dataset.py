@@ -81,18 +81,25 @@ will yield:
 import click
 from click import BadParameter
 
+from renku.models._tabulate import tabulate
 from renku.models.datasets import Author
 
 from ._client import pass_local_client
 from ._echo import progressbar
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.option('--datadir', default='data', type=click.Path(dir_okay=True))
+@pass_local_client(clean=True, commit=True)
 @click.pass_context
-def dataset(ctx, datadir):
+def dataset(ctx, client, datadir):
     """Handle datasets."""
     ctx.meta['renku.datasets.datadir'] = datadir
+    table = tabulate(
+        client.datasets.values(),
+        headers=["short_id", "name", "authors_csv", "created"],
+    )
+    click.echo(table)
 
 
 @dataset.command()

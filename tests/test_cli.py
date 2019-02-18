@@ -307,7 +307,7 @@ def test_streams_and_args_names(runner, project, capsys):
     assert result.exit_code == 0
 
 
-def test_datasets(data_file, data_repository, runner, project, client):
+def test_datasets_import(data_file, data_repository, runner, project, client):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -347,6 +347,26 @@ def test_datasets(data_file, data_repository, runner, project, client):
         catch_exceptions=False
     )
     assert result.exit_code == 0
+
+
+def test_datasets_list_empty(runner):
+    result = runner.invoke(cli.cli, [
+        'dataset',
+    ])
+    assert result.exit_code == 0
+    rows = result.output.split('\n')
+    assert len(rows) == 3
+
+
+def test_datasets_list_non_empty(runner):
+    assert runner.invoke(
+        cli.cli, ['dataset', 'create', 'dataset']
+    ).exit_code == 0
+    result = runner.invoke(cli.cli, [
+        'dataset',
+    ])
+    rows = set(result.output.split('\n'))
+    assert len(rows) == 4
 
 
 def test_multiple_file_to_dataset(

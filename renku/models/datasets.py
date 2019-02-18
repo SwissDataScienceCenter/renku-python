@@ -185,3 +185,13 @@ class Dataset(object):
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
+
+    @property
+    def short_id(self):
+        """Shorter version of identifier."""
+        return str(self.identifier)[:8]
+
+    @property
+    def authors_csv(self):
+        """Comma-separated list of authors associated with dataset."""
+        return ",".join(author.name for author in self.authors)
