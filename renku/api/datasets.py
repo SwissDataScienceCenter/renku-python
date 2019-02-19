@@ -63,14 +63,20 @@ class DatasetsApiMixin(object):
     @contextmanager
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
+        from renku.models.refs import LinkReference
+
         with self.lock:
             path = None
             dataset = None
 
-            dataset_path = self.path / self.datadir / name
-
             if name:
                 path = self.renku_datasets_path / name / self.METADATA
+
+                if not path.exists():
+                    path = LinkReference(
+                        client=self, name='datasets/' + name
+                    ).reference
+
                 if path.exists():
                     with path.open('r') as f:
                         source = yaml.load(f) or {}
@@ -80,9 +86,18 @@ class DatasetsApiMixin(object):
                 source = {}
                 dataset = Dataset(name=name)
 
-            (self.renku_datasets_path / name).mkdir(
-                parents=True, exist_ok=True
-            )
+                path = (
+                    self.renku_datasets_path / dataset.identifier.hex /
+                    self.METADATA
+                )
+                path.parent.mkdir(parents=True, exist_ok=True)
+
+                if name:
+                    LinkReference.create(
+                        client=self, name='datasets/' + name
+                    ).set_reference(path)
+
+            dataset_path = self.path / self.datadir / dataset.name
             dataset_path.mkdir(parents=True, exist_ok=True)
 
             yield dataset
