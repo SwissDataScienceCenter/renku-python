@@ -312,7 +312,8 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
 
     # add data
     result = runner.invoke(
@@ -349,22 +350,23 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     assert result.exit_code == 0
 
 
-def test_datasets_list_empty(runner):
-    result = runner.invoke(cli.cli, [
-        'dataset',
-    ])
+def test_datasets_list_empty(runner, project):
+    """Test listing without datasets."""
+    result = runner.invoke(cli.cli, ['dataset'])
     assert result.exit_code == 0
+
     rows = result.output.split('\n')
     assert len(rows) == 3
 
 
-def test_datasets_list_non_empty(runner):
-    assert runner.invoke(
-        cli.cli, ['dataset', 'create', 'dataset']
-    ).exit_code == 0
-    result = runner.invoke(cli.cli, [
-        'dataset',
-    ])
+def test_datasets_list_non_empty(runner, project):
+    """Test listing with datasets."""
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli.cli, ['dataset'])
+    assert result.exit_code == 0
+
     rows = set(result.output.split('\n'))
     assert len(rows) == 4
 
@@ -376,7 +378,8 @@ def test_multiple_file_to_dataset(
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
 
     paths = []
     for i in range(3):
@@ -400,7 +403,8 @@ def test_relative_import_to_dataset(
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
 
     zero_data = tmpdir.join('data.txt')
     zero_data.write('zero')
@@ -434,11 +438,11 @@ def test_relative_import_to_dataset(
 
 def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     """Test importing data from a directory structure."""
-
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
-    assert (client.renku_datasets_path / 'dataset' / client.METADATA).exists()
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
 
     data_repo = git.Repo.init(str(tmpdir))
 

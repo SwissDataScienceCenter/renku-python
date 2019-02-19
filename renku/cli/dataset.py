@@ -90,16 +90,18 @@ from ._echo import progressbar
 
 @click.group(invoke_without_command=True)
 @click.option('--datadir', default='data', type=click.Path(dir_okay=True))
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(clean=False, commit=False)
 @click.pass_context
 def dataset(ctx, client, datadir):
     """Handle datasets."""
     ctx.meta['renku.datasets.datadir'] = datadir
-    table = tabulate(
-        client.datasets.values(),
-        headers=["short_id", "name", "authors_csv", "created"],
-    )
-    click.echo(table)
+
+    if ctx.invoked_subcommand is None:
+        table = tabulate(
+            client.datasets.values(),
+            headers=['short_id', 'name', 'authors_csv', 'created'],
+        )
+        click.echo(table)
 
 
 @dataset.command()

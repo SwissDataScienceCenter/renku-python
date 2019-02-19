@@ -38,6 +38,7 @@ def datasets(ctx, client):
     """Migrate dataset metadata."""
     from renku.models._jsonld import asjsonld
     from renku.models.datasets import Dataset
+    from renku.models.refs import LinkReference
 
     from ._checks.location_datasets import _dataset_metadata_pre_0_3_4
 
@@ -47,7 +48,10 @@ def datasets(ctx, client):
                 dataset = Dataset.from_jsonld(yaml.load(fp))
 
             name = str(old_path.parent.relative_to(client.path / 'data'))
-            new_path = client.renku_datasets_path / name / client.METADATA
+            new_path = (
+                client.renku_datasets_path / dataset.identifier.hex /
+                client.METADATA
+            )
             new_path.parent.mkdir(parents=True, exist_ok=True)
 
             files = {}
@@ -63,3 +67,7 @@ def datasets(ctx, client):
                 yaml.dump(asjsonld(dataset), fp, default_flow_style=False)
 
             old_path.unlink()
+
+            LinkReference.create(
+                client=client, name='datasets/' + name
+            ).set_reference(new_path)
