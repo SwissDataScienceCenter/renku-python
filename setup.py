@@ -43,7 +43,6 @@ tests_require = [
 ]
 
 extras_require = {
-    ':python_version<"3.6"': ['pathlib2>=2.3.0'],
     'docs': [
         'Sphinx>=1.6.3',
         'renku-sphinx-theme>=0.1.0',
