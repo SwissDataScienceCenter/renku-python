@@ -42,7 +42,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_CHECKOUT = ['git', 'lfs', 'checkout']
 
-    _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', 'origin', '-I']
+    _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', '-I']
 
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
@@ -88,14 +88,18 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def pull_path(self, path):
         """Pull a path from LFS."""
-        client, commit, path = self.resolve_in_submodules(
-            self.repo.commit(), path
-        )
-        run(
-            self._CMD_STORAGE_PULL + [str(path)],
-            cwd=str(client.path.absolute()),
-            check=True
-        )
+        if self.use_external_storage and self.external_storage_installed:
+            client, commit, path = self.resolve_in_submodules(
+                self.repo.commit(), path
+            )
+            run(
+                self._CMD_STORAGE_PULL + [str(path)],
+                cwd=str(client.path.absolute()),
+                stdout=PIPE,
+                stderr=STDOUT,
+            )
+        elif self.use_external_storage:
+            raise errors.ExternalStorageNotInstalled(self.repo)
 
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
@@ -107,6 +111,8 @@ class StorageApiMixin(RepositoryApiMixin):
                 stderr=STDOUT,
                 check=True,
             )
+        elif self.use_external_storage:
+            raise errors.ExternalStorageNotInstalled(self.repo)
 
     def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""

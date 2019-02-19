@@ -140,8 +140,7 @@ from ._options import option_siblings
 @option_siblings
 @click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client(clean=True, commit=True)
-@click.pass_context
-def update(ctx, client, revision, no_output, siblings, paths):
+def update(client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
     outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
@@ -157,7 +156,7 @@ def update(ctx, client, revision, no_output, siblings, paths):
     outputs = siblings(graph, outputs)
     output_paths = {node.path for node in outputs if _safe_path(node.path)}
 
-    # Get all clean nodes
+    # Get all clean nodes.
     input_paths = {node.path for node in graph.nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
@@ -169,6 +168,10 @@ def update(ctx, client, revision, no_output, siblings, paths):
         output_paths=output_paths,
         outputs=outputs,
     )
+
+    # Make sure all inputs are pulled from a storage.
+    for _, path in workflow.iter_input_files(client.workflow_path):
+        client.pull_path(path)
 
     with output_file.open('w') as f:
         f.write(

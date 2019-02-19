@@ -275,7 +275,6 @@ class GitCore:
                 args.append(commit)
             self.repo.git.worktree(*args)
             client = attr.evolve(self, path=path)
-            client.checkout_paths_from_storage()
 
         client.repo.config_reader = self.repo.config_reader
 
