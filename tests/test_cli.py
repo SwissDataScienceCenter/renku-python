@@ -600,6 +600,29 @@ def test_file_tracking(isolated_runner):
     assert 'output' in gitattributes
 
 
+def test_status_with_old_repository(isolated_runner, old_project):
+    """Test status on all old repositories created by old version of renku."""
+    runner = isolated_runner
+
+    result = runner.invoke(cli.cli, ['status'])
+    assert result.exit_code == 0
+
+    output = result.output.split('\n')
+    assert output.pop(0) == 'On branch master'
+    assert output.pop(0) == 'All files were generated from the latest inputs.'
+
+
+def test_update_with_old_repository(isolated_runner, old_project):
+    """Test update on all old repositories created by old version of renku."""
+    runner = isolated_runner
+
+    result = runner.invoke(cli.cli, ['update'])
+    assert result.exit_code == 0
+
+    output = result.output.split('\n')
+    assert output.pop(0) == 'All files were generated from the latest inputs.'
+
+
 def test_status_with_submodules(isolated_runner, monkeypatch):
     """Test status calculation with submodules."""
     runner = isolated_runner
