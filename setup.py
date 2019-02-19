@@ -121,7 +121,14 @@ setup(
     license='Apache License 2.0',
     author='Swiss Data Science Center',
     author_email='contact@datascience.ch',
-    url='https://github.com/SwissDataScienceCenter/renku-python',
+    url='https://github.com/swissdatasciencecenter/renku-python',
+    project_urls={
+        'Changelog': (
+            'https://github.com/swissdatasciencecenter/renku-python'
+            'blob/master/CHANGES.rst'
+        ),
+        'Docs': 'https://renku-python.rtfd.io/',
+    },
     packages=packages,
     zip_safe=False,
     include_package_data=True,
