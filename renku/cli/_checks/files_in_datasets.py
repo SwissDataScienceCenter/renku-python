@@ -54,3 +54,20 @@ def check_missing_files(client):
         )
 
     return False
+
+
+def file_in_datasets(client, dataset_file, exclude_dataset=None):
+    """Find datasets which contain given dataset file.
+
+    :param client: LocalClient instance.
+    :param dataset_file: DatasetFile instance.
+    :param exclude_dataset: Dataset instance which files are not checked.
+    """
+    result = []
+    for relative, dataset in client.datasets.items():
+        if exclude_dataset and \
+           exclude_dataset.identifier == dataset.identifier:
+            continue
+        if dataset_file in dataset.files.values():
+            result.append(dataset)
+    return result

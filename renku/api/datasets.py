@@ -23,6 +23,7 @@ import stat
 import warnings
 from configparser import NoSectionError
 from contextlib import contextmanager
+from fnmatch import fnmatch
 from urllib import error, parse
 
 import attr
@@ -46,10 +47,18 @@ class DatasetsApiMixin(object):
     DATASETS = 'datasets'
     """Directory for storing dataset metadata in Renku."""
 
+    REFS_DATASETS = 'refs'
+    """Refs datasets directory."""
+
     @property
     def renku_datasets_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
         return self.renku_path.joinpath(self.DATASETS)
+
+    @property
+    def renku_refs_path(self):
+        """Return a ``Path`` instance of Renku refs datasets folder."""
+        return self.renku_path.joinpath(self.REFS_DATASETS, self.DATASETS)
 
     @property
     def datasets(self):
@@ -110,8 +119,75 @@ class DatasetsApiMixin(object):
             #     if path.exists():
             #         raise ValueError('Dataset already exists')
 
-            with path.open('w') as f:
-                yaml.dump(source, f, default_flow_style=False)
+            if path and path.parent.exists():
+                with path.open('w') as f:
+                    yaml.dump(source, f, default_flow_style=False)
+
+    def delete_dataset(self, dataset, force=False):
+        """Delete empty dataset.
+
+        :raises`errors.DatasetNotEmpty`: If dataset contains files.
+        :param dataset: Dataset instance which we are deleting.
+        :param force: If set to ``True`` it will delete all data
+            from the dataset.
+        """
+        if not force and dataset.files:
+            raise errors.DatasetNotEmpty()
+
+        dataset_dir_path = self.renku_datasets_path / dataset.identifier.hex
+        meta_file = dataset_dir_path / self.METADATA
+
+        if meta_file.exists():
+            meta_file.unlink()
+            dataset_dir_path.rmdir()
+
+        dataset_ref = self.renku_refs_path / Path(dataset.name)
+        if dataset_ref.is_symlink():
+            dataset_ref.unlink()
+
+    def unlink_files(self, dataset, include, exclude=None):
+        """Unlink files from dataset based on given pattern.
+
+        :raises`errors.ResourceNotFound`: If no matching files are found.
+        :param dataset: Dataset from which we are removing files.
+        :param include: Remove files matching the include pattern.
+        :param exclude: Keep files matching the exclude pattern.
+        """
+        files_in_dataset = [(
+            relative_path,
+            os.path.realpath(
+                str(
+                    self.renku_datasets_path / dataset.name / dataset_file.path
+                )
+            ), dataset_file
+        ) for relative_path, dataset_file in dataset.files.items()]
+
+        if not files_in_dataset:
+            raise errors.ResourceNotFound(resource_type='DatasetFile')
+
+        def _match(file):
+            """Check if file matches include and is not part of exclude.
+
+            :param file: Tuple containing relative and absolute file paths.
+            """
+            filename = Path(file[1]).name
+            found_one = False
+            for pattern in include:
+                found_one = fnmatch(filename, pattern)
+
+            if found_one and exclude:
+                for pattern in exclude:
+                    if fnmatch(filename, pattern):
+                        return False
+
+            return found_one
+
+        file_unlinked = []
+        for relative, absolute, file_ in filter(_match, files_in_dataset):
+            dataset.remove_file(relative)
+            file_unlinked.append((absolute, file_))
+
+        return file_unlinked
 
     def add_data_to_dataset(
         self, dataset, url, git=False, force=False, **kwargs
@@ -166,6 +242,7 @@ class DatasetsApiMixin(object):
 
         # Respect the directory struture inside the source path.
         relative_to = kwargs.pop('relative_to', None)
+
         if relative_to:
             dst_path = Path(url).resolve().absolute().relative_to(
                 Path(relative_to).resolve().absolute()
@@ -250,7 +327,6 @@ class DatasetsApiMixin(object):
 
         # Respect the directory struture inside the source path.
         relative_to = kwargs.get('relative_to', None)
-
         if u.scheme in ('', 'file'):
             warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path

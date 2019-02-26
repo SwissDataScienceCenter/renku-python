@@ -207,6 +207,36 @@ class OutputsNotFound(RenkuException, click.ClickException):
         super(OutputsNotFound, self).__init__(msg)
 
 
+class ResourceNotFound(RenkuException, click.ClickException):
+    """Raise when resource is not found."""
+
+    def __init__(self, resource_type):
+        """Build a custom message."""
+        msg = 'Specified {0} resource could not be found.'.format(
+            resource_type
+        )
+
+        super().__init__(msg)
+
+
+class DatasetNotEmpty(RenkuException, click.ClickException):
+    """Raise when trying to delete non empty set."""
+
+    def __init__(self):
+        """Build a custom message."""
+        msg = (
+            'Cannot delete a dataset containing files.'
+            '\n\n'
+            'Use --force flag to delete all files within dataset'
+            ' or remove them manually.'
+            '\n'
+            'To remove files manually look at: '
+            'renku dataset unlink --help'
+        )
+
+        super().__init__(msg)
+
+
 class InvalidSuccessCode(RenkuException, click.ClickException):
     """Raise when the exit-code is not 0 or redefined."""
 

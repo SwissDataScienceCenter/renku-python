@@ -81,8 +81,6 @@ import click
 import click_completion
 import yaml
 
-from ..api.client import LocalClient
-from ..api.repository import default_path
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
 from ._exc import IssueFromTraceback
 from ._options import install_completion, option_use_external_storage
@@ -106,6 +104,8 @@ from .storage import storage
 from .update import update
 from .workflow import workflow
 from .workon import deactivate, workon
+from ..api.client import LocalClient
+from ..api.repository import default_path
 
 #: Monkeypatch Click application.
 click_completion.init()

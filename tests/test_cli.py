@@ -350,6 +350,7 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     assert result.exit_code == 0
 
 
+@pytest.mark.dataset
 def test_datasets_list_empty(runner, project):
     """Test listing without datasets."""
     result = runner.invoke(cli.cli, ['dataset'])
@@ -362,6 +363,7 @@ def test_datasets_list_empty(runner, project):
     assert not output
 
 
+@pytest.mark.dataset
 def test_datasets_list_non_empty(runner, project):
     """Test listing with datasets."""
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
@@ -377,6 +379,344 @@ def test_datasets_list_non_empty(runner, project):
     assert 'dataset' in output.pop(0)
     assert output.pop(0) == ''
     assert not output
+
+
+@pytest.mark.dataset
+def test_datasets_ls_files_non_empty(tmpdir, runner, project):
+    """Test listing of data within dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create some data
+    paths = []
+    created_files = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+        created_files.append(new_file.basename)
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    # list all files in non empty dataset
+    result = runner.invoke(cli.cli, ['dataset', 'ls-files', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # check output from ls-files command
+    output = result.output.split('\n')
+    assert output.pop(0).split() == ['ADDED', 'AUTHORS', 'FILENAME']
+    assert set(output.pop(0)) == {' ', '-'}
+
+    # check listing
+    added_at = []
+    for i in range(3):
+        row = output.pop(0).split(' ')
+        assert row.pop() in created_files
+        added_at.append(row.pop(0))
+
+    # check if sorted by added_at
+    assert added_at == sorted(added_at)
+
+
+@pytest.mark.dataset
+def test_datasets_ls_files_empty(runner, project):
+    """Test listing of data within empty dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # list all files in dataset
+    result = runner.invoke(cli.cli, ['dataset', 'ls-files', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # check output
+    output = result.output.split('\n')
+    assert output.pop(0).split() == ['ADDED', 'AUTHORS', 'FILENAME']
+    assert set(output.pop(0)) == {' ', '-'}
+    assert output.pop(0) == ''
+    assert not output
+
+
+@pytest.mark.dataset
+def test_dataset_unlink_file_not_found(runner, project):
+    """Test unlinking of file from dataset with no files found."""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # list all files in dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'unlink', 'my-dataset', '--include', 'notthere.csv']
+    )
+    assert result.exit_code == 1
+
+    # check output
+    expected = 'Error: Specified DatasetFile resource could not be found.'
+    output = result.output.split('\n')
+    assert output.pop(0) == expected
+    assert output.pop(0) == ''
+    assert not output
+
+
+@pytest.mark.dataset
+def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
+    """Test unlinking of file from dataset and aborting."""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+
+    # unlink file from dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'unlink', 'my-dataset', '--include', new_file.basename],
+        input='n'
+    )
+    assert result.exit_code == 1
+
+    # check output
+    output = result.output.split('\n')
+    assert output.pop(0) == 'Warning: Deleting:'
+    assert Path(output.pop(0)).name == new_file.basename
+    assert output.pop(0) == 'You are about to delete ' \
+                            '1 file from my-dataset dataset.'
+    assert output.pop(0) == ''
+    assert output.pop(0) == 'Do you wish to proceed? [y/N]: n'
+    assert output.pop(0) == 'Aborted!'
+    assert output.pop(0) == ''
+    assert not output
+
+
+@pytest.mark.dataset
+def test_dataset_unlink_file_verbose(tmpdir, runner, client):
+    """Test unlinking of file from dataset and check verbose output."""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--include', new_file.basename,
+            '-v'
+        ],
+        input='y'
+    )
+    assert result.exit_code == 0
+
+    # check output
+    output = result.output.split('\n')
+    assert output.pop(0) == 'Warning: Deleting:'
+    assert Path(output.pop(0)).name == new_file.basename
+    assert output.pop(0) == 'You are about to delete ' \
+                            '1 file from my-dataset dataset.'
+    assert output.pop(0) == ''
+    assert output.pop(0) == 'Do you wish to proceed? [y/N]: y'
+
+    assert output.pop() == ''
+    assert output.pop().endswith(new_file.basename)
+    assert output.pop() == 'Deleted 1 file.'
+    assert output.pop() == ''
+    assert output.pop() == 'OK'
+
+    # check if files got removed from dataset
+    with client.with_dataset(name='my-dataset') as dataset:
+        dataset_files = [f.name for f in dataset.files]
+        assert new_file.basename not in dataset_files
+
+
+@pytest.mark.dataset
+def test_dataset_unlink_file_check_deleted_files(tmpdir, runner, project):
+    """Test unlinking of file and check if files got deleted"""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    expected_file_path = Path(project) / 'data/my-dataset' / new_file.basename
+    assert not expected_file_path.exists()
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+    assert expected_file_path.exists()
+
+    # remove file from filesystem
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--include', new_file.basename,
+            '-y'
+        ]
+    )
+    assert result.exit_code == 0
+
+    # check if file was removed
+    assert not expected_file_path.exists()
+
+
+@pytest.mark.dataset
+def test_dataset_unlink_file_check_removal_from_dataset(
+    tmpdir, runner, project
+):
+    """Test unlinking of file and check removal from dataset"""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+
+    # check dataset state
+    result = runner.invoke(cli.cli, ['dataset', 'ls-files', 'my-dataset'])
+    assert result.exit_code == 0
+    assert new_file.basename in result.output
+
+    # remove file from filesystem
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--include', new_file.basename,
+            '-y'
+        ]
+    )
+    assert result.exit_code == 0
+
+    # check dataset state
+    result = runner.invoke(cli.cli, ['dataset', 'ls-files', 'my-dataset'])
+
+    assert result.exit_code == 0
+    assert new_file.basename not in result.output
+
+
+@pytest.mark.dataset
+def test_dataset_delete_empty(runner, project, client):
+    """Test deletion of empty dataset."""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # delete a empty dataset
+    result = runner.invoke(cli.cli, ['dataset', 'delete', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # check output
+    output = result.output.split('\n')
+    assert output.pop(0) == 'OK'
+    assert output.pop(0) == ''
+    assert not output
+
+    dataset_metadata = project
+    with client.with_dataset(name='my-dataset') as dataset_:
+        meta_ = Path(
+            '.renku/dataset/{}/{}'.format(
+                dataset_.identifier.hex, 'metadata.yml'
+            )
+        )
+        dataset_metadata = dataset_metadata / meta_
+
+    assert not dataset_metadata.exists()
+    assert not dataset_metadata.parent.exists()
+
+
+@pytest.mark.dataset
+def test_dataset_delete_non_empty(tmpdir, runner, project):
+    """Test deletion of non empty dataset."""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create some data
+    paths = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    # try to delete a non empty dataset
+    result = runner.invoke(cli.cli, ['dataset', 'delete', 'my-dataset'])
+    assert result.exit_code == 1
+
+    # check output
+    output = result.output.split('\n')
+    assert output.pop(0) == 'Error: Cannot delete a dataset containing files.'
+    assert output.pop(0) == ''
+    assert output.pop(0) == 'Use --force flag to delete ' \
+                            'all files within dataset ' \
+                            'or remove them manually.'
+    assert output.pop(0) == 'To remove files manually look at: ' \
+                            'renku dataset unlink ' \
+                            '--help'
+    assert output.pop(0) == ''
+    assert not output
+
+    # try to force delete a non empty dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'delete', 'my-dataset', '--force', '--verbose']
+    )
+    assert result.exit_code == 0
+
+    # check output
+    output = result.output.split('\n')
+    assert output.pop() == ''
+    assert output.pop() == 'Deleted 3 files.'
+    assert output.pop() == ''
+    assert output.pop() == 'OK'
 
 
 def test_multiple_file_to_dataset(

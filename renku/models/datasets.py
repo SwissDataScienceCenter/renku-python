@@ -116,26 +116,44 @@ class Author(object):
         )
 
 
+@attr.s
+class AuthorsMixin:
+    """Mixin for handling authors container."""
+
+    authors = jsonld.container.list(Author, kw_only=True)
+
+    @property
+    def authors_csv(self):
+        """Comma-separated list of authors associated with dataset."""
+        return ",".join(author.name for author in self.authors)
+
+
 @jsonld.s(
     type='http://schema.org/DigitalDocument',
     slots=True,
 )
-class DatasetFile(object):
+class DatasetFile(AuthorsMixin):
     """Represent a file in a dataset."""
 
-    path = _path_attr()
+    path = _path_attr(kw_only=True)
     url = jsonld.ib(
-        default=None,
-        context='http://schema.org/url',
+        default=None, context='http://schema.org/url', kw_only=True
     )
-    authors = jsonld.container.list(Author)
-    dataset = attr.ib(default=None)
-    added = jsonld.ib(context='http://schema.org/dateCreated', )
+    dataset = attr.ib(default=None, kw_only=True)
+    added = jsonld.ib(
+        context='http://schema.org/dateCreated',
+        kw_only=True,
+    )
 
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
+
+    @property
+    def filename(self):
+        """Returns filename."""
+        return self.path.name
 
 
 _deserialize_files = partial(_deserialize_dict, cls=DatasetFile)
@@ -158,16 +176,17 @@ def _parse_date(value):
         'scoro': 'http://purl.org/spar/scoro/',
     },
 )
-class Dataset(object):
+class Dataset(AuthorsMixin):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
-    name = jsonld.ib(type=str, context='dcterms:name')
+    name = jsonld.ib(type=str, context='dcterms:name', kw_only=True)
 
     created = jsonld.ib(
         converter=_parse_date,
         context='http://schema.org/dateCreated',
+        kw_only=True
     )
 
     identifier = jsonld.ib(
@@ -177,9 +196,10 @@ class Dataset(object):
             '@id': 'dctypes:Dataset',
             '@type': '@id',
         },
+        kw_only=True
     )
-    authors = jsonld.container.list(Author)
-    files = jsonld.container.index(DatasetFile)
+    authors = jsonld.container.list(Author, kw_only=True)
+    files = jsonld.container.index(DatasetFile, kw_only=True)
 
     @created.default
     def _now(self):
@@ -191,11 +211,6 @@ class Dataset(object):
         """Shorter version of identifier."""
         return str(self.identifier)[:8]
 
-    @property
-    def authors_csv(self):
-        """Comma-separated list of authors associated with dataset."""
-        return ",".join(author.name for author in self.authors)
-
     def rename_files(self, rename):
         """Rename files using the path mapping function."""
         files = {}
@@ -205,3 +220,10 @@ class Dataset(object):
             files[key] = attr.evolve(file, path=key)
 
         return attr.evolve(self, files=files)
+
+    def remove_file(self, key):
+        """Remove a file from dataset files container.
+
+        :param key: Relative path used as key inside files container.
+        """
+        return self.files.pop(key)
