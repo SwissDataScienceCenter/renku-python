@@ -219,7 +219,7 @@ def old_bare_repository(request, tmpdir_factory):
 
     yield working_dir_path / request.param
 
-    shutil.rmtree(working_dir_path)
+    shutil.rmtree(working_dir_path.strpath)
 
 
 @pytest.fixture(scope='module')
@@ -230,7 +230,7 @@ def old_repository(tmpdir_factory, old_bare_repository):
 
     repo_path = tmpdir_factory.mktemp('repo')
     yield Repo(old_bare_repository.strpath).clone(repo_path.strpath)
-    shutil.rmtree(repo_path)
+    shutil.rmtree(repo_path.strpath)
 
 
 @pytest.fixture
