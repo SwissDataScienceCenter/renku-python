@@ -59,8 +59,6 @@ def runner(monkeypatch):
 @pytest.fixture()
 def run(runner, capsys):
     """Return a callable runner."""
-    import contextlib
-
     from renku import cli
     from renku._contexts import Isolation
 
@@ -102,7 +100,6 @@ def data_file(tmpdir):
 def repository():
     """Yield a Renku repository."""
     from renku import cli
-    from renku.api import LocalClient
     runner = CliRunner()
 
     with runner.isolated_filesystem() as project_path:
@@ -201,6 +198,55 @@ def data_repository(directory_tree):
 
     # return the repo
     return repo
+
+
+@pytest.fixture(
+    params=[
+        'test-renku-v0.3.0.git',
+    ],
+    scope='module',
+)
+def old_bare_repository(request, tmpdir_factory):
+    """Prepares a testing repo created by old version of renku."""
+    import tarfile
+    from renku._compat import Path
+
+    compressed_repo_path = Path(__file__).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(request.param)
+    working_dir_path = tmpdir_factory.mktemp(request.param)
+
+    with tarfile.open(str(compressed_repo_path), 'r') as fixture:
+        fixture.extractall(working_dir_path.strpath)
+
+    yield working_dir_path / request.param
+
+    shutil.rmtree(working_dir_path.strpath)
+
+
+@pytest.fixture(scope='module')
+def old_repository(tmpdir_factory, old_bare_repository):
+    """Create git repo of old repository fixture."""
+    import shutil
+    from git import Repo
+
+    repo_path = tmpdir_factory.mktemp('repo')
+    yield Repo(old_bare_repository.strpath).clone(repo_path.strpath)
+    shutil.rmtree(repo_path.strpath)
+
+
+@pytest.fixture
+def old_project(old_repository):
+    """Create a test project."""
+    repo = old_repository
+    repository = repo.working_dir
+
+    commit = repo.head.commit
+
+    os.chdir(repository)
+    yield repository
+    os.chdir(repository)
+    repo.head.reset(commit, index=True, working_tree=True)
+    # remove any extra non-tracked files (.pyc, etc)
+    repo.git.clean('-xdff')
 
 
 @pytest.fixture(autouse=True)
