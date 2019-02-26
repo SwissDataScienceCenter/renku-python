@@ -77,6 +77,7 @@ will yield:
       my-dataset/
         datafile
 """
+from collections import OrderedDict
 
 import click
 from click import BadParameter
@@ -96,12 +97,15 @@ def dataset(ctx, client, datadir):
     """Handle datasets."""
     ctx.meta['renku.datasets.datadir'] = datadir
 
-    if ctx.invoked_subcommand is None:
-        table = tabulate(
-            client.datasets.values(),
-            headers=['short_id', 'name', 'authors_csv', 'created'],
-        )
-        click.echo(table)
+    if ctx.invoked_subcommand is not None:
+        return
+
+    output = tabulate(
+        client.datasets.values(),
+        headers=OrderedDict((('short_id', 'id'), ('name', None),
+                             ('created', None), ('authors_csv', 'authors'))),
+    )
+    click.echo(output)
 
 
 @dataset.command()

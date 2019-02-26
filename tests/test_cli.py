@@ -355,8 +355,11 @@ def test_datasets_list_empty(runner, project):
     result = runner.invoke(cli.cli, ['dataset'])
     assert result.exit_code == 0
 
-    rows = result.output.split('\n')
-    assert len(rows) == 3
+    output = result.output.split('\n')
+    assert output.pop(0).split() == ['ID', 'NAME', 'CREATED', 'AUTHORS']
+    assert set(output.pop(0)) == {'-', ' '}
+    assert output.pop(0) == ''
+    assert not output
 
 
 def test_datasets_list_non_empty(runner, project):
@@ -367,8 +370,13 @@ def test_datasets_list_non_empty(runner, project):
     result = runner.invoke(cli.cli, ['dataset'])
     assert result.exit_code == 0
 
-    rows = set(result.output.split('\n'))
-    assert len(rows) == 4
+    output = result.output.split('\n')
+
+    assert output.pop(0).split() == ['ID', 'NAME', 'CREATED', 'AUTHORS']
+    assert set(output.pop(0)) == {'-', ' '}
+    assert 'dataset' in output.pop(0)
+    assert output.pop(0) == ''
+    assert not output
 
 
 def test_multiple_file_to_dataset(
