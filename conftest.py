@@ -17,13 +17,9 @@
 # limitations under the License.
 """Pytest configuration."""
 
-import json
 import os
 import shutil
-import sys
 import tempfile
-import time
-import types
 
 import pytest
 import responses
@@ -41,8 +37,6 @@ def renku_path(tmpdir_factory):
 @pytest.fixture()
 def instance_path(renku_path, monkeypatch):
     """Temporary instance path."""
-    orig_pwd = os.getcwd()
-
     with monkeypatch.context() as m:
         m.chdir(renku_path)
         yield renku_path
@@ -211,7 +205,9 @@ def old_bare_repository(request, tmpdir_factory):
     import tarfile
     from renku._compat import Path
 
-    compressed_repo_path = Path(__file__).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(request.param)
+    compressed_repo_path = Path(
+        __file__
+    ).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(request.param)
     working_dir_path = tmpdir_factory.mktemp(request.param)
 
     with tarfile.open(str(compressed_repo_path), 'r') as fixture:
