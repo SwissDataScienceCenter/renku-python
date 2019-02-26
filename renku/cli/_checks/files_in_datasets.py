@@ -31,7 +31,7 @@ def check_missing_files(client):
 
     for path, dataset in client.datasets.items():
         for file in dataset.files:
-            filepath = (path.parent.parent / file)
+            filepath = (path.parent / file)
             if not filepath.exists():
                 missing[str(
                     path.parent.relative_to(client.renku_datasets_path)
