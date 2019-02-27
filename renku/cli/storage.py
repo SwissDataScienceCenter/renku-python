@@ -37,5 +37,4 @@ def storage():
 @pass_local_client
 def pull(client, paths):
     """Pull the specified paths from external storage."""
-    for p in paths:
-        client.pull_path(p)
+    client.pull_paths_from_storage(*paths)

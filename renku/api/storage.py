@@ -17,6 +17,8 @@
 # limitations under the License.
 """Client for handling a data storage."""
 
+import shlex
+from collections import defaultdict
 from subprocess import PIPE, STDOUT, call, run
 
 import attr
@@ -24,6 +26,7 @@ import attr
 from renku import errors
 from renku._compat import Path
 
+from ._git import _expand_directories
 from .repository import RepositoryApiMixin
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
@@ -86,18 +89,24 @@ class StorageApiMixin(RepositoryApiMixin):
         elif self.use_external_storage:
             raise errors.ExternalStorageNotInstalled(self.repo)
 
-    def pull_path(self, path):
+    def pull_paths_from_storage(self, *paths):
         """Pull a path from LFS."""
         if self.use_external_storage and self.external_storage_installed:
-            client, commit, path = self.resolve_in_submodules(
-                self.repo.commit(), path
-            )
-            run(
-                self._CMD_STORAGE_PULL + [str(path)],
-                cwd=str(client.path.absolute()),
-                stdout=PIPE,
-                stderr=STDOUT,
-            )
+            client_dict = defaultdict(list)
+
+            for path in _expand_directories(paths):
+                client, commit, path = self.resolve_in_submodules(
+                    self.repo.commit(), path
+                )
+                client_dict[client.path].append(str(path))
+
+            for client_path, paths in client_dict.items():
+                run(
+                    self._CMD_STORAGE_PULL + [shlex.quote(','.join(paths))],
+                    cwd=str(client_path.absolute()),
+                    stdout=PIPE,
+                    stderr=STDOUT,
+                )
         elif self.use_external_storage:
             raise errors.ExternalStorageNotInstalled(self.repo)
 

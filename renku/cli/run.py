@@ -177,10 +177,13 @@ def run(client, outputs, no_output, success_codes, isolation, command_line):
         with factory.watch(
             client, no_output=no_output, outputs=outputs
         ) as tool:
-
             # Make sure all inputs are pulled from a storage.
-            for _, path in tool.iter_input_files(client.workflow_path):
-                client.pull_path(path)
+            client.pull_paths_from_storage(
+                *(
+                    path
+                    for _, path in tool.iter_input_files(client.workflow_path)
+                )
+            )
 
             returncode = call(
                 factory.command_line,

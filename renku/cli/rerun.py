@@ -156,8 +156,9 @@ def rerun(client, revision, roots, siblings, inputs, paths):
     )
 
     # Make sure all inputs are pulled from a storage.
-    for _, path in workflow.iter_input_files(client.workflow_path):
-        client.pull_path(path)
+    client.pull_paths_from_storage(
+        *(path for _, path in workflow.iter_input_files(client.workflow_path))
+    )
 
     # Store the generated workflow used for updating paths.
     import yaml
