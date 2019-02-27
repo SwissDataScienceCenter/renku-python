@@ -30,7 +30,7 @@ tests_require = [
     'coverage>=4.0',
     'flake8>=3.5',
     'freezegun>=0.3.9',
-    'isort>=4.3.4',
+    'isort==4.3.4',
     'pydocstyle>=3.0.0',
     'pytest-cache>=1.0',
     'pytest-cov>=2.5.1',

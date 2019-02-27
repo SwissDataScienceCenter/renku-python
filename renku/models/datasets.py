@@ -195,3 +195,13 @@ class Dataset(object):
     def authors_csv(self):
         """Comma-separated list of authors associated with dataset."""
         return ",".join(author.name for author in self.authors)
+
+    def rename_files(self, rename):
+        """Rename files using the path mapping function."""
+        files = {}
+
+        for key, file in self.files.items():
+            key = rename(key)
+            files[key] = attr.evolve(file, path=key)
+
+        return attr.evolve(self, files=files)

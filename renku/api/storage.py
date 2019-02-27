@@ -41,7 +41,9 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_INSTALL = ['git', 'lfs', 'install', '--local']
 
-    _CMD_STORAGE_TRACK = ['git', 'lfs', 'track']
+    _CMD_STORAGE_TRACK = ['git', 'lfs', 'track', '--']
+
+    _CMD_STORAGE_UNTRACK = ['git', 'lfs', 'untrack', '--']
 
     _CMD_STORAGE_CHECKOUT = ['git', 'lfs', 'checkout']
 
@@ -89,8 +91,20 @@ class StorageApiMixin(RepositoryApiMixin):
         elif self.use_external_storage:
             raise errors.ExternalStorageNotInstalled(self.repo)
 
+    def untrack_paths_from_storage(self, *paths):
+        """Untrack paths from the external storage."""
+        if self.use_external_storage and self.external_storage_installed:
+            call(
+                self._CMD_STORAGE_UNTRACK + list(paths),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=str(self.path),
+            )
+        elif self.use_external_storage:
+            raise errors.ExternalStorageNotInstalled(self.repo)
+
     def pull_paths_from_storage(self, *paths):
-        """Pull a path from LFS."""
+        """Pull paths from LFS."""
         if self.use_external_storage and self.external_storage_installed:
             client_dict = defaultdict(list)
 

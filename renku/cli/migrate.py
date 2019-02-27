@@ -19,7 +19,6 @@
 
 import os
 
-import attr
 import click
 import yaml
 
@@ -54,14 +53,11 @@ def datasets(ctx, client):
             )
             new_path.parent.mkdir(parents=True, exist_ok=True)
 
-            files = {}
-            for key, file in dataset.files.items():
-                key = os.path.relpath(
+            dataset = dataset.rename_files(
+                lambda key: os.path.relpath(
                     str(old_path.parent / key), start=str(new_path.parent)
                 )
-                files[key] = attr.evolve(file, path=key)
-
-            dataset = attr.evolve(dataset, files=files)
+            )
 
             with new_path.open('w') as fp:
                 yaml.dump(asjsonld(dataset), fp, default_flow_style=False)

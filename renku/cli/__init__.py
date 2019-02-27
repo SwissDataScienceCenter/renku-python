@@ -95,6 +95,7 @@ from .image import image
 from .init import init
 from .log import log
 from .migrate import migrate
+from .move import move
 from .pull import pull
 from .rerun import rerun
 from .run import run
@@ -209,6 +210,7 @@ cli.add_command(image)
 cli.add_command(init)
 cli.add_command(log)
 cli.add_command(migrate)
+cli.add_command(move)
 cli.add_command(pull)
 cli.add_command(rerun)
 cli.add_command(run)
