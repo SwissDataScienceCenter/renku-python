@@ -107,7 +107,10 @@ if response.status_code != 200:
     sys.exit(1)
 
 description = response.json()
-version = os.environ.get('PY_BREW_VERSION', get_distribution(NAME).version)
+version = os.environ.get('PY_BREW_VERSION')
+if version is None:
+    version = get_distribution(NAME).version
+
 release = find_release(NAME, description['releases'][version])
 
 with open('Pipfile.lock') as f:
