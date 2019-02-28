@@ -19,6 +19,8 @@
 
 import os
 
+import pytest
+
 from renku import cli
 
 
@@ -63,3 +65,49 @@ def test_move_dataset_file(tmpdir, runner, client):
 
     result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
+
+
+@pytest.mark.parametrize(
+    'destination',
+    (
+        'destination',  # root
+        os.path.join('dir', 'subdir', 'destination'),
+        os.path.join('data', 'destination'),
+        os.path.join('data', 'dataset', 'destination'),  # change name
+        os.path.join('data', 'dataset', 'subdir', 'destination'),
+    )
+)
+def test_move_symlinks(data_repository, runner, project, client, destination):
+    """Test importing data into a dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
+
+    # add data from local git repo
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'add', 'dataset', '-t', 'file',
+            data_repository.working_dir
+        ],
+        catch_exceptions=False
+    )
+    assert result.exit_code == 0
+
+    src = client.path / client.datadir / 'dataset' / 'file'
+    assert src.is_symlink()
+    assert src.exists()
+
+    linked = src.resolve()
+
+    result = runner.invoke(
+        cli.cli, ['mv', str(src), destination], catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    dst = client.path / destination
+    assert dst.is_symlink()
+    assert dst.exists()
+
+    assert linked == dst.resolve()

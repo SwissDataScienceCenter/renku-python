@@ -78,7 +78,7 @@ def move(ctx, client, sources, destination):
             renames = {}
 
             for file in dataset.files:
-                filepath = fmt_path((path.parent / file).resolve())
+                filepath = fmt_path(os.path.normpath(str(path.parent / file)))
 
                 if filepath in files:
                     renames[file] = os.path.relpath(
@@ -109,5 +109,22 @@ def move(ctx, client, sources, destination):
 
     client.track_paths_in_storage(*(destinations[path] for path in tracked))
 
+    # 4. Handle symlinks.
+    dst.parent.mkdir(parents=True, exist_ok=True)
+
+    for source, target in destinations.items():
+        src = Path(source)
+        if src.is_symlink():
+            Path(target).parent.mkdir(parents=True, exist_ok=True)
+            Path(target).symlink_to(
+                os.path.relpath(
+                    str(src.resolve()), start=os.path.dirname(target)
+                )
+            )
+            src.unlink()
+            del files[source]
+
     # Finally move the files.
-    run(['git', 'mv'] + list(sources) + [destination], check=True)
+    final_sources = list(set(files.values()))
+    if final_sources:
+        run(['git', 'mv'] + final_sources + [destination], check=True)
