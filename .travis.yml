@@ -39,7 +39,6 @@ python:
   - "3.6"
 
 stages:
-  - name: test
   - name: publish 🐍  🐳
     if: type = push AND (branch = master OR tag IS present)
   - name: brew 🍺
@@ -84,44 +83,6 @@ after_success:
 
 jobs:
   include:
-    - stage: test
-      language: generic
-      sudo: true
-      os: osx
-      osx_image: xcode10.1
-    - language: generic
-      sudo: true
-      os: osx
-      osx_image: xcode9.2
-    - python: "3.7"
-      os: linux
-      dist: xenial
-      language: python
-      env:
-        - REQUIREMENTS=release
-
-    - stage: publish 🐍  🐳
-      python: 3.6
-      script: echo "Publishing on PyPI.io ..."
-      deploy:
-        - provider: pypi
-          user: jirikuncar
-          password:
-            secure: "YOHhWCF25Od6HJGhtKtL6/qX/pcIx/0kqGvz3lyTgxWYAkKYk0maQovHgkGukNCPu9FKcWNuKXmNvOsXIW5fm5Aav+yJqkQSQEXpVxmKYmgNWiAtgnDYUomtAQ9uRJnfxV32QFggJ2/d7lThWE7a8/LmEK9z+Nvhr1Y32RUu0ZAmp3FgJJERUONBJyL+G20jLlM/VWVD/XFeC3zQohiNxDFaMpHHb+H23VWjFVwjfqgpj4FSZ1GvtHBgISQFic06EaUv7F20tF/BtS4J7PhH8OwRCy2jLY/LF02lchrfZKomQ7ZkcK5U1DHxHI8SBdTOkIgt1OafvHstWIt8UJZeB43O7iT+W157b8B5K8sKtAhflfY2NqIhBw4LcktsYDH9ZXApgbCuIU6LioFsXKUD8fR+3or2/AB2SRfsiRLejq4ZX/zGo9a9pbXrD4ZAvaJJreHK+HZHcJdn4/2sEU5JrMqUauBB4tvvBINshgjb/7N6AghjV7B7wcWooZZcuGaoSBl3QgUufAAxAwNDoI3N0904ZIzTxfKkd7CEyx5rEhA+HPdc5HzWwvSGNr1xOnH0zgANM7RskS7g3Ab+2EdzvhdskHpE0wxRcR5upcuTMcYBrauA4rZwjD4aefgtFLZM8aE/Se5OQOymFQBBy2+fTrkSJt/T5J1tJBDoIWvcam8="
-          distributions: "sdist bdist_wheel"
-          on:
-            all_branches: true
-    - # stage: publish
-      sudo: required
-      services:
-        - docker
-      install:
-        - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-        - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-        - sudo apt-get update
-        - sudo apt-get -y install docker-ce
-      script: make docker-login docker-push
-
     - stage: brew 🍺
       language: generic
       sudo: true
