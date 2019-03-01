@@ -100,7 +100,7 @@ def find_release(package, releases, dependencies=None):
     return dependencies[package]
 
 
-response = requests.get(f'https://pypi.org/pypi/{NAME}/json')
+response = requests.get('https://pypi.org/pypi/{NAME}/json'.format(NAME=NAME))
 
 if response.status_code != 200:
     print(FORMULA, response)
@@ -119,7 +119,9 @@ for package, settings in lock['default'].items():
     if package in BLACKLIST:
         continue
 
-    pypi_response = requests.get(f'https://pypi.org/pypi/{package}/json')
+    pypi_response = requests.get(
+        'https://pypi.org/pypi/{package}/json'.format(package=package)
+    )
 
     if pypi_response.status_code != 200:
         continue
