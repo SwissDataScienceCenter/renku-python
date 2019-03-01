@@ -27,6 +27,19 @@ from urllib.parse import urlencode
 
 import click
 
+HAS_SENTRY = None
+SENTRY_DSN = os.getenv('SENTRY_DSN')
+
+if SENTRY_DSN:
+    import pkg_resources
+
+    try:
+        pkg_resources.get_distribution('sentry-sdk')
+    except pkg_resources.DistributionNotFound:
+        HAS_SENTRY = False
+    else:
+        HAS_SENTRY = True
+
 
 class IssueFromTraceback(click.Group):
     """Create an issue with formatted exception."""
@@ -35,11 +48,24 @@ class IssueFromTraceback(click.Group):
 
     ISSUE_SUFFIX = '/issues/new'
 
+    def __init__(self, *args, **kwargs):
+        """Initialize a Sentry client."""
+        super().__init__(*args, **kwargs)
+
+        if HAS_SENTRY:
+            import sentry_sdk
+            sentry_sdk.init()
+
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
         try:
             return super().main(*args, **kwargs)
         except Exception:
+            if HAS_SENTRY:
+                from sentry_sdk import capture_exception
+                click.echo('Sentry event ID: ' + capture_exception(), err=True)
+                raise
+
             if not (sys.stdin.isatty() and sys.stdout.isatty()):
                 raise
 
