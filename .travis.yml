@@ -105,9 +105,8 @@ jobs:
       script: echo "Publishing on PyPI.io ..."
       deploy:
         - provider: pypi
-          user: jirikuncar
-          password:
-            secure: "YOHhWCF25Od6HJGhtKtL6/qX/pcIx/0kqGvz3lyTgxWYAkKYk0maQovHgkGukNCPu9FKcWNuKXmNvOsXIW5fm5Aav+yJqkQSQEXpVxmKYmgNWiAtgnDYUomtAQ9uRJnfxV32QFggJ2/d7lThWE7a8/LmEK9z+Nvhr1Y32RUu0ZAmp3FgJJERUONBJyL+G20jLlM/VWVD/XFeC3zQohiNxDFaMpHHb+H23VWjFVwjfqgpj4FSZ1GvtHBgISQFic06EaUv7F20tF/BtS4J7PhH8OwRCy2jLY/LF02lchrfZKomQ7ZkcK5U1DHxHI8SBdTOkIgt1OafvHstWIt8UJZeB43O7iT+W157b8B5K8sKtAhflfY2NqIhBw4LcktsYDH9ZXApgbCuIU6LioFsXKUD8fR+3or2/AB2SRfsiRLejq4ZX/zGo9a9pbXrD4ZAvaJJreHK+HZHcJdn4/2sEU5JrMqUauBB4tvvBINshgjb/7N6AghjV7B7wcWooZZcuGaoSBl3QgUufAAxAwNDoI3N0904ZIzTxfKkd7CEyx5rEhA+HPdc5HzWwvSGNr1xOnH0zgANM7RskS7g3Ab+2EdzvhdskHpE0wxRcR5upcuTMcYBrauA4rZwjD4aefgtFLZM8aE/Se5OQOymFQBBy2+fTrkSJt/T5J1tJBDoIWvcam8="
+          user: ${PYPI_USERNAME}
+          password: ${PYPI_PASSWORD}
           distributions: "sdist bdist_wheel"
           on:
             all_branches: true
@@ -134,8 +133,7 @@ jobs:
         - make -e PY_BREW_VERSION=$(python setup.py --version) brew-commit-formula brew-build-bottle brew-commit-bottle
       deploy:
         - provider: releases
-          api_key:
-            secure: eJUA1+x21xPnOLlOt2pyPjFgI3lLus1OOVt0Jot+Hnle8UiOYg4wphDAA8abSalN+8vvNLB1+Z/ODFWZJWs4hGMG+0wEpCmWU6x125ijciF/6WH0bN7yNm1xW9+6ve+/zX+IRuUt00Or19/lg9wv835Ce3x91H/c9byVtTtmUVZ5jjRDeB5GmJaBo+kajfZMZu7WDUGxGSyhvQIqivbnjkjjaBKFuzXU8zdLfJoZE9N8T75E0Ug/qfwmgYCB4XIu/7i1ub/zc9GSOFnV0xEYZb8SF4f+Y9RSj2V4/+Ym6K+L4/nhFj81PKOSn850sfyHSklA31KJ07Fe4k9y/EIwmt5sRuLO9Kr9n4ByTkRVgIXOrbn/8Eym3QzkJsuEmdDpvJV5Lea2zhSzITJYoYtrCqCwjEqDKVP/QxfegbUX+AG+eBmPktClLq3S+PQAQRul2kzsP584gQEg2rb8LhHttUocZEa5F67wnVpNPGBC9V0hVW/2vWnBSboS6zk96g/2G0FMKZRsavxCHWuCVes6nRrQr2L+Py+I3ppv1/sf31Jc2sPGemsFXfKSPVxq8kf8H+cpJn2YJ+fUxPkTFLQr9h/FU88NyhWteSXQhugfTRHwG7Trkcnsh1vijJHqzq6nFVLOCrC0BqHW89R4o0AdOQLuog8PVIYjot9ndwR2zMk=
+          api_key: ${GITHUB_TOKEN}
           file_glob: true
           file: "*.bottle.*"
           skip_cleanup: true
@@ -144,7 +142,7 @@ jobs:
         - provider: pages
           skip-cleanup: true
           # Set in the settings page of your repository, as a secure variable
-          github-token: $GITHUB_TOKEN
+          github-token: ${GITHUB_TOKEN}
           repo: swissdatasciencecenter/homebrew-renku
           target-branch: master
           keep-history: true
