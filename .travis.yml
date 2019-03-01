@@ -88,8 +88,11 @@ jobs:
       sudo: true
       os: osx
       osx_image: xcode10.1
+      before_install: brew install jq
       install: python -m pip install requests
-      script: make brew-commit-formula brew-build-bottle brew-commit-bottle
+      script:
+        - echo PY_BREW_VERSION=$(python setup.py --version)
+        - make -e PY_BREW_VERSION=$(python setup.py --version) brew-commit-formula brew-build-bottle brew-commit-bottle
       deploy:
         - provider: releases
           api_key:
@@ -103,6 +106,7 @@ jobs:
           skip-cleanup: true
           # Set in the settings page of your repository, as a secure variable
           github-token: $GITHUB_TOKEN
+          repo: swissdatasciencecenter/homebrew-renku
           target-branch: master
           keep-history: true
           local-dir: /usr/local/Homebrew/Library/Taps/swissdatasciencecenter/homebrew-renku/
