@@ -15,7 +15,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The exception handlers."""
+"""Renku is not bug-free and you can help us to find them.
+
+GitHub
+~~~~~~
+
+You can quickly open an issue on GitHub with a traceback and minimal system
+information when you hit an unhandled exception in the CLI.
+
+.. code-block:: text
+
+    Ahhhhhhhh! You have found a bug. 🐞
+
+    1. Open an issue by typing "open";
+    2. Print human-readable information by typing "print";
+    3. See the full traceback without submitting details (default: "ignore").
+
+    Please select an action by typing its name (open, print, ignore) [ignore]:
+
+Sentry
+~~~~~~
+
+When using ``renku`` as a hosted service the Sentry integration can be enabled
+to help developers iterate faster by showing them where bugs happen, how often,
+and who's affected.
+
+1. Install Sentry-SDK by ``python -m pip install sentry-sdk``;
+2. Set environment variable
+   ``SENTRY_DSN=https://<key>@sentry.<domain>/<project>``.
+
+.. warning:: User information might be sent to help resolving the problem.
+   If you are not using your own Sentry instance you should inform users
+   that you are sending possibly sensitive information to a 3rd-party service.
+"""
 
 import os
 import platform

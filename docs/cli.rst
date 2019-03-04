@@ -108,3 +108,8 @@ Renku Command Line
 ------------------
 
 .. automodule:: renku.cli.githooks
+
+Error Tracking
+--------------
+
+.. automodule:: renku.cli._exc
