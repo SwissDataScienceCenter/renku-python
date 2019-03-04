@@ -76,6 +76,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.rerun
 
+.. _cli-mv:
+
+``renku mv``
+------------
+
+.. automodule:: renku.cli.move
+
 .. _cli-workflow:
 
 ``renku workflow``

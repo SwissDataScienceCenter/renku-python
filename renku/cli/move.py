@@ -15,7 +15,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Move a file in the repository."""
+"""Move or rename a file, a directory, or a symlink.
+
+Moving a files that belongs to a dataset will update its metadata. It also
+will attempt to update tracking information for files stored in an external
+storage (using Git LFS). Finally it makes sure that all relative symlinks work
+after the move.
+"""
 
 import os
 from subprocess import run
@@ -34,7 +40,7 @@ from ._echo import WARNING, progressbar
 @pass_local_client(clean=True, commit=True)
 @click.pass_context
 def move(ctx, client, sources, destination):
-    """Check your system and repository for potential problems."""
+    """Move files and check repository for potential problems."""
     import yaml
 
     from renku.api._git import _expand_directories
