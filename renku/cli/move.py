@@ -17,7 +17,7 @@
 # limitations under the License.
 """Move or rename a file, a directory, or a symlink.
 
-Moving a files that belongs to a dataset will update its metadata. It also
+Moving a file that belongs to a dataset will update its metadata. It also
 will attempt to update tracking information for files stored in an external
 storage (using Git LFS). Finally it makes sure that all relative symlinks work
 after the move.
