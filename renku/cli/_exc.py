@@ -59,6 +59,12 @@ from urllib.parse import urlencode
 
 import click
 
+_BUG = click.style(
+    'Ahhhhhhhh! You have found a bug. 🐞\n\n',
+    fg='red',
+    bold=True,
+)
+
 HAS_SENTRY = None
 SENTRY_DSN = os.getenv('SENTRY_DSN')
 
@@ -91,41 +97,62 @@ class IssueFromTraceback(click.Group):
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
         try:
-            return super().main(*args, **kwargs)
+            result = super().main(*args, **kwargs)
+            return result
         except Exception:
             if HAS_SENTRY:
-                from sentry_sdk import capture_exception
-                click.echo('Sentry event ID: ' + capture_exception(), err=True)
-                raise
+                self._handle_sentry()
 
             if not (sys.stdin.isatty() and sys.stdout.isatty()):
                 raise
 
-            value = click.prompt(
-                click.style(
-                    'Ahhhhhhhh! You have found a bug. 🐞\n\n',
-                    fg='red',
-                    bold=True,
-                ) + click.style(
-                    '1. Open an issue by typing "open";\n',
-                    fg='green',
-                ) + click.style(
-                    '2. Print human-readable information by typing '
-                    '"print";\n',
-                    fg='yellow',
-                ) + click.style(
-                    '3. See the full traceback without submitting details '
-                    '(default: "ignore").\n\n',
-                    fg='red',
-                ) + 'Please select an action by typing its name',
-                type=click.Choice([
-                    'open',
-                    'print',
-                    'ignore',
-                ], ),
-                default='ignore',
+            self._handle_github()
+
+    def _handle_sentry(self):
+        """Handle exceptions using Sentry."""
+        from sentry_sdk import capture_exception, configure_scope
+        from sentry_sdk.utils import capture_internal_exceptions
+
+        with configure_scope() as scope:
+            with capture_internal_exceptions():
+                from git import Repo
+                from renku.cli._git import get_git_home
+                from renku.models.datasets import Author
+
+                user = Author.from_git(Repo(get_git_home()))
+
+                scope.user = {'name': user.name, 'email': user.email}
+
+            event_id = capture_exception()
+            click.echo(
+                _BUG + 'Recorded in Sentry with ID: {0}\n'.format(event_id),
+                err=True,
             )
-            getattr(self, '_process_' + value)()
+            raise
+
+    def _handle_github(self):
+        """Handle exception and submit it as GitHub issue."""
+        value = click.prompt(
+            _BUG + click.style(
+                '1. Open an issue by typing "open";\n',
+                fg='green',
+            ) + click.style(
+                '2. Print human-readable information by typing '
+                '"print";\n',
+                fg='yellow',
+            ) + click.style(
+                '3. See the full traceback without submitting details '
+                '(default: "ignore").\n\n',
+                fg='red',
+            ) + 'Please select an action by typing its name',
+            type=click.Choice([
+                'open',
+                'print',
+                'ignore',
+            ], ),
+            default='ignore',
+        )
+        getattr(self, '_process_' + value)()
 
     def _format_issue_title(self):
         """Return formatted title."""
