@@ -97,19 +97,32 @@ The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
       $ open https://launchpad.net/~swissdatasciencecenter/+snap/renku/
       $ snap install renku
 
-Pip Script Installer (``pipsi``)
---------------------------------
+Isolated environments using ``pipx``
+------------------------------------
 
-You can use `pipsi <https://github.com/mitsuhiko/pipsi>`_ to isolate
-dependencies and to guarantee that there are no version conflicts. Make sure
-you have the ``pipsi`` command correctly installed and ``~/.local/bin`` is in
-your ``$PATH``.
+Install and execute Renku in an isolated environment using ``pipx``.
+It will guarantee that there are no version conflicts with dependencies
+you are using for your work and research.
+
+`Install pipx <https://github.com/pipxproject/pipx#install-pipx>`_
+and make sure that the ``$PATH`` is correctly configured.
 
 ::
 
-    $ pipsi install renku
+    $ python3 -m pip install --user pipx
+    $ pipx ensurepath
+
+Once ``pipx`` is installed use following command to install ``renku``.
+
+::
+
+    $ pipx install renku
     $ which renku
     ~/.local/bin/renku
+
+Prevously we have recommended to use ``pipsi``. You can still use it or
+`migrate to **pipx**
+<https://github.com/pipxproject/pipx#migrating-to-pipx-from-pipsi>`_.
 
 Docker
 ------
