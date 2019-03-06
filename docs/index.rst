@@ -70,6 +70,7 @@ line <cli>` instructions.
    datasets
    provenance
    cwl
+   glossary
    api
    contributing
    changes
