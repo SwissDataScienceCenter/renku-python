@@ -79,6 +79,7 @@ Full Table of Contents
 .. toctree::
    :maxdepth: 2
 
+   comparison
    cli
    projects
    datasets
