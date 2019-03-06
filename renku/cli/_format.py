@@ -278,6 +278,33 @@ def _rdf2dot_reduced(g, stream):
     stream.write('}\n')
 
 
+def makefile(graph):
+    """Format graph as Makefile."""
+    from renku._compat import Path
+    from renku.models.provenance.activities import ProcessRun, WorkflowRun
+
+    for activity in graph.activities.values():
+        if not isinstance(activity, ProcessRun):
+            continue
+        elif isinstance(activity, WorkflowRun):
+            steps = activity.subprocesses.values()
+        else:
+            steps = [activity]
+
+        for step in steps:
+            click.echo(' '.join(step.outputs) + ': ' + ' '.join(step.inputs))
+
+            tool = step.process
+            basedir = Path(step.path).parent
+
+            click.echo(
+                '\t@' + ' '.join(tool.to_argv()) + ' ' + ' '.join(
+                    tool.STD_STREAMS_REPR[key] + ' ' + str(path)
+                    for key, path in tool._std_streams(basedir=basedir).items()
+                )
+            )
+
+
 def jsonld(graph):
     """Format graph as JSON-LD file."""
     click.echo(_jsonld(graph, 'expand'))
@@ -327,6 +354,7 @@ FORMATS = {
     'dot-debug': dot_debug,
     'json-ld': jsonld,
     'json-ld-graph': jsonld_graph,
+    'Makefile': makefile,
     'nt': nt,
     'rdf': rdf,
 }

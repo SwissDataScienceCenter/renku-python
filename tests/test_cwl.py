@@ -251,8 +251,10 @@ def test_stdin_and_stdout(argv, instance_path):
 
     tool = factory.generate_tool()
     assert tool.to_argv() == argv
-    std_streams = ' < input.txt > output.txt 2> error.log'
-    assert str(tool) == ' '.join(argv) + std_streams
+    std_streams = (' < input.txt', ' > output.txt', ' 2> error.log')
+    tool_str = str(tool)
+    assert tool_str.startswith(' '.join(argv))
+    assert all(stream in tool_str for stream in std_streams)
 
 
 def test_input_directory(instance_path):

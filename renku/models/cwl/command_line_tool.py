@@ -18,6 +18,7 @@
 """Represent a ``CommandLineTool`` from the Common Workflow Language."""
 
 import fnmatch
+import os
 import re
 import shlex
 from contextlib import contextmanager
@@ -50,6 +51,13 @@ def convert_arguments(value):
 class CommandLineTool(Process, CWLClass):
     """Represent a command line tool."""
 
+    STD_STREAMS_REPR = {
+        'stdin': '<',
+        'stdout': '>',
+        'stderr': '2>',
+    }
+    """Format streams for a shell command representation."""
+
     # specialize inputs and outputs with Command{Input,Output}Parameter
 
     baseCommand = attr.ib(
@@ -72,21 +80,32 @@ class CommandLineTool(Process, CWLClass):
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
-    def __str__(self):
-        """Generate a simple representation."""
-        argv = ' '.join(self.to_argv())
+    def _std_streams(self, basedir=None):
+        """Return mapped standard streams."""
+        streams = {}
+
         if self.stdin:
             assert self.stdin.startswith('$(inputs.')
             input_id = self.stdin.split('.')[1]
             for input_ in self.inputs:
                 if input_id == input_.id:
-                    argv += ' < ' + str(input_.default)
+                    streams['stdin'] = os.path.relpath(
+                        str(Path(basedir or '.') / str(input_.default))
+                    )
                     break
         if self.stdout:
-            argv += ' > ' + self.stdout
+            streams['stdout'] = self.stdout
         if self.stderr:
-            argv += ' 2> ' + self.stderr
-        return argv
+            streams['stderr'] = self.stderr
+
+        return streams
+
+    def __str__(self):
+        """Generate a simple representation."""
+        return ' '.join(self.to_argv()) + ' ' + ' '.join(
+            self.STD_STREAMS_REPR[key] + ' ' + str(path)
+            for key, path in self._std_streams().items()
+        )
 
     def create_run(self, **kwargs):
         """Return an instance of process run."""
