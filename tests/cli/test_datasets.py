@@ -123,6 +123,31 @@ def test_multiple_file_to_dataset(
     assert result.exit_code == 0
 
 
+def test_repository_file_to_dataset(runner, project, client):
+    """Test adding a file from the repository into a dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert result.exit_code == 0
+
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    client.repo.git.add('a')
+    client.repo.git.commit(message='Added file a')
+
+    # add data
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset', 'a'],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
+        assert '../../../a' in dataset.files
+
+
 def test_relative_import_to_dataset(
     tmpdir, data_repository, runner, project, client
 ):

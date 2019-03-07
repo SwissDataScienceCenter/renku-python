@@ -141,7 +141,9 @@ class DatasetsApiMixin(object):
         ignored = self.find_ignored_paths(
             *[
                 os.path.relpath(
-                    str(self.renku_datasets_path / dataset.name / key),
+                    str(
+                        self.renku_datasets_path / dataset.identifier.hex / key
+                    ),
                     start=str(self.path),
                 ) for key in files.keys()
             ]
@@ -252,6 +254,30 @@ class DatasetsApiMixin(object):
         relative_to = kwargs.get('relative_to', None)
 
         if u.scheme in ('', 'file'):
+            try:
+                relative_url = Path(url).resolve().relative_to(self.path)
+            except Exception:
+                relative_url = None
+
+            if relative_url:
+                result = str(
+                    os.path.relpath(
+                        str(relative_url),
+                        start=str(
+                            self.renku_datasets_path / dataset.identifier.hex
+                        ),
+                    )
+                )
+                return {
+                    result:
+                        DatasetFile(
+                            path=result,
+                            url=url,
+                            authors=dataset.authors,
+                            dataset=dataset.name,
+                        )
+                }
+
             warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path
             r = Repo(url, search_parent_directories=True)
