@@ -27,13 +27,13 @@ reproducible.
 ... to ``Makefile``
 -------------------
 
-If you are using ``Makefile`` to generate your :term:`outputs` you are on
+If you are using ``Makefile`` to generate your :term:`outputs` you are on a
 good path. However you might be missing versioning of your past executions.
 
-Renku internally builds rules similarly as defined in ``Makefile`` and it
+Renku internally builds rules similar to those defined in a ``Makefile`` and 
 makes sure that all files are saved before running a :term:`tool`.
 
-Running following ``renku run`` commands
+Running the following ``renku run`` commands
 
 .. code-block:: console
 
@@ -50,9 +50,9 @@ is equivalent to this simple ``Makefile``.
    foo.wc: foo
      @wc -c < foo > foo.wc
 
-Renku also makes sure that if any of the :term:`inputs` is modified only
-the necessary "rules" are invoked. Make also does not run the rule if all
-dependencies are older then targets.
+Renku also makes sure that if any of the :term:`inputs` are modified only
+the necessary "rules" are invoked. In addition, `make` does not run the rule if all
+dependencies are older then the targets.
 
 .. code-block:: console
 
