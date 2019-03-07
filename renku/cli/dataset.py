@@ -82,30 +82,52 @@ from collections import OrderedDict
 import click
 from click import BadParameter
 
-from renku.models._tabulate import tabulate
-from renku.models.datasets import Author
-
 from ._client import pass_local_client
 from ._echo import progressbar
 
 
+def _tabular(client, datasets=None):
+    """Format datasets with a tabular output."""
+    from renku.models._tabulate import tabulate
+
+    datasets = datasets or client.datasets
+
+    click.echo(
+        tabulate(
+            datasets.values(),
+            headers=OrderedDict((
+                ('short_id', 'id'),
+                ('name', None),
+                ('created', None),
+                ('authors_csv', 'authors'),
+            )),
+        )
+    )
+
+
+FORMATS = {
+    'tabular': _tabular,
+}
+
+
 @click.group(invoke_without_command=True)
 @click.option('--datadir', default='data', type=click.Path(dir_okay=True))
+@click.option(
+    '--format',
+    type=click.Choice(FORMATS),
+    default='tabular',
+    help='Choose an output format.'
+)
 @pass_local_client(clean=False, commit=False)
 @click.pass_context
-def dataset(ctx, client, datadir):
+def dataset(ctx, client, datadir, format):
     """Handle datasets."""
     ctx.meta['renku.datasets.datadir'] = datadir
 
     if ctx.invoked_subcommand is not None:
         return
 
-    output = tabulate(
-        client.datasets.values(),
-        headers=OrderedDict((('short_id', 'id'), ('name', None),
-                             ('created', None), ('authors_csv', 'authors'))),
-    )
-    click.echo(output)
+    FORMATS[format](client)
 
 
 @dataset.command()
@@ -113,6 +135,8 @@ def dataset(ctx, client, datadir):
 @pass_local_client(clean=True, commit=True)
 def create(client, name):
     """Create an empty dataset in the current repo."""
+    from renku.models.datasets import Author
+
     with client.with_dataset(name=name) as dataset:
         click.echo('Creating a dataset ... ', nl=False)
         author = Author.from_git(client.repo)
