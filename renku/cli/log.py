@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -68,7 +68,7 @@ import click
 from git import NULL_TREE
 
 from ._client import pass_local_client
-from ._format import FORMATS
+from ._format.graph import FORMATS
 from ._graph import Graph
 
 
