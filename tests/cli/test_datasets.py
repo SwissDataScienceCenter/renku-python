@@ -26,7 +26,7 @@ import pytest
 
 from renku import cli
 from renku._compat import Path
-from renku.cli.dataset import FORMATS
+from renku.cli._format.datasets import FORMATS
 
 
 def test_datasets_import(data_file, data_repository, runner, project, client):

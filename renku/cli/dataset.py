@@ -78,60 +78,19 @@ will yield:
         datafile
 """
 
-import os
-from collections import OrderedDict
-
 import click
 from click import BadParameter
 
 from ._client import pass_local_client
 from ._echo import progressbar
-
-
-def _tabular(client, datasets=None):
-    """Format datasets with a tabular output."""
-    from renku.models._tabulate import tabulate
-
-    datasets = datasets or client.datasets
-
-    click.echo(
-        tabulate(
-            datasets.values(),
-            headers=OrderedDict((
-                ('short_id', 'id'),
-                ('name', None),
-                ('created', None),
-                ('authors_csv', 'authors'),
-            )),
-        )
-    )
-
-
-def _jsonld(client, datasets=None):
-    """Format datasets as JSON-LD."""
-    from renku.models._json import dumps
-    from renku.models._jsonld import asjsonld
-
-    datasets = datasets or client.datasets
-    data = [
-        asjsonld(
-            dataset, basedir=os.path.relpath('.', start=str(path.parent))
-        ) for path, dataset in datasets.items()
-    ]
-    click.echo(dumps(data, indent=2))
-
-
-FORMATS = {
-    'tabular': _tabular,
-    'json-ld': _jsonld,
-}
+from ._format.datasets import FORMATS as DATASETS_FORMATS
 
 
 @click.group(invoke_without_command=True)
 @click.option('--datadir', default='data', type=click.Path(dir_okay=True))
 @click.option(
     '--format',
-    type=click.Choice(FORMATS),
+    type=click.Choice(DATASETS_FORMATS),
     default='tabular',
     help='Choose an output format.'
 )
@@ -144,7 +103,7 @@ def dataset(ctx, client, datadir, format):
     if ctx.invoked_subcommand is not None:
         return
 
-    FORMATS[format](client)
+    DATASETS_FORMATS[format](client)
 
 
 @dataset.command()

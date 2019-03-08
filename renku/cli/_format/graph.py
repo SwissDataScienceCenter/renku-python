@@ -24,8 +24,8 @@ import click
 
 def ascii(graph):
     """Format graph as an ASCII art."""
-    from ._ascii import DAG
-    from ._echo import echo_via_pager
+    from .._ascii import DAG
+    from .._echo import echo_via_pager
 
     echo_via_pager(str(DAG(graph)))
 
