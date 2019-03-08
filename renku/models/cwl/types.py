@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,34 +27,33 @@ from renku._compat import Path
 from ._ascwl import CWLClass, ascwl
 
 
-@attr.s
-class File(CWLClass):
-    """Represent a file."""
-
-    path = attr.ib(converter=Path)
+class PathFormatterMixin:
+    """Format path property."""
 
     def __str__(self):
         """Simple conversion to string."""
-        # TODO refactor to use `basedir`
+        reference = self.__reference__
+        if reference:
+            return str(os.path.normpath(str(reference.parent / self.path)))
         return os.path.relpath(
             os.path.realpath(str(self.path)), os.path.realpath(os.getcwd())
         )
 
 
 @attr.s
-class Directory(CWLClass):
+class File(CWLClass, PathFormatterMixin):
+    """Represent a file."""
+
+    path = attr.ib(converter=Path)
+
+
+@attr.s
+class Directory(CWLClass, PathFormatterMixin):
     """Represent a directory."""
 
     # TODO add validation to allow only directories
     path = attr.ib(default=None)
     listing = attr.ib(default=attr.Factory(list))
-
-    def __str__(self):
-        """Simple conversion to string."""
-        # TODO refactor to use `basedir`
-        return os.path.relpath(
-            os.path.realpath(str(self.path)), os.path.realpath(os.getcwd())
-        )
 
 
 DIRECTORY_EXPRESSION = '$({0})'.format(

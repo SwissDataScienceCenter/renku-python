@@ -56,8 +56,7 @@ class DatasetsApiMixin(object):
         """Return mapping from path to dataset."""
         result = {}
         for path in self.renku_datasets_path.rglob(self.METADATA):
-            with path.open('r') as fp:
-                result[path] = Dataset.from_jsonld(yaml.load(fp))
+            result[path] = Dataset.from_yaml(path)
         return result
 
     @contextmanager
@@ -80,7 +79,7 @@ class DatasetsApiMixin(object):
                 if path.exists():
                     with path.open('r') as f:
                         source = yaml.load(f) or {}
-                    dataset = Dataset.from_jsonld(source)
+                    dataset = Dataset.from_jsonld(source, __reference__=path)
 
             if dataset is None:
                 source = {}

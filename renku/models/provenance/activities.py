@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,9 +21,9 @@ import os
 from collections import OrderedDict
 
 import attr
-import yaml
 from git import NULL_TREE
 
+from renku._compat import Path
 from renku.models import _jsonld as jsonld
 from renku.models.cwl import WORKFLOW_STEP_RUN_TYPES
 from renku.models.cwl._ascwl import CWLClass
@@ -408,8 +408,6 @@ class WorkflowRun(ProcessRun):
     @children.default
     def default_children(self):
         """Load children from process."""
-        import yaml
-
         basedir = os.path.dirname(self.path) if self.path is not None else None
 
         def _load(step):
@@ -418,12 +416,12 @@ class WorkflowRun(ProcessRun):
                 return step.run
 
             if self.commit:
+                import yaml
                 data = (self.commit.tree / basedir /
                         step.run).data_stream.read()
-            else:
-                with step.run.open('r') as f:
-                    data = f.read()
-            return CWLClass.from_cwl(yaml.load(data))
+                return CWLClass.from_cwl(yaml.load(data))
+
+            return CWLClass.from_yaml(step.run)
 
         return {step.id: _load(step) for step in self.process.steps}
 
@@ -593,8 +591,10 @@ def from_git_commit(commit, client, path=None):
                 path = file_
 
     if path:
+        import yaml
+
         data = (commit.tree / path).data_stream.read()
-        process = CWLClass.from_cwl(yaml.load(data))
+        process = CWLClass.from_cwl(yaml.load(data), __reference__=Path(path))
 
         return process.create_run(
             commit=commit,

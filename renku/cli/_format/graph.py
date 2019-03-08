@@ -280,7 +280,6 @@ def _rdf2dot_reduced(g, stream):
 
 def makefile(graph):
     """Format graph as Makefile."""
-    from renku._compat import Path
     from renku.models.provenance.activities import ProcessRun, WorkflowRun
 
     for activity in graph.activities.values():
@@ -293,14 +292,11 @@ def makefile(graph):
 
         for step in steps:
             click.echo(' '.join(step.outputs) + ': ' + ' '.join(step.inputs))
-
             tool = step.process
-            basedir = Path(step.path).parent
-
             click.echo(
                 '\t@' + ' '.join(tool.to_argv()) + ' ' + ' '.join(
                     tool.STD_STREAMS_REPR[key] + ' ' + str(path)
-                    for key, path in tool._std_streams(basedir=basedir).items()
+                    for key, path in tool._std_streams().items()
                 )
             )
 

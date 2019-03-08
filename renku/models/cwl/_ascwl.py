@@ -25,6 +25,7 @@ from attr._funcs import has
 from attr._make import fields
 
 from renku._compat import Path
+from renku.models._locals import ReferenceMixin, with_reference
 
 
 class CWLType(type):
@@ -40,15 +41,34 @@ class CWLType(type):
         cls.registry[name] = cls
 
 
-class CWLClass(object, metaclass=CWLType):
+class CWLClass(ReferenceMixin, metaclass=CWLType):
     """Include ``class`` field in serialized object."""
 
     @classmethod
-    def from_cwl(cls, data):
+    def from_cwl(cls, data, __reference__=None):
         """Return an instance from CWL data."""
         class_name = data.get('class', None)
         cls = cls.registry.get(class_name, cls)
-        return cls(**{k: v for k, v in iteritems(data) if k != 'class'})
+
+        if __reference__:
+            with with_reference(__reference__):
+                self = cls(
+                    **{k: v
+                       for k, v in iteritems(data) if k != 'class'}
+                )
+        else:
+            self = cls(**{k: v for k, v in iteritems(data) if k != 'class'})
+        return self
+
+    @classmethod
+    def from_yaml(cls, path):
+        """Return an instance from a YAML file."""
+        import yaml
+
+        with path.open(mode='r') as fp:
+            self = cls.from_cwl(yaml.load(fp), __reference__=path)
+
+        return self
 
 
 def mapped(cls, key='id', **kwargs):
@@ -114,6 +134,9 @@ def ascwl(
         return v
 
     for a in attrs:
+        if a.name.startswith('__'):
+            continue
+
         a_name = a.name.rstrip('_')
         v = getattr(inst, a.name)
         if filter is not None and not filter(a, v):

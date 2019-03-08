@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -119,10 +119,11 @@ class CommandInputParameter(InputParameter):
             data = {'type': data}
         return cls(**data)
 
-    def to_argv(self):
+    def to_argv(self, **kwargs):
         """Format command input parameter as shell argument."""
-        return self.inputBinding.to_argv(default=self.default
-                                         ) if self.inputBinding else []
+        return self.inputBinding.to_argv(
+            default=self.default, **kwargs
+        ) if self.inputBinding else []
 
 
 @attr.s

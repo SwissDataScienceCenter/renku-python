@@ -142,7 +142,7 @@ class CommandLineTool(Process, CWLClass):
             if i.inputBinding:
                 args.append((i.inputBinding.position, i))
 
-        for p, v in sorted(args):
+        for _, v in sorted(args):
             argv.extend(v.to_argv())
 
         return argv

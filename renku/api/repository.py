@@ -256,10 +256,10 @@ class RepositoryApiMixin(GitCore):
             if self.renku_metadata_path.exists():
                 with metadata_path.open('r') as f:
                     source = yaml.load(f) or {}
-                metadata = Project.from_jsonld(source)
             else:
                 source = {}
-                metadata = Project()
+
+            metadata = Project.from_jsonld(source, __reference__=metadata_path)
 
             yield metadata
 

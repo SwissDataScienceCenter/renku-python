@@ -29,6 +29,7 @@ from attr._make import Factory, fields
 from pyld import jsonld as ld
 
 from renku._compat import Path
+from renku.models._locals import ReferenceMixin, with_reference
 
 KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
@@ -62,7 +63,10 @@ def attrs(
         jsonld_cls = attr.s(cls, **attrs_kwargs)
 
         if not issubclass(jsonld_cls, JSONLDMixin):
-            jsonld_cls = make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {})
+            jsonld_cls = attr.s(
+                make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {}),
+                **attrs_kwargs
+            )
 
         # Merge types
         for subcls in jsonld_cls.mro():
@@ -291,13 +295,13 @@ def asjsonld(
     return rv
 
 
-class JSONLDMixin(object):
+class JSONLDMixin(ReferenceMixin):
     """Mixin for loading a JSON-LD data."""
 
     __type_registry__ = {}
 
     @classmethod
-    def from_jsonld(cls, data):
+    def from_jsonld(cls, data, __reference__=None):
         """Instantiate a JSON-LD class from data."""
         if isinstance(data, cls):
             return data
@@ -328,10 +332,33 @@ class JSONLDMixin(object):
         # assert compacted['@type'] == cls._jsonld_type, '@type must be equal'
         # TODO update self(not cls)._jsonld_context with data['@context']
         fields = cls._jsonld_fields
-        return cls(
-            **{k.lstrip('_'): v
-               for k, v in compacted.items() if k in fields}
-        )
+
+        if __reference__:
+            with with_reference(__reference__):
+                self = cls(
+                    **{
+                        k.lstrip('_'): v
+                        for k, v in compacted.items() if k in fields
+                    }
+                )
+        else:
+            self = cls(
+                **{
+                    k.lstrip('_'): v
+                    for k, v in compacted.items() if k in fields
+                }
+            )
+        return self
+
+    @classmethod
+    def from_yaml(cls, path):
+        """Return an instance from a YAML file."""
+        import yaml
+
+        with path.open(mode='r') as fp:
+            self = cls.from_jsonld(yaml.load(fp) or {}, __reference__=path)
+
+        return self
 
 
 s = attrs
