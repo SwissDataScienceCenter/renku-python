@@ -234,3 +234,78 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
 
     assert os.stat(os.path.join('data', 'relative', 'data.txt'))
     assert os.stat(os.path.join('data', 'relative', 'second', 'data.txt'))
+
+
+def test_dataset_add_with_link(tmpdir, runner, project, client):
+    """Test adding data to dataset with --no-copy flag."""
+    import os
+    import stat
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    paths = []
+    expected_inodes = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        expected_inodes.append(os.lstat(str(new_file))[stat.ST_INO])
+        paths.append(str(new_file))
+
+    # add data
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset', '--link'] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    received_inodes = []
+    with client.with_dataset('my-dataset') as dataset:
+        assert dataset.name == 'my-dataset'
+        for relative, file_ in dataset.files.items():
+            path_ = (client.renku_datasets_path / 'my-dataset' /
+                     file_.path).resolve()
+            received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
+
+    # check that original and dataset inodes are the same
+    assert sorted(expected_inodes) == sorted(received_inodes)
+
+
+def test_dataset_add_with_copy(tmpdir, runner, project, client):
+    """Test adding data to dataset with copy."""
+    import os
+    import stat
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    paths = []
+    original_inodes = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        original_inodes.append(os.lstat(str(new_file))[stat.ST_INO])
+        paths.append(str(new_file))
+
+    # add data
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+    )
+    assert result.exit_code == 0
+
+    received_inodes = []
+    with client.with_dataset('my-dataset') as dataset:
+        assert dataset.name == 'my-dataset'
+
+        for relative, file_ in dataset.files.items():
+            path_ = (client.renku_datasets_path / 'my-dataset' /
+                     file_.path).resolve()
+            received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
+
+    # check that original inodes are within created ones
+    for inode in received_inodes:
+        assert inode not in original_inodes

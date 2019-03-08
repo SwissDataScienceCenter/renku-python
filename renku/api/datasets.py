@@ -157,7 +157,7 @@ class DatasetsApiMixin(object):
 
         dataset.files.update(files)
 
-    def _add_from_url(self, dataset, path, url, nocopy=False, **kwargs):
+    def _add_from_url(self, dataset, path, url, link=False, **kwargs):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
@@ -190,7 +190,7 @@ class DatasetsApiMixin(object):
                             dataset,
                             dst,
                             f.absolute().as_posix(),
-                            nocopy=nocopy
+                            link=link,
                         )
                     )
                 return files
@@ -198,13 +198,13 @@ class DatasetsApiMixin(object):
             # Make sure the parent directory exists.
             dst.parent.mkdir(parents=True, exist_ok=True)
 
-            if nocopy:
+            if link:
                 try:
                     os.link(str(src), str(dst))
                 except Exception as e:
                     raise Exception(
                         'Could not create hard link '
-                        '- retry without nocopy.'
+                        '- retry without --link.'
                     ) from e
             else:
                 shutil.copy(str(src), str(dst))

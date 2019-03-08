@@ -125,7 +125,7 @@ def create(client, name):
 @dataset.command()
 @click.argument('name')
 @click.argument('urls', nargs=-1)
-@click.option('nocopy', '--copy/--no-copy', default=False, is_flag=True)
+@click.option('--link', is_flag=True, help='Creates a hard link.')
 @click.option('--relative-to', default=None)
 @click.option(
     '-t',
@@ -138,7 +138,7 @@ def create(client, name):
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
 @pass_local_client(clean=True, commit=True)
-def add(client, name, urls, nocopy, relative_to, target, force):
+def add(client, name, urls, link, relative_to, target, force):
     """Add data to a dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
@@ -148,7 +148,7 @@ def add(client, name, urls, nocopy, relative_to, target, force):
                     client.add_data_to_dataset(
                         dataset,
                         url,
-                        nocopy=nocopy,
+                        link=link,
                         target=target,
                         relative_to=relative_to,
                         force=force,
