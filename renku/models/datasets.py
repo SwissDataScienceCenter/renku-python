@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -38,22 +38,6 @@ _path_attr = partial(
     jsonld.ib,
     converter=Path,
 )
-
-
-def _deserialize_set(s, cls):
-    """Deserialize a list of dicts into classes."""
-    return set(
-        cls.from_jsonld(x) if hasattr(cls, 'from_jsonld') else cls(**x)
-        for x in s
-    )
-
-
-def _deserialize_dict(d, cls):
-    """Deserialize a list of dicts into classes."""
-    return {
-        k: cls.from_jsonld(v) if hasattr(cls, 'from_jsonld') else cls(**v)
-        for k, v in d.items()
-    }
 
 
 @jsonld.s(
@@ -138,14 +122,20 @@ class DatasetFile(object):
         return datetime.datetime.utcnow()
 
 
-_deserialize_files = partial(_deserialize_dict, cls=DatasetFile)
-
-
 def _parse_date(value):
     """Convert date to datetime."""
     if isinstance(value, datetime.datetime):
         return value
     return parse_date(value)
+
+
+def _convert_dataset_files(value):
+    """Convert dataset files."""
+    output = {}
+    for k, v in value.items():
+        inst = DatasetFile.from_jsonld(v)
+        output[inst.path] = inst
+    return output
 
 
 @jsonld.s(
@@ -179,7 +169,10 @@ class Dataset(object):
         },
     )
     authors = jsonld.container.list(Author)
-    files = jsonld.container.index(DatasetFile)
+    files = jsonld.container.index(
+        DatasetFile,
+        converter=_convert_dataset_files,
+    )
 
     @created.default
     def _now(self):

@@ -22,8 +22,11 @@ from __future__ import absolute_import, print_function
 import os
 
 import git
+import pytest
 
 from renku import cli
+from renku._compat import Path
+from renku.cli.dataset import FORMATS
 
 
 def test_datasets_import(data_file, data_repository, runner, project, client):
@@ -69,33 +72,24 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     assert result.exit_code == 0
 
 
-def test_datasets_list_empty(runner, project):
+@pytest.mark.parametrize('output_format', FORMATS.keys())
+def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
-    result = runner.invoke(cli.cli, ['dataset'])
+    format_option = '--format={0}'.format(output_format)
+    result = runner.invoke(cli.cli, ['dataset', format_option])
     assert result.exit_code == 0
 
-    output = result.output.split('\n')
-    assert output.pop(0).split() == ['ID', 'NAME', 'CREATED', 'AUTHORS']
-    assert set(output.pop(0)) == {'-', ' '}
-    assert output.pop(0) == ''
-    assert not output
 
-
-def test_datasets_list_non_empty(runner, project):
+@pytest.mark.parametrize('output_format', FORMATS.keys())
+def test_datasets_list_non_empty(output_format, runner, project):
     """Test listing with datasets."""
+    format_option = '--format={0}'.format(output_format)
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert result.exit_code == 0
 
-    result = runner.invoke(cli.cli, ['dataset'])
+    result = runner.invoke(cli.cli, ['dataset', format_option])
     assert result.exit_code == 0
-
-    output = result.output.split('\n')
-
-    assert output.pop(0).split() == ['ID', 'NAME', 'CREATED', 'AUTHORS']
-    assert set(output.pop(0)) == {'-', ' '}
-    assert 'dataset' in output.pop(0)
-    assert output.pop(0) == ''
-    assert not output
+    assert 'dataset' in result.output
 
 
 def test_multiple_file_to_dataset(
@@ -145,7 +139,7 @@ def test_repository_file_to_dataset(runner, project, client):
 
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
-        assert '../../../a' in dataset.files
+        assert Path('../../../a') in dataset.files
 
 
 def test_relative_import_to_dataset(

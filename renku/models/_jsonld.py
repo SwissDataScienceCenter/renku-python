@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,6 +18,7 @@
 """Support JSON-LD context in models."""
 
 import json
+import os
 import weakref
 from copy import deepcopy
 
@@ -188,7 +189,9 @@ def _container_attrib_builder(name, container, mapper):
             raise ValueError(value)
 
         kwargs.setdefault('converter', _converter)
-        return attrib(context=context, **kwargs)
+        context_ib = context.copy()
+        context_ib.update(kwargs.pop('context', {}))
+        return attrib(context=context_ib, **kwargs)
 
     return _attrib
 
@@ -208,6 +211,7 @@ def asjsonld(
     dict_factory=dict,
     retain_collection_types=False,
     export_context=True,
+    basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
     jsonld_fields = inst.__class__._jsonld_fields
@@ -220,7 +224,8 @@ def asjsonld(
     def convert_value(v):
         """Convert special types."""
         if isinstance(v, Path):
-            return str(v)
+            v = str(v)
+            return os.path.relpath(v, str(basedir)) if basedir else v
         return v
 
     for a in attrs:
@@ -238,7 +243,11 @@ def asjsonld(
         if recurse is True:
             if has(v.__class__):
                 rv[a.name] = asjsonld(
-                    v, recurse=True, filter=filter, dict_factory=dict_factory
+                    v,
+                    recurse=True,
+                    filter=filter,
+                    dict_factory=dict_factory,
+                    basedir=basedir,
                 )
             elif isinstance(v, (tuple, list, set)):
                 cf = v.__class__ if retain_collection_types is True else list
@@ -249,14 +258,23 @@ def asjsonld(
                         filter=filter,
                         dict_factory=dict_factory,
                         export_context=ec,
+                        basedir=basedir,
                     ) if has(i.__class__) else i for i in v
                 ])
             elif isinstance(v, dict):
                 df = dict_factory
                 rv[a.name] = df((
-                    asjsonld(kk, dict_factory=df) if has(kk.__class__) else kk,
-                    asjsonld(vv, dict_factory=df, export_context=ec)
-                    if has(vv.__class__) else vv
+                    asjsonld(
+                        kk,
+                        dict_factory=df,
+                        basedir=basedir,
+                    ) if has(kk.__class__) else convert_value(kk),
+                    asjsonld(
+                        vv,
+                        dict_factory=df,
+                        export_context=ec,
+                        basedir=basedir,
+                    ) if has(vv.__class__) else vv
                 ) for kk, vv in iteritems(v))
             else:
                 rv[a.name] = convert_value(v)

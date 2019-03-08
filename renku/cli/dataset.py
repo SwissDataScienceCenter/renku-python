@@ -77,6 +77,8 @@ will yield:
       my-dataset/
         datafile
 """
+
+import os
 from collections import OrderedDict
 
 import click
@@ -105,8 +107,23 @@ def _tabular(client, datasets=None):
     )
 
 
+def _jsonld(client, datasets=None):
+    """Format datasets as JSON-LD."""
+    from renku.models._json import dumps
+    from renku.models._jsonld import asjsonld
+
+    datasets = datasets or client.datasets
+    data = [
+        asjsonld(
+            dataset, basedir=os.path.relpath('.', start=str(path.parent))
+        ) for path, dataset in datasets.items()
+    ]
+    click.echo(dumps(data, indent=2))
+
+
 FORMATS = {
     'tabular': _tabular,
+    'json-ld': _jsonld,
 }
 
 

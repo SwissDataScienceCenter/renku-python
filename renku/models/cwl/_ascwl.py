@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -94,7 +94,7 @@ def ascwl(
     filter=None,
     dict_factory=dict,
     retain_collection_types=False,
-    basedir=None
+    basedir=None,
 ):
     """Return the ``attrs`` attribute values of *inst* as a dict.
 
@@ -125,7 +125,7 @@ def ascwl(
                     recurse=True,
                     filter=filter,
                     dict_factory=dict_factory,
-                    basedir=basedir
+                    basedir=basedir,
                 )
 
             elif isinstance(v, (tuple, list, set)):
@@ -136,7 +136,7 @@ def ascwl(
                         recurse=True,
                         filter=filter,
                         dict_factory=dict_factory,
-                        basedir=basedir
+                        basedir=basedir,
                     ) if has(i.__class__) else i for i in v
                 ])
 
@@ -152,10 +152,16 @@ def ascwl(
             elif isinstance(v, dict):
                 df = dict_factory
                 rv[a_name] = df((
-                    ascwl(kk, dict_factory=df, basedir=basedir)
-                    if has(kk.__class__) else kk,
-                    ascwl(vv, dict_factory=df, basedir=basedir)
-                    if has(vv.__class__) else vv
+                    ascwl(
+                        kk,
+                        dict_factory=df,
+                        basedir=basedir,
+                    ) if has(kk.__class__) else convert_value(kk),
+                    ascwl(
+                        vv,
+                        dict_factory=df,
+                        basedir=basedir,
+                    ) if has(vv.__class__) else vv
                 ) for kk, vv in iteritems(v))
             else:
                 rv[a_name] = convert_value(v)
