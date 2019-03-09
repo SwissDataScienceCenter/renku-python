@@ -113,6 +113,27 @@ class DatasetsApiMixin(object):
             with path.open('w') as f:
                 yaml.dump(source, f, default_flow_style=False)
 
+    def data_to_unlink(self, dataset, include, exclude=None):
+        """Determine which files to unlink from dataset based on filters.
+
+        :raises`errors.ResourceNotFound`: If no matching files are found.
+        :param dataset: Dataset from which we are removing files.
+        :param include: Unlink files matching the include pattern.
+        :param exclude: Keep files matching the exclude pattern.
+        """
+        data = resolve_files(self, dataset)
+
+        if not data:
+            raise errors.ResourceNotFound(resource_type='file')
+
+        from renku.cli.dataset import _include_exclude
+        result = {
+            path_: file_
+            for path_, file_ in data.items()
+            if _include_exclude(path_, include, exclude)
+        }
+        return result
+
     def add_data_to_dataset(
         self, dataset, url, git=False, force=False, **kwargs
     ):
@@ -436,3 +457,50 @@ def check_for_git_repo(url):
         except InvalidGitRepositoryError:
             is_git = False
     return is_git
+
+
+def resolve_files(client, dataset, collection=None):
+    """Map dataset files to absolute paths.
+
+    :param client: LocalClient instance.
+    :param dataset: Dataset instance.
+    :param collection: Arbitary collection, same in format to dataset.files.
+    """
+    collection = collection or dataset.files
+
+    result = {}
+    for path_, file_ in collection.items():
+        key = os.path.realpath(
+            str(client.renku_datasets_path / dataset.identifier.hex / path_)
+        )
+        file_.dataset = dataset.name
+        result[key] = file_
+
+    return result
+
+
+def check_same_paths(client, files, datasets=None):
+    """Check if given collection of files is contained in some other dataset.
+
+    :param client: LocalClient instance.
+    :param files: Dictionary containing absolute_path: DatasetFile
+    :param datasets: Collection of datasets over which we are searching.
+    :return:
+    """
+    datasets = datasets or client.datasets
+
+    result = {}
+    for dataset in datasets.values():
+        related = {
+            path_: dataset_file
+            for path_, dataset_file in dataset.files.items() if any(
+                df_.path == dataset_file.path and df_.dataset != dataset.name
+                for df_ in files.values()
+            )
+        }
+
+        if related:
+            resolved = resolve_files(client, dataset, related)
+            result.update(resolved)
+
+    return result

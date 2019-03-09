@@ -214,3 +214,10 @@ class Dataset(AuthorsMixin):
             files[key] = attr.evolve(file, path=key)
 
         return attr.evolve(self, files=files)
+
+    def unlink_file(self, file_path):
+        """Remove a file from dataset files container.
+
+        :param file_path: Relative path used as key inside files container.
+        """
+        return self.files.pop(file_path, None)

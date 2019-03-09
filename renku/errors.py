@@ -258,3 +258,15 @@ class UninitializedProject(RenkuException, click.ClickException):
             'Initialize it with "renku init"'.format(repo_path=repo_path)
         )
         super(UninitializedProject, self).__init__(msg)
+
+
+class ResourceNotFound(RenkuException, click.ClickException):
+    """Raise when resource is not found."""
+
+    def __init__(self, resource_type):
+        """Build a custom message."""
+        msg = 'Specified {0} resource could not be found.'.format(
+            resource_type
+        )
+
+        super().__init__(msg)

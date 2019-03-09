@@ -83,9 +83,11 @@ from fnmatch import fnmatch
 import click
 from click import BadParameter
 
-from .._compat import Path
+from renku._compat import Path
+from renku.api.datasets import check_same_paths
+
 from ._client import pass_local_client
-from ._echo import progressbar
+from ._echo import WARNING, progressbar
 from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
 from ._format.datasets import FORMATS as DATASETS_FORMATS
 
@@ -199,6 +201,72 @@ def ls_files(client, format, exclude, include, authors, dataset):
     DATASET_FILES_FORMATS[format](client, records)
 
 
+@dataset.command()
+@click.argument('name')
+@click.option(
+    '--include',
+    '-I',
+    default='*',
+    multiple=True,
+    help='Include files matching given pattern.'
+)
+@click.option(
+    '--exclude',
+    '-X',
+    multiple=True,
+    help='Exclude files matching given pattern.'
+)
+@click.option('--verbose', '-v', is_flag=True, help='Display deleted files.')
+@click.option(
+    '--yes', '-y', is_flag=True, help='Confirm unlinking of all files.'
+)
+@click.option('--delete', is_flag=True, help='Remove files from filesystem.')
+@pass_local_client(clean=True, commit=True)
+def unlink(client, delete, yes, verbose, exclude, include, name):
+    """Removes a file from dataset."""
+    with client.with_dataset(name=name) as dataset:
+        prompt = None if yes else delete_confirm_prompt
+        unlinked, deleted = unlink_files(
+            client,
+            dataset,
+            delete=delete,
+            include=include,
+            exclude=exclude,
+            prompt=prompt
+        )
+
+        click.secho('OK', fg='green')
+
+        if verbose:
+            for path_, data_file in unlinked.items():
+                click.secho(
+                    'Unlinked {0} from "{1}" dataset.'.format(
+                        path_,
+                        data_file.dataset,
+                    )
+                )
+            for path_, data_file in deleted.items():
+                click.secho(
+                    'Deleted {0} from "{1}" dataset.'.format(
+                        path_,
+                        data_file.dataset,
+                    )
+                )
+
+            click.secho(
+                'Unlinked {0} file{1}.'.format(
+                    len(unlinked),
+                    '' if len(unlinked) == 1 else 's',
+                )
+            )
+            click.secho(
+                'Deleted {0} file{1}.'.format(
+                    len(deleted),
+                    '' if len(deleted) == 1 else 's',
+                )
+            )
+
+
 def _include_exclude(file_path, include, exclude=None):
     """Check if file matches one of include filters and not in exclude filter.
 
@@ -251,6 +319,86 @@ def _filter(
                     records.append(file_)
 
     return sorted(records, key=lambda file_: file_.added)
+
+
+def delete_confirm_prompt(data_to_unlink, dataset):
+    """Shows confirm prompt and awaits for user input.
+
+    :param data_to_unlink: List of files which we are removing.
+    :param dataset_name: Name of the dataset from which files are removed.
+    :return: Boolean representing user confirmation.
+    """
+    prompt_text = 'You are about to remove following ' \
+                  'file{0} from "{1}" dataset.' \
+                  '\n'.format('' if len(data_to_unlink) == 1 else 's',
+                              dataset.name)
+
+    prompt_text += '\n'.join([
+        absolute for absolute, file_ in data_to_unlink.items()
+    ])
+
+    prompt_text += '\nDo you wish to proceed?'
+    return click.confirm(WARNING + prompt_text)
+
+
+def same_files_prompt(path_, file_):
+    """Shows confirm prompt and awaits for user input.
+
+    :param path_: Absolute path of the file which is being removed.
+    :param file_: DatasetFile instance which is being removed.
+    :return: Boolean representing user confirmation.
+    """
+    prompt_text = 'File you are removing is also ' \
+                  'part of "{1}" dataset.\n' \
+                  'You are about to remove following ' \
+                  'file from "{1}" dataset.\n' \
+                  '{0}\n' \
+                  'Do you wish to proceed?'.format(path_, file_.dataset)
+
+    return click.confirm(WARNING + prompt_text)
+
+
+def unlink_files(
+    client, dataset, delete=False, include=None, exclude=None, prompt=None
+):
+    """Removes files from dataset.
+
+    :raises click.Abort: If user does not confirms deletion.
+
+    :param client: LocalClient instance.
+    :param dataset: Dataset instance from which we are deleting files.
+    :param delete: Flag indicating if files should be removed from filesystem.
+    :param include: Remove files matching the include pattern.
+    :param exclude: Keep files matching the exclude pattern.
+    """
+    data_to_unlink = client.data_to_unlink(
+        dataset, include=include, exclude=exclude
+    )
+
+    if callable(prompt) and not prompt(data_to_unlink, dataset):
+        raise click.Abort
+
+    unlinked, removed = {}, {}
+    same_paths = check_same_paths(client, data_to_unlink)
+    for path_, file_ in same_paths.items():
+        if not same_files_prompt(path_, file_):
+            if dataset.unlink_file(file_.path):
+                unlinked[path_] = data_to_unlink.pop(path_)
+
+    remove_paths = [path_ for path_ in data_to_unlink.keys()]
+    label = 'Removing files from dataset'
+    with progressbar(remove_paths, label=label) as files:
+        for path_ in files:
+            data_file = data_to_unlink.get(path_, None)
+
+            if data_file:
+                if dataset.unlink_file(data_file.path):
+                    unlinked[path_] = data_file
+                if delete:
+                    Path(path_).unlink()
+                    removed[path_] = data_file
+
+    return unlinked, removed
 
 
 def get_datadir():
