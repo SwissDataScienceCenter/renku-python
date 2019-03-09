@@ -78,11 +78,15 @@ will yield:
         datafile
 """
 
+from fnmatch import fnmatch
+
 import click
 from click import BadParameter
 
+from .._compat import Path
 from ._client import pass_local_client
 from ._echo import progressbar
+from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
 from ._format.datasets import FORMATS as DATASETS_FORMATS
 
 
@@ -155,6 +159,98 @@ def add(client, name, urls, nocopy, relative_to, target, force):
                     )
     except FileNotFoundError:
         raise BadParameter('Could not process {0}'.format(url))
+
+
+@dataset.command('ls-files')
+@click.option(
+    '--dataset', multiple=True, help='Filter files in specific dataset.'
+)
+@click.option(
+    '--authors',
+    help='Filter files which where authored by specific authors. '
+    'Multiple authors are specified by comma.'
+)
+@click.option(
+    '--include',
+    default='*',
+    multiple=True,
+    help='Include files matching given pattern.'
+)
+@click.option(
+    '--exclude', multiple=True, help='Exclude files matching given pattern.'
+)
+@click.option(
+    '--format',
+    type=click.Choice(DATASET_FILES_FORMATS),
+    default='tabular',
+    help='Choose an output format.'
+)
+@pass_local_client(clean=False, commit=False)
+def ls_files(client, format, exclude, include, authors, dataset):
+    """List files in dataset."""
+    records = _filter(
+        client.datasets,
+        dataset_names=dataset,
+        authors=authors,
+        include=include,
+        exclude=exclude
+    )
+
+    DATASET_FILES_FORMATS[format](client, records)
+
+
+def _include_exclude(file_path, include, exclude=None):
+    """Check if file matches one of include filters and not in exclude filter.
+
+    :param file_path: Path to the file.
+    :param include: Tuple containing patterns to which include from result.
+    :param exclude: Tuple containing patterns to which exclude from result.
+    """
+    filename = Path(file_path).name
+
+    for pattern in exclude:
+        if fnmatch(filename, pattern):
+            return False
+
+    found = False
+    for pattern in include:
+        found = found or fnmatch(filename, pattern)
+
+    return found
+
+
+def _filter(
+    datasets, dataset_names=None, authors=None, include=None, exclude=None
+):
+    """Filter dataset files by specified filters.
+
+    :param dataset_names: Filter by specified dataset names.
+    :param authors: Filter by authors.
+    :param include: Include files matching file pattern.
+    :param exclude: Exclude files matching file pattern.
+    """
+    if isinstance(authors, str):
+        authors = set(authors.split(','))
+
+    if isinstance(authors, list) or isinstance(authors, tuple):
+        authors = set(authors)
+
+    records = []
+    for path_, dataset in datasets.items():
+        if dataset.name in dataset_names or not dataset_names:
+            for file_ in dataset.files.values():
+                file_.dataset = dataset.name
+                match = _include_exclude(file_.filename, include, exclude)
+
+                if authors:
+                    match = match and authors.issubset(
+                        set([author.name for author in file_.authors])
+                    )
+
+                if match:
+                    records.append(file_)
+
+    return sorted(records, key=lambda file_: file_.added)
 
 
 def get_datadir():
