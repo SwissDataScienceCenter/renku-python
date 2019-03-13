@@ -23,7 +23,6 @@ from collections import OrderedDict
 import attr
 from git import NULL_TREE
 
-from renku._compat import Path
 from renku.models import _jsonld as jsonld
 from renku.models.cwl import WORKFLOW_STEP_RUN_TYPES
 from renku.models.cwl._ascwl import CWLClass
@@ -228,11 +227,6 @@ class Activity(CommitMixin):
             yield from _nodes(output)
 
         yield from reversed(collections.values())
-
-    @staticmethod
-    def from_git_commit(commit, client, path=None):
-        """Populate information from the given Git commit."""
-        return from_git_commit(commit, client, path=None)
 
 
 @jsonld.s(
@@ -573,34 +567,3 @@ class WorkflowRun(ProcessRun):
                 # skip nodes connecting directory to file
                 continue
             yield from subprocess.nodes
-
-
-def from_git_commit(commit, client, path=None):
-    """Populate information from the given Git commit."""
-    if len(commit.parents) > 1:
-        return Activity(commit=commit, client=client)
-
-    if path is None:
-        for file_ in commit.stats.files.keys():
-            # 1.a Find process (CommandLineTool or Workflow);
-            if client.is_cwl(file_):
-                if path is not None:
-                    # This is a regular activity since it edits two CWL files
-                    return Activity(commit=commit, client=client)
-
-                path = file_
-
-    if path:
-        import yaml
-
-        data = (commit.tree / path).data_stream.read()
-        process = CWLClass.from_cwl(yaml.load(data), __reference__=Path(path))
-
-        return process.create_run(
-            commit=commit,
-            client=client,
-            process=process,
-            path=path,
-        )
-
-    return Activity(commit=commit, client=client)
