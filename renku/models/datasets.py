@@ -19,6 +19,7 @@
 
 import configparser
 import datetime
+import os
 import re
 import uuid
 from functools import partial
@@ -100,26 +101,44 @@ class Author(object):
         )
 
 
+@attr.s
+class AuthorsMixin:
+    """Mixin for handling authors container."""
+
+    authors = jsonld.container.list(Author, kw_only=True)
+
+    @property
+    def authors_csv(self):
+        """Comma-separated list of authors associated with dataset."""
+        return ",".join(author.name for author in self.authors)
+
+
 @jsonld.s(
     type='http://schema.org/DigitalDocument',
     slots=True,
 )
-class DatasetFile(object):
+class DatasetFile(AuthorsMixin):
     """Represent a file in a dataset."""
 
-    path = _path_attr()
+    path = _path_attr(kw_only=True)
     url = jsonld.ib(
-        default=None,
-        context='http://schema.org/url',
+        default=None, context='http://schema.org/url', kw_only=True
     )
-    authors = jsonld.container.list(Author)
-    dataset = attr.ib(default=None)
-    added = jsonld.ib(context='http://schema.org/dateCreated', )
+    authors = jsonld.container.list(Author, kw_only=True)
+    dataset = attr.ib(default=None, kw_only=True)
+    added = jsonld.ib(context='http://schema.org/dateCreated', kw_only=True)
 
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
+
+    @property
+    def full_path(self):
+        """Return full path in the current reference frame."""
+        return Path(
+            os.path.realpath(str(self.__reference__.parent / self.path))
+        )
 
 
 def _parse_date(value):
@@ -148,7 +167,7 @@ def _convert_dataset_files(value):
         'scoro': 'http://purl.org/spar/scoro/',
     },
 )
-class Dataset(object):
+class Dataset(AuthorsMixin):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')

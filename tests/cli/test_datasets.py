@@ -19,6 +19,7 @@
 
 from __future__ import absolute_import, print_function
 
+import json
 import os
 
 import git
@@ -26,7 +27,8 @@ import pytest
 
 from renku import cli
 from renku._compat import Path
-from renku.cli._format.datasets import FORMATS
+from renku.cli._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
+from renku.cli._format.datasets import FORMATS as DATASETS_FORMATS
 
 
 def test_datasets_import(data_file, data_repository, runner, project, client):
@@ -72,7 +74,7 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     assert result.exit_code == 0
 
 
-@pytest.mark.parametrize('output_format', FORMATS.keys())
+@pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
     format_option = '--format={0}'.format(output_format)
@@ -80,7 +82,7 @@ def test_datasets_list_empty(output_format, runner, project):
     assert result.exit_code == 0
 
 
-@pytest.mark.parametrize('output_format', FORMATS.keys())
+@pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_non_empty(output_format, runner, project):
     """Test listing with datasets."""
     format_option = '--format={0}'.format(output_format)
@@ -237,8 +239,7 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
 
 
 def test_dataset_add_with_link(tmpdir, runner, project, client):
-    """Test adding data to dataset with --no-copy flag."""
-    import os
+    """Test adding data to dataset with --link flag."""
     import stat
 
     # create a dataset
@@ -309,3 +310,194 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
     # check that original inodes are within created ones
     for inode in received_inodes:
         assert inode not in original_inodes
+
+
+def test_datasets_ls_files_tabular_empty(runner, project):
+    """Test listing of data within empty dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # list all files in dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'ls-files', '--dataset=my-dataset']
+    )
+    assert result.exit_code == 0
+
+    # check output
+    output = result.output.split('\n')
+    assert output.pop(0).split() == ['ADDED', 'AUTHORS', 'DATASET', 'PATH']
+    assert set(output.pop(0)) == {' ', '-'}
+    assert output.pop(0) == ''
+    assert not output
+
+
+@pytest.mark.parametrize('output_format', DATASET_FILES_FORMATS.keys())
+def test_datasets_ls_files_check_exit_code(output_format, runner, project):
+    """Test file listing exit codes for different formats."""
+    format_option = '--format={0}'.format(output_format)
+    result = runner.invoke(cli.cli, ['dataset', 'ls-files', format_option])
+    assert result.exit_code == 0
+
+
+def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
+    """Test listing of data within dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create some data
+    paths = []
+    created_files = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+        created_files.append(new_file.basename)
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    # list all files in non empty dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'ls-files', '--dataset=my-dataset']
+    )
+    assert result.exit_code == 0
+
+    # check output from ls-files command
+    output = result.output.split('\n')
+    assert output.pop(0).split() == ['ADDED', 'AUTHORS', 'DATASET', 'PATH']
+    assert set(output.pop(0)) == {' ', '-'}
+
+    # check listing
+    added_at = []
+    for i in range(3):
+        row = output.pop(0).split(' ')
+        assert Path(row.pop()).name in created_files
+        added_at.append(row.pop(0))
+
+    # check if sorted by added_at
+    assert added_at == sorted(added_at)
+
+
+def test_datasets_ls_files_tabular_patterns(tmpdir, runner, project):
+    """Test listing of data within dataset with include/exclude filters."""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create some data
+    subdir = tmpdir.mkdir('sub')
+    paths = [str(subdir)]
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+        sub_file = subdir.join('sub_file_{0}'.format(i))
+        sub_file.write(str(i))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    # check include / exclude filters
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'ls-files', '--include=**/file*', '--exclude=**/file_2']
+    )
+    assert result.exit_code == 0
+
+    # check output
+    assert 'file_0' in result.output
+    assert 'file_1' in result.output
+    assert 'file_2' not in result.output
+
+    # check directory pattern
+    result = runner.invoke(
+        cli.cli, ['dataset', 'ls-files', '--include=**/sub/*']
+    )
+    assert result.exit_code == 0
+
+    # check output
+    assert 'sub_file_0' in result.output
+    assert 'sub_file_1' in result.output
+    assert 'sub_file_2' in result.output
+
+
+def test_datasets_ls_files_tabular_authors(tmpdir, runner, project, client):
+    """Test listing of data within dataset with authors filters."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create some data
+    paths = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    authors = None
+    with client.with_dataset(name='my-dataset') as dataset:
+        authors = dataset.authors_csv
+
+    # check include / exclude filters
+    result = runner.invoke(
+        cli.cli, ['dataset', 'ls-files', '--authors={0}'.format(authors)]
+    )
+    assert result.exit_code == 0
+
+    # check output
+    for file_ in paths:
+        assert Path(file_).name in result.output
+
+
+def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
+    """Test listing of data within dataset and check that paths are correct."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create some data
+    paths = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    # check include / exclude filters
+    result = runner.invoke(
+        cli.cli, ['dataset', 'ls-files', '--format=json-ld']
+    )
+    assert result.exit_code == 0
+
+    output = json.loads(result.output)
+    for record in output:
+        assert Path(record['url']).exists()
