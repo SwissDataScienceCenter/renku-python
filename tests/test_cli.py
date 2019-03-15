@@ -759,14 +759,14 @@ def test_simple_rerun(runner, project, run):
         if greeting != new_greeting:
             break
 
-    assert greeting != new_greeting, "Something is not random"
+    assert greeting != new_greeting, 'Something is not random'
 
     for _ in range(100):
         new_greeting = _rerun()
         if greeting == new_greeting:
             break
 
-    assert greeting == new_greeting, "Something is not random"
+    assert greeting == new_greeting, 'Something is not random'
 
 
 def test_rerun_with_inputs(runner, project, run):
@@ -861,7 +861,7 @@ def test_rerun_with_edited_inputs(runner, project, run):
 
 
 @pytest.mark.skipif(
-    shutil.which('docker') is None, reason="requires docker command line"
+    shutil.which('docker') is None, reason='requires docker command line'
 )
 def test_image_pull(runner, project):
     """Test image pulling."""
