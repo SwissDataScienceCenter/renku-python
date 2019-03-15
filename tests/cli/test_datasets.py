@@ -93,6 +93,12 @@ def test_datasets_list_non_empty(output_format, runner, project):
     assert result.exit_code == 0
     assert 'dataset' in result.output
 
+    result = runner.invoke(
+        cli.cli, ['dataset', '--revision=HEAD~1', format_option]
+    )
+    assert result.exit_code == 0
+    assert 'dataset' not in result.output
+
 
 def test_multiple_file_to_dataset(
     tmpdir, data_repository, runner, project, client

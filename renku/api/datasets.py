@@ -51,6 +51,26 @@ class DatasetsApiMixin(object):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
         return self.renku_path.joinpath(self.DATASETS)
 
+    def datasets_from_commit(self, commit=None):
+        """Return datasets defined in a commit."""
+        commit = commit or self.repo.head.commit
+
+        try:
+            datasets = commit.tree / self.renku_home / self.DATASETS
+        except KeyError:
+            return
+
+        for tree in datasets:
+            try:
+                blob = tree / self.METADATA
+            except KeyError:
+                continue
+
+            yield Dataset.from_jsonld(
+                yaml.safe_load(blob.data_stream.read()),
+                __reference__=Path(blob.path),
+            )
+
     @property
     def datasets(self):
         """Return mapping from path to dataset."""
@@ -90,6 +110,7 @@ class DatasetsApiMixin(object):
                     self.METADATA
                 )
                 path.parent.mkdir(parents=True, exist_ok=True)
+                setattr(dataset, '__reference__', path)
 
                 if name:
                     LinkReference.create(
