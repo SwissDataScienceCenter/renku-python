@@ -98,7 +98,7 @@ def repository():
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
-        assert result.exit_code == 0
+        assert 0 == result.exit_code
 
         yield project_path
 
