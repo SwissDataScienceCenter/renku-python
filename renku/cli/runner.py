@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -92,7 +92,7 @@ def rerun(client, run, job):
             args.append(job_file.name)
 
             with job_file as fp:
-                yaml.dump(yaml.load(job), stream=fp, encoding='utf-8')
+                yaml.dump(yaml.safe_load(job), stream=fp, encoding='utf-8')
 
         if run:
             return call(args, cwd=os.getcwd())

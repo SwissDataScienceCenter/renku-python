@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -191,7 +191,7 @@ class RepositoryApiMixin(GitCore):
         if path:
             data = (commit.tree / path).data_stream.read()
             process = CWLClass.from_cwl(
-                yaml.load(data), __reference__=Path(path)
+                yaml.safe_load(data), __reference__=Path(path)
             )
 
             return process.create_run(
@@ -294,7 +294,7 @@ class RepositoryApiMixin(GitCore):
 
             if self.renku_metadata_path.exists():
                 with metadata_path.open('r') as f:
-                    source = yaml.load(f) or {}
+                    source = yaml.safe_load(f) or {}
             else:
                 source = {}
 

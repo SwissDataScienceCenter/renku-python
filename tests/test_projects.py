@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -62,7 +62,7 @@ def test_project_serialization():
 
 def test_project_metadata_compatibility():
     """Test loading of the initial version."""
-    project = Project.from_jsonld(yaml.load(PROJECT_V1))
+    project = Project.from_jsonld(yaml.safe_load(PROJECT_V1))
 
     assert project.name == 'demo'
     assert project.version == '1'
