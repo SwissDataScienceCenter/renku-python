@@ -82,7 +82,7 @@ import click
 from click import BadParameter
 
 from ._client import pass_local_client
-from ._echo import progressbar
+from ._echo import WARNING, progressbar
 from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
 from ._format.datasets import FORMATS as DATASETS_FORMATS
 
@@ -199,6 +199,48 @@ def ls_files(client, names, authors, include, exclude, format):
     )
 
     DATASET_FILES_FORMATS[format](client, records)
+
+
+@dataset.command()
+@click.argument('name')
+@click.option(
+    '-I',
+    '--include',
+    multiple=True,
+    help='Include files matching given pattern.'
+)
+@click.option(
+    '-X',
+    '--exclude',
+    multiple=True,
+    help='Exclude files matching given pattern.'
+)
+@click.option(
+    '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
+)
+@pass_local_client(clean=True, commit=True)
+def unlink(client, name, include, exclude, yes):
+    """Remove matching files from a dataset."""
+    dataset = client.load_dataset(name=name)
+    records = _filter(
+        client, names=[dataset.name], include=include, exclude=exclude
+    )
+
+    if not yes and records:
+        prompt_text = (
+            'You are about to remove '
+            'following from "{0}" dataset.\n'.format(dataset.name) +
+            '\n'.join([str(record.full_path)
+                       for record in records]) + '\nDo you wish to continue?'
+        )
+        click.confirm(WARNING + prompt_text, abort=True)
+
+    if records:
+        for item in records:
+            dataset.unlink_file(item.path)
+
+        client.store_dataset(dataset)
+        click.secho('OK', fg='green')
 
 
 def _include_exclude(file_path, include=None, exclude=None):

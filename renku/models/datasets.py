@@ -217,3 +217,19 @@ class Dataset(AuthorsMixin):
             files[key] = attr.evolve(file, path=key)
 
         return attr.evolve(self, files=files)
+
+    def unlink_file(self, file_path):
+        """Unlink a file from dataset.
+
+        :param file_path: Relative path used as key inside files container.
+        """
+        return self.files.pop(file_path, None)
+
+    def asjsonld(self):
+        """Store dataset state to original reference file."""
+        from renku.models._jsonld import asjsonld
+
+        source = {}
+        source.update(self.__source__)
+        source.update(asjsonld(self))
+        return source
