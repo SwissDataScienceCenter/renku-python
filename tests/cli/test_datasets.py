@@ -503,3 +503,273 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
     output = json.loads(result.output)
     for record in output:
         assert Path(record['url']).exists()
+
+
+def test_dataset_unlink_file_not_found(runner, project):
+    """Test unlinking of file from dataset with no files found."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # list all files in dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'unlink', 'my-dataset', '--include', 'notthere.csv']
+    )
+    assert result.exit_code == 1
+
+    # check output
+    expected = 'Error: Specified file resource could not be found.'
+    output = result.output.split('\n')
+    assert output.pop(0) == expected
+    assert output.pop(0) == ''
+    assert not output
+
+
+def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
+    """Test unlinking of file from dataset and aborting."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+
+    # unlink file from dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'unlink', 'my-dataset', '--include', new_file.basename],
+        input='n'
+    )
+    assert result.exit_code == 1
+
+    # check output
+    assert 'Aborted!' in result.output
+
+
+def test_dataset_unlink_verbose(tmpdir, runner, client):
+    """Test unlinking of file from dataset and check verbose output."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--include', new_file.basename,
+            '-v'
+        ],
+        input='y'
+    )
+    assert result.exit_code == 0
+
+    # check output
+    assert 'Unlinked 1 file.' in result.output
+    assert 'OK' in result.output
+
+    # check if files got removed from dataset
+    with client.with_dataset(name='my-dataset') as dataset:
+        dataset_files = [f.name for f in dataset.files]
+        assert new_file.basename not in dataset_files
+
+
+def test_dataset_unlink_verbose_delete(tmpdir, runner, client):
+    """Test unlinking of file from dataset and check verbose output."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--include', new_file.basename,
+            '--delete', '-v'
+        ],
+        input='y'
+    )
+    assert result.exit_code == 0
+
+    # check output
+    assert 'Deleted 1 file.' in result.output
+    assert 'Unlinked 1 file.' in result.output
+
+    # check if files got removed from dataset
+    with client.with_dataset(name='my-dataset') as dataset:
+        dataset_files = [f.name for f in dataset.files]
+        assert new_file.basename not in dataset_files
+
+
+def test_dataset_unlink_file_check_deleted_files(tmpdir, runner, project):
+    """Test unlinking of file and check if files got deleted"""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    expected_file_path = Path(project) / 'data/my-dataset' / new_file.basename
+    assert not expected_file_path.exists()
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+    assert expected_file_path.exists()
+
+    # remove file from filesystem
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--delete', '--include',
+            new_file.basename, '-y'
+        ]
+    )
+    assert result.exit_code == 0
+
+    # check if file was removed
+    assert not expected_file_path.exists()
+
+
+def test_dataset_unlink_file_check_related_files_delete(runner, project):
+    """Test unlinking of related file and make sure file is deleted."""
+    from git import Repo
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    repo = Repo(project).git
+    index = Repo(project).index
+    file_path = '{}/{}'.format(project, 'datafile.csv')
+    with open(file_path, 'w') as f:
+        f.write('1,2,3')
+    repo.add(file_path)
+    index.commit('added datafile')
+
+    # add data to dataset
+    for ds_name in ['my-dataset', 'somedataset']:
+        result = runner.invoke(cli.cli, ['dataset', 'add', ds_name, file_path])
+        assert result.exit_code == 0
+        assert Path(file_path).exists()
+
+    # remove file from filesystem
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--delete', '--include',
+            'datafile.csv', '-y'
+        ],
+        input='y'
+    )
+    assert result.exit_code == 0
+
+    # check output
+    assert 'OK' in result.output
+    assert not Path(file_path).exists()
+
+
+def test_dataset_unlink_file_check_related_files_keep(runner, project):
+    """Test unlinking of related file and make sure file is kept."""
+    from git import Repo
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    repo = Repo(project).git
+    index = Repo(project).index
+    file_path = '{}/{}'.format(project, 'datafile.csv')
+    with open(file_path, 'w') as f:
+        f.write('1,2,3')
+    repo.add(file_path)
+    index.commit('added datafile')
+
+    # add data to dataset
+    for ds_name in ['my-dataset', 'somedataset']:
+        result = runner.invoke(cli.cli, ['dataset', 'add', ds_name, file_path])
+        assert result.exit_code == 0
+        assert Path(file_path).exists()
+
+    # remove file from filesystem
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--delete', '--include',
+            'datafile.csv', '-y'
+        ],
+        input='n'
+    )
+    assert result.exit_code == 0
+
+    # check output
+    assert 'OK' in result.output
+    assert Path(file_path).exists()
+
+
+def test_dataset_unlink_file_check_removal_from_dataset(
+    tmpdir, runner, project, client
+):
+    """Test unlinking of file and check removal from dataset"""
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert result.exit_code == 0
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert result.exit_code == 0
+
+    with client.with_dataset(name='my-dataset') as dataset:
+        assert new_file.basename in [
+            file_.path.name for file_ in dataset.files.values()
+        ]
+
+    # remove file from filesystem
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'unlink', 'my-dataset', '--include', new_file.basename,
+            '-y'
+        ]
+    )
+    assert result.exit_code == 0
+
+    with client.with_dataset(name='my-dataset') as dataset:
+        assert new_file.basename not in [
+            file_.path.name for file_ in dataset.files.values()
+        ]

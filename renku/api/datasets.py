@@ -21,6 +21,7 @@ import os
 import shutil
 import stat
 import warnings
+from collections import defaultdict
 from configparser import NoSectionError
 from contextlib import contextmanager
 from urllib import error, parse
@@ -32,7 +33,6 @@ import yaml
 from renku import errors
 from renku._compat import Path
 from renku.models._git import GitURL
-from renku.models._jsonld import asjsonld
 from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
 
 
@@ -71,6 +71,18 @@ class DatasetsApiMixin(object):
                 __reference__=Path(blob.path),
             )
 
+    def file_dataset_index(self, commit=None):
+        """Reverse index of dataset files."""
+        index = defaultdict(list)
+
+        for dataset in self.datasets_from_commit(commit=commit):
+            for file_ in dataset.files.values():
+                index[file_.full_path].append((dataset, file_))
+                if file_.full_path.is_symlink():
+                    index[file_.full_path.resolve()].append((dataset, file_))
+
+        return index
+
     @property
     def datasets(self):
         """Return mapping from path to dataset."""
@@ -79,50 +91,61 @@ class DatasetsApiMixin(object):
             result[path] = Dataset.from_yaml(path)
         return result
 
+    def load_dataset(self, name=None):
+        """Load dataset reference file."""
+        from renku.models.refs import LinkReference
+        path = None
+        dataset = None
+
+        if name:
+            path = self.renku_datasets_path / name / self.METADATA
+
+            if not path.exists():
+                path = LinkReference(
+                    client=self, name='datasets/' + name
+                ).reference
+
+            if path.exists():
+                with path.open('r') as f:
+                    source = yaml.safe_load(f) or {}
+                dataset = Dataset.from_jsonld(source, __reference__=path)
+
+        if dataset is None:
+            source = {}
+            dataset = Dataset(name=name)
+
+            path = (
+                self.renku_datasets_path / dataset.identifier.hex /
+                self.METADATA
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            setattr(dataset, '__reference__', path)
+
+            if name:
+                LinkReference.create(
+                    client=self, name='datasets/' + name
+                ).set_reference(path)
+
+        setattr(dataset, '__source__', source)
+        return dataset
+
+    def store_dataset(self, dataset):
+        """Store dataset reference file."""
+        with dataset.__reference__.open('w') as f:
+            yaml.dump(dataset.asjsonld(), f, default_flow_style=False)
+
     @contextmanager
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
-        from renku.models.refs import LinkReference
-
         with self.lock:
-            path = None
-            dataset = None
-
-            if name:
-                path = self.renku_datasets_path / name / self.METADATA
-
-                if not path.exists():
-                    path = LinkReference(
-                        client=self, name='datasets/' + name
-                    ).reference
-
-                if path.exists():
-                    with path.open('r') as f:
-                        source = yaml.safe_load(f) or {}
-                    dataset = Dataset.from_jsonld(source, __reference__=path)
-
+            dataset = self.load_dataset(name=name)
             if dataset is None:
-                source = {}
-                dataset = Dataset(name=name)
-
-                path = (
-                    self.renku_datasets_path / dataset.identifier.hex /
-                    self.METADATA
-                )
-                path.parent.mkdir(parents=True, exist_ok=True)
-                setattr(dataset, '__reference__', path)
-
-                if name:
-                    LinkReference.create(
-                        client=self, name='datasets/' + name
-                    ).set_reference(path)
+                raise FileNotFoundError
 
             dataset_path = self.path / self.datadir / dataset.name
             dataset_path.mkdir(parents=True, exist_ok=True)
 
             yield dataset
-
-            source.update(**asjsonld(dataset))
 
             # TODO
             # if path is None:
@@ -130,8 +153,7 @@ class DatasetsApiMixin(object):
             #     if path.exists():
             #         raise ValueError('Dataset already exists')
 
-            with path.open('w') as f:
-                yaml.dump(source, f, default_flow_style=False)
+            self.store_dataset(dataset)
 
     def add_data_to_dataset(
         self, dataset, url, git=False, force=False, **kwargs
