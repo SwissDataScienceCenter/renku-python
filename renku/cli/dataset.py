@@ -159,9 +159,7 @@ def add(client, name, urls, link, relative_to, target, force):
 
 
 @dataset.command('ls-files')
-@click.option(
-    '--dataset', multiple=True, help='Filter files in specific dataset.'
-)
+@click.argument('names', nargs=-1)
 @click.option(
     '--authors',
     help='Filter files which where authored by specific authors. '
@@ -188,14 +186,10 @@ def add(client, name, urls, link, relative_to, target, force):
     help='Choose an output format.'
 )
 @pass_local_client(clean=False, commit=False)
-def ls_files(client, format, exclude, include, authors, dataset):
+def ls_files(client, names, authors, include, exclude, format):
     """List files in dataset."""
     records = _filter(
-        client,
-        dataset_names=dataset,
-        authors=authors,
-        include=include,
-        exclude=exclude
+        client, names=names, authors=authors, include=include, exclude=exclude
     )
 
     DATASET_FILES_FORMATS[format](client, records)
@@ -222,9 +216,7 @@ def _include_exclude(file_path, include=None, exclude=None):
     return True
 
 
-def _filter(
-    client, dataset_names=None, authors=None, include=None, exclude=None
-):
+def _filter(client, names=None, authors=None, include=None, exclude=None):
     """Filter dataset files by specified filters.
 
     :param dataset_names: Filter by specified dataset names.
@@ -240,7 +232,7 @@ def _filter(
 
     records = []
     for path_, dataset in client.datasets.items():
-        if dataset.name in dataset_names or not dataset_names:
+        if not names or dataset.name in names:
             for file_ in dataset.files.values():
                 file_.dataset = dataset.name
 

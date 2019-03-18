@@ -319,9 +319,7 @@ def test_datasets_ls_files_tabular_empty(runner, project):
     assert result.exit_code == 0
 
     # list all files in dataset
-    result = runner.invoke(
-        cli.cli, ['dataset', 'ls-files', '--dataset=my-dataset']
-    )
+    result = runner.invoke(cli.cli, ['dataset', 'ls-files', 'my-dataset'])
     assert result.exit_code == 0
 
     # check output
@@ -364,9 +362,7 @@ def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
     assert result.exit_code == 0
 
     # list all files in non empty dataset
-    result = runner.invoke(
-        cli.cli, ['dataset', 'ls-files', '--dataset=my-dataset']
-    )
+    result = runner.invoke(cli.cli, ['dataset', 'ls-files', 'my-dataset'])
     assert result.exit_code == 0
 
     # check output from ls-files command
