@@ -59,10 +59,10 @@ def _split_section_and_key(key):
 def config(client, key, value):
     """Get and set Renku repository and global options."""
     if value is None:
-        cfg = client.git.config_reader()
+        cfg = client.repo.config_reader()
         click.echo(cfg.get_value(*_split_section_and_key(key)))
     else:
-        with client.git.config_writer() as cfg:
+        with client.repo.config_writer() as cfg:
             section, config_key = _split_section_and_key(key)
             cfg.set_value(section, config_key, value)
             click.echo(value)

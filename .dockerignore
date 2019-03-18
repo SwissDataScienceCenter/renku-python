@@ -5,9 +5,6 @@ __pycache__
 build
 dist
 
-.git
-*.gitignore
-
 *.mo
 *.pyc
 *.swp
@@ -18,11 +15,7 @@ dist
 *.egg-info
 .eggs
 
-.dockerignore
-Dockerfile*
 docker-compose.yml
 docker-compose-dev.yml
 
 Procfile*
-
-Makefile

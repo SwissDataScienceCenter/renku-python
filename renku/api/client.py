@@ -21,11 +21,13 @@ import attr
 
 from .datasets import DatasetsApiMixin
 from .repository import PathMixin, RepositoryApiMixin
+from .storage import StorageApiMixin
 
 
 @attr.s
 class LocalClient(
     PathMixin,
+    StorageApiMixin,
     RepositoryApiMixin,
     DatasetsApiMixin,
 ):

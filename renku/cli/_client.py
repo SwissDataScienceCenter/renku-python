@@ -17,12 +17,16 @@
 # limitations under the License.
 """Client utilities."""
 
+import contextlib
+import functools
 import uuid
 
 import click
 import yaml
 
 from renku.api import LocalClient
+
+from ._git import get_git_isolation
 
 
 def _uuid_representer(dumper, data):
@@ -32,4 +36,43 @@ def _uuid_representer(dumper, data):
 
 yaml.add_representer(uuid.UUID, _uuid_representer)
 
-pass_local_client = click.make_pass_decorator(LocalClient, ensure=True)
+
+def pass_local_client(
+    method=None,
+    clean=None,
+    up_to_date=None,
+    commit=None,
+    ignore_std_streams=True
+):
+    """Pass client from the current context to the decorated command."""
+    if method is None:
+        return functools.partial(
+            pass_local_client,
+            clean=clean,
+            up_to_date=up_to_date,
+            commit=commit,
+            ignore_std_streams=ignore_std_streams,
+        )
+
+    def new_func(*args, **kwargs):
+        ctx = click.get_current_context()
+        client = ctx.ensure_object(LocalClient)
+        stack = contextlib.ExitStack()
+
+        # Handle --isolation option:
+        if get_git_isolation():
+            client = stack.enter_context(client.worktree())
+
+        transaction = client.transaction(
+            clean=clean,
+            up_to_date=up_to_date,
+            commit=commit,
+            ignore_std_streams=ignore_std_streams
+        )
+        stack.enter_context(transaction)
+
+        with stack:
+            result = ctx.invoke(method, client, *args, **kwargs)
+        return result
+
+    return functools.update_wrapper(new_func, method)

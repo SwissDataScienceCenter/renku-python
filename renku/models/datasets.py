@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,6 +19,7 @@
 
 import configparser
 import datetime
+import os
 import re
 import uuid
 from functools import partial
@@ -37,24 +38,7 @@ NoneType = type(None)
 _path_attr = partial(
     jsonld.ib,
     converter=Path,
-    validator=lambda i, arg, val: Path(val).absolute().is_file()
 )
-
-
-def _deserialize_set(s, cls):
-    """Deserialize a list of dicts into classes."""
-    return set(
-        cls.from_jsonld(x) if hasattr(cls, 'from_jsonld') else cls(**x)
-        for x in s
-    )
-
-
-def _deserialize_dict(d, cls):
-    """Deserialize a list of dicts into classes."""
-    return {
-        k: cls.from_jsonld(v) if hasattr(cls, 'from_jsonld') else cls(**v)
-        for k, v in d.items()
-    }
 
 
 @jsonld.s(
@@ -117,29 +101,44 @@ class Author(object):
         )
 
 
+@attr.s
+class AuthorsMixin:
+    """Mixin for handling authors container."""
+
+    authors = jsonld.container.list(Author, kw_only=True)
+
+    @property
+    def authors_csv(self):
+        """Comma-separated list of authors associated with dataset."""
+        return ",".join(author.name for author in self.authors)
+
+
 @jsonld.s(
     type='http://schema.org/DigitalDocument',
     slots=True,
 )
-class DatasetFile(object):
+class DatasetFile(AuthorsMixin):
     """Represent a file in a dataset."""
 
-    path = _path_attr()
+    path = _path_attr(kw_only=True)
     url = jsonld.ib(
-        default=None,
-        context='http://schema.org/url',
+        default=None, context='http://schema.org/url', kw_only=True
     )
-    authors = jsonld.container.list(Author)
-    dataset = attr.ib(default=None)
-    added = jsonld.ib(context='http://schema.org/dateCreated', )
+    authors = jsonld.container.list(Author, kw_only=True)
+    dataset = attr.ib(default=None, kw_only=True)
+    added = jsonld.ib(context='http://schema.org/dateCreated', kw_only=True)
 
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
 
-
-_deserialize_files = partial(_deserialize_dict, cls=DatasetFile)
+    @property
+    def full_path(self):
+        """Return full path in the current reference frame."""
+        return Path(
+            os.path.realpath(str(self.__reference__.parent / self.path))
+        )
 
 
 def _parse_date(value):
@@ -147,6 +146,15 @@ def _parse_date(value):
     if isinstance(value, datetime.datetime):
         return value
     return parse_date(value)
+
+
+def _convert_dataset_files(value):
+    """Convert dataset files."""
+    output = {}
+    for k, v in value.items():
+        inst = DatasetFile.from_jsonld(v)
+        output[inst.path] = inst
+    return output
 
 
 @jsonld.s(
@@ -159,10 +167,10 @@ def _parse_date(value):
         'scoro': 'http://purl.org/spar/scoro/',
     },
 )
-class Dataset(object):
+class Dataset(AuthorsMixin):
     """Repesent a dataset."""
 
-    SUPPORTED_SCHEMES = ('', 'file', 'http', 'https')
+    SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
     name = jsonld.ib(type=str, context='dcterms:name')
 
@@ -180,9 +188,32 @@ class Dataset(object):
         },
     )
     authors = jsonld.container.list(Author)
-    files = jsonld.container.index(DatasetFile)
+    files = jsonld.container.index(
+        DatasetFile,
+        converter=_convert_dataset_files,
+    )
 
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
+
+    @property
+    def short_id(self):
+        """Shorter version of identifier."""
+        return str(self.identifier)[:8]
+
+    @property
+    def authors_csv(self):
+        """Comma-separated list of authors associated with dataset."""
+        return ",".join(author.name for author in self.authors)
+
+    def rename_files(self, rename):
+        """Rename files using the path mapping function."""
+        files = {}
+
+        for key, file in self.files.items():
+            key = rename(key)
+            files[key] = attr.evolve(file, path=key)
+
+        return attr.evolve(self, files=files)

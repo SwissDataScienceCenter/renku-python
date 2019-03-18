@@ -28,10 +28,10 @@ def notebooks():
 @notebooks.command()
 def list():
     """Show running notebooks."""
-    raise NotImplemented()
+    raise NotImplementedError()
 
 
 @notebooks.command()
 def launch():
     """Launch a new notebook."""
-    raise NotImplemented()
+    raise NotImplementedError()

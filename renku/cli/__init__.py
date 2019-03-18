@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -30,13 +30,19 @@ execute ``renku help``:
 
     Check common Renku commands used in various situations.
 
+
     Options:
-      --version            Print version number.
-      --config PATH        Location of client config files.
-      --config-path        Print application config path.
-      --path <path>        Location of a Renku repository.  [default: .]
-      --renku-home <path>  Location of Renku directory.  [default: .renku]
-      -h, --help           Show this message and exit.
+      --version                       Print version number.
+      --config PATH                   Location of client config files.
+      --config-path                   Print application config path.
+      --install-completion            Install completion for the current shell.
+      --path <path>                   Location of a Renku repository.
+                                      [default: (dynamic)]
+      --renku-home <path>             Location of the Renku directory.
+                                      [default: .renku]
+      --external-storage / -S, --no-external-storage
+                                      Use an external file storage service.
+      -h, --help                      Show this message and exit.
 
     Commands:
       # [...]
@@ -72,24 +78,37 @@ directory when running the ``init`` command.
 import uuid
 
 import click
+import click_completion
 import yaml
 
+from ..api.client import LocalClient
+from ..api.repository import default_path
 from ._config import RENKU_HOME, default_config_dir, print_app_config_path
-from ._version import print_version
+from ._exc import IssueFromTraceback
+from ._options import install_completion, option_use_external_storage
+from ._version import check_version, print_version
 from .config import config
 from .dataset import dataset
+from .doctor import doctor
 from .githooks import githooks
 from .image import image
 from .init import init
 from .log import log
+from .migrate import migrate
+from .move import move
+from .pull import pull
 from .rerun import rerun
 from .run import run
 from .runner import runner
 from .show import show
 from .status import status
+from .storage import storage
 from .update import update
 from .workflow import workflow
 from .workon import deactivate, workon
+
+#: Monkeypatch Click application.
+click_completion.init()
 
 
 def _uuid_representer(dumper, data):
@@ -101,6 +120,7 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
 
 
 @click.group(
+    cls=IssueFromTraceback,
     context_settings={
         'auto_envvar_prefix': 'RENKU',
         'help_option_names': ['-h', '--help'],
@@ -131,10 +151,18 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     help=print_app_config_path.__doc__
 )
 @click.option(
+    '--install-completion',
+    is_flag=True,
+    callback=install_completion,
+    expose_value=False,
+    is_eager=True,
+    help=install_completion.__doc__,
+)
+@click.option(
     '--path',
     show_default=True,
     metavar='<path>',
-    default='.',
+    default=default_path,
     help='Location of a Renku repository.'
 )
 @click.option(
@@ -143,11 +171,26 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     show_default=True,
     metavar='<path>',
     default=RENKU_HOME,
-    help='Location of Renku directory.'
+    help='Location of the Renku directory.'
+)
+@option_use_external_storage
+@click.option(
+    '--disable-version-check',
+    envvar='RENKU_DISABLE_VERSION_CHECK',
+    is_flag=True,
+    default=False,
+    callback=check_version,
+    expose_value=False,
+    help='Do not periodically check PyPI for a new version of renku.',
 )
 @click.pass_context
-def cli(ctx, path, renku_home):
+def cli(ctx, path, renku_home, use_external_storage):
     """Check common Renku commands used in various situations."""
+    ctx.obj = LocalClient(
+        path=path,
+        renku_home=renku_home,
+        use_external_storage=use_external_storage,
+    )
 
 
 @cli.command()
@@ -161,15 +204,20 @@ def help(ctx):
 cli.add_command(config)
 cli.add_command(dataset)
 cli.add_command(deactivate)
+cli.add_command(doctor)
 cli.add_command(githooks)
 cli.add_command(image)
 cli.add_command(init)
 cli.add_command(log)
+cli.add_command(migrate)
+cli.add_command(move)
+cli.add_command(pull)
 cli.add_command(rerun)
 cli.add_command(run)
 cli.add_command(runner)
-cli.add_command(status)
 cli.add_command(show)
+cli.add_command(status)
+cli.add_command(storage)
 cli.add_command(update)
 cli.add_command(workflow)
 cli.add_command(workon)

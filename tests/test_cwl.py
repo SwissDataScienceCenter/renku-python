@@ -17,8 +17,10 @@
 # limitations under the License.
 
 import pytest
+import yaml
 
 from renku._compat import Path
+from renku.models.cwl import CWLClass
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
 
@@ -249,8 +251,10 @@ def test_stdin_and_stdout(argv, instance_path):
 
     tool = factory.generate_tool()
     assert tool.to_argv() == argv
-    std_streams = ' < input.txt > output.txt 2> error.log'
-    assert str(tool) == ' '.join(argv) + std_streams
+    std_streams = (' < input.txt', ' > output.txt', ' 2> error.log')
+    tool_str = str(tool)
+    assert tool_str.startswith(' '.join(argv))
+    assert all(stream in tool_str for stream in std_streams)
 
 
 def test_input_directory(instance_path):
@@ -282,7 +286,7 @@ def test_input_directory(instance_path):
 
 
 def test_exitings_output_directory(client):
-    """Test input directory."""
+    """Test creation of InitialWorkDirRequirement for output directory."""
     instance_path = client.path
     output = client.path / 'output'
 
@@ -293,7 +297,7 @@ def test_exitings_output_directory(client):
         working_dir=instance_path,
     )
 
-    with factory.watch(repo=client, no_output=True) as tool:
+    with factory.watch(client, no_output=True) as tool:
         # Script creates the directory.
         output.mkdir(parents=True)
 
@@ -304,7 +308,7 @@ def test_exitings_output_directory(client):
     assert 0 == len(initial_work_dir_requirement)
 
     output.mkdir(parents=True, exist_ok=True)
-    with factory.watch(repo=client) as tool:
+    with factory.watch(client) as tool:
         # The directory already exists.
         (output / 'result.txt').touch()
 
@@ -314,3 +318,32 @@ def test_exitings_output_directory(client):
     ]
     assert 1 == len(initial_work_dir_requirement)
     assert initial_work_dir_requirement[0].listing[0].entryname == output.name
+
+    assert 1 == len(tool.inputs)
+    assert 1 == len(tool.outputs)
+
+
+LINK_CWL = """
+class: CommandLineTool
+cwlVersion: v1.0
+requirements:
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - class: Directory
+        listing: $(inputs.indir.listing)
+baseCommand: ["true"]
+inputs:
+  indir: Directory
+  filename: string
+outputs:
+  outlist:
+    type: File
+    outputBinding:
+      glob: $(inputs.filename)
+"""
+
+
+def test_load_inputs_defined_as_type():
+    """Test loading of CWL definition with specific input parameters."""
+    assert CWLClass.from_cwl(yaml.load(LINK_CWL))

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -74,7 +74,7 @@ class InvalidFileOperation(RenkuException):
     """Raise when trying to perfrom invalid file operation."""
 
 
-class UsageError(RenkuException):
+class UsageError(RenkuException, click.UsageError):
     """Raise in case of unintended usage of certain function calls."""
 
 
@@ -123,6 +123,32 @@ class DirtyRepository(RenkuException, click.ClickException):
             '\n\n' + str(repo.git.status()) + '\n\n'
             'Once you have added the untracked files, '
             'commit them with "git commit".'
+        )
+
+
+class IgnoredFiles(RenkuException, click.ClickException):
+    """Raise when trying to work with ignored files."""
+
+    def __init__(self, ignored):
+        """Build a custom message."""
+        super(IgnoredFiles, self).__init__(
+            'The following paths are ignored by one of your .gitignore files:'
+            '\n\n' + '\n'.
+            join('\t' + click.style(path, fg='yellow')
+                 for path in ignored) + '\n'
+            'Please use the "--force" option if you really want to add them.'
+        )
+
+
+class FailedMerge(RenkuException, click.ClickException):
+    """Raise when automatic merge failed."""
+
+    def __init__(self, repo):
+        """Build a custom message."""
+        super(FailedMerge, self).__init__(
+            'The automatic merge failed.\n\n'
+            'Please use the "git" command to clean resolve it.'
+            '\n\n' + str(repo.git.status())
         )
 
 
@@ -202,3 +228,33 @@ class InvalidSuccessCode(RenkuException, click.ClickException):
 
 class NotFound(APIError):
     """Raise when an API object is not found."""
+
+
+class ExternalStorageNotInstalled(RenkuException, click.ClickException):
+    """Raise when LFS is required but not found or installed in the repo."""
+
+    def __init__(self, repo):
+        """Build a custom message."""
+        msg = (
+            'Git-LFS is either not installed or not configured '
+            'for this repo.\n'
+            'By running this command without LFS you could be committing\n'
+            'large files directly to the git repository.\n\n'
+            'If this is your intention, please repeat the command with '
+            'the -S flag (e.g. renku -S run <cmd>), \n'
+            'otherwise install LFS with "git lfs install --local".'
+        )
+
+        super(ExternalStorageNotInstalled, self).__init__(msg)
+
+
+class UninitializedProject(RenkuException, click.ClickException):
+    """Raise when a project does not seem to have been initialized yet."""
+
+    def __init__(self, repo_path):
+        """Build a custom message."""
+        msg = (
+            '{repo_path} does not seem to be a Renku project.\n'
+            'Initialize it with "renku init"'.format(repo_path=repo_path)
+        )
+        super(UninitializedProject, self).__init__(msg)

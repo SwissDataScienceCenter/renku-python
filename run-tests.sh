@@ -25,7 +25,7 @@ set -o nounset
 
 pydocstyle renku tests docs
 isort -rc -c -df
-check-manifest --ignore ".travis-*"
+check-manifest --ignore ".travis-*,renku/version.py"
 find . -iname \*.sh -print0 | xargs -0 shellcheck
 sphinx-build -qnNW docs docs/_build/html
 python setup.py test

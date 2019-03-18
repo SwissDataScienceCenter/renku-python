@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -65,33 +65,11 @@ using the :program:`dot` program.
 """
 
 import click
+from git import NULL_TREE
 
 from ._client import pass_local_client
-from ._graph import Graph, _safe_path
-
-
-def format_ascii(graph):
-    """Format graph as an ASCII art."""
-    from ._ascii import DAG
-    from ._echo import echo_via_pager
-
-    echo_via_pager(DAG(graph))
-
-
-def format_dot(graph):
-    """Format graph as a dot file."""
-    import networkx as nx
-
-    for (_, path), node in graph.G.nodes(data=True):
-        node.setdefault('label', node.get('tool', path))
-    click.echo(nx.nx_pydot.to_pydot(graph.G).to_string())
-
-
-FORMATS = {
-    'ascii': format_ascii,
-    'dot': format_dot,
-}
-"""Valid formatting options."""
+from ._format.graph import FORMATS
+from ._graph import Graph
 
 
 @click.command()
@@ -114,13 +92,20 @@ def log(client, revision, format, no_output, paths):
     """Show logs for a file."""
     graph = Graph(client)
     if not paths:
+        start, is_range, stop = revision.partition('..')
+        if not is_range:
+            stop = start
+        elif not stop:
+            stop = 'HEAD'
+
+        commit = client.repo.rev_parse(stop)
         paths = (
-            graph.normalize_path(path)
-            for path in client.git.rev_parse(revision).stats.files.keys()
-            if _safe_path(path, can_be_cwl=no_output)
+            str(client.path / item.a_path)
+            for item in commit.diff(commit.parents or NULL_TREE)
+            # if not item.deleted_file
         )
 
     # NOTE shall we warn when "not no_output and not paths"?
-    graph.build(paths=paths, revision=revision)
+    graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
 
     FORMATS[format](graph)

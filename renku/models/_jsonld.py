@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,6 +18,8 @@
 """Support JSON-LD context in models."""
 
 import json
+import os
+import weakref
 from copy import deepcopy
 
 import attr
@@ -27,6 +29,7 @@ from attr._make import Factory, fields
 from pyld import jsonld as ld
 
 from renku._compat import Path
+from renku.models._locals import ReferenceMixin, with_reference
 
 KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
@@ -35,7 +38,7 @@ DOC_TPL = (
     "{cls.__doc__}\n\n"
     "**Type:**\n\n"
     ".. code-block:: json\n\n"
-    "    \"{jsonld_cls._jsonld_type}\"\n\n"
+    "    {type}\n\n"
     "**Context:**\n\n"
     ".. code-block:: json\n\n"
     "{context}\n"
@@ -48,6 +51,10 @@ def attrs(
     maybe_cls=None, type=None, context=None, translate=None, **attrs_kwargs
 ):
     """Wrap an attr enabled class."""
+    if isinstance(type, (list, tuple, set)):
+        types = list(type)
+    else:
+        types = [type] if type is not None else []
     context = context or {}
     translate = translate or {}
 
@@ -56,13 +63,29 @@ def attrs(
         jsonld_cls = attr.s(cls, **attrs_kwargs)
 
         if not issubclass(jsonld_cls, JSONLDMixin):
-            jsonld_cls = make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {})
+            jsonld_cls = attr.s(
+                make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {}),
+                **attrs_kwargs
+            )
+
+        # Merge types
+        for subcls in jsonld_cls.mro():
+            subtype = getattr(subcls, '_jsonld_type', None)
+            if subtype:
+                if isinstance(subtype, (tuple, list)):
+                    types.extend(subtype)
+                else:
+                    types.append(subtype)
+
+            for key, value in getattr(subcls, '_jsonld_context', {}).items():
+                if key in context and context[key] != value:
+                    raise TypeError()
+                context.setdefault(key, value)
 
         for a in attr.fields(jsonld_cls):
-            try:
-                key = a.name
-                ctx = a.metadata[KEY]
-            except KeyError:
+            key = a.name
+            ctx = a.metadata.get(KEY)
+            if ctx is None:
                 continue
 
             if ':' in ctx:
@@ -86,17 +109,45 @@ def attrs(
                         )
 
         jsonld_cls.__module__ = cls.__module__
-        jsonld_cls._jsonld_type = type
+        jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
+            sorted(set(types))
+        )
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
-        jsonld_cls._jsonld_fields = {a.name for a in attr.fields(jsonld_cls)}
+        jsonld_cls._jsonld_fields = {
+            a.name
+            for a in attr.fields(jsonld_cls) if KEY in a.metadata
+        }
 
         context_doc = '\n'.join(
             '   ' + line for line in json.dumps(context, indent=2).split('\n')
         )
         jsonld_cls.__doc__ = DOC_TPL.format(
-            cls=cls, jsonld_cls=jsonld_cls, context=context_doc
+            cls=cls,
+            type=json.dumps(jsonld_cls._jsonld_type),
+            context=context_doc,
         )
+
+        # Register class for given JSON-LD @type
+        try:
+            type_ = ld.expand({
+                '@type': jsonld_cls._jsonld_type,
+                '@context': context
+            })[0]['@type']
+            if isinstance(type_, list):
+                type_ = tuple(sorted(type_))
+        except Exception:
+            # FIXME make sure all classes have @id defined
+            return jsonld_cls
+
+        if type_ in jsonld_cls.__type_registry__:
+            raise TypeError(
+                'Type {0!r} is already registered for class {1!r}.'.format(
+                    jsonld_cls._jsonld_type,
+                    jsonld_cls.__type_registry__[jsonld_cls._jsonld_type],
+                )
+            )
+        jsonld_cls.__type_registry__[type_] = jsonld_cls
         return jsonld_cls
 
     if maybe_cls is None:
@@ -107,8 +158,7 @@ def attrs(
 def attrib(context=None, **kwargs):
     """Create a new attribute with context."""
     kwargs.setdefault('metadata', {})
-    if context:
-        kwargs['metadata'][KEY] = context
+    kwargs['metadata'][KEY] = context
     return attr.ib(**kwargs)
 
 
@@ -143,7 +193,9 @@ def _container_attrib_builder(name, container, mapper):
             raise ValueError(value)
 
         kwargs.setdefault('converter', _converter)
-        return attrib(context=context, **kwargs)
+        context_ib = context.copy()
+        context_ib.update(kwargs.pop('context', {}))
+        return attrib(context=context_ib, **kwargs)
 
     return _attrib
 
@@ -163,19 +215,30 @@ def asjsonld(
     dict_factory=dict,
     retain_collection_types=False,
     export_context=True,
+    basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
-    attrs = fields(inst.__class__)
+    jsonld_fields = inst.__class__._jsonld_fields
+    attrs = tuple(
+        field
+        for field in fields(inst.__class__) if field.name in jsonld_fields
+    )
     rv = dict_factory()
 
     def convert_value(v):
         """Convert special types."""
         if isinstance(v, Path):
-            return str(v)
+            v = str(v)
+            return os.path.relpath(v, str(basedir)) if basedir else v
         return v
 
     for a in attrs:
         v = getattr(inst, a.name)
+
+        # skip proxies
+        if isinstance(v, weakref.ReferenceType):
+            continue
+
         # do not export context for containers
         ec = export_context and KEY_CLS not in a.metadata
 
@@ -184,7 +247,11 @@ def asjsonld(
         if recurse is True:
             if has(v.__class__):
                 rv[a.name] = asjsonld(
-                    v, recurse=True, filter=filter, dict_factory=dict_factory
+                    v,
+                    recurse=True,
+                    filter=filter,
+                    dict_factory=dict_factory,
+                    basedir=basedir,
                 )
             elif isinstance(v, (tuple, list, set)):
                 cf = v.__class__ if retain_collection_types is True else list
@@ -195,14 +262,23 @@ def asjsonld(
                         filter=filter,
                         dict_factory=dict_factory,
                         export_context=ec,
+                        basedir=basedir,
                     ) if has(i.__class__) else i for i in v
                 ])
             elif isinstance(v, dict):
                 df = dict_factory
                 rv[a.name] = df((
-                    asjsonld(kk, dict_factory=df) if has(kk.__class__) else kk,
-                    asjsonld(vv, dict_factory=df, export_context=ec)
-                    if has(vv.__class__) else vv
+                    asjsonld(
+                        kk,
+                        dict_factory=df,
+                        basedir=basedir,
+                    ) if has(kk.__class__) else convert_value(kk),
+                    asjsonld(
+                        vv,
+                        dict_factory=df,
+                        export_context=ec,
+                        basedir=basedir,
+                    ) if has(vv.__class__) else vv
                 ) for kk, vv in iteritems(v))
             else:
                 rv[a.name] = convert_value(v)
@@ -219,11 +295,13 @@ def asjsonld(
     return rv
 
 
-class JSONLDMixin(object):
+class JSONLDMixin(ReferenceMixin):
     """Mixin for loading a JSON-LD data."""
 
+    __type_registry__ = {}
+
     @classmethod
-    def from_jsonld(cls, data):
+    def from_jsonld(cls, data, __reference__=None):
         """Instantiate a JSON-LD class from data."""
         if isinstance(data, cls):
             return data
@@ -231,19 +309,56 @@ class JSONLDMixin(object):
         if not isinstance(data, dict):
             raise ValueError(data)
 
+        if '@type' in data:
+            type_ = tuple(sorted(data['@type']))
+            if type_ in cls.__type_registry__ and getattr(
+                cls, '_jsonld_type', None
+            ) != type_:
+                new_cls = cls.__type_registry__[type_]
+                if cls != new_cls:
+                    return new_cls.from_jsonld(data)
+
         if cls._jsonld_translate:
             data = ld.compact(data, {'@context': cls._jsonld_translate})
             data.pop('@context', None)
 
-        if '@context' in data and data['@context'] != cls._jsonld_context:
-            compacted = ld.compact(data, cls._jsonld_context)
+        data.setdefault('@context', cls._jsonld_context)
+
+        if data['@context'] != cls._jsonld_context:
+            compacted = ld.compact(data, {'@context': cls._jsonld_context})
         else:
             compacted = data
 
         # assert compacted['@type'] == cls._jsonld_type, '@type must be equal'
         # TODO update self(not cls)._jsonld_context with data['@context']
         fields = cls._jsonld_fields
-        return cls(**{k: v for k, v in compacted.items() if k in fields})
+
+        if __reference__:
+            with with_reference(__reference__):
+                self = cls(
+                    **{
+                        k.lstrip('_'): v
+                        for k, v in compacted.items() if k in fields
+                    }
+                )
+        else:
+            self = cls(
+                **{
+                    k.lstrip('_'): v
+                    for k, v in compacted.items() if k in fields
+                }
+            )
+        return self
+
+    @classmethod
+    def from_yaml(cls, path):
+        """Return an instance from a YAML file."""
+        import yaml
+
+        with path.open(mode='r') as fp:
+            self = cls.from_jsonld(yaml.load(fp) or {}, __reference__=path)
+
+        return self
 
 
 s = attrs

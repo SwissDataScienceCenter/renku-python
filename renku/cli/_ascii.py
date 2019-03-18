@@ -17,7 +17,6 @@
 # limitations under the License.
 """Generate ASCII graph for a DAG."""
 
-import os
 import re
 
 import attr
@@ -32,23 +31,21 @@ _RE_ESC = re.compile(r'\x1b[^m]*m')
 """Match escape characters."""
 
 
-def _format_sha1(graph, key):
+def _format_sha1(graph, node):
     """Return formatted text with the submodule information."""
     try:
-        submodules = graph.G.nodes[key].get('submodule', [])
-        for data in graph.G.nodes[key].get('contraction', {}).values():
-            submodules.extend(data.get('submodule', []))
+        submodules = node.submodules
 
         if submodules:
             submodule = ':'.join(submodules)
             return click.style(
                 submodule, fg='green'
             ) + '@' + click.style(
-                key[0][:8], fg='yellow'
+                node.commit.hexsha[:8], fg='yellow'
             )
     except KeyError:
         pass
-    return click.style(key[0][:8], fg='yellow')
+    return click.style(node.commit.hexsha[:8], fg='yellow')
 
 
 @attr.s
@@ -87,9 +84,7 @@ class DAG(object):
 
     def __iter__(self):
         """Generate lines of ASCII representation of a DAG."""
-        from networkx.algorithms.dag import topological_sort
-
-        for node in reversed(list(topological_sort(self.graph.G))):
+        for node in self.graph.nodes:
             for node_symbol, lines, column_info in self.iter_edges(node):
                 for line in self.iter_node_lines(
                     node_symbol, self.node_text(node), column_info
@@ -99,8 +94,19 @@ class DAG(object):
     def node_text(self, node):
         """Return text for a given node."""
         formatted_sha1 = _format_sha1(self.graph, node)
-        data = self.graph.G.nodes[node]
-        latest = data.get('latest')
+        path = node.path
+        latest = self.graph.latest(node)
+
+        # TODO move reference names to entity objects
+        from .workflow import _deref
+        refs = node.client.workflow_names[node.path]
+        formatted_refs = (
+            click.style(' (', fg='yellow') + ', '.join(
+                click.style(_deref(name), fg='green', bold=True)
+                for name in refs
+            ) + click.style(')', fg='yellow')
+        ) if refs else ''
+
         if latest:
             formatted_latest = (
                 click.style(' (', fg='yellow') +
@@ -112,37 +118,60 @@ class DAG(object):
             formatted_latest = ' '
 
         result = [
-            formatted_sha1 + formatted_latest +
-            self.graph._format_path(node[1])
+            formatted_sha1 + formatted_refs + formatted_latest +
+            self.graph._format_path(path)
         ]
+        indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
 
-        workflow_path = data.get('workflow_path')
-        if workflow_path:
+        # Handle subprocesses of a workflow.
+        from renku.models.provenance.entities import Process
+
+        part_of = None
+        if isinstance(node, Process):
+            part_of = getattr(node.activity, 'part_of', None)
+
+        if part_of:
+            step_id = node.activity._id.split('/')[-1]
             workflow_path = click.style(
-                self.graph._format_path(
-                    os.path.normpath(
-                        os.path.join(os.path.dirname(node[1]), workflow_path)
-                    )
+                '{workflow_path}#steps/{step_id}'.format(
+                    workflow_path=self.graph._format_path(part_of.path),
+                    step_id=step_id,
                 ),
-                fg='blue'
+                fg='blue',
             )
-            indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
+
             result.append(
-                '{indentation} (part of {workflow_path})'.format(
+                '{indentation} (part of {hexsha} {workflow_path})'.format(
                     indentation=indentation,
+                    hexsha=_format_sha1(self.graph, part_of),
                     workflow_path=workflow_path,
                 )
             )
+
+        parent = getattr(node, 'parent', None)
+
+        if parent and hasattr(parent, 'members'):
+            result.append(
+                '{indentation} (part of {parent_path} directory)'.format(
+                    indentation=indentation,
+                    parent_path=click.style(
+                        parent.path,
+                        fg='blue',
+                    ),
+                )
+            )
+
         return result
 
     def iter_edges(self, node):
         """Yield edges for a node and update internal status."""
         # Keep track of rendered nodes.
-        if node not in self.columns:
-            self.columns.append(node)
+        key = node.commit, node.path
+        if key not in self.columns:
+            self.columns.append(key)
 
-        column_index = self.columns.index(node)
-        parents = self.graph.G.pred[node]
+        column_index = self.columns.index(key)
+        parents = [(p.commit, p.path) for p in self.graph.parents(node)]
 
         # Define node_symbol for node and root node.
         node_symbol = self.NODE if parents else self.ROOT_NODE
@@ -151,7 +180,9 @@ class DAG(object):
         existing_columns = []
         new_columns = []
         for parent in parents:
-            assert parent != node, 'Self reference is not allowed.'
+            assert parent != (
+                node.commit, node.path
+            ), 'Self reference is not allowed.'
 
             if parent in self.columns:
                 existing_columns.append(parent)

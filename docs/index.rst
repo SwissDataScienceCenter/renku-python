@@ -22,8 +22,9 @@
 For more information about the Renku API `see its documentation
 <https://renku.readthedocs.org/latest/developer/index.html>`_.
 
-Use the Renku command line
---------------------------
+
+Getting Started
+===============
 
 Interaction with the platform can take place via the command-line
 interface (CLI).
@@ -61,16 +62,27 @@ your data analysis workflows.
 For more information about using `renku`, refer to the :doc:`Renku command
 line <cli>` instructions.
 
+Project Information
+===================
+
 .. toctree::
-   :hidden:
+   :maxdepth: 1
+
+   license
+   contributing
+   changes
+   glossary
+
+Full Table of Contents
+======================
+
+.. toctree::
    :maxdepth: 2
 
+   comparison
    cli
    projects
    datasets
+   provenance
    cwl
    api
-   contributing
-   changes
-   license
-   authors

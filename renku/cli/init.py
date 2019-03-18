@@ -64,14 +64,17 @@ was not installed previously.
 
 """
 
+import contextlib
 import os
 
+import attr
 import click
 
 from renku._compat import Path
 
 from ._client import pass_local_client
-from ._git import set_git_home, with_git
+from ._git import set_git_home
+from ._options import option_use_external_storage
 
 
 def validate_name(ctx, param, value):
@@ -97,35 +100,66 @@ def store_directory(ctx, param, value):
 )
 @click.option('--name', callback=validate_name)
 @click.option('--force', is_flag=True, help='Override project templates.')
-@click.option(
-    'use_external_storage',
-    '--external-storage/--no-external-storage',
-    ' /-S',
-    is_flag=True,
-    default=True,
-    help='Configure the file storage service.'
-)
+@option_use_external_storage
 @pass_local_client
 @click.pass_context
-@with_git(clean=False)
 def init(ctx, client, directory, name, force, use_external_storage):
     """Initialize a project."""
-    try:
-        project_config_path = client.init_repository(
-            name=name, force=force, use_external_storage=use_external_storage
+    if not client.use_external_storage:
+        use_external_storage = False
+
+    ctx.obj = client = attr.evolve(
+        client,
+        path=directory,
+        use_external_storage=use_external_storage,
+    )
+
+    msg = 'Initialized empty project in {path}'
+    branch_name = None
+
+    stack = contextlib.ExitStack()
+
+    if force and client.repo:
+        msg = 'Initialized project in {path} (branch {branch_name})'
+        merge_args = ['--no-ff', '-s', 'recursive', '-X', 'ours']
+
+        try:
+            commit = client.find_previous_commit(
+                str(client.renku_metadata_path),
+            )
+            branch_name = 'renku/init/' + str(commit)
+        except KeyError:
+            from git import NULL_TREE
+            commit = NULL_TREE
+            branch_name = 'renku/init/root'
+            merge_args.append('--allow-unrelated-histories')
+
+        ctx.obj = client = stack.enter_context(
+            client.worktree(
+                branch_name=branch_name,
+                commit=commit,
+                merge_args=merge_args,
+            )
         )
+
+    try:
+        path = client.init_repository(name=name, force=force)
     except FileExistsError:
         raise click.UsageError(
             'Renku repository is not empty. '
-            'Please use --force flag to use the directory as Renku repository.'
+            'Please use --force flag to use the directory as Renku '
+            'repository.'
         )
 
-    # Install Git hooks.
-    from .githooks import install
-    ctx.invoke(install, force=force)
+    stack.enter_context(client.commit())
 
-    # Create all necessary template files.
-    from .runner import template
-    ctx.invoke(template)
+    with stack:
+        # Install Git hooks.
+        from .githooks import install
+        ctx.invoke(install, force=force)
 
-    click.echo('Initialized empty project in {0}'.format(project_config_path))
+        # Create all necessary template files.
+        from .runner import template
+        ctx.invoke(template, force=force)
+
+    click.echo(msg.format(path=path, branch_name=branch_name))

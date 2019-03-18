@@ -18,11 +18,13 @@
 """Represent a ``CommandLineTool`` from the Common Workflow Language."""
 
 import fnmatch
+import os
 import re
 import shlex
 from contextlib import contextmanager
 
 import attr
+import click
 
 from renku import errors
 from renku._compat import Path
@@ -49,6 +51,13 @@ def convert_arguments(value):
 class CommandLineTool(Process, CWLClass):
     """Represent a command line tool."""
 
+    STD_STREAMS_REPR = {
+        'stdin': '<',
+        'stdout': '>',
+        'stderr': '2>',
+    }
+    """Format streams for a shell command representation."""
+
     # specialize inputs and outputs with Command{Input,Output}Parameter
 
     baseCommand = attr.ib(
@@ -71,21 +80,37 @@ class CommandLineTool(Process, CWLClass):
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
-    def __str__(self):
-        """Generate a simple representation."""
-        argv = ' '.join(self.to_argv())
+    def _std_streams(self, basedir=None):
+        """Return mapped standard streams."""
+        streams = {}
+
         if self.stdin:
             assert self.stdin.startswith('$(inputs.')
             input_id = self.stdin.split('.')[1]
             for input_ in self.inputs:
                 if input_id == input_.id:
-                    argv += ' < ' + str(input_.default)
+                    streams['stdin'] = os.path.relpath(
+                        str(Path(basedir or '.') / str(input_.default))
+                    )
                     break
         if self.stdout:
-            argv += ' > ' + self.stdout
+            streams['stdout'] = self.stdout
         if self.stderr:
-            argv += ' 2> ' + self.stderr
-        return argv
+            streams['stderr'] = self.stderr
+
+        return streams
+
+    def __str__(self):
+        """Generate a simple representation."""
+        return ' '.join(self.to_argv()) + ' ' + ' '.join(
+            self.STD_STREAMS_REPR[key] + ' ' + str(path)
+            for key, path in self._std_streams().items()
+        )
+
+    def create_run(self, **kwargs):
+        """Return an instance of process run."""
+        from renku.models.provenance import ProcessRun
+        return ProcessRun(**kwargs)
 
     def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""
@@ -117,29 +142,10 @@ class CommandLineTool(Process, CWLClass):
             if i.inputBinding:
                 args.append((i.inputBinding.position, i))
 
-        for p, v in sorted(args):
+        for _, v in sorted(args):
             argv.extend(v.to_argv())
 
         return argv
-
-    def iter_output_files(self, basedir, **kwargs):
-        """Yield tuples with output id and path."""
-        for output in self.outputs:
-            if output.type in {'stdout', 'stderr'}:
-                stream = getattr(self, output.type)
-                if stream:
-                    yield output.id, stream
-            elif output.type in PATH_OBJECTS:
-                glob = output.outputBinding.glob
-                # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
-                    for input_ in self.inputs:
-                        if input_.id == input_id:
-                            yield output.id, input_.default
-                            break  # out from self.inputs
-                else:
-                    yield output.id, glob
 
 
 @attr.s
@@ -181,7 +187,9 @@ class CommandLineToolFactory(object):
         self.outputs = []
 
         if self.stdin:
-            input_ = next(self.guess_inputs(self.stdin))
+            input_ = next(
+                self.guess_inputs(str(self.working_dir / self.stdin))
+            )
             assert input_.type == 'File'
             input_ = attr.evolve(
                 input_,
@@ -221,29 +229,46 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, repo=None, no_output=False):
+    def watch(self, client, no_output=False, outputs=None):
         """Watch a Renku repository for changes to detect outputs."""
         tool = self.generate_tool()
-        git = repo.git
+        repo = client.repo
+
+        if outputs:
+            directories = [
+                output for output in outputs if Path(output).is_dir()
+            ]
+
+            client.repo.git.rm(
+                *outputs, r=True, force=True, ignore_unmatch=True
+            )
+            client.repo.index.commit('renku: automatic removal of outputs')
+
+            for directory in directories:
+                Path(directory).mkdir(parents=True, exist_ok=True)
+
         # NOTE consider to use git index instead
         existing_directories = {
-            str(p.relative_to(repo.path))
-            for p in repo.path.glob('**/')
+            str(p.relative_to(client.path))
+            for p in client.path.glob('**/')
         }
 
         yield tool
 
-        if git:
+        if repo:
             # List of all output paths.
             paths = []
             # Keep track of unmodified output files.
             unmodified = set()
             # Possible output paths.
-            candidates = set(git.untracked_files)
+            candidates = set(repo.untracked_files)
             candidates |= {
                 item.a_path
-                for item in git.index.diff(None) if not item.deleted_file
+                for item in repo.index.diff(None) if not item.deleted_file
             }
+
+            from renku.cli._graph import _safe_path
+            candidates = {path for path in candidates if _safe_path(path)}
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
@@ -274,7 +299,7 @@ class CommandLineToolFactory(object):
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
 
-            repo.track_paths_in_storage(*paths)
+            client.track_paths_in_storage(*paths)
 
         # Requirement detection can be done anytime.
         from .process_requirements import InitialWorkDirRequirement, \
@@ -470,7 +495,6 @@ class CommandLineToolFactory(object):
         for index, input in enumerate(self.inputs):
             # Convert input defaults to paths relative to working directory.
             if input.type not in PATH_OBJECTS:
-                # inputs that need to be changed if an output is detected
                 try:
                     input_path = (self.directory /
                                   str(input.default)).resolve().relative_to(
@@ -478,22 +502,46 @@ class CommandLineToolFactory(object):
                                   )
                 except FileNotFoundError:
                     continue
+            else:
+                input_path = input.default.path.relative_to(self.working_dir)
 
-                if input_path.is_dir():
-                    subpaths = {
-                        str(input_path / path)
-                        for path in tree.get(input_path, default=[])
-                    }
-                    # TODO make sure that directory doesn't contain other files
-                    # Remove files from the input directory
-                    paths = [path for path in paths if path not in subpaths]
-                    # Include input path in the paths to check
-                    paths.append(str(input_path))
+            if input_path.is_dir() and tree.get(input_path):
+                # The directory might exist before running the script
+                subpaths = {
+                    str(input_path / path)
+                    for path in tree.get(input_path, default=[])
+                }
+                content = {
+                    str(path)
+                    for path in input_path.rglob('*')
+                    if not path.is_dir() and path.name != '.gitkeep'
+                }
+                extra_paths = content - subpaths
+                if extra_paths:
+                    raise errors.InvalidOutputPath(
+                        'The output directory "{0}" is not empty. \n\n'
+                        'Delete existing files before running the command:'
+                        '\n  (use "git rm <file>..." to remove them first)'
+                        '\n\n'.format(input_path) + '\n'.join(
+                            '\t' + click.style(path, fg='yellow')
+                            for path in extra_paths
+                        ) + '\n\n'
+                        'Once you have removed files that should be used '
+                        'as outputs,\n'
+                        'you can safely rerun the previous command.'
+                    )
+
+                # Remove files from the input directory
+                paths = [path for path in paths if path not in subpaths]
+                # Include input path in the paths to check
+                paths.append(str(input_path))
 
                 input_candidates[str(input_path)] = input
+            elif input.type not in PATH_OBJECTS:
+                # Input need to be changed if an output is detected
+                input_candidates[str(input_path)] = input
             else:
-                # names that can not be outputs because they are already inputs
-                input_path = input.default.path.relative_to(self.working_dir)
+                # Names that can not be outputs because they are already inputs
                 conflicting_paths[str(input_path)] = (index, input)
 
         streams = {

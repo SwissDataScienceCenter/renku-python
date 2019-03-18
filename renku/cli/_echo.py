@@ -22,6 +22,8 @@ import os
 
 import click
 
+WARNING = click.style('Warning: ', bold=True, fg='yellow')
+
 
 def echo_via_pager(*args, **kwargs):
     """Display pager only if it does not fit in one terminal screen.

@@ -52,6 +52,8 @@ def execute(client, output_file, output_paths=None):
     # Keep all environment variables.
     runtime_context = RuntimeContext(
         kwargs={
+            'rm_tmpdir': False,
+            'move_outputs': 'leave',
             'preserve_entire_environment': True,
         }
     )
@@ -93,26 +95,15 @@ def execute(client, output_file, output_paths=None):
                     output_path = location[len(output_dir):].lstrip(
                         os.path.sep
                     )
-                    shutil.move(location, str(client.path / output_path))
+                    destination = client.path / output_path
+                    if destination.is_dir():
+                        shutil.rmtree(str(destination))
+                        destination = destination.parent
+                    shutil.move(location, str(destination))
                     continue
 
-    # Keep only unchanged files in the output paths.
-    tracked_paths = {
-        diff.b_path
-        for diff in client.git.index.diff(None)
-        if diff.change_type in {'A', 'R', 'M', 'T'} and
-        diff.b_path in output_paths
-    }
-    unchanged_paths = output_paths - tracked_paths
-
-    # Fix tracking of unchanged files by removing them first.
+    unchanged_paths = client.remove_unmodified(output_paths)
     if unchanged_paths:
-        client.git.index.remove(
-            unchanged_paths, cached=True, ignore_unmatch=True
-        )
-        client.git.index.commit('renku: automatic removal of unchanged files')
-        client.git.index.add(unchanged_paths)
-
         click.echo(
             'Unchanged files:\n\n\t{0}'.format(
                 '\n\t'.join(

@@ -50,7 +50,7 @@ analysis tasks.
    <https://renku.readthedocs.io/en/latest/user/setup.html>`_.
 
 Installation
-------------
+============
 
 The latest release is available on PyPI and can be installed using
 ``pip``:
@@ -59,10 +59,13 @@ The latest release is available on PyPI and can be installed using
 
     $ pip install renku
 
-The latest code can be installed directly from the Git repository:
+The latest development versions are available on PyPI or from the Git
+repository:
 
 ::
 
+    $ pip install --dev renku
+    # - OR -
     $ pip install -e git+https://github.com/SwissDataScienceCenter/renku-python.git#egg=renku
 
 Use following installation steps based on your operating system and preferences
@@ -70,7 +73,7 @@ if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
 MacOS
-~~~~~
+-----
 
 The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
 
@@ -83,7 +86,7 @@ The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
   TODO: uncomment one the snap build works.
 
   Linux
-  ~~~~~
+  -----
 
   There are universal *snap* packages available for Renku. Make sure you
   have the ``snap`` command available or `install snapd
@@ -94,22 +97,46 @@ The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
       $ open https://launchpad.net/~swissdatasciencecenter/+snap/renku/
       $ snap install renku
 
-Pip Script Installer (``pipsi``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Isolated environments using ``pipx``
+------------------------------------
 
-You can use `pipsi <https://github.com/mitsuhiko/pipsi>`_ to isolate
-dependencies and to guarantee that there are no version conflicts. Make sure
-you have the ``pipsi`` command correctly installed and ``~/.local/bin`` is in
-your ``$PATH``.
+Install and execute Renku in an isolated environment using ``pipx``.
+It will guarantee that there are no version conflicts with dependencies
+you are using for your work and research.
+
+`Install pipx <https://github.com/pipxproject/pipx#install-pipx>`_
+and make sure that the ``$PATH`` is correctly configured.
 
 ::
 
-    $ pipsi install renku
+    $ python3 -m pip install --user pipx
+    $ pipx ensurepath
+
+Once ``pipx`` is installed use following command to install ``renku``.
+
+::
+
+    $ pipx install renku
     $ which renku
     ~/.local/bin/renku
 
+Prevously we have recommended to use ``pipsi``. You can still use it or
+`migrate to **pipx**
+<https://github.com/pipxproject/pipx#migrating-to-pipx-from-pipsi>`_.
+
+Docker
+------
+
+The containerized version of the CLI can be launched using Docker command.
+
+::
+
+    $ docker run -it -v "$PWD":"$PWD" -w="$PWD" renku/renku-python renku
+
+It makes sure your current directory is mounted to the same place in the container.
+
 Usage
------
+=====
 
 Initialize a renku project:
 

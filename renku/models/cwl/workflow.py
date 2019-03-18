@@ -22,17 +22,24 @@ import uuid
 
 import attr
 
+from .._sort import topological
 from ._ascwl import CWLClass, mapped
 from .parameter import WorkflowOutputParameter
 from .process import Process
-from .types import PATH_OBJECTS
+
+
+def convert_run(value):
+    """Convert value to CWLClass if dict is given."""
+    if isinstance(value, dict):
+        return CWLClass.from_cwl(value)
+    return value
 
 
 @attr.s
 class WorkflowStep(object):
     """Define an executable element of a workflow."""
 
-    run = attr.ib()  # string, Process
+    run = attr.ib(converter=convert_run)  # string, Process
     id = attr.ib(default=attr.Factory(uuid.uuid4))
 
     in_ = attr.ib(default=None)
@@ -45,6 +52,24 @@ class Workflow(Process, CWLClass):
 
     outputs = mapped(WorkflowOutputParameter)
     steps = mapped(WorkflowStep)
+
+    @property
+    def topological_steps(self):
+        """Return topologically sorted steps."""
+        step_map = {step.id: step for step in self.steps}
+        steps = {
+            step.id: [
+                source.split('/')[0]
+                for source in step.in_.values() if '/' in source
+            ]
+            for step in self.steps
+        }
+        return [step_map[step_id] for step_id in topological(steps)]
+
+    def create_run(self, **kwargs):
+        """Return an instance of process run."""
+        from renku.models.provenance import WorkflowRun
+        return WorkflowRun(**kwargs)
 
     def add_step(self, **kwargs):
         """Add a workflow step."""
@@ -77,46 +102,3 @@ class Workflow(Process, CWLClass):
                             return output.id
                 elif fnmatch.fnmatch(path, glob):
                     return output.id
-
-    def iter_output_files(self, basedir, commit=None, **kwargs):
-        """Yield tuples with output id and path."""
-        step_outputs = {}
-
-        if commit:
-            import yaml
-
-            def _load(step):
-                data = (commit.tree / basedir / step.run).data_stream.read()
-                return CWLClass.from_cwl(yaml.load(data))
-
-            tools = getattr(self, '_tools', None)
-            if not tools:
-                tools = {step.id: _load(step) for step in self.steps}
-
-            for step in self.steps:
-                step_outputs[step.id] = dict(
-                    tools[step.id].iter_output_files(basedir, commit=commit)
-                )
-
-            setattr(self, '_tools', tools)
-            setattr(self, '_step_outputs', step_outputs)
-
-        for output in self.outputs:
-            if output.type not in PATH_OBJECTS:
-                continue
-
-            if output.outputSource:
-                step_id, _, source = output.outputSource.partition('/')
-                glob = step_outputs.get(step_id, {}).get(source)
-                if glob:
-                    yield output.id, glob
-            elif output.outputBinding:
-                glob = output.outputBinding.glob
-                # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
-                    for input_ in self.inputs:
-                        if input_.id == input_id:
-                            yield output.id, input_.default
-                else:
-                    yield output.id, glob

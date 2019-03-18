@@ -91,7 +91,7 @@ def pull(client, revision, auto_login):
     """Pull an existing image from the project registry."""
     registry_url = detect_registry_url(client, auto_login=auto_login)
 
-    repo = client.git
+    repo = client.repo
     sha = repo.rev_parse(revision).hexsha
     short_sha = repo.git.rev_parse(sha, short=7)
 

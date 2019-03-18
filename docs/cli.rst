@@ -76,6 +76,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.rerun
 
+.. _cli-mv:
+
+``renku mv``
+------------
+
+.. automodule:: renku.cli.move
+
 .. _cli-workflow:
 
 ``renku workflow``
@@ -90,6 +97,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.show
 
+.. _cli-storage:
+
+``renku storage``
+-----------------
+
+.. automodule:: renku.cli.storage
+
 .. _cli-image:
 
 ``renku image``
@@ -101,3 +115,8 @@ Renku Command Line
 ------------------
 
 .. automodule:: renku.cli.githooks
+
+Error Tracking
+--------------
+
+.. automodule:: renku.cli._exc

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -33,7 +33,7 @@ def convert_default(value):
 class _IdMixin(object):
     """Define id field."""
 
-    id = attr.ib()
+    id = attr.ib(default=None)
 
 
 @attr.s
@@ -68,7 +68,7 @@ class CommandLineBinding(object):
         """Format command line binding as shell argument."""
         if self.valueFrom is not None:
             if self.valueFrom.startswith('$('):
-                raise NotImplemented()
+                raise NotImplementedError()
             value = self.valueFrom
         else:
             value = default
@@ -112,10 +112,18 @@ class CommandInputParameter(InputParameter):
         ) and data is not None else data,
     )
 
-    def to_argv(self):
+    @classmethod
+    def from_cwl(cls, data):
+        """Create instance from type definition."""
+        if not isinstance(data, dict):
+            data = {'type': data}
+        return cls(**data)
+
+    def to_argv(self, **kwargs):
         """Format command input parameter as shell argument."""
-        return self.inputBinding.to_argv(default=self.default
-                                         ) if self.inputBinding else []
+        return self.inputBinding.to_argv(
+            default=self.default, **kwargs
+        ) if self.inputBinding else []
 
 
 @attr.s

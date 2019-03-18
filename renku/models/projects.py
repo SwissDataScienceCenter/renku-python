@@ -76,7 +76,7 @@ class ProjectCollection(Collection):
 
         :param name: The name of the project.
         :returns: An instance of the newly create project.
-        :rtype: .Project
+        :rtype: renku.models.projects.Project
         """
         data = self._client.api.create_project({'name': name})
         return self.Meta.model(data, client=self._client, collection=self)

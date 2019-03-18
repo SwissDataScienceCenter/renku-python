@@ -39,17 +39,28 @@ def runner():
 
 
 @runner.command()
+@click.option('--force', is_flag=True, help='Override project templates.')
 @pass_local_client
-def template(client):
+def template(client, force):
     """Render templated configuration files."""
     import pkg_resources
 
     # create the templated files
     for tpl_file in CI_TEMPLATES:
         tpl_path = client.path / tpl_file
-        with tpl_path.open('wb') as dest:
-            with pkg_resources.resource_stream(__name__, tpl_file) as tpl:
-                dest.write(tpl.read())
+        with pkg_resources.resource_stream(__name__, tpl_file) as tpl:
+            content = tpl.read()
+
+            if not force and tpl_path.exists():
+                click.confirm(
+                    'Do you want to override "{tpl_file}"'.format(
+                        tpl_file=tpl_file
+                    ),
+                    abort=True,
+                )
+
+            with tpl_path.open('wb') as dest:
+                dest.write(content)
 
 
 @runner.command()
@@ -65,18 +76,15 @@ def template(client):
 @pass_local_client
 def rerun(client, run, job):
     """Re-run existing workflow or tool using CWL runner."""
-    from ._graph import Graph
+    from renku.models.provenance import ProcessRun
+    activity = client.process_commmit()
 
-    graph = Graph(client)
-    # TODO find tool in branch or merge-request range.
-    cwl = graph.find_cwl(client.git.head.commit)
-
-    if not cwl:
+    if not isinstance(activity, ProcessRun):
         click.secho('No tool was found.', fg='red', file=sys.stderr)
         return
 
     try:
-        args = ['cwl-runner', cwl]
+        args = ['cwl-runner', activity.path]
         if job:
             job_file = tempfile.NamedTemporaryFile(
                 suffix='.yml', dir=os.getcwd(), delete=False

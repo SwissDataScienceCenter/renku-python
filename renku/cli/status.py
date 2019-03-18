@@ -38,7 +38,6 @@ import click
 
 from ._ascii import _format_sha1
 from ._client import pass_local_client
-from ._git import with_git
 from ._graph import Graph
 
 
@@ -55,43 +54,41 @@ from ._graph import Graph
     help='Display commands without output files.'
 )
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_local_client
+@pass_local_client(clean=True, commit=False)
 @click.pass_context
-@with_git(commit=False)
 def status(ctx, client, revision, no_output, path):
     """Show a status of the repository."""
     graph = Graph(client)
     # TODO filter only paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision, can_be_cwl=no_output)
 
-    click.echo('On branch {0}'.format(client.git.active_branch))
+    click.echo('On branch {0}'.format(client.repo.active_branch))
     if status['outdated']:
-        click.echo('Files generated from newer inputs:')
-        click.echo('  (use "renku log [<file>...]" to see the full lineage)')
         click.echo(
+            'Files generated from newer inputs:\n'
+            '  (use "renku log [<file>...]" to see the full lineage)\n'
             '  (use "renku update [<file>...]" to '
-            'generate the file from its latest inputs)'
+            'generate the file from its latest inputs)\n'
         )
-        click.echo()
 
-        for filepath, files in status['outdated'].items():
+        for filepath, stts in sorted(status['outdated'].items()):
             outdated = (
                 ', '.join(
                     '{0}#{1}'.format(
-                        click.
-                        style(graph._format_path(p), fg='blue', bold=True),
-                        _format_sha1(graph, (c, p)),
-                    ) for c, p in stts
-                    if not p.startswith('.renku/workflow/') and
-                    p not in status['outdated']
-                ) for stts in files
+                        click.style(
+                            graph._format_path(n.path), fg='blue', bold=True
+                        ),
+                        _format_sha1(graph, n),
+                    ) for n in stts
+                    if n.path and n.path not in status['outdated']
+                )
             )
 
             click.echo(
                 '\t{0}: {1}'.format(
                     click.style(
                         graph._format_path(filepath), fg='red', bold=True
-                    ), ', '.join(outdated)
+                    ), outdated
                 )
             )
 
@@ -103,15 +100,15 @@ def status(ctx, client, revision, no_output, path):
         )
 
     if status['multiple-versions']:
-        click.echo('Input files used in different versions:')
         click.echo(
+            'Input files used in different versions:\n'
             '  (use "renku log --revision <sha1> <file>" to see a lineage '
-            'for the given revision)'
+            'for the given revision)\n'
         )
-        click.echo()
 
-        for filepath, files in status['multiple-versions'].items():
-            commits = (_format_sha1(graph, key) for key in files)
+        for filepath, files in sorted(status['multiple-versions'].items()):
+            # Do not show duplicated commits!  (see #387)
+            commits = {_format_sha1(graph, key) for key in files}
             click.echo(
                 '\t{0}: {1}'.format(
                     click.style(
@@ -123,19 +120,18 @@ def status(ctx, client, revision, no_output, path):
         click.echo()
 
     if status['deleted']:
-        click.echo('Deleted files used to generate outputs:')
         click.echo(
+            'Deleted files used to generate outputs:\n'
             '  (use "git show <sha1>:<file>" to see the file content '
-            'for the given revision)'
+            'for the given revision)\n'
         )
-        click.echo()
 
-        for filepath, key in status['deleted'].items():
+        for filepath, node in status['deleted'].items():
             click.echo(
                 '\t{0}: {1}'.format(
                     click.style(
                         graph._format_path(filepath), fg='blue', bold=True
-                    ), _format_sha1(graph, key)
+                    ), _format_sha1(graph, node)
                 )
             )
 

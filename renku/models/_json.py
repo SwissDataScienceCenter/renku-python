@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,12 +15,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Version information for Renku.
+"""Define custom JSON encoder."""
 
-This file is imported by ``renku.__init__``,
-and parsed by ``setup.py``.
-"""
+import datetime
+import functools
+import json
+from uuid import UUID
 
-from __future__ import absolute_import, print_function
 
-__version__ = '0.2.0'
+class JSONEncoder(json.JSONEncoder):
+    """Support for custom data formats."""
+
+    def default(self, obj):
+        """Encode more types."""
+        if isinstance(obj, UUID):
+            return obj.hex
+        elif isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+
+        return super().default(obj)
+
+
+dumps = functools.partial(json.dumps, cls=JSONEncoder)

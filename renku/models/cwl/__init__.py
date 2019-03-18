@@ -16,3 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Define models for Common Workflow Language."""
+
+from ._ascwl import CWLClass, ascwl
+from .command_line_tool import CommandLineTool
+from .workflow import Workflow
+
+WORKFLOW_STEP_RUN_TYPES = (CommandLineTool, Workflow)
+
+__all__ = ('CommandLineTool', 'CWLClass', 'Workflow', 'ascwl')

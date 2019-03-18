@@ -19,6 +19,8 @@
 
 import click
 
+from ._git import set_git_isolation
+
 
 class Endpoint(str):
     """Track endpoint source."""
@@ -62,6 +64,20 @@ def password_prompt(ctx, param, value):
     return value
 
 
+def install_completion(ctx, attr, value):  # pragma: no cover
+    """Install completion for the current shell."""
+    import click_completion.core
+
+    if not value or ctx.resilient_parsing:
+        return value
+
+    shell, path = click_completion.core.install()
+    click.secho(
+        '{0} completion installed in {1}'.format(shell, path), fg='green'
+    )
+    ctx.exit()
+
+
 def default_endpoint(ctx, param, value):
     """Return default endpoint if specified."""
     if ctx.resilient_parsing:
@@ -103,6 +119,14 @@ option_endpoint = click.option(
     help=validate_endpoint.__doc__,
 )
 
+option_isolation = click.option(
+    '--isolation',
+    is_flag=True,
+    default=False,
+    callback=lambda ctx, param, value: set_git_isolation(value),
+    help='Set up the isolation for invoking of the given command.',
+)
+
 
 def check_siblings(graph, outputs):
     """Check that all outputs have their siblings listed."""
@@ -110,7 +134,9 @@ def check_siblings(graph, outputs):
     for node in outputs:
         siblings |= graph.siblings(node)
 
-    missing = siblings - outputs
+    siblings = {node.path for node in siblings}
+    missing = siblings - {node.path for node in outputs}
+
     if missing:
         msg = (
             'Include the files above in the command '
@@ -119,9 +145,7 @@ def check_siblings(graph, outputs):
         raise click.ClickException(
             'There are missing output siblings:\n\n'
             '\t{0}\n\n{1}'.format(
-                '\n\t'.join(
-                    click.style(path, fg='red') for _, path in missing
-                ),
+                '\n\t'.join(click.style(path, fg='red') for path in missing),
                 msg,
             ),
         )
@@ -155,3 +179,13 @@ option_with_siblings = click.option(
 def option_siblings(func):
     """Combine siblings options."""
     return option_check_siblings(option_with_siblings(func))
+
+
+option_use_external_storage = click.option(
+    'use_external_storage',
+    '--external-storage/--no-external-storage',
+    ' /-S',
+    is_flag=True,
+    default=True,
+    help='Use an external file storage service.'
+)

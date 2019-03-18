@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,6 +21,7 @@ import os
 import shutil
 import stat
 import warnings
+from configparser import NoSectionError
 from contextlib import contextmanager
 from urllib import error, parse
 
@@ -28,7 +29,10 @@ import attr
 import requests
 import yaml
 
+from renku import errors
 from renku._compat import Path
+from renku.models._git import GitURL
+from renku.models._jsonld import asjsonld
 from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
 
 
@@ -39,40 +43,65 @@ class DatasetsApiMixin(object):
     datadir = attr.ib(default='data', converter=str)
     """Define a name of the folder for storing datasets."""
 
+    DATASETS = 'datasets'
+    """Directory for storing dataset metadata in Renku."""
+
+    @property
+    def renku_datasets_path(self):
+        """Return a ``Path`` instance of Renku dataset metadata folder."""
+        return self.renku_path.joinpath(self.DATASETS)
+
+    @property
+    def datasets(self):
+        """Return mapping from path to dataset."""
+        result = {}
+        for path in self.renku_datasets_path.rglob(self.METADATA):
+            result[path] = Dataset.from_yaml(path)
+        return result
+
     @contextmanager
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
+        from renku.models.refs import LinkReference
+
         with self.lock:
-            from renku.models._jsonld import asjsonld
-            from renku.models.datasets import Dataset
             path = None
             dataset = None
 
-            dataset_path = self.path / self.datadir / name
-
             if name:
-                path = dataset_path / self.METADATA
+                path = self.renku_datasets_path / name / self.METADATA
+
+                if not path.exists():
+                    path = LinkReference(
+                        client=self, name='datasets/' + name
+                    ).reference
+
                 if path.exists():
                     with path.open('r') as f:
                         source = yaml.load(f) or {}
-                    dataset = Dataset.from_jsonld(source)
+                    dataset = Dataset.from_jsonld(source, __reference__=path)
 
             if dataset is None:
                 source = {}
                 dataset = Dataset(name=name)
-                try:
-                    dataset_path.mkdir(parents=True, exist_ok=True)
-                except FileExistsError:
-                    raise FileExistsError('This dataset already exists.')
+
+                path = (
+                    self.renku_datasets_path / dataset.identifier.hex /
+                    self.METADATA
+                )
+                path.parent.mkdir(parents=True, exist_ok=True)
+
+                if name:
+                    LinkReference.create(
+                        client=self, name='datasets/' + name
+                    ).set_reference(path)
+
+            dataset_path = self.path / self.datadir / dataset.name
+            dataset_path.mkdir(parents=True, exist_ok=True)
 
             yield dataset
 
-            source.update(
-                **asjsonld(
-                    dataset,
-                    filter=lambda attr, _: attr.name != 'datadir',
-                )
-            )
+            source.update(**asjsonld(dataset))
 
             # TODO
             # if path is None:
@@ -83,7 +112,9 @@ class DatasetsApiMixin(object):
             with path.open('w') as f:
                 yaml.dump(source, f, default_flow_style=False)
 
-    def add_data_to_dataset(self, dataset, url, git=False, **kwargs):
+    def add_data_to_dataset(
+        self, dataset, url, git=False, force=False, **kwargs
+    ):
         """Import the data into the data directory."""
         dataset_path = self.path / self.datadir / dataset.name
         git = git or check_for_git_repo(url)
@@ -92,24 +123,40 @@ class DatasetsApiMixin(object):
 
         if git:
             if isinstance(target, (str, NoneType)):
-                dataset.files.update(
-                    self._add_from_git(
-                        dataset, dataset_path, url, target, **kwargs
-                    )
+                files = self._add_from_git(
+                    dataset, dataset_path, url, target, **kwargs
                 )
             else:
+                files = {}
                 for t in target:
-                    dataset.files.update(
+                    files.update(
                         self._add_from_git(
                             dataset, dataset_path, url, t, **kwargs
                         )
                     )
         else:
-            dataset.files.update(
-                self._add_from_url(dataset, dataset_path, url, **kwargs)
-            )
+            files = self._add_from_url(dataset, dataset_path, url, **kwargs)
 
-    def _add_from_url(self, dataset, path, url, nocopy=False, **kwargs):
+        ignored = self.find_ignored_paths(
+            *[
+                os.path.relpath(
+                    str(
+                        self.renku_datasets_path / dataset.identifier.hex / key
+                    ),
+                    start=str(self.path),
+                ) for key in files.keys()
+            ]
+        )
+
+        if ignored:
+            if force:
+                self.repo.git.add(*ignored, force=True)
+            else:
+                raise errors.IgnoredFiles(ignored)
+
+        dataset.files.update(files)
+
+    def _add_from_url(self, dataset, path, url, link=False, **kwargs):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
@@ -142,7 +189,7 @@ class DatasetsApiMixin(object):
                             dataset,
                             dst,
                             f.absolute().as_posix(),
-                            nocopy=nocopy
+                            link=link,
                         )
                     )
                 return files
@@ -150,13 +197,13 @@ class DatasetsApiMixin(object):
             # Make sure the parent directory exists.
             dst.parent.mkdir(parents=True, exist_ok=True)
 
-            if nocopy:
+            if link:
                 try:
                     os.link(str(src), str(dst))
                 except Exception as e:
                     raise Exception(
                         'Could not create hard link '
-                        '- retry without nocopy.'
+                        '- retry without --link.'
                     ) from e
             else:
                 shutil.copy(str(src), str(dst))
@@ -175,8 +222,8 @@ class DatasetsApiMixin(object):
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
         self.track_paths_in_storage(str(dst.relative_to(self.path)))
-        dataset_path = self.path / self.datadir / dataset.name
-        result = dst.relative_to(dataset_path).as_posix()
+        dataset_path = self.renku_datasets_path / dataset.name
+        result = os.path.relpath(str(dst), start=str(dataset_path))
         return {
             result:
                 DatasetFile(
@@ -196,6 +243,9 @@ class DatasetsApiMixin(object):
         from git import Repo
 
         # create the submodule
+        if url.startswith('git@'):
+            url = 'git+ssh://' + url
+
         u = parse.urlparse(url)
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
 
@@ -203,10 +253,34 @@ class DatasetsApiMixin(object):
         relative_to = kwargs.get('relative_to', None)
 
         if u.scheme in ('', 'file'):
+            try:
+                relative_url = Path(url).resolve().relative_to(self.path)
+            except Exception:
+                relative_url = None
+
+            if relative_url:
+                result = str(
+                    os.path.relpath(
+                        str(relative_url),
+                        start=str(
+                            self.renku_datasets_path / dataset.identifier.hex
+                        ),
+                    )
+                )
+                return {
+                    result:
+                        DatasetFile(
+                            path=result,
+                            url=url,
+                            authors=dataset.authors,
+                            dataset=dataset.name,
+                        )
+                }
+
             warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path
             r = Repo(url, search_parent_directories=True)
-            src_repo_path = Path(r.git_dir).parent
+            src_repo_path = Path(r.git_dir).parent.resolve()
             submodule_name = src_repo_path.name
             submodule_path = submodule_path / str(src_repo_path).lstrip('/')
 
@@ -220,7 +294,7 @@ class DatasetsApiMixin(object):
                 else:
                     target = top_target
                 url = src_repo_path.as_posix()
-        elif u.scheme in ('http', 'https'):
+        elif u.scheme in {'http', 'https', 'git+https', 'git+ssh'}:
             submodule_name = os.path.splitext(os.path.basename(u.path))[0]
             submodule_path = submodule_path.joinpath(
                 os.path.dirname(u.path).lstrip('/'), submodule_name
@@ -231,11 +305,16 @@ class DatasetsApiMixin(object):
             )
 
         # FIXME: do a proper check that the repos are not the same
-        if submodule_name not in (s.name for s in self.git.submodules):
-            # new submodule to add
-            self.git.create_submodule(
-                name=submodule_name, path=submodule_path.as_posix(), url=url
-            )
+        if submodule_name not in (s.name for s in self.repo.submodules):
+            if u.scheme in {'http', 'https', 'git+https', 'git+ssh'}:
+                url = self.get_relative_url(url)
+
+            # Submodule in python git does some custom magic that does not
+            # allow for relative URLs, so we call the git function directly
+            self.repo.git.submodule([
+                'add', '--force', '--name', submodule_name, url,
+                submodule_path.relative_to(self.path).as_posix()
+            ])
 
         src = submodule_path / (target or '')
 
@@ -253,7 +332,7 @@ class DatasetsApiMixin(object):
                 target = src.relative_to(submodule_path / relative_to)
 
         # link the target into the data directory
-        dst = self.path / path / submodule_name / (target or '')
+        dst = self.path / path / (target or '')
 
         # if we have a directory, recurse
         if src.is_dir():
@@ -288,8 +367,8 @@ class DatasetsApiMixin(object):
             if author not in authors:
                 authors.append(author)
 
-        dataset_path = self.path / self.datadir / dataset.name
-        result = dst.relative_to(dataset_path).as_posix()
+        dataset_path = self.renku_datasets_path / dataset.name
+        result = os.path.relpath(str(dst), start=str(dataset_path))
 
         if u.scheme in ('', 'file'):
             url = None
@@ -305,6 +384,39 @@ class DatasetsApiMixin(object):
                     dataset=dataset.name,  # TODO detect original dataset
                 )
         }
+
+    def get_relative_url(self, url):
+        """Determine if the repo url should be relative."""
+        # Check if the default remote of the branch we are on is on
+        # the same server as the submodule. If so, use a relative path
+        # instead of an absolute URL.
+        try:
+            branch_remote = self.repo.config_reader().get(
+                'branch "{}"'.format(self.repo.active_branch.name), 'remote'
+            )
+        except NoSectionError:
+            branch_remote = 'origin'
+
+        try:
+            remote = self.repo.remote(branch_remote)
+        except ValueError:
+            warnings.warn(
+                'Remote {} not found, cannot check for relative URL.'.
+                format(branch_remote)
+            )
+            return url
+
+        remote_url = GitURL.parse(remote.url)
+        submodule_url = GitURL.parse(url)
+
+        if remote_url.hostname == submodule_url.hostname:
+            # construct the relative path
+            url = Path(
+                '../../{}'.format(submodule_url.owner) if remote_url.owner ==
+                submodule_url.owner else '..'
+            )
+            url = str(url / submodule_url.name)
+        return url
 
 
 def check_for_git_repo(url):

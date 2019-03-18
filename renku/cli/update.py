@@ -125,7 +125,6 @@ import click
 from renku.models.cwl._ascwl import ascwl
 
 from ._client import pass_local_client
-from ._git import with_git
 from ._graph import Graph, _safe_path
 from ._options import option_siblings
 
@@ -139,57 +138,47 @@ from ._options import option_siblings
     help='Display commands without output files.'
 )
 @option_siblings
-@click.argument(
-    'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
-)
-@pass_local_client
-@click.pass_context
-@with_git()
-def update(ctx, client, revision, no_output, siblings, paths):
+@click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
+@pass_local_client(clean=True, commit=True)
+def update(client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
-    status = graph.build_status(revision=revision, can_be_cwl=no_output)
-    paths = {graph.normalize_path(path) for path in paths} \
-        if paths else status['outdated'].keys()
+    outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
+    outputs = {node for node in outputs if graph.need_update(node)}
 
-    if not paths:
+    if not outputs:
         click.secho(
             'All files were generated from the latest inputs.', fg='green'
         )
         sys.exit(0)
 
-    outputs = graph.build(paths=paths, revision=revision)
-
     # Check or extend siblings of outputs.
     outputs = siblings(graph, outputs)
-    output_paths = {path for _, path in outputs if _safe_path(path)}
+    output_paths = {node.path for node in outputs if _safe_path(node.path)}
 
-    # Get parents of all clean nodes
-    import networkx as nx
-
-    clean_paths = set(status['up-to-date'].keys()) - output_paths
-    clean_nodes = {(c, p) for (c, p) in graph.G if p in clean_paths}
-    clean_parents = set()
-    for key in clean_nodes:
-        clean_parents |= nx.ancestors(graph.G, key)
-
-    subnodes = set()
-    for key in outputs:
-        if key in graph.G:
-            subnodes |= nx.shortest_path_length(graph.G, target=key).keys()
-
-    graph.G.remove_nodes_from(clean_parents)
-    graph.G.remove_nodes_from([n for n in graph.G if n not in subnodes])
+    # Get all clean nodes.
+    input_paths = {node.path for node in graph.nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
     import yaml
 
     output_file = client.workflow_path / '{0}.cwl'.format(uuid.uuid4().hex)
+    workflow = graph.ascwl(
+        input_paths=input_paths,
+        output_paths=output_paths,
+        outputs=outputs,
+    )
+
+    # Make sure all inputs are pulled from a storage.
+    client.pull_paths_from_storage(
+        *(path for _, path in workflow.iter_input_files(client.workflow_path))
+    )
+
     with output_file.open('w') as f:
         f.write(
             yaml.dump(
                 ascwl(
-                    graph.ascwl(global_step_outputs=True),
+                    workflow,
                     filter=lambda _, x: x is not None,
                     basedir=client.workflow_path,
                 ),

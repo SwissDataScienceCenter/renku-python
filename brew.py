@@ -18,9 +18,11 @@
 """Generate of Homebrew formulas."""
 
 import json
+import os
 import sys
 
 import requests
+from pkg_resources import get_distribution
 
 if len(sys.argv) > 1:
     NAME = sys.argv[1]
@@ -37,28 +39,38 @@ RESOURCE = """  resource "{package}" do
   end
 """
 
+DEPENDENCY = '  depends_on "{package}"'
+
+DEPENDENCIES = (
+    'git-lfs',
+    'libxml2',
+    'node',
+    'python',
+)
+
 FORMULA = """class {formula} < Formula
   include Language::Python::Virtualenv
 
   desc "{desc}"
   homepage "{homepage}"
   url "{url}"
-  version "{version}"
   sha256 "{sha256}"
   version_scheme 1
   head "{homepage}"
 
-  depends_on "python"
-  depends_on "git-lfs"
-
 {dependencies}
+
+{resources}
   def install
     venv = virtualenv_create(libexec, "python3")
     venv.pip_install resources
     venv.pip_install_and_link buildpath
   end
-end
-"""
+
+  test do
+    system "true"
+  end
+end"""
 
 SUFFIXES = {
     #    'py2.py3-none-any.whl': 10,
@@ -88,14 +100,17 @@ def find_release(package, releases, dependencies=None):
     return dependencies[package]
 
 
-response = requests.get(f'https://pypi.org/pypi/{NAME}/json')
+response = requests.get('https://pypi.org/pypi/{NAME}/json'.format(NAME=NAME))
 
 if response.status_code != 200:
     print(FORMULA, response)
     sys.exit(1)
 
 description = response.json()
-version = description['info']['version']
+version = os.environ.get('PY_BREW_VERSION')
+if version is None:
+    version = get_distribution(NAME).version
+
 release = find_release(NAME, description['releases'][version])
 
 with open('Pipfile.lock') as f:
@@ -107,7 +122,9 @@ for package, settings in lock['default'].items():
     if package in BLACKLIST:
         continue
 
-    pypi_response = requests.get(f'https://pypi.org/pypi/{package}/json')
+    pypi_response = requests.get(
+        'https://pypi.org/pypi/{package}/json'.format(package=package)
+    )
 
     if pypi_response.status_code != 200:
         continue
@@ -123,14 +140,16 @@ for package, settings in lock['default'].items():
 print(
     FORMULA.format(
         dependencies='\n'.join(
+            DEPENDENCY.format(package=package) for package in DEPENDENCIES
+        ),
+        resources='\n'.join(
             RESOURCE.format(**package)
             for name, package in dependencies.items() if name != NAME
         ),
-        desc=description['info']['summary'],
+        desc=description['info']['summary'].rstrip('.'),
         formula=description['info']['name'].capitalize(),
         homepage=description['info']['home_page'],
         url=release['url'],
         sha256=release['sha256'],
-        version=version,
     )
 )

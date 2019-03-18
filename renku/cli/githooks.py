@@ -63,7 +63,7 @@ def install(client, force):
     from git.index.fun import hook_path as get_hook_path
 
     for hook in HOOKS:
-        hook_path = Path(get_hook_path(hook, client.git.git_dir))
+        hook_path = Path(get_hook_path(hook, client.repo.git_dir))
         if hook_path.exists():
             if not force:
                 click.echo(
@@ -92,6 +92,6 @@ def uninstall(client):
     from git.index.fun import hook_path as get_hook_path
 
     for hook in HOOKS:
-        hook_path = Path(get_hook_path(hook, client.git.git_dir))
+        hook_path = Path(get_hook_path(hook, client.repo.git_dir))
         if hook_path.exists():
             hook_path.unlink()
