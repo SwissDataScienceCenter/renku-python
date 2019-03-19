@@ -81,8 +81,5 @@ Full Table of Contents
 
    comparison
    cli
-   projects
-   datasets
-   provenance
-   cwl
+   models/index
    api

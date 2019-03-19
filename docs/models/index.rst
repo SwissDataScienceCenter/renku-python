@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2019 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,37 +15,18 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+.. _models:
 
-Low-level API
-=============
+Models
+======
 
-This API is built on top of REST API endpoints exposed by Renku services.
+.. automodule:: renku.models
 
-.. warning::
+.. toctree::
+   :maxdepth: 1
 
-   Renku services are currently in **beta preview** status and they are
-   subject to change in forseenable future.
-
-.. automodule:: renku.api
-   :members:
-
-Datasets
---------
-
-.. automodule:: renku.api.datasets
-   :members:
-
-Repository
-----------
-
-.. automodule:: renku.api.repository
-   :members:
-
-Git Internals
--------------
-
-.. automodule:: renku.api._git
-   :members:
-
-.. automodule:: renku.models._git
-   :members:
+   projects
+   datasets
+   provenance
+   cwl
+   refs

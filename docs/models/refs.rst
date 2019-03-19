@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+    Copyright 2019 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,35 +15,8 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Datasets
-========
+File References
+===============
 
-.. py:module:: renku.models.datasets
-
-Manage datasets and their metadata.
-
-
-Dataset object
---------------
-
-.. autoclass:: Dataset
+.. automodule:: renku.models.refs
    :members:
-   :inherited-members:
-
-
-Dataset file
-------------
-
-Manage files in the dataset.
-
-.. autoclass:: DatasetFile
-   :members:
-   :inherited-members:
-
-
-Author
-------
-
-.. autoclass:: Author
-   :members:
-   :inherited-members:

@@ -15,7 +15,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Migrate files and metadata to latest Renku version."""
+"""Migrate files and metadata to the latest Renku version.
+
+Datasets
+~~~~~~~~
+
+The location of dataset metadata files has been changed from the
+``data/<name>/metadata.yml`` to ``.renku/datasets/<UUID>/metadata.yml``.
+All file paths inside a metadata file are relative to itself and the
+``renku migrate datasets`` command will take care of it.
+"""
 
 import os
 

@@ -1,5 +1,5 @@
 ..
-    Copyright 2017 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,37 +15,33 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-
-Low-level API
-=============
-
-This API is built on top of REST API endpoints exposed by Renku services.
-
-.. warning::
-
-   Renku services are currently in **beta preview** status and they are
-   subject to change in forseenable future.
-
-.. automodule:: renku.api
-   :members:
-
 Datasets
---------
+========
 
-.. automodule:: renku.api.datasets
+.. automodule:: renku.models.datasets
+   :no-members:
+
+Dataset object
+--------------
+
+.. autoclass:: renku.models.datasets.Dataset
    :members:
+   :inherited-members:
 
-Repository
-----------
 
-.. automodule:: renku.api.repository
+Dataset file
+------------
+
+Manage files in the dataset.
+
+.. autoclass:: renku.models.datasets.DatasetFile
    :members:
+   :inherited-members:
 
-Git Internals
--------------
 
-.. automodule:: renku.api._git
+Author
+------
+
+.. autoclass:: renku.models.datasets.Author
    :members:
-
-.. automodule:: renku.models._git
-   :members:
+   :inherited-members:

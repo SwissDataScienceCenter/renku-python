@@ -111,6 +111,22 @@ Renku Command Line
 
 .. automodule:: renku.cli.image
 
+.. _cli-doctor:
+
+``renku doctor``
+----------------
+
+.. automodule:: renku.cli.doctor
+
+.. _cli-migrate:
+
+``renku migrate``
+-----------------
+
+.. automodule:: renku.cli.migrate
+
+.. _cli-githooks:
+
 ``renku githooks``
 ------------------
 
