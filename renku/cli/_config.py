@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -64,7 +64,7 @@ def read_config(path=None, final=False):
     """Read Renku configuration."""
     try:
         with open(config_path(path, final=final), 'r') as configfile:
-            return yaml.load(configfile) or {}
+            return yaml.safe_load(configfile) or {}
     except FileNotFoundError:
         return {}
 

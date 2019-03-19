@@ -117,7 +117,7 @@ def test_data_add_recursive(directory_tree, client):
 def dataset_serialization(client, dataset, data_file):
     """Test deserializing a dataset object."""
     with open(dataset.path / 'metadata.yml', 'r') as f:
-        source = yaml.load(f)
+        source = yaml.safe_load(f)
 
     d = Dataset.from_jsonld(source)
     assert d.path == dataset.path

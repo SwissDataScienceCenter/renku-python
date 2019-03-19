@@ -356,7 +356,9 @@ class JSONLDMixin(ReferenceMixin):
         import yaml
 
         with path.open(mode='r') as fp:
-            self = cls.from_jsonld(yaml.load(fp) or {}, __reference__=path)
+            self = cls.from_jsonld(
+                yaml.safe_load(fp) or {}, __reference__=path
+            )
 
         return self
 

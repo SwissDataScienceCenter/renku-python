@@ -173,7 +173,7 @@ def test_workflow(runner, project):
     assert 0 == result.exit_code
 
     with open('workflow.cwl', 'r') as f:
-        workflow = Workflow.from_cwl(yaml.load(f))
+        workflow = Workflow.from_cwl(yaml.safe_load(f))
         assert workflow.steps[0].run.startswith('.renku/workflow/')
 
     # Compare default log and log for a specific file.
@@ -627,7 +627,7 @@ def test_modified_tool(runner, project, run):
 
     tool_path = tools[0]
     with tool_path.open('r') as f:
-        command_line_tool = CWLClass.from_cwl(yaml.load(f))
+        command_line_tool = CWLClass.from_cwl(yaml.safe_load(f))
 
     # Simulate a manual edit.
     command_line_tool.inputs[0].default = 'ahoj'
