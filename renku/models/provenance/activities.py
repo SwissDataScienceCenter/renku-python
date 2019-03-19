@@ -413,7 +413,7 @@ class WorkflowRun(ProcessRun):
                 import yaml
                 data = (self.commit.tree / basedir /
                         step.run).data_stream.read()
-                return CWLClass.from_cwl(yaml.load(data))
+                return CWLClass.from_cwl(yaml.safe_load(data))
 
             return CWLClass.from_yaml(step.run)
 

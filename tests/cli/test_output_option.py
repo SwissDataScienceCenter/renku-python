@@ -35,7 +35,7 @@ def test_without_an_output_option(runner, client, run):
     cwls = []
     for tool_path in tools:
         with tool_path.open('r') as f:
-            cwls.append(CWLClass.from_cwl(yaml.load(f)))
+            cwls.append(CWLClass.from_cwl(yaml.safe_load(f)))
 
     assert cwls[0].inputs != cwls[1].inputs
     assert cwls[0].outputs != cwls[1].outputs
@@ -55,7 +55,7 @@ def test_with_an_output_option(runner, client, run):
     cwls = []
     for tool_path in tools:
         with tool_path.open('r') as f:
-            cwls.append(CWLClass.from_cwl(yaml.load(f)))
+            cwls.append(CWLClass.from_cwl(yaml.safe_load(f)))
 
     assert cwls[0].inputs == cwls[1].inputs
     assert cwls[0].outputs == cwls[1].outputs
@@ -79,7 +79,7 @@ def test_output_directory_with_output_option(runner, client, run):
     cwls = []
     for tool_path in tools:
         with tool_path.open('r') as f:
-            cwls.append(CWLClass.from_cwl(yaml.load(f)))
+            cwls.append(CWLClass.from_cwl(yaml.safe_load(f)))
 
     assert cwls[0].inputs != cwls[1].inputs
     assert cwls[0].outputs != cwls[1].outputs
@@ -107,7 +107,7 @@ def test_output_directory_without_separate_outputs(runner, client, run):
     assert 1 == len(tools)
 
     with tools[0].open('r') as f:
-        cwl = CWLClass.from_cwl(yaml.load(f))
+        cwl = CWLClass.from_cwl(yaml.safe_load(f))
 
     assert 1 == len(cwl.outputs)
     assert 'Directory' == cwl.outputs[0].type
