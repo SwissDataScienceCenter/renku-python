@@ -23,15 +23,13 @@ from collections import OrderedDict
 import click
 
 
-def tabular(client, datasets=None):
+def tabular(client, datasets):
     """Format datasets with a tabular output."""
     from renku.models._tabulate import tabulate
 
-    datasets = datasets or client.datasets
-
     click.echo(
         tabulate(
-            datasets.values(),
+            datasets,
             headers=OrderedDict((
                 ('short_id', 'id'),
                 ('name', None),
@@ -42,16 +40,18 @@ def tabular(client, datasets=None):
     )
 
 
-def jsonld(client, datasets=None):
+def jsonld(client, datasets):
     """Format datasets as JSON-LD."""
     from renku.models._json import dumps
     from renku.models._jsonld import asjsonld
 
-    datasets = datasets or client.datasets
     data = [
         asjsonld(
-            dataset, basedir=os.path.relpath('.', start=str(path.parent))
-        ) for path, dataset in datasets.items()
+            dataset,
+            basedir=os.path.relpath(
+                '.', start=str(dataset.__reference__.parent)
+            )
+        ) for dataset in datasets
     ]
     click.echo(dumps(data, indent=2))
 
