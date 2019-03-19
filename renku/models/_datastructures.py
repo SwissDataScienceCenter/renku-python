@@ -170,7 +170,7 @@ class IndexedList(list):
             return getattr(self, index)
         except AttributeError:
             raise IndexError(
-                "No item found with id {0}".format(self._prefix + index)
+                'No item found with id {0}'.format(self._prefix + index)
             )
 
 

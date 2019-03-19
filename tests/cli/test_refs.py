@@ -23,32 +23,32 @@ from renku import cli
 def test_workflow_naming(runner, client):
     """Test naming of CWL tools and workflows."""
     result = runner.invoke(cli.cli, ['run', 'touch', 'data.txt'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['workflow', 'set-name', '.invalid']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code != 0
+    assert 0 != result.exit_code
 
     cmd = ['workflow', 'set-name', 'first']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     tools = list(client.workflow_path.glob('*.cwl'))
     assert 1 == len(tools)
 
     cmd = ['workflow', 'set-name', 'group/second', str(tools[0])]
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     #: Show all CWL files with aliases.
     result = runner.invoke(cli.cli, ['workflow'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'first' in result.output
     assert 'group/second' in result.output
 
     #: Rename an alias and verify in output.
     result = runner.invoke(cli.cli, ['workflow', 'rename', 'first', 'third'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['workflow'])
     assert 'first' not in result.output
@@ -56,29 +56,29 @@ def test_workflow_naming(runner, client):
 
     #: Create/Override alias with the same name.
     result = runner.invoke(cli.cli, ['run', 'touch', 'output.txt'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['workflow', 'set-name', 'group/second']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code != 0
+    assert 0 != result.exit_code
 
     cmd = ['workflow', 'set-name', 'group/second', '--force']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(
         cli.cli, ['workflow', 'rename', 'group/second', 'third']
     )
-    assert result.exit_code != 0
+    assert 0 != result.exit_code
 
     result = runner.invoke(
         cli.cli, ['workflow', 'rename', 'group/second', 'third', '--force']
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     #: Remove an alias and verify in output.
     result = runner.invoke(cli.cli, ['workflow', 'remove', 'third'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['workflow'])
     assert 'group/second' not in result.output
@@ -87,4 +87,4 @@ def test_workflow_naming(runner, client):
     #: Last commit was not workflow run, rerun or update
     cmd = ['workflow', 'set-name', 'unknown_tool']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code != 0
+    assert 0 != result.exit_code

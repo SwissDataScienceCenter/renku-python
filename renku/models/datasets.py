@@ -110,7 +110,7 @@ class AuthorsMixin:
     @property
     def authors_csv(self):
         """Comma-separated list of authors associated with dataset."""
-        return ",".join(author.name for author in self.authors)
+        return ','.join(author.name for author in self.authors)
 
 
 @jsonld.s(
@@ -206,7 +206,7 @@ class Dataset(AuthorsMixin):
     @property
     def authors_csv(self):
         """Comma-separated list of authors associated with dataset."""
-        return ",".join(author.name for author in self.authors)
+        return ','.join(author.name for author in self.authors)
 
     def rename_files(self, rename):
         """Rename files using the path mapping function."""

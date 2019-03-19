@@ -35,12 +35,12 @@ def test_limit_log(runner, project, run):
 
     cmd = ['log', '--revision', 'HEAD^..', output.name]
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert data.name not in result.output
     assert output.name in result.output
 
     cmd = ['log', '--revision', 'HEAD^']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert data.name in result.output
     assert output.name not in result.output

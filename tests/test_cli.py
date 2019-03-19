@@ -45,7 +45,7 @@ def test_version(runner):
 def test_help(arg, runner):
     """Test cli help."""
     result = runner.invoke(cli.cli, [arg])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'Show this message and exit.' in result.output
 
 
@@ -78,24 +78,24 @@ def test_workon(runner, project):
     """Test switching branches."""
     # Create first issue
     result = runner.invoke(cli.cli, ['workon', '1'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['deactivate'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # Enter existing
     result = runner.invoke(cli.cli, ['workon', '1'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['deactivate'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 def test_run_simple(runner, project):
     """Test tracking of run command."""
     cmd = ['echo', 'test']
     result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # There are no output files.
     result = runner.invoke(cli.cli, ['log'])
@@ -120,13 +120,13 @@ _CMD_EXIT_2 = ['bash', '-c', 'exit 2']
 def test_exit_code(cmd, exit_code, runner, project):
     """Test exit-code of run command."""
     result = runner.invoke(cli.cli, ['run'] + cmd)
-    assert result.exit_code == exit_code
+    assert exit_code == result.exit_code
 
 
 def test_git_pre_commit_hook(runner, project, capsys):
     """Test detection of output edits."""
     result = runner.invoke(cli.cli, ['githooks', 'install'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'Hook already exists.' in result.output
 
     repo = git.Repo(project)
@@ -134,7 +134,7 @@ def test_git_pre_commit_hook(runner, project, capsys):
     output = cwd / 'output.txt'
 
     result = runner.invoke(cli.cli, ['run', 'touch', output.name])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with output.open('w') as f:
         f.write('hello')
@@ -145,7 +145,7 @@ def test_git_pre_commit_hook(runner, project, capsys):
         assert output.name in error.stdout
 
     result = runner.invoke(cli.cli, ['githooks', 'uninstall'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     repo.index.commit('hello')
 
@@ -153,7 +153,7 @@ def test_git_pre_commit_hook(runner, project, capsys):
 def test_workflow(runner, project):
     """Test workflow command."""
     result = runner.invoke(cli.cli, ['run', 'touch', 'data.csv'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with open('counted.txt', 'w') as stdout:
         with contextlib.redirect_stdout(stdout):
@@ -170,7 +170,7 @@ def test_workflow(runner, project):
         ['workflow', 'create', 'counted.txt', '-o', 'workflow.cwl'],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with open('workflow.cwl', 'r') as f:
         workflow = Workflow.from_cwl(yaml.safe_load(f))
@@ -180,8 +180,8 @@ def test_workflow(runner, project):
     result_default = runner.invoke(cli.cli, ['log'])
     result_arg = runner.invoke(cli.cli, ['log', 'counted.txt'])
 
-    assert result_default.exit_code == 0
-    assert result_arg.exit_code == 0
+    assert 0 == result_default.exit_code
+    assert 0 == result_arg.exit_code
     assert result_default.output == result_arg.output
 
 
@@ -215,24 +215,24 @@ def test_streams(runner, project, capsys):
         assert f.read().strip() == 'second'
 
     result = runner.invoke(cli.cli, ['workflow', 'create', 'result.txt'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # Check that source.txt is not shown in outputs.
     result = runner.invoke(cli.cli, ['show', 'outputs', 'source.txt'])
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     result = runner.invoke(cli.cli, ['show', 'outputs'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert {
         'result.txt',
     } == set(result.output.strip().split('\n'))
 
     # Check that source.txt is shown in inputs.
     result = runner.invoke(cli.cli, ['show', 'inputs'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert {
         'source.txt',
     } == set(result.output.strip().split('\n'))
@@ -244,7 +244,7 @@ def test_streams(runner, project, capsys):
     repo.index.commit('Changed source.txt')
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
     assert 'source.txt' in result.output
 
 
@@ -268,7 +268,7 @@ def test_streams_cleanup(runner, project, run):
     assert not stdout.exists()
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     # File from the Git index should be restored.
     repo = git.Repo(project)
@@ -304,7 +304,7 @@ def test_streams_and_args_names(runner, project, capsys):
         assert f.read().strip() == 'lalala'
 
     result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 def test_submodule_init(tmpdir_factory, runner, run, project):
@@ -341,7 +341,7 @@ def test_submodule_init(tmpdir_factory, runner, run, project):
         ],
         catch_exceptions=False
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 def test_show_inputs(tmpdir_factory, project, runner, run):
@@ -380,24 +380,24 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     os.chdir('test-project')
 
     result = runner.invoke(cli.cli, ['-S', 'init'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with monkeypatch.context() as m:
         from renku.api.storage import StorageApiMixin
         m.setattr(StorageApiMixin, 'external_storage_installed', False)
 
         result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
-        assert result.exit_code == 1
+        assert 1 == result.exit_code
         subprocess.call(['git', 'clean', '-df'])
 
     result = runner.invoke(cli.cli, ['-S', 'run', 'touch', 'output'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['init', '--force'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['run', 'touch', 'output2'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 def test_file_tracking(isolated_runner):
@@ -407,10 +407,10 @@ def test_file_tracking(isolated_runner):
     os.mkdir('test-project')
     os.chdir('test-project')
     result = runner.invoke(cli.cli, ['init'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with open('.gitattributes') as f:
         gitattributes = f.read()
@@ -422,7 +422,7 @@ def test_status_with_old_repository(isolated_runner, old_project):
     runner = isolated_runner
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     output = result.output.split('\n')
     assert output.pop(0) == 'On branch master'
@@ -434,7 +434,7 @@ def test_update_with_old_repository(isolated_runner, old_project):
     runner = isolated_runner
 
     result = runner.invoke(cli.cli, ['update'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     output = result.output.split('\n')
     assert output.pop(0) == 'All files were generated from the latest inputs.'
@@ -452,11 +452,11 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
 
     os.chdir('foo')
     result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     os.chdir('../bar')
     result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     os.chdir('../foo')
     with monkeypatch.context() as m:
@@ -467,21 +467,21 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
             cli.cli, ['dataset', 'add', 'f', '../woop'],
             catch_exceptions=False
         )
-        assert result.exit_code == 1
+        assert 1 == result.exit_code
         subprocess.call(['git', 'clean', '-dff'])
 
     result = runner.invoke(
         cli.cli, ['-S', 'dataset', 'add', 'f', '../woop'],
         catch_exceptions=False
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     os.chdir('../bar')
     result = runner.invoke(
         cli.cli, ['-S', 'dataset', 'add', 'b', '../foo/data/f/woop'],
         catch_exceptions=False
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # Produce a derived data from the imported data.
     with open('woop.wc', 'w') as stdout:
@@ -495,7 +495,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
                 assert e.code in {None, 0}
 
     result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # Modify the source data.
     os.chdir('../foo')
@@ -509,7 +509,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
     subprocess.call(['git', 'commit', '-am', 'update submodule'])
 
     result = runner.invoke(cli.cli, ['status'], catch_exceptions=False)
-    assert result.exit_code != 0
+    assert 0 != result.exit_code
 
     # Test relative log output
     cmd = ['--path', '../foo', 'log']
@@ -522,11 +522,11 @@ def test_unchanged_output(runner, project):
     """Test detection of unchanged output."""
     cmd = ['run', 'touch', '1']
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['run', 'touch', '1']
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
 
 def test_unchanged_stdout(runner, project, capsys):
@@ -582,7 +582,7 @@ def test_modified_output(runner, project, run):
     assert not output.exists()
 
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # The output file is copied from the source.
     with output.open('r') as f:
@@ -592,7 +592,7 @@ def test_modified_output(runner, project, run):
 
     # The input file has been updated and output is recreated.
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with output.open('r') as f:
         assert f.read().strip() == '2'
@@ -619,7 +619,7 @@ def test_modified_tool(runner, project, run):
 
     cmd = ['status']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # There should be only one command line tool.
     tools = list(client.workflow_path.glob('*_echo.cwl'))
@@ -665,12 +665,12 @@ def test_siblings(runner, project):
 
     cmd = ['run', 'touch'] + list(siblings)
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     for sibling in siblings:
         cmd = ['show', 'siblings', sibling]
         result = runner.invoke(cli.cli, cmd)
-        assert result.exit_code == 0
+        assert 0 == result.exit_code
 
         output = {
             name.strip()
@@ -686,11 +686,11 @@ def test_orphan(runner, project):
 
     cmd = ['run', 'touch', orphan.name]
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['show', 'siblings', 'orphan.txt']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'orphan.txt\n' == result.output
 
 
@@ -698,11 +698,11 @@ def test_only_child(runner, project):
     """Test detection of an only child."""
     cmd = ['run', 'touch', 'only_child']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['show', 'siblings', 'only_child']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'only_child\n' == result.output
 
 
@@ -712,10 +712,10 @@ def test_outputs(runner, project):
 
     cmd = ['run', 'touch'] + list(siblings)
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['show', 'outputs'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert siblings == set(result.output.strip().split('\n'))
 
 
@@ -759,14 +759,14 @@ def test_simple_rerun(runner, project, run):
         if greeting != new_greeting:
             break
 
-    assert greeting != new_greeting, "Something is not random"
+    assert greeting != new_greeting, 'Something is not random'
 
     for _ in range(100):
         new_greeting = _rerun()
         if greeting == new_greeting:
             break
 
-    assert greeting == new_greeting, "Something is not random"
+    assert greeting == new_greeting, 'Something is not random'
 
 
 def test_rerun_with_inputs(runner, project, run):
@@ -861,13 +861,13 @@ def test_rerun_with_edited_inputs(runner, project, run):
 
 
 @pytest.mark.skipif(
-    shutil.which('docker') is None, reason="requires docker command line"
+    shutil.which('docker') is None, reason='requires docker command line'
 )
 def test_image_pull(runner, project):
     """Test image pulling."""
     cmd = ['image', 'pull']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     repo = git.Repo(project)
     origin = repo.create_remote('origin', project)
@@ -876,7 +876,7 @@ def test_image_pull(runner, project):
 
     cmd = ['image', 'pull']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     subprocess.call([
         'git', 'config', 'remote.origin.url', 'http://demo:demo@example.com'
@@ -884,7 +884,7 @@ def test_image_pull(runner, project):
 
     cmd = ['image', 'pull']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     subprocess.call([
         'git', 'config', 'remote.origin.url',
@@ -895,7 +895,7 @@ def test_image_pull(runner, project):
     result = runner.invoke(cli.cli, cmd)
     assert 'registry.gitlab.com/example/example' in result.output
     assert 'registry.gitlab.com/example/example.git' not in result.output
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     subprocess.call([
         'git', 'config', 'remote.origin.url',
@@ -906,28 +906,28 @@ def test_image_pull(runner, project):
     result = runner.invoke(cli.cli, cmd)
     assert 'registry.example.com/repo' in result.output
     assert 'registry.example.com/repo.git' not in result.output
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     result = runner.invoke(
         cli.cli, ['config', 'registry', 'http://demo:demo@global.example.com']
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['image', 'pull', '--no-auto-login']
     result = runner.invoke(cli.cli, cmd)
     assert 'global.example.com' in result.output
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     result = runner.invoke(
         cli.cli,
         ['config', 'origin.registry', 'http://demo:demo@origin.example.com']
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['image', 'pull', '--no-auto-login']
     result = runner.invoke(cli.cli, cmd)
     assert 'origin.example.com' in result.output
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
 
 @pytest.mark.parametrize('cmd, exit_code', (('update', 0), ('rerun', 1)))
@@ -982,7 +982,7 @@ def test_deleted_input(runner, project, capsys):
 
     cmd = ['run', 'mv', input_.name, 'input.mv']
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert not input_.exists()
     assert Path('input.mv').exists()
 
@@ -1009,7 +1009,7 @@ def test_output_directory(runner, project, run):
 
     cmd = ['run', 'cp', '-LRf', str(source), str(destination)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     destination_source = destination / data.name
     assert destination_source.exists()
@@ -1037,7 +1037,7 @@ def test_output_directory(runner, project, run):
 
     cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
     assert not (invalid_destination / data.name).exists()
 
 

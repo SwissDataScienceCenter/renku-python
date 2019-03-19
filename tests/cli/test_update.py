@@ -49,17 +49,17 @@ def test_update(runner, project, run):
         assert f.read().strip() == '1'
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     update_source('12')
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     assert 0 == run()
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with output.open('r') as f:
         assert f.read().strip() == '2'
@@ -71,12 +71,12 @@ def test_update(runner, project, run):
     update_source('34')
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     assert 0 == run()
 
     result = runner.invoke(cli.cli, ['status'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with output.open('r') as f:
         assert f.read().strip() == '2'
@@ -89,7 +89,7 @@ def test_update(runner, project, run):
             ['log', '--format', output_format],
             catch_exceptions=False,
         )
-        assert result.exit_code == 0, output_format
+        assert 0 == result.exit_code, output_format
         assert source.name in result.output, output_format
 
 
@@ -106,11 +106,11 @@ def test_workflow_without_outputs(runner, project, run):
 
     cmd = ['run', 'cat', '--no-output', input_.name]
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     cmd = ['status', '--no-output']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with input_.open('w') as f:
         f.write('second')
@@ -120,13 +120,13 @@ def test_workflow_without_outputs(runner, project, run):
 
     cmd = ['status', '--no-output']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     assert 0 == run(args=('update', '--no-output'))
 
     cmd = ['status', '--no-output']
     result = runner.invoke(cli.cli, cmd)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 def test_siblings_update(runner, project, run):

@@ -24,7 +24,7 @@ def test_dataset_add(tmpdir, runner, client):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # Using an extension from gitignore.default
     ignored_file = tmpdir.join('my.spec')
@@ -36,7 +36,7 @@ def test_dataset_add(tmpdir, runner, client):
         ['dataset', 'add', 'testing', ignored_file.strpath],
         catch_exceptions=False,
     )
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
     client.repo.git.clean('-dff')
 
@@ -46,4 +46,4 @@ def test_dataset_add(tmpdir, runner, client):
         ['dataset', 'add', 'testing', '--force', ignored_file.strpath],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code

@@ -81,7 +81,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
 
@@ -93,7 +93,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
         ],
         catch_exceptions=False
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     src = client.path / client.datadir / 'dataset' / 'file'
     assert src.is_symlink()

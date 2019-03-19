@@ -88,6 +88,7 @@ from ._format.datasets import FORMATS as DATASETS_FORMATS
 
 
 @click.group(invoke_without_command=True)
+@click.option('--revision', default=None)
 @click.option('--datadir', default='data', type=click.Path(dir_okay=True))
 @click.option(
     '--format',
@@ -97,14 +98,19 @@ from ._format.datasets import FORMATS as DATASETS_FORMATS
 )
 @pass_local_client(clean=False, commit=False)
 @click.pass_context
-def dataset(ctx, client, datadir, format):
+def dataset(ctx, client, revision, datadir, format):
     """Handle datasets."""
     ctx.meta['renku.datasets.datadir'] = datadir
 
     if ctx.invoked_subcommand is not None:
         return
 
-    DATASETS_FORMATS[format](client)
+    if revision is None:
+        datasets = client.datasets.values()
+    else:
+        datasets = client.datasets_from_commit(client.repo.commit(revision))
+
+    DATASETS_FORMATS[format](client, datasets)
 
 
 @dataset.command()
