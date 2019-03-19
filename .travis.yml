@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -43,6 +43,8 @@ stages:
   - name: publish 🐍  🐳
     if: type = push AND (branch = master OR tag IS present)
   - name: brew 🍺
+    if: type = push AND tag IS present
+  - name: brew 🐧 🍺
     if: type = push AND tag IS present
 
 before_install:
@@ -131,7 +133,7 @@ jobs:
       script:
         - echo PY_BREW_VERSION=$(python setup.py --version)
         - make -e PY_BREW_VERSION=$(python setup.py --version) brew-commit-formula brew-build-bottle brew-commit-bottle
-      deploy:
+      deploy: &brew-deploy
         - provider: releases
           api_key: ${GITHUB_TOKEN}
           file_glob: true
@@ -149,3 +151,12 @@ jobs:
           local-dir: /usr/local/Homebrew/Library/Taps/swissdatasciencecenter/homebrew-renku/
           on:
             all_branches: true
+
+    - stage: brew 🐧 🍺
+      language: generic
+      before_install: sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+      install: brew install jq
+      script:
+        - echo PY_BREW_VERSION=$(python setup.py --version)
+        - make -e PY_BREW_VERSION=$(python setup.py --version) brew-build-bottle brew-commit-bottle
+      deploy: *brew-deploy
