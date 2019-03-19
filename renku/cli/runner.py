@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -76,8 +76,8 @@ def template(client, force):
 @pass_local_client
 def rerun(client, run, job):
     """Re-run existing workflow or tool using CWL runner."""
-    from renku.models.provenance import ProcessRun, from_git_commit
-    activity = from_git_commit(commit=client.repo.head.commit, client=client)
+    from renku.models.provenance import ProcessRun
+    activity = client.process_commmit()
 
     if not isinstance(activity, ProcessRun):
         click.secho('No tool was found.', fg='red', file=sys.stderr)
@@ -92,7 +92,7 @@ def rerun(client, run, job):
             args.append(job_file.name)
 
             with job_file as fp:
-                yaml.dump(yaml.load(job), stream=fp, encoding='utf-8')
+                yaml.dump(yaml.safe_load(job), stream=fp, encoding='utf-8')
 
         if run:
             return call(args, cwd=os.getcwd())

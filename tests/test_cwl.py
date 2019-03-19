@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -346,4 +346,4 @@ outputs:
 
 def test_load_inputs_defined_as_type():
     """Test loading of CWL definition with specific input parameters."""
-    assert CWLClass.from_cwl(yaml.load(LINK_CWL))
+    assert CWLClass.from_cwl(yaml.safe_load(LINK_CWL))

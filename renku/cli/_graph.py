@@ -278,11 +278,7 @@ class Graph(object):
             # Mark as visited:
             visited.add(processing.commit)
 
-            # Do the node processing here:
-            activity = Activity.from_git_commit(
-                processing.commit,
-                client=processing.client,
-            )
+            activity = processing.client.process_commit(processing.commit)
 
             if activity is None:
                 continue

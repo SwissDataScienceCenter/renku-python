@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,7 +20,7 @@
 .. seealso:: https://www.w3.org/TR/prov-o/
 """
 
-from .activities import Activity, ProcessRun, WorkflowRun, from_git_commit
+from .activities import Activity, ProcessRun, WorkflowRun
 from .agents import Person, SoftwareAgent
 from .entities import Collection, Entity, Process, Workflow
 from .expanded import Project
@@ -39,5 +39,4 @@ __all__ = (
     'Usage',
     'Workflow',
     'WorkflowRun',
-    'from_git_commit',
 )
