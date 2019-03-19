@@ -219,7 +219,7 @@ def _include_exclude(file_path, include=None, exclude=None):
 def _filter(client, names=None, authors=None, include=None, exclude=None):
     """Filter dataset files by specified filters.
 
-    :param dataset_names: Filter by specified dataset names.
+    :param names: Filter by specified dataset names.
     :param authors: Filter by authors.
     :param include: Include files matching file pattern.
     :param exclude: Exclude files matching file pattern.
