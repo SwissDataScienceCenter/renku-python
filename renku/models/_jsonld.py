@@ -35,13 +35,13 @@ KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
 
 DOC_TPL = (
-    "{cls.__doc__}\n\n"
-    "**Type:**\n\n"
-    ".. code-block:: json\n\n"
-    "    {type}\n\n"
-    "**Context:**\n\n"
-    ".. code-block:: json\n\n"
-    "{context}\n"
+    '{cls.__doc__}\n\n'
+    '**Type:**\n\n'
+    '.. code-block:: json\n\n'
+    '    {type}\n\n'
+    '**Context:**\n\n'
+    '.. code-block:: json\n\n'
+    '{context}\n'
 )
 
 make_type = type

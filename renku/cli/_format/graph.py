@@ -222,13 +222,13 @@ def _rdf2dot_reduced(g, stream):
         """Compute qname."""
         try:
             q = g.compute_qname(x)
-            return q[0] + ":" + q[2]
+            return q[0] + ':' + q[2]
         except Exception:
             return x
 
     def color(p):
         """Choose node color."""
-        return "BLACK"
+        return 'BLACK'
 
     for s, p, o in g:
         sn = node(s)

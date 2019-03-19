@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,8 +23,9 @@ set -o errexit
 # quit on unbound symbols:
 set -o nounset
 
-pydocstyle renku tests docs
+pydocstyle renku tests conftest.py docs
 isort -rc -c -df
+unify -c -r renku tests conftest.py docs
 check-manifest --ignore ".travis-*,renku/version.py"
 find . -iname \*.sh -print0 | xargs -0 shellcheck
 sphinx-build -qnNW docs docs/_build/html
