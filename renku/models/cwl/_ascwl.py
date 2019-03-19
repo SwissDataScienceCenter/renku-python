@@ -66,7 +66,7 @@ class CWLClass(ReferenceMixin, metaclass=CWLType):
         import yaml
 
         with path.open(mode='r') as fp:
-            self = cls.from_cwl(yaml.load(fp), __reference__=path)
+            self = cls.from_cwl(yaml.safe_load(fp), __reference__=path)
 
         return self
 

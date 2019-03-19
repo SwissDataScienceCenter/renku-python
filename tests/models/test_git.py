@@ -24,7 +24,7 @@ from renku.models._git import GitURL
 
 
 @pytest.mark.parametrize(
-    "fields", [
+    'fields', [
         {
             'href': 'https://example.com/repo.git',
             'protocol': 'https',

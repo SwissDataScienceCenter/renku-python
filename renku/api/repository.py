@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -164,6 +164,45 @@ class RepositoryApiMixin(GitCore):
 
         return Project(id='file://{0}'.format(self.path))
 
+    def process_commit(self, commit=None, path=None):
+        """Build an :class:`~renku.models.provenance.activities.Activity` instance.
+
+        :param commit: Commit to process. (default: ``HEAD``)
+        :param path: Process a specific CWL file.
+        """
+        from renku.models.cwl._ascwl import CWLClass
+        from renku.models.provenance.activities import Activity
+
+        commit = commit or self.repo.head.commit
+
+        if len(commit.parents) > 1:
+            return Activity(commit=commit, client=self)
+
+        if path is None:
+            for file_ in commit.stats.files.keys():
+                # Find a process (CommandLineTool or Workflow)
+                if self.is_cwl(file_):
+                    if path is not None:
+                        # Regular activity since it edits multiple CWL files
+                        return Activity(commit=commit, client=self)
+
+                    path = file_
+
+        if path:
+            data = (commit.tree / path).data_stream.read()
+            process = CWLClass.from_cwl(
+                yaml.safe_load(data), __reference__=Path(path)
+            )
+
+            return process.create_run(
+                commit=commit,
+                client=self,
+                process=process,
+                path=path,
+            )
+
+        return Activity(commit=commit, client=self)
+
     def is_cwl(self, path):
         """Check if the path is a valid CWL file."""
         return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
@@ -255,7 +294,7 @@ class RepositoryApiMixin(GitCore):
 
             if self.renku_metadata_path.exists():
                 with metadata_path.open('r') as f:
-                    source = yaml.load(f) or {}
+                    source = yaml.safe_load(f) or {}
             else:
                 source = {}
 

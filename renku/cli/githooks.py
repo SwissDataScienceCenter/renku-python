@@ -67,7 +67,7 @@ def install(client, force):
         if hook_path.exists():
             if not force:
                 click.echo(
-                    "Hook already exists. Skipping {0}".format(str(hook_path)),
+                    'Hook already exists. Skipping {0}'.format(str(hook_path)),
                     err=True
                 )
                 continue

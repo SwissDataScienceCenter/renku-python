@@ -35,7 +35,7 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
 
@@ -46,7 +46,7 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
          str(data_file)],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert os.stat(
         os.path.join('data', 'dataset', os.path.basename(str(data_file)))
     )
@@ -60,7 +60,7 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert os.stat('data/dataset/README.rst')
 
     # add data from local git repo
@@ -71,7 +71,7 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
         ],
         catch_exceptions=False
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
@@ -79,7 +79,7 @@ def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
     format_option = '--format={0}'.format(output_format)
     result = runner.invoke(cli.cli, ['dataset', format_option])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
@@ -87,10 +87,10 @@ def test_datasets_list_non_empty(output_format, runner, project):
     """Test listing with datasets."""
     format_option = '--format={0}'.format(output_format)
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['dataset', format_option])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'dataset' in result.output
 
     result = runner.invoke(
@@ -106,7 +106,7 @@ def test_multiple_file_to_dataset(
     """Test importing multiple data into a dataset at once."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
 
@@ -122,14 +122,14 @@ def test_multiple_file_to_dataset(
         ['dataset', 'add', 'dataset'] + paths,
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
 
 def test_repository_file_to_dataset(runner, project, client):
     """Test adding a file from the repository into a dataset."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with (client.path / 'a').open('w') as fp:
         fp.write('a')
@@ -143,7 +143,7 @@ def test_repository_file_to_dataset(runner, project, client):
         ['dataset', 'add', 'dataset', 'a'],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
@@ -156,7 +156,7 @@ def test_relative_import_to_dataset(
     """Test importing data from a directory structure."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
 
@@ -181,7 +181,7 @@ def test_relative_import_to_dataset(
          str(tmpdir)] + paths,
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     assert os.stat(os.path.join('data', 'dataset', 'data.txt'))
     assert os.stat(os.path.join('data', 'dataset', 'first', 'data.txt'))
@@ -194,7 +194,7 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     """Test relative import from a git repository."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
 
@@ -226,7 +226,7 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     assert os.stat(os.path.join('data', 'dataset', 'data.txt'))
     assert os.stat(os.path.join('data', 'dataset', 'second', 'data.txt'))
@@ -238,7 +238,7 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
          str(tmpdir)],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     assert os.stat(os.path.join('data', 'relative', 'data.txt'))
     assert os.stat(os.path.join('data', 'relative', 'second', 'data.txt'))
@@ -250,7 +250,7 @@ def test_dataset_add_with_link(tmpdir, runner, project, client):
 
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     paths = []
     expected_inodes = []
@@ -266,7 +266,7 @@ def test_dataset_add_with_link(tmpdir, runner, project, client):
         ['dataset', 'add', 'my-dataset', '--link'] + paths,
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     received_inodes = []
     with client.with_dataset('my-dataset') as dataset:
@@ -287,7 +287,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
 
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     paths = []
     original_inodes = []
@@ -302,7 +302,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
         cli.cli,
         ['dataset', 'add', 'my-dataset'] + paths,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     received_inodes = []
     with client.with_dataset('my-dataset') as dataset:

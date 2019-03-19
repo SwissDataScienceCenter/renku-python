@@ -82,10 +82,8 @@ def validate_path(ctx, param, value):
     client = ctx.obj
 
     if value is None:
-        from renku.models.provenance import ProcessRun, from_git_commit
-        activity = from_git_commit(
-            commit=client.repo.head.commit, client=client
-        )
+        from renku.models.provenance import ProcessRun
+        activity = client.process_commit()
 
         if not isinstance(activity, ProcessRun):
             raise click.BadParameter('No tool was found.')

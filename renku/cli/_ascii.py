@@ -272,7 +272,7 @@ class DAG(object):
         # Current line contains a NODE or ROOT_NODE character.
         current_line = edge_characters[:column_index * 2]
         # Replace the value for column index with a node symbol.
-        current_line.extend([node_symbol, " "])
+        current_line.extend([node_symbol, ' '])
         # Append fixed rest of the line from edge characters.
         current_line.extend(
             self._line_tail(
@@ -372,12 +372,12 @@ class DAG(object):
                 tail = edge_characters[column_index * 2:(start - 1) * 2]
                 # Extend line with correctly oriented edges.
                 tail.extend(
-                    [self.LEFT_EDGE, " "] * (number_of_columns - start)
+                    [self.LEFT_EDGE, ' '] * (number_of_columns - start)
                 )
                 return tail
             else:
                 # Next line has more columns, hence the edge orientation.
-                return [self.RIGHT_EDGE, " "
+                return [self.RIGHT_EDGE, ' '
                         ] * (number_of_columns - column_index - 1)
         else:
             # No fix required, just copy the rest.
