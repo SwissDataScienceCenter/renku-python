@@ -37,7 +37,7 @@ Renku Command Line
 .. _cli-datasets:
 
 ``renku dataset``
-------------------
+-----------------
 
 .. automodule:: renku.cli.dataset
 
