@@ -1,0 +1,23 @@
+environment:
+  matrix:
+    - PYTHON: C:\Python37-x64
+    - PYTHON: C:\Python36-x64
+
+init:
+  - SET PATH=%PYTHON%;%PATH%
+
+install:
+  - python -m pip install -e .[all]
+
+build: false
+
+test_script:
+  - python -m pytest --ignore renku/version.py
+
+branches:
+  only:
+    - master
+    - /^\d+(\.\d+)*(\.x)?$/
+
+cache:
+  - '%LOCALAPPDATA%\pip\Cache'
