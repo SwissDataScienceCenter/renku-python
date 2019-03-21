@@ -31,11 +31,11 @@ cache:
   - pip
 
 env:
-  - REQUIREMENTS=lowest
+#   - REQUIREMENTS=lowest
   - REQUIREMENTS=release
 
 python:
-  - "3.5"
+#   - "3.5"
   - "3.6"
 
 stages:
@@ -45,7 +45,7 @@ stages:
   - name: brew 🍺
     if: type = push AND tag IS present
   - name: brew 🐧 🍺
-    if: type = push AND tag IS present
+    # if: type = push AND tag IS present
 
 before_install:
   - git fetch --tags
@@ -79,29 +79,14 @@ install:
     fi
 
 script:
-  - "./run-tests.sh"
+#   - "./run-tests.sh"
+  - echo OK
 
 after_success:
   - coveralls
 
 jobs:
   include:
-    - stage: test
-      language: generic
-      sudo: true
-      os: osx
-      osx_image: xcode10.1
-    - language: generic
-      sudo: true
-      os: osx
-      osx_image: xcode9.2
-    - python: "3.7"
-      os: linux
-      dist: xenial
-      language: python
-      env:
-        - REQUIREMENTS=release
-
     - stage: publish 🐍  🐳
       python: 3.6
       script: echo "Publishing on PyPI.io ..."
@@ -154,9 +139,16 @@ jobs:
 
     - stage: brew 🐧 🍺
       language: generic
-      before_install: sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+      dist: trusty
+      before_install:
+        # Install Linuxbrew
+        - test -d $HOME/.linuxbrew/bin || git clone https://github.com/Homebrew/brew.git $HOME/.linuxbrew
+        - export PATH="$HOME/.linuxbrew/bin:$PATH"
+        - export MANPATH="$(brew --prefix)/share/man:$MANPATH"
+        - export INFOPATH="$(brew --prefix)/share/info:$INFOPATH"
+        - brew tap homebrew/core
+        - brew --version
       install: brew install jq
       script:
-        - echo PY_BREW_VERSION=$(python setup.py --version)
-        - make -e PY_BREW_VERSION=$(python setup.py --version) brew-build-bottle brew-commit-bottle
+        - make -e PY_BREW_VERSION=0.4.0 brew-build-bottle brew-commit-bottle
       deploy: *brew-deploy
