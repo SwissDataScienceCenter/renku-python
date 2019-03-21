@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2019 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -36,7 +36,7 @@
    :alt: Documentation Status
 
 .. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renku-python.svg
-        :target: https://github.com/SwissDataScienceCenter/renku-python/blob/master/LICENSE
+   :target: https://github.com/SwissDataScienceCenter/renku-python/blob/master/LICENSE
 
 A Python library for the `Renku collaborative data science platform
 <https://github.com/SwissDataScienceCenter/renku>`_. It allows the user to
@@ -72,30 +72,16 @@ Use following installation steps based on your operating system and preferences
 if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
-MacOS
------
+Homebrew
+--------
 
-The recommended way of installing Renku on MacOS is via `Homebrew <brew.sh>`_.
+The recommended way of installing Renku on MacOS and Linux is via
+`Homebrew <brew.sh>`_.
 
 ::
 
     $ brew tap swissdatasciencecenter/renku
     $ brew install renku
-
-..
-  TODO: uncomment one the snap build works.
-
-  Linux
-  -----
-
-  There are universal *snap* packages available for Renku. Make sure you
-  have the ``snap`` command available or `install snapd
-  <https://docs.snapcraft.io/core/install>`_.
-
-  ::
-
-      $ open https://launchpad.net/~swissdatasciencecenter/+snap/renku/
-      $ snap install renku
 
 Isolated environments using ``pipx``
 ------------------------------------
@@ -133,7 +119,8 @@ The containerized version of the CLI can be launched using Docker command.
 
     $ docker run -it -v "$PWD":"$PWD" -w="$PWD" renku/renku-python renku
 
-It makes sure your current directory is mounted to the same place in the container.
+It makes sure your current directory is mounted to the same place in the
+container.
 
 Usage
 =====
