@@ -62,7 +62,7 @@ before_install:
         brew upgrade python;
         brew unlink python;
         brew link python;
-        brew install git-lfs jq node pipenv shellcheck;
+        brew install git-lfs node pipenv shellcheck;
         brew upgrade node;
         git config --global --add user.name "John Doe";
         git config --global --add user.email "john.doe@example.com";
@@ -113,7 +113,7 @@ jobs:
       sudo: true
       os: osx
       osx_image: xcode10.2
-      before_install: brew install jq
+      before_install: []
       install: python -m pip install requests
       script:
         - echo PY_BREW_VERSION=$(python setup.py --version)
@@ -138,17 +138,81 @@ jobs:
             all_branches: true
 
     - stage: brew 🐧 🍺
-      language: generic
+      language: ruby
+      rvm: system
+      sudo: required
       dist: trusty
       before_install:
+        - sudo apt-get -qq update
+        - sudo apt-get install -y libc6-dbg libxml-parser-perl libxml-sax-perl
+        - DEBIAN_FRONTEND=noninteractive sudo apt-get autoremove -y --purge
+            bison
+            comerr-dev
+            erlang-dev
+            flex
+            libblas-dev
+            libbz2-dev
+            libdrm-dev
+            libexpat1-dev
+            libffi-dev
+            libfl-dev
+            libfontconfig1-dev
+            libfreetype6-dev
+            libgcrypt11-dev
+            libgdbm-dev
+            libgeos-dev
+            libgl1-mesa-dev
+            libgmp-dev
+            libice-dev
+            libicu-dev
+            libidn11-dev
+            libjack-dev
+            libjack-jackd2-0
+            libjack-jackd2-dev
+            libjack0
+            libjasper-dev
+            libjbig-dev
+            libjpeg8-dev
+            libkrb5-dev
+            libldap2-dev
+            libltdl-dev
+            liblzma-dev
+            liblzo2-dev
+            libmagic-dev
+            libmemcached-dev
+            libncurses5-dev
+            libossp-uuid-dev
+            libpcre3-dev
+            libpq-dev
+            libqt4-dev
+            libqtwebkit-dev
+            libsasl2-dev
+            libsm-dev
+            libsqlite0-dev
+            libsqlite3-dev
+            libtinfo-dev
+            libwebp-dev
+            libwmf-dev
+            libx11-dev
+            libxau-dev
+            libxcb1-dev
+            libxml2-dev
+            libyaml-dev
+            llvm-3.4
+            mysql-common
+            unixodbc-dev
+            x11proto-core-dev
+            x11proto-input-dev
+            x11proto-kb-dev
+            x11proto-xext-dev
+            zlib1g-dev
         # Install Linuxbrew
         - test -d $HOME/.linuxbrew/bin || git clone https://github.com/Homebrew/brew.git $HOME/.linuxbrew
         - export PATH="$HOME/.linuxbrew/bin:$PATH"
         - export MANPATH="$(brew --prefix)/share/man:$MANPATH"
         - export INFOPATH="$(brew --prefix)/share/info:$INFOPATH"
         - brew tap homebrew/core
-        - brew --version
-      install: brew install jq
+      install: brew --version
       script:
         - make -e PY_BREW_VERSION=0.4.0 brew-build-bottle brew-commit-bottle
       deploy: *brew-deploy

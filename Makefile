@@ -24,6 +24,8 @@ ifeq ($(DOCKER_LABEL), master)
 	DOCKER_LABEL=latest
 endif
 
+VERSION_CMD=brew info --json=v1 renku | python -c "import json, sys; print(json.loads(sys.stdin.read())[0]['versions']['stable'])"
+
 GIT_MASTER_HEAD_SHA:=$(shell git rev-parse --short=12 --verify HEAD)
 
 .PHONY: docker-build docker-tag docker-push docker-login
@@ -49,7 +51,7 @@ brew-commit-formula: renku.rb
 	brew tap swissdatasciencecenter/renku
 	brew formula renku
 	cp $< /usr/local/Homebrew/Library/Taps/swissdatasciencecenter/homebrew-renku/renku.rb
-	cd $(shell brew --repo swissdatasciencecenter/renku) && git commit -a -m "renku: release $(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
+	cd $(shell brew --repo swissdatasciencecenter/renku) && git commit -a -m "renku: release $(shell $(VERSION_CMD))"
 
 .PHONY: brew-build-bottle
 brew-build-bottle:
@@ -58,14 +60,14 @@ brew-build-bottle:
 	@brew install --build-bottle renku
 
 %.bottle.json:
-	@brew bottle --json --root-url=https://github.com/SwissDataScienceCenter/renku-python/releases/download/v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable') renku || echo 'OK'
+	@brew bottle --json --root-url=https://github.com/SwissDataScienceCenter/renku-python/releases/download/v$(shell $(VERSION_CMD)) renku || echo 'OK'
 	@echo "Renaming:"
-	@cat $@ | jq -r '.[].bottle.tags[] | select(.local_filename != .filename) | "- \"\(.local_filename)\" to \"\(.filename)\""'
-	@cat $@ | jq -r '.[].bottle.tags[] | select(.local_filename != .filename) | "mv \"\(.local_filename)\" \"\(.filename)\""' | sh || echo "Move was not successfull."
+	@cat $@ | python -c "import json, sys; [print('-', tag['local_filename'], tag['filename']]) for tag in json.loads(sys.stdin.read())['swissdatasciencecenter/renku/renku']['bottle']['tags'].values())]"
+	@cat $@ | python -c "import json, subprocess, sys; [subprocess.call(['mv', tag['local_filename'], tag['filename']]) for tag in json.loads(sys.stdin.read())['swissdatasciencecenter/renku/renku']['bottle']['tags'].values())]"
 
 .PHONY: brew-commit-bottle
 brew-commit-bottle: *.bottle.json
 	brew bottle --merge --keep-old --write $< || brew bottle --merge --write $<
 
 brew-release:
-	open "https://github.com/SwissDataScienceCenter/renku-python/releases/new?tag=v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
+	open "https://github.com/SwissDataScienceCenter/renku-python/releases/new?tag=v$(shell $(VERSION_CMD))"
