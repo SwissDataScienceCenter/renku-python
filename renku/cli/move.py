@@ -41,10 +41,7 @@ from ._echo import WARNING, progressbar
 @click.pass_context
 def move(ctx, client, sources, destination):
     """Move files and check repository for potential problems."""
-    import yaml
-
     from renku.api._git import _expand_directories
-    from renku.models._jsonld import asjsonld
 
     dst = Path(destination)
 
@@ -96,8 +93,7 @@ def move(ctx, client, sources, destination):
                     lambda key: renames.get(key, key)
                 )
 
-                with path.open('w') as fp:
-                    yaml.dump(asjsonld(dataset), fp, default_flow_style=False)
+                client.store_dataset(dataset)
 
     # 3. Manage .gitattributes for external storage.
     tracked = tuple(

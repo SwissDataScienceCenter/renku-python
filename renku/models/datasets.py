@@ -216,7 +216,11 @@ class Dataset(AuthorsMixin):
             key = rename(key)
             files[key] = attr.evolve(file, path=key)
 
-        return attr.evolve(self, files=files)
+        # TODO consider creating custom evolve function
+        renamed = attr.evolve(self, files=files)
+        setattr(renamed, '__reference__', self.__reference__)
+        setattr(renamed, '__source__', self.__source__.copy())
+        return renamed
 
     def unlink_file(self, file_path):
         """Unlink a file from dataset.
@@ -233,3 +237,10 @@ class Dataset(AuthorsMixin):
         source.update(self.__source__)
         source.update(asjsonld(self))
         return source
+
+    @classmethod
+    def from_jsonld(cls, data, *args, **kwargs):
+        """Set __source__ property."""
+        self = super().from_jsonld(data, *args, **kwargs)
+        setattr(self, '__source__', data)
+        return self
