@@ -32,7 +32,6 @@ import yaml
 from renku import errors
 from renku._compat import Path
 from renku.models._git import GitURL
-from renku.models._jsonld import asjsonld
 from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
 
 
@@ -79,31 +78,43 @@ class DatasetsApiMixin(object):
             result[path] = Dataset.from_yaml(path)
         return result
 
+    def load_dataset(self, name=None):
+        """Load dataset reference file."""
+        from renku.models.refs import LinkReference
+        path = None
+        dataset = None
+
+        if name:
+            path = self.renku_datasets_path / name / self.METADATA
+
+            if not path.exists():
+                path = LinkReference(
+                    client=self, name='datasets/' + name
+                ).reference
+
+            if path.exists():
+                with path.open('r') as f:
+                    source = yaml.safe_load(f) or {}
+                dataset = Dataset.from_jsonld(source, __reference__=path)
+                setattr(dataset, '__source__', source)
+
+        return dataset
+
+    def store_dataset(self, dataset):
+        """Store dataset reference file."""
+        with dataset.__reference__.open('w') as f:
+            yaml.dump(dataset.asjsonld(), f, default_flow_style=False)
+
     @contextmanager
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
         from renku.models.refs import LinkReference
-
         with self.lock:
-            path = None
-            dataset = None
-
-            if name:
-                path = self.renku_datasets_path / name / self.METADATA
-
-                if not path.exists():
-                    path = LinkReference(
-                        client=self, name='datasets/' + name
-                    ).reference
-
-                if path.exists():
-                    with path.open('r') as f:
-                        source = yaml.safe_load(f) or {}
-                    dataset = Dataset.from_jsonld(source, __reference__=path)
+            dataset = self.load_dataset(name=name)
 
             if dataset is None:
-                source = {}
                 dataset = Dataset(name=name)
+                setattr(dataset, '__source__', {})
 
                 path = (
                     self.renku_datasets_path / dataset.identifier.hex /
@@ -122,16 +133,13 @@ class DatasetsApiMixin(object):
 
             yield dataset
 
-            source.update(**asjsonld(dataset))
-
             # TODO
             # if path is None:
             #     path = dataset_path / self.METADATA
             #     if path.exists():
             #         raise ValueError('Dataset already exists')
 
-            with path.open('w') as f:
-                yaml.dump(source, f, default_flow_style=False)
+            self.store_dataset(dataset)
 
     def add_data_to_dataset(
         self, dataset, url, git=False, force=False, **kwargs
