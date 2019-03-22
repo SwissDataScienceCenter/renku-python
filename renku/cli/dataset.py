@@ -243,6 +243,21 @@ def unlink(client, name, include, exclude, yes):
         click.secho('OK', fg='green')
 
 
+@dataset.command('rm')
+@click.argument('names', nargs=-1)
+@pass_local_client(clean=True, commit=True)
+def remove(client, names):
+    """Delete a dataset."""
+    datasets = {client.dataset_path(name) for name in names}
+    with progressbar(
+        datasets, item_show_func=lambda item: str(item) if item else ''
+    ) as bar:
+        for dataset in bar:
+            if dataset and dataset.exists():
+                dataset.unlink()
+        click.secho('OK', fg='green')
+
+
 def _include_exclude(file_path, include=None, exclude=None):
     """Check if file matches one of include filters and not in exclude filter.
 

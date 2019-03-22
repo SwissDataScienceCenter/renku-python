@@ -78,20 +78,23 @@ class DatasetsApiMixin(object):
             result[path] = Dataset.from_yaml(path)
         return result
 
+    def dataset_path(self, name):
+        """Get dataset path from name."""
+        from renku.models.refs import LinkReference
+        path = self.renku_datasets_path / name / self.METADATA
+        if not path.exists():
+            path = LinkReference(
+                client=self, name='datasets/' + name
+            ).reference
+        return path
+
     def load_dataset(self, name=None):
         """Load dataset reference file."""
-        from renku.models.refs import LinkReference
         path = None
         dataset = None
 
         if name:
-            path = self.renku_datasets_path / name / self.METADATA
-
-            if not path.exists():
-                path = LinkReference(
-                    client=self, name='datasets/' + name
-                ).reference
-
+            path = self.dataset_path(name)
             if path.exists():
                 dataset = Dataset.from_yaml(path)
 
