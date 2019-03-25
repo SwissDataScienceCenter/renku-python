@@ -93,10 +93,7 @@ class DatasetsApiMixin(object):
                 ).reference
 
             if path.exists():
-                with path.open('r') as f:
-                    source = yaml.safe_load(f) or {}
-                dataset = Dataset.from_jsonld(source, __reference__=path)
-                setattr(dataset, '__source__', source)
+                dataset = Dataset.from_yaml(path)
 
         return dataset
 
