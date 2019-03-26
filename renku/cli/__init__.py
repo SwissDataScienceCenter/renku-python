@@ -97,6 +97,7 @@ from .log import log
 from .migrate import migrate
 from .move import move
 from .pull import pull
+from .remove import remove
 from .rerun import rerun
 from .run import run
 from .runner import runner
@@ -212,6 +213,7 @@ cli.add_command(log)
 cli.add_command(migrate)
 cli.add_command(move)
 cli.add_command(pull)
+cli.add_command(remove)
 cli.add_command(rerun)
 cli.add_command(run)
 cli.add_command(runner)

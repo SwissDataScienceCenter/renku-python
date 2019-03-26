@@ -151,7 +151,8 @@ class GitCore:
             for file, name, value in zip_longest(
                 *[iter(data.strip('\0').split('\0'))] * 3
             ):
-                attrs[file][name] = value
+                if file:
+                    attrs[file][name] = value
         except GitCommandError:
             pass
 
