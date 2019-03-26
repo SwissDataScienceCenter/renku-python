@@ -94,6 +94,8 @@ class LinkReference:
             path = path / common_path
 
         for name in path.rglob('*'):
+            if name.is_dir():
+                continue
             yield cls(client=client, name=str(name.relative_to(refs_path)))
 
     @classmethod
