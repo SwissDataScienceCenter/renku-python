@@ -108,7 +108,8 @@ class RepositoryApiMixin(GitCore):
     def lock(self):
         """Create a Renku config lock."""
         return filelock.FileLock(
-            str(self.renku_path.with_suffix(self.LOCK_SUFFIX))
+            str(self.renku_path.with_suffix(self.LOCK_SUFFIX)),
+            timeout=0,
         )
 
     @property
@@ -286,58 +287,56 @@ class RepositoryApiMixin(GitCore):
     @contextmanager
     def with_metadata(self):
         """Yield an editable metadata object."""
-        with self.lock:
-            from renku.models._jsonld import asjsonld
-            from renku.models.projects import Project
+        from renku.models._jsonld import asjsonld
+        from renku.models.projects import Project
 
-            metadata_path = self.renku_metadata_path
+        metadata_path = self.renku_metadata_path
 
-            if self.renku_metadata_path.exists():
-                with metadata_path.open('r') as f:
-                    source = yaml.safe_load(f) or {}
-            else:
-                source = {}
+        if self.renku_metadata_path.exists():
+            with metadata_path.open('r') as f:
+                source = yaml.safe_load(f) or {}
+        else:
+            source = {}
 
-            metadata = Project.from_jsonld(source, __reference__=metadata_path)
+        metadata = Project.from_jsonld(source, __reference__=metadata_path)
 
-            yield metadata
+        yield metadata
 
-            source.update(**asjsonld(metadata))
-            with metadata_path.open('w') as f:
-                yaml.dump(source, f, default_flow_style=False)
+        source.update(**asjsonld(metadata))
+        with metadata_path.open('w') as f:
+            yaml.dump(source, f, default_flow_style=False)
 
     @contextmanager
     def with_workflow_storage(self):
         """Yield a workflow storage."""
-        with self.lock:
-            from renku.models.cwl._ascwl import ascwl
-            from renku.models.cwl.workflow import Workflow
+        from renku.models.cwl._ascwl import ascwl
+        from renku.models.cwl.workflow import Workflow
 
-            workflow = Workflow()
-            yield workflow
+        workflow = Workflow()
+        yield workflow
 
-            for step in workflow.steps:
-                step_name = '{0}_{1}.cwl'.format(
-                    uuid.uuid4().hex,
-                    secure_filename('_'.join(step.run.baseCommand)),
+        for step in workflow.steps:
+            step_name = '{0}_{1}.cwl'.format(
+                uuid.uuid4().hex,
+                secure_filename('_'.join(step.run.baseCommand)),
+            )
+
+            workflow_path = self.workflow_path
+            if not workflow_path.exists():
+                workflow_path.mkdir()
+
+            step_path = workflow_path / step_name
+            with step_path.open('w') as step_file:
+                yaml.dump(
+                    ascwl(
+                        # filter=lambda _, x: not (x is False or bool(x)
+                        step.run,
+                        filter=lambda _, x: x is not None,
+                        basedir=workflow_path,
+                    ),
+                    stream=step_file,
+                    default_flow_style=False
                 )
-
-                workflow_path = self.workflow_path
-                if not workflow_path.exists():
-                    workflow_path.mkdir()
-
-                step_path = workflow_path / step_name
-                with step_path.open('w') as step_file:
-                    yaml.dump(
-                        ascwl(
-                            # filter=lambda _, x: not (x is False or bool(x)
-                            step.run,
-                            filter=lambda _, x: x is not None,
-                            basedir=workflow_path,
-                        ),
-                        stream=step_file,
-                        default_flow_style=False
-                    )
 
     def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""

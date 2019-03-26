@@ -109,37 +109,37 @@ class DatasetsApiMixin(object):
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
         from renku.models.refs import LinkReference
-        with self.lock:
-            dataset = self.load_dataset(name=name)
 
-            if dataset is None:
-                dataset = Dataset(name=name)
-                setattr(dataset, '__source__', {})
+        dataset = self.load_dataset(name=name)
 
-                path = (
-                    self.renku_datasets_path / dataset.identifier.hex /
-                    self.METADATA
-                )
-                path.parent.mkdir(parents=True, exist_ok=True)
-                setattr(dataset, '__reference__', path)
+        if dataset is None:
+            dataset = Dataset(name=name)
+            setattr(dataset, '__source__', {})
 
-                if name:
-                    LinkReference.create(
-                        client=self, name='datasets/' + name
-                    ).set_reference(path)
+            path = (
+                self.renku_datasets_path / dataset.identifier.hex /
+                self.METADATA
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            setattr(dataset, '__reference__', path)
 
-            dataset_path = self.path / self.datadir / dataset.name
-            dataset_path.mkdir(parents=True, exist_ok=True)
+            if name:
+                LinkReference.create(
+                    client=self, name='datasets/' + name
+                ).set_reference(path)
 
-            yield dataset
+        dataset_path = self.path / self.datadir / dataset.name
+        dataset_path.mkdir(parents=True, exist_ok=True)
 
-            # TODO
-            # if path is None:
-            #     path = dataset_path / self.METADATA
-            #     if path.exists():
-            #         raise ValueError('Dataset already exists')
+        yield dataset
 
-            self.store_dataset(dataset)
+        # TODO
+        # if path is None:
+        #     path = dataset_path / self.METADATA
+        #     if path.exists():
+        #         raise ValueError('Dataset already exists')
+
+        self.store_dataset(dataset)
 
     def add_data_to_dataset(
         self, dataset, url, git=False, force=False, **kwargs

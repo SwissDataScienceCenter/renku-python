@@ -143,7 +143,8 @@ def init(ctx, client, directory, name, force, use_external_storage):
         )
 
     try:
-        path = client.init_repository(name=name, force=force)
+        with client.lock:
+            path = client.init_repository(name=name, force=force)
     except FileExistsError:
         raise click.UsageError(
             'Renku repository is not empty. '

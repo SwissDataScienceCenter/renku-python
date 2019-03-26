@@ -156,7 +156,10 @@ from ._options import option_isolation
 @option_isolation
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_local_client(
-    clean=True, up_to_date=True, commit=True, ignore_std_streams=True
+    clean=True,
+    up_to_date=True,
+    commit=True,
+    ignore_std_streams=True,
 )
 def run(client, outputs, no_output, success_codes, isolation, command_line):
     """Tracking work on a specific problem."""

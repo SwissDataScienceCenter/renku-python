@@ -50,29 +50,27 @@ def datasets(ctx, client):
 
     from ._checks.location_datasets import _dataset_metadata_pre_0_3_4
 
-    with client.lock:
-        for old_path in _dataset_metadata_pre_0_3_4(client):
-            with old_path.open('r') as fp:
-                dataset = Dataset.from_jsonld(yaml.safe_load(fp))
+    for old_path in _dataset_metadata_pre_0_3_4(client):
+        with old_path.open('r') as fp:
+            dataset = Dataset.from_jsonld(yaml.safe_load(fp))
 
-            name = str(old_path.parent.relative_to(client.path / 'data'))
-            new_path = (
-                client.renku_datasets_path / dataset.identifier.hex /
-                client.METADATA
-            )
-            new_path.parent.mkdir(parents=True, exist_ok=True)
+        name = str(old_path.parent.relative_to(client.path / 'data'))
+        new_path = (
+            client.renku_datasets_path / dataset.identifier.hex /
+            client.METADATA
+        )
+        new_path.parent.mkdir(parents=True, exist_ok=True)
 
-            dataset = dataset.rename_files(
-                lambda key: os.path.relpath(
-                    str(old_path.parent / key), start=str(new_path.parent)
-                )
-            )
+        dataset = dataset.rename_files(
+            lambda key: os.path.
+            relpath(str(old_path.parent / key), start=str(new_path.parent))
+        )
 
-            with new_path.open('w') as fp:
-                yaml.dump(asjsonld(dataset), fp, default_flow_style=False)
+        with new_path.open('w') as fp:
+            yaml.dump(asjsonld(dataset), fp, default_flow_style=False)
 
-            old_path.unlink()
+        old_path.unlink()
 
-            LinkReference.create(
-                client=client, name='datasets/' + name
-            ).set_reference(new_path)
+        LinkReference.create(
+            client=client, name='datasets/' + name
+        ).set_reference(new_path)

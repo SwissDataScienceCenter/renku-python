@@ -42,7 +42,8 @@ def pass_local_client(
     clean=None,
     up_to_date=None,
     commit=None,
-    ignore_std_streams=True
+    ignore_std_streams=True,
+    lock=None,
 ):
     """Pass client from the current context to the decorated command."""
     if method is None:
@@ -52,6 +53,7 @@ def pass_local_client(
             up_to_date=up_to_date,
             commit=commit,
             ignore_std_streams=ignore_std_streams,
+            lock=lock,
         )
 
     def new_func(*args, **kwargs):
@@ -70,6 +72,9 @@ def pass_local_client(
             ignore_std_streams=ignore_std_streams
         )
         stack.enter_context(transaction)
+
+        if lock or (lock is None and commit):
+            stack.enter_context(client.lock)
 
         with stack:
             result = ctx.invoke(method, client, *args, **kwargs)
