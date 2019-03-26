@@ -25,6 +25,29 @@ Creating an empty dataset inside a Renku project:
 .. code-block:: console
 
     $ renku dataset create my-dataset
+    Creating a dataset ... OK
+
+Listing all datasets:
+
+.. code-block:: console
+
+    $ renku dataset
+    ID        NAME           CREATED              AUTHORS
+    --------  -------------  -------------------  ---------
+    0ad1cb9a  some-dataset   2019-03-19 16:39:46  sam
+    9436e36c  my-dataset     2019-02-28 16:48:09  sam
+
+Deleting a dataset:
+
+.. code-block:: console
+
+    $ renku dataset rm some-dataset
+    OK
+
+
+Working with data
+~~~~~~~~~~~~~~~~~
+
 
 Adding data to the dataset:
 
@@ -76,6 +99,57 @@ will yield:
     data/
       my-dataset/
         datafile
+
+Listing all files in the project associated with a dataset.
+
+.. code-block:: console
+
+    $ renku dataset ls-files
+    ADDED                AUTHORS    DATASET        PATH
+    -------------------  ---------  -------------  ---------------------------
+    2019-02-28 16:48:09  sam        my-dataset     ...my-dataset/addme
+    2019-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file1
+    2019-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file2
+    2019-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file3
+
+Sometimes you want to filter the files. For this we use ``--dataset``,
+``--include`` and ``--exclude`` flags:
+
+.. code-block:: console
+
+    $ renku dataset ls-files --include "file*" --exclude "file3"
+    ADDED                AUTHORS    DATASET     PATH
+    -------------------  ---------  ----------  ----------------------------
+    2019-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file1
+    2019-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file2
+
+Unlink a file from a dataset:
+
+.. code-block:: console
+
+    $ renku dataset unlink my-dataset --include file1
+    OK
+
+Unlink all files within a directory from a dataset:
+
+.. code-block:: console
+
+    $ renku dataset unlink my-dataset --include "weather/*"
+    OK
+
+Unlink all files from a dataset:
+
+.. code-block:: console
+
+    $ renku dataset unlink my-dataset
+    Warning: You are about to remove following from "my-dataset" dataset.
+    .../my-dataset/weather/file1
+    .../my-dataset/weather/file2
+    .../my-dataset/weather/file3
+    Do you wish to continue? [y/N]:
+
+.. note:: The ``unlink`` command does not delete files,
+    only the dataset record.
 """
 
 import click
