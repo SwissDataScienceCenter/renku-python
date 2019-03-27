@@ -322,14 +322,28 @@ def unlink(client, name, include, exclude, yes):
 @pass_local_client(clean=True, commit=True)
 def remove(client, names):
     """Delete a dataset."""
+    from renku.models.refs import LinkReference
     datasets = {client.dataset_path(name) for name in names}
+
     with progressbar(
-        datasets, item_show_func=lambda item: str(item) if item else ''
+        datasets,
+        label='Removing metadata files'.ljust(30),
+        item_show_func=lambda item: str(item) if item else '',
     ) as bar:
         for dataset in bar:
             if dataset and dataset.exists():
                 dataset.unlink()
-        click.secho('OK', fg='green')
+
+    with progressbar(
+        list(LinkReference.iter_items(client, common_path='datasets')),
+        label='Removing aliases'.ljust(30),
+        item_show_func=lambda item: item.name if item else '',
+    ) as bar:
+        for ref in bar:
+            if ref.reference in datasets:
+                ref.delete()
+
+    click.secho('OK', fg='green')
 
 
 def _include_exclude(file_path, include=None, exclude=None):
