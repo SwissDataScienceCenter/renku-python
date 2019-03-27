@@ -586,6 +586,13 @@ def test_dataset_unlink_file(tmpdir, runner, client):
 
 def test_dataset_rm(tmpdir, runner, project, client):
     """Test removal of a dataset."""
+    # try to delete non existing dataset
+    result = runner.invoke(cli.cli, ['dataset', 'rm'])
+    assert 2 == result.exit_code
+
+    result = runner.invoke(cli.cli, ['dataset', 'rm', 'does-not-exist'])
+    assert 2 == result.exit_code
+
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code

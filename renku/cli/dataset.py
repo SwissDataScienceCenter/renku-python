@@ -323,7 +323,23 @@ def unlink(client, name, include, exclude, yes):
 def remove(client, names):
     """Delete a dataset."""
     from renku.models.refs import LinkReference
-    datasets = {client.dataset_path(name) for name in names}
+    datasets = {name: client.dataset_path(name) for name in names}
+
+    if not datasets:
+        raise click.BadParameter(
+            'use dataset name or identifier', param_hint='names'
+        )
+
+    unknown = [
+        name
+        for name, path in datasets.items() if not path or not path.exists()
+    ]
+    if unknown:
+        raise click.BadParameter(
+            'unknown datasets ' + ', '.join(unknown), param_hint='names'
+        )
+
+    datasets = set(datasets.values())
 
     with progressbar(
         datasets,
