@@ -18,6 +18,53 @@
 Changes
 =======
 
+``v0.5.0``
+----------
+
+*(released 2019-03-28)*
+
+Bug Fixes
+~~~~~~~~~
+
+-  **api:** make methods lock free
+   (`1f63964 <https://github.com/swissdatasciencecenter/renku-python/commit/1f63964>`__),
+   closes
+   `#486 <https://github.com/swissdatasciencecenter/renku-python/issues/486>`__
+-  use safe_load for parsing yaml
+   (`5383d1e <https://github.com/swissdatasciencecenter/renku-python/commit/5383d1e>`__),
+   closes
+   `#464 <https://github.com/swissdatasciencecenter/renku-python/issues/464>`__
+-  **datasets:** link flag on dataset add
+   (`eae30f4 <https://github.com/swissdatasciencecenter/renku-python/commit/eae30f4>`__)
+
+Features
+~~~~~~~~
+
+-  **api:** list datasets from a commit
+   (`04a9fe9 <https://github.com/swissdatasciencecenter/renku-python/commit/04a9fe9>`__)
+-  **cli:** add dataset rm command
+   (`a70c7ce <https://github.com/swissdatasciencecenter/renku-python/commit/a70c7ce>`__)
+-  **cli:** add rm command
+   (`cf0f502 <https://github.com/swissdatasciencecenter/renku-python/commit/cf0f502>`__)
+-  **cli:** configurable format of dataset output
+   (`d37abf3 <https://github.com/swissdatasciencecenter/renku-python/commit/d37abf3>`__)
+-  **dataset:** add existing file from current repo
+   (`575686b <https://github.com/swissdatasciencecenter/renku-python/commit/575686b>`__),
+   closes `#99 <https://github.com/swissdatasciencecenter/renku-python/issues/99>`__
+-  **datasets:** added ls-files command
+   (`ccc4f59 <https://github.com/swissdatasciencecenter/renku-python/commit/ccc4f59>`__)
+-  **models:** reference context for relative paths
+   (`5d1e8e7 <https://github.com/swissdatasciencecenter/renku-python/commit/5d1e8e7>`__),
+   closes
+   `#452 <https://github.com/swissdatasciencecenter/renku-python/issues/452>`__
+-  add JSON-LD output format for datasets
+   (`c755d7b <https://github.com/swissdatasciencecenter/renku-python/commit/c755d7b>`__),
+   closes
+   `#426 <https://github.com/swissdatasciencecenter/renku-python/issues/426>`__
+-  generate Makefile with log –format Makefile
+   (`1e440ce <https://github.com/swissdatasciencecenter/renku-python/commit/1e440ce>`__)
+
+
 ``v0.4.0``
 ----------
 
