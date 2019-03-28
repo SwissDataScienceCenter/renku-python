@@ -45,6 +45,7 @@ def has_reference():
 class ReferenceMixin:
     """Define an automatic ``__reference__`` attribute."""
 
+    __source__ = attr.ib(init=False, kw_only=True, repr=False, default=None)
     __reference__ = attr.ib(init=False, kw_only=True, repr=False)
 
     @__reference__.default

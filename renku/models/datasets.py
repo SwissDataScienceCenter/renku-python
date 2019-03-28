@@ -228,19 +228,3 @@ class Dataset(AuthorsMixin):
         :param file_path: Relative path used as key inside files container.
         """
         return self.files.pop(file_path, None)
-
-    def asjsonld(self):
-        """Store dataset state to original reference file."""
-        from renku.models._jsonld import asjsonld
-
-        source = {}
-        source.update(self.__source__)
-        source.update(asjsonld(self))
-        return source
-
-    @classmethod
-    def from_jsonld(cls, data, *args, **kwargs):
-        """Set __source__ property."""
-        self = super().from_jsonld(data, *args, **kwargs)
-        setattr(self, '__source__', data)
-        return self

@@ -313,7 +313,7 @@ def unlink(client, name, include, exclude, yes):
         for item in records:
             dataset.unlink_file(item.path)
 
-        client.store_dataset(dataset)
+        dataset.to_yaml()
         click.secho('OK', fg='green')
 
 
