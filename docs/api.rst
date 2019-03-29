@@ -19,12 +19,7 @@
 Low-level API
 =============
 
-This API is built on top of REST API endpoints exposed by Renku services.
-
-.. warning::
-
-   Renku services are currently in **beta preview** status and they are
-   subject to change in forseenable future.
+This API is built on top of Git and Git-LFS.
 
 .. automodule:: renku.api
    :members:
