@@ -287,24 +287,18 @@ class RepositoryApiMixin(GitCore):
     @contextmanager
     def with_metadata(self):
         """Yield an editable metadata object."""
-        from renku.models._jsonld import asjsonld
         from renku.models.projects import Project
 
         metadata_path = self.renku_metadata_path
 
-        if self.renku_metadata_path.exists():
-            with metadata_path.open('r') as f:
-                source = yaml.safe_load(f) or {}
+        if metadata_path.exists():
+            metadata = Project.from_yaml(metadata_path)
         else:
-            source = {}
-
-        metadata = Project.from_jsonld(source, __reference__=metadata_path)
+            metadata = Project.from_jsonld({}, __reference__=metadata_path)
 
         yield metadata
 
-        source.update(**asjsonld(metadata))
-        with metadata_path.open('w') as f:
-            yaml.dump(source, f, default_flow_style=False)
+        metadata.to_yaml()
 
     @contextmanager
     def with_workflow_storage(self):

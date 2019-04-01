@@ -301,7 +301,7 @@ class JSONLDMixin(ReferenceMixin):
     __type_registry__ = {}
 
     @classmethod
-    def from_jsonld(cls, data, __reference__=None):
+    def from_jsonld(cls, data, __reference__=None, __source__=None):
         """Instantiate a JSON-LD class from data."""
         if isinstance(data, cls):
             return data
@@ -348,6 +348,8 @@ class JSONLDMixin(ReferenceMixin):
                     for k, v in compacted.items() if k in fields
                 }
             )
+        if __source__:
+            setattr(self, '__source__', __source__)
         return self
 
     @classmethod
@@ -356,11 +358,29 @@ class JSONLDMixin(ReferenceMixin):
         import yaml
 
         with path.open(mode='r') as fp:
+            source = yaml.safe_load(fp) or {}
             self = cls.from_jsonld(
-                yaml.safe_load(fp) or {}, __reference__=path
+                source,
+                __reference__=path,
+                __source__=deepcopy(source),
             )
 
         return self
+
+    def asjsonld(self):
+        """Create JSON-LD with the original source data."""
+        source = {}
+        if self.__source__:
+            source.update(self.__source__)
+        source.update(asjsonld(self))
+        return source
+
+    def to_yaml(self):
+        """Store an instance to the referenced YAML file."""
+        import yaml
+
+        with self.__reference__.open('w') as fp:
+            yaml.dump(self.asjsonld(), fp, default_flow_style=False)
 
 
 s = attrs

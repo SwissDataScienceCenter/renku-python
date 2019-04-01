@@ -100,28 +100,21 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def store_dataset(self, dataset):
-        """Store dataset reference file."""
-        with dataset.__reference__.open('w') as f:
-            yaml.dump(dataset.asjsonld(), f, default_flow_style=False)
-
     @contextmanager
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
+        from renku.models._locals import with_reference
         from renku.models.refs import LinkReference
 
         dataset = self.load_dataset(name=name)
 
         if dataset is None:
-            dataset = Dataset(name=name)
-            setattr(dataset, '__source__', {})
-
-            path = (
-                self.renku_datasets_path / dataset.identifier.hex /
-                self.METADATA
-            )
+            identifier = Dataset.__attrs_attrs__.identifier.default.factory()
+            path = (self.renku_datasets_path / identifier.hex / self.METADATA)
             path.parent.mkdir(parents=True, exist_ok=True)
-            setattr(dataset, '__reference__', path)
+
+            with with_reference(path):
+                dataset = Dataset(identifier=identifier, name=name)
 
             if name:
                 LinkReference.create(
@@ -139,7 +132,7 @@ class DatasetsApiMixin(object):
         #     if path.exists():
         #         raise ValueError('Dataset already exists')
 
-        self.store_dataset(dataset)
+        dataset.to_yaml()
 
     def add_data_to_dataset(
         self, dataset, url, git=False, force=False, **kwargs

@@ -68,7 +68,7 @@ def remove(ctx, client, sources):
                 for key in remove:
                     dataset.unlink_file(key)
 
-                client.store_dataset(dataset)
+                dataset.to_yaml()
 
     # 2. Manage .gitattributes for external storage.
     tracked = tuple(

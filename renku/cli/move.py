@@ -93,7 +93,7 @@ def move(ctx, client, sources, destination):
                     lambda key: renames.get(key, key)
                 )
 
-                client.store_dataset(dataset)
+                dataset.to_yaml()
 
     # 3. Manage .gitattributes for external storage.
     tracked = tuple(
