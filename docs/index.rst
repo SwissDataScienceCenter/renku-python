@@ -19,10 +19,6 @@
 .. include:: ../README.rst
    :end-before: Usage
 
-For more information about the Renku API `see its documentation
-<https://renku.readthedocs.org/latest/developer/index.html>`_.
-
-
 Getting Started
 ===============
 
