@@ -340,6 +340,9 @@ class CommandLineToolFactory(object):
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
+        if self.file_candidate(self.command_line[0]):
+            return [], list(self.command_line)
+
         cmd = [self.command_line[0]]
         args = list(self.command_line[1:])
 

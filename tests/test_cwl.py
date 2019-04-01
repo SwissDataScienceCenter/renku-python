@@ -88,6 +88,26 @@ def test_base_command_detection(instance_path):
     assert tool.to_argv() == argv
 
 
+def test_base_command_as_file_input(instance_path):
+    """Test base command detection when it is a script file."""
+    cwd = Path(instance_path)
+    script = cwd / 'script.py'
+    script.touch()
+
+    input_file = cwd / 'input.csv'
+    input_file.touch()
+
+    argv = ['script.py', 'input.csv']
+    tool = CommandLineToolFactory(
+        argv,
+        directory=instance_path,
+        working_dir=instance_path,
+    ).generate_tool()
+
+    assert not tool.baseCommand
+    assert 2 == len(tool.inputs)
+
+
 def test_short_base_command_detection():
     """Test base command detection without arguments."""
     tool = CommandLineToolFactory(('echo', 'A')).generate_tool()
