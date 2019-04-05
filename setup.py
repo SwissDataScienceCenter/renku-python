@@ -127,7 +127,7 @@ setup(
     project_urls={
         'Changelog': (
             'https://github.com/swissdatasciencecenter/renku-python'
-            'blob/master/CHANGES.rst'
+            '/blob/master/CHANGES.rst'
         ),
         'Docs': 'https://renku-python.rtfd.io/',
     },
