@@ -151,10 +151,22 @@ Unlink all files from a dataset:
 .. note:: The ``unlink`` command does not delete files,
     only the dataset record.
 """
+import multiprocessing as mp
+import tempfile
+import zipfile
+from collections import OrderedDict
+from urllib.parse import urlparse
 
 import click
+import requests
 from click import BadParameter
+from tqdm import tqdm
 
+from renku.cli._providers.doi import DOIProvider
+from renku.cli._providers.zenodo import ZenodoProvider
+from renku.models._tabulate import tabulate
+
+from .._compat import Path
 from ._client import pass_local_client
 from ._echo import WARNING, progressbar
 from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
@@ -360,6 +372,108 @@ def remove(client, names):
                 ref.delete()
 
     click.secho('OK', fg='green')
+
+
+@dataset.command('import')
+@click.argument('uri')
+@click.option('-n', '--name', help='Dataset name.')
+@click.option(
+    '-x',
+    '--extract',
+    is_flag=True,
+    help='Extract files before importing to dataset.'
+)
+@click.pass_context
+def import_(ctx, uri, name, extract):
+    """Import data from 3rd party provider."""
+    is_doi = DOIProvider.is_doi(uri)
+
+    if is_doi is False:
+        url = urlparse(uri)
+        if bool(url.scheme and url.netloc and url.params == '') is False:
+            raise BadParameter(
+                'Could not process {0}.\nValid formats are: DOI, URL'.
+                format(uri)
+            )
+
+    provider = None
+    if 'zenodo' in uri:
+        provider = ZenodoProvider()
+
+    try:
+        record = provider.find_record(uri, is_doi=is_doi)
+    except LookupError:
+        raise BadParameter(
+            'Could not process {0}.\nURI not found.'.format(uri)
+        )
+
+    files_ = record.get_files()
+    click.echo(
+        tabulate(
+            files_,
+            headers=OrderedDict((
+                ('checksum', None),
+                ('key', 'filename'),
+                ('size', None),
+                ('type', None),
+            ))
+        )
+    )
+
+    text_prompt = 'Do you wish to download?'
+    if record.last_version is False:
+        text_prompt = WARNING + 'Newer version found.\n' + text_prompt
+
+    if files_ and click.confirm(text_prompt):
+        data_folder = tempfile.mkdtemp()
+
+        pool = mp.Pool(mp.cpu_count())
+        processing = [
+            pool.apply_async(
+                download_file, args=(
+                    i,
+                    extract,
+                    data_folder,
+                    file_,
+                )
+            ) for i, file_ in enumerate(files_)
+        ]
+        for p in processing:
+            p.wait()
+        pool.close()
+
+        ctx.invoke(add, name=name or record.title, urls=[data_folder])
+        click.secho('OK', fg='green')
+
+
+def download_file(position, extract, data_folder, file, chunk_size=8192):
+    """Download file with progress tracking."""
+    url = file.links['self']
+    local_filename = Path(url.split('/')[-1])
+
+    def extract_dataset(data_folder, filename, file):
+        """Extract downloaded dataset."""
+        filepath = data_folder / filename
+        if file.type == 'zip':
+            with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                zip_ref.extractall(data_folder)
+            filepath.unlink()
+
+    def stream_to_file(request):
+        """Stream bytes to file."""
+        with open(data_folder / local_filename, 'wb') as f_:
+            with tqdm(total=file.size, position=position) as progressbar_:
+                for chunk in request.iter_content(chunk_size=chunk_size):
+                    if chunk:  # remove keep-alive chunks
+                        f_.write(chunk)
+                        progressbar_.update(chunk_size)
+
+        if extract:
+            extract_dataset(data_folder, local_filename, file)
+
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        stream_to_file(r)
 
 
 def _include_exclude(file_path, include=None, exclude=None):

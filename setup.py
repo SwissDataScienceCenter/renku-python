@@ -82,6 +82,7 @@ install_requires = [
     'requests>=2.20.1',
     'tabulate>=0.7.7',
     'werkzeug>=0.12',
+    'tqdm>=4.31.1',
 ]
 
 packages = find_packages()
