@@ -16,12 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Zenodo API integration."""
+import json
 import re
+
 from urllib.parse import urlparse
 
 import attr
 import requests
 
+from renku._compat import Path
 from renku.cli._providers.doi import DOIProvider
 
 BASE_URL = 'https://zenodo.org/api/'
@@ -83,8 +86,27 @@ class ZenodoRecord:
         return [ZenodoFile(**file_) for file_ in self.files]
 
 
+class ZenodoMetadata:
+
+    @staticmethod
+    def from_renku_dataset(dataset):
+        """Serialize renku dataset to Zenodo dataset."""
+        # TODO: #512, #511
+        return {
+            'title': dataset.name,
+            'upload_type': 'dataset',
+            'creators': list(
+                map(lambda author: {'name': author},
+                    dataset.authors_csv.split(',')
+                    )), # TODO: add affiliation
+            'description': dataset.name
+        }
+
+
 class ZenodoProvider:
     """zenodo.org registry API provider."""
+
+    headers = {'Content-Type': 'application/json'}
 
     @staticmethod
     def record_id(uri):
@@ -111,9 +133,58 @@ class ZenodoProvider:
 
     def get_record(self, uri):
         """Retrieve record metadata and return ``ZenodoRecord``."""
-        _url = BASE_URL + 'records/' + ZenodoProvider.record_id(uri)
-        response = requests.get(_url)
+        url = '{0}records/{1}'.format(BASE_URL, ZenodoProvider.record_id(uri))
+        response = requests.get(url)
         if response.status_code != 200:
             raise LookupError('record not found')
 
         return ZenodoRecord(**response.json(), zenodo=self)
+
+    def make_auth(self, secret):
+        """Build auth params for request."""
+        return {'access_token': secret}
+
+    def new_deposition(self, secret):
+        """Create new empty deposition."""
+        url = '{0}deposit/depositions'.format(BASE_URL)
+        response = requests.post(
+            url,
+            params=self.make_auth(secret),
+            json={},
+            headers=self.headers
+        )
+        return response.json(), response.status_code
+
+    def upload_file(self, secret, deposition_id, filepath):
+        """Upload a file to deposition."""
+        url = '{0}deposit/depositions/{1}/files'.format(BASE_URL, deposition_id)
+        data = {'filename': Path(filepath).name}
+        files = {'file': open(filepath, 'rb')}
+        response = requests.post(
+            url,
+            params=self.make_auth(secret),
+            data=data,
+            files=files
+        )
+        return response.json(), response.status_code
+
+    def attach_metadata(self, secret, deposition_id, metadata):
+        """Attach metadata to deposition."""
+        data = {'metadata': metadata}
+        url = '{0}deposit/depositions/{1}'.format(BASE_URL, deposition_id)
+        response = requests.put(
+            url,
+            params=self.make_auth(secret),
+            data=json.dumps(data),
+            headers=self.headers
+        )
+        return response.json(), response.status_code
+
+    def publish_deposition(self, secret, deposition_id):
+        """Publish a deposition."""
+        url = '{0}deposit/depositions/{1}/actions/publish'.format(BASE_URL, deposition_id)
+        response = requests.post(
+            url,
+            params=self.make_auth(secret)
+        )
+        return response.json(), response.status_code

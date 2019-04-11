@@ -159,11 +159,11 @@ from urllib.parse import urlparse
 
 import click
 import requests
-from click import BadParameter
+from click import BadParameter, ClickException
 from tqdm import tqdm
 
 from renku.cli._providers.doi import DOIProvider
-from renku.cli._providers.zenodo import ZenodoProvider
+from renku.cli._providers.zenodo import ZenodoProvider, ZenodoMetadata
 from renku.models._tabulate import tabulate
 
 from .._compat import Path
@@ -444,6 +444,56 @@ def import_(ctx, uri, name, extract):
 
         ctx.invoke(add, name=name or record.title, urls=[data_folder])
         click.secho('OK', fg='green')
+
+
+@dataset.command('export')
+@click.argument('name')
+@click.argument('provider')
+@pass_local_client(clean=True, commit=True)
+def export_(client, name, provider):
+    """Export data to 3rd party provider."""
+    secret = client.load_secret(provider)
+    if secret is None:
+        text_prompt = WARNING + 'Secret not found!\nAuth secret:'
+        secret = click.prompt(text_prompt, type=str)
+        if secret is None or len(secret) == 0:
+            raise BadParameter('You must provide secret for target provider.')
+        client.store_secret(provider, secret)
+
+    dataset = client.load_dataset(name=name)
+    destination = ''
+    if provider == 'zenodo':
+        provider = ZenodoProvider()
+        destination = 'https://zenodo.org/records/{0}'
+
+    def check_or_raise(response, code):
+        if code not in [200, 201, 202]:
+            breakpoint()
+            raise ClickException(response)
+
+    response, code = provider.new_deposition(secret)
+    check_or_raise(response, code)
+
+    deposition_id = response['id']
+    destination = destination.format(deposition_id)
+    click.echo('Publishing dataset `{0}` to `{1}`'.format(
+        dataset.name, destination
+    ))
+    with tqdm(total=len(dataset.files)) as pbar_:
+        for file_ in dataset.files.values():
+            response, code = provider.upload_file(secret, deposition_id, file_.full_path)
+            check_or_raise(response, code)
+            pbar_.update(1)
+
+    metadata = ZenodoMetadata.from_renku_dataset(dataset)
+    response, code = provider.attach_metadata(secret, deposition_id, metadata)
+    check_or_raise(response, code)
+
+    response, code = provider.publish_deposition(secret, deposition_id)
+    check_or_raise(response, code)
+
+    click.echo('Published: {0}'.format(destination))
+    click.secho('OK', fg='green')
 
 
 def download_file(position, extract, data_folder, file, chunk_size=8192):

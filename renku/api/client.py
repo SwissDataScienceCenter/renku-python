@@ -19,6 +19,7 @@
 
 import attr
 
+from renku.api.config import ConfigApiMixin
 from .datasets import DatasetsApiMixin
 from .repository import PathMixin, RepositoryApiMixin
 from .storage import StorageApiMixin
@@ -30,6 +31,7 @@ class LocalClient(
     StorageApiMixin,
     RepositoryApiMixin,
     DatasetsApiMixin,
+    ConfigApiMixin,
 ):
     """A low-level client for communicating with a local Renku repository.
 
