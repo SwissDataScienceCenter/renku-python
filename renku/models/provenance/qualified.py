@@ -105,11 +105,9 @@ class Usage(EntityProxyMixin):
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
-    entity = jsonld.ib(
-        context={
-            '@reverse': 'prov:qualifiedGeneration',
-        },
-    )
+    entity = jsonld.ib(context={
+        '@reverse': 'prov:qualifiedGeneration',
+    }, )
     role = jsonld.ib(context='prov:hadRole', default=None)
 
     _activity = attr.ib(

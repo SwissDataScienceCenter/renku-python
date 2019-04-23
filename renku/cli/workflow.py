@@ -108,9 +108,8 @@ def validate_path(ctx, param, value):
 def set_name(client, name, path, force):
     """Sets the <name> for remote <path>."""
     from renku.models.refs import LinkReference
-    LinkReference.create(
-        client=client, name=_ref(name), force=force
-    ).set_reference(path)
+    LinkReference.create(client=client, name=_ref(name),
+                         force=force).set_reference(path)
 
 
 @workflow.command()

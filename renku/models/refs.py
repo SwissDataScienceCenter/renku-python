@@ -51,8 +51,8 @@ class LinkReference:
         - it ends with ".lock", or
         - it contains a "@{" portion
         """
-        return subprocess.run(('git', 'check-ref-format',
-                               name)).returncode == 0
+        return subprocess.run(('git', 'check-ref-format', name)
+                              ).returncode == 0
 
     @name.validator
     def name_validator(self, attribute, value):
