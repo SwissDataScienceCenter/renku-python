@@ -622,3 +622,49 @@ def test_dataset_rm(tmpdir, runner, project, client):
 
     result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
+
+
+@pytest.mark.integration
+def test_dataset_import_real_doi(runner, project):
+    """Test dataset import for existing DOI."""
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = runner.invoke(cli.cli, ['dataset'])
+    assert 0 == result.exit_code
+    assert 'pyndl' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_import_fake_doi(runner, project):
+    """Test error raising for non-existing DOI."""
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.5979642342'], input='y'
+    )
+    assert 2 == result.exit_code
+    assert 'URI not found.' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_import_real_http(runner, project):
+    """Test dataset import through HTTPS."""
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', 'https://zenodo.org/record/2621208'],
+        input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_import_fake_http(runner, project):
+    """Test dataset import through HTTPS."""
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', 'https://zenodo.org/record/2621201248'],
+        input='y'
+    )
+    assert 2 == result.exit_code
+    assert 'URI not found.' in result.output
