@@ -181,10 +181,8 @@ class Graph(object):
             return _from_entity(node.entity)
         elif isinstance(node, Entity):
             # Link files and directories and generations.
-            return ([node.parent]
-                    if node.parent is not None else []) + _from_entity(
-                        node, check_parents=False
-                    )
+            return ([node.parent] if node.parent is not None else
+                    []) + _from_entity(node, check_parents=False)
         elif isinstance(node, Process):
             # warnings.warn('Called on run {0}'.format(node), stacklevel=2)
             return self.parents(node.activity)

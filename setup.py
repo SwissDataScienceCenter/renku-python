@@ -40,11 +40,12 @@ tests_require = [
     'pytest>=4.0.0',
     'responses>=0.7.0',
     'unify>=0.4',
-    'yapf>=0.26.0',
+    'yapf>=0.27.0',
 ]
 
 extras_require = {
     'docs': [
+        'Jinja2>=2.10.1',
         'Sphinx>=1.6.3',
         'renku-sphinx-theme>=0.1.0',
     ],
@@ -69,8 +70,8 @@ install_requires = [
     'PyYAML>=3.12',
     'appdirs>=1.4.3',
     'attrs>=18.2.0',
-    'click>=6.7',
     'click-completion>=0.5.0',
+    'click>=6.7',
     'cwltool==1.0.20181012180214',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
@@ -79,7 +80,7 @@ install_requires = [
     'pyld>=1.0.3',
     'python-dateutil>=2.6.1',
     'rdflib-jsonld>=0.4.0',
-    'requests>=2.20.1',
+    'requests>=2.21.0',
     'tabulate>=0.7.7',
     'werkzeug>=0.12',
 ]

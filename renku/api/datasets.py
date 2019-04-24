@@ -117,9 +117,8 @@ class DatasetsApiMixin(object):
                 dataset = Dataset(identifier=identifier, name=name)
 
             if name:
-                LinkReference.create(
-                    client=self, name='datasets/' + name
-                ).set_reference(path)
+                LinkReference.create(client=self, name='datasets/' +
+                                     name).set_reference(path)
 
         dataset_path = self.path / self.datadir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)

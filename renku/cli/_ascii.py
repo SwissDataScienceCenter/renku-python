@@ -38,9 +38,7 @@ def _format_sha1(graph, node):
 
         if submodules:
             submodule = ':'.join(submodules)
-            return click.style(
-                submodule, fg='green'
-            ) + '@' + click.style(
+            return click.style(submodule, fg='green') + '@' + click.style(
                 node.commit.hexsha[:8], fg='yellow'
             )
     except KeyError:
@@ -111,8 +109,8 @@ class DAG(object):
             formatted_latest = (
                 click.style(' (', fg='yellow') +
                 click.style('latest -> ', fg='blue', bold=True) +
-                click.style(str(latest)[:8], fg='red',
-                            bold=True) + click.style(') ', fg='yellow')
+                click.style(str(latest)[:8], fg='red', bold=True) +
+                click.style(') ', fg='yellow')
             )
         else:
             formatted_latest = ' '

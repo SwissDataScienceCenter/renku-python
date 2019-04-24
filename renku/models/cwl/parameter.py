@@ -121,9 +121,8 @@ class CommandInputParameter(InputParameter):
 
     def to_argv(self, **kwargs):
         """Format command input parameter as shell argument."""
-        return self.inputBinding.to_argv(
-            default=self.default, **kwargs
-        ) if self.inputBinding else []
+        return self.inputBinding.to_argv(default=self.default, **
+                                         kwargs) if self.inputBinding else []
 
 
 @attr.s

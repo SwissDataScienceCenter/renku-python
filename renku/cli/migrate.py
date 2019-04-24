@@ -71,6 +71,5 @@ def datasets(ctx, client):
 
         old_path.unlink()
 
-        LinkReference.create(
-            client=client, name='datasets/' + name
-        ).set_reference(new_path)
+        LinkReference.create(client=client,
+                             name='datasets/' + name).set_reference(new_path)
