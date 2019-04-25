@@ -175,7 +175,7 @@ class DatasetsApiMixin(object):
             else:
                 raise errors.IgnoredFiles(ignored)
 
-        dataset.files.update(files)
+        dataset.update_files(files.values())
 
     def _add_from_url(self, dataset, path, url, link=False, **kwargs):
         """Process an add from url and return the location on disk."""
@@ -250,7 +250,7 @@ class DatasetsApiMixin(object):
                 DatasetFile(
                     path=result,
                     url=url,
-                    authors=dataset.authors,
+                    author=dataset.author,
                     dataset=dataset.name,
                 )
         }
@@ -293,7 +293,7 @@ class DatasetsApiMixin(object):
                         DatasetFile(
                             path=result,
                             url=url,
-                            authors=dataset.authors,
+                            author=dataset.author,
                             dataset=dataset.name,
                         )
                 }
@@ -401,7 +401,7 @@ class DatasetsApiMixin(object):
                 DatasetFile(
                     path=result,
                     url=url,
-                    authors=authors,
+                    author=authors,
                     dataset=dataset.name,  # TODO detect original dataset
                 )
         }

@@ -208,8 +208,8 @@ def create(client, name):
     with client.with_dataset(name=name) as dataset:
         click.echo('Creating a dataset ... ', nl=False)
         author = Author.from_git(client.repo)
-        if author not in dataset.authors:
-            dataset.authors.append(author)
+        if author not in dataset.author:
+            dataset.author.append(author)
 
     click.secho('OK', fg='green')
 
@@ -544,7 +544,7 @@ def _filter(client, names=None, authors=None, include=None, exclude=None):
     records = []
     for path_, dataset in client.datasets.items():
         if not names or dataset.name in names:
-            for file_ in dataset.files.values():
+            for file_ in dataset.files:
                 file_.dataset = dataset.name
 
                 path_ = file_.full_path.relative_to(client.path)
@@ -553,7 +553,7 @@ def _filter(client, names=None, authors=None, include=None, exclude=None):
                 if authors:
                     match = match and authors.issubset({
                         author.name
-                        for author in file_.authors
+                        for author in file_.author
                     })
 
                 if match:

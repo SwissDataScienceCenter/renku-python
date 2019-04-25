@@ -30,6 +30,7 @@ from dateutil.parser import parse as parse_date
 
 from renku import errors
 from renku._compat import Path
+from renku.api.repository import default_path
 
 from . import _jsonld as jsonld
 
@@ -42,21 +43,27 @@ _path_attr = partial(
 
 
 @jsonld.s(
-    type='dcterms:creator',
+    type='http://schema.org/author',
     context={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
         'dcterms': 'http://purl.org/dc/terms/',
-        'scoro': 'http://purl.org/spar/scoro/',
+        'schema': 'http://schema.org/'
     },
-    frozen=True,
     slots=True,
 )
 class Author(object):
     """Represent the author of a resource."""
 
-    name = jsonld.ib(validator=instance_of(str), context='dcterms:name')
-    email = jsonld.ib(context='dcterms:email')
-    affiliation = jsonld.ib(default=None, context='scoro:affiliate')
+    name = jsonld.ib(
+        validator=instance_of(str), context='http://schema.org/name'
+    )
+
+    email = jsonld.ib(context='http://schema.org/email')
+
+    affiliation = jsonld.ib(
+        default=None, context='http://schema.org/affiliation'
+    )
+
+    _id = jsonld.ib(context='@id', default=None)
 
     @email.validator
     def check_email(self, attribute, value):
@@ -95,27 +102,36 @@ class Author(object):
     @classmethod
     def from_commit(cls, commit):
         """Create an instance from a Git commit."""
-        return cls(
-            name=commit.author.name,
-            email=commit.author.email,
-        )
+        return cls(name=commit.author.name, email=commit.author.email)
+
+    def __attrs_post_init__(self):
+        """Post-Init hook to set _id field."""
+        # TODO: make it an orcid ID
+        if not self._id:
+            self._id = self.email
 
 
 @attr.s
 class AuthorsMixin:
     """Mixin for handling authors container."""
 
-    authors = jsonld.container.list(Author, kw_only=True)
+    author = jsonld.container.list(
+        Author, kw_only=True, context='http://schema.org/author'
+    )
 
     @property
     def authors_csv(self):
         """Comma-separated list of authors associated with dataset."""
-        return ','.join(author.name for author in self.authors)
+        return ','.join(author.name for author in self.author)
 
 
 @jsonld.s(
-    type='http://schema.org/DigitalDocument',
+    type='schema:DigitalDocument',
     slots=True,
+    context={
+        'dcterms': 'http://purl.org/dc/terms/',
+        'schema': 'http://schema.org/'
+    }
 )
 class DatasetFile(AuthorsMixin):
     """Represent a file in a dataset."""
@@ -124,9 +140,13 @@ class DatasetFile(AuthorsMixin):
     url = jsonld.ib(
         default=None, context='http://schema.org/url', kw_only=True
     )
-    authors = jsonld.container.list(Author, kw_only=True)
+    author = jsonld.container.list(
+        Author, kw_only=True, context='http://schema.org/author'
+    )
     dataset = attr.ib(default=None, kw_only=True)
     added = jsonld.ib(context='http://schema.org/dateCreated', kw_only=True)
+
+    _id = jsonld.ib(kw_only=True, context='@id', default=None)
 
     @added.default
     def _now(self):
@@ -140,6 +160,11 @@ class DatasetFile(AuthorsMixin):
             os.path.realpath(str(self.__reference__.parent / self.path))
         )
 
+    def __attrs_post_init__(self):
+        """Post-Init hook to set _id field."""
+        if not self._id:
+            self._id = str(self.path)
+
 
 def _parse_date(value):
     """Convert date to datetime."""
@@ -150,21 +175,30 @@ def _parse_date(value):
 
 def _convert_dataset_files(value):
     """Convert dataset files."""
-    output = {}
-    for k, v in value.items():
-        inst = DatasetFile.from_jsonld(v)
-        output[inst.path] = inst
-    return output
+    coll = value
+
+    if isinstance(value, dict):  # compatibility with previous versions
+        coll = value.values()
+
+    return [DatasetFile.from_jsonld(v) for v in coll]
+
+
+def _convert_dataset_author(value):
+    """Convert dataset authors."""
+    coll = value
+
+    if isinstance(value, dict):  # compatibility with previous versions
+        coll = value.values()
+
+    return [Author.from_jsonld(v) for v in coll]
 
 
 @jsonld.s(
-    type='dctypes:Dataset',
+    type='http://schema.org/Dataset',
     context={
         'dcterms': 'http://purl.org/dc/terms/',
         'dctypes': 'http://purl.org/dc/dcmitypes/',
-        'foaf': 'http://xmlns.com/foaf/0.1/',
-        'prov': 'http://www.w3.org/ns/prov#',
-        'scoro': 'http://purl.org/spar/scoro/',
+        'schema': 'http://schema.org/'
     },
 )
 class Dataset(AuthorsMixin):
@@ -172,7 +206,7 @@ class Dataset(AuthorsMixin):
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
-    name = jsonld.ib(type=str, context='dcterms:name')
+    name = jsonld.ib(type=str, context='http://schema.org/name')
 
     created = jsonld.ib(
         converter=_parse_date,
@@ -182,16 +216,22 @@ class Dataset(AuthorsMixin):
     identifier = jsonld.ib(
         default=attr.Factory(uuid.uuid4),
         converter=lambda x: uuid.UUID(str(x)),
-        context={
-            '@id': 'dctypes:Dataset',
-            '@type': '@id',
-        },
+        context='http://schema.org/identifier'
     )
-    authors = jsonld.container.list(Author)
-    files = jsonld.container.index(
+
+    author = jsonld.container.list(
+        Author,
+        converter=_convert_dataset_author,
+        context='http://schema.org/author'
+    )
+
+    files = jsonld.container.list(
         DatasetFile,
         converter=_convert_dataset_files,
+        context='http://schema.org/DigitalDocument'
     )
+
+    _id = jsonld.ib(context='@id', default=None)
 
     @created.default
     def _now(self):
@@ -206,20 +246,42 @@ class Dataset(AuthorsMixin):
     @property
     def authors_csv(self):
         """Comma-separated list of authors associated with dataset."""
-        return ','.join(author.name for author in self.authors)
+        return ','.join(author.name for author in self.author)
+
+    def find_file(self, file_path, return_index=False):
+        """Find a file in files container."""
+        for index, file_ in enumerate(self.files):
+            if str(file_.path) == str(file_path):
+                if return_index:
+                    return index
+                return file_
+
+    def update_files(self, files):
+        """Update files with collection of DatasetFile objects."""
+        to_insert = [
+            new_file
+            for new_file in files if not self.find_file(new_file.path)
+        ]
+        self.files += to_insert
 
     def rename_files(self, rename):
         """Rename files using the path mapping function."""
-        files = {}
+        files = []
 
-        for key, file in self.files.items():
-            key = rename(key)
-            files[key] = attr.evolve(file, path=key)
+        for file_ in self.files:
+            new_path = rename(file_.path)
+            new_file = attr.evolve(file_, path=new_path)
+            if not self.find_file(new_file.path):
+                files.append(new_file)
+            else:
+                raise FileExistsError
 
-        # TODO consider creating custom evolve function
         renamed = attr.evolve(self, files=files)
         setattr(renamed, '__reference__', self.__reference__)
-        setattr(renamed, '__source__', self.__source__.copy())
+
+        if self.__source__:
+            setattr(renamed, '__source__', self.__source__.copy())
+
         return renamed
 
     def unlink_file(self, file_path):
@@ -227,4 +289,12 @@ class Dataset(AuthorsMixin):
 
         :param file_path: Relative path used as key inside files container.
         """
-        return self.files.pop(file_path, None)
+        index = self.find_file(file_path, return_index=True)
+        return self.files.pop(index)
+
+    def __attrs_post_init__(self):
+        """Post-Init hook to set _id field."""
+        if not self._id:
+            self._id = '{0}/datasets/{1}'.format(
+                default_path(), self.identifier
+            )

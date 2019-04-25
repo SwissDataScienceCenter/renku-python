@@ -30,6 +30,7 @@ from pyld import jsonld as ld
 
 from renku._compat import Path
 from renku.models._locals import ReferenceMixin, with_reference
+from renku.models.migrations import MIGRATIONS
 
 KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
@@ -101,6 +102,7 @@ def attrs(
                 merge_ctx = a.metadata[KEY_CLS]._jsonld_context
                 for ctx_key, ctx_value in merge_ctx.items():
                     context.setdefault(ctx_key, ctx_value)
+
                     if context[ctx_key] != ctx_value:
                         raise TypeError(
                             'Can not merge {0} and {1} because of {2}'.format(
@@ -176,13 +178,13 @@ _container_types = (
 
 def _container_attrib_builder(name, container, mapper):
     """Builder for container attributes."""
-    context = {'@container': '@{0}'.format(name)}
+    factory = Factory(container)
 
     def _attrib(type, **kwargs):
         """Define a container attribute."""
         kwargs.setdefault('metadata', {})
         kwargs['metadata'][KEY_CLS] = type
-        kwargs['default'] = Factory(container)
+        kwargs['default'] = factory
 
         def _converter(value):
             """Convert value to the given type."""
@@ -190,12 +192,12 @@ def _container_attrib_builder(name, container, mapper):
                 return mapper(type, value)
             elif value is None:
                 return value
+
             raise ValueError(value)
 
         kwargs.setdefault('converter', _converter)
-        context_ib = context.copy()
-        context_ib.update(kwargs.pop('context', {}))
-        return attrib(context=context_ib, **kwargs)
+
+        return attrib(**kwargs)
 
     return _attrib
 
@@ -325,29 +327,25 @@ class JSONLDMixin(ReferenceMixin):
         data.setdefault('@context', cls._jsonld_context)
 
         if data['@context'] != cls._jsonld_context:
-            compacted = ld.compact(data, {'@context': cls._jsonld_context})
+            try:
+                compacted = ld.compact(data, {'@context': cls._jsonld_context})
+            except Exception:
+                compacted = data
         else:
             compacted = data
 
-        # assert compacted['@type'] == cls._jsonld_type, '@type must be equal'
-        # TODO update self(not cls)._jsonld_context with data['@context']
+        for migration in MIGRATIONS:
+            data = migration(data)
+
         fields = cls._jsonld_fields
+        data_ = {k.lstrip('_'): v for k, v in compacted.items() if k in fields}
 
         if __reference__:
             with with_reference(__reference__):
-                self = cls(
-                    **{
-                        k.lstrip('_'): v
-                        for k, v in compacted.items() if k in fields
-                    }
-                )
+                self = cls(**data_)
         else:
-            self = cls(
-                **{
-                    k.lstrip('_'): v
-                    for k, v in compacted.items() if k in fields
-                }
-            )
+            self = cls(**data_)
+
         if __source__:
             setattr(self, '__source__', __source__)
         return self
@@ -379,8 +377,13 @@ class JSONLDMixin(ReferenceMixin):
         """Store an instance to the referenced YAML file."""
         import yaml
 
+        dumper = yaml.dumper.Dumper
+        dumper.ignore_aliases = lambda _, data: True
+
         with self.__reference__.open('w') as fp:
-            yaml.dump(self.asjsonld(), fp, default_flow_style=False)
+            yaml.dump(
+                self.asjsonld(), fp, default_flow_style=False, Dumper=dumper
+            )
 
 
 s = attrs

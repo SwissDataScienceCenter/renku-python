@@ -1,4 +1,3 @@
-#!/usr/bin/env sh
 # -*- coding: utf-8 -*-
 #
 # Copyright 2017-2019 - Swiss Data Science Center (SDSC)
@@ -16,17 +15,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Renku migrations."""
 
-# quit on errors:
-set -o errexit
+from renku.models.migrations.dataset import migrate_dataset
 
-# quit on unbound symbols:
-set -o nounset
-
-pydocstyle renku tests conftest.py docs
-isort -rc -c -df
-unify -c -r renku tests conftest.py docs
-check-manifest --ignore ".travis-*,renku/version.py"
-find . -iname \*.sh -print0 | xargs -0 shellcheck
-sphinx-build -qnNW docs docs/_build/html
-pytest -v -m "not integration"
+MIGRATIONS = [migrate_dataset]

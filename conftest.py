@@ -131,7 +131,7 @@ def client(project):
 def dataset(client):
     """Create a dataset."""
     with client.with_dataset(name='dataset') as dataset:
-        dataset.authors = {
+        dataset.author = {
             'name': 'me',
             'email': 'me@example.com',
         }
@@ -195,9 +195,7 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture(
-    params=[
-        'test-renku-v0.3.0.git',
-    ],
+    params=['test-renku-v0.3.0.git', 'old-datasets-v0.3.0.git'],
     scope='module',
 )
 def old_bare_repository(request, tmpdir_factory):

@@ -59,7 +59,8 @@ def remove(ctx, client, sources):
     ) as bar:
         for dataset in bar:
             remove = []
-            for key, file_ in dataset.files.items():
+            for file_ in dataset.files:
+                key = file_.path
                 filepath = fmt_path(file_.full_path)
                 if filepath in files:
                     remove.append(key)
