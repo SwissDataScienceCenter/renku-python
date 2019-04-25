@@ -42,11 +42,10 @@ _path_attr = partial(
 
 
 @jsonld.s(
-    type='dcterms:creator',
+    type='schema:person',
     context={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
         'dcterms': 'http://purl.org/dc/terms/',
-        'scoro': 'http://purl.org/spar/scoro/',
+        'schema': 'http://schema.org/'
     },
     frozen=True,
     slots=True,
@@ -54,9 +53,10 @@ _path_attr = partial(
 class Author(object):
     """Represent the author of a resource."""
 
+    identifier = jsonld.ib(context='@id')
     name = jsonld.ib(validator=instance_of(str), context='dcterms:name')
     email = jsonld.ib(context='dcterms:email')
-    affiliation = jsonld.ib(default=None, context='scoro:affiliate')
+    affiliation = jsonld.ib(default=None, context='schema:affiliation')
 
     @email.validator
     def check_email(self, attribute, value):
@@ -90,7 +90,7 @@ class Author(object):
         if email is None:  # pragma: no cover
             raise errors.MissingEmail()
 
-        return cls(name=name, email=email)
+        return cls(name=name, email=email, identifier=email)
 
     @classmethod
     def from_commit(cls, commit):
@@ -105,7 +105,9 @@ class Author(object):
 class AuthorsMixin:
     """Mixin for handling authors container."""
 
-    authors = jsonld.container.list(Author, kw_only=True)
+    authors = jsonld.container.list(
+        Author, kw_only=True, context={'@id': 'dcterms:creator'}
+    )
 
     @property
     def authors_csv(self):
@@ -114,19 +116,23 @@ class AuthorsMixin:
 
 
 @jsonld.s(
-    type='http://schema.org/DigitalDocument',
+    type='schema:DigitalDocument',
     slots=True,
+    context={
+        'dcterms': 'http://purl.org/dc/terms/',
+        'schema': 'http://schema.org/'
+    }
 )
 class DatasetFile(AuthorsMixin):
     """Represent a file in a dataset."""
 
     path = _path_attr(kw_only=True)
-    url = jsonld.ib(
-        default=None, context='http://schema.org/url', kw_only=True
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
+    authors = jsonld.container.list(
+        Author, kw_only=True, context={'@id': 'dcterms:creator'}
     )
-    authors = jsonld.container.list(Author, kw_only=True)
     dataset = attr.ib(default=None, kw_only=True)
-    added = jsonld.ib(context='http://schema.org/dateCreated', kw_only=True)
+    added = jsonld.ib(context='schema:dateCreated', kw_only=True)
 
     @added.default
     def _now(self):
@@ -162,9 +168,7 @@ def _convert_dataset_files(value):
     context={
         'dcterms': 'http://purl.org/dc/terms/',
         'dctypes': 'http://purl.org/dc/dcmitypes/',
-        'foaf': 'http://xmlns.com/foaf/0.1/',
-        'prov': 'http://www.w3.org/ns/prov#',
-        'scoro': 'http://purl.org/spar/scoro/',
+        'schema': 'http://schema.org/'
     },
 )
 class Dataset(AuthorsMixin):
@@ -176,21 +180,21 @@ class Dataset(AuthorsMixin):
 
     created = jsonld.ib(
         converter=_parse_date,
-        context='http://schema.org/dateCreated',
+        context='schema:dateCreated',
     )
 
     identifier = jsonld.ib(
         default=attr.Factory(uuid.uuid4),
         converter=lambda x: uuid.UUID(str(x)),
-        context={
-            '@id': 'dctypes:Dataset',
-            '@type': '@id',
-        },
+        context='@id'
     )
-    authors = jsonld.container.list(Author)
+
+    authors = jsonld.container.list(Author, context={'@id': 'dcterms:creator'})
+
     files = jsonld.container.index(
         DatasetFile,
         converter=_convert_dataset_files,
+        context={'@id': 'schema:DigitalDocument'}
     )
 
     @created.default
