@@ -67,7 +67,6 @@ for name, reqs in extras_require.items():
     extras_require['all'].extend(reqs)
 
 install_requires = [
-    'PyYAML>=3.12',
     'appdirs>=1.4.3',
     'attrs>=18.2.0',
     'click-completion>=0.5.0',
@@ -76,12 +75,15 @@ install_requires = [
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython>=2.1.8',
+    'patool>=1.12',
     'psutil>=5.4.7',
+    'PyYAML>=3.12',
     'pyld>=1.0.3',
     'python-dateutil>=2.6.1',
     'rdflib-jsonld>=0.4.0',
     'requests>=2.21.0',
     'tabulate>=0.7.7',
+    'tqdm>=4.31.1',
     'werkzeug>=0.12',
 ]
 

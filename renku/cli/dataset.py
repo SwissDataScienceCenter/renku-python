@@ -151,10 +151,21 @@ Unlink all files from a dataset:
 .. note:: The ``unlink`` command does not delete files,
     only the dataset record.
 """
+import multiprocessing as mp
+import os
+import tempfile
+from collections import OrderedDict
+from multiprocessing import RLock, freeze_support
 
 import click
+import requests
 from click import BadParameter
+from tqdm import tqdm
 
+from renku.cli._providers import ProviderFactory
+from renku.models._tabulate import tabulate
+
+from .._compat import Path
 from ._client import pass_local_client
 from ._echo import WARNING, progressbar
 from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
@@ -360,6 +371,136 @@ def remove(client, names):
                 ref.delete()
 
     click.secho('OK', fg='green')
+
+
+@dataset.command('import')
+@click.argument('uri')
+@click.option('-n', '--name', help='Dataset name.')
+@click.option(
+    '-x',
+    '--extract',
+    is_flag=True,
+    help='Extract files before importing to dataset.'
+)
+@click.pass_context
+def import_(ctx, uri, name, extract):
+    """Import data from a 3rd party provider."""
+    provider, err = ProviderFactory.from_uri(uri)
+    if err and provider is None:
+        raise BadParameter('Could not process {0}.\n{1}'.format(uri, err))
+
+    try:
+        record = provider.find_record(uri)
+        files_ = record.get_files()  # TODO: streamline API
+        click.echo(
+            tabulate(
+                files_,
+                headers=OrderedDict((
+                    ('checksum', None),
+                    ('key', 'filename'),
+                    ('size', None),
+                    ('type', None),
+                ))
+            )
+        )
+
+        text_prompt = 'Do you wish to download this version?'
+        if record.last_version is False:
+            text_prompt = WARNING + 'Newer version found.\n' + text_prompt
+
+    except KeyError:
+        raise BadParameter((
+            'Could not process {0}.\n'
+            'Unable to fetch metadata.'.format(uri)
+        ))
+
+    except LookupError:
+        raise BadParameter(
+            ('Could not process {0}.\n'
+             'URI not found.'.format(uri))
+        )
+
+    if files_ and click.confirm(text_prompt):
+        data_folder = tempfile.mkdtemp()
+
+        pool_size = min(
+            int(os.getenv('RENKU_POOL_SIZE',
+                          mp.cpu_count() // 2)), 4
+        )
+
+        freeze_support()  # Windows support
+        pool = mp.Pool(
+            pool_size,
+            # Windows support
+            initializer=tqdm.set_lock,
+            initargs=(RLock(), )
+        )
+        processing = [
+            pool.apply_async(
+                download_file, args=(
+                    i,
+                    extract,
+                    data_folder,
+                    file_,
+                )
+            ) for i, file_ in enumerate(files_)
+        ]
+
+        for p in processing:
+            p.wait()
+        pool.close()
+
+        ctx.invoke(
+            add,
+            name=name or record.display_name,
+            urls=[str(p) for p in Path(data_folder).glob('*')]
+        )
+        click.secho('OK', fg='green')
+
+
+def download_file(position, extract, data_folder, file, chunk_size=16384):
+    """Download a file with progress tracking."""
+    local_filename = Path(file.name)
+    download_to = data_folder / local_filename
+
+    def extract_dataset(data_folder_, filename, file_):
+        """Extract downloaded dataset."""
+        import patoolib
+        filepath = data_folder_ / filename
+        patoolib.extract_archive(filepath, outdir=data_folder_)
+        filepath.unlink()
+
+    def stream_to_file(request):
+        """Stream bytes to file."""
+        with open(download_to, 'wb') as f_:
+            progressbar_ = tqdm(
+                total=round(file.size * 1e-6, 1),
+                position=position,
+                desc=file.name[:32],
+                bar_format=(
+                    '{percentage:3.0f}% '
+                    '{n_fmt}MB/{total_fmt}MB| '
+                    '{bar} | {desc}'
+                ),
+                leave=False,
+            )
+            bytes_downloaded = 0
+            for chunk in request.iter_content(chunk_size=chunk_size):
+                if chunk:  # remove keep-alive chunks
+                    f_.write(chunk)
+                    bytes_downloaded += chunk_size
+                    progressbar_.n = float(
+                        '{0:.1f}'.format(bytes_downloaded * 1e-6)
+                    )
+                    progressbar_.update(0)
+            progressbar_.close()
+
+        if extract:
+            extract_dataset(data_folder, local_filename, file)
+
+    with requests.get(file.remote_url.geturl(), stream=True) as r:
+        r.raise_for_status()
+        stream_to_file(r)
 
 
 def _include_exclude(file_path, include=None, exclude=None):
