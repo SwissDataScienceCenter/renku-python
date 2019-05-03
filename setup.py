@@ -80,6 +80,7 @@ install_requires = [
     'PyYAML>=3.12',
     'pyld>=1.0.3',
     'python-dateutil>=2.6.1',
+    'python-editor>=1.0.4',
     'rdflib-jsonld>=0.4.0',
     'requests>=2.21.0',
     'tabulate>=0.7.7',

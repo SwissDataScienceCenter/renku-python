@@ -173,6 +173,7 @@ class Dataset(AuthorsMixin):
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
     name = jsonld.ib(type=str, context='dcterms:name')
+    description = jsonld.ib(type=str, default=None)
 
     created = jsonld.ib(
         converter=_parse_date,
@@ -228,3 +229,14 @@ class Dataset(AuthorsMixin):
         :param file_path: Relative path used as key inside files container.
         """
         return self.files.pop(file_path, None)
+
+    @property
+    def editable(self):
+        """Subset of attributes which user can edit."""
+        _self = attr.asdict(self)
+        return {k: _self[k]
+                for k in [
+                    'name',
+                    'description',
+                    'files',
+                ]}

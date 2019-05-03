@@ -216,6 +216,22 @@ def create(client, name):
 
 @dataset.command()
 @click.argument('name')
+@pass_local_client(clean=True, commit=True)
+def edit(client, name):
+    """Edit dataset metadata."""
+    with client.with_dataset(name=name) as dataset:
+        import yaml
+        import editor
+        metadata_edited = editor.edit(
+            contents=bytes(yaml.safe_dump(dataset.editable), encoding='utf-8')
+        )
+        # TODO: validate yaml
+        edited = yaml.safe_load(metadata_edited)
+        dataset.name = edited['name']
+
+
+@dataset.command()
+@click.argument('name')
 @click.argument('urls', nargs=-1)
 @click.option('--link', is_flag=True, help='Creates a hard link.')
 @click.option('--relative-to', default=None)
