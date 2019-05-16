@@ -356,19 +356,37 @@ class RepositoryApiMixin(GitCore):
 
         # TODO read existing gitignore and create a unique set of rules
         import pkg_resources
-        gitignore_default = pkg_resources.resource_stream(
-            'renku.data', 'gitignore.default'
-        )
-        gitignore_path = path / '.gitignore'
-        with gitignore_path.open('w') as gitignore:
-            gitignore.write(gitignore_default.read().decode())
 
-            gitignore.write(
-                '\n' + str(
-                    self.renku_path.relative_to(self.path).
-                    with_suffix(self.LOCK_SUFFIX)
-                ) + '\n'
+        repo_file_defaults = [
+            {
+                'default_folder': 'renku.data',
+                'default_filename': 'gitignore.default',
+                'repo_filename': '.gitignore',
+                'add_lock_suffix': True
+            },
+            {
+                'default_folder': 'renku.data',
+                'default_filename': 'gitattributes.default',
+                'repo_filename': '.gitattributes',
+                'add_lock_suffix': False
+            }
+        ]
+
+        for defaults in repo_file_defaults:
+            default_file_stream = pkg_resources.resource_stream(
+                defaults['default_folder'], defaults['default_filename']
             )
+            repo_path = path / defaults['repo_filename']
+            with repo_path.open('w') as file:
+                file.write(default_file_stream.read().decode())
+
+                if defaults['add_lock_suffix']:
+                    file.write(
+                        '\n' + str(
+                            self.renku_path.relative_to(self.path).
+                            with_suffix(self.LOCK_SUFFIX)
+                        ) + '\n'
+                    )
 
         with self.with_metadata() as metadata:
             metadata.name = name

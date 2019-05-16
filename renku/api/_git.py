@@ -258,7 +258,6 @@ class GitCore:
         from git import GitCommandError, NULL_TREE
         from renku._contexts import Isolation
 
-        delete = path is None
         path = path or tempfile.mkdtemp()
         branch_name = branch_name or 'renku/run/isolation/' + uuid.uuid4().hex
 
@@ -302,14 +301,5 @@ class GitCore:
 
         with Isolation(cwd=str(new_cwd), **mapped_std):
             yield client
-
-        try:
-            self.repo.git.merge(branch_name, *merge_args)
-        except GitCommandError:
-            raise errors.FailedMerge(self.repo)
-
-        if delete:
-            shutil.rmtree(path)
-            self.repo.git.worktree('prune')
 
         self.checkout_paths_from_storage()
