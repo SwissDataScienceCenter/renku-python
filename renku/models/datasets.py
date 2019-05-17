@@ -44,23 +44,17 @@ _path_attr = partial(
 
 @jsonld.s(
     type='schema:author',
-    context={
-        'schema': 'http://schema.org/'
-    },
+    context={'schema': 'http://schema.org/'},
     slots=True,
 )
 class Author(object):
     """Represent the author of a resource."""
 
-    name = jsonld.ib(
-        validator=instance_of(str), context='schema:name'
-    )
+    name = jsonld.ib(validator=instance_of(str), context='schema:name')
 
     email = jsonld.ib(context='schema:email')
 
-    affiliation = jsonld.ib(
-        default=None, context='schema:affiliation'
-    )
+    affiliation = jsonld.ib(default=None, context='schema:affiliation')
 
     _id = jsonld.ib(context='@id', default=None)
 
@@ -127,17 +121,13 @@ class AuthorsMixin:
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
-    context={
-        'schema': 'http://schema.org/'
-    }
+    context={'schema': 'http://schema.org/'}
 )
 class DatasetFile(AuthorsMixin):
     """Represent a file in a dataset."""
 
     path = _path_attr(kw_only=True)
-    url = jsonld.ib(
-        default=None, context='schema:url', kw_only=True
-    )
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
     author = jsonld.container.list(
         Author, kw_only=True, context='schema:author'
     )
@@ -193,9 +183,7 @@ def _convert_dataset_author(value):
 
 @jsonld.s(
     type='schema:Dataset',
-    context={
-        'schema': 'http://schema.org/'
-    },
+    context={'schema': 'http://schema.org/'},
 )
 class Dataset(AuthorsMixin):
     """Repesent a dataset."""
@@ -209,16 +197,10 @@ class Dataset(AuthorsMixin):
         context='schema:dateCreated',
     )
 
-    identifier = jsonld.ib(
-        default=attr.Factory(uuid.uuid4),
-        converter=lambda x: uuid.UUID(str(x)),
-        context='schema:identifier'
-    )
+    identifier = jsonld.ib(default=None, context='schema:identifier')
 
     author = jsonld.container.list(
-        Author,
-        converter=_convert_dataset_author,
-        context='schema:author'
+        Author, converter=_convert_dataset_author, context='schema:author'
     )
 
     files = jsonld.container.list(
@@ -229,6 +211,11 @@ class Dataset(AuthorsMixin):
 
     _id = jsonld.ib(context='@id', default=None)
 
+    @property
+    def uid(self):
+        """UUID part of identifier."""
+        return self._id.split('/')[-1]
+
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
@@ -237,7 +224,7 @@ class Dataset(AuthorsMixin):
     @property
     def short_id(self):
         """Shorter version of identifier."""
-        return str(self.identifier)[:8]
+        return str(self.uid)[:8]
 
     @property
     def authors_csv(self):
@@ -290,7 +277,11 @@ class Dataset(AuthorsMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
+        if not self.identifier:
+            self.identifier = str(uuid.uuid4())
+
         if not self._id:
             self._id = '{0}/datasets/{1}'.format(
-                default_path(), self.identifier
+                Path(default_path()).name, self.identifier
             )
+            self.identifier = self._id
