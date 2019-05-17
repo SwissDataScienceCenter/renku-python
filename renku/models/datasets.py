@@ -43,9 +43,8 @@ _path_attr = partial(
 
 
 @jsonld.s(
-    type='http://schema.org/author',
+    type='schema:author',
     context={
-        'dcterms': 'http://purl.org/dc/terms/',
         'schema': 'http://schema.org/'
     },
     slots=True,
@@ -54,13 +53,13 @@ class Author(object):
     """Represent the author of a resource."""
 
     name = jsonld.ib(
-        validator=instance_of(str), context='http://schema.org/name'
+        validator=instance_of(str), context='schema:name'
     )
 
-    email = jsonld.ib(context='http://schema.org/email')
+    email = jsonld.ib(context='schema:email')
 
     affiliation = jsonld.ib(
-        default=None, context='http://schema.org/affiliation'
+        default=None, context='schema:affiliation'
     )
 
     _id = jsonld.ib(context='@id', default=None)
@@ -116,7 +115,7 @@ class AuthorsMixin:
     """Mixin for handling authors container."""
 
     author = jsonld.container.list(
-        Author, kw_only=True, context='http://schema.org/author'
+        Author, kw_only=True, context='schema:author'
     )
 
     @property
@@ -129,7 +128,6 @@ class AuthorsMixin:
     type='schema:DigitalDocument',
     slots=True,
     context={
-        'dcterms': 'http://purl.org/dc/terms/',
         'schema': 'http://schema.org/'
     }
 )
@@ -138,13 +136,13 @@ class DatasetFile(AuthorsMixin):
 
     path = _path_attr(kw_only=True)
     url = jsonld.ib(
-        default=None, context='http://schema.org/url', kw_only=True
+        default=None, context='schema:url', kw_only=True
     )
     author = jsonld.container.list(
-        Author, kw_only=True, context='http://schema.org/author'
+        Author, kw_only=True, context='schema:author'
     )
     dataset = attr.ib(default=None, kw_only=True)
-    added = jsonld.ib(context='http://schema.org/dateCreated', kw_only=True)
+    added = jsonld.ib(context='schema:dateCreated', kw_only=True)
 
     _id = jsonld.ib(kw_only=True, context='@id', default=None)
 
@@ -194,10 +192,8 @@ def _convert_dataset_author(value):
 
 
 @jsonld.s(
-    type='http://schema.org/Dataset',
+    type='schema:Dataset',
     context={
-        'dcterms': 'http://purl.org/dc/terms/',
-        'dctypes': 'http://purl.org/dc/dcmitypes/',
         'schema': 'http://schema.org/'
     },
 )
@@ -206,29 +202,29 @@ class Dataset(AuthorsMixin):
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
-    name = jsonld.ib(type=str, context='http://schema.org/name')
+    name = jsonld.ib(type=str, context='schema:name')
 
     created = jsonld.ib(
         converter=_parse_date,
-        context='http://schema.org/dateCreated',
+        context='schema:dateCreated',
     )
 
     identifier = jsonld.ib(
         default=attr.Factory(uuid.uuid4),
         converter=lambda x: uuid.UUID(str(x)),
-        context='http://schema.org/identifier'
+        context='schema:identifier'
     )
 
     author = jsonld.container.list(
         Author,
         converter=_convert_dataset_author,
-        context='http://schema.org/author'
+        context='schema:author'
     )
 
     files = jsonld.container.list(
         DatasetFile,
         converter=_convert_dataset_files,
-        context='http://schema.org/DigitalDocument'
+        context='schema:DigitalDocument'
     )
 
     _id = jsonld.ib(context='@id', default=None)
