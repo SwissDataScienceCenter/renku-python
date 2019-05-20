@@ -20,6 +20,7 @@
 import os
 import shutil
 import stat
+import uuid
 import warnings
 from configparser import NoSectionError
 from contextlib import contextmanager
@@ -109,8 +110,8 @@ class DatasetsApiMixin(object):
         dataset = self.load_dataset(name=name)
 
         if dataset is None:
-            identifier = Dataset.__attrs_attrs__.identifier.default.factory()
-            path = (self.renku_datasets_path / identifier.hex / self.METADATA)
+            identifier = str(uuid.uuid4())
+            path = (self.renku_datasets_path / identifier / self.METADATA)
             path.parent.mkdir(parents=True, exist_ok=True)
 
             with with_reference(path):
@@ -161,9 +162,7 @@ class DatasetsApiMixin(object):
         ignored = self.find_ignored_paths(
             *[
                 os.path.relpath(
-                    str(
-                        self.renku_datasets_path / dataset.identifier.hex / key
-                    ),
+                    str(self.renku_datasets_path / dataset.uid / key),
                     start=str(self.path),
                 ) for key in files.keys()
             ]
@@ -175,7 +174,7 @@ class DatasetsApiMixin(object):
             else:
                 raise errors.IgnoredFiles(ignored)
 
-        dataset.files.update(files)
+        dataset.update_files(files.values())
 
     def _add_from_url(self, dataset, path, url, link=False, **kwargs):
         """Process an add from url and return the location on disk."""
@@ -250,7 +249,7 @@ class DatasetsApiMixin(object):
                 DatasetFile(
                     path=result,
                     url=url,
-                    authors=dataset.authors,
+                    author=dataset.author,
                     dataset=dataset.name,
                 )
         }
@@ -283,9 +282,7 @@ class DatasetsApiMixin(object):
                 result = str(
                     os.path.relpath(
                         str(relative_url),
-                        start=str(
-                            self.renku_datasets_path / dataset.identifier.hex
-                        ),
+                        start=str(self.renku_datasets_path / dataset.uid),
                     )
                 )
                 return {
@@ -293,7 +290,7 @@ class DatasetsApiMixin(object):
                         DatasetFile(
                             path=result,
                             url=url,
-                            authors=dataset.authors,
+                            author=dataset.author,
                             dataset=dataset.name,
                         )
                 }
@@ -344,7 +341,7 @@ class DatasetsApiMixin(object):
             if relative_to.is_absolute():
                 assert u.scheme in {
                     '', 'file'
-                }, ('Only relative paths can be used with URLs.')
+                }, 'Only relative paths can be used with URLs.'
                 target = (Path(url).resolve().absolute() / target).relative_to(
                     relative_to.resolve()
                 )
@@ -401,7 +398,7 @@ class DatasetsApiMixin(object):
                 DatasetFile(
                     path=result,
                     url=url,
-                    authors=authors,
+                    author=authors,
                     dataset=dataset.name,  # TODO detect original dataset
                 )
         }

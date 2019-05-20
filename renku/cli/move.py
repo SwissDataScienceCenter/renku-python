@@ -80,11 +80,13 @@ def move(ctx, client, sources, destination):
         for (path, dataset) in bar:
             renames = {}
 
-            for file in dataset.files:
-                filepath = fmt_path(os.path.normpath(str(path.parent / file)))
+            for file_ in dataset.files:
+                filepath = fmt_path(
+                    os.path.normpath(str(path.parent / file_.path))
+                )
 
                 if filepath in files:
-                    renames[file] = os.path.relpath(
+                    renames[file_.path] = os.path.relpath(
                         destinations[filepath], start=str(path.parent)
                     )
 

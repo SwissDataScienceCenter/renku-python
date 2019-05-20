@@ -55,10 +55,7 @@ def datasets(ctx, client):
             dataset = Dataset.from_jsonld(yaml.safe_load(fp))
 
         name = str(old_path.parent.relative_to(client.path / 'data'))
-        new_path = (
-            client.renku_datasets_path / dataset.identifier.hex /
-            client.METADATA
-        )
+        new_path = (client.renku_datasets_path / dataset.uid / client.METADATA)
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
         dataset = dataset.rename_files(
