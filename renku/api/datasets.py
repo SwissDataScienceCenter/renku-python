@@ -341,7 +341,7 @@ class DatasetsApiMixin(object):
             if relative_to.is_absolute():
                 assert u.scheme in {
                     '', 'file'
-                }, ('Only relative paths can be used with URLs.')
+                }, 'Only relative paths can be used with URLs.'
                 target = (Path(url).resolve().absolute() / target).relative_to(
                     relative_to.resolve()
                 )

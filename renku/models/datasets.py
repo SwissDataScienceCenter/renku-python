@@ -151,7 +151,7 @@ class DatasetFile(AuthorsMixin):
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
         if not self._id:
-            self._id = str(self.path)
+            self._id = str(self.url)
 
 
 def _parse_date(value):
