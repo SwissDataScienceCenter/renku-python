@@ -147,7 +147,7 @@ def test_repository_file_to_dataset(runner, project, client):
 
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
-        assert Path('../../../a') in dataset.files
+        assert dataset.find_file('../../../a')
 
 
 def test_relative_import_to_dataset(
@@ -271,7 +271,7 @@ def test_dataset_add_with_link(tmpdir, runner, project, client):
     received_inodes = []
     with client.with_dataset('my-dataset') as dataset:
         assert dataset.name == 'my-dataset'
-        for relative, file_ in dataset.files.items():
+        for file_ in dataset.files:
             path_ = (client.renku_datasets_path / 'my-dataset' /
                      file_.path).resolve()
             received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
@@ -308,7 +308,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
     with client.with_dataset('my-dataset') as dataset:
         assert dataset.name == 'my-dataset'
 
-        for relative, file_ in dataset.files.items():
+        for file_ in dataset.files:
             path_ = (client.renku_datasets_path / 'my-dataset' /
                      file_.path).resolve()
             received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
@@ -567,7 +567,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
 
     with client.with_dataset(name='my-dataset') as dataset:
         assert new_file.basename in [
-            file_.path.name for file_ in dataset.files.values()
+            file_.path.name for file_ in dataset.files
         ]
 
     result = runner.invoke(
@@ -580,7 +580,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
 
     with client.with_dataset(name='my-dataset') as dataset:
         assert new_file.basename not in [
-            file_.path.name for file_ in dataset.files.values()
+            file_.path.name for file_ in dataset.files
         ]
 
 

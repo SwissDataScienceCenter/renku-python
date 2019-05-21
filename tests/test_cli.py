@@ -440,6 +440,18 @@ def test_update_with_old_repository(isolated_runner, old_project):
     assert output.pop(0) == 'All files were generated from the latest inputs.'
 
 
+def test_list_with_old_repository(isolated_runner, old_project):
+    """Test dataset list on old repository."""
+    result = isolated_runner.invoke(cli.cli, ['dataset'])
+    assert 0 == result.exit_code
+
+
+def test_migrate_with_old_repository(isolated_runner, old_project):
+    """Test migrate on old repository."""
+    result = isolated_runner.invoke(cli.cli, ['migrate', 'datasets'])
+    assert 0 == result.exit_code
+
+
 def test_status_with_submodules(isolated_runner, monkeypatch):
     """Test status calculation with submodules."""
     runner = isolated_runner

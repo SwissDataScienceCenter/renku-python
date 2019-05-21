@@ -72,16 +72,17 @@ def test_data_add(
             path = str(directory_tree)
 
         with client.with_dataset('dataset') as d:
-            d.authors = [{
+            d.author = [{
                 'name': 'me',
                 'email': 'me@example.com',
+                'identifier': 'me_id'
             }]
             client.add_data_to_dataset(d, '{}{}'.format(scheme, path))
 
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
-        assert _key(client, d, 'file') in d.files
+        assert d.find_file(_key(client, d, 'file'))
 
         # check that the imported file is read-only
         assert not os.access(
@@ -93,9 +94,10 @@ def test_data_add(
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
             with client.with_dataset('dataset') as d:
-                d.authors = [{
+                d.author = [{
                     'name': 'me',
                     'email': 'me@example.com',
+                    'identifier': 'me_id'
                 }]
                 client.add_data_to_dataset(
                     d, '{}{}'.format(scheme, path), nocopy=True
@@ -105,13 +107,18 @@ def test_data_add(
 
 def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
-    with client.with_dataset('dataset') as d:
-        d.authors = [{
+    with client.with_dataset('dataset') as dataset:
+        dataset.author = [{
             'name': 'me',
             'email': 'me@example.com',
+            'identifier': 'me_id'
         }]
-        client.add_data_to_dataset(d, directory_tree.join('dir2').strpath)
-    assert _key(client, d, 'dir2/file2') in d.files
+        client.add_data_to_dataset(
+            dataset,
+            directory_tree.join('dir2').strpath
+        )
+        filepath = _key(client, dataset, 'dir2/file2')
+        assert dataset.find_file(filepath)
 
 
 def dataset_serialization(client, dataset, data_file):
@@ -119,15 +126,15 @@ def dataset_serialization(client, dataset, data_file):
     with open(dataset.path / 'metadata.yml', 'r') as f:
         source = yaml.safe_load(f)
 
-    d = Dataset.from_jsonld(source)
-    assert d.path == dataset.path
+    dataset = Dataset.from_jsonld(source)
+    assert dataset.path == dataset.path
 
-    d_dict = d.to_dict()
+    d_dict = dataset.to_dict()
 
     assert all([key in d_dict for key in ('name', 'identifier', 'files')])
     assert not len(d_dict['files'].values())
-    client.add_data_to_dataset(d, str(data_file))
-    d_dict = d.to_dict()
+    client.add_data_to_dataset(dataset, str(data_file))
+    d_dict = dataset.to_dict()
     assert len(d_dict['files'].values())
 
 
@@ -139,7 +146,7 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
         os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
     )
     assert os.stat('data/dataset/dir2/file2')
-    assert _key(client, dataset, 'dir2/file2') in dataset.files
+    assert dataset.find_file(_key(client, dataset, 'dir2/file2')) is not None
     assert os.stat('.renku/vendors/local')
 
     # check that the authors are properly parsed from commits
@@ -147,8 +154,9 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
         dataset, os.path.dirname(data_repository.git_dir), target='file'
     )
     file = _key(client, dataset, 'file')
-    assert len(dataset.files[file].authors) == 2
-    assert all(x.name in ('me', 'me2') for x in dataset.files[file].authors)
+
+    assert len(dataset.find_file(file).author) == 2
+    assert all(x.name in ('me', 'me2') for x in dataset.find_file(file).author)
 
 
 @pytest.mark.parametrize(
@@ -162,8 +170,9 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 )
 def test_author_parse(authors, data_file):
     """Test that different options for specifying authors work."""
-    f = DatasetFile(path='file', authors=authors)
-    assert Author(name='me', email='me@example.com') in f.authors
+    f = DatasetFile(path='file', author=authors)
+    author = Author(name='me', email='me@example.com')
+    assert author in f.author
 
     # email check
     with pytest.raises(ValueError):
@@ -171,4 +180,4 @@ def test_author_parse(authors, data_file):
 
     # authors must be a set or list of dicts or Author
     with pytest.raises(ValueError):
-        f = DatasetFile(path='file', authors=['name'])
+        f = DatasetFile(path='file', author=['name'])
