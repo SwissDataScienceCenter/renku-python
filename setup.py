@@ -27,7 +27,7 @@ history = open('CHANGES.rst').read()
 
 tests_require = [
     'check-manifest>=0.37',
-    'coverage>=4.0',
+    'coverage>=4.5.3',
     'flake8>=3.5',
     'freezegun>=0.3.9',
     'isort==4.3.4',
