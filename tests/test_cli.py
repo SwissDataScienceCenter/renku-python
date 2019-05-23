@@ -132,7 +132,6 @@ def test_git_pre_commit_hook(runner, project, capsys):
 
     result = runner.invoke(cli.cli, ['run', 'touch', output.name])
     assert 0 == result.exit_code
-
     with output.open('w') as f:
         f.write('hello')
 

@@ -16,19 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """DOI API integration."""
-import re
 import urllib
 
 import attr
 import requests
 
 from renku.cli._providers.api import ProviderApi
-
-doi_regexp = re.compile(
-    r'(doi:\s*|(?:https?://)?(?:dx\.)?doi\.org/)?(10\.\d+(.\d+)*/.+)$',
-    flags=re.I
-)
-"""See http://en.wikipedia.org/wiki/Digital_object_identifier."""
 
 DOI_BASE_URL = 'https://dx.doi.org'
 
@@ -39,21 +32,34 @@ def make_doi_url(doi):
 
 
 @attr.s
-class DOIMetadata:
+class DOIMetadataSerializer:
     """Response from doi.org for DOI metadata."""
 
     id = attr.ib(kw_only=True)
-    DOI = attr.ib(kw_only=True)
-    URL = attr.ib(kw_only=True)
+
+    doi = attr.ib(kw_only=True)
+
+    url = attr.ib(kw_only=True)
+
     type = attr.ib(kw_only=True, default=None)
+
     categories = attr.ib(kw_only=True, default=None)
+
     author = attr.ib(kw_only=True, default=None)
+
     version = attr.ib(kw_only=True, default=None)
+
     issued = attr.ib(kw_only=True, default=None)
+
     title = attr.ib(kw_only=True, default=None)
+
     abstract = attr.ib(kw_only=True, default=None)
+
     language = attr.ib(kw_only=True, default=None)
+
     publisher = attr.ib(kw_only=True, default=None)
+
+    container_title = attr.ib(kw_only=True, default=None)
 
 
 @attr.s
@@ -66,9 +72,14 @@ class DOIProvider(ProviderApi):
     timeout = attr.ib(default=3)
 
     @staticmethod
-    def is_doi(uri):
-        """Check if uri is DOI."""
-        return doi_regexp.match(uri)
+    def _serialize(response):
+        """Serialize HTTP response for DOI."""
+        return DOIMetadataSerializer(
+            **{
+                key.replace('-', '_').lower(): value
+                for key, value in response.items()
+            }
+        )
 
     def _query(self, doi):
         """Retrieve metadata for given doi."""
@@ -85,4 +96,4 @@ class DOIProvider(ProviderApi):
     def find_record(self, uri):
         """Finds DOI record."""
         response = self._query(uri).json()
-        return DOIMetadata(**response)
+        return DOIProvider._serialize(response)

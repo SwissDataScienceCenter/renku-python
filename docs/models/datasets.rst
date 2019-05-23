@@ -39,9 +39,9 @@ Manage files in the dataset.
    :inherited-members:
 
 
-Author
-------
+Creator
+-------
 
-.. autoclass:: renku.models.datasets.Author
+.. autoclass:: renku.models.datasets.Creator
    :members:
    :inherited-members:

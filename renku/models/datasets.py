@@ -31,6 +31,7 @@ from dateutil.parser import parse as parse_date
 from renku import errors
 from renku._compat import Path
 from renku.api.repository import default_path
+from renku.utils.doi import is_doi
 
 from . import _jsonld as jsonld
 
@@ -43,25 +44,49 @@ _path_attr = partial(
 
 
 @jsonld.s(
-    type='schema:author',
+    type='schema:Person',
     context={'schema': 'http://schema.org/'},
     slots=True,
 )
-class Author(object):
-    """Represent the author of a resource."""
+class Creator(object):
+    """Represent the creator of a resource."""
 
-    name = jsonld.ib(validator=instance_of(str), context='schema:name')
+    affiliation = jsonld.ib(
+        default=None, kw_only=True, context='schema:affiliation'
+    )
 
-    email = jsonld.ib(context='schema:email')
+    email = jsonld.ib(default=None, kw_only=True, context='schema:email')
 
-    affiliation = jsonld.ib(default=None, context='schema:affiliation')
+    alternate_name = jsonld.ib(
+        default=None, kw_only=True, context='schema:alternateName'
+    )
 
-    _id = jsonld.ib(context='@id', default=None)
+    name = jsonld.ib(
+        default=None,
+        kw_only=True,
+        validator=instance_of(str),
+        context='schema:name'
+    )
+
+    _id = jsonld.ib(default=None, kw_only=True, context='@id')
+
+    @property
+    def short_name(self):
+        """Gives full name in short form."""
+        names = self.name.split()
+        if len(names) == 1:
+            return self.name
+
+        last_name = names[-1]
+        initials = [name[0] for name in names]
+        initials.pop()
+
+        return '{0}.{1}'.format('.'.join(initials), last_name)
 
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (
+        if self.email and not (
             isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)
         ):
             raise ValueError('Email address is invalid.')
@@ -99,23 +124,36 @@ class Author(object):
 
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
-        # TODO: make it an orcid ID
         if not self._id:
-            self._id = self.email
+            self._id = self.name.replace(' ', '.').lower()
 
 
 @attr.s
-class AuthorsMixin:
-    """Mixin for handling authors container."""
+class CreatorsMixin:
+    """Mixin for handling creators container."""
 
-    author = jsonld.container.list(
-        Author, kw_only=True, context='schema:author'
+    creator = jsonld.container.list(
+        Creator, kw_only=True, context='schema:creator'
     )
 
     @property
-    def authors_csv(self):
-        """Comma-separated list of authors associated with dataset."""
-        return ','.join(author.name for author in self.author)
+    def creators_csv(self):
+        """Comma-separated list of creators associated with dataset."""
+        return ','.join(creator.name for creator in self.creator)
+
+
+@jsonld.s(
+    type='schema:Language',
+    context={'schema': 'http://schema.org/'},
+    slots=True,
+)
+class Language:
+    """Represent a language of an object."""
+
+    alternate_name = jsonld.ib(
+        default=None, kw_only=True, context='schema:alternateName'
+    )
+    name = jsonld.ib(default=None, kw_only=True, context='schema:name')
 
 
 @jsonld.s(
@@ -123,18 +161,30 @@ class AuthorsMixin:
     slots=True,
     context={'schema': 'http://schema.org/'}
 )
-class DatasetFile(AuthorsMixin):
+class DatasetFile(CreatorsMixin):
     """Represent a file in a dataset."""
 
-    path = _path_attr(kw_only=True)
-    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
-    author = jsonld.container.list(
-        Author, kw_only=True, context='schema:author'
+    creator = jsonld.container.list(
+        Creator, kw_only=True, context='schema:creator'
     )
-    dataset = attr.ib(default=None, kw_only=True)
+
     added = jsonld.ib(context='schema:dateCreated', kw_only=True)
 
-    _id = jsonld.ib(kw_only=True, context='@id', default=None)
+    checksum = attr.ib(default=None, kw_only=True)
+
+    dataset = attr.ib(default=None, kw_only=True)
+
+    filename = attr.ib(default=None, kw_only=True)
+
+    filesize = attr.ib(default=None, kw_only=True)
+
+    filetype = attr.ib(default=None, kw_only=True)
+
+    path = _path_attr(kw_only=True)
+
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
+
+    _id = jsonld.ib(default=None, kw_only=True, context='@id')
 
     @added.default
     def _now(self):
@@ -147,6 +197,11 @@ class DatasetFile(AuthorsMixin):
         return Path(
             os.path.realpath(str(self.__reference__.parent / self.path))
         )
+
+    @property
+    def size_in_mb(self):
+        """Return file size in megabytes."""
+        return self.filesize * 1e-6
 
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
@@ -171,45 +226,110 @@ def _convert_dataset_files(value):
     return [DatasetFile.from_jsonld(v) for v in coll]
 
 
-def _convert_dataset_author(value):
-    """Convert dataset authors."""
-    coll = value
-
+def _convert_dataset_creator(value):
+    """Convert dataset creators."""
     if isinstance(value, dict):  # compatibility with previous versions
-        coll = value.values()
+        return Creator.from_jsonld(value)
 
-    return [Author.from_jsonld(v) for v in coll]
+    if isinstance(value, list):
+        return [Creator.from_jsonld(v) for v in value]
+
+
+def _convert_language(obj):
+    """Convert language object."""
+    if isinstance(obj, dict):
+        language = Language.from_jsonld(obj)
+        return language
+
+
+def _convert_keyword(keywords):
+    """Convert keywords collection."""
+    if isinstance(keywords, list):
+        return keywords
+
+    if isinstance(keywords, dict):
+        return keywords.keys()
 
 
 @jsonld.s(
     type='schema:Dataset',
-    context={'schema': 'http://schema.org/'},
+    context={
+        'added': 'schema:dateCreated',
+        'affiliation': 'schema:affiliation',
+        'alternate_name': 'schema:alternateName',
+        'email': 'schema:email',
+        'name': 'schema:name',
+        'schema': 'http://schema.org/',
+        'url': 'schema:url'
+    },
 )
-class Dataset(AuthorsMixin):
+class Dataset(CreatorsMixin):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
-    name = jsonld.ib(type=str, context='schema:name')
+    _id = jsonld.ib(default=None, context='@id')
+
+    creator = jsonld.container.list(
+        Creator, converter=_convert_dataset_creator, context='schema:creator'
+    )
+
+    date_published = jsonld.ib(default=None, context='schema:datePublished')
+
+    description = jsonld.ib(default=None, context='schema:description')
+
+    identifier = jsonld.ib(default=None, context='schema:identifier')
+
+    in_language = jsonld.ib(
+        type=Language,
+        default=None,
+        converter=_convert_language,
+        context='schema:inLanguage'
+    )
+
+    keywords = jsonld.container.list(
+        str, converter=_convert_keyword, context='schema:keywords'
+    )
+
+    license = jsonld.ib(default=None, context='schema:license')
+
+    name = jsonld.ib(default=None, type=str, context='schema:name')
+
+    url = jsonld.ib(default=None, context='schema:url')
+
+    version = jsonld.ib(default=None, context='schema:version')
 
     created = jsonld.ib(
         converter=_parse_date,
         context='schema:dateCreated',
     )
 
-    identifier = jsonld.ib(default=None, context='schema:identifier')
-
-    author = jsonld.container.list(
-        Author, converter=_convert_dataset_author, context='schema:author'
-    )
-
     files = jsonld.container.list(
         DatasetFile,
+        default=None,
         converter=_convert_dataset_files,
         context='schema:DigitalDocument'
     )
 
-    _id = jsonld.ib(context='@id', default=None)
+    @property
+    def display_name(self):
+        """Get dataset display name."""
+        name = re.sub(' +', ' ', self.name.lower()[:24])
+
+        def to_unix(el):
+            """Parse string to unix friendly name."""
+            parsed_ = re.sub('[^a-zA-Z0-9]', '', re.sub(' +', ' ', el))
+            parsed_ = re.sub(' .+', '.', parsed_.lower())
+            return parsed_
+
+        short_name = [to_unix(el) for el in name.split()]
+
+        if self.version:
+            version = to_unix(self.version)
+            name = '{0}_{1}'.format('_'.join(short_name), version)
+            return name
+
+        return '.'.join(short_name)
 
     @property
     def uid(self):
@@ -224,12 +344,14 @@ class Dataset(AuthorsMixin):
     @property
     def short_id(self):
         """Shorter version of identifier."""
+        if is_doi(self._id):
+            return self._id
         return str(self.uid)[:8]
 
     @property
-    def authors_csv(self):
-        """Comma-separated list of authors associated with dataset."""
-        return ','.join(author.name for author in self.author)
+    def creators_csv(self):
+        """Comma-separated list of creators associated with dataset."""
+        return ','.join(creator.short_name for creator in self.creator)
 
     def find_file(self, file_path, return_index=False):
         """Find a file in files container."""
@@ -238,6 +360,28 @@ class Dataset(AuthorsMixin):
                 if return_index:
                     return index
                 return file_
+
+    def update_metadata(self, other_dataset):
+        """Updates instance attributes with other dataset attributes.
+
+        :param other_dataset: `Dataset`
+        :return: self
+        """
+        if is_doi(other_dataset.identifier):
+            self._id = other_dataset.identifier
+
+        update_fields = [
+            'creator', 'date_published', 'description', 'identifier',
+            'in_language', 'keywords', 'license', 'name', 'url', 'version',
+            'created', 'files'
+        ]
+
+        for field_ in update_fields:
+            val = getattr(other_dataset, field_)
+            if val:
+                setattr(self, field_, val)
+
+        return self
 
     def update_files(self, files):
         """Update files with collection of DatasetFile objects."""

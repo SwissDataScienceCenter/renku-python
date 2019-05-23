@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,17 +15,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Migrations for dataset."""
+"""Helper utils for handling DOIs."""
+import re
+
+doi_regexp = re.compile(
+    r'(doi:\s*|(?:https?://)?(?:dx\.)?doi\.org/)?(10\.\d+(.\d+)*/.+)$',
+    flags=re.I
+)
+"""See http://en.wikipedia.org/wiki/Digital_object_identifier."""
 
 
-def migrate_dataset(data):
-    """Migrate from old dataset formats."""
-    if data.get('@type') != 'dctypes:Dataset':
-        return data
-
-    data['creator'] = data.pop('authors', {})
-
-    for file_name, file_ in data.get('files', {}).items():
-        file_['creator'] = file_.pop('authors', {})
-
-    return data
+def is_doi(uri):
+    """Check if uri is DOI."""
+    return doi_regexp.match(uri)

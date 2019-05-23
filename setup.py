@@ -29,7 +29,7 @@ tests_require = [
     'check-manifest>=0.37',
     'coverage>=4.5.3',
     'flake8>=3.5',
-    'freezegun>=0.3.9',
+    'freezegun>=0.3.12',
     'isort==4.3.4',
     'pydocstyle>=3.0.0',
     'pytest-cache>=1.0',
