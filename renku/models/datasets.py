@@ -43,25 +43,42 @@ _path_attr = partial(
 
 
 @jsonld.s(
-    type='schema:author',
+    type='schema:Person',
     context={'schema': 'http://schema.org/'},
     slots=True,
 )
 class Author(object):
     """Represent the author of a resource."""
 
-    name = jsonld.ib(validator=instance_of(str), context='schema:name')
-
-    email = jsonld.ib(context='schema:email')
-
     affiliation = jsonld.ib(default=None, context='schema:affiliation')
 
-    _id = jsonld.ib(context='@id', default=None)
+    email = jsonld.ib(default=None, context='schema:email')
+
+    alternate_name = jsonld.ib(default=None, context='schema:alternateName')
+
+    name = jsonld.ib(
+        default=None, validator=instance_of(str), context='schema:name'
+    )
+
+    _id = jsonld.ib(default=None, context='@id')
+
+    @property
+    def short_name(self):
+        """Gives full name in short form."""
+        names = self.name.split()
+        if len(names) == 1:
+            return self.name
+
+        last_name = names[-1]
+        initials = [name[0] for name in names]
+        initials.pop()
+
+        return '{0}.{1}'.format('.'.join(initials), last_name)
 
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (
+        if self.email and not (
             isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)
         ):
             raise ValueError('Email address is invalid.')
@@ -101,7 +118,7 @@ class Author(object):
         """Post-Init hook to set _id field."""
         # TODO: make it an orcid ID
         if not self._id:
-            self._id = self.email
+            self._id = self.name.replace(' ', '.').lower()
 
 
 @attr.s
@@ -119,6 +136,20 @@ class AuthorsMixin:
 
 
 @jsonld.s(
+    type='schema:Language',
+    context={'schema': 'http://schema.org/'},
+    slots=True,
+)
+class Language:
+    """Represent a language of an object."""
+
+    alternate_name = jsonld.ib(
+        default=None, kw_only=True, context='schema:alternateName'
+    )
+    name = jsonld.ib(default=None, kw_only=True, context='schema:name')
+
+
+@jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
     context={'schema': 'http://schema.org/'}
@@ -126,15 +157,27 @@ class AuthorsMixin:
 class DatasetFile(AuthorsMixin):
     """Represent a file in a dataset."""
 
-    path = _path_attr(kw_only=True)
-    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
     author = jsonld.container.list(
         Author, kw_only=True, context='schema:author'
     )
-    dataset = attr.ib(default=None, kw_only=True)
+
     added = jsonld.ib(context='schema:dateCreated', kw_only=True)
 
-    _id = jsonld.ib(kw_only=True, context='@id', default=None)
+    checksum = attr.ib(default=None, kw_only=True)
+
+    dataset = attr.ib(default=None, kw_only=True)
+
+    filename = attr.ib(default=None, kw_only=True)
+
+    filesize = attr.ib(default=None, kw_only=True)
+
+    filetype = attr.ib(default=None, kw_only=True)
+
+    path = _path_attr(kw_only=True)
+
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
+
+    _id = jsonld.ib(default=None, kw_only=True, context='@id')
 
     @added.default
     def _now(self):
@@ -147,6 +190,11 @@ class DatasetFile(AuthorsMixin):
         return Path(
             os.path.realpath(str(self.__reference__.parent / self.path))
         )
+
+    @property
+    def size_in_mb(self):
+        """Return file size in megabytes."""
+        return self.filesize * 1e-6
 
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
@@ -181,6 +229,22 @@ def _convert_dataset_author(value):
     return [Author.from_jsonld(v) for v in coll]
 
 
+def _convert_language(obj):
+    """Convert language object."""
+    if isinstance(obj, dict):
+        language = Language.from_jsonld(obj)
+        return language
+
+
+def _convert_keyword(keywords):
+    """Convert keywords collection."""
+    if isinstance(keywords, list):
+        return keywords
+
+    if isinstance(keywords, dict):
+        return keywords.keys()
+
+
 @jsonld.s(
     type='schema:Dataset',
     context={'schema': 'http://schema.org/'},
@@ -190,26 +254,54 @@ class Dataset(AuthorsMixin):
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
-    name = jsonld.ib(type=str, context='schema:name')
+    _id = jsonld.ib(default=None, context='@id')
+
+    author = jsonld.container.list(
+        Author, converter=_convert_dataset_author, context='schema:author'
+    )
+
+    date_published = jsonld.ib(default=None, context='schema:datePublished')
+
+    description = jsonld.ib(default=None, context='schema:description')
+
+    identifier = jsonld.ib(default=None, context='schema:identifier')
+
+    in_language = jsonld.ib(
+        default=None, converter=_convert_language, context='schema:inLanguage'
+    )
+
+    keywords = jsonld.container.list(
+        str, converter=_convert_keyword, context='schema:keywords'
+    )
+
+    license = jsonld.ib(default=None, context='schema:license')
+
+    name = jsonld.ib(default=None, type=str, context='schema:name')
+
+    url = jsonld.ib(default=None, context='schema:url')
+
+    version = jsonld.ib(default=None, context='schema:version')
 
     created = jsonld.ib(
         converter=_parse_date,
         context='schema:dateCreated',
     )
 
-    identifier = jsonld.ib(default=None, context='schema:identifier')
-
-    author = jsonld.container.list(
-        Author, converter=_convert_dataset_author, context='schema:author'
-    )
-
     files = jsonld.container.list(
         DatasetFile,
+        default=None,
         converter=_convert_dataset_files,
         context='schema:DigitalDocument'
     )
 
-    _id = jsonld.ib(context='@id', default=None)
+    @property
+    def display_name(self):
+        """Get dataset display name."""
+        short_name = [
+            re.sub('[^a-zA-Z]', '', el)
+            for el in self.name.lower()[:16].split()
+        ]
+        return '{0}_{1}'.format('.'.join(short_name), self.version)
 
     @property
     def uid(self):
@@ -229,7 +321,7 @@ class Dataset(AuthorsMixin):
     @property
     def authors_csv(self):
         """Comma-separated list of authors associated with dataset."""
-        return ','.join(author.name for author in self.author)
+        return ','.join(author.short_name for author in self.author)
 
     def find_file(self, file_path, return_index=False):
         """Find a file in files container."""
@@ -238,6 +330,16 @@ class Dataset(AuthorsMixin):
                 if return_index:
                     return index
                 return file_
+
+    def update_metadata(self, other_dataset):
+        """Updates instance attributes with other dataset attributes.
+
+        :param other_dataset: `Dataset`
+        :return: self
+        """
+        self.author = other_dataset.author
+        self.files = other_dataset.files
+        return self
 
     def update_files(self, files):
         """Update files with collection of DatasetFile objects."""

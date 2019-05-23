@@ -470,7 +470,6 @@ def test_datasets_ls_files_tabular_authors(tmpdir, runner, project, client):
     result = runner.invoke(
         cli.cli,
         ['dataset', 'add', 'my-dataset'] + paths,
-        catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
@@ -478,7 +477,10 @@ def test_datasets_ls_files_tabular_authors(tmpdir, runner, project, client):
     with client.with_dataset(name='my-dataset') as dataset:
         authors = dataset.authors_csv
 
-    # check include / exclude filters
+    assert authors is not None
+    assert len(authors) > 0
+
+    # check authors filters
     result = runner.invoke(
         cli.cli, ['dataset', 'ls-files', '--authors={0}'.format(authors)]
     )
@@ -486,7 +488,7 @@ def test_datasets_ls_files_tabular_authors(tmpdir, runner, project, client):
 
     # check output
     for file_ in paths:
-        assert Path(file_).name in result.output
+        assert str(Path(file_).name) in result.output
 
 
 def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
@@ -682,7 +684,40 @@ def test_dataset_import_real_doi(runner, project):
 
     result = runner.invoke(cli.cli, ['dataset'])
     assert 0 == result.exit_code
-    assert 'pyndl' in result.output
+    assert 'pyndl.naive.dis_v0.6.4' in result.output
+    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_import_real_doi_warnings(runner, project):
+    """Test dataset import for existing DOI and dataset"""
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'Warning: Newer version found.' in result.output
+    assert 'OK'
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\ny'
+    )
+    assert 0 == result.exit_code
+    assert 'Warning: Newer version found.' in result.output
+    assert 'Warning: This dataset already exists.' in result.output
+    assert 'OK' in result.output
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\nn'
+    )
+    assert 0 == result.exit_code
+    assert 'Warning: Newer version found.' in result.output
+    assert 'Warning: This dataset already exists.' in result.output
+    assert 'OK' not in result.output
+
+    result = runner.invoke(cli.cli, ['dataset'])
+    assert 0 == result.exit_code
+    assert 'pyndl.naive.dis_v0.6.4' in result.output
+    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
 
 
 @pytest.mark.integration
