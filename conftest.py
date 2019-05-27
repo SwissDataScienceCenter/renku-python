@@ -45,7 +45,7 @@ def instance_path(renku_path, monkeypatch):
 @pytest.fixture()
 def runner(monkeypatch):
     """Create a runner on isolated filesystem."""
-    from renku.cli._config import RENKU_HOME
+    from renku.api.config import RENKU_HOME
     monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     return CliRunner()
 
@@ -75,7 +75,7 @@ def run(runner, capsys):
 @pytest.fixture()
 def isolated_runner(monkeypatch):
     """Create a runner on isolated filesystem."""
-    from renku.cli._config import RENKU_HOME
+    from renku.api.config import RENKU_HOME
     monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     runner_ = CliRunner()
     with runner_.isolated_filesystem():
