@@ -25,6 +25,7 @@ def test_dataset_add(tmpdir, runner, client):
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
     assert 0 == result.exit_code
+    assert 'OK' in result.output
 
     # Using an extension from gitignore.default
     ignored_file = tmpdir.join('my.spec')

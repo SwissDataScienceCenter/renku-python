@@ -83,6 +83,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     dataset_name = 'dataset'
     result = runner.invoke(cli.cli, ['dataset', 'create', dataset_name])
     assert 0 == result.exit_code
+    assert 'OK' in result.output
 
     with client.with_dataset(dataset_name) as dataset:
         assert dataset.name == 'dataset'

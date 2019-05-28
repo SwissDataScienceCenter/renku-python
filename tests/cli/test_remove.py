@@ -25,6 +25,7 @@ def test_remove_dataset_file(tmpdir, runner, client):
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
     assert 0 == result.exit_code
+    assert 'OK' in result.output
 
     source = tmpdir.join('source')
     source.write('Source file')

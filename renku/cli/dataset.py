@@ -205,13 +205,15 @@ def create(client, name):
     """Create an empty dataset in the current repo."""
     from renku.models.datasets import Author
 
-    with client.with_dataset(name=name) as dataset:
-        click.echo('Creating a dataset ... ', nl=False)
-        author = Author.from_git(client.repo)
-        if author not in dataset.author:
-            dataset.author.append(author)
+    if write_dataset(client, name):
 
-    click.secho('OK', fg='green')
+        with client.with_dataset(name=name) as dataset:
+            click.echo('Creating a dataset ... ', nl=False)
+            author = Author.from_git(client.repo)
+            if author not in dataset.author:
+                dataset.author.append(author)
+
+        click.secho('OK', fg='green')
 
 
 @dataset.command()
@@ -307,6 +309,10 @@ def ls_files(client, names, authors, include, exclude, format):
 def unlink(client, name, include, exclude, yes):
     """Remove matching files from a dataset."""
     dataset = client.load_dataset(name=name)
+
+    if not dataset:
+        raise BadParameter('Dataset does not exist.')
+
     records = _filter(
         client, names=[dataset.name], include=include, exclude=exclude
     )
@@ -566,3 +572,17 @@ def get_datadir():
     """Fetch the current data directory."""
     ctx = click.get_current_context()
     return ctx.meta['renku.datasets.datadir']
+
+
+def write_dataset(client, name):
+    """Check if existing dataset should be overwritten.
+
+    :param client: `LocalClient` instance.
+    :param name: Dataset name.
+    :return: True is dataset exists and user confirmed overwriting.
+    """
+    if client.load_dataset(name=name):
+        warn_ = WARNING + 'This dataset already exists.'
+        click.echo(warn_)
+        return click.confirm('Do you wish to overwrite it?')
+    return True
