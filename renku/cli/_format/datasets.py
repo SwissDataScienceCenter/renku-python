@@ -32,9 +32,10 @@ def tabular(client, datasets):
             datasets,
             headers=OrderedDict((
                 ('short_id', 'id'),
-                ('name', None),
+                ('display_name', None),
+                ('version', None),
                 ('created', None),
-                ('authors_csv', 'authors'),
+                ('creators_csv', 'creators'),
             )),
         )
     )

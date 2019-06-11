@@ -343,7 +343,7 @@ def test_datasets_ls_files_tabular_empty(runner, project):
 
     # check output
     output = result.output.split('\n')
-    assert output.pop(0).split() == ['ADDED', 'AUTHORS', 'DATASET', 'PATH']
+    assert output.pop(0).split() == ['ADDED', 'CREATORS', 'DATASET', 'PATH']
     assert set(output.pop(0)) == {' ', '-'}
     assert output.pop(0) == ''
     assert not output
@@ -387,7 +387,7 @@ def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
 
     # check output from ls-files command
     output = result.output.split('\n')
-    assert output.pop(0).split() == ['ADDED', 'AUTHORS', 'DATASET', 'PATH']
+    assert output.pop(0).split() == ['ADDED', 'CREATORS', 'DATASET', 'PATH']
     assert set(output.pop(0)) == {' ', '-'}
 
     # check listing
@@ -452,8 +452,8 @@ def test_datasets_ls_files_tabular_patterns(tmpdir, runner, project):
     assert 'sub_file_2' in result.output
 
 
-def test_datasets_ls_files_tabular_authors(tmpdir, runner, project, client):
-    """Test listing of data within dataset with authors filters."""
+def test_datasets_ls_files_tabular_creators(tmpdir, runner, project, client):
+    """Test listing of data within dataset with creators filters."""
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
@@ -470,23 +470,25 @@ def test_datasets_ls_files_tabular_authors(tmpdir, runner, project, client):
     result = runner.invoke(
         cli.cli,
         ['dataset', 'add', 'my-dataset'] + paths,
-        catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
-    authors = None
+    creator = None
     with client.with_dataset(name='my-dataset') as dataset:
-        authors = dataset.authors_csv
+        creator = dataset.creator[0].name
 
-    # check include / exclude filters
+    assert creator is not None
+    assert len(dataset.creator) > 0
+
+    # check creators filters
     result = runner.invoke(
-        cli.cli, ['dataset', 'ls-files', '--authors={0}'.format(authors)]
+        cli.cli, ['dataset', 'ls-files', '--creators={0}'.format(creator)]
     )
     assert 0 == result.exit_code
 
     # check output
     for file_ in paths:
-        assert Path(file_).name in result.output
+        assert str(Path(file_).name) in result.output
 
 
 def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
@@ -682,7 +684,80 @@ def test_dataset_import_real_doi(runner, project):
 
     result = runner.invoke(cli.cli, ['dataset'])
     assert 0 == result.exit_code
-    assert 'pyndl' in result.output
+    assert 'pyndl_naive_discriminat_v064' in result.output
+    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
+
+
+@pytest.mark.parametrize(
+    'doi', [
+        ('10.5281/zenodo.597964', 'y'),
+        ('10.5281/zenodo.3236928', 'n'),
+        ('10.5281/zenodo.2671633', 'n'),
+        ('10.5281/zenodo.3237420', 'n'),
+        ('10.5281/zenodo.3236928', 'n'),
+        ('10.5281/zenodo.3188334', 'y'),
+        ('10.5281/zenodo.3236928', 'n'),
+        ('10.5281/zenodo.2669459', 'n'),
+        ('10.5281/zenodo.2371189', 'n'),
+        ('10.5281/zenodo.2651343', 'n'),
+        ('10.5281/zenodo.1467859', 'n'),
+        ('10.5281/zenodo.3240078', 'n'),
+        ('10.5281/zenodo.3240053', 'n'),
+        ('10.5281/zenodo.3240010', 'n'),
+        ('10.5281/zenodo.3240012', 'n'),
+        ('10.5281/zenodo.3240006', 'n'),
+        ('10.5281/zenodo.3239996', 'n'),
+        ('10.5281/zenodo.3239256', 'n'),
+        ('10.5281/zenodo.3237813', 'n'),
+        ('10.5281/zenodo.3239988', 'y'),
+        ('10.5281/zenodo.3239986', 'n'),
+        ('10.5281/zenodo.3239984', 'n'),
+        ('10.5281/zenodo.3239982', 'n'),
+        ('10.5281/zenodo.3239980', 'n'),
+    ]
+)
+@pytest.mark.integration
+def test_dataset_import_real_param(doi, runner, project):
+    """Test dataset import and check metadata parsing."""
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', doi[0]], input=doi[1]
+    )
+    assert 0 == result.exit_code
+
+    if 'y' == doi[1]:
+        assert 'OK' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_import_real_doi_warnings(runner, project):
+    """Test dataset import for existing DOI and dataset"""
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'Warning: Newer version found.' in result.output
+    assert 'OK'
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\ny'
+    )
+    assert 0 == result.exit_code
+    assert 'Warning: Newer version found.' in result.output
+    assert 'Warning: This dataset already exists.' in result.output
+    assert 'OK' in result.output
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\nn'
+    )
+    assert 0 == result.exit_code
+    assert 'Warning: Newer version found.' in result.output
+    assert 'Warning: This dataset already exists.' in result.output
+    assert 'OK' not in result.output
+
+    result = runner.invoke(cli.cli, ['dataset'])
+    assert 0 == result.exit_code
+    assert 'pyndl_naive_discriminat_v064' in result.output
+    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
 
 
 @pytest.mark.integration

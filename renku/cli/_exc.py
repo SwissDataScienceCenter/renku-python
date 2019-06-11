@@ -117,9 +117,9 @@ class IssueFromTraceback(click.Group):
             with capture_internal_exceptions():
                 from git import Repo
                 from renku.cli._git import get_git_home
-                from renku.models.datasets import Author
+                from renku.models.datasets import Creator
 
-                user = Author.from_git(Repo(get_git_home()))
+                user = Creator.from_git(Repo(get_git_home()))
 
                 scope.user = {'name': user.name, 'email': user.email}
 

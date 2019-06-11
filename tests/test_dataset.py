@@ -26,7 +26,7 @@ import git
 import pytest
 import yaml
 
-from renku.models.datasets import Author, Dataset, DatasetFile
+from renku.models.datasets import Creator, Dataset, DatasetFile
 
 
 def _key(client, dataset, filename):
@@ -72,7 +72,7 @@ def test_data_add(
             path = str(directory_tree)
 
         with client.with_dataset('dataset') as d:
-            d.author = [{
+            d.creator = [{
                 'name': 'me',
                 'email': 'me@example.com',
                 'identifier': 'me_id'
@@ -94,7 +94,7 @@ def test_data_add(
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
             with client.with_dataset('dataset') as d:
-                d.author = [{
+                d.creator = [{
                     'name': 'me',
                     'email': 'me@example.com',
                     'identifier': 'me_id'
@@ -108,7 +108,7 @@ def test_data_add(
 def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
     with client.with_dataset('dataset') as dataset:
-        dataset.author = [{
+        dataset.creator = [{
             'name': 'me',
             'email': 'me@example.com',
             'identifier': 'me_id'
@@ -149,35 +149,37 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
     assert dataset.find_file(_key(client, dataset, 'dir2/file2')) is not None
     assert os.stat('.renku/vendors/local')
 
-    # check that the authors are properly parsed from commits
+    # check that the creators are properly parsed from commits
     client.add_data_to_dataset(
         dataset, os.path.dirname(data_repository.git_dir), target='file'
     )
     file = _key(client, dataset, 'file')
 
-    assert len(dataset.find_file(file).author) == 2
-    assert all(x.name in ('me', 'me2') for x in dataset.find_file(file).author)
+    assert len(dataset.find_file(file).creator) == 2
+    assert all(
+        x.name in ('me', 'me2') for x in dataset.find_file(file).creator
+    )
 
 
 @pytest.mark.parametrize(
-    'authors', [
-        [Author(name='me', email='me@example.com')],
+    'creators', [
+        [Creator(name='me', email='me@example.com')],
         [{
             'name': 'me',
             'email': 'me@example.com',
         }],
     ]
 )
-def test_author_parse(authors, data_file):
-    """Test that different options for specifying authors work."""
-    f = DatasetFile(path='file', author=authors)
-    author = Author(name='me', email='me@example.com')
-    assert author in f.author
+def test_creator_parse(creators, data_file):
+    """Test that different options for specifying creators work."""
+    f = DatasetFile(path='file', creator=creators)
+    creator = Creator(name='me', email='me@example.com')
+    assert creator in f.creator
 
     # email check
     with pytest.raises(ValueError):
-        Author(name='me', email='meexample.com')
+        Creator(name='me', email='meexample.com')
 
-    # authors must be a set or list of dicts or Author
+    # creators must be a set or list of dicts or Creator
     with pytest.raises(ValueError):
-        f = DatasetFile(path='file', author=['name'])
+        f = DatasetFile(path='file', creator=['name'])

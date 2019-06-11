@@ -33,7 +33,7 @@ import yaml
 from renku import errors
 from renku._compat import Path
 from renku.models._git import GitURL
-from renku.models.datasets import Author, Dataset, DatasetFile, NoneType
+from renku.models.datasets import Creator, Dataset, DatasetFile, NoneType
 
 
 @attr.s
@@ -249,7 +249,7 @@ class DatasetsApiMixin(object):
                 DatasetFile(
                     path=result,
                     url=url,
-                    author=dataset.author,
+                    creator=dataset.creator,
                     dataset=dataset.name,
                 )
         }
@@ -290,7 +290,7 @@ class DatasetsApiMixin(object):
                         DatasetFile(
                             path=result,
                             url=url,
-                            author=dataset.author,
+                            creator=dataset.creator,
                             dataset=dataset.name,
                         )
                 }
@@ -377,13 +377,13 @@ class DatasetsApiMixin(object):
 
         os.symlink(os.path.relpath(str(src), str(dst.parent)), str(dst))
 
-        # grab all the authors from the commit history
+        # grab all the creators from the commit history
         git_repo = Repo(str(submodule_path.absolute()))
-        authors = []
+        creators = []
         for commit in git_repo.iter_commits(paths=target):
-            author = Author.from_commit(commit)
-            if author not in authors:
-                authors.append(author)
+            creator = Creator.from_commit(commit)
+            if creator not in creators:
+                creators.append(creator)
 
         dataset_path = self.renku_datasets_path / dataset.name
         result = os.path.relpath(str(dst), start=str(dataset_path))
@@ -398,7 +398,7 @@ class DatasetsApiMixin(object):
                 DatasetFile(
                     path=result,
                     url=url,
-                    author=authors,
+                    creator=creators,
                     dataset=dataset.name,  # TODO detect original dataset
                 )
         }

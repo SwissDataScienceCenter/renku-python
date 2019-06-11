@@ -35,7 +35,7 @@ def tabular(client, records):
             records,
             headers=OrderedDict((
                 ('added', None),
-                ('authors_csv', 'authors'),
+                ('creators_csv', 'creators'),
                 ('dataset', None),
                 ('full_path', 'path'),
             )),

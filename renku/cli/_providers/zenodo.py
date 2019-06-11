@@ -17,7 +17,6 @@
 # limitations under the License.
 """Zenodo API integration."""
 import pathlib
-import re
 import urllib
 from urllib.parse import urlparse
 
@@ -26,6 +25,8 @@ import requests
 
 from renku.cli._providers.api import ProviderApi
 from renku.cli._providers.doi import DOIProvider
+from renku.models.datasets import Dataset, DatasetFile
+from renku.utils.doi import is_doi
 
 ZENODO_BASE_URL = 'https://zenodo.org'
 ZENODO_BASE_PATH = 'api'
@@ -40,77 +41,187 @@ def make_records_url(record_id):
 
 
 @attr.s
-class ZenodoFile:
+class ZenodoFileSerializer:
     """Zenodo record file."""
 
-    checksum = attr.ib()
-    links = attr.ib()
-    bucket = attr.ib()
-    key = attr.ib()
-    size = attr.ib()
-    type = attr.ib()
+    id = attr.ib(default=None, kw_only=True)
+
+    checksum = attr.ib(default=None, kw_only=True)
+
+    links = attr.ib(default=None, kw_only=True)
+
+    filename = attr.ib(default=None, kw_only=True)
+
+    filesize = attr.ib(default=None, kw_only=True)
 
     @property
     def remote_url(self):
         """Get remote URL as ``urllib.ParseResult``."""
-        return urllib.parse.urlparse(self.links['self'])
+        return urllib.parse.urlparse(self.links['download'])
 
     @property
-    def name(self):
-        """Get file name."""
-        return self.remote_url.path.split('/')[-1]
+    def type(self):
+        """Get file type."""
+        return self.filename.split('.')[-1]
 
 
 @attr.s
-class ZenodoRecord:
+class ZenodoMetadataSerializer:
+    """Zenodo metadata."""
+
+    access_right = attr.ib(default=None, kw_only=True)
+
+    communities = attr.ib(default=None, kw_only=True)
+
+    contributors = attr.ib(default=None, kw_only=True)
+
+    creators = attr.ib(default=None, kw_only=True)
+
+    description = attr.ib(default=None, kw_only=True)
+
+    doi = attr.ib(default=None, kw_only=True)
+
+    grants = attr.ib(default=None, kw_only=True)
+
+    image_type = attr.ib(default=None, kw_only=True)
+
+    journal_issue = attr.ib(default=None, kw_only=True)
+
+    journal_pages = attr.ib(default=None, kw_only=True)
+
+    journal_title = attr.ib(default=None, kw_only=True)
+
+    journal_volume = attr.ib(default=None, kw_only=True)
+
+    keywords = attr.ib(default=None, kw_only=True)
+
+    language = attr.ib(default=None, kw_only=True)
+
+    license = attr.ib(default=None, kw_only=True)
+
+    notes = attr.ib(default=None, kw_only=True)
+
+    prereserve_doi = attr.ib(default=None, kw_only=True)
+
+    publication_date = attr.ib(default=None, kw_only=True)
+
+    publication_type = attr.ib(default=None, kw_only=True)
+
+    references = attr.ib(default=None, kw_only=True)
+
+    related_identifiers = attr.ib(default=None, kw_only=True)
+
+    title = attr.ib(default=None, kw_only=True)
+
+    upload_type = attr.ib(default=None, kw_only=True)
+
+    version = attr.ib(default=None, kw_only=True)
+
+
+def _metadata_converter(data):
+    """Convert dict to ZenodoMetadata instance."""
+    return ZenodoMetadataSerializer(**data)
+
+
+@attr.s
+class ZenodoRecordSerializer:
     """Zenodo record."""
 
-    id = attr.ib()
-    conceptrecid = attr.ib()
+    _jsonld = attr.ib(default=None, init=False)
 
-    doi = attr.ib()
-    files = attr.ib()
-    links = attr.ib()
-    metadata = attr.ib()
-    owners = attr.ib()
-    revision = attr.ib()
-    stats = attr.ib()
+    id = attr.ib(default=None, kw_only=True)
 
-    created = attr.ib()
-    updated = attr.ib()
+    doi = attr.ib(default=None, kw_only=True)
 
-    conceptdoi = attr.ib(default=None)
-    _zenodo = attr.ib(kw_only=True, default=None)
+    doi_url = attr.ib(default=None, kw_only=True)
 
-    @property
-    def last_version(self):
-        """Check if record is at last possible version."""
-        return self.version['is_last']
+    title = attr.ib(default=None, kw_only=True)
+
+    files = attr.ib(default=None, kw_only=True)
+
+    links = attr.ib(default=None, kw_only=True)
+
+    metadata = attr.ib(
+        default=None,
+        kw_only=True,
+        type=ZenodoMetadataSerializer,
+        converter=_metadata_converter
+    )
+
+    modified = attr.ib(default=None, kw_only=True)
+
+    owner = attr.ib(default=None, kw_only=True)
+
+    record_id = attr.ib(default=None, kw_only=True)
+
+    state = attr.ib(default=None, kw_only=True)
+
+    submitted = attr.ib(default=None, kw_only=True)
+
+    created = attr.ib(default=None, kw_only=True)
+
+    conceptrecid = attr.ib(default=None, kw_only=True)
+
+    conceptdoi = attr.ib(default=None, kw_only=True)
+
+    _zenodo = attr.ib(default=None, kw_only=True)
+
+    _uri = attr.ib(default=None, kw_only=True)
 
     @property
     def version(self):
         """Get record version."""
-        return self.metadata['relations']['version'][0]
+        return self.metadata.version
 
-    @property
-    def display_version(self):
-        """Get display version."""
-        return 'v{0}'.format(self.version['index'])
+    def is_last_version(self, uri):
+        """Check if record is at last possible version."""
+        if is_doi(uri):
+            return uri == self.metadata.prereserve_doi['doi']
 
-    @property
-    def display_name(self):
-        """Get record display name."""
-        return '{0}_{1}'.format(
-            re.sub(r'\W+', '', self.metadata['title']).lower()[:16],
-            self.display_version
-        )
+        record_id = self.metadata.prereserve_doi['recid']
+        return ZenodoProvider.record_id(uri) == record_id
+
+    def get_jsonld(self):
+        """Get record metadata as jsonld."""
+        response = self._zenodo.accept_jsonld().make_request(self._uri)
+        self._jsonld = response.json()
+        return self._jsonld
 
     def get_files(self):
         """Get Zenodo files metadata as ``ZenodoFile``."""
         if len(self.files) == 0:
             raise LookupError('no files have been found')
 
-        return [ZenodoFile(**file_) for file_ in self.files]
+        return [ZenodoFileSerializer(**file_) for file_ in self.files]
+
+    def as_dataset(self):
+        """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
+        files = self.get_files()
+        metadata = self.get_jsonld()
+        dataset = Dataset.from_jsonld(metadata)
+
+        serialized_files = []
+        for file_ in files:
+            remote_ = file_.remote_url
+            dataset_file = DatasetFile(
+                url=remote_,
+                id=file_.id,
+                checksum=file_.checksum,
+                filename=file_.filename,
+                filesize=file_.filesize,
+                filetype=file_.type,
+                dataset=dataset.name,
+                path='',
+            )
+            serialized_files.append(dataset_file)
+
+        dataset.files = serialized_files
+
+        if isinstance(dataset.url, dict) and '_id' in dataset.url:
+            dataset.url = urllib.parse.urlparse(dataset.url.pop('_id'))
+            dataset.url = dataset.url.geturl()
+
+        return dataset
 
 
 @attr.s
@@ -118,11 +229,32 @@ class ZenodoProvider(ProviderApi):
     """zenodo.org registry API provider."""
 
     is_doi = attr.ib(default=False)
+    _accept = attr.ib(default='application/json')
 
     @staticmethod
     def record_id(uri):
         """Extract record id from uri."""
         return urlparse(uri).path.split('/')[-1]
+
+    def accept_json(self):
+        """Receive response as json."""
+        self._accept = 'application/json'
+        return self
+
+    def accept_jsonld(self):
+        """Receive response as jsonld."""
+        self._accept = 'application/ld+json'
+        return self
+
+    def make_request(self, uri):
+        """Execute network request."""
+        record_id = ZenodoProvider.record_id(uri)
+        response = requests.get(
+            make_records_url(record_id), headers={'Accept': self._accept}
+        )
+        if response.status_code != 200:
+            raise LookupError('record not found')
+        return response
 
     def find_record(self, uri):
         """Retrieves a record from Zenodo.
@@ -139,13 +271,10 @@ class ZenodoProvider(ProviderApi):
     def find_record_by_doi(self, doi):
         """Resolve the DOI and make a record for the retrieved record id."""
         doi = DOIProvider().find_record(doi)
-        return self.get_record(ZenodoProvider.record_id(doi.URL))
+        return self.get_record(ZenodoProvider.record_id(doi.url))
 
     def get_record(self, uri):
         """Retrieve record metadata and return ``ZenodoRecord``."""
-        record_id = ZenodoProvider.record_id(uri)
-        response = requests.get(make_records_url(record_id))
-        if response.status_code != 200:
-            raise LookupError('record not found')
+        response = self.make_request(uri)
 
-        return ZenodoRecord(**response.json(), zenodo=self)
+        return ZenodoRecordSerializer(**response.json(), zenodo=self, uri=uri)
