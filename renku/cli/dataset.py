@@ -159,12 +159,15 @@ from multiprocessing import RLock, freeze_support
 from urllib.parse import ParseResult
 
 import click
+import editor
 import requests
+import yaml
 from click import BadParameter
 from tqdm import tqdm
 
 from renku.cli._providers import ProviderFactory
 from renku.models._tabulate import tabulate
+from renku.models.datasets import Dataset
 
 from .._compat import Path
 from ._client import pass_local_client
@@ -215,6 +218,27 @@ def create(client, name):
                 dataset.creator.append(creator)
 
         click.secho('OK', fg='green')
+
+
+@dataset.command()
+@click.argument('id')
+@pass_local_client(clean=True, commit=True)
+def edit(client, id):
+    """Edit dataset metadata."""
+    dataset_ = client.load_dataset(id)
+
+    if dataset_:
+        metadata_edited = editor.edit(
+            contents=bytes(
+                yaml.safe_dump(dataset_.editable), encoding='utf-8'
+            )
+        )
+
+        edited = yaml.safe_load(metadata_edited)
+        updated_ = Dataset(**edited)
+
+        dataset_.update_metadata(updated_)
+        dataset_.to_yaml()
 
 
 @dataset.command()

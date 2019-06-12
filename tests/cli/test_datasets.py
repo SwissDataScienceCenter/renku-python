@@ -673,6 +673,20 @@ def test_dataset_overwrite_confirm(runner, project):
     assert 'OK' in result.output
 
 
+def test_dataset_edit(runner, client, project):
+    """Check dataset metadata editing."""
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'edit', dataset.identifier], input='wq'
+    )
+    assert 0 == result.exit_code
+
+
 @pytest.mark.integration
 def test_dataset_import_real_doi(runner, project):
     """Test dataset import for existing DOI."""

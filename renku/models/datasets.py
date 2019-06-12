@@ -268,6 +268,11 @@ class Dataset(CreatorsMixin):
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
+    EDITABLE_FIELDS = [
+        'creator', 'date_published', 'description', 'in_language', 'keywords',
+        'license', 'name', 'url', 'version', 'created', 'files'
+    ]
+
     _id = jsonld.ib(default=None, context='@id')
 
     creator = jsonld.container.list(
@@ -334,7 +339,7 @@ class Dataset(CreatorsMixin):
     @property
     def uid(self):
         """UUID part of identifier."""
-        return self._id.split('/')[-1]
+        return self.identifier.split('/')[-1]
 
     @created.default
     def _now(self):
@@ -353,6 +358,13 @@ class Dataset(CreatorsMixin):
         """Comma-separated list of creators associated with dataset."""
         return ','.join(creator.short_name for creator in self.creator)
 
+    @property
+    def editable(self):
+        """Subset of attributes which user can edit."""
+        obj = self.asjsonld()
+        data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
+        return data
+
     def find_file(self, file_path, return_index=False):
         """Find a file in files container."""
         for index, file_ in enumerate(self.files):
@@ -370,13 +382,7 @@ class Dataset(CreatorsMixin):
         if is_doi(other_dataset.identifier):
             self._id = other_dataset.identifier
 
-        update_fields = [
-            'creator', 'date_published', 'description', 'identifier',
-            'in_language', 'keywords', 'license', 'name', 'url', 'version',
-            'created', 'files'
-        ]
-
-        for field_ in update_fields:
+        for field_ in self.EDITABLE_FIELDS:
             val = getattr(other_dataset, field_)
             if val:
                 setattr(self, field_, val)
