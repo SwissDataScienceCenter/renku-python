@@ -31,7 +31,7 @@ def tabular(client, datasets):
         tabulate(
             datasets,
             headers=OrderedDict((
-                ('short_id', 'id'),
+                ('uid', 'id'),
                 ('display_name', None),
                 ('version', None),
                 ('created', None),

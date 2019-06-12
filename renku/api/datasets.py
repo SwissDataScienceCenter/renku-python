@@ -87,6 +87,7 @@ class DatasetsApiMixin(object):
             path = LinkReference(
                 client=self, name='datasets/' + name
             ).reference
+
         return path
 
     def load_dataset(self, name=None):
