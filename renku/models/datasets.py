@@ -156,6 +156,17 @@ class Language:
     name = jsonld.ib(default=None, kw_only=True, context='schema:name')
 
 
+def _convert_dataset_files_creators(value):
+    """Convert dataset files creators."""
+    coll = value
+
+    if isinstance(coll, dict):
+        return [Creator.from_jsonld(coll)]
+
+    if isinstance(coll, list):
+        return [Creator.from_jsonld(c) for c in coll]
+
+
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
@@ -165,7 +176,10 @@ class DatasetFile(CreatorsMixin):
     """Represent a file in a dataset."""
 
     creator = jsonld.container.list(
-        Creator, kw_only=True, context='schema:creator'
+        Creator,
+        converter=_convert_dataset_files_creators,
+        kw_only=True,
+        context='schema:creator'
     )
 
     added = jsonld.ib(context='schema:dateCreated', kw_only=True)
@@ -229,7 +243,7 @@ def _convert_dataset_files(value):
 def _convert_dataset_creator(value):
     """Convert dataset creators."""
     if isinstance(value, dict):  # compatibility with previous versions
-        return Creator.from_jsonld(value)
+        return [Creator.from_jsonld(value)]
 
     if isinstance(value, list):
         return [Creator.from_jsonld(v) for v in value]
