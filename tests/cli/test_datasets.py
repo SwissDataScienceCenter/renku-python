@@ -728,6 +728,7 @@ def test_dataset_import_real_doi(runner, project):
         ('10.5281/zenodo.3239984', 'n'),
         ('10.5281/zenodo.3239982', 'n'),
         ('10.5281/zenodo.3239980', 'n'),
+        ('10.5281/zenodo.3188334', 'y'),
     ]
 )
 @pytest.mark.integration
@@ -740,6 +741,9 @@ def test_dataset_import_real_param(doi, runner, project):
 
     if 'y' == doi[1]:
         assert 'OK' in result.output
+
+    result = runner.invoke(cli.cli, ['dataset'])
+    assert 0 == result.exit_code
 
 
 @pytest.mark.integration
