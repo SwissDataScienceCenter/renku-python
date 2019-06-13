@@ -16,13 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Zenodo API integration."""
+import json
+import os
 import pathlib
 import urllib
 from urllib.parse import urlparse
 
 import attr
 import requests
+from requests import HTTPError
+from tqdm import tqdm
 
+from renku._compat import Path
 from renku.cli._providers.api import ProviderApi
 from renku.cli._providers.doi import DOIProvider
 from renku.models.datasets import Dataset, DatasetFile
@@ -225,6 +230,194 @@ class ZenodoRecordSerializer:
 
 
 @attr.s
+class ZenodoExporter:
+    """Zenodo export manager."""
+
+    ZENODO_BASE_URL = 'https://zenodo.org/'
+    ZENODO_SANDBOX_URL = 'https://sandbox.zenodo.org/'
+
+    API_PATH = 'api/'
+    DEPOSIT_PATH = 'deposit/'
+    PUBLISH_PATH = 'record/'
+
+    PUBLISH_ACTION_PATH = 'depositions/{0}/actions/publish'
+    METADATA_URL = 'depositions/{0}'
+    FILES_URL = 'depositions/{0}/files'
+    NEW_DEPOSIT_URL = 'depositions'
+
+    HEADERS = {'Content-Type': 'application/json'}
+
+    dataset = attr.ib()
+    secret = attr.ib()
+
+    @property
+    def zenodo_url(self):
+        """Returns correct Zenodo URL based on environment."""
+        if 'ZENODO_USE_SANDBOX' in os.environ:
+            return self.ZENODO_SANDBOX_URL
+
+        return self.ZENODO_BASE_URL
+
+    def publish_url(self, deposition_id):
+        """Returns publish URL."""
+        return urllib.parse.urlparse((
+            self.zenodo_url + self.API_PATH + self.DEPOSIT_PATH +
+            self.PUBLISH_ACTION_PATH
+        ).format(deposition_id))
+
+    def attach_metadata_url(self, deposition_id):
+        """Return URL for attaching metadata."""
+        return urllib.parse.urlparse((
+            self.zenodo_url + self.API_PATH + self.DEPOSIT_PATH +
+            self.METADATA_URL
+        ).format(deposition_id))
+
+    def upload_file_url(self, deposition_id):
+        """Return URL for uploading file."""
+        return urllib.parse.urlparse((
+            self.zenodo_url + self.API_PATH + self.DEPOSIT_PATH +
+            self.FILES_URL
+        ).format(deposition_id))
+
+    def new_deposit_url(self):
+        """Return URL for creating new deposit."""
+        return urllib.parse.urlparse((
+            self.zenodo_url + self.API_PATH + self.DEPOSIT_PATH +
+            self.NEW_DEPOSIT_URL
+        ))
+
+    def published_at(self, deposition_id):
+        """Return published at URL."""
+        return urllib.parse.urlparse(
+            (self.zenodo_url + self.PUBLISH_PATH + str(deposition_id))
+        )
+
+    def deposit_at(self, deposition_id):
+        """Return deposit at URL."""
+        return urllib.parse.urlparse(
+            (self.zenodo_url + self.DEPOSIT_PATH + str(deposition_id))
+        )
+
+    @staticmethod
+    def _check_or_raise(response):
+        """Check for expected response status code."""
+        if response.status_code not in [200, 201, 202]:
+            if response.status_code == 401:
+                raise HTTPError('Access unauthorized - update access token.')
+
+            if response.status_code == 400:
+                err_response = response.json()
+                errors = [
+                    '"{0}" failed with "{1}"'.format(
+                        err['field'], err['message']
+                    ) for err in err_response['errors']
+                ]
+
+                raise HTTPError('\n' + '\n'.join(errors))
+
+            else:
+                raise HTTPError(response.content)
+
+    @property
+    def default_params(self):
+        """Create request default params."""
+        return {'access_token': self.secret}
+
+    def dataset_to_request(self):
+        """Prepare dataset metadata for request."""
+        jsonld = self.dataset.asjsonld()
+        jsonld['upload_type'] = 'dataset'
+        return jsonld
+
+    def export(self, to_publish):
+        """Execute entire export process."""
+        # Step 1. Create new deposition
+        response = self.new_deposition()
+        ZenodoExporter._check_or_raise(response)
+        response = response.json()
+
+        deposition_id = response['id']
+
+        # Step 2. Upload all files to created deposition
+        with tqdm(total=len(self.dataset.files)) as progressbar:
+            for file_ in self.dataset.files:
+                response = self.upload_file(
+                    deposition_id,
+                    file_.full_path,
+                )
+                ZenodoExporter._check_or_raise(response)
+                progressbar.update(1)
+
+        # Step 3. Attach metadata to deposition
+        response = self.attach_metadata(deposition_id, self.dataset)
+        ZenodoExporter._check_or_raise(response)
+
+        # Step 4. Publish newly created deposition
+        if to_publish:
+            response = self.publish_deposition(deposition_id, self.secret)
+            ZenodoExporter._check_or_raise(response)
+            return self.published_at(deposition_id)
+
+        return self.deposit_at(deposition_id)
+
+    def new_deposition(self):
+        """Create new deposition on Zenodo."""
+        url = self.new_deposit_url().geturl()
+        response = requests.post(
+            url=url, params=self.default_params, json={}, headers=self.HEADERS
+        )
+
+        return response
+
+    def upload_file(self, deposition_id, filepath):
+        """Upload and attach a file to existing deposition on Zenodo."""
+        request_payload = {'filename': Path(filepath).name}
+        file = {'file': open(filepath, 'rb')}
+
+        url = self.upload_file_url(deposition_id).geturl()
+        response = requests.post(
+            url=url,
+            params=self.default_params,
+            data=request_payload,
+            files=file,
+        )
+
+        return response
+
+    def attach_metadata(self, deposition_id, dataset):
+        """Attach metadata to deposition on Zenodo."""
+        request_payload = {
+            'metadata': {
+                'title': dataset.name,
+                'upload_type': 'dataset',
+                'description': dataset.description,
+                'creators': [{
+                    'name': creator.name,
+                    'affiliation': creator.affiliation
+                } for creator in dataset.creator]
+            }
+        }
+
+        url = self.attach_metadata_url(deposition_id).geturl()
+        response = requests.put(
+            url=url,
+            params=self.default_params,
+            data=json.dumps(request_payload),
+            headers=self.HEADERS
+        )
+
+        return response
+
+    def publish_deposition(self, deposition_id, secret):
+        """Publish existing deposition."""
+        url = self.publish_url(deposition_id).geturl()
+
+        response = requests.post(url=url, params=self.default_params)
+
+        return response
+
+
+@attr.s
 class ZenodoProvider(ProviderApi):
     """zenodo.org registry API provider."""
 
@@ -278,3 +471,7 @@ class ZenodoProvider(ProviderApi):
         response = self.make_request(uri)
 
         return ZenodoRecordSerializer(**response.json(), zenodo=self, uri=uri)
+
+    def get_exporter(self, dataset, secret):
+        """Create export manager for given dataset."""
+        return ZenodoExporter(dataset=dataset, secret=secret)

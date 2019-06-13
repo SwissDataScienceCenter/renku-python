@@ -808,3 +808,202 @@ def test_dataset_import_fake_http(runner, project):
     )
     assert 2 == result.exit_code
     assert 'URI not found.' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_export_upload_file(
+    runner, project, tmpdir, client, zenodo_sandbox
+):
+    """Test successful uploading of a file to Zenodo deposit."""
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset(name='my-dataset') as dataset:
+        dataset.description = 'awesome dataset'
+        dataset.creator[0].affiliation = 'eth'
+
+    data_repo = git.Repo(str(project))
+    data_repo.git.add(update=True)
+    data_repo.index.commit('metadata updated')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
+    )
+
+    assert 0 == result.exit_code
+    assert 'Exported to:' in result.output
+    assert 'zenodo.org/deposit' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_export_upload_multiple(
+    runner, project, tmpdir, client, zenodo_sandbox
+):
+    """Test successful uploading of a files to Zenodo deposit."""
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create data file
+    paths = []
+    for i in range(3):
+        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+    # add data
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset'] + paths,
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset(name='my-dataset') as dataset:
+        dataset.description = 'awesome dataset'
+        dataset.creator[0].affiliation = 'eth'
+
+    data_repo = git.Repo(str(project))
+    data_repo.git.add(update=True)
+    data_repo.index.commit('metadata updated')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
+    )
+
+    assert 0 == result.exit_code
+    assert 'Exported to:' in result.output
+    assert 'zenodo.org/deposit' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_export_upload_failure(runner, project, tmpdir, client):
+    """Test failed uploading of a file to Zenodo deposit."""
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
+    )
+    assert 2 == result.exit_code
+    assert 'metadata.creators.0.affiliation' in result.output
+    assert 'metadata.description' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_export_published_url(
+    runner, project, tmpdir, client, zenodo_sandbox
+):
+    """Test publishing of dataset."""
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset(name='my-dataset') as dataset:
+        dataset.description = 'awesome dataset'
+        dataset.creator[0].affiliation = 'eth'
+
+    data_repo = git.Repo(str(project))
+    data_repo.git.add(update=True)
+    data_repo.index.commit('metadata updated')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo', '--publish']
+    )
+
+    assert 0 == result.exit_code
+    assert 'Exported to:' in result.output
+    assert 'zenodo.org/record' in result.output
+
+
+@pytest.mark.integration
+def test_export_dataset_wrong_provider(
+    runner, project, tmpdir, client, zenodo_sandbox
+):
+    """Test non-existing provider."""
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'export', 'my-dataset', 'notzenodo']
+    )
+    assert 2 == result.exit_code
+    assert 'Unknown provider.' in result.output
+
+
+@pytest.mark.integration
+def test_export_dataset_unauthorized(
+    runner, project, client, tmpdir, zenodo_sandbox
+):
+    """Test unauthorized exception raised."""
+    client.set_value('zenodo', 'secret', 'not-a-token')
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create data file
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'my-dataset',
+                  str(new_file)]
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
+    )
+    assert 2 == result.exit_code
+    assert 'Access unauthorized - update access token.' in result.output
+
+    secret = client.get_value('zenodo', 'secret')
+    assert secret is None

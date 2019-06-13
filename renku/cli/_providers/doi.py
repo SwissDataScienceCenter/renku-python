@@ -97,3 +97,7 @@ class DOIProvider(ProviderApi):
         """Finds DOI record."""
         response = self._query(uri).json()
         return DOIProvider._serialize(response)
+
+    def get_exporter(self, dataset, secret):
+        """Implements interface ProviderApi."""
+        pass

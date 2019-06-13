@@ -24,3 +24,17 @@ class ProviderApi(abc.ABC):
     def find_record(self, uri):
         """Find record by uri."""
         pass
+
+    @abc.abstractmethod
+    def get_exporter(self, dataset, secret):
+        """Get export manager."""
+        pass
+
+
+class Exporter(abc.ABC):
+    """Interface defining exporter methods."""
+
+    @abc.abstractmethod
+    def export(self):
+        """Execute export process."""
+        pass

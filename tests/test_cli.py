@@ -1104,8 +1104,12 @@ def test_config_manager_creation(client):
 def test_config_manager_set_value(client):
     """Check writing to configuration."""
     client.set_value('zenodo', 'secret', 'my-secret')
+
     config = client.load_config()
     assert config.get('zenodo', 'secret') == 'my-secret'
+
+    config = client.remove_value('zenodo', 'secret')
+    assert 'zenodo' not in config.sections()
 
 
 def test_config_load_get_value(client):
@@ -1119,6 +1123,9 @@ def test_config_load_get_value(client):
 
     secret = client.get_value('zenodo', 'not-secret')
     assert secret is None
+
+    config = client.remove_value('zenodo', 'secret')
+    assert 'zenodo' not in config.sections()
 
 
 def test_config_manager_cli(client, runner, project):

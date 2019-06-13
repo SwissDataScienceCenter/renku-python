@@ -163,6 +163,7 @@ import editor
 import requests
 import yaml
 from click import BadParameter
+from requests import HTTPError
 from tqdm import tqdm
 
 from renku.cli._providers import ProviderFactory
@@ -434,6 +435,60 @@ def remove(client, names):
             if ref.reference in datasets:
                 ref.delete()
 
+    click.secho('OK', fg='green')
+
+
+@dataset.command('export')
+@click.argument('id')
+@click.argument('provider')
+@click.option(
+    '-p',
+    '--publish',
+    is_flag=True,
+    help='Automatically publish exported dataset.'
+)
+@click.option(
+    '-c',
+    '--compress',
+    is_flag=True,
+    help='Compresses the files before exporting.'
+)
+@pass_local_client(clean=True, commit=True)
+def export_(client, id, provider, publish, compress):
+    """Export data to 3rd party provider."""
+    secret_url = 'https://zenodo.org/account/settings/applications/tokens/new/'
+    config_key_secret = 'secret'
+
+    provider_id = provider
+    try:
+        provider = ProviderFactory.from_id(provider_id)
+    except KeyError:
+        raise BadParameter('Unknown provider.')
+
+    secret = client.get_value(provider_id, config_key_secret)
+
+    if secret is None:
+        text_prompt = WARNING + 'Secret not found!\n'
+        text_prompt += 'Create one at: {0}\n'.format(secret_url)
+        text_prompt += 'Auth secret:'
+
+        secret = click.prompt(text_prompt, type=str)
+        if secret is None or len(secret) == 0:
+            raise BadParameter('You must provide secret for target provider.')
+        client.set_value(provider_id, config_key_secret, secret)
+
+    dataset_ = client.load_dataset(id)
+    exporter = provider.get_exporter(dataset_, secret)
+
+    try:
+        destination = exporter.export(publish)
+    except HTTPError as e:
+        if 'unauthorized' in str(e):
+            client.remove_value(provider_id, config_key_secret)
+
+        raise BadParameter(e)
+
+    click.secho('Exported to: {0}'.format(destination.geturl()))
     click.secho('OK', fg='green')
 
 

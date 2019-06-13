@@ -25,6 +25,8 @@ from renku.utils.doi import is_doi
 class ProviderFactory:
     """Create a provider type from URI."""
 
+    PROVIDERS = {'zenodo': ZenodoProvider}
+
     @staticmethod
     def from_uri(uri):
         """Get provider type based on uri."""
@@ -46,3 +48,8 @@ class ProviderFactory:
             )
 
         return provider, None
+
+    @staticmethod
+    def from_id(provider_id):
+        """Get provider type based on identifier."""
+        return ProviderFactory.PROVIDERS[provider_id]()
