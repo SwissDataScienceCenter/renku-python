@@ -82,9 +82,14 @@ class ConfigManagerMixin:
     def store_config(self, config):
         """Persists global configuration object."""
         os.umask(0)
-        fd = os.open(str(self.config_path), os.O_CREAT | os.O_WRONLY, 0o600)
-        with open(fd, 'w') as file:
+        fd = os.open(
+            str(self.config_path), os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600
+        )
+
+        with open(fd, 'w+') as file:
             config.write(file)
+
+        return self.load_config()
 
     def get_value(self, section, key):
         """Get value from specified section and key."""
@@ -99,7 +104,20 @@ class ConfigManagerMixin:
         else:
             config[section] = {key: value}
 
-        self.store_config(config)
+        config = self.store_config(config)
+        return config
+
+    def remove_value(self, section, key):
+        """Remove key from specified section."""
+        config = self.load_config()
+
+        if section in config:
+            config[section].pop(key)
+
+            if not config[section].keys():
+                config.pop(section)
+
+        config = self.store_config(config)
         return config
 
 
