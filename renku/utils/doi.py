@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,10 +15,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Helper utils for handling DOIs."""
+import re
 
-[pytest]
-addopts = --flake8 --pep8 --doctest-glob="*.rst" --doctest-modules --cov=renku --cov-config .coveragerc --cov-report=term-missing --yapf
-doctest_optionflags = ALLOW_UNICODE ALLOW_BYTES DONT_ACCEPT_TRUE_FOR_1 ELLIPSIS IGNORE_EXCEPTION_DETAIL
-pep8ignore = docs/conf.py ALL
-flake8-ignore = docs/conf.py ALL
-testpaths = docs tests renku conftest.py
+doi_regexp = re.compile(
+    r'(doi:\s*|(?:https?://)?(?:dx\.)?doi\.org/)?(10\.\d+(.\d+)*/.+)$',
+    flags=re.I
+)
+"""See http://en.wikipedia.org/wiki/Digital_object_identifier."""
+
+
+def is_doi(uri):
+    """Check if uri is DOI."""
+    return doi_regexp.match(uri)

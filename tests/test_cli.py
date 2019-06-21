@@ -51,12 +51,9 @@ def test_help(arg, runner):
 
 def test_config_path(runner):
     """Test config path."""
-    from renku.cli._config import RENKU_HOME
-
     result = runner.invoke(cli.cli, ['--config-path'])
     output = result.output.split('\n')[0]
-    assert 'config.yml' in output
-    assert RENKU_HOME in output
+    assert 'renku.ini' in output
 
 
 def test_show_context(runner):
@@ -135,7 +132,6 @@ def test_git_pre_commit_hook(runner, project, capsys):
 
     result = runner.invoke(cli.cli, ['run', 'touch', output.name])
     assert 0 == result.exit_code
-
     with output.open('w') as f:
         f.write('hello')
 
@@ -923,17 +919,18 @@ def test_image_pull(runner, project):
     result = runner.invoke(
         cli.cli, ['config', 'registry', 'http://demo:demo@global.example.com']
     )
+    assert 'http://demo:demo@global.example.com\n' == result.output
     assert 0 == result.exit_code
 
     cmd = ['image', 'pull', '--no-auto-login']
     result = runner.invoke(cli.cli, cmd)
     assert 'global.example.com' in result.output
     assert 1 == result.exit_code
-
     result = runner.invoke(
         cli.cli,
         ['config', 'origin.registry', 'http://demo:demo@origin.example.com']
     )
+    assert 'http://demo:demo@origin.example.com\n' == result.output
     assert 0 == result.exit_code
 
     cmd = ['image', 'pull', '--no-auto-login']
@@ -1093,3 +1090,47 @@ def test_input_directory(runner, project, run):
         str(p.relative_to(cwd))
         for p in inputs.rglob('*') if p.name != '.gitkeep'
     ) == set(result.output.strip().split('\n'))
+
+
+def test_config_manager_creation(client):
+    """Check creation of configuration file."""
+    path_ = client.config_path
+    assert str(path_).endswith('renku.ini')
+    config = client.load_config()
+    client.store_config(config)
+    assert path_.exists()
+
+
+def test_config_manager_set_value(client):
+    """Check writing to configuration."""
+    client.set_value('zenodo', 'secret', 'my-secret')
+    config = client.load_config()
+    assert config.get('zenodo', 'secret') == 'my-secret'
+
+
+def test_config_load_get_value(client):
+    """Check reading from configuration."""
+    client.set_value('zenodo', 'secret', 'my-secret')
+    secret = client.get_value('zenodo', 'secret')
+    assert secret == 'my-secret'
+
+    secret = client.get_value('zenodo2', 'secret')
+    assert secret is None
+
+    secret = client.get_value('zenodo', 'not-secret')
+    assert secret is None
+
+
+def test_config_manager_cli(client, runner, project):
+    """Check config command for global cfg."""
+    result = runner.invoke(
+        cli.cli, [
+            'config', 'registry', 'http://demo:demo@global.example.com',
+            '--global'
+        ]
+    )
+    assert 'http://demo:demo@global.example.com\n' == result.output
+    assert 0 == result.exit_code
+
+    value = client.get_value('renku', 'registry')
+    assert 'http://demo:demo@global.example.com' == value

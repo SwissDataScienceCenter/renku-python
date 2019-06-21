@@ -127,7 +127,7 @@ class VersionCache:
 
 def _check_version():
     """Check renku version."""
-    from ._config import APP_NAME
+    from ..api.config import APP_NAME
 
     if VersionCache.load(APP_NAME).is_fresh:
         return

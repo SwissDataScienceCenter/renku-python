@@ -32,7 +32,7 @@ Listing all datasets:
 .. code-block:: console
 
     $ renku dataset
-    ID        NAME           CREATED              AUTHORS
+    ID        NAME           CREATED              CREATORS
     --------  -------------  -------------------  ---------
     0ad1cb9a  some-dataset   2019-03-19 16:39:46  sam
     9436e36c  my-dataset     2019-02-28 16:48:09  sam
@@ -105,7 +105,7 @@ Listing all files in the project associated with a dataset.
 .. code-block:: console
 
     $ renku dataset ls-files
-    ADDED                AUTHORS    DATASET        PATH
+    ADDED                CREATORS    DATASET        PATH
     -------------------  ---------  -------------  ---------------------------
     2019-02-28 16:48:09  sam        my-dataset     ...my-dataset/addme
     2019-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file1
@@ -118,7 +118,7 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
 .. code-block:: console
 
     $ renku dataset ls-files --include "file*" --exclude "file3"
-    ADDED                AUTHORS    DATASET     PATH
+    ADDED                CREATORS    DATASET     PATH
     -------------------  ---------  ----------  ----------------------------
     2019-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file1
     2019-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file2
@@ -156,14 +156,18 @@ import os
 import tempfile
 from collections import OrderedDict
 from multiprocessing import RLock, freeze_support
+from urllib.parse import ParseResult
 
 import click
+import editor
 import requests
+import yaml
 from click import BadParameter
 from tqdm import tqdm
 
 from renku.cli._providers import ProviderFactory
 from renku.models._tabulate import tabulate
+from renku.models.datasets import Dataset
 
 from .._compat import Path
 from ._client import pass_local_client
@@ -203,15 +207,38 @@ def dataset(ctx, client, revision, datadir, format):
 @pass_local_client(clean=True, commit=True)
 def create(client, name):
     """Create an empty dataset in the current repo."""
-    from renku.models.datasets import Author
+    from renku.models.datasets import Creator
 
-    with client.with_dataset(name=name) as dataset:
-        click.echo('Creating a dataset ... ', nl=False)
-        author = Author.from_git(client.repo)
-        if author not in dataset.author:
-            dataset.author.append(author)
+    if write_dataset(client, name):
 
-    click.secho('OK', fg='green')
+        with client.with_dataset(name=name) as dataset:
+            click.echo('Creating a dataset ... ', nl=False)
+            creator = Creator.from_git(client.repo)
+            if creator not in dataset.creator:
+                dataset.creator.append(creator)
+
+        click.secho('OK', fg='green')
+
+
+@dataset.command()
+@click.argument('id')
+@pass_local_client(clean=True, commit=True)
+def edit(client, id):
+    """Edit dataset metadata."""
+    dataset_ = client.load_dataset(id)
+
+    if dataset_:
+        metadata_edited = editor.edit(
+            contents=bytes(
+                yaml.safe_dump(dataset_.editable), encoding='utf-8'
+            )
+        )
+
+        edited = yaml.safe_load(metadata_edited)
+        updated_ = Dataset(**edited)
+
+        dataset_.update_metadata(updated_)
+        dataset_.to_yaml()
 
 
 @dataset.command()
@@ -232,6 +259,20 @@ def create(client, name):
 @pass_local_client(clean=True, commit=True)
 def add(client, name, urls, link, relative_to, target, force):
     """Add data to a dataset."""
+    add_to_dataset(client, urls, name, link, force, relative_to, target)
+
+
+def add_to_dataset(
+    client,
+    urls,
+    name,
+    link=False,
+    force=False,
+    relative_to=None,
+    target=None,
+    with_metadata=None
+):
+    """Adds data to dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
             target = target if target else None
@@ -245,6 +286,21 @@ def add(client, name, urls, link, relative_to, target, force):
                         relative_to=relative_to,
                         force=force,
                     )
+
+            if with_metadata:
+
+                for file_ in with_metadata.files:
+                    for added_ in dataset.files:
+
+                        if file_.filename.endswith(added_.path.name):
+                            if isinstance(file_.url, ParseResult):
+                                file_.url = file_.url.geturl()
+
+                            file_.path = added_.path
+                            file_.creator = with_metadata.creator
+
+                dataset.update_metadata(with_metadata)
+
     except FileNotFoundError:
         raise BadParameter('Could not process {0}'.format(url))
 
@@ -252,9 +308,9 @@ def add(client, name, urls, link, relative_to, target, force):
 @dataset.command('ls-files')
 @click.argument('names', nargs=-1)
 @click.option(
-    '--authors',
-    help='Filter files which where authored by specific authors. '
-    'Multiple authors are specified by comma.'
+    '--creators',
+    help='Filter files which where authored by specific creators. '
+    'Multiple creators are specified by comma.'
 )
 @click.option(
     '-I',
@@ -277,10 +333,14 @@ def add(client, name, urls, link, relative_to, target, force):
     help='Choose an output format.'
 )
 @pass_local_client(clean=False, commit=False)
-def ls_files(client, names, authors, include, exclude, format):
+def ls_files(client, names, creators, include, exclude, format):
     """List files in dataset."""
     records = _filter(
-        client, names=names, authors=authors, include=include, exclude=exclude
+        client,
+        names=names,
+        creators=creators,
+        include=include,
+        exclude=exclude
     )
 
     DATASET_FILES_FORMATS[format](client, records)
@@ -307,6 +367,10 @@ def ls_files(client, names, authors, include, exclude, format):
 def unlink(client, name, include, exclude, yes):
     """Remove matching files from a dataset."""
     dataset = client.load_dataset(name=name)
+
+    if not dataset:
+        raise BadParameter('Dataset does not exist.')
+
     records = _filter(
         client, names=[dataset.name], include=include, exclude=exclude
     )
@@ -382,8 +446,9 @@ def remove(client, names):
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
+@pass_local_client(clean=True, commit=True)
 @click.pass_context
-def import_(ctx, uri, name, extract):
+def import_(ctx, client, uri, name, extract):
     """Import data from a 3rd party provider.
 
     Supported providers: [Zenodo, ]
@@ -393,28 +458,31 @@ def import_(ctx, uri, name, extract):
         raise BadParameter('Could not process {0}.\n{1}'.format(uri, err))
 
     try:
+
         record = provider.find_record(uri)
-        files_ = record.get_files()  # TODO: streamline API
+        dataset_ = record.as_dataset()
+        files_ = dataset_.files
+
         click.echo(
             tabulate(
                 files_,
                 headers=OrderedDict((
                     ('checksum', None),
-                    ('key', 'filename'),
-                    ('size', None),
-                    ('type', None),
+                    ('filename', 'name'),
+                    ('size_in_mb', 'size (mb)'),
+                    ('filetype', 'type'),
                 ))
             )
         )
 
         text_prompt = 'Do you wish to download this version?'
-        if record.last_version is False:
+        if record.is_last_version(uri) is False:
             text_prompt = WARNING + 'Newer version found.\n' + text_prompt
 
-    except KeyError:
+    except KeyError as e:
         raise BadParameter((
             'Could not process {0}.\n'
-            'Unable to fetch metadata.'.format(uri)
+            'Unable to fetch metadata due to {1}'.format(uri, e)
         ))
 
     except LookupError:
@@ -438,6 +506,7 @@ def import_(ctx, uri, name, extract):
             initializer=tqdm.set_lock,
             initargs=(RLock(), )
         )
+
         processing = [
             pool.apply_async(
                 download_file, args=(
@@ -453,18 +522,22 @@ def import_(ctx, uri, name, extract):
             p.wait()
         pool.close()
 
-        ctx.invoke(
-            add,
-            name=name or record.display_name,
-            urls=[str(p) for p in Path(data_folder).glob('*')]
-        )
-        click.secho('OK', fg='green')
+        dataset_name = name or dataset_.display_name
+        if write_dataset(client, dataset_name):
+            add_to_dataset(
+                client,
+                urls=[str(p) for p in Path(data_folder).glob('*')],
+                name=dataset_name,
+                with_metadata=dataset_
+            )
+
+            click.secho('OK', fg='green')
 
 
 def download_file(position, extract, data_folder, file, chunk_size=16384):
     """Download a file with progress tracking."""
-    local_filename = Path(file.name)
-    download_to = data_folder / local_filename
+    local_filename = Path(file.filename).name
+    download_to = Path(data_folder) / Path(local_filename)
 
     def extract_dataset(data_folder_, filename, file_):
         """Extract downloaded dataset."""
@@ -477,9 +550,9 @@ def download_file(position, extract, data_folder, file, chunk_size=16384):
         """Stream bytes to file."""
         with open(download_to, 'wb') as f_:
             progressbar_ = tqdm(
-                total=round(file.size * 1e-6, 1),
+                total=round(file.filesize * 1e-6, 1),
                 position=position,
-                desc=file.name[:32],
+                desc=file.filename[:32],
                 bar_format=(
                     '{percentage:3.0f}% '
                     '{n_fmt}MB/{total_fmt}MB| '
@@ -501,7 +574,7 @@ def download_file(position, extract, data_folder, file, chunk_size=16384):
         if extract:
             extract_dataset(data_folder, local_filename, file)
 
-    with requests.get(file.remote_url.geturl(), stream=True) as r:
+    with requests.get(file.url.geturl(), stream=True) as r:
         r.raise_for_status()
         stream_to_file(r)
 
@@ -527,33 +600,32 @@ def _include_exclude(file_path, include=None, exclude=None):
     return True
 
 
-def _filter(client, names=None, authors=None, include=None, exclude=None):
+def _filter(client, names=None, creators=None, include=None, exclude=None):
     """Filter dataset files by specified filters.
 
     :param names: Filter by specified dataset names.
-    :param authors: Filter by authors.
+    :param creators: Filter by creators.
     :param include: Include files matching file pattern.
     :param exclude: Exclude files matching file pattern.
     """
-    if isinstance(authors, str):
-        authors = set(authors.split(','))
+    if isinstance(creators, str):
+        creators = set(creators.split(','))
 
-    if isinstance(authors, list) or isinstance(authors, tuple):
-        authors = set(authors)
+    if isinstance(creators, list) or isinstance(creators, tuple):
+        creators = set(creators)
 
     records = []
     for path_, dataset in client.datasets.items():
         if not names or dataset.name in names:
             for file_ in dataset.files:
                 file_.dataset = dataset.name
-
                 path_ = file_.full_path.relative_to(client.path)
                 match = _include_exclude(path_, include, exclude)
 
-                if authors:
-                    match = match and authors.issubset({
-                        author.name
-                        for author in file_.author
+                if creators:
+                    match = match and creators.issubset({
+                        creator.name
+                        for creator in file_.creator
                     })
 
                 if match:
@@ -566,3 +638,17 @@ def get_datadir():
     """Fetch the current data directory."""
     ctx = click.get_current_context()
     return ctx.meta['renku.datasets.datadir']
+
+
+def write_dataset(client, name):
+    """Check if existing dataset should be overwritten.
+
+    :param client: `LocalClient` instance.
+    :param name: Dataset name.
+    :return: True is dataset exists and user confirmed overwriting.
+    """
+    if client.load_dataset(name=name):
+        warn_ = WARNING + 'This dataset already exists.'
+        click.echo(warn_)
+        return click.confirm('Do you wish to overwrite it?')
+    return True

@@ -18,8 +18,8 @@
 """Third party data registry integration."""
 from urllib.parse import urlparse
 
-from renku.cli._providers.doi import DOIProvider
 from renku.cli._providers.zenodo import ZenodoProvider
+from renku.utils.doi import is_doi
 
 
 class ProviderFactory:
@@ -28,17 +28,17 @@ class ProviderFactory:
     @staticmethod
     def from_uri(uri):
         """Get provider type based on uri."""
-        is_doi = DOIProvider.is_doi(uri)
-        if is_doi is False:
+        is_doi_ = is_doi(uri)
+        if is_doi_ is False:
             url = urlparse(uri)
             if bool(url.scheme and url.netloc and url.params == '') is False:
                 return None, 'Cannot parse URL.'
 
         provider = None
         if 'zenodo' in uri:
-            provider = ZenodoProvider(is_doi=is_doi)
+            provider = ZenodoProvider(is_doi=is_doi_)
 
-        if is_doi and provider is None:
+        if is_doi_ and provider is None:
             return None, (
                 'Provider {} not found. '.format(
                     uri.split('/')[1].split('.')[0]  # Get DOI provider name.

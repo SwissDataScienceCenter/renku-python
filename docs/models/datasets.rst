@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2019 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -39,9 +39,9 @@ Manage files in the dataset.
    :inherited-members:
 
 
-Author
-------
+Creator
+-------
 
-.. autoclass:: renku.models.datasets.Author
+.. autoclass:: renku.models.datasets.Creator
    :members:
    :inherited-members:

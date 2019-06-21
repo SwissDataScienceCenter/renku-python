@@ -338,7 +338,11 @@ class JSONLDMixin(ReferenceMixin):
             data = migration(data)
 
         fields = cls._jsonld_fields
-        data_ = {k.lstrip('_'): v for k, v in compacted.items() if k in fields}
+
+        data_ = {}
+        for k, v in compacted.items():
+            if k in fields:
+                data_[k.lstrip('_')] = v
 
         if __reference__:
             with with_reference(__reference__):
@@ -348,6 +352,7 @@ class JSONLDMixin(ReferenceMixin):
 
         if __source__:
             setattr(self, '__source__', __source__)
+
         return self
 
     @classmethod
@@ -381,9 +386,8 @@ class JSONLDMixin(ReferenceMixin):
         dumper.ignore_aliases = lambda _, data: True
 
         with self.__reference__.open('w') as fp:
-            yaml.dump(
-                self.asjsonld(), fp, default_flow_style=False, Dumper=dumper
-            )
+            jsonld_ = self.asjsonld()
+            yaml.dump(jsonld_, fp, default_flow_style=False, Dumper=dumper)
 
 
 s = attrs

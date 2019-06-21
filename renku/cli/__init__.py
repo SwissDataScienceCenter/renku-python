@@ -82,8 +82,8 @@ import click_completion
 import yaml
 
 from ..api.client import LocalClient
+from ..api.config import RENKU_HOME, default_config_dir, print_app_config_path
 from ..api.repository import default_path
-from ._config import RENKU_HOME, default_config_dir, print_app_config_path
 from ._exc import IssueFromTraceback
 from ._options import install_completion, option_use_external_storage
 from ._version import check_version, print_version

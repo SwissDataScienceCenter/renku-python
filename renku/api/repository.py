@@ -350,9 +350,9 @@ class RepositoryApiMixin(GitCore):
 
         self.repo.description = name or path.name
 
-        # Check that an author can be determined from Git.
-        from renku.models.datasets import Author
-        Author.from_git(self.repo)
+        # Check that an creator can be determined from Git.
+        from renku.models.datasets import Creator
+        Creator.from_git(self.repo)
 
         # TODO read existing gitignore and create a unique set of rules
         import pkg_resources

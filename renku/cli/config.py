@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -38,8 +38,12 @@ You display a previously set value with:
     https://registry.gitlab.com/demo/demo
 
 """
+import configparser
 
 import click
+from click import BadParameter
+
+from renku.api.config import get_config
 
 from ._client import pass_local_client
 
@@ -55,14 +59,24 @@ def _split_section_and_key(key):
 @click.command()
 @click.argument('key', required=True)
 @click.argument('value', required=False, default=None)
+@click.option(
+    '--global',
+    'is_global',
+    is_flag=True,
+    help='Store to global configuration.'
+)
 @pass_local_client
-def config(client, key, value):
-    """Get and set Renku repository and global options."""
-    if value is None:
-        cfg = client.repo.config_reader()
-        click.echo(cfg.get_value(*_split_section_and_key(key)))
-    else:
-        with client.repo.config_writer() as cfg:
+def config(client, key, value, is_global):
+    """Manage configuration options."""
+    write_op = value is not None
+    config_ = get_config(client, write_op, is_global)
+    if write_op:
+        with config_:
             section, config_key = _split_section_and_key(key)
-            cfg.set_value(section, config_key, value)
+            config_.set_value(section, config_key, value)
             click.echo(value)
+    else:
+        try:
+            click.echo(config_.get_value(*_split_section_and_key(key)))
+        except configparser.NoSectionError:
+            raise BadParameter('Requested configuration not found')

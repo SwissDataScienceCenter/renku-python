@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -34,12 +34,19 @@ env:
   - REQUIREMENTS=lowest
   - REQUIREMENTS=release
 
+dist: xenial
+
 python:
   - "3.5"
   - "3.6"
+  - "3.7"
 
 stages:
   - name: test
+  - name: integration
+    if: branch = master
+  - name: test OSX
+    if: branch = master
   - name: publish 🐍  🐳
     if: type = push AND (branch = master OR tag IS present)
   - name: brew 🍺
@@ -84,7 +91,51 @@ after_success:
 
 jobs:
   include:
-    - stage: test
+    - stage: integration
+      os: linux
+      dist: xenial
+      language: python
+      env:
+        - REQUIREMENTS=release
+      script: pytest -m integration -v
+    - stage: integration
+      python: "3.6"
+      os: linux
+      dist: xenial
+      language: python
+      env:
+        - REQUIREMENTS=release
+    - stage: integration
+      python: "3.7"
+      os: linux
+      dist: xenial
+      language: python
+      env:
+        - REQUIREMENTS=release
+    - stage: integration
+      os: linux
+      dist: xenial
+      language: python
+      env:
+        - REQUIREMENTS=lowest
+      script: pytest -m integration -v
+    - stage: integration
+      python: "3.6"
+      os: linux
+      dist: xenial
+      language: python
+      env:
+        - REQUIREMENTS=lowest
+    - stage: integration
+      python: "3.7"
+      os: linux
+      dist: xenial
+      language: python
+      env:
+        - REQUIREMENTS=lowest
+
+    - stage: test OSX
+      if: branch = master
       language: generic
       sudo: true
       os: osx
@@ -93,12 +144,6 @@ jobs:
       sudo: true
       os: osx
       osx_image: xcode9.2
-    - python: "3.7"
-      os: linux
-      dist: xenial
-      language: python
-      env:
-        - REQUIREMENTS=release
 
     - stage: publish 🐍  🐳
       python: 3.6
@@ -110,6 +155,7 @@ jobs:
           distributions: "sdist bdist_wheel"
           on:
             all_branches: true
+
     - # stage: publish
       sudo: required
       services:
@@ -121,7 +167,7 @@ jobs:
         - sudo apt-get -y install docker-ce
       script: make docker-login docker-push
 
-    - stage: brew 🍺
+    - # stage: brew 🍺
       language: generic
       sudo: true
       os: osx

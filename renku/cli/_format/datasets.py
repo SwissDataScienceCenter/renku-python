@@ -31,10 +31,11 @@ def tabular(client, datasets):
         tabulate(
             datasets,
             headers=OrderedDict((
-                ('short_id', 'id'),
-                ('name', None),
+                ('uid', 'id'),
+                ('display_name', None),
+                ('version', None),
                 ('created', None),
-                ('authors_csv', 'authors'),
+                ('creators_csv', 'creators'),
             )),
         )
     )

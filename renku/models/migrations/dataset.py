@@ -23,9 +23,9 @@ def migrate_dataset(data):
     if data.get('@type') != 'dctypes:Dataset':
         return data
 
-    data['author'] = data.pop('authors', {})
+    data['creator'] = data.pop('authors', {})
 
     for file_name, file_ in data.get('files', {}).items():
-        file_['author'] = file_.pop('authors', {})
+        file_['creator'] = file_.pop('authors', {})
 
     return data
