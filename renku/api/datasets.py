@@ -288,10 +288,12 @@ class DatasetsApiMixin(object):
                 return {
                     result:
                         DatasetFile(
-                            path=result,
+                            path=url,
                             url=url,
                             creator=dataset.creator,
                             dataset=dataset.name,
+                            client=self,
+                            commit=self.find_previous_commit(url)
                         )
                 }
 

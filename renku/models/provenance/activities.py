@@ -50,7 +50,6 @@ def _nodes(output, parent=None):
 @jsonld.s(
     type='prov:Activity',
     context={
-        'dcterms': 'http://purl.org/dc/terms/',
         'prov': 'http://www.w3.org/ns/prov#',
         'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
     },

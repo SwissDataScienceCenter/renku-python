@@ -60,7 +60,6 @@ def dot(graph, simple=True, debug=False, landscape=False):
 
     g.bind('prov', 'http://www.w3.org/ns/prov#')
     g.bind('foaf', 'http://xmlns.com/foaf/0.1/')
-    g.bind('dcterms', 'http://purl.org/dc/terms/')
     g.bind('wfdesc', 'http://purl.org/wf4ever/wfdesc#')
     g.bind('wf', 'http://www.w3.org/2005/01/wf/flow#')
     g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
@@ -258,7 +257,7 @@ def _rdf2dot_reduced(g, stream):
             types[sn].add((qname(p, g), cgi.escape(o)))
             continue
         # add the project membership to the node
-        if p == rdflib.term.URIRef('http://purl.org/dc/terms/isPartOf'):
+        if p == rdflib.term.URIRef('schema:isPartOf'):
             fields[sn].add((qname(p, g), cgi.escape(o)))
             continue
 

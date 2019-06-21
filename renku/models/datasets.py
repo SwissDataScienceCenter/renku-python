@@ -127,7 +127,7 @@ class Creator(object):
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
         if not self._id:
-            self._id = self.name.replace(' ', '.').lower()
+            self._id = 'mailto:{self.email}'.format(self=self)
 
 
 @attr.s
@@ -188,7 +188,7 @@ class DatasetFile(Entity, CreatorsMixin):
 
     checksum = attr.ib(default=None, kw_only=True)
 
-    dataset = attr.ib(default=None, kw_only=True)
+    dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
 
     filename = attr.ib(default=None, kw_only=True)
 
@@ -196,11 +196,7 @@ class DatasetFile(Entity, CreatorsMixin):
 
     filetype = attr.ib(default=None, kw_only=True)
 
-    path = _path_attr(kw_only=True)
-
     url = jsonld.ib(default=None, context='schema:url', kw_only=True)
-
-    _id = jsonld.ib(default=None, kw_only=True, context='@id')
 
     @added.default
     def _now(self):
@@ -218,11 +214,6 @@ class DatasetFile(Entity, CreatorsMixin):
     def size_in_mb(self):
         """Return file size in megabytes."""
         return self.filesize * 1e-6
-
-    def __attrs_post_init__(self):
-        """Post-Init hook to set _id field."""
-        if not self._id:
-            self._id = str(self.url)
 
 
 def _parse_date(value):
@@ -347,7 +338,7 @@ class Dataset(Entity, CreatorsMixin):
         DatasetFile,
         default=None,
         converter=_convert_dataset_files,
-        context='schema:DigitalDocument',
+        context='schema:hasPart',
         kw_only=True
     )
 

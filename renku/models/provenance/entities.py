@@ -44,7 +44,7 @@ class CommitMixin:
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _project = jsonld.ib(context='dcterms:isPartOf', kw_only=True)
+    _project = jsonld.ib(context='schema:isPartOf', kw_only=True)
 
     @property
     def submodules(self):
@@ -75,7 +75,7 @@ class CommitMixin:
         'wfprov:Artifact',
     ],
     context={
-        'dcterms': 'http://purl.org/dc/terms/',
+        'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
     },
