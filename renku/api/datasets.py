@@ -189,11 +189,11 @@ class DatasetsApiMixin(object):
         # Respect the directory struture inside the source path.
         relative_to = kwargs.pop('relative_to', None)
         if relative_to:
-            dst_path = Path(url).resolve().absolute().relative_to(
+            dst_path = Path(u.path).resolve().absolute().relative_to(
                 Path(relative_to).resolve().absolute()
             )
         else:
-            dst_path = os.path.basename(url)
+            dst_path = os.path.basename(u.path)
 
         dst = path.joinpath(dst_path).absolute()
 

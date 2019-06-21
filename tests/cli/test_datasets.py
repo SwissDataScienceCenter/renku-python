@@ -75,6 +75,15 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     )
     assert 0 == result.exit_code
 
+    # add data from any URL (not a git repo)
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset', 'http://example.com/file.ext?foo=bar'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert os.stat('data/dataset/file.ext')
+
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
