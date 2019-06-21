@@ -28,7 +28,6 @@ from urllib import error, parse
 
 import attr
 import requests
-import yaml
 
 from renku import errors
 from renku._compat import Path
@@ -65,18 +64,16 @@ class DatasetsApiMixin(object):
                 blob = tree / self.METADATA
             except KeyError:
                 continue
-
-            yield Dataset.from_jsonld(
-                yaml.safe_load(blob.data_stream.read()),
-                __reference__=Path(blob.path),
-            )
+            dataset = Dataset.from_yaml(Path(blob.path), client=self)
+            dataset.commit = commit
+            yield dataset
 
     @property
     def datasets(self):
         """Return mapping from path to dataset."""
         result = {}
         for path in self.renku_datasets_path.rglob(self.METADATA):
-            result[path] = Dataset.from_yaml(path)
+            result[path] = Dataset.from_yaml(path, client=self)
         return result
 
     def dataset_path(self, name):
@@ -98,7 +95,7 @@ class DatasetsApiMixin(object):
         if name:
             path = self.dataset_path(name)
             if path.exists():
-                dataset = Dataset.from_yaml(path)
+                dataset = Dataset.from_yaml(path, client=self)
 
         return dataset
 
@@ -116,7 +113,9 @@ class DatasetsApiMixin(object):
             path.parent.mkdir(parents=True, exist_ok=True)
 
             with with_reference(path):
-                dataset = Dataset(identifier=identifier, name=name)
+                dataset = Dataset(
+                    identifier=identifier, name=name, client=self
+                )
 
             if name:
                 LinkReference.create(client=self, name='datasets/' +

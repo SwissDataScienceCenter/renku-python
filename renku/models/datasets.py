@@ -32,6 +32,7 @@ from renku import errors
 from renku._compat import Path
 from renku.api.repository import default_path
 from renku.utils.doi import is_doi
+from renku.models.provenance.entities import Entity
 
 from . import _jsonld as jsonld
 
@@ -50,6 +51,7 @@ _path_attr = partial(
 )
 class Creator(object):
     """Represent the creator of a resource."""
+    client = attr.ib(default=None, kw_only=True)
 
     affiliation = jsonld.ib(
         default=None, kw_only=True, context='schema:affiliation'
@@ -172,7 +174,7 @@ def _convert_dataset_files_creators(value):
     slots=True,
     context={'schema': 'http://schema.org/'}
 )
-class DatasetFile(CreatorsMixin):
+class DatasetFile(Entity, CreatorsMixin):
     """Represent a file in a dataset."""
 
     creator = jsonld.container.list(
@@ -277,7 +279,7 @@ def _convert_keyword(keywords):
         'url': 'schema:url'
     },
 )
-class Dataset(CreatorsMixin):
+class Dataset(Entity, CreatorsMixin):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
@@ -287,48 +289,74 @@ class Dataset(CreatorsMixin):
         'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
-    _id = jsonld.ib(default=None, context='@id')
+    _id = jsonld.ib(context='@id', kw_only=True)
+    _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
 
     creator = jsonld.container.list(
-        Creator, converter=_convert_dataset_creator, context='schema:creator'
+        Creator,
+        converter=_convert_dataset_creator,
+        context='schema:creator',
+        kw_only=True
     )
 
-    date_published = jsonld.ib(default=None, context='schema:datePublished')
+    date_published = jsonld.ib(
+        default=None, context='schema:datePublished', kw_only=True
+    )
 
-    description = jsonld.ib(default=None, context='schema:description')
+    description = jsonld.ib(
+        default=None, context='schema:description', kw_only=True
+    )
 
-    identifier = jsonld.ib(default=None, context='schema:identifier')
+    identifier = jsonld.ib(
+        default=attr.Factory(uuid.uuid4),
+        context='schema:identifier',
+        kw_only=True,
+        converter=str
+    )
 
     in_language = jsonld.ib(
         type=Language,
         default=None,
         converter=_convert_language,
-        context='schema:inLanguage'
+        context='schema:inLanguage',
+        kw_only=True
     )
 
     keywords = jsonld.container.list(
-        str, converter=_convert_keyword, context='schema:keywords'
+        str,
+        converter=_convert_keyword,
+        context='schema:keywords',
+        kw_only=True
     )
 
-    license = jsonld.ib(default=None, context='schema:license')
+    license = jsonld.ib(default=None, context='schema:license', kw_only=True)
 
-    name = jsonld.ib(default=None, type=str, context='schema:name')
+    name = jsonld.ib(
+        default=None, type=str, context='schema:name', kw_only=True
+    )
 
-    url = jsonld.ib(default=None, context='schema:url')
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
-    version = jsonld.ib(default=None, context='schema:version')
+    version = jsonld.ib(default=None, context='schema:version', kw_only=True)
 
     created = jsonld.ib(
-        converter=_parse_date,
-        context='schema:dateCreated',
+        converter=_parse_date, context='schema:dateCreated', kw_only=True
     )
 
     files = jsonld.container.list(
         DatasetFile,
         default=None,
         converter=_convert_dataset_files,
-        context='schema:DigitalDocument'
+        context='schema:DigitalDocument',
+        kw_only=True
     )
+
+    @_id.default
+    def default_id(self):
+        """Set the default id."""
+        return '{0}/datasets/{1}'.format(
+            Path(default_path()).name, uuid.uuid4()
+        )
 
     @property
     def display_name(self):
@@ -441,11 +469,10 @@ class Dataset(CreatorsMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
-        if not self.identifier:
-            self.identifier = str(uuid.uuid4())
+        self.identifier = self._id
 
-        if not self._id:
-            self._id = '{0}/datasets/{1}'.format(
-                Path(default_path()).name, self.identifier
-            )
-            self.identifier = self._id
+        if not self._label:
+            self._label = self.identifier
+
+        if not self.path:
+            self.path = self.client.renku_datasets_path / str(self.uid)
