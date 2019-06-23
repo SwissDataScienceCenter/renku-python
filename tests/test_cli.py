@@ -526,6 +526,36 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
     assert 0 == result.exit_code
 
 
+def test_status_consistency(runner, client, project):
+    """Test if the renku status output is consistent when running the
+    command from directories other than the repository root."""
+
+    os.mkdir('somedirectory')
+    with open('somedirectory/woop', 'w') as fp:
+        fp.write('woop')
+
+    client.repo.index.add(['somedirectory/woop'])
+    client.repo.index.commit('add woop')
+
+    result = runner.invoke(
+        cli.cli, ['run', 'cp', 'somedirectory/woop', 'somedirectory/meeh']
+    )
+    assert 0 == result.exit_code
+
+    with open('somedirectory/woop', 'w') as fp:
+        fp.write('weep')
+
+    client.repo.index.add(['somedirectory/woop'])
+    client.repo.index.commit('fix woop')
+
+    base_result = runner.invoke(cli.cli, ['status'])
+    os.chdir('somedirectory')
+    comp_result = runner.invoke(cli.cli, ['status'])
+    assert base_result.output.replace(
+        'somedirectory/', ''
+    ) == comp_result.output
+
+
 def test_unchanged_output(runner, project):
     """Test detection of unchanged output."""
     cmd = ['run', 'touch', '1']
