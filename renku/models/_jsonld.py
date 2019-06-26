@@ -307,7 +307,11 @@ class JSONLDMixin(ReferenceMixin):
 
     @classmethod
     def from_jsonld(
-        cls, data, client=None, __reference__=None, __source__=None
+        cls,
+        data,
+        client=None,
+        __reference__=None,
+        __source__=None,
     ):
         """Instantiate a JSON-LD class from data."""
         if isinstance(data, cls):
@@ -345,15 +349,18 @@ class JSONLDMixin(ReferenceMixin):
         fields = cls._jsonld_fields
 
         data_ = {}
+        if client:
+            data_['client'] = client
+
         for k, v in compacted.items():
             if k in fields:
                 data_[k.lstrip('_')] = v
 
         if __reference__:
             with with_reference(__reference__):
-                self = cls(client=client, **data_)
+                self = cls(**data_)
         else:
-            self = cls(client=client, **data_)
+            self = cls(**data_)
 
         if __source__:
             setattr(self, '__source__', __source__)

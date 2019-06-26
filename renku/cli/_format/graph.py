@@ -194,7 +194,6 @@ def _rdf2dot_reduced(g, stream):
     types = collections.defaultdict(set)
     fields = collections.defaultdict(set)
     nodes = {}
-    skip_nodes = set()
 
     def node(x):
         """Return a name of the given node."""

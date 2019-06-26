@@ -19,7 +19,6 @@
 
 import configparser
 import datetime
-import os
 import re
 import uuid
 from functools import partial
@@ -30,9 +29,8 @@ from dateutil.parser import parse as parse_date
 
 from renku import errors
 from renku._compat import Path
-from renku.api.repository import default_path
-from renku.utils.doi import is_doi
 from renku.models.provenance.entities import Entity
+from renku.utils.doi import is_doi
 
 from . import _jsonld as jsonld
 
@@ -51,6 +49,7 @@ _path_attr = partial(
 )
 class Creator(object):
     """Represent the creator of a resource."""
+
     client = attr.ib(default=None, kw_only=True)
 
     affiliation = jsonld.ib(
@@ -190,7 +189,7 @@ class DatasetFile(Entity, CreatorsMixin):
 
     dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
 
-    filename = attr.ib(default=None, kw_only=True)
+    filename = attr.ib(kw_only=True)
 
     filesize = attr.ib(default=None, kw_only=True)
 
@@ -203,12 +202,18 @@ class DatasetFile(Entity, CreatorsMixin):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
 
+    @filename.default
+    def default_filename(self):
+        """Generate default filename based on path."""
+        return Path(self.path).name
+
     @property
     def full_path(self):
         """Return full path in the current reference frame."""
-        return Path(
-            os.path.realpath(str(self.__reference__.parent / self.path))
-        )
+        path = Path(self.path)
+        if self.client:
+            return (self.client.path / path).resolve()
+        return path.resolve()
 
     @property
     def size_in_mb(self):
@@ -280,7 +285,7 @@ class Dataset(Entity, CreatorsMixin):
         'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = jsonld.ib(default=None, context='@id', kw_only=True)
     _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
 
     creator = jsonld.container.list(
@@ -342,12 +347,10 @@ class Dataset(Entity, CreatorsMixin):
         kw_only=True
     )
 
-    @_id.default
-    def default_id(self):
-        """Set the default id."""
-        return '{0}/datasets/{1}'.format(
-            Path(default_path()).name, uuid.uuid4()
-        )
+    @created.default
+    def _now(self):
+        """Define default value for datetime fields."""
+        return datetime.datetime.utcnow()
 
     @property
     def display_name(self):
@@ -374,11 +377,6 @@ class Dataset(Entity, CreatorsMixin):
         """UUID part of identifier."""
         return self.identifier.split('/')[-1]
 
-    @created.default
-    def _now(self):
-        """Define default value for datetime fields."""
-        return datetime.datetime.utcnow()
-
     @property
     def short_id(self):
         """Shorter version of identifier."""
@@ -398,10 +396,10 @@ class Dataset(Entity, CreatorsMixin):
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
 
-    def find_file(self, file_path, return_index=False):
+    def find_file(self, filename, return_index=False):
         """Find a file in files container."""
         for index, file_ in enumerate(self.files):
-            if str(file_.path) == str(file_path):
+            if str(file_.path) == str(filename):
                 if return_index:
                     return index
                 return file_
@@ -460,7 +458,7 @@ class Dataset(Entity, CreatorsMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
-        self.identifier = self._id
+        self._id = self.identifier
 
         if not self._label:
             self._label = self.identifier

@@ -188,6 +188,60 @@ def test_dataset_create_exception_refs(
     assert 'a' in result.output
 
 
+def test_datasets_import(data_file, data_repository, runner, project, client):
+    """Test importing data into a dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
+
+    # add data
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset',
+         str(data_file)],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert os.stat(
+        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
+    )
+
+    # add data from a git repo via http
+    result = runner.invoke(
+        cli.cli,
+        [
+            'dataset', 'add', 'dataset', '--target', 'README.rst',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert os.stat('data/dataset/README.rst')
+
+    # add data from local git repo
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'add', 'dataset', '-t', 'dir2/file2',
+            os.path.dirname(data_repository.git_dir)
+        ],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    # add data from any URL (not a git repo)
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset', 'http://example.com/file.ext?foo=bar'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert os.stat('data/dataset/file.ext')
+
+
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
@@ -265,7 +319,7 @@ def test_repository_file_to_dataset(runner, project, client):
 
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
-        assert dataset.find_file('../../../a')
+        assert dataset.find_file('a')
 
 
 def test_relative_import_to_dataset(
@@ -395,8 +449,7 @@ def test_dataset_add_with_link(tmpdir, runner, project, client):
     with client.with_dataset('my-dataset') as dataset:
         assert dataset.name == 'my-dataset'
         for file_ in dataset.files:
-            path_ = (client.renku_datasets_path / 'my-dataset' /
-                     file_.path).resolve()
+            path_ = (client.path / file_.path).resolve()
             received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
 
     # check that original and dataset inodes are the same
@@ -433,8 +486,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
         assert dataset.name == 'my-dataset'
 
         for file_ in dataset.files:
-            path_ = (client.renku_datasets_path / 'my-dataset' /
-                     file_.path).resolve()
+            path_ = (client.path / file_.path).resolve()
             received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
 
     # check that original inodes are within created ones
@@ -700,9 +752,10 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     assert 0 == result.exit_code
 
     with client.with_dataset(name='my-dataset') as dataset:
-        assert new_file.basename in [
-            file_.path.name for file_ in dataset.files
-        ]
+        assert new_file.basename in {
+            Path(file_.path).name
+            for file_ in dataset.files
+        }
 
     result = runner.invoke(
         cli.cli, [
@@ -794,6 +847,8 @@ def test_dataset_edit(runner, client, project):
     dataset = client.load_dataset(name='dataset')
 
     result = runner.invoke(
-        cli.cli, ['dataset', 'edit', dataset.identifier], input='wq'
+        cli.cli, ['dataset', 'edit', dataset.identifier],
+        input='wq',
+        catch_exceptions=False
     )
     assert 0 == result.exit_code
