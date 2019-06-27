@@ -42,6 +42,7 @@ def pass_local_client(
     clean=None,
     up_to_date=None,
     commit=None,
+    commit_only=None,
     ignore_std_streams=True,
     lock=None,
 ):
@@ -52,6 +53,7 @@ def pass_local_client(
             clean=clean,
             up_to_date=up_to_date,
             commit=commit,
+            commit_only=commit_only,
             ignore_std_streams=ignore_std_streams,
             lock=lock,
         )
@@ -69,6 +71,7 @@ def pass_local_client(
             clean=clean,
             up_to_date=up_to_date,
             commit=commit,
+            commit_only=commit_only,
             ignore_std_streams=ignore_std_streams
         )
         stack.enter_context(transaction)

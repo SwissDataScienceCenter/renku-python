@@ -22,6 +22,8 @@ import os
 import click
 import requests
 
+from renku.api.config import RENKU_HOME
+
 
 class RenkuException(Exception):
     """A base class for all Renku related exception.
@@ -124,6 +126,19 @@ class DirtyRepository(RenkuException, click.ClickException):
             'Once you have added the untracked files, '
             'commit them with "git commit".'
         )
+
+
+class DirtyRenkuDirectory(RenkuException, click.ClickException):
+    """Raise when a directory in the renku repository is dirty."""
+
+    def __init__(self, repo):
+        """Build a custom message."""
+        super(DirtyRenkuDirectory, self).__init__((
+            'The renku directory {0} contains uncommitted changes.\n'
+            'Please use "git" command to resolve.\n'
+            'Files within {0} directory '
+            'need to be manually committed or removed.'
+        ).format(RENKU_HOME) + '\n\n' + str(repo.git.status()) + '\n\n')
 
 
 class IgnoredFiles(RenkuException, click.ClickException):

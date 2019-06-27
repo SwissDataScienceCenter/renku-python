@@ -165,9 +165,12 @@ import yaml
 from click import BadParameter
 from tqdm import tqdm
 
+from renku.api.config import RENKU_HOME
+from renku.api.datasets import DatasetsApiMixin
 from renku.cli._providers import ProviderFactory
 from renku.models._tabulate import tabulate
 from renku.models.datasets import Dataset
+from renku.models.refs import LinkReference
 
 from .._compat import Path
 from ._client import pass_local_client
@@ -204,7 +207,14 @@ def dataset(ctx, client, revision, datadir, format):
 
 @dataset.command()
 @click.argument('name')
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=[
+        Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
+        Path(RENKU_HOME) / Path(LinkReference.REFS),
+    ]
+)
 def create(client, name):
     """Create an empty dataset in the current repo."""
     from renku.models.datasets import Creator
