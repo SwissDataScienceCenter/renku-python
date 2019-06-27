@@ -29,6 +29,7 @@ from email.utils import formatdate
 from itertools import zip_longest
 
 import attr
+import gitdb
 
 from renku import errors
 from renku._compat import Path
@@ -197,13 +198,48 @@ class GitCore:
             _clean_streams(self.repo, mapped_streams)
             raise errors.DirtyRepository(self.repo)
 
+    def ensure_untracked(self, path):
+        """Ensure that path is not part of git untracked files."""
+        untracked = self.repo.untracked_files
+
+        for file_path in untracked:
+            is_parent = str(file_path).startswith(path)
+            is_equal = path == file_path
+
+            if is_parent or is_equal:
+                raise errors.DirtyRenkuDirectory(self.repo)
+
+    def ensure_unstaged(self, path):
+        """Ensure that path is not part of git staged files."""
+        try:
+            staged = self.repo.index.diff('HEAD')
+
+            for file_path in staged:
+                is_parent = str(file_path.a_path).startswith(path)
+                is_equal = path == file_path.a_path
+
+                if is_parent or is_equal:
+                    raise errors.DirtyRenkuDirectory(self.repo)
+
+        except gitdb.exc.BadName:
+            pass
+
     @contextmanager
-    def commit(self, author_date=None):
+    def commit(self, author_date=None, commit_only=None):
         """Automatic commit."""
         from git import Actor
         from renku.version import __version__
 
         author_date = author_date or formatdate(localtime=True)
+
+        if isinstance(commit_only, list):
+            for path_ in commit_only:
+                self.ensure_untracked(str(path_))
+                self.ensure_unstaged(str(path_))
+
+        elif commit_only:
+            self.ensure_untracked(str(commit_only))
+            self.ensure_unstaged(str(commit_only))
 
         yield
 
@@ -212,8 +248,21 @@ class GitCore:
             'renku+{0}@datascience.ch'.format(__version__),
         )
 
-        self.repo.git.add('--all')
+        if isinstance(commit_only, list):
+            for path_ in commit_only:
+                self.repo.git.add(path_)
+
+        if isinstance(commit_only, str):
+            self.repo.git.add(commit_only)
+
+        if isinstance(commit_only, Path):
+            self.repo.git.add(str(commit_only))
+
+        if not commit_only:
+            self.repo.git.add('--all')
+
         argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
+
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(
             ' '.join(argv),
@@ -228,6 +277,7 @@ class GitCore:
         clean=True,
         up_to_date=False,
         commit=True,
+        commit_only=None,
         ignore_std_streams=False
     ):
         """Perform Git checks and operations."""
@@ -241,7 +291,7 @@ class GitCore:
             pass
 
         if commit:
-            with self.commit():
+            with self.commit(commit_only=commit_only):
                 yield self
         else:
             yield self

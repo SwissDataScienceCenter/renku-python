@@ -27,8 +27,165 @@ import pytest
 
 from renku import cli
 from renku._compat import Path
+from renku.api.config import RENKU_HOME
+from renku.api.datasets import DatasetsApiMixin
 from renku.cli._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
 from renku.cli._format.datasets import FORMATS as DATASETS_FORMATS
+from renku.models.refs import LinkReference
+
+
+def test_datasets_create_clean(data_repository, runner, project, client):
+    """Test creating a dataset in clean repository."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+    assert dataset
+
+    staged = client.repo.index.diff('HEAD')
+    for file_path in staged:
+        assert 'datasets' not in file_path
+
+    untracked = client.repo.untracked_files
+    for file_path in untracked:
+        assert 'datasets' not in file_path
+
+
+def test_datasets_create_dirty(data_repository, runner, project, client):
+    """Test creating a dataset in dirty repository."""
+    # Create a file in root of the repository.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+    assert dataset
+
+    staged = client.repo.index.diff('HEAD')
+    for file_path in staged:
+        assert 'datasets' not in file_path
+
+    untracked = client.repo.untracked_files
+    for file_path in untracked:
+        assert 'datasets' not in file_path
+
+
+def test_datasets_create_dirty_exception_untracked(
+    data_repository, runner, project, client
+):
+    """Test exception raise for untracked file in renku directory."""
+    # 1. Create a problem.
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 2. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_datasets_create_dirty_exception_staged(
+    data_repository, runner, project, client
+):
+    """Test exception raise for staged file in renku directory."""
+    # 1. Create a problem within .renku directory
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 2. Stage a problem without committing it.
+    client.repo.git.add(datasets_dir / 'a')
+
+    # 3. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_dataset_create_dirty_exception_all_untracked(
+    data_repository, runner, project, client
+):
+    """Test exception raise for all untracked files."""
+    # 1. Create unclean root to enforce ensure checks.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 2. Create a problem.
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 3. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_datasets_create_dirty_exception_all_staged(
+    data_repository, runner, project, client
+):
+    """Test exception raise for all staged files."""
+    # 1. Create unclean root to enforce ensure checks.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    client.repo.git.add('a')
+
+    # 2. Create a problem.
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    client.repo.git.add(datasets_dir / 'a')
+
+    # 3. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_dataset_create_exception_refs(
+    data_repository, runner, project, client
+):
+    """Test untracked/unstaged exception raise in dirty renku home dir."""
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    refs_dir = client.path / RENKU_HOME / LinkReference.REFS
+    if not refs_dir.exists():
+        refs_dir.mkdir()
+
+    with (refs_dir / 'b').open('w') as fp:
+        fp.write('b')
+
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert 'a' in result.output
 
 
 def test_datasets_import(data_file, data_repository, runner, project, client):

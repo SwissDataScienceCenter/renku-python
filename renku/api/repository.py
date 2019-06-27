@@ -29,6 +29,7 @@ import yaml
 from werkzeug.utils import cached_property, secure_filename
 
 from renku._compat import Path
+from renku.api.config import RENKU_HOME
 from renku.models.refs import LinkReference
 
 from ._git import GitCore
@@ -64,7 +65,7 @@ class PathMixin:
 class RepositoryApiMixin(GitCore):
     """Client for handling a local repository."""
 
-    renku_home = attr.ib(default='.renku')
+    renku_home = attr.ib(default=RENKU_HOME)
     """Define a name of the Renku folder (default: ``.renku``)."""
 
     renku_path = attr.ib(init=False)
