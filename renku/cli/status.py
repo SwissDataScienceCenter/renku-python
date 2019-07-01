@@ -113,7 +113,12 @@ def status(ctx, client, revision, no_output, path):
                 '\t{0}: {1}'.format(
                     click.style(
                         graph._format_path(filepath), fg='blue', bold=True
-                    ), ', '.join(commits)
+                    ),
+                    ', '.join(
+                        # Sort the commit hashes alphanumerically to have a
+                        # predictable output.
+                        sorted(commits)
+                    )
                 )
             )
 
