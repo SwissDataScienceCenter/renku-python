@@ -397,16 +397,23 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
         m.setattr(StorageApiMixin, 'external_storage_installed', False)
 
         result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
-        assert 1 == result.exit_code
-        subprocess.call(['git', 'clean', '-df'])
+        assert 0 == result.exit_code
 
-    result = runner.invoke(cli.cli, ['-S', 'run', 'touch', 'output'])
+    result = runner.invoke(cli.cli, ['-S', 'run', 'touch', 'output2'])
     assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['init', '--force'])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli.cli, ['run', 'touch', 'output2'])
+    with monkeypatch.context() as m:
+        from renku.api.storage import StorageApiMixin
+        m.setattr(StorageApiMixin, 'external_storage_installed', False)
+
+        result = runner.invoke(cli.cli, ['run', 'touch', 'output3'])
+        assert 1 == result.exit_code
+        subprocess.call(['git', 'clean', '-df'])
+
+    result = runner.invoke(cli.cli, ['run', 'touch', 'output4'])
     assert 0 == result.exit_code
 
 
@@ -489,7 +496,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
             cli.cli, ['dataset', 'add', 'f', '../woop'],
             catch_exceptions=False
         )
-        assert 1 == result.exit_code
+        assert 0 == result.exit_code
         subprocess.call(['git', 'clean', '-dff'])
 
     result = runner.invoke(
