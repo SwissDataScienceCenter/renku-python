@@ -163,6 +163,7 @@ import editor
 import requests
 import yaml
 from click import BadParameter
+from requests import HTTPError
 from tqdm import tqdm
 
 from renku.api.config import RENKU_HOME
@@ -444,6 +445,61 @@ def remove(client, names):
             if ref.reference in datasets:
                 ref.delete()
 
+    click.secho('OK', fg='green')
+
+
+@dataset.command('export')
+@click.argument('id')
+@click.argument('provider')
+@click.option(
+    '-p',
+    '--publish',
+    is_flag=True,
+    help='Automatically publish exported dataset.'
+)
+@pass_local_client(clean=True, commit=True)
+def export_(client, id, provider, publish):
+    """Export data to 3rd party provider."""
+    config_key_secret = 'access_token'
+    provider_id = provider
+
+    dataset_ = client.load_dataset(id)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    try:
+        provider = ProviderFactory.from_id(provider_id)
+    except KeyError:
+        raise BadParameter('Unknown provider.')
+
+    access_token = client.get_value(provider_id, config_key_secret)
+    exporter = provider.get_exporter(dataset_, access_token=access_token)
+
+    if access_token is None:
+        text_prompt = 'Before exporting, you must configure an access token\n'
+        text_prompt += 'Create one at: {0}\n'.format(
+            exporter.access_token_url()
+        )
+        text_prompt += 'Access token'
+
+        access_token = click.prompt(text_prompt, type=str)
+        if access_token is None or len(access_token) == 0:
+            raise BadParameter(
+                'You must provide an access token for the target provider.'
+            )
+
+        client.set_value(provider_id, config_key_secret, access_token)
+        exporter.set_access_token(access_token)
+
+    try:
+        destination = exporter.export(publish)
+    except HTTPError as e:
+        if 'unauthorized' in str(e):
+            client.remove_value(provider_id, config_key_secret)
+
+        raise BadParameter(e)
+
+    click.secho('Exported to: {0}'.format(destination))
     click.secho('OK', fg='green')
 
 
