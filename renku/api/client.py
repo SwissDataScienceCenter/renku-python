@@ -33,7 +33,6 @@ class LocalClient(
     """A low-level client for communicating with a local Renku repository.
 
     Example:
-
         >>> import renku
         >>> client = renku.LocalClient('.')
 
