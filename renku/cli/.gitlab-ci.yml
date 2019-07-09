@@ -25,7 +25,7 @@ dot:
   stage: build
   image: renku/renku-python:latest
   script:
-    - renku log --format dot $(git ls-files --no-empty-directory --recurse-submodules) > graph.dot
+    - git ls-files --no-empty-directory --recurse-submodules -z | xargs -0 renku log --format dot > graph.dot
   artifacts:
     paths:
       - graph.dot
