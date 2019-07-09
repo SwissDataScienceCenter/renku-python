@@ -188,60 +188,6 @@ def test_dataset_create_exception_refs(
     assert 'a' in result.output
 
 
-def test_datasets_import(data_file, data_repository, runner, project, client):
-    """Test importing data into a dataset."""
-    # create a dataset
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    with client.with_dataset('dataset') as dataset:
-        assert dataset.name == 'dataset'
-
-    # add data
-    result = runner.invoke(
-        cli.cli,
-        ['dataset', 'add', 'dataset',
-         str(data_file)],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code
-    assert os.stat(
-        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
-    )
-
-    # add data from a git repo via http
-    result = runner.invoke(
-        cli.cli,
-        [
-            'dataset', 'add', 'dataset', '--target', 'README.rst',
-            'https://github.com/SwissDataScienceCenter/renku-python.git'
-        ],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code
-    assert os.stat('data/dataset/README.rst')
-
-    # add data from local git repo
-    result = runner.invoke(
-        cli.cli, [
-            'dataset', 'add', 'dataset', '-t', 'file2', '-t', 'file3',
-            os.path.dirname(data_repository.git_dir)
-        ],
-        catch_exceptions=False
-    )
-    assert 0 == result.exit_code
-
-    # add data from any URL (not a git repo)
-    result = runner.invoke(
-        cli.cli,
-        ['dataset', 'add', 'dataset', 'http://example.com/file.ext?foo=bar'],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code
-    assert os.stat('data/dataset/file.ext')
-
-
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""

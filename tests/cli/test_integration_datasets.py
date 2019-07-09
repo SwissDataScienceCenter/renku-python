@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Integration tests for dataset command."""
+import os
+
 import git
 import pytest
 
@@ -352,3 +354,68 @@ def test_export_dataset_unauthorized(
 
     secret = client.get_value('zenodo', 'secret')
     assert secret is None
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'remotes', [
+        {
+            'url': (
+                'https://github.com'
+                '/SwissDataScienceCenter/renku-python.git'
+            ),
+            'filename': 'README.rst',
+            'expected_path': 'data/dataset/README.rst'
+        },
+        {
+            'url': (
+                'https://gist.githubusercontent.com'
+                '/jsam/24e3763fe4912ddb5c3a0fe411002f21'
+                '/raw/ac45b51b5d6e20794e2ac73df5e309fa26e2f73a'
+                '/gistfile1.txt?foo=bar'
+            ),
+            'filename': 'gistfile1.txt',
+            'expected_path': 'data/dataset/gistfile1.txt'
+        },
+    ]
+)
+def test_datasets_remote_import(
+    remotes, data_file, data_repository, runner, project, client
+):
+    """Test importing data into a dataset."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
+
+    # add data
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'dataset',
+                  str(data_file)]
+    )
+    assert 0 == result.exit_code
+    assert os.stat(
+        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
+    )
+
+    # add data from a git repo via http
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'add', 'dataset', '--target', remotes['filename'],
+            remotes['url']
+        ]
+    )
+    assert 0 == result.exit_code
+    assert os.stat(remotes['expected_path'])
+
+    # add data from local git repo
+    result = runner.invoke(
+        cli.cli, [
+            'dataset', 'add', 'dataset', '-t', 'file2', '-t', 'file3',
+            os.path.dirname(data_repository.git_dir)
+        ]
+    )
+    assert 0 == result.exit_code
