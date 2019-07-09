@@ -94,7 +94,6 @@ class IndexedList(list):
     """List allowing to query items by id or by named index.
 
     Example:
-
     >>> from collections import namedtuple
     >>> Item = namedtuple('Item', 'key, value')
     >>> items = IndexedList(Item('a', 1), Item('b', 2), attr='key')
