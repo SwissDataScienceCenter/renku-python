@@ -103,6 +103,20 @@ def test_run_simple(runner, project):
     assert '.renku/workflow/' in result.output
 
 
+def test_run_many_args(client, run):
+    """Test a renku run command which implicitly relies on many inputs."""
+
+    os.mkdir('files')
+    output = 'output.txt'
+    for i in range(5003):
+        os.system('touch files/{}.txt'.format(i))
+    client.repo.index.add(['files/'])
+    client.repo.index.commit('add many files')
+
+    exit_code = run(args=('run', 'ls', 'files/'), stdout=output)
+    assert 0 == exit_code
+
+
 _CMD_EXIT_2 = ['bash', '-c', 'exit 2']
 
 

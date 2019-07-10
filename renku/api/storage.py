@@ -31,6 +31,10 @@ from .repository import RepositoryApiMixin
 
 HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
 
+# Batch size for when renku is expanding a large list
+# of files into an argument string.
+ARGUMENT_BATCH_SIZE = 100
+
 
 @attr.s
 class StorageApiMixin(RepositoryApiMixin):
@@ -105,6 +109,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
+        import math
         if self.use_external_storage and self.external_storage_installed:
             client_dict = defaultdict(list)
 
@@ -115,12 +120,22 @@ class StorageApiMixin(RepositoryApiMixin):
                 client_dict[client.path].append(str(path))
 
             for client_path, paths in client_dict.items():
-                run(
-                    self._CMD_STORAGE_PULL + [shlex.quote(','.join(paths))],
-                    cwd=str(client_path.absolute()),
-                    stdout=PIPE,
-                    stderr=STDOUT,
-                )
+                for ibatch in range(
+                    math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
+                ):
+                    run(
+                        self._CMD_STORAGE_PULL + [
+                            shlex.quote(
+                                ','.join(
+                                    paths[ibatch * ARGUMENT_BATCH_SIZE:
+                                          (ibatch + 1) * ARGUMENT_BATCH_SIZE]
+                                )
+                            )
+                        ],
+                        cwd=str(client_path.absolute()),
+                        stdout=PIPE,
+                        stderr=STDOUT,
+                    )
         elif self.use_external_storage:
             raise errors.ExternalStorageNotInstalled(self.repo)
 
