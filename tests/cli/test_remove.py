@@ -15,37 +15,40 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test remove command."""
+"""Test ``remove`` command."""
 
 from renku import cli
 
 
-def test_remove_dataset_file(tmpdir, runner, client):
+def test_remove_dataset_file(isolated_runner, client, tmpdir):
     """Test remove of a file that belongs to a dataset."""
+    runner = isolated_runner
+
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    source = tmpdir.join('source')
-    source.write('Source file')
+    source = tmpdir.join('remove_dataset.file')
+    source.write('data')
 
     result = runner.invoke(
-        cli.cli,
-        ['dataset', 'add', 'testing', source.strpath],
-        catch_exceptions=False,
+        cli.cli, ['dataset', 'add', 'testing', source.strpath]
     )
     assert 0 == result.exit_code
 
-    assert (client.path / client.datadir / 'testing' / 'source').exists()
+    assert (client.path / client.datadir / 'testing' /
+            'remove_dataset.file').exists()
 
-    result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['doctor'])
     assert 0 == result.exit_code
 
     result = runner.invoke(cli.cli, ['rm', 'data'])
     assert 0 == result.exit_code
 
-    assert not (client.path / client.datadir / 'testing' / 'source').exists()
+    assert not (
+        client.path / client.datadir / 'testing' / 'remove_dataset.file'
+    ).exists()
 
-    result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['doctor'])
     assert 0 == result.exit_code
