@@ -22,6 +22,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
@@ -33,6 +34,8 @@ import gitdb
 
 from renku import errors
 from renku._compat import Path
+
+COMMIT_DIFF_STRATEGY = 'DIFF'
 
 
 def _mapped_std_streams(lookup_paths, streams=('stdin', 'stdout', 'stderr')):
@@ -232,14 +235,28 @@ class GitCore:
 
         author_date = author_date or formatdate(localtime=True)
 
+        restore_stash = False
+        diff_before = set()
+        if commit_only == COMMIT_DIFF_STRATEGY:
+            staged = {item.a_path for item in self.repo.index.diff(None)}
+            modified = {item.a_path for item in self.repo.index.diff('HEAD')}
+
+            if staged or modified:
+                self.repo.git.stash()
+                restore_stash = True
+
+            # Due to the nature of unix pipes, discard files created by them.
+            exec_time = time.time()
+            diff_before = {
+                file_
+                for file_ in self.repo.untracked_files
+                if exec_time - Path(file_).stat().st_atime > 1
+            }
+
         if isinstance(commit_only, list):
             for path_ in commit_only:
                 self.ensure_untracked(str(path_))
                 self.ensure_unstaged(str(path_))
-
-        elif commit_only:
-            self.ensure_untracked(str(commit_only))
-            self.ensure_unstaged(str(commit_only))
 
         yield
 
@@ -248,15 +265,26 @@ class GitCore:
             'renku+{0}@datascience.ch'.format(__version__),
         )
 
+        if commit_only == COMMIT_DIFF_STRATEGY:
+            # Get diff generated in command (capture also modified/deleted)
+            staged_after = {item.a_path for item in self.repo.index.diff(None)}
+            modified_after = {
+                item.a_path
+                for item in self.repo.index.diff('HEAD')
+            }
+
+            diff_after = set(self.repo.untracked_files)\
+                .union(staged_after)\
+                .union(modified_after)
+
+            # Remove files not touched in command.
+            commit_only = list(diff_after - diff_before)
+
         if isinstance(commit_only, list):
             for path_ in commit_only:
-                self.repo.git.add(path_)
-
-        if isinstance(commit_only, str):
-            self.repo.git.add(commit_only)
-
-        if isinstance(commit_only, Path):
-            self.repo.git.add(str(commit_only))
+                p = Path(path_)
+                if p.exists():
+                    self.repo.git.add(path_)
 
         if not commit_only:
             self.repo.git.add('--all')
@@ -270,6 +298,9 @@ class GitCore:
             committer=committer,
             skip_hooks=True,
         )
+
+        if restore_stash:
+            self.repo.git.stash('pop')
 
     @contextmanager
     def transaction(
@@ -302,7 +333,7 @@ class GitCore:
         path=None,
         branch_name=None,
         commit=None,
-        merge_args=('--ff-only', ),
+        merge_args=('--ff', ),
     ):
         """Create new worktree."""
         from git import GitCommandError, NULL_TREE
@@ -356,7 +387,7 @@ class GitCore:
         try:
             self.repo.git.merge(branch_name, *merge_args)
         except GitCommandError:
-            raise errors.FailedMerge(self.repo)
+            raise errors.FailedMerge(self.repo, branch_name, merge_args)
 
         if delete:
             shutil.rmtree(path)

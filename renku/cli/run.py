@@ -126,7 +126,7 @@ from subprocess import call
 import click
 
 from renku import errors
-from renku.api._git import _mapped_std_streams
+from renku.api._git import COMMIT_DIFF_STRATEGY, _mapped_std_streams
 from renku.models.cwl.command_line_tool import CommandLineToolFactory
 
 from ._client import pass_local_client
@@ -157,9 +157,10 @@ from ._options import option_isolation
 @option_isolation
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_local_client(
-    clean=True,
+    clean=False,
     up_to_date=True,
     commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
     ignore_std_streams=True,
 )
 def run(client, outputs, no_output, success_codes, isolation, command_line):
@@ -176,7 +177,6 @@ def run(client, outputs, no_output, success_codes, isolation, command_line):
             for name, path in mapped_std.items()
         }
     )
-
     with client.with_workflow_storage() as wf:
         with factory.watch(
             client, no_output=no_output, outputs=outputs
@@ -190,16 +190,16 @@ def run(client, outputs, no_output, success_codes, isolation, command_line):
                 )
                 client.pull_paths_from_storage(*paths_)
 
-            returncode = call(
+            return_code = call(
                 factory.command_line,
                 cwd=os.getcwd(),
                 **{key: getattr(sys, key)
                    for key in mapped_std.keys()},
             )
 
-            if returncode not in (success_codes or {0}):
+            if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(
-                    returncode, success_codes=success_codes
+                    return_code, success_codes=success_codes
                 )
 
             sys.stdout.flush()

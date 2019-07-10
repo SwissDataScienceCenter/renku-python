@@ -21,6 +21,7 @@ import fnmatch
 import os
 import re
 import shlex
+import time
 from contextlib import contextmanager
 
 import attr
@@ -35,6 +36,8 @@ from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
 from .process import Process
 from .types import PATH_OBJECTS, Directory, File
+
+STARTED_AT = int(time.time() * 1000)
 
 
 def convert_arguments(value):
@@ -260,11 +263,22 @@ class CommandLineToolFactory(object):
             paths = []
             # Keep track of unmodified output files.
             unmodified = set()
-            # Possible output paths.
-            candidates = set(repo.untracked_files)
+            # Calculate possible output paths.
+
+            # Capture newly created files through redirects.
+            candidates = {
+                file_
+                for file_ in repo.untracked_files
+
+                # Only consider files not older than 500 ms.
+                if int(Path(file_).stat().st_ctime * 1000) - STARTED_AT >= -500
+            }
+
+            # Capture modified files through redirects.
             candidates |= {
-                item.a_path
-                for item in repo.index.diff(None) if not item.deleted_file
+                o.a_path
+                for o in repo.index.diff(None) if not o.deleted_file and
+                int(Path(o.a_path).stat().st_ctime * 1000) - STARTED_AT >= -500
             }
 
             from renku.cli._graph import _safe_path

@@ -17,9 +17,7 @@
 # limitations under the License.
 """Test execution of commands in parallel."""
 
-import subprocess
-import sys
-import time
+import pytest
 
 from renku._compat import Path
 
@@ -52,59 +50,111 @@ def test_run_in_isolation(runner, project, client, run):
         assert client.repo.head.commit.hexsha != head
 
 
-def test_file_modification_during_run(tmpdir, runner, project, client, run):
+@pytest.mark.shelled
+def test_clean_isolated_run(tmpdir, runner, project, client, run, run_shell):
     """Test run in isolation."""
     script = client.path / 'script.py'
-    output = client.path / 'output'
-    lock = Path(str(tmpdir.join('lock')))
+    output = Path('output')
 
     with client.commit():
         with script.open('w') as fp:
-            fp.write(
-                'import os, time, sys\n'
-                'open("{lock}", "a")\n'
-                'while os.path.exists("{lock}"):\n'
-                '    time.sleep(1)\n'
-                'sys.stdout.write(sys.stdin.read())\n'
-                'sys.stdout.flush()\n'.format(lock=str(lock))
-            )
-
-    prefix = [
-        sys.executable,
-        '-m',
-        'renku',
-        'run',
-        '--isolation',
-    ]
-    cmd = [
-        'python',
-        script.name,
-    ]
+            fp.write(('import sys\n' 'print(sys.stdin.read())\n'))
 
     previous = client.repo.head.commit
 
-    with output.open('wb') as stdout:
-        process = subprocess.Popen(
-            prefix + cmd, stdin=subprocess.PIPE, stdout=stdout
-        )
+    cmd = 'renku run --isolation python {0} > {1}'.format(script.name, output)
+    ps = run_shell(cmd, return_ps=True)
+    assert 0 != ps.pid
 
-        while not lock.exists():
-            time.sleep(1)
-
+    # Commit the change to script.py on master.
+    with client.commit():
         with script.open('w') as fp:
             fp.write('print("edited")')
 
-        lock.unlink()
+    ps_output = ps.communicate(input=b'test')
+    assert 0 == ps.wait()
 
-        process.communicate(input=b'test')
-        assert 0 == process.wait()
+    assert b'' == ps_output[0]
+    assert ps_output[1] is None
 
-    with output.open('r') as fp:
-        assert 'test' == fp.read().strip()
+    assert 'edited' == output.read_text().strip()
 
     diff = previous.diff(client.repo.head.commit)
     modifications = [
         modification
         for modification in diff if modification.change_type == 'M'
     ]
-    assert 0 == len(modifications)
+    assert 1 == len(modifications)
+
+
+@pytest.mark.shelled
+def test_dirty_tracked_isolated_run(
+    tmpdir, runner, project, client, run, run_shell
+):
+    """Test run in isolation with dirty parent."""
+    script = client.path / 'script.py'
+    output = Path('output')
+
+    with client.commit():
+        with script.open('w') as fp:
+            fp.write(('import sys\n' 'print(sys.stdin.read())\n'))
+
+    dirty = client.path / 'dirty'
+    with dirty.open('w') as fd:
+        fd.write('dirty')
+
+    cmd = 'renku run --isolation python {} > {}'.format(script.name, output)
+    ps = run_shell(cmd, return_ps=True)
+    assert 0 != ps.pid
+
+    # Commit the change to script.py on master.
+    dirty.unlink()
+    with client.commit():
+        with script.open('w') as fp:
+            fp.write('print("edited")')
+
+    dirty = client.path / 'dirty'
+    with dirty.open('w') as fd:
+        fd.write('dirty')
+
+    ps_output = ps.communicate(input=b'test')
+    assert 0 == ps.wait()
+
+    assert b'' == ps_output[0]
+    assert ps_output[1] is None
+
+    assert 'edited' == output.read_text().strip()
+    assert dirty.name in client.repo.untracked_files
+
+
+@pytest.mark.shelled
+def test_dirty_staged_isolated_run(
+    tmpdir, runner, project, client, run, run_shell
+):
+    """Test run in isolation with dirty parent (contains staged files)."""
+    script = client.path / 'script.py'
+    output = Path('output')
+
+    with client.commit():
+        with script.open('w') as fp:
+            fp.write(('import sys\n' 'print(sys.stdin.read())\n'))
+
+    dirty = client.path / 'dirty'
+    with dirty.open('w') as fd:
+        fd.write('dirty')
+
+    client.repo.git.add(dirty)
+
+    cmd = 'renku run --isolation python {} > {}'.format(script.name, output)
+    ps = run_shell(cmd, return_ps=True)
+    assert 0 != ps.pid
+
+    output = ps.communicate(input=b'test')
+    assert 0 == ps.wait()
+
+    assert b'' == output[0]
+    assert output[1] is None
+
+    diffs = client.repo.index.diff('HEAD')
+    assert 1 == len(diffs)
+    assert dirty.name == diffs[0].a_path

@@ -15,20 +15,58 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test remove command."""
+"""Test ``remove`` command."""
 
 from renku import cli
+from renku.api.config import RENKU_HOME
+from renku.api.datasets import DatasetsApiMixin
 
 
-def test_remove_dataset_file(tmpdir, runner, client):
+def test_remove_dataset_file(isolated_runner, client, tmpdir):
     """Test remove of a file that belongs to a dataset."""
+    runner = isolated_runner
+
     # create a dataset
     result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    source = tmpdir.join('source')
-    source.write('Source file')
+    source = tmpdir.join('remove_dataset.file')
+    source.write('data')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'testing', source.strpath]
+    )
+    assert 0 == result.exit_code
+
+    assert (client.path / client.datadir / 'testing' /
+            'remove_dataset.file').exists()
+
+    result = runner.invoke(cli.cli, ['doctor'])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli.cli, ['rm', 'data'])
+    assert 0 == result.exit_code
+
+    assert not (
+        client.path / client.datadir / 'testing' / 'remove_dataset.file'
+    ).exists()
+
+    result = runner.invoke(cli.cli, ['doctor'])
+    assert 0 == result.exit_code
+
+
+def test_remove_dataset_file_dirty(isolated_runner, client, tmpdir):
+    """Test remove of a file that belongs to a dataset while in dirty repo."""
+    runner = isolated_runner
+
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    source = tmpdir.join('remove_dataset_dirty.file')
+    source.write('data')
 
     result = runner.invoke(
         cli.cli,
@@ -37,15 +75,25 @@ def test_remove_dataset_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    assert (client.path / client.datadir / 'testing' / 'source').exists()
+    assert (
+        client.path / client.datadir / 'testing' / 'remove_dataset_dirty.file'
+    ).exists()
 
-    result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert set(client.repo.untracked_files) == set()
+
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
 
     result = runner.invoke(cli.cli, ['rm', 'data'])
     assert 0 == result.exit_code
 
-    assert not (client.path / client.datadir / 'testing' / 'source').exists()
+    assert not (
+        client.path / client.datadir / 'testing' / 'remove_dataset.file'
+    ).exists()
 
-    result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
+    result = runner.invoke(cli.cli, ['doctor'])
     assert 0 == result.exit_code

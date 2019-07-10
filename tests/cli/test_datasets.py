@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test dataset command."""
+"""Test ``dataset`` command."""
 
 from __future__ import absolute_import, print_function
 
@@ -186,60 +186,6 @@ def test_dataset_create_exception_refs(
     result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
     assert 1 == result.exit_code
     assert 'a' in result.output
-
-
-def test_datasets_import(data_file, data_repository, runner, project, client):
-    """Test importing data into a dataset."""
-    # create a dataset
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    with client.with_dataset('dataset') as dataset:
-        assert dataset.name == 'dataset'
-
-    # add data
-    result = runner.invoke(
-        cli.cli,
-        ['dataset', 'add', 'dataset',
-         str(data_file)],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code
-    assert os.stat(
-        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
-    )
-
-    # add data from a git repo via http
-    result = runner.invoke(
-        cli.cli,
-        [
-            'dataset', 'add', 'dataset', '--target', 'README.rst',
-            'https://github.com/SwissDataScienceCenter/renku-python.git'
-        ],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code
-    assert os.stat('data/dataset/README.rst')
-
-    # add data from local git repo
-    result = runner.invoke(
-        cli.cli, [
-            'dataset', 'add', 'dataset', '-t', 'dir2/file2',
-            os.path.dirname(data_repository.git_dir)
-        ],
-        catch_exceptions=False
-    )
-    assert 0 == result.exit_code
-
-    # add data from any URL (not a git repo)
-    result = runner.invoke(
-        cli.cli,
-        ['dataset', 'add', 'dataset', 'http://example.com/file.ext?foo=bar'],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code
-    assert os.stat('data/dataset/file.ext')
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
@@ -700,6 +646,7 @@ def test_dataset_unlink_file_not_found(runner, project):
         ['dataset', 'unlink', 'my-dataset', '--include', 'notthere.csv']
     )
     assert 0 == result.exit_code
+
     assert '' == result.output
 
 
@@ -850,5 +797,24 @@ def test_dataset_edit(runner, client, project):
         cli.cli, ['dataset', 'edit', dataset.identifier],
         input='wq',
         catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+
+def test_dataset_edit_dirty(runner, client, project):
+    """Check dataset metadata editing when dirty repository."""
+    # Create a file in root of the repository.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    # Create a dataset.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'edit', dataset.identifier], input='wq'
     )
     assert 0 == result.exit_code

@@ -29,6 +29,7 @@ from subprocess import run
 import click
 
 from renku._compat import Path
+from renku.api._git import COMMIT_DIFF_STRATEGY
 
 from ._client import pass_local_client
 from ._echo import WARNING, progressbar
@@ -37,7 +38,11 @@ from ._echo import WARNING, progressbar
 @click.command(name='mv')
 @click.argument('sources', type=click.Path(exists=True), nargs=-1)
 @click.argument('destination', type=click.Path(), nargs=1)
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 @click.pass_context
 def move(ctx, client, sources, destination):
     """Move files and check repository for potential problems."""

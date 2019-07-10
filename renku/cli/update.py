@@ -122,6 +122,7 @@ import uuid
 
 import click
 
+from renku.api._git import COMMIT_DIFF_STRATEGY
 from renku.models.cwl._ascwl import ascwl
 
 from ._client import pass_local_client
@@ -139,7 +140,11 @@ from ._options import option_siblings
 )
 @option_siblings
 @click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 def update(client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)

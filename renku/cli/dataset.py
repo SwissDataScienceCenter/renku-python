@@ -166,12 +166,11 @@ from click import BadParameter
 from requests import HTTPError
 from tqdm import tqdm
 
-from renku.api.config import RENKU_HOME
-from renku.api.datasets import DatasetsApiMixin
+from renku.api._git import COMMIT_DIFF_STRATEGY
+from renku.api.datasets import get_dataset_metadata_paths
 from renku.cli._providers import ProviderFactory
 from renku.models._tabulate import tabulate
 from renku.models.datasets import Dataset
-from renku.models.refs import LinkReference
 
 from .._compat import Path
 from ._client import pass_local_client
@@ -209,12 +208,7 @@ def dataset(ctx, client, revision, datadir, format):
 @dataset.command()
 @click.argument('name')
 @pass_local_client(
-    clean=False,
-    commit=True,
-    commit_only=[
-        Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
-        Path(RENKU_HOME) / Path(LinkReference.REFS),
-    ]
+    clean=False, commit=True, commit_only=get_dataset_metadata_paths()
 )
 def create(client, name):
     """Create an empty dataset in the current repo."""
@@ -233,7 +227,9 @@ def create(client, name):
 
 @dataset.command()
 @click.argument('id')
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False, commit=True, commit_only=get_dataset_metadata_paths()
+)
 def edit(client, id):
     """Edit dataset metadata."""
     dataset_ = client.load_dataset(id)
@@ -267,7 +263,11 @@ def edit(client, id):
 @click.option(
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 def add(client, name, urls, link, relative_to, target, force):
     """Add data to a dataset."""
     add_to_dataset(client, urls, name, link, force, relative_to, target)
@@ -374,7 +374,11 @@ def ls_files(client, names, creators, include, exclude, format):
 @click.option(
     '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
 )
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 def unlink(client, name, include, exclude, yes):
     """Remove matching files from a dataset."""
     dataset = client.load_dataset(name=name)
@@ -405,7 +409,11 @@ def unlink(client, name, include, exclude, yes):
 
 @dataset.command('rm')
 @click.argument('names', nargs=-1)
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 def remove(client, names):
     """Delete a dataset."""
     from renku.models.refs import LinkReference
@@ -457,7 +465,11 @@ def remove(client, names):
     is_flag=True,
     help='Automatically publish exported dataset.'
 )
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 def export_(client, id, provider, publish):
     """Export data to 3rd party provider."""
     config_key_secret = 'access_token'
@@ -512,7 +524,11 @@ def export_(client, id, provider, publish):
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 @click.pass_context
 def import_(ctx, client, uri, name, extract):
     """Import data from a 3rd party provider.

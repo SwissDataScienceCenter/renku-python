@@ -31,8 +31,10 @@ import requests
 
 from renku import errors
 from renku._compat import Path
+from renku.api.config import RENKU_HOME
 from renku.models._git import GitURL
 from renku.models.datasets import Creator, Dataset, DatasetFile, NoneType
+from renku.models.refs import LinkReference
 
 
 @attr.s
@@ -452,3 +454,11 @@ def check_for_git_repo(url):
         except InvalidGitRepositoryError:
             is_git = False
     return is_git
+
+
+def get_dataset_metadata_paths():
+    """Return filesystem paths for dataset metadata."""
+    return [
+        Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
+        Path(RENKU_HOME) / Path(LinkReference.REFS),
+    ]

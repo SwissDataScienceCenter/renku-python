@@ -43,6 +43,7 @@ import configparser
 import click
 from click import BadParameter
 
+from renku.api._git import COMMIT_DIFF_STRATEGY
 from renku.api.config import get_config
 
 from ._client import pass_local_client
@@ -65,7 +66,7 @@ def _split_section_and_key(key):
     is_flag=True,
     help='Store to global configuration.'
 )
-@pass_local_client
+@pass_local_client(clean=False, commit=True, commit_only=COMMIT_DIFF_STRATEGY)
 def config(client, key, value, is_global):
     """Manage configuration options."""
     write_op = value is not None
