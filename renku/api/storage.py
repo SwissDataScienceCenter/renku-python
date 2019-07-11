@@ -65,99 +65,116 @@ class StorageApiMixin(RepositoryApiMixin):
     @property
     def external_storage_installed(self):
         """Check that Large File Storage is installed."""
-        return HAS_LFS and self.repo.config_reader(
-        ).has_section('filter "lfs"')
+        return HAS_LFS
 
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
-        if self.use_external_storage and self.external_storage_installed:
-            track_paths = []
-            attrs = self.find_attr(*paths)
+        if not self._use_lfs():
+            return
 
-            for path in paths:
-                # Do not add files with filter=lfs in .gitattributes
-                if attrs.get(path, {}).get('filter') == 'lfs':
-                    continue
-
-                path = Path(path)
-                if path.is_dir():
-                    track_paths.append(str(path / '**'))
-                elif path.suffix != '.ipynb':
-                    # TODO create configurable filter and follow .gitattributes
-                    track_paths.append(str(path))
-
-            call(
-                self._CMD_STORAGE_TRACK + track_paths,
-                stdout=PIPE,
-                stderr=STDOUT,
-                cwd=str(self.path),
-            )
-        elif self.use_external_storage:
+        if not self.external_storage_installed:
             raise errors.ExternalStorageNotInstalled(self.repo)
+
+        track_paths = []
+        attrs = self.find_attr(*paths)
+
+        for path in paths:
+            # Do not add files with filter=lfs in .gitattributes
+            if attrs.get(path, {}).get('filter') == 'lfs':
+                continue
+
+            path = Path(path)
+            if path.is_dir():
+                track_paths.append(str(path / '**'))
+            elif path.suffix != '.ipynb':
+                # TODO create configurable filter and follow .gitattributes
+                track_paths.append(str(path))
+
+        call(
+            self._CMD_STORAGE_TRACK + track_paths,
+            stdout=PIPE,
+            stderr=STDOUT,
+            cwd=str(self.path),
+        )
 
     def untrack_paths_from_storage(self, *paths):
         """Untrack paths from the external storage."""
-        if self.use_external_storage and self.external_storage_installed:
-            call(
-                self._CMD_STORAGE_UNTRACK + list(paths),
-                stdout=PIPE,
-                stderr=STDOUT,
-                cwd=str(self.path),
-            )
-        elif self.use_external_storage:
+        if not self._use_lfs():
+            return
+
+        if not self.external_storage_installed:
             raise errors.ExternalStorageNotInstalled(self.repo)
+
+        call(
+            self._CMD_STORAGE_UNTRACK + list(paths),
+            stdout=PIPE,
+            stderr=STDOUT,
+            cwd=str(self.path),
+        )
 
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
         import math
-        if self.use_external_storage and self.external_storage_installed:
-            client_dict = defaultdict(list)
 
-            for path in _expand_directories(paths):
-                client, commit, path = self.resolve_in_submodules(
-                    self.repo.commit(), path
-                )
-                client_dict[client.path].append(str(path))
+        if not self._use_lfs():
+            return
 
-            for client_path, paths in client_dict.items():
-                for ibatch in range(
-                    math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
-                ):
-                    run(
-                        self._CMD_STORAGE_PULL + [
-                            shlex.quote(
-                                ','.join(
-                                    paths[ibatch * ARGUMENT_BATCH_SIZE:
-                                          (ibatch + 1) * ARGUMENT_BATCH_SIZE]
-                                )
-                            )
-                        ],
-                        cwd=str(client_path.absolute()),
-                        stdout=PIPE,
-                        stderr=STDOUT,
-                    )
-        elif self.use_external_storage:
+        if not self.external_storage_installed:
             raise errors.ExternalStorageNotInstalled(self.repo)
+
+        client_dict = defaultdict(list)
+
+        for path in _expand_directories(paths):
+            client, commit, path = self.resolve_in_submodules(
+                self.repo.commit(), path
+            )
+            client_dict[client.path].append(str(path))
+
+        for client_path, paths in client_dict.items():
+            for ibatch in range(math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)):
+                run(
+                    self._CMD_STORAGE_PULL + [
+                        shlex.quote(
+                            ','.join(
+                                paths[ibatch * ARGUMENT_BATCH_SIZE:
+                                      (ibatch + 1) * ARGUMENT_BATCH_SIZE]
+                            )
+                        )
+                    ],
+                    cwd=str(client_path.absolute()),
+                    stdout=PIPE,
+                    stderr=STDOUT,
+                )
 
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
-        if self.use_external_storage and self.external_storage_installed:
-            run(
-                self._CMD_STORAGE_CHECKOUT + list(paths),
-                cwd=str(self.path.absolute()),
-                stdout=PIPE,
-                stderr=STDOUT,
-                check=True,
-            )
-        elif self.use_external_storage:
+        if not self._use_lfs():
+            return
+
+        if not self.external_storage_installed:
             raise errors.ExternalStorageNotInstalled(self.repo)
+
+        run(
+            self._CMD_STORAGE_CHECKOUT + list(paths),
+            cwd=str(self.path.absolute()),
+            stdout=PIPE,
+            stderr=STDOUT,
+            check=True,
+        )
 
     def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""
         result = super().init_repository(name=name, force=force)
 
         # initialize LFS if it is requested and installed
-        if self.use_external_storage and HAS_LFS:
+        if self.use_external_storage and self.external_storage_installed:
             self.init_external_storage(force=force)
 
         return result
+
+    def _use_lfs(self):
+        renku_initialized_to_use_lfs = self.repo.config_reader(
+            config_level='repository'
+        ).has_section('filter "lfs"')
+
+        return renku_initialized_to_use_lfs and self.use_external_storage
