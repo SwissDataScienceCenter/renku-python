@@ -397,7 +397,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
         monkey.setattr(StorageApiMixin, 'storage_installed', False)
         # Missing --no-external-storage flag.
         result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
-        assert 'Git-LFS is not configured' in result.output
+        assert 'is not configured' in result.output
         assert 1 == result.exit_code
 
         # Since repo is not using external storage.
@@ -426,7 +426,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
         monkey.setattr(StorageApiMixin, 'storage_installed', False)
         # Repo is using external storage but it's not installed.
         result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
-        assert 'Git-LFS is not configured' in result.output
+        assert 'is not configured' in result.output
         assert 1 == result.exit_code
 
     # Clean repo and check external storage.
