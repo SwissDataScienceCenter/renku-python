@@ -17,8 +17,8 @@
 # limitations under the License.
 """Check location of files in datasets."""
 
-import os
 from collections import defaultdict
+from pathlib import Path
 
 import click
 
@@ -31,13 +31,11 @@ def check_missing_files(client):
 
     for path, dataset in client.datasets.items():
         for file_ in dataset.files:
-            filepath = (path.parent / file_.path)
+            filepath = Path(file_.path)
             if not filepath.exists():
                 missing[str(
                     path.parent.relative_to(client.renku_datasets_path)
-                )].append(
-                    os.path.normpath(str(filepath.relative_to(client.path)))
-                )
+                )].append(str(filepath))
 
     if not missing:
         return True

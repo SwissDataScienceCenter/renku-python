@@ -44,7 +44,7 @@ class CommitMixin:
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _project = jsonld.ib(context='dcterms:isPartOf', kw_only=True)
+    _project = jsonld.ib(context='schema:isPartOf', kw_only=True)
 
     @property
     def submodules(self):
@@ -54,19 +54,28 @@ class CommitMixin:
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return 'blob/{self.commit.hexsha}/{self.path}'.format(self=self)
+        if self.commit:
+            hexsha = self.commit.hexsha
+        else:
+            hexsha = 'UNCOMMITTED'
+        return 'blob/{hexsha}/{self.path}'.format(hexsha=hexsha, self=self)
 
     @_label.default
     def default_label(self):
         """Generate a default label."""
+        if self.commit:
+            hexsha = self.commit.hexsha
+        else:
+            hexsha = 'UNCOMMITTED'
         if self.path:
-            return '{self.path}@{self.commit.hexsha}'.format(self=self)
-        return '{self.commit.hexsha}'.format(self=self)
+            return '{self.path}@{hexsha}'.format(hexsha=hexsha, self=self)
+        return '{hexsha}'.format(hexsha=hexsha, self=self)
 
     @_project.default
     def default_project(self):
         """Generate a default location."""
-        return self.client.project
+        if self.client:
+            return self.client.project
 
 
 @jsonld.s(
@@ -75,7 +84,7 @@ class CommitMixin:
         'wfprov:Artifact',
     ],
     context={
-        'dcterms': 'http://purl.org/dc/terms/',
+        'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
     },
@@ -92,7 +101,9 @@ class Entity(CommitMixin):
     )
 
     @classmethod
-    def from_revision(cls, client, path, revision='HEAD', parent=None):
+    def from_revision(
+        cls, client, path, revision='HEAD', parent=None, **kwargs
+    ):
         """Return dependency from given path and revision."""
         client, commit, path = client.resolve_in_submodules(
             client.find_previous_commit(path, revision=revision),
@@ -119,18 +130,20 @@ class Entity(CommitMixin):
                             client,
                             str(member.relative_to(client.path)),
                             commit,
-                            parent=entity
+                            parent=entity,
+                            **kwargs
                         )
                     )
                 except KeyError:
                     pass
 
         else:
-            entity = Entity(
+            entity = cls(
                 client=client,
                 commit=commit,
                 path=str(path),
                 parent=parent,
+                **kwargs
             )
 
         return entity

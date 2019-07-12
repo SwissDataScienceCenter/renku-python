@@ -246,7 +246,7 @@ def edit(client, id):
         )
 
         edited = yaml.safe_load(metadata_edited)
-        updated_ = Dataset(**edited)
+        updated_ = Dataset(client=client, **edited)
 
         dataset_.update_metadata(updated_)
         dataset_.to_yaml()
@@ -303,7 +303,7 @@ def add_to_dataset(
                 for file_ in with_metadata.files:
                     for added_ in dataset.files:
 
-                        if file_.filename.endswith(added_.path.name):
+                        if added_.path.endswith(file_.filename):
                             if isinstance(file_.url, ParseResult):
                                 file_.url = file_.url.geturl()
 
@@ -526,7 +526,7 @@ def import_(ctx, client, uri, name, extract):
     try:
 
         record = provider.find_record(uri)
-        dataset_ = record.as_dataset()
+        dataset_ = record.as_dataset(client)
         files_ = dataset_.files
 
         click.echo(

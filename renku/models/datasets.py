@@ -19,7 +19,6 @@
 
 import configparser
 import datetime
-import os
 import re
 import uuid
 from functools import partial
@@ -30,7 +29,7 @@ from dateutil.parser import parse as parse_date
 
 from renku import errors
 from renku._compat import Path
-from renku.api.repository import default_path
+from renku.models.provenance.entities import Entity
 from renku.utils.doi import is_doi
 
 from . import _jsonld as jsonld
@@ -50,6 +49,8 @@ _path_attr = partial(
 )
 class Creator(object):
     """Represent the creator of a resource."""
+
+    client = attr.ib(default=None, kw_only=True)
 
     affiliation = jsonld.ib(
         default=None, kw_only=True, context='schema:affiliation'
@@ -125,7 +126,7 @@ class Creator(object):
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
         if not self._id:
-            self._id = self.name.replace(' ', '.').lower()
+            self._id = 'mailto:{self.email}'.format(self=self)
 
 
 @attr.s
@@ -172,7 +173,7 @@ def _convert_dataset_files_creators(value):
     slots=True,
     context={'schema': 'http://schema.org/'}
 )
-class DatasetFile(CreatorsMixin):
+class DatasetFile(Entity, CreatorsMixin):
     """Represent a file in a dataset."""
 
     creator = jsonld.container.list(
@@ -186,41 +187,38 @@ class DatasetFile(CreatorsMixin):
 
     checksum = attr.ib(default=None, kw_only=True)
 
-    dataset = attr.ib(default=None, kw_only=True)
+    dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
 
-    filename = attr.ib(default=None, kw_only=True)
+    filename = attr.ib(kw_only=True)
 
     filesize = attr.ib(default=None, kw_only=True)
 
     filetype = attr.ib(default=None, kw_only=True)
 
-    path = _path_attr(kw_only=True)
-
     url = jsonld.ib(default=None, context='schema:url', kw_only=True)
-
-    _id = jsonld.ib(default=None, kw_only=True, context='@id')
 
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.utcnow()
 
+    @filename.default
+    def default_filename(self):
+        """Generate default filename based on path."""
+        return Path(self.path).name
+
     @property
     def full_path(self):
         """Return full path in the current reference frame."""
-        return Path(
-            os.path.realpath(str(self.__reference__.parent / self.path))
-        )
+        path = Path(self.path)
+        if self.client:
+            return (self.client.path / path).resolve()
+        return path.resolve()
 
     @property
     def size_in_mb(self):
         """Return file size in megabytes."""
         return self.filesize * 1e-6
-
-    def __attrs_post_init__(self):
-        """Post-Init hook to set _id field."""
-        if not self._id:
-            self._id = str(self.url)
 
 
 def _parse_date(value):
@@ -277,7 +275,7 @@ def _convert_keyword(keywords):
         'url': 'schema:url'
     },
 )
-class Dataset(CreatorsMixin):
+class Dataset(Entity, CreatorsMixin):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
@@ -287,48 +285,72 @@ class Dataset(CreatorsMixin):
         'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
-    _id = jsonld.ib(default=None, context='@id')
+    _id = jsonld.ib(default=None, context='@id', kw_only=True)
+    _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
 
     creator = jsonld.container.list(
-        Creator, converter=_convert_dataset_creator, context='schema:creator'
+        Creator,
+        converter=_convert_dataset_creator,
+        context='schema:creator',
+        kw_only=True
     )
 
-    date_published = jsonld.ib(default=None, context='schema:datePublished')
+    date_published = jsonld.ib(
+        default=None, context='schema:datePublished', kw_only=True
+    )
 
-    description = jsonld.ib(default=None, context='schema:description')
+    description = jsonld.ib(
+        default=None, context='schema:description', kw_only=True
+    )
 
-    identifier = jsonld.ib(default=None, context='schema:identifier')
+    identifier = jsonld.ib(
+        default=attr.Factory(uuid.uuid4),
+        context='schema:identifier',
+        kw_only=True,
+        converter=str
+    )
 
     in_language = jsonld.ib(
         type=Language,
         default=None,
         converter=_convert_language,
-        context='schema:inLanguage'
+        context='schema:inLanguage',
+        kw_only=True
     )
 
     keywords = jsonld.container.list(
-        str, converter=_convert_keyword, context='schema:keywords'
+        str,
+        converter=_convert_keyword,
+        context='schema:keywords',
+        kw_only=True
     )
 
-    license = jsonld.ib(default=None, context='schema:license')
+    license = jsonld.ib(default=None, context='schema:license', kw_only=True)
 
-    name = jsonld.ib(default=None, type=str, context='schema:name')
+    name = jsonld.ib(
+        default=None, type=str, context='schema:name', kw_only=True
+    )
 
-    url = jsonld.ib(default=None, context='schema:url')
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
-    version = jsonld.ib(default=None, context='schema:version')
+    version = jsonld.ib(default=None, context='schema:version', kw_only=True)
 
     created = jsonld.ib(
-        converter=_parse_date,
-        context='schema:dateCreated',
+        converter=_parse_date, context='schema:dateCreated', kw_only=True
     )
 
     files = jsonld.container.list(
         DatasetFile,
         default=None,
         converter=_convert_dataset_files,
-        context='schema:DigitalDocument'
+        context='schema:hasPart',
+        kw_only=True
     )
+
+    @created.default
+    def _now(self):
+        """Define default value for datetime fields."""
+        return datetime.datetime.utcnow()
 
     @property
     def display_name(self):
@@ -355,11 +377,6 @@ class Dataset(CreatorsMixin):
         """UUID part of identifier."""
         return self.identifier.split('/')[-1]
 
-    @created.default
-    def _now(self):
-        """Define default value for datetime fields."""
-        return datetime.datetime.utcnow()
-
     @property
     def short_id(self):
         """Shorter version of identifier."""
@@ -379,10 +396,10 @@ class Dataset(CreatorsMixin):
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
 
-    def find_file(self, file_path, return_index=False):
+    def find_file(self, filename, return_index=False):
         """Find a file in files container."""
         for index, file_ in enumerate(self.files):
-            if str(file_.path) == str(file_path):
+            if str(file_.path) == str(filename):
                 if return_index:
                     return index
                 return file_
@@ -441,11 +458,10 @@ class Dataset(CreatorsMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
-        if not self.identifier:
-            self.identifier = str(uuid.uuid4())
+        self._id = self.identifier
 
-        if not self._id:
-            self._id = '{0}/datasets/{1}'.format(
-                Path(default_path()).name, self.identifier
-            )
-            self.identifier = self._id
+        if not self._label:
+            self._label = self.identifier
+
+        if not self.path:
+            self.path = self.client.renku_datasets_path / str(self.uid)

@@ -28,7 +28,6 @@ from urllib import error, parse
 
 import attr
 import requests
-import yaml
 
 from renku import errors
 from renku._compat import Path
@@ -65,19 +64,25 @@ class DatasetsApiMixin(object):
                 blob = tree / self.METADATA
             except KeyError:
                 continue
-
-            yield Dataset.from_jsonld(
-                yaml.safe_load(blob.data_stream.read()),
-                __reference__=Path(blob.path),
+            dataset = Dataset.from_yaml(
+                self.path / Path(blob.path), client=self
             )
+            dataset.commit = commit
+            yield dataset
 
     @property
     def datasets(self):
         """Return mapping from path to dataset."""
         result = {}
         for path in self.renku_datasets_path.rglob(self.METADATA):
-            result[path] = Dataset.from_yaml(path)
+            result[path] = self.get_dataset(path)
         return result
+
+    def get_dataset(self, path):
+        """Return a dataset from a given path."""
+        if not path.is_absolute():
+            path = self.path / path
+        return Dataset.from_yaml(path, client=self)
 
     def dataset_path(self, name):
         """Get dataset path from name."""
@@ -98,7 +103,7 @@ class DatasetsApiMixin(object):
         if name:
             path = self.dataset_path(name)
             if path.exists():
-                dataset = Dataset.from_yaml(path)
+                dataset = self.get_dataset(path)
 
         return dataset
 
@@ -116,7 +121,9 @@ class DatasetsApiMixin(object):
             path.parent.mkdir(parents=True, exist_ok=True)
 
             with with_reference(path):
-                dataset = Dataset(identifier=identifier, name=name)
+                dataset = Dataset(
+                    identifier=identifier, name=name, client=self
+                )
 
             if name:
                 LinkReference.create(client=self, name='datasets/' +
@@ -150,9 +157,9 @@ class DatasetsApiMixin(object):
                     dataset, dataset_path, url, target, **kwargs
                 )
             else:
-                files = {}
+                files = []
                 for t in target:
-                    files.update(
+                    files.extend(
                         self._add_from_git(
                             dataset, dataset_path, url, t, **kwargs
                         )
@@ -160,14 +167,8 @@ class DatasetsApiMixin(object):
         else:
             files = self._add_from_url(dataset, dataset_path, url, **kwargs)
 
-        ignored = self.find_ignored_paths(
-            *[
-                os.path.relpath(
-                    str(self.renku_datasets_path / dataset.uid / key),
-                    start=str(self.path),
-                ) for key in files.keys()
-            ]
-        )
+        ignored = self.find_ignored_paths(*(data['path']
+                                            for data in files)) or []
 
         if ignored:
             if force:
@@ -175,7 +176,19 @@ class DatasetsApiMixin(object):
             else:
                 raise errors.IgnoredFiles(ignored)
 
-        dataset.update_files(files.values())
+        # commit all new data
+        file_paths = {str(data['path']) for data in files if str(data['path'])}
+        self.repo.git.add(*(file_paths - set(ignored)))
+        self.repo.index.commit(
+            'renku dataset: commiting {} newly added files'.
+            format(len(file_paths) + len(ignored))
+        )
+
+        # Generate the DatasetFiles
+        dataset_files = []
+        for data in files:
+            dataset_files.append(DatasetFile.from_revision(self, **data))
+        dataset.update_files(dataset_files)
 
     def _add_from_url(self, dataset, path, url, link=False, **kwargs):
         """Process an add from url and return the location on disk."""
@@ -202,15 +215,16 @@ class DatasetsApiMixin(object):
 
             # if we have a directory, recurse
             if src.is_dir():
-                files = {}
+                files = []
                 dst.mkdir(parents=True, exist_ok=True)
                 for f in src.iterdir():
-                    files.update(
+                    files.extend(
                         self._add_from_url(
                             dataset,
                             dst,
                             f.absolute().as_posix(),
                             link=link,
+                            **kwargs
                         )
                     )
                 return files
@@ -243,17 +257,14 @@ class DatasetsApiMixin(object):
         dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
         self.track_paths_in_storage(str(dst.relative_to(self.path)))
-        dataset_path = self.renku_datasets_path / dataset.name
-        result = os.path.relpath(str(dst), start=str(dataset_path))
-        return {
-            result:
-                DatasetFile(
-                    path=result,
-                    url=url,
-                    creator=dataset.creator,
-                    dataset=dataset.name,
-                )
-        }
+
+        return [{
+            'path': dst.relative_to(self.path),
+            'url': url,
+            'creator': dataset.creator,
+            'dataset': dataset.name,
+            'parent': self
+        }]
 
     def _add_from_git(self, dataset, path, url, target, **kwargs):
         """Process adding resources from another git repository.
@@ -280,21 +291,13 @@ class DatasetsApiMixin(object):
                 relative_url = None
 
             if relative_url:
-                result = str(
-                    os.path.relpath(
-                        str(relative_url),
-                        start=str(self.renku_datasets_path / dataset.uid),
-                    )
-                )
-                return {
-                    result:
-                        DatasetFile(
-                            path=result,
-                            url=url,
-                            creator=dataset.creator,
-                            dataset=dataset.name,
-                        )
-                }
+                return [{
+                    'path': url,
+                    'url': url,
+                    'creator': dataset.creator,
+                    'dataset': dataset.name,
+                    'parent': self
+                }]
 
             warnings.warn('Importing local git repository, use HTTPS')
             # determine where is the base repo path
@@ -355,12 +358,12 @@ class DatasetsApiMixin(object):
 
         # if we have a directory, recurse
         if src.is_dir():
-            files = {}
+            files = []
             dst.mkdir(parents=True, exist_ok=True)
             # FIXME get all files from submodule index
             for f in src.iterdir():
                 try:
-                    files.update(
+                    files.extend(
                         self._add_from_git(
                             dataset,
                             path,
@@ -386,23 +389,18 @@ class DatasetsApiMixin(object):
             if creator not in creators:
                 creators.append(creator)
 
-        dataset_path = self.renku_datasets_path / dataset.name
-        result = os.path.relpath(str(dst), start=str(dataset_path))
-
         if u.scheme in ('', 'file'):
             url = None
         else:
             url = '{}/{}'.format(url, target)
 
-        return {
-            result:
-                DatasetFile(
-                    path=result,
-                    url=url,
-                    creator=creators,
-                    dataset=dataset.name,  # TODO detect original dataset
-                )
-        }
+        return [{
+            'path': dst.relative_to(self.path),
+            'url': url,
+            'creator': creators,
+            'dataset': dataset.name,
+            'parent': self
+        }]
 
     def get_relative_url(self, url):
         """Determine if the repo url should be relative."""

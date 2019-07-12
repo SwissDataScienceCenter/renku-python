@@ -61,7 +61,7 @@ def remove(ctx, client, sources):
             remove = []
             for file_ in dataset.files:
                 key = file_.path
-                filepath = fmt_path(file_.full_path)
+                filepath = fmt_path(file_.path)
                 if filepath in files:
                     remove.append(key)
 

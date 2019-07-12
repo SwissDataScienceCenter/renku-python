@@ -414,8 +414,12 @@ def test_datasets_remote_import(
     # add data from local git repo
     result = runner.invoke(
         cli.cli, [
-            'dataset', 'add', 'dataset', '-t', 'file2', '-t', 'file3',
-            os.path.dirname(data_repository.git_dir)
+            'dataset',
+            'add',
+            'dataset',
+            '-t',
+            'dir2/file2',
+            os.path.dirname(data_repository.git_dir),
         ]
     )
     assert 0 == result.exit_code

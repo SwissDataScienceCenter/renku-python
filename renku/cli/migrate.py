@@ -51,8 +51,7 @@ def datasets(ctx, client):
     from ._checks.location_datasets import _dataset_metadata_pre_0_3_4
 
     for old_path in _dataset_metadata_pre_0_3_4(client):
-        with old_path.open('r') as fp:
-            dataset = Dataset.from_jsonld(yaml.safe_load(fp))
+        dataset = Dataset.from_yaml(old_path, client=client)
 
         name = str(old_path.parent.relative_to(client.path / 'data'))
         new_path = (client.renku_datasets_path / dataset.uid / client.METADATA)
