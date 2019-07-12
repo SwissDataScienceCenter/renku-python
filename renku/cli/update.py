@@ -169,10 +169,14 @@ def update(client, revision, no_output, siblings, paths):
         outputs=outputs,
     )
 
-    # Make sure all inputs are pulled from a storage.
-    client.pull_paths_from_storage(
-        *(path for _, path in workflow.iter_input_files(client.workflow_path))
-    )
+    # Don't compute paths if storage is disabled.
+    if client.has_external_storage:
+        # Make sure all inputs are pulled from a storage.
+        paths_ = (
+            path
+            for _, path in workflow.iter_input_files(client.workflow_path)
+        )
+        client.pull_paths_from_storage(*paths_)
 
     with output_file.open('w') as f:
         f.write(
