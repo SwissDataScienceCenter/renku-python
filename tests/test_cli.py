@@ -31,6 +31,7 @@ import yaml
 
 from renku import __version__, cli
 from renku._compat import Path
+from renku.api.storage import StorageApiMixin
 from renku.models.cwl import CWLClass, ascwl
 from renku.models.cwl.workflow import Workflow
 
@@ -382,38 +383,55 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
             } == set(result.output.strip().split('\n'))
 
 
-def test_configuration_of_external_storage(isolated_runner, monkeypatch):
-    """Test the LFS requirement for renku run."""
+def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
+    """Test the LFS requirement for renku run with disabled storage."""
     runner = isolated_runner
 
     os.mkdir('test-project')
     os.chdir('test-project')
 
-    result = runner.invoke(cli.cli, ['-S', 'init'])
+    result = runner.invoke(cli.cli, ['--no-external-storage', 'init'])
     assert 0 == result.exit_code
-
-    with monkeypatch.context() as m:
-        from renku.api.storage import StorageApiMixin
-        m.setattr(StorageApiMixin, 'external_storage_installed', False)
-
+    # Pretend that git-lfs is not installed.
+    with monkeypatch.context() as monkey:
+        monkey.setattr(StorageApiMixin, 'storage_installed', False)
+        # Missing --no-external-storage flag.
         result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
+        assert 'is not configured' in result.output
+        assert 1 == result.exit_code
+
+        # Since repo is not using external storage.
+        result = runner.invoke(
+            cli.cli, ['--no-external-storage', 'run', 'touch', 'output']
+        )
         assert 0 == result.exit_code
 
-    result = runner.invoke(cli.cli, ['-S', 'run', 'touch', 'output2'])
+    subprocess.call(['git', 'clean', '-df'])
+    result = runner.invoke(
+        cli.cli, ['--no-external-storage', 'run', 'touch', 'output']
+    )
+    # Needs to result in error since output file
+    # is now considered an input file (check run.py doc).
+    assert 1 == result.exit_code
+
+
+def test_configuration_of_external_storage(isolated_runner, monkeypatch):
+    """Test the LFS requirement for renku run."""
+    runner = isolated_runner
+
+    result = runner.invoke(cli.cli, ['--external-storage', 'init'])
     assert 0 == result.exit_code
-
-    result = runner.invoke(cli.cli, ['init', '--force'])
-    assert 0 == result.exit_code
-
-    with monkeypatch.context() as m:
-        from renku.api.storage import StorageApiMixin
-        m.setattr(StorageApiMixin, 'external_storage_installed', False)
-
-        result = runner.invoke(cli.cli, ['run', 'touch', 'output3'])
+    # Pretend that git-lfs is not installed.
+    with monkeypatch.context() as monkey:
+        monkey.setattr(StorageApiMixin, 'storage_installed', False)
+        # Repo is using external storage but it's not installed.
+        result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
+        assert 'is not configured' in result.output
         assert 1 == result.exit_code
-        subprocess.call(['git', 'clean', '-df'])
 
-    result = runner.invoke(cli.cli, ['run', 'touch', 'output4'])
+    # Clean repo and check external storage.
+    subprocess.call(['git', 'clean', '-df'])
+    result = runner.invoke(cli.cli, ['run', 'touch', 'output2'])
     assert 0 == result.exit_code
 
 
@@ -480,23 +498,27 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
         f.write('woop')
 
     os.chdir('foo')
-    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
+    result = runner.invoke(
+        cli.cli, ['init', '--no-external-storage'], catch_exceptions=False
+    )
     assert 0 == result.exit_code
 
     os.chdir('../bar')
-    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
+    result = runner.invoke(
+        cli.cli, ['init', '--no-external-storage'], catch_exceptions=False
+    )
     assert 0 == result.exit_code
 
     os.chdir('../foo')
-    with monkeypatch.context() as m:
-        from renku.api.storage import StorageApiMixin
-        m.setattr(StorageApiMixin, 'external_storage_installed', False)
+    with monkeypatch.context() as monkey:
+        monkey.setattr(StorageApiMixin, 'storage_installed', False)
 
         result = runner.invoke(
             cli.cli, ['dataset', 'add', 'f', '../woop'],
             catch_exceptions=False
         )
-        assert 0 == result.exit_code
+
+        assert 1 == result.exit_code
         subprocess.call(['git', 'clean', '-dff'])
 
     result = runner.invoke(

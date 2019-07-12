@@ -16,12 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Client for handling a data storage."""
-
+import functools
 import shlex
 from collections import defaultdict
+from shutil import which
 from subprocess import PIPE, STDOUT, call, run
 
 import attr
+from werkzeug.utils import cached_property
 
 from renku import errors
 from renku._compat import Path
@@ -29,11 +31,26 @@ from renku._compat import Path
 from ._git import _expand_directories
 from .repository import RepositoryApiMixin
 
-HAS_LFS = call(['git', 'lfs'], stdout=PIPE, stderr=STDOUT) == 0
-
 # Batch size for when renku is expanding a large list
 # of files into an argument string.
 ARGUMENT_BATCH_SIZE = 100
+
+
+def ensure_external_storage(fn):
+    """Ensure management of external storage on methods which depend on it.
+
+    :raises: ``errors.ExternalStorageNotInstalled``
+    :raises: ``errors.ExternalStorageDisabled``
+    """
+    # noqa
+    @functools.wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        if not self.has_external_storage:
+            pass
+        else:
+            return fn(self, *args, **kwargs)
+
+    return wrapper
 
 
 @attr.s
@@ -53,6 +70,30 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', '-I']
 
+    @cached_property
+    def storage_installed(self):
+        """Verify that git-lfs is installed and on system PATH."""
+        return bool(which('git-lfs'))
+
+    @cached_property
+    def has_external_storage(self):
+        """Check if repository has external storage enabled.
+
+        :raises: ``errors.ExternalStorageNotInstalled``
+        :raises: ``errors.ExternalStorageDisabled``
+        """
+        repo_config = self.repo.config_reader(config_level='repository')
+        lfs_enabled = repo_config.has_section('filter "lfs"')
+
+        storage_enabled = lfs_enabled and self.storage_installed
+        if self.use_external_storage and not storage_enabled:
+            raise errors.ExternalStorageDisabled(self.repo)
+
+        if lfs_enabled and not self.storage_installed:
+            raise errors.ExternalStorageNotInstalled(self.repo)
+
+        return lfs_enabled and self.storage_installed
+
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
         call(
@@ -62,19 +103,20 @@ class StorageApiMixin(RepositoryApiMixin):
             cwd=str(self.path.absolute()),
         )
 
-    @property
-    def external_storage_installed(self):
-        """Check that Large File Storage is installed."""
-        return HAS_LFS
+    def init_repository(self, name=None, force=False):
+        """Initialize a local Renku repository."""
+        result = super().init_repository(name=name, force=force)
 
+        # initialize LFS if it is requested and installed
+        if self.use_external_storage and self.storage_installed:
+            self.init_external_storage(force=force)
+
+        return result
+
+    @ensure_external_storage
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
-        if not self._use_lfs():
-            return
-
-        if not self.external_storage_installed:
-            raise errors.ExternalStorageNotInstalled(self.repo)
-
+        # Calculate which paths can be tracked in lfs
         track_paths = []
         attrs = self.find_attr(*paths)
 
@@ -97,14 +139,9 @@ class StorageApiMixin(RepositoryApiMixin):
             cwd=str(self.path),
         )
 
+    @ensure_external_storage
     def untrack_paths_from_storage(self, *paths):
         """Untrack paths from the external storage."""
-        if not self._use_lfs():
-            return
-
-        if not self.external_storage_installed:
-            raise errors.ExternalStorageNotInstalled(self.repo)
-
         call(
             self._CMD_STORAGE_UNTRACK + list(paths),
             stdout=PIPE,
@@ -112,16 +149,10 @@ class StorageApiMixin(RepositoryApiMixin):
             cwd=str(self.path),
         )
 
+    @ensure_external_storage
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
         import math
-
-        if not self._use_lfs():
-            return
-
-        if not self.external_storage_installed:
-            raise errors.ExternalStorageNotInstalled(self.repo)
-
         client_dict = defaultdict(list)
 
         for path in _expand_directories(paths):
@@ -131,13 +162,14 @@ class StorageApiMixin(RepositoryApiMixin):
             client_dict[client.path].append(str(path))
 
         for client_path, paths in client_dict.items():
-            for ibatch in range(math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)):
+            batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
+            for index in range(batch_size):
                 run(
                     self._CMD_STORAGE_PULL + [
                         shlex.quote(
                             ','.join(
-                                paths[ibatch * ARGUMENT_BATCH_SIZE:
-                                      (ibatch + 1) * ARGUMENT_BATCH_SIZE]
+                                paths[index * ARGUMENT_BATCH_SIZE:(index + 1) *
+                                      ARGUMENT_BATCH_SIZE]
                             )
                         )
                     ],
@@ -146,14 +178,9 @@ class StorageApiMixin(RepositoryApiMixin):
                     stderr=STDOUT,
                 )
 
+    @ensure_external_storage
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
-        if not self._use_lfs():
-            return
-
-        if not self.external_storage_installed:
-            raise errors.ExternalStorageNotInstalled(self.repo)
-
         run(
             self._CMD_STORAGE_CHECKOUT + list(paths),
             cwd=str(self.path.absolute()),
@@ -161,20 +188,3 @@ class StorageApiMixin(RepositoryApiMixin):
             stderr=STDOUT,
             check=True,
         )
-
-    def init_repository(self, name=None, force=False):
-        """Initialize a local Renku repository."""
-        result = super().init_repository(name=name, force=force)
-
-        # initialize LFS if it is requested and installed
-        if self.use_external_storage and self.external_storage_installed:
-            self.init_external_storage(force=force)
-
-        return result
-
-    def _use_lfs(self):
-        renku_initialized_to_use_lfs = self.repo.config_reader(
-            config_level='repository'
-        ).has_section('filter "lfs"')
-
-        return renku_initialized_to_use_lfs and self.use_external_storage

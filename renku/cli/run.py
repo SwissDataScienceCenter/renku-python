@@ -56,8 +56,9 @@ Any path **modified** or **created** during the execution will be added as an
 output.
 
 Because the output path detection is based on the Git repository state after
-the execution of ``renku run`` command, it is good to have a basic understading
-of the underlying principles and limitations of tracking files in Git.
+the execution of ``renku run`` command, it is good to have a basic
+understanding of the underlying principles and limitations of tracking
+files in Git.
 
 Git tracks not only the paths in a repository, but also the content stored in
 those paths. Therefore:
@@ -180,13 +181,14 @@ def run(client, outputs, no_output, success_codes, isolation, command_line):
         with factory.watch(
             client, no_output=no_output, outputs=outputs
         ) as tool:
-            # Make sure all inputs are pulled from a storage.
-            client.pull_paths_from_storage(
-                *(
+            # Don't compute paths if storage is disabled.
+            if client.has_external_storage:
+                # Make sure all inputs are pulled from a storage.
+                paths_ = (
                     path
                     for _, path in tool.iter_input_files(client.workflow_path)
                 )
-            )
+                client.pull_paths_from_storage(*paths_)
 
             returncode = call(
                 factory.command_line,

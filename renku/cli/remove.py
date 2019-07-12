@@ -72,18 +72,19 @@ def remove(ctx, client, sources):
                 dataset.to_yaml()
 
     # 2. Manage .gitattributes for external storage.
-    tracked = tuple(
-        path for path, attr in client.find_attr(*files).items()
-        if attr.get('filter') == 'lfs'
-    )
-    client.untrack_paths_from_storage(*tracked)
-    existing = client.find_attr(*tracked)
-    if existing:
-        click.echo(WARNING + 'There are custom .gitattributes.\n')
-        if click.confirm(
-            'Do you want to edit ".gitattributes" now?', default=False
-        ):
-            click.edit(filename=str(client.path / '.gitattributes'))
+    if client.has_external_storage:
+        tracked = tuple(
+            path for path, attr in client.find_attr(*files).items()
+            if attr.get('filter') == 'lfs'
+        )
+        client.untrack_paths_from_storage(*tracked)
+        existing = client.find_attr(*tracked)
+        if existing:
+            click.echo(WARNING + 'There are custom .gitattributes.\n')
+            if click.confirm(
+                'Do you want to edit ".gitattributes" now?', default=False
+            ):
+                click.edit(filename=str(client.path / '.gitattributes'))
 
     # Finally remove the files.
     final_sources = list(set(files.values()))
