@@ -251,9 +251,9 @@ class ExternalStorageNotInstalled(RenkuException, click.ClickException):
     def __init__(self, repo):
         """Build a custom message."""
         msg = (
-            'Git-LFS is not installed, '
+            'External storage is not installed, '
             'but this repository depends on it. \n'
-            'By running this command without LFS installed '
+            'By running this command without storage installed '
             'you could be committing\n'
             'large files directly to the git repository.\n\n'
             'If this is your intention, please repeat the command with '
@@ -270,14 +270,14 @@ class ExternalStorageDisabled(RenkuException, click.ClickException):
     def __init__(self, repo):
         """Build a custom message."""
         msg = (
-            'Git-LFS is not configured, '
-            'but this action is trying to trigger storage action.\n'
-            'By running this command without LFS enabled '
+            'External storage is not configured, '
+            'but this action is trying to use it.\n'
+            'By running this command without storage enabled '
             'you could be committing\n'
             'large files directly to the git repository.\n\n'
             'If this is your intention, please repeat the command with '
             'the -S flag (e.g. renku -S run <cmd>), \n'
-            'otherwise install LFS with "git lfs install --local".'
+            'otherwise install e.g. git-LFS with "git lfs install --local".'
         )
 
         super(ExternalStorageDisabled, self).__init__(msg)
