@@ -44,7 +44,6 @@ def test_dataset_add(tmpdir, runner, client):
     # Use the --force ;)
     result = runner.invoke(
         cli.cli,
-        ['dataset', 'add', 'testing', '--force', ignored_file.strpath],
-        catch_exceptions=False,
+        ['dataset', 'add', 'testing', '--force', ignored_file.strpath]
     )
     assert 0 == result.exit_code

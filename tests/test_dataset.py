@@ -82,7 +82,7 @@ def test_data_add(
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
 
-        assert d.find_file(_key(client, d, 'file'))
+        assert d.find_file('data/dataset/file')
 
         # check that the imported file is read-only
         assert not os.access(
@@ -117,8 +117,10 @@ def test_data_add_recursive(directory_tree, client):
             dataset,
             directory_tree.join('dir2').strpath
         )
-        filepath = _key(client, dataset, 'dir2/file2')
-        assert dataset.find_file(filepath)
+
+        assert os.path.basename(
+            os.path.dirname(dataset.files[0].path)
+        ) == 'dir2'
 
 
 def dataset_serialization(client, dataset, data_file):
@@ -146,19 +148,16 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
         os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
     )
     assert os.stat('data/dataset/dir2/file2')
-    assert dataset.find_file(_key(client, dataset, 'dir2/file2')) is not None
+    assert dataset.files[0].path.endswith('dir2/file2')
     assert os.stat('.renku/vendors/local')
 
     # check that the creators are properly parsed from commits
     client.add_data_to_dataset(
         dataset, os.path.dirname(data_repository.git_dir), target='file'
     )
-    file = _key(client, dataset, 'file')
 
-    assert len(dataset.find_file(file).creator) == 2
-    assert all(
-        x.name in ('me', 'me2') for x in dataset.find_file(file).creator
-    )
+    assert len(dataset.files[1].creator) == 2
+    assert all(x.name in ('me', 'me2') for x in dataset.files[1].creator)
 
 
 @pytest.mark.parametrize(

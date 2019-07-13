@@ -27,8 +27,165 @@ import pytest
 
 from renku import cli
 from renku._compat import Path
+from renku.api.config import RENKU_HOME
+from renku.api.datasets import DatasetsApiMixin
 from renku.cli._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
 from renku.cli._format.datasets import FORMATS as DATASETS_FORMATS
+from renku.models.refs import LinkReference
+
+
+def test_datasets_create_clean(data_repository, runner, project, client):
+    """Test creating a dataset in clean repository."""
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+    assert dataset
+
+    staged = client.repo.index.diff('HEAD')
+    for file_path in staged:
+        assert 'datasets' not in file_path
+
+    untracked = client.repo.untracked_files
+    for file_path in untracked:
+        assert 'datasets' not in file_path
+
+
+def test_datasets_create_dirty(data_repository, runner, project, client):
+    """Test creating a dataset in dirty repository."""
+    # Create a file in root of the repository.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+    assert dataset
+
+    staged = client.repo.index.diff('HEAD')
+    for file_path in staged:
+        assert 'datasets' not in file_path
+
+    untracked = client.repo.untracked_files
+    for file_path in untracked:
+        assert 'datasets' not in file_path
+
+
+def test_datasets_create_dirty_exception_untracked(
+    data_repository, runner, project, client
+):
+    """Test exception raise for untracked file in renku directory."""
+    # 1. Create a problem.
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 2. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_datasets_create_dirty_exception_staged(
+    data_repository, runner, project, client
+):
+    """Test exception raise for staged file in renku directory."""
+    # 1. Create a problem within .renku directory
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 2. Stage a problem without committing it.
+    client.repo.git.add(datasets_dir / 'a')
+
+    # 3. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_dataset_create_dirty_exception_all_untracked(
+    data_repository, runner, project, client
+):
+    """Test exception raise for all untracked files."""
+    # 1. Create unclean root to enforce ensure checks.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 2. Create a problem.
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    # 3. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_datasets_create_dirty_exception_all_staged(
+    data_repository, runner, project, client
+):
+    """Test exception raise for all staged files."""
+    # 1. Create unclean root to enforce ensure checks.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    client.repo.git.add('a')
+
+    # 2. Create a problem.
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    client.repo.git.add(datasets_dir / 'a')
+
+    # 3. Ensure correct error has been raised.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert '.renku contains uncommitted changes.' in result.output
+
+
+def test_dataset_create_exception_refs(
+    data_repository, runner, project, client
+):
+    """Test untracked/unstaged exception raise in dirty renku home dir."""
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
+    if not datasets_dir.exists():
+        datasets_dir.mkdir()
+
+    with (datasets_dir / 'a').open('w') as fp:
+        fp.write('a')
+
+    refs_dir = client.path / RENKU_HOME / LinkReference.REFS
+    if not refs_dir.exists():
+        refs_dir.mkdir()
+
+    with (refs_dir / 'b').open('w') as fp:
+        fp.write('b')
+
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert 'a' in result.output
 
 
 def test_datasets_import(data_file, data_repository, runner, project, client):
@@ -68,12 +225,21 @@ def test_datasets_import(data_file, data_repository, runner, project, client):
     # add data from local git repo
     result = runner.invoke(
         cli.cli, [
-            'dataset', 'add', 'dataset', '-t', 'file2', '-t', 'file3',
+            'dataset', 'add', 'dataset', '-t', 'dir2/file2',
             os.path.dirname(data_repository.git_dir)
         ],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
+
+    # add data from any URL (not a git repo)
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset', 'http://example.com/file.ext?foo=bar'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert os.stat('data/dataset/file.ext')
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
@@ -153,7 +319,7 @@ def test_repository_file_to_dataset(runner, project, client):
 
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
-        assert dataset.find_file('../../../a')
+        assert dataset.find_file('a')
 
 
 def test_relative_import_to_dataset(
@@ -283,8 +449,7 @@ def test_dataset_add_with_link(tmpdir, runner, project, client):
     with client.with_dataset('my-dataset') as dataset:
         assert dataset.name == 'my-dataset'
         for file_ in dataset.files:
-            path_ = (client.renku_datasets_path / 'my-dataset' /
-                     file_.path).resolve()
+            path_ = (client.path / file_.path).resolve()
             received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
 
     # check that original and dataset inodes are the same
@@ -321,8 +486,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
         assert dataset.name == 'my-dataset'
 
         for file_ in dataset.files:
-            path_ = (client.renku_datasets_path / 'my-dataset' /
-                     file_.path).resolve()
+            path_ = (client.path / file_.path).resolve()
             received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
 
     # check that original inodes are within created ones
@@ -588,9 +752,10 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     assert 0 == result.exit_code
 
     with client.with_dataset(name='my-dataset') as dataset:
-        assert new_file.basename in [
-            file_.path.name for file_ in dataset.files
-        ]
+        assert new_file.basename in {
+            Path(file_.path).name
+            for file_ in dataset.files
+        }
 
     result = runner.invoke(
         cli.cli, [
@@ -682,129 +847,8 @@ def test_dataset_edit(runner, client, project):
     dataset = client.load_dataset(name='dataset')
 
     result = runner.invoke(
-        cli.cli, ['dataset', 'edit', dataset.identifier], input='wq'
+        cli.cli, ['dataset', 'edit', dataset.identifier],
+        input='wq',
+        catch_exceptions=False
     )
     assert 0 == result.exit_code
-
-
-@pytest.mark.integration
-def test_dataset_import_real_doi(runner, project):
-    """Test dataset import for existing DOI."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
-    )
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    result = runner.invoke(cli.cli, ['dataset'])
-    assert 0 == result.exit_code
-    assert 'pyndl_naive_discriminat_v064' in result.output
-    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
-
-
-@pytest.mark.parametrize(
-    'doi', [
-        ('10.5281/zenodo.597964', 'y'),
-        ('10.5281/zenodo.3236928', 'n'),
-        ('10.5281/zenodo.2671633', 'n'),
-        ('10.5281/zenodo.3237420', 'n'),
-        ('10.5281/zenodo.3236928', 'n'),
-        ('10.5281/zenodo.3188334', 'y'),
-        ('10.5281/zenodo.3236928', 'n'),
-        ('10.5281/zenodo.2669459', 'n'),
-        ('10.5281/zenodo.2371189', 'n'),
-        ('10.5281/zenodo.2651343', 'n'),
-        ('10.5281/zenodo.1467859', 'n'),
-        ('10.5281/zenodo.3240078', 'n'),
-        ('10.5281/zenodo.3240053', 'n'),
-        ('10.5281/zenodo.3240010', 'n'),
-        ('10.5281/zenodo.3240012', 'n'),
-        ('10.5281/zenodo.3240006', 'n'),
-        ('10.5281/zenodo.3239996', 'n'),
-        ('10.5281/zenodo.3239256', 'n'),
-        ('10.5281/zenodo.3237813', 'n'),
-        ('10.5281/zenodo.3239988', 'y'),
-        ('10.5281/zenodo.3239986', 'n'),
-        ('10.5281/zenodo.3239984', 'n'),
-        ('10.5281/zenodo.3239982', 'n'),
-        ('10.5281/zenodo.3239980', 'n'),
-        ('10.5281/zenodo.3188334', 'y'),
-    ]
-)
-@pytest.mark.integration
-def test_dataset_import_real_param(doi, runner, project):
-    """Test dataset import and check metadata parsing."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', doi[0]], input=doi[1]
-    )
-    assert 0 == result.exit_code
-
-    if 'y' == doi[1]:
-        assert 'OK' in result.output
-
-    result = runner.invoke(cli.cli, ['dataset'])
-    assert 0 == result.exit_code
-
-
-@pytest.mark.integration
-def test_dataset_import_real_doi_warnings(runner, project):
-    """Test dataset import for existing DOI and dataset"""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
-    )
-    assert 0 == result.exit_code
-    assert 'Warning: Newer version found.' in result.output
-    assert 'OK'
-
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\ny'
-    )
-    assert 0 == result.exit_code
-    assert 'Warning: Newer version found.' in result.output
-    assert 'Warning: This dataset already exists.' in result.output
-    assert 'OK' in result.output
-
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\nn'
-    )
-    assert 0 == result.exit_code
-    assert 'Warning: Newer version found.' in result.output
-    assert 'Warning: This dataset already exists.' in result.output
-    assert 'OK' not in result.output
-
-    result = runner.invoke(cli.cli, ['dataset'])
-    assert 0 == result.exit_code
-    assert 'pyndl_naive_discriminat_v064' in result.output
-    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
-
-
-@pytest.mark.integration
-def test_dataset_import_fake_doi(runner, project):
-    """Test error raising for non-existing DOI."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.5979642342'], input='y'
-    )
-    assert 2 == result.exit_code
-    assert 'URI not found.' in result.output
-
-
-@pytest.mark.integration
-def test_dataset_import_real_http(runner, project):
-    """Test dataset import through HTTPS."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', 'https://zenodo.org/record/2621208'],
-        input='y'
-    )
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-
-@pytest.mark.integration
-def test_dataset_import_fake_http(runner, project):
-    """Test dataset import through HTTPS."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', 'https://zenodo.org/record/2621201248'],
-        input='y'
-    )
-    assert 2 == result.exit_code
-    assert 'URI not found.' in result.output

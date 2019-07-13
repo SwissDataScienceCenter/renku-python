@@ -59,9 +59,11 @@ def dot(graph, simple=True, debug=False, landscape=False):
     )
 
     g.bind('prov', 'http://www.w3.org/ns/prov#')
+    g.bind('foaf', 'http://xmlns.com/foaf/0.1/')
     g.bind('wfdesc', 'http://purl.org/wf4ever/wfdesc#')
     g.bind('wf', 'http://www.w3.org/2005/01/wf/flow#')
     g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
+    g.bind('schema', 'http://schema.org/')
 
     if debug:
         rdf2dot(g, sys.stdout)
@@ -230,19 +232,32 @@ def _rdf2dot_reduced(g, stream):
         """Choose node color."""
         return 'BLACK'
 
-    for s, p, o in g:
+    # filter out nodes and edges created for directories
+    sparql = """
+    SELECT ?s ?p ?o
+    WHERE {
+        ?s ?p ?o
+        MINUS {
+            ?s rdf:type prov:Collection.
+        }
+        MINUS {
+            VALUES ?exclude { prov:wasInformedBy prov:influenced rdf:label }
+            ?s ?exclude ?o.
+        }
+    }
+    """
+
+    for s, p, o in g.query(sparql):
         sn = node(s)
         if p == rdflib.RDFS.label:
             continue
-
         # inject the type predicate into the node itself
         if p == rdflib.RDF.type:
             types[sn].add((qname(p, g), cgi.escape(o)))
             continue
-        if p == rdflib.term.URIRef('http://purl.org/dc/terms/isPartOf'):
+        # add the project membership to the node
+        if p == rdflib.term.URIRef('schema:isPartOf'):
             fields[sn].add((qname(p, g), cgi.escape(o)))
-            continue
-        if p == rdflib.term.URIRef('http://www.w3.org/ns/prov#wasInformedBy'):
             continue
 
         if isinstance(o, (rdflib.URIRef, rdflib.BNode)):

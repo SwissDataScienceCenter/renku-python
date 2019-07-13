@@ -40,8 +40,8 @@ def doctor(ctx, client):
     from . import _checks
 
     is_ok = True
-    for attr in _checks.__all__:
-        is_ok &= getattr(_checks, attr)(client)
+    for check in _checks.__all__:
+        is_ok &= getattr(_checks, check)(client)
 
     if is_ok:
         click.secho('Everything seems to be ok.', fg='green')

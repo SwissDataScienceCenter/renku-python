@@ -81,14 +81,10 @@ def move(ctx, client, sources, destination):
             renames = {}
 
             for file_ in dataset.files:
-                filepath = fmt_path(
-                    os.path.normpath(str(path.parent / file_.path))
-                )
+                filepath = fmt_path(file_.path)
 
                 if filepath in files:
-                    renames[file_.path] = os.path.relpath(
-                        destinations[filepath], start=str(path.parent)
-                    )
+                    renames[file_.path] = destinations[filepath]
 
             if renames:
                 dataset = dataset.rename_files(
@@ -98,20 +94,25 @@ def move(ctx, client, sources, destination):
                 dataset.to_yaml()
 
     # 3. Manage .gitattributes for external storage.
-    tracked = tuple(
-        path for path, attr in client.find_attr(*files).items()
-        if attr.get('filter') == 'lfs'
-    )
-    client.untrack_paths_from_storage(*tracked)
-    existing = client.find_attr(*tracked)
-    if existing:
-        click.echo(WARNING + 'There are custom .gitattributes.\n')
-        if click.confirm(
-            'Do you want to edit ".gitattributes" now?', default=False
-        ):
-            click.edit(filename=str(client.path / '.gitattributes'))
+    tracked = tuple()
+    if client.has_external_storage:
+        tracked = tuple(
+            path for path, attr in client.find_attr(*files).items()
+            if attr.get('filter') == 'lfs'
+        )
+        client.untrack_paths_from_storage(*tracked)
 
-    client.track_paths_in_storage(*(destinations[path] for path in tracked))
+        if client.find_attr(*tracked):
+            click.echo(WARNING + 'There are custom .gitattributes.\n')
+            if click.confirm(
+                'Do you want to edit ".gitattributes" now?', default=False
+            ):
+                click.edit(filename=str(client.path / '.gitattributes'))
+
+    if tracked and client.has_external_storage:
+        client.track_paths_in_storage(
+            *(destinations[path] for path in tracked)
+        )
 
     # 4. Handle symlinks.
     dst.parent.mkdir(parents=True, exist_ok=True)

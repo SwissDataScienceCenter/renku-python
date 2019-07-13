@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2019- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,25 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""HTTP client for Renku platform."""
-
-import attr
-
-from .config import ConfigManagerMixin
-from .datasets import DatasetsApiMixin
-from .repository import PathMixin, RepositoryApiMixin
-from .storage import StorageApiMixin
-
-
-@attr.s
-class LocalClient(
-    PathMixin, StorageApiMixin, RepositoryApiMixin, DatasetsApiMixin,
-    ConfigManagerMixin
-):
-    """A low-level client for communicating with a local Renku repository.
-
-    Example:
-        >>> import renku
-        >>> client = renku.LocalClient('.')
-
-    """
+"""CLI tests."""

@@ -156,6 +156,11 @@ def dataset_responses():
             'https://example.com/file',
             callback=request_callback
         )
+        rsps.add_callback(
+            responses.GET,
+            'http://example.com/file.ext?foo=bar',
+            callback=request_callback
+        )
         yield rsps
 
 
@@ -248,3 +253,13 @@ def add_client(doctest_namespace):
     """Add Renku client to doctest namespace."""
     from renku.api import LocalClient
     doctest_namespace['client'] = LocalClient(path=tempfile.mkdtemp())
+
+
+@pytest.fixture
+def zenodo_sandbox(client):
+    """Configure environment to use Zenodo sandbox environment."""
+    os.environ['ZENODO_USE_SANDBOX'] = 'true'
+    client.set_value(
+        'zenodo', 'access_token',
+        'HPwXfABPZ7JNiwXMrktL7pevuuo9jt4gsUCkh3Gs2apg65ixa3JPyFukdGup'
+    )

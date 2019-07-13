@@ -25,11 +25,11 @@ from renku.models import _jsonld as jsonld
 @jsonld.s(
     type=[
         'prov:Person',
-        'foaf:Person',
+        'schema:Person',
     ],
     context={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
-        'prov': 'http://purl.org/dc/terms/',
+        'schema': 'http://schema.org/',
+        'prov': 'http://www.w3.org/ns/prov#',
     },
     frozen=True,
     slots=True,
@@ -40,7 +40,7 @@ class Person:
     name = jsonld.ib(context='rdfs:label')
     email = jsonld.ib(context={
         '@type': '@id',
-        '@id': 'foaf:mbox',
+        '@id': 'schema:email',
     })
 
     _id = jsonld.ib(context='@id', init=False, kw_only=True)
@@ -71,7 +71,7 @@ class Person:
         'wfprov:WorkflowEngine',
     ],
     context={
-        'prov': 'http://purl.org/dc/terms/',
+        'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
     },
     frozen=True,

@@ -233,7 +233,9 @@ class Graph(object):
         """Return dependencies from a revision or paths."""
         result = []
 
-        if not paths:
+        if paths:
+            paths = (self.normalize_path(path) for path in paths)
+        else:
             if revision == 'HEAD':
                 index = self.client.repo.index
             else:
@@ -247,7 +249,7 @@ class Graph(object):
                 result.append(
                     Usage.from_revision(
                         self.client,
-                        path=self.normalize_path(path),
+                        path=path,
                         revision=revision,
                     )
                 )

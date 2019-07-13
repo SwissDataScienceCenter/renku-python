@@ -21,6 +21,7 @@ import json
 import os
 import weakref
 from copy import deepcopy
+from datetime import datetime
 
 import attr
 from attr._compat import iteritems
@@ -232,6 +233,8 @@ def asjsonld(
         if isinstance(v, Path):
             v = str(v)
             return os.path.relpath(v, str(basedir)) if basedir else v
+        if isinstance(v, datetime):
+            return str(v)
         return v
 
     for a in attrs:
@@ -303,7 +306,13 @@ class JSONLDMixin(ReferenceMixin):
     __type_registry__ = {}
 
     @classmethod
-    def from_jsonld(cls, data, __reference__=None, __source__=None):
+    def from_jsonld(
+        cls,
+        data,
+        client=None,
+        __reference__=None,
+        __source__=None,
+    ):
         """Instantiate a JSON-LD class from data."""
         if isinstance(data, cls):
             return data
@@ -318,7 +327,7 @@ class JSONLDMixin(ReferenceMixin):
             ) != type_:
                 new_cls = cls.__type_registry__[type_]
                 if cls != new_cls:
-                    return new_cls.from_jsonld(data)
+                    return new_cls.from_jsonld(data, client=client)
 
         if cls._jsonld_translate:
             data = ld.compact(data, {'@context': cls._jsonld_translate})
@@ -340,6 +349,9 @@ class JSONLDMixin(ReferenceMixin):
         fields = cls._jsonld_fields
 
         data_ = {}
+        if client:
+            data_['client'] = client
+
         for k, v in compacted.items():
             if k in fields:
                 data_[k.lstrip('_')] = v
@@ -356,7 +368,7 @@ class JSONLDMixin(ReferenceMixin):
         return self
 
     @classmethod
-    def from_yaml(cls, path):
+    def from_yaml(cls, path, client=None):
         """Return an instance from a YAML file."""
         import yaml
 
@@ -364,6 +376,7 @@ class JSONLDMixin(ReferenceMixin):
             source = yaml.safe_load(fp) or {}
             self = cls.from_jsonld(
                 source,
+                client=client,
                 __reference__=path,
                 __source__=deepcopy(source),
             )

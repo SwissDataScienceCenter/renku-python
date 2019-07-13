@@ -31,6 +31,7 @@ import yaml
 
 from renku import __version__, cli
 from renku._compat import Path
+from renku.api.storage import StorageApiMixin
 from renku.models.cwl import CWLClass, ascwl
 from renku.models.cwl.workflow import Workflow
 
@@ -101,6 +102,20 @@ def test_run_simple(runner, project):
     # Display tools with no outputs.
     result = runner.invoke(cli.cli, ['log', '--no-output'])
     assert '.renku/workflow/' in result.output
+
+
+def test_run_many_args(client, run):
+    """Test a renku run command which implicitly relies on many inputs."""
+
+    os.mkdir('files')
+    output = 'output.txt'
+    for i in range(5003):
+        os.system('touch files/{}.txt'.format(i))
+    client.repo.index.add(['files/'])
+    client.repo.index.commit('add many files')
+
+    exit_code = run(args=('run', 'ls', 'files/'), stdout=output)
+    assert 0 == exit_code
 
 
 _CMD_EXIT_2 = ['bash', '-c', 'exit 2']
@@ -368,30 +383,54 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
             } == set(result.output.strip().split('\n'))
 
 
-def test_configuration_of_external_storage(isolated_runner, monkeypatch):
-    """Test the LFS requirement for renku run."""
+def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
+    """Test the LFS requirement for renku run with disabled storage."""
     runner = isolated_runner
 
     os.mkdir('test-project')
     os.chdir('test-project')
 
-    result = runner.invoke(cli.cli, ['-S', 'init'])
+    result = runner.invoke(cli.cli, ['--no-external-storage', 'init'])
     assert 0 == result.exit_code
-
-    with monkeypatch.context() as m:
-        from renku.api.storage import StorageApiMixin
-        m.setattr(StorageApiMixin, 'external_storage_installed', False)
-
+    # Pretend that git-lfs is not installed.
+    with monkeypatch.context() as monkey:
+        monkey.setattr(StorageApiMixin, 'storage_installed', False)
+        # Missing --no-external-storage flag.
         result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
+        assert 'is not configured' in result.output
         assert 1 == result.exit_code
-        subprocess.call(['git', 'clean', '-df'])
 
-    result = runner.invoke(cli.cli, ['-S', 'run', 'touch', 'output'])
+        # Since repo is not using external storage.
+        result = runner.invoke(
+            cli.cli, ['--no-external-storage', 'run', 'touch', 'output']
+        )
+        assert 0 == result.exit_code
+
+    subprocess.call(['git', 'clean', '-df'])
+    result = runner.invoke(
+        cli.cli, ['--no-external-storage', 'run', 'touch', 'output']
+    )
+    # Needs to result in error since output file
+    # is now considered an input file (check run.py doc).
+    assert 1 == result.exit_code
+
+
+def test_configuration_of_external_storage(isolated_runner, monkeypatch):
+    """Test the LFS requirement for renku run."""
+    runner = isolated_runner
+
+    result = runner.invoke(cli.cli, ['--external-storage', 'init'])
     assert 0 == result.exit_code
+    # Pretend that git-lfs is not installed.
+    with monkeypatch.context() as monkey:
+        monkey.setattr(StorageApiMixin, 'storage_installed', False)
+        # Repo is using external storage but it's not installed.
+        result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
+        assert 'is not configured' in result.output
+        assert 1 == result.exit_code
 
-    result = runner.invoke(cli.cli, ['init', '--force'])
-    assert 0 == result.exit_code
-
+    # Clean repo and check external storage.
+    subprocess.call(['git', 'clean', '-df'])
     result = runner.invoke(cli.cli, ['run', 'touch', 'output2'])
     assert 0 == result.exit_code
 
@@ -459,22 +498,26 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
         f.write('woop')
 
     os.chdir('foo')
-    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
+    result = runner.invoke(
+        cli.cli, ['init', '--no-external-storage'], catch_exceptions=False
+    )
     assert 0 == result.exit_code
 
     os.chdir('../bar')
-    result = runner.invoke(cli.cli, ['init', '-S'], catch_exceptions=False)
+    result = runner.invoke(
+        cli.cli, ['init', '--no-external-storage'], catch_exceptions=False
+    )
     assert 0 == result.exit_code
 
     os.chdir('../foo')
-    with monkeypatch.context() as m:
-        from renku.api.storage import StorageApiMixin
-        m.setattr(StorageApiMixin, 'external_storage_installed', False)
+    with monkeypatch.context() as monkey:
+        monkey.setattr(StorageApiMixin, 'storage_installed', False)
 
         result = runner.invoke(
             cli.cli, ['dataset', 'add', 'f', '../woop'],
             catch_exceptions=False
         )
+
         assert 1 == result.exit_code
         subprocess.call(['git', 'clean', '-dff'])
 
@@ -524,6 +567,36 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
     result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
     assert '../foo/data/f/woop' in result.output
     assert 0 == result.exit_code
+
+
+def test_status_consistency(runner, client, project):
+    """Test if the renku status output is consistent when running the
+    command from directories other than the repository root."""
+
+    os.mkdir('somedirectory')
+    with open('somedirectory/woop', 'w') as fp:
+        fp.write('woop')
+
+    client.repo.index.add(['somedirectory/woop'])
+    client.repo.index.commit('add woop')
+
+    result = runner.invoke(
+        cli.cli, ['run', 'cp', 'somedirectory/woop', 'somedirectory/meeh']
+    )
+    assert 0 == result.exit_code
+
+    with open('somedirectory/woop', 'w') as fp:
+        fp.write('weep')
+
+    client.repo.index.add(['somedirectory/woop'])
+    client.repo.index.commit('fix woop')
+
+    base_result = runner.invoke(cli.cli, ['status'])
+    os.chdir('somedirectory')
+    comp_result = runner.invoke(cli.cli, ['status'])
+    assert base_result.output.replace(
+        'somedirectory/', ''
+    ) == comp_result.output
 
 
 def test_unchanged_output(runner, project):
@@ -1103,22 +1176,29 @@ def test_config_manager_creation(client):
 
 def test_config_manager_set_value(client):
     """Check writing to configuration."""
-    client.set_value('zenodo', 'secret', 'my-secret')
+    client.set_value('zenodo', 'access_token', 'my-secret')
+
     config = client.load_config()
-    assert config.get('zenodo', 'secret') == 'my-secret'
+    assert config.get('zenodo', 'access_token') == 'my-secret'
+
+    config = client.remove_value('zenodo', 'access_token')
+    assert 'zenodo' not in config.sections()
 
 
 def test_config_load_get_value(client):
     """Check reading from configuration."""
-    client.set_value('zenodo', 'secret', 'my-secret')
-    secret = client.get_value('zenodo', 'secret')
+    client.set_value('zenodo', 'access_token', 'my-secret')
+    secret = client.get_value('zenodo', 'access_token')
     assert secret == 'my-secret'
 
-    secret = client.get_value('zenodo2', 'secret')
+    secret = client.get_value('zenodo2', 'access_token')
     assert secret is None
 
     secret = client.get_value('zenodo', 'not-secret')
     assert secret is None
+
+    config = client.remove_value('zenodo', 'access_token')
+    assert 'zenodo' not in config.sections()
 
 
 def test_config_manager_cli(client, runner, project):

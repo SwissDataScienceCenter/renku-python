@@ -163,11 +163,15 @@ import editor
 import requests
 import yaml
 from click import BadParameter
+from requests import HTTPError
 from tqdm import tqdm
 
+from renku.api.config import RENKU_HOME
+from renku.api.datasets import DatasetsApiMixin
 from renku.cli._providers import ProviderFactory
 from renku.models._tabulate import tabulate
 from renku.models.datasets import Dataset
+from renku.models.refs import LinkReference
 
 from .._compat import Path
 from ._client import pass_local_client
@@ -204,7 +208,14 @@ def dataset(ctx, client, revision, datadir, format):
 
 @dataset.command()
 @click.argument('name')
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=[
+        Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
+        Path(RENKU_HOME) / Path(LinkReference.REFS),
+    ]
+)
 def create(client, name):
     """Create an empty dataset in the current repo."""
     from renku.models.datasets import Creator
@@ -235,7 +246,7 @@ def edit(client, id):
         )
 
         edited = yaml.safe_load(metadata_edited)
-        updated_ = Dataset(**edited)
+        updated_ = Dataset(client=client, **edited)
 
         dataset_.update_metadata(updated_)
         dataset_.to_yaml()
@@ -292,7 +303,7 @@ def add_to_dataset(
                 for file_ in with_metadata.files:
                     for added_ in dataset.files:
 
-                        if file_.filename.endswith(added_.path.name):
+                        if added_.path.endswith(file_.filename):
                             if isinstance(file_.url, ParseResult):
                                 file_.url = file_.url.geturl()
 
@@ -437,6 +448,61 @@ def remove(client, names):
     click.secho('OK', fg='green')
 
 
+@dataset.command('export')
+@click.argument('id')
+@click.argument('provider')
+@click.option(
+    '-p',
+    '--publish',
+    is_flag=True,
+    help='Automatically publish exported dataset.'
+)
+@pass_local_client(clean=True, commit=True)
+def export_(client, id, provider, publish):
+    """Export data to 3rd party provider."""
+    config_key_secret = 'access_token'
+    provider_id = provider
+
+    dataset_ = client.load_dataset(id)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    try:
+        provider = ProviderFactory.from_id(provider_id)
+    except KeyError:
+        raise BadParameter('Unknown provider.')
+
+    access_token = client.get_value(provider_id, config_key_secret)
+    exporter = provider.get_exporter(dataset_, access_token=access_token)
+
+    if access_token is None:
+        text_prompt = 'Before exporting, you must configure an access token\n'
+        text_prompt += 'Create one at: {0}\n'.format(
+            exporter.access_token_url()
+        )
+        text_prompt += 'Access token'
+
+        access_token = click.prompt(text_prompt, type=str)
+        if access_token is None or len(access_token) == 0:
+            raise BadParameter(
+                'You must provide an access token for the target provider.'
+            )
+
+        client.set_value(provider_id, config_key_secret, access_token)
+        exporter.set_access_token(access_token)
+
+    try:
+        destination = exporter.export(publish)
+    except HTTPError as e:
+        if 'unauthorized' in str(e):
+            client.remove_value(provider_id, config_key_secret)
+
+        raise BadParameter(e)
+
+    click.secho('Exported to: {0}'.format(destination))
+    click.secho('OK', fg='green')
+
+
 @dataset.command('import')
 @click.argument('uri')
 @click.option('-n', '--name', help='Dataset name.')
@@ -460,7 +526,7 @@ def import_(ctx, client, uri, name, extract):
     try:
 
         record = provider.find_record(uri)
-        dataset_ = record.as_dataset()
+        dataset_ = record.as_dataset(client)
         files_ = dataset_.files
 
         click.echo(

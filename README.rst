@@ -126,6 +126,7 @@ The containerized version of the CLI can be launched using Docker command.
 It makes sure your current directory is mounted to the same place in the
 container.
 
+
 Usage
 =====
 
@@ -159,3 +160,58 @@ Trace the data provenance:
 These are the basics, but there is much more that Renku allows you to do with
 your data analysis workflows. The full documentation will soon be available
 at: https://renku-python.readthedocs.io/
+
+
+Developing Renku
+================
+
+For development it's convenient to install ``renku`` in editable mode. This is
+still possible with ``pipx``. First clone the repository and then do:
+
+::
+
+    $ pipx install \
+        --editable \
+        --spec <path-to-renku-python>[all] \
+        renku
+
+This will install all the extras for testing and debugging.
+
+Using External Debuggers
+------------------------
+
+To run ``renku`` via e.g. the `Visual Studio Code debugger
+<https://code.visualstudio.com/docs/python/debugging>`_ you need run it via
+the python executable in whatever virtual environment was used to install ``renku``. If there is a package
+needed for the debugger, you need to inject it into the virtual environment first, e.g.:
+
+::
+
+    $ pipx inject renku ptvsd
+
+
+Finally, run ``renku`` via the debugger:
+
+::
+
+    $ ~/.local/pipx/venvs/renku/bin/python -m ptvsd --host localhost --wait -m renku <command>
+
+
+If using Visual Studio Code, you may also want to set the ``Remote Attach`` configuration
+``PathMappings`` so that it will find your source code, e.g.
+
+::
+
+    {
+            "name": "Python: Remote Attach",
+            "type": "python",
+            "request": "attach",
+            "port": 5678,
+            "host": "localhost",
+            "pathMappings": [
+                {
+                    "localRoot": "<path-to-renku-python-source-code>",
+                    "remoteRoot": "<path-to-renku-python-source-code>"
+                }
+            ]
+        },
