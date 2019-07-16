@@ -183,6 +183,7 @@ class UnmodifiedOutputs(RenkuException, click.ClickException):
                  for path in unmodified) + '\n'
             '\nOnce you have removed the files that should be used as outputs,'
             '\nyou can safely rerun the previous command.'
+            '\nYou can use --output flag to specify outputs explicitly.'
         )
 
 
@@ -212,6 +213,7 @@ class OutputsNotFound(RenkuException, click.ClickException):
                 ) + '\n\n'
                 'Once you have removed files that should be used as outputs,\n'
                 'you can safely rerun the previous command.'
+                '\nYou can use --output flag to specify outputs explicitly.'
             )
         else:
             msg += (
@@ -220,6 +222,10 @@ class OutputsNotFound(RenkuException, click.ClickException):
             )
 
         super(OutputsNotFound, self).__init__(msg)
+
+
+class InvalidInputPath(RenkuException, click.ClickException):
+    """Raise when input path does not exist or is not in the repository."""
 
 
 class InvalidSuccessCode(RenkuException, click.ClickException):

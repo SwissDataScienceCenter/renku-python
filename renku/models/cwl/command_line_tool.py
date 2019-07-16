@@ -159,6 +159,15 @@ class CommandLineToolFactory(object):
         if isinstance(cmd, (list, tuple)) else shlex.split(cmd),
     )
 
+    explicit_inputs = attr.ib(
+        default=[],
+        converter=lambda paths: [Path(path).resolve() for path in paths]
+    )
+    explicit_outputs = attr.ib(
+        default=[],
+        converter=lambda paths: [Path(path).resolve() for path in paths]
+    )
+
     directory = attr.ib(
         default='.',
         converter=lambda path: Path(path).resolve(),
@@ -180,11 +189,17 @@ class CommandLineToolFactory(object):
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
     def __attrs_post_init__(self):
-        """Derive basic informations."""
+        """Derive basic information."""
         self.baseCommand, detect = self.split_command_and_args()
         self.arguments = []
         self.inputs = []
         self.outputs = []
+
+        self._make_sure_paths_are_within_repository(self.explicit_inputs)
+        self._make_sure_paths_exist(self.explicit_inputs)
+        self._make_sure_paths_are_within_repository(
+            self.explicit_outputs, exception_to_raise=errors.InvalidOutputPath
+        )
 
         if self.stdin:
             input_ = next(
@@ -215,6 +230,41 @@ class CommandLineToolFactory(object):
             else:
                 self.inputs.append(input_)
 
+        if self.explicit_inputs:
+
+            def remove_existing_inputs_from_explicit_inputs(explicit_inputs):
+                for input in self.inputs:
+                    if input.type in PATH_OBJECTS:
+                        try:
+                            input_path = input.default.path.resolve()
+                            explicit_inputs.remove(input_path)
+                        except ValueError:
+                            pass
+
+            def add_explicit_inputs_to_inputs(
+                explicit_inputs, current_input_id
+            ):
+                for explicit_input in explicit_inputs:
+                    current_input_id += 1
+                    default, type, _ = self.guess_type(explicit_input)
+                    # Explicit inputs are either File or Directory
+                    assert type in PATH_OBJECTS
+                    # The inputBinging is None because these inputs won't
+                    # appear on command-line
+                    cwl_input = CommandInputParameter(
+                        id='input_{0}'.format(current_input_id),
+                        type=type,
+                        default=default,
+                        inputBinding=None
+                    )
+                    self.inputs.append(cwl_input)
+
+            explicit_inputs = self.explicit_inputs.copy()
+            remove_existing_inputs_from_explicit_inputs(explicit_inputs)
+
+            current_input_id = len(self.inputs) + len(self.arguments)
+            add_explicit_inputs_to_inputs(explicit_inputs, current_input_id)
+
     def generate_tool(self):
         """Return an instance of command line tool."""
         return CommandLineTool(
@@ -229,23 +279,10 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, client, no_output=False, outputs=None):
+    def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         tool = self.generate_tool()
         repo = client.repo
-
-        if outputs:
-            directories = [
-                output for output in outputs if Path(output).is_dir()
-            ]
-
-            client.repo.git.rm(
-                *outputs, r=True, force=True, ignore_unmatch=True
-            )
-            client.repo.index.commit('renku: automatic removal of outputs')
-
-            for directory in directories:
-                Path(directory).mkdir(parents=True, exist_ok=True)
 
         # NOTE consider to use git index instead
         existing_directories = {
@@ -255,7 +292,66 @@ class CommandLineToolFactory(object):
 
         yield tool
 
-        if repo:
+        if repo and self.explicit_outputs:
+            # TODO make sure that output paths are not reserved
+            # TODO check if outputs appear in inputs and warn the user
+            def convert_explicit_outputs_to_cwl_output_parameters():
+                results = []
+                current_output_id = len(tool.outputs)
+                for path in self.explicit_outputs:
+                    relative_path = path.relative_to(self.directory)
+                    type = 'Directory' if path.is_dir() else 'File'
+                    results.append(
+                        CommandOutputParameter(
+                            id='output_{0}'.format(current_output_id),
+                            type=type,
+                            outputBinding=dict(glob=str(relative_path))
+                        )
+                    )
+                    current_output_id += 1
+                return results
+
+            def account_for_outputs_that_appear_as_inputs(outputs):
+                intput_path_to_input_dict = {
+                    str(i.default.path.relative_to(self.directory)): i
+                    for i in self.inputs if i.type in PATH_OBJECTS
+                }
+
+                for output in outputs:
+                    output_path = output.outputBinding.glob
+                    if output_path in intput_path_to_input_dict:
+                        input = intput_path_to_input_dict[output_path]
+                        input.type = 'string'
+                        input.default = output_path
+                        new_output = attr.evolve(
+                            output,
+                            outputBinding=dict(
+                                glob='$(inputs.{0})'.format(input.id),
+                            )
+                        )
+                        output.outputBinding = new_output.outputBinding
+
+            def track_output_and_std_outputs_in_external_storage(outputs):
+                output_paths = [o.outputBinding.glob for o in outputs]
+                std_output_streams = [self.stdout, self.stderr]
+                std_output_stream_paths = [s for s in std_output_streams if s]
+                output_paths += std_output_stream_paths
+                client.track_paths_in_storage(*output_paths)
+
+            # All output paths must exist at this point
+            self._make_sure_paths_exist(
+                self.explicit_outputs,
+                exception_to_raise=errors.InvalidOutputPath
+            )
+
+            outputs = convert_explicit_outputs_to_cwl_output_parameters()
+            account_for_outputs_that_appear_as_inputs(outputs)
+            if client.has_external_storage:
+                track_output_and_std_outputs_in_external_storage(outputs)
+
+            tool.outputs = outputs
+
+        elif repo:
             # List of all output paths.
             paths = []
             # Keep track of unmodified output files.
@@ -324,6 +420,28 @@ class CommandLineToolFactory(object):
         """Path must exists."""
         if not value.exists():
             raise ValueError('Directory must exist.')
+
+    def _make_sure_paths_are_within_repository(
+        self, absolute_paths, exception_to_raise=errors.InvalidInputPath
+    ):
+        for path in absolute_paths:
+            try:
+                path.relative_to(self.directory)
+            except ValueError:
+                raise exception_to_raise(
+                    'The file/directory is not within the repository.'
+                    '\n\n\t' + click.style(str(path), fg='yellow') + '\n\n'
+                )
+
+    def _make_sure_paths_exist(
+        self, paths, exception_to_raise=errors.InvalidInputPath
+    ):
+        for path in paths:
+            if self.file_candidate(path) is None:
+                raise exception_to_raise(
+                    'The file/directory does not exist.'
+                    '\n\n\t' + click.style(str(path), fg='yellow') + '\n\n'
+                )
 
     def file_candidate(self, candidate, ignore=None):
         """Return a path instance if it exists in current directory."""

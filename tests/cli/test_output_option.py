@@ -88,7 +88,7 @@ def test_output_directory_with_output_option(runner, client, run):
     assert 0 == run(
         args=['run', '--output', 'output'] + base_sh + ['output', 'bar']
     )
-    assert not (client.path / 'output' / 'foo').exists()
+    assert (client.path / 'output' / 'foo').exists()
     assert (client.path / 'output' / 'bar').exists()
 
 
