@@ -178,55 +178,68 @@ from ._options import option_isolation
 )
 @option_isolation
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
-@pass_local_client(
-    clean=True,
-    up_to_date=True,
-    commit=True,
-    ignore_std_streams=True,
-)
-def run(
-    client, inputs, outputs, no_output, success_codes, isolation, command_line
-):
+def run(inputs, outputs, no_output, success_codes, isolation, command_line):
     """Tracking work on a specific problem."""
-    working_dir = client.repo.working_dir
-    mapped_std = _mapped_std_streams(client.candidate_paths)
-    factory = CommandLineToolFactory(
-        command_line=command_line,
-        explicit_inputs=inputs,
-        explicit_outputs=outputs,
-        directory=os.getcwd(),
-        working_dir=working_dir,
-        successCodes=success_codes,
-        **{
-            name: os.path.relpath(path, working_dir)
-            for name, path in mapped_std.items()
-        }
+    #
+    @pass_local_client(
+        clean=not bool(outputs),
+        up_to_date=True,
+        commit=True,
+        ignore_std_streams=True,
     )
+    def run(
+        client, inputs, outputs, no_output, success_codes, isolation,
+        command_line
+    ):
+        """Tracking work on a specific problem."""
+        working_dir = client.repo.working_dir
+        mapped_std = _mapped_std_streams(client.candidate_paths)
+        factory = CommandLineToolFactory(
+            command_line=command_line,
+            explicit_inputs=inputs,
+            explicit_outputs=outputs,
+            directory=os.getcwd(),
+            working_dir=working_dir,
+            successCodes=success_codes,
+            **{
+                name: os.path.relpath(path, working_dir)
+                for name, path in mapped_std.items()
+            }
+        )
 
-    with client.with_workflow_storage() as wf:
-        with factory.watch(client, no_output=no_output) as tool:
-            # Don't compute paths if storage is disabled.
-            if client.has_external_storage:
-                # Make sure all inputs are pulled from a storage.
-                paths_ = (
-                    path
-                    for _, path in tool.iter_input_files(client.workflow_path)
+        with client.with_workflow_storage() as wf:
+            with factory.watch(client, no_output=no_output) as tool:
+                # Don't compute paths if storage is disabled.
+                if client.has_external_storage:
+                    # Make sure all inputs are pulled from a storage.
+                    paths_ = (
+                        path for _, path in
+                        tool.iter_input_files(client.workflow_path)
+                    )
+                    client.pull_paths_from_storage(*paths_)
+
+                returncode = call(
+                    factory.command_line,
+                    cwd=os.getcwd(),
+                    **{key: getattr(sys, key)
+                       for key in mapped_std.keys()},
                 )
-                client.pull_paths_from_storage(*paths_)
 
-            returncode = call(
-                factory.command_line,
-                cwd=os.getcwd(),
-                **{key: getattr(sys, key)
-                   for key in mapped_std.keys()},
-            )
+                if returncode not in (success_codes or {0}):
+                    raise errors.InvalidSuccessCode(
+                        returncode, success_codes=success_codes
+                    )
 
-            if returncode not in (success_codes or {0}):
-                raise errors.InvalidSuccessCode(
-                    returncode, success_codes=success_codes
-                )
+                sys.stdout.flush()
+                sys.stderr.flush()
 
-            sys.stdout.flush()
-            sys.stderr.flush()
+                wf.add_step(run=tool)
 
-            wf.add_step(run=tool)
+    run(
+        inputs=inputs,
+        outputs=outputs,
+        no_output=no_output,
+        success_codes=success_codes,
+        isolation=isolation,
+        command_line=command_line
+    )
