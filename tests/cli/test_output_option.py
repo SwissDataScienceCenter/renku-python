@@ -56,6 +56,7 @@ def read_cwl_file(cwl_filepath):
 
 
 def test_run_succeeds_normally(cli):
+    """Test when an output is detected"""
     exit_code, cwl = cli('run', 'touch', 'foo')
 
     assert exit_code == 0
@@ -67,16 +68,16 @@ def test_run_succeeds_normally(cli):
     assert cwl.outputs[0].outputBinding.glob == '$(inputs.input_1)'
 
 
-def test_run_fails_when_no_change_in_outputs_is_detected(cli):
+def test_when_no_change_in_outputs_is_detected(cli):
+    """Test when no output is detected"""
     cli('run', 'touch', 'foo')
     exit_code, cwl = cli('run', 'ls', 'foo')
 
     assert exit_code == 1
 
 
-def test_run_succeeds_with_no_output_option_even_if_no_change_in_outputs_is_detected(  # noqa: E501
-    cli
-):
+def test_with_no_output_option(cli, client):
+    """Test --no-output option with no output detection"""
     cli('run', 'touch', 'foo')
     exit_code, cwl = cli('run', '--no-output', 'touch', 'foo')
 
@@ -85,13 +86,6 @@ def test_run_succeeds_with_no_output_option_even_if_no_change_in_outputs_is_dete
     assert cwl.inputs[0].type == 'File'
     assert str(cwl.inputs[0].default) == '../../foo'
     assert len(cwl.outputs) == 0
-
-
-def test_runs_with_and_without_no_output_option_yield_different_cwl_tools(
-    cli, client
-):
-    cli('run', 'touch', 'foo')
-    cli('run', '--no-output', 'touch', 'foo')
 
     cwls = read_all_cwl_files(client)
 
@@ -105,9 +99,7 @@ def test_runs_with_and_without_no_output_option_yield_different_cwl_tools(
     'command,expected_type', [(('touch', ), 'File'),
                               (('mkdir', '-p'), 'Directory')]
 )
-def test_run_succeeds_with_explicit_output_option_even_if_no_change_in_outputs_is_detected(  # noqa: E501
-    cli, command, expected_type
-):
+def test_explicit_outputs(cli, command, expected_type):
     """Test detection of an output file with --output option."""
     cli('run', *command, 'foo')
     exit_code, cwl = cli('run', '--output', 'foo', *command, 'foo')
@@ -121,9 +113,8 @@ def test_run_succeeds_with_explicit_output_option_even_if_no_change_in_outputs_i
     assert cwl.outputs[0].outputBinding.glob == '$(inputs.input_1)'
 
 
-def test_run_with_explicit_output_yield_same_results_as_normal_run_with_detected_output(  # noqa: E501
-    cli, client
-):
+def test_explicit_output_results(cli, client):
+    """Test explicit output yield same results as normal run"""
     cli('run', 'touch', 'foo')
     cli('run', '--output', 'foo', 'touch', 'foo')
 
@@ -135,15 +126,8 @@ def test_run_with_explicit_output_yield_same_results_as_normal_run_with_detected
     assert cwls[0].outputs == cwls[1].outputs
 
 
-def test_some_test(cli, client):
-    A_SCRIPT = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
-    exit_code, cwl = cli('run', *A_SCRIPT, 'outdir', 'foo')
-
-    assert exit_code == 0
-    assert (client.path / 'outdir' / 'foo').exists()
-
-
-def test_explicit_directory_outputs_are_not_deleted_before_run(cli, client):
+def test_output_directory_with_output_option(cli, client):
+    """Test output directories are not deleted with --output"""
     A_SCRIPT = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
     cli('run', *A_SCRIPT, 'outdir', 'foo')
 
@@ -154,10 +138,9 @@ def test_explicit_directory_outputs_are_not_deleted_before_run(cli, client):
     assert (client.path / 'outdir' / 'bar').exists()
 
 
-def test_output_files_in_directory_are_not_listed_as_separate_outputs(
-    cli, client
-):
-    """
+def test_output_directory_without_separate_outputs(cli, client):
+    """Output files in directory are not listed as separate outputs.
+
     See https://github.com/SwissDataScienceCenter/renku-python/issues/387
     """
     A_SCRIPT = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
@@ -168,19 +151,22 @@ def test_output_files_in_directory_are_not_listed_as_separate_outputs(
     assert cwl.outputs[0].type == 'Directory'
 
 
-def test_run_fails_if_explicit_inputs_do_not_exist(cli):
+def test_explicit_inputs_must_exist(cli):
+    """Test explicit inputs exist before run"""
     exit_code, _ = cli('run', '--input', 'foo', 'touch', 'bar')
 
     assert exit_code == 1
 
 
-def test_run_fails_if_explicit_inputs_are_outside_the_renku_repo(cli):
+def test_explicit_inputs_are_inside_repo(cli):
+    """Test explicit inputs are inside the Renku repo"""
     exit_code, _ = cli('run', '--input', '/tmp', 'touch', 'foo')
 
     assert exit_code == 1
 
 
-def test_all_explicit_inputs_and_outputs_are_list_in_cwl_tool(cli, client):
+def test_explicit_inputs_and_outputs_are_listed(cli, client):
+    """Test explicit inputs and outputs will be in generated CWL file"""
     cli('run', 'mkdir', 'foo')
     cli('run', 'touch', 'bar', 'baz')
 
@@ -201,9 +187,8 @@ def test_all_explicit_inputs_and_outputs_are_list_in_cwl_tool(cli, client):
     assert cwl.outputs[0].outputBinding.glob == 'baz'
 
 
-def test_explicit_inputs_that_are_also_in_inputs_are_treated_as_normal_inputs(
-    cli
-):
+def test_explicit_inputs_can_be_in_inputs(cli):
+    """Test explicit inputs that are in inputs are treated as normal inputs"""
     cli('run', 'touch', 'foo')
 
     exit_code, cwl = cli('run', '--input', 'foo', '--no-output', 'ls', 'foo')
@@ -213,17 +198,3 @@ def test_explicit_inputs_that_are_also_in_inputs_are_treated_as_normal_inputs(
     assert str(cwl.inputs[0].default) == '../../foo'
     assert cwl.inputs[0].type == 'File'
     assert cwl.inputs[0].inputBinding is not None
-
-
-def test_run_succeeds_when_repo_is_dirty_but_explicit_output_is_passed(
-    cli, client
-):
-    # make repo dirty by adding an untracked file
-    with (client.path / 'untracked').open('w') as fp:
-        fp.write('something')
-
-    exit_code, cwl = cli('run', '--output', 'foo', 'touch', 'foo')
-
-    assert exit_code == 0
-    assert len(cwl.outputs) == 1
-    assert cwl.outputs[0].outputBinding.glob == 'foo'

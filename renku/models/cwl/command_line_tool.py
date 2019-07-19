@@ -195,12 +195,6 @@ class CommandLineToolFactory(object):
         self.inputs = []
         self.outputs = []
 
-        self._make_sure_paths_are_within_repository(self.explicit_inputs)
-        self._make_sure_paths_exist(self.explicit_inputs)
-        self._make_sure_paths_are_within_repository(
-            self.explicit_outputs, exception_to_raise=errors.InvalidOutputPath
-        )
-
         if self.stdin:
             input_ = next(
                 self.guess_inputs(str(self.working_dir / self.stdin))
@@ -231,39 +225,8 @@ class CommandLineToolFactory(object):
                 self.inputs.append(input_)
 
         if self.explicit_inputs:
-
-            def remove_existing_inputs_from_explicit_inputs(explicit_inputs):
-                for input in self.inputs:
-                    if input.type in PATH_OBJECTS:
-                        try:
-                            input_path = input.default.path.resolve()
-                            explicit_inputs.remove(input_path)
-                        except ValueError:
-                            pass
-
-            def add_explicit_inputs_to_inputs(
-                explicit_inputs, current_input_id
-            ):
-                for explicit_input in explicit_inputs:
-                    current_input_id += 1
-                    default, type, _ = self.guess_type(explicit_input)
-                    # Explicit inputs are either File or Directory
-                    assert type in PATH_OBJECTS
-                    # The inputBinging is None because these inputs won't
-                    # appear on command-line
-                    cwl_input = CommandInputParameter(
-                        id='input_{0}'.format(current_input_id),
-                        type=type,
-                        default=default,
-                        inputBinding=None
-                    )
-                    self.inputs.append(cwl_input)
-
-            explicit_inputs = self.explicit_inputs.copy()
-            remove_existing_inputs_from_explicit_inputs(explicit_inputs)
-
-            current_input_id = len(self.inputs) + len(self.arguments)
-            add_explicit_inputs_to_inputs(explicit_inputs, current_input_id)
+            for input in self.find_explicit_inputs():
+                self.inputs.append(input)
 
     def generate_tool(self):
         """Return an instance of command line tool."""
@@ -293,62 +256,35 @@ class CommandLineToolFactory(object):
         yield tool
 
         if repo and self.explicit_outputs:
-            # TODO make sure that output paths are not reserved
-            # TODO check if outputs appear in inputs and warn the user
-            def convert_explicit_outputs_to_cwl_output_parameters():
-                results = []
-                current_output_id = len(tool.outputs)
-                for path in self.explicit_outputs:
-                    relative_path = path.relative_to(self.directory)
-                    type = 'Directory' if path.is_dir() else 'File'
-                    results.append(
-                        CommandOutputParameter(
-                            id='output_{0}'.format(current_output_id),
-                            type=type,
-                            outputBinding=dict(glob=str(relative_path))
-                        )
-                    )
-                    current_output_id += 1
-                return results
 
-            def account_for_outputs_that_appear_as_inputs(outputs):
-                intput_path_to_input_dict = {
-                    str(i.default.path.relative_to(self.directory)): i
-                    for i in self.inputs if i.type in PATH_OBJECTS
-                }
+            # Convert explicit outputs to CWL output parameters. Note
+            # that they can also appear in input arguments
+            inputs = {input.id: input for input in self.inputs}
+            outputs = list(tool.outputs)
 
-                for output in outputs:
-                    output_path = output.outputBinding.glob
-                    if output_path in intput_path_to_input_dict:
-                        input = intput_path_to_input_dict[output_path]
-                        input.type = 'string'
-                        input.default = output_path
-                        new_output = attr.evolve(
-                            output,
-                            outputBinding=dict(
-                                glob='$(inputs.{0})'.format(input.id),
-                            )
-                        )
-                        output.outputBinding = new_output.outputBinding
+            paths = []
+            last_output_id = len(tool.outputs)
 
-            def track_output_and_std_outputs_in_external_storage(outputs):
-                output_paths = [o.outputBinding.glob for o in outputs]
-                std_output_streams = [self.stdout, self.stderr]
-                std_output_stream_paths = [s for s in std_output_streams if s]
-                output_paths += std_output_stream_paths
-                client.track_paths_in_storage(*output_paths)
+            for output, input, path in self.find_explicit_outputs(
+                last_output_id
+            ):
+                outputs.append(output)
+                paths.append(path)
 
-            # All output paths must exist at this point
-            self._make_sure_paths_exist(
-                self.explicit_outputs,
-                exception_to_raise=errors.InvalidOutputPath
-            )
+                if input is not None:
+                    if input.id not in inputs:  # pragma: no cover
+                        raise RuntimeError('Inconsistent input name.')
 
-            outputs = convert_explicit_outputs_to_cwl_output_parameters()
-            account_for_outputs_that_appear_as_inputs(outputs)
+                    inputs[input.id] = input
+
+            std_streams = [s for s in (self.stdout, self.stderr) if s]
+            paths += std_streams
+
+            # track outputs in external storage
             if client.has_external_storage:
-                track_output_and_std_outputs_in_external_storage(outputs)
+                client.track_paths_in_storage(*paths)
 
+            tool.inputs = list(inputs.values())
             tool.outputs = outputs
 
         elif repo:
@@ -420,28 +356,6 @@ class CommandLineToolFactory(object):
         """Path must exists."""
         if not value.exists():
             raise ValueError('Directory must exist.')
-
-    def _make_sure_paths_are_within_repository(
-        self, absolute_paths, exception_to_raise=errors.InvalidInputPath
-    ):
-        for path in absolute_paths:
-            try:
-                path.relative_to(self.directory)
-            except ValueError:
-                raise exception_to_raise(
-                    'The file/directory is not within the repository.'
-                    '\n\n\t' + click.style(str(path), fg='yellow') + '\n\n'
-                )
-
-    def _make_sure_paths_exist(
-        self, paths, exception_to_raise=errors.InvalidInputPath
-    ):
-        for path in paths:
-            if self.file_candidate(path) is None:
-                raise exception_to_raise(
-                    'The file/directory does not exist.'
-                    '\n\n\t' + click.style(str(path), fg='yellow') + '\n\n'
-                )
 
     def file_candidate(self, candidate, ignore=None):
         """Return a path instance if it exists in current directory."""
@@ -722,3 +636,83 @@ class CommandLineToolFactory(object):
                         outputBinding=dict(glob=glob, ),
                     ), None, glob
                 )
+
+    def find_explicit_inputs(self):
+        """Yield explicit inputs and command line input bindings if any."""
+        input_paths = [
+            input.default.path
+            for input in self.inputs if input.type in PATH_OBJECTS
+        ]
+        input_id = len(self.inputs) + len(self.arguments)
+
+        for explicit_input in self.explicit_inputs:
+            if explicit_input in input_paths:
+                continue
+
+            try:
+                explicit_input.relative_to(self.directory)
+            except ValueError:
+                raise errors.InvalidInputPath(
+                    'The input file or directory is not in the repository.'
+                    '\n\n\t' + click.style(str(explicit_input), fg='yellow') +
+                    '\n\n'
+                )
+            if self.file_candidate(explicit_input) is None:
+                raise errors.InvalidInputPath(
+                    'The input file or directory does not exist.'
+                    '\n\n\t' + click.style(str(explicit_input), fg='yellow') +
+                    '\n\n'
+                )
+            input_id += 1
+            default, type, _ = self.guess_type(explicit_input)
+            # Explicit inputs are either File or Directory
+            assert type in PATH_OBJECTS
+            # The inputBinging is None because these inputs won't
+            # appear on command-line
+            yield CommandInputParameter(
+                id='input_{0}'.format(input_id),
+                type=type,
+                default=default,
+                inputBinding=None
+            )
+
+    def find_explicit_outputs(self, starting_output_id):
+        """Yield explicit output and changed command input parameter."""
+        inputs = {
+            str(i.default.path.relative_to(self.directory)): i
+            for i in self.inputs if i.type in PATH_OBJECTS
+        }
+        output_id = starting_output_id
+
+        for path in self.explicit_outputs:
+            if self.file_candidate(path) is None:
+                raise errors.InvalidOutputPath(
+                    'The output file or directory does not exist.'
+                    '\n\n\t' + click.style(str(path), fg='yellow') + '\n\n'
+                )
+
+            output_path = str(path.relative_to(self.directory))
+            type = 'Directory' if path.is_dir() else 'File'
+            if output_path in inputs:
+                # change input type to note that it is also an output
+                input = inputs[output_path]
+                input = attr.evolve(input, type='string', default=output_path)
+                yield (
+                    CommandOutputParameter(
+                        id='output_{0}'.format(output_id),
+                        type=type,
+                        outputBinding=dict(
+                            glob='$(inputs.{0})'.format(input.id)
+                        )
+                    ), input, output_path
+                )
+            else:
+                yield (
+                    CommandOutputParameter(
+                        id='output_{0}'.format(output_id),
+                        type=type,
+                        outputBinding=dict(glob=str(output_path))
+                    ), None, output_path
+                )
+
+            output_id += 1
