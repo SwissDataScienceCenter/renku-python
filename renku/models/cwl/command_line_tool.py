@@ -255,83 +255,71 @@ class CommandLineToolFactory(object):
 
         yield tool
 
-        if repo and self.explicit_outputs:
+        if repo:
+            # List of all output paths.
+            paths = []
 
-            # Convert explicit outputs to CWL output parameters. Note
-            # that they can also appear in input arguments
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
 
-            paths = []
-            last_output_id = len(tool.outputs)
+            if self.explicit_outputs:
+                last_output_id = len(tool.outputs)
 
-            for output, input, path in self.find_explicit_outputs(
-                last_output_id
-            ):
-                outputs.append(output)
-                paths.append(path)
+                for output, input, path in self.find_explicit_outputs(
+                    last_output_id
+                ):
+                    outputs.append(output)
+                    paths.append(path)
 
-                if input is not None:
-                    if input.id not in inputs:  # pragma: no cover
-                        raise RuntimeError('Inconsistent input name.')
+                    if input is not None:
+                        if input.id not in inputs:  # pragma: no cover
+                            raise RuntimeError('Inconsistent input name.')
 
-                    inputs[input.id] = input
+                        inputs[input.id] = input
 
-            std_streams = [s for s in (self.stdout, self.stderr) if s]
-            paths += std_streams
+                std_streams = [s for s in (self.stdout, self.stderr) if s]
+                paths += std_streams
+            else:
+                # Keep track of unmodified output files.
+                unmodified = set()
+                # Possible output paths.
+                candidates = set(repo.untracked_files)
+                candidates |= {
+                    item.a_path
+                    for item in repo.index.diff(None) if not item.deleted_file
+                }
 
-            # track outputs in external storage
+                from renku.cli._graph import _safe_path
+                candidates = {path for path in candidates if _safe_path(path)}
+
+                for output, input, path in self.guess_outputs(candidates):
+                    outputs.append(output)
+                    paths.append(path)
+
+                    if input is not None:
+                        if input.id not in inputs:  # pragma: no cover
+                            raise RuntimeError('Inconsistent input name.')
+
+                        inputs[input.id] = input
+
+                for stream_name in ('stdout', 'stderr'):
+                    stream = getattr(self, stream_name)
+                    if stream and stream not in candidates:
+                        unmodified.add(stream)
+                    elif stream:
+                        paths.append(stream)
+
+                if unmodified:
+                    raise errors.UnmodifiedOutputs(repo, unmodified)
+
+                if not no_output and not paths:
+                    raise errors.OutputsNotFound(repo, inputs.values())
+
             if client.has_external_storage:
                 client.track_paths_in_storage(*paths)
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
-
-        elif repo:
-            # List of all output paths.
-            paths = []
-            # Keep track of unmodified output files.
-            unmodified = set()
-            # Possible output paths.
-            candidates = set(repo.untracked_files)
-            candidates |= {
-                item.a_path
-                for item in repo.index.diff(None) if not item.deleted_file
-            }
-
-            from renku.cli._graph import _safe_path
-            candidates = {path for path in candidates if _safe_path(path)}
-
-            inputs = {input.id: input for input in self.inputs}
-            outputs = list(tool.outputs)
-
-            for output, input, path in self.guess_outputs(candidates):
-                outputs.append(output)
-                paths.append(path)
-
-                if input is not None:
-                    if input.id not in inputs:  # pragma: no cover
-                        raise RuntimeError('Inconsistent input name.')
-
-                    inputs[input.id] = input
-
-            for stream_name in ('stdout', 'stderr'):
-                stream = getattr(self, stream_name)
-                if stream and stream not in candidates:
-                    unmodified.add(stream)
-                elif stream:
-                    paths.append(stream)
-
-            if unmodified:
-                raise errors.UnmodifiedOutputs(repo, unmodified)
-
-            if not no_output and not paths:
-                raise errors.OutputsNotFound(repo, inputs.values())
-
-            tool.inputs = list(inputs.values())
-            tool.outputs = outputs
-
-            client.track_paths_in_storage(*paths)
 
         # Requirement detection can be done anytime.
         from .process_requirements import InitialWorkDirRequirement, \
