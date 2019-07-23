@@ -17,7 +17,6 @@
 # limitations under the License.
 """Python SDK and CLI for the Renku platform."""
 
-import datetime
 import os
 
 from setuptools import find_packages, setup
@@ -114,14 +113,27 @@ version_template = """\
 # See the License for the specific language governing permissions and
 # limitations under the License.
 \"\"\"Version information for Renku.\"\"\"
+import re
 
 __version__ = {version!r}
-""" % (datetime.date.today().year, )
+
+
+def _get_disribution_url():
+    import pkg_resources
+    d = pkg_resources.get_distribution('renku')
+    metadata = d._get_metadata(d.PKG_INFO)
+    home_page = [m for m in metadata if m.startswith('Home-page:')]
+    return home_page[0].split(':', 1)[1].strip()
+
+
+_components = re.findall(r'(\d\.\d\.\d)(?:.+g(\w+))?', __version__)[0]
+_version = _components[1] or 'v' + _components[0]
+version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), _version)
+"""
 
 setup(
     name='renku',
     use_scm_version={
-        'local_scheme': 'dirty-tag',
         'write_to': os.path.join('renku', 'version.py'),
         'write_to_template': version_template,
     },

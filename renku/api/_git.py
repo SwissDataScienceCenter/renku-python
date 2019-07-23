@@ -228,7 +228,7 @@ class GitCore:
     def commit(self, author_date=None, commit_only=None):
         """Automatic commit."""
         from git import Actor
-        from renku.version import __version__
+        from renku.version import __version__, version_url
 
         author_date = author_date or formatdate(localtime=True)
 
@@ -243,10 +243,7 @@ class GitCore:
 
         yield
 
-        committer = Actor(
-            'renku {0}'.format(__version__),
-            'renku+{0}@datascience.ch'.format(__version__),
-        )
+        committer = Actor('renku {0}'.format(__version__), version_url)
 
         if isinstance(commit_only, list):
             for path_ in commit_only:
