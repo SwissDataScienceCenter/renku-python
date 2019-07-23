@@ -20,6 +20,7 @@
 import re
 
 from renku.models import _jsonld as jsonld
+from renku.version import __version__, version_url
 
 
 @jsonld.s(
@@ -96,7 +97,14 @@ class SoftwareAgent:
         if commit.author != commit.committer:
             return cls(
                 label=commit.committer.name,
-                id='mailto:{0}'.format(commit.committer.email),
+                id=commit.committer.email,
                 was_started_by=author,
             )
         return author
+
+
+# set up the default agent
+
+renku_agent = SoftwareAgent(
+    label='renku {0}'.format(__version__), id=version_url
+)
