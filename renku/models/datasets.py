@@ -464,4 +464,4 @@ class Dataset(Entity, CreatorsMixin):
             self._label = self.identifier
 
         if not self.path:
-            self.path = self.client.renku_datasets_path / str(self.uid)
+            self.path = str(self.client.renku_datasets_path / str(self.uid))
