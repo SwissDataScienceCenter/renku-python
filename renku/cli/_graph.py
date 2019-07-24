@@ -61,6 +61,9 @@ LINK_CWL = CommandLineTool(
 
 def _safe_path(filepath, can_be_cwl=False):
     """Check if the path should be used in output."""
+    if isinstance(filepath, Path):
+        filepath = str(filepath)
+
     # Should not be in ignore paths.
     if filepath in {'.gitignore', '.gitattributes'}:
         return False
