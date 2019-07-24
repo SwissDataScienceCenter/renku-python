@@ -87,6 +87,7 @@ install_requires = [
     'requests>=2.21.0',
     'ndg-httpsclient>=0.5.1',
     'idna>=2.8',
+    'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',
     'tqdm>=4.31.1',
     'werkzeug>=0.12',
@@ -113,7 +114,6 @@ version_template = """\
 # See the License for the specific language governing permissions and
 # limitations under the License.
 \"\"\"Version information for Renku.\"\"\"
-import re
 
 __version__ = {version!r}
 
@@ -126,14 +126,13 @@ def _get_disribution_url():
     return home_page[0].split(':', 1)[1].strip()
 
 
-_components = re.findall(r'(\d\.\d\.\d)(?:.+g(\w+))?', __version__)[0]
-_version = _components[1] or 'v' + _components[0]
-version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), _version)
+version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), 'v' + __version__)
 """
 
 setup(
     name='renku',
     use_scm_version={
+        'local_scheme': 'dirty-tag',
         'write_to': os.path.join('renku', 'version.py'),
         'write_to_template': version_template,
     },
