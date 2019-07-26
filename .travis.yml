@@ -47,10 +47,10 @@ stages:
     if: branch = master AND (type != pull_request)
   - name: test OSX
     if: branch = master AND (type != pull_request)
-  - name: publish 🐍  🐳
+  - name: publish 🐍
     if: type = push AND (branch = master OR tag IS present)
   - name: brew 🍺
-    if: type = push AND tag IS present
+    if: type = push AND tag IS present AND tag =~ /^\d\.\d\.\d$/
 
 before_install:
   - git fetch --tags
@@ -145,9 +145,14 @@ jobs:
       os: osx
       osx_image: xcode9.2
 
-    - stage: publish 🐍  🐳
+    - stage: publish 🐍
       python: 3.6
       script: echo "Publishing on PyPI.io ..."
+      before_deploy:
+        if [[ -z $TRAVIS_TAG ]]; then
+          export TRAVIS_TAG=$(renku --version) &&
+          git tag $TRAVIS_TAG;
+        fi
       deploy:
         - provider: pypi
           user:
@@ -157,19 +162,14 @@ jobs:
           distributions: "sdist bdist_wheel"
           on:
             all_branches: true
+        # push the dev tag to github
+        - provider: releases
+          api_key: ${GITHUB_TOKEN}
+          on:
+            all_branches: true
+            tags: false
 
-    - # stage: publish
-      sudo: required
-      services:
-        - docker
-      install:
-        - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-        - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-        - sudo apt-get update
-        - sudo apt-get -y install docker-ce
-      script: make docker-login docker-push
-
-    - # stage: brew 🍺
+    - stage: brew 🍺
       language: generic
       sudo: true
       os: osx
@@ -189,7 +189,6 @@ jobs:
             all_branches: true
         - provider: pages
           skip-cleanup: true
-          # Set in the settings page of your repository, as a secure variable
           github-token: ${GITHUB_TOKEN}
           repo: swissdatasciencecenter/homebrew-renku
           target-branch: master
