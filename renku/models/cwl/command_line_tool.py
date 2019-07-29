@@ -325,7 +325,10 @@ class CommandLineToolFactory(object):
         from .process_requirements import InitialWorkDirRequirement, \
             InlineJavascriptRequirement
         initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
-            tool, existing_directories=existing_directories
+            tool,
+            existing_directories=existing_directories,
+            explicit_inputs=self.explicit_inputs,
+            working_dir=self.working_dir
         )
         if initial_work_dir_requirement:
             tool.requirements.extend([
@@ -638,7 +641,7 @@ class CommandLineToolFactory(object):
                 continue
 
             try:
-                explicit_input.relative_to(self.directory)
+                explicit_input.relative_to(self.working_dir)
             except ValueError:
                 raise errors.InvalidInputPath(
                     'The input file or directory is not in the repository.'
@@ -667,7 +670,7 @@ class CommandLineToolFactory(object):
     def find_explicit_outputs(self, starting_output_id):
         """Yield explicit output and changed command input parameter."""
         inputs = {
-            str(i.default.path.relative_to(self.directory)): i
+            str(i.default.path.relative_to(self.working_dir)): i
             for i in self.inputs if i.type in PATH_OBJECTS
         }
         output_id = starting_output_id
@@ -679,7 +682,7 @@ class CommandLineToolFactory(object):
                     '\n\n\t' + click.style(str(path), fg='yellow') + '\n\n'
                 )
 
-            output_path = str(path.relative_to(self.directory))
+            output_path = str(path.relative_to(self.working_dir))
             type = 'Directory' if path.is_dir() else 'File'
             if output_path in inputs:
                 # change input type to note that it is also an output

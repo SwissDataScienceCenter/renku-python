@@ -198,3 +198,29 @@ def test_explicit_inputs_can_be_in_inputs(cli):
     assert str(cwl.inputs[0].default) == '../../foo'
     assert cwl.inputs[0].type == 'File'
     assert cwl.inputs[0].inputBinding is not None
+
+
+def test_explicit_inputs_in_subdirectories(cli, client):
+    """Test explicit inputs that are in sub-dirs are made accessible"""
+
+    # Set up a script with hard dependency
+    cli('run', '--no-output', 'mkdir', 'foo')
+    exit_code, cwl = cli('run', 'sh', '-c', 'echo "some changes" > foo/bar')
+    exit_code, cwl = cli('run', 'sh', '-c', 'echo "cat foo/bar" > script.sh')
+
+    exit_code, cwl = cli(
+        'run', '--input', 'foo/bar', '--input', 'script.sh', 'sh', '-c',
+        'sh script.sh > output'
+    )
+    assert exit_code == 0
+
+    # Status must be dirty if foo/bar changes
+    exit_code, cwl = cli('run', 'sh', '-c', 'echo "new changes" > foo/bar')
+    exit_code, cwl = cli('status')
+    assert exit_code == 1
+
+    exit_code, cwl = cli('update')
+    assert exit_code == 0
+    assert (client.path / 'foo' / 'bar').exists()
+    assert (client.path / 'script.sh').exists()
+    assert (client.path / 'output').exists()
