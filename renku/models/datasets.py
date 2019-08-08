@@ -465,3 +465,18 @@ class Dataset(Entity, CreatorsMixin):
 
         if not self.path:
             self.path = str(self.client.renku_datasets_path / str(self.uid))
+
+        if self.files:
+            for datasetfile in self.files:
+                if datasetfile.client is None:
+                    try:
+                        client, _, _ = self.client.resolve_in_submodules(
+                            self.client.find_previous_commit(
+                                datasetfile.path,
+                                revision='HEAD'),
+                            datasetfile.path,
+                        )
+                    except KeyError:
+                        client = self.client
+
+                    datasetfile.client = client
