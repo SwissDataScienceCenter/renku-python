@@ -88,7 +88,7 @@ class Creator(object):
     def check_email(self, attribute, value):
         """Check that the email is valid."""
         if self.email and not (
-            isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)
+            isinstance(value, str) and re.match(r'[^@]+@[^@]+\.[^@]+', value)
         ):
             raise ValueError('Email address is invalid.')
 
@@ -472,8 +472,8 @@ class Dataset(Entity, CreatorsMixin):
                     try:
                         client, _, _ = self.client.resolve_in_submodules(
                             self.client.find_previous_commit(
-                                datasetfile.path,
-                                revision='HEAD'),
+                                datasetfile.path, revision='HEAD'
+                            ),
                             datasetfile.path,
                         )
                     except KeyError:
