@@ -46,7 +46,6 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
         cls,
         tool,
         existing_directories=None,
-        explicit_inputs=None,
         working_dir=''
     ):
         """Create a directory structure based on tool inputs and outputs."""
@@ -101,25 +100,15 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
                 )
             )
 
-        if explicit_inputs:
-            explicit_listing = []
-            input_paths = {
-                input.default.path: input
-                for input in tool.inputs if input.type in PATH_OBJECTS
-            }
-
-            for explicit_input in explicit_inputs:
-                input = input_paths.get(explicit_input)
-                if input:
-                    entryname = input.default.path.relative_to(working_dir)
-                    requirement.listing.append(
-                        Dirent(
-                            entry='$(inputs.{})'.format(input.id),
-                            entryname=str(entryname),
-                        )
+        for input in tool.inputs:
+            if input.type in PATH_OBJECTS:
+                entryname = input.default.path.relative_to(working_dir)
+                requirement.listing.append(
+                    Dirent(
+                        entry='$(inputs.{})'.format(input.id),
+                        entryname=str(entryname),
                     )
-
-            requirement.listing.extend(explicit_listing)
+                )
 
         if requirement.listing:
             return requirement

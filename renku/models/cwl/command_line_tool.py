@@ -327,7 +327,6 @@ class CommandLineToolFactory(object):
         initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
             tool,
             existing_directories=existing_directories,
-            explicit_inputs=self.explicit_inputs,
             working_dir=self.working_dir
         )
         if initial_work_dir_requirement:
