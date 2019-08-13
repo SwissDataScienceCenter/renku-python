@@ -54,7 +54,7 @@ class Person:
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (isinstance(value, str) and re.match(r"[^@]+@[^@]+", value)):
+        if not (isinstance(value, str) and re.match(r'[^@]+@[^@]+', value)):
             raise ValueError('Email address "{0}" is invalid.'.format(value))
 
     @classmethod

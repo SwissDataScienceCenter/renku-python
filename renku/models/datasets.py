@@ -88,7 +88,7 @@ class Creator(object):
     def check_email(self, attribute, value):
         """Check that the email is valid."""
         if self.email and not (
-            isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)
+            isinstance(value, str) and re.match(r'[^@]+@[^@]+\.[^@]+', value)
         ):
             raise ValueError('Email address is invalid.')
 
@@ -465,3 +465,15 @@ class Dataset(Entity, CreatorsMixin):
 
         if not self.path:
             self.path = str(self.client.renku_datasets_path / str(self.uid))
+
+        if self.files:
+            for datasetfile in self.files:
+                if datasetfile.client is None:
+                    client, _, _ = self.client.resolve_in_submodules(
+                        self.client.find_previous_commit(
+                            datasetfile.path, revision='HEAD'
+                        ),
+                        datasetfile.path,
+                    )
+
+                    datasetfile.client = client
