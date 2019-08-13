@@ -469,14 +469,11 @@ class Dataset(Entity, CreatorsMixin):
         if self.files:
             for datasetfile in self.files:
                 if datasetfile.client is None:
-                    try:
-                        client, _, _ = self.client.resolve_in_submodules(
-                            self.client.find_previous_commit(
-                                datasetfile.path, revision='HEAD'
-                            ),
-                            datasetfile.path,
-                        )
-                    except KeyError:
-                        client = self.client
+                    client, _, _ = self.client.resolve_in_submodules(
+                        self.client.find_previous_commit(
+                            datasetfile.path, revision='HEAD'
+                        ),
+                        datasetfile.path,
+                    )
 
                     datasetfile.client = client
