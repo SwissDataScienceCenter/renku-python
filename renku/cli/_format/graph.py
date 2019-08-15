@@ -271,7 +271,7 @@ def _rdf2dot_reduced(g, stream):
             fields[sn].add((qname(p, g), formatliteral(o, g)))
 
     for u, n in nodes.items():
-        stream.write(u"# %s %s\n" % (u, n))
+        stream.write(u'# %s %s\n' % (u, n))
         f = [
             '<tr><td align="left"><b>%s</b></td><td align="left">'
             '<b>%s</b></td></tr>' % x for x in sorted(types[n])
