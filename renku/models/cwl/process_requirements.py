@@ -42,12 +42,7 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
     listing = attr.ib(default=attr.Factory(list))  # File, Directory
 
     @classmethod
-    def from_tool(
-        cls,
-        tool,
-        existing_directories=None,
-        working_dir=''
-    ):
+    def from_tool(cls, tool, existing_directories=None, working_dir=''):
         """Create a directory structure based on tool inputs and outputs."""
         directories = DirectoryTree()
         inputs = {input_.id: input_ for input_ in tool.inputs}
