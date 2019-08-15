@@ -189,7 +189,12 @@ class DatasetsApiMixin(object):
         # Generate the DatasetFiles
         dataset_files = []
         for data in files:
-            dataset_files.append(DatasetFile.from_revision(self, **data))
+            datasetfile = DatasetFile.from_revision(self, **data)
+
+            # Set dataset file path relative to projects root for submodules
+            if datasetfile.client != self:
+                datasetfile.path = str(data['path'])
+            dataset_files.append(datasetfile)
         dataset.update_files(dataset_files)
 
     def _add_from_url(self, dataset, path, url, link=False, **kwargs):

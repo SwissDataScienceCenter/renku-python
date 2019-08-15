@@ -47,13 +47,15 @@ stages:
     if: branch = master AND (type != pull_request)
   - name: test OSX
     if: branch = master AND (type != pull_request)
-  - name: publish 🐍  🐳
+  - name: publish 🐍
     if: type = push AND (branch = master OR tag IS present)
   - name: brew 🍺
-    if: type = push AND tag IS present
+    if: type = push AND tag IS present AND tag =~ /^v\d\.\d\.\d$/
 
 before_install:
   - git fetch --tags
+  - git config --global --add user.name "Renku @ SDSC"
+  - git config --global --add user.email "renku@datascience.ch"
   - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
         sudo apt-get update;
         sudo apt-get -y install shellcheck;
@@ -69,8 +71,6 @@ before_install:
         brew link python;
         brew install git-lfs jq node pipenv shellcheck;
         brew upgrade node;
-        git config --global --add user.name "John Doe";
-        git config --global --add user.email "john.doe@example.com";
     fi
 
 install:
@@ -145,29 +145,31 @@ jobs:
       os: osx
       osx_image: xcode9.2
 
-    - stage: publish 🐍  🐳
+    - stage: publish 🐍
       python: 3.6
       script: echo "Publishing on PyPI.io ..."
+      before_deploy:
+        if [[ -z $TRAVIS_TAG ]]; then
+          export TRAVIS_TAG=$(renku --version) &&
+          git tag $TRAVIS_TAG;
+        fi
       deploy:
         - provider: pypi
-          user: ${PYPI_USERNAME}
-          password: ${PYPI_PASSWORD}
+          user:
+            secure: "RPxGYNL+N6LQy1/TbXCFy9IDgZ05u/Qj6my/p1hSoBWG304se28njZ0zpTv5AGZF8G3dBeVjYbf4s+ytwUPoxK+1fBWlnnSuw4QUXWf339rzcMU4dDO2QX8/SvMDZFbJdE/1/6arlbXa8dTZobm1V0Q3AUTkl2AwXIg9jCaRcYb6n9lASRIiR1M2BK/+FTJG2qywB9kSyQ3giuobwwhQa4CAwDg5MoqL5KLFm2CxejvS0vpleaWqA/LJxeHTQqqd0CIk6V2NBETZ6V78MqdISai88nRafijT0iQ5LSWsy7R6CCpK7OFjHnvA7hGSYzs/BRpdABAk5a2yFbKKZErXoLvatjflMlj2OhHy/0Hlv6xEt1db1pwnjQQIiS62R/Gpx4DZAO8hGp6pT9g9xiifzlj4km9iOD4GY1g+A5A+ssEneBTvExJja4yAqJzAVu+XVDVqxVj+MOmpIcQkzT983+cVceoeczJ61sDuftQaAgcVqQACRE02fLszEtSJVFaq3vKu8dX2eMdiCk7GLdqNF9kfygagNC8eja6Yvr+Ft8kTwrjTBMC/D3xC584I8OTzmpNE/tfZHppfhiKXoU+FySdIGCPcSTGKUgljiz3sFk1JjjEBkGqBLAMaD8l5FsgQqR4zO/2IiwSst1Wx8owF+tiLlerDAC9b/ZFcqDpUab4="
+          password:
+            secure: "f8f2175dg1FUt4mZCQ87tgwwUrFoxQ5CTcZkRnlCXJqagSMk9VmjR8/XXDE5cW48JPG0qdKQdvBtC81NCq+4MqC20HI9VtOdZWeT6Jej90XOZ742osC3pdIGMF4wrsd7+fs1AZkbzzjgB7FsJ42qW6rMa3vP4mXB4GJEel453Fs3Fw8tnR4PZ2ikOJ9fcmtMensjxh9oNMyAIMkYVGim5bWtpkpI1cddeThDBEKurj1IWEMonQw4lR2yLwZTEP6F/b43Cy4aNy+YkdJzJbM0KMJASLeeu8SxNTE7JCqrYc4irU3AzHzzy/FNVGdiw0F10kbK+yI7cPUqWfeoVjwqBJe8Hr0CXNNCsEYkjXkY9PE2m2x10z2UrTy+O1dNo/8sDoKvZBChuAPPtxp2I7/KujECWjzFvMunHEk3K940ZeSMo90xHKQllmA7umquNcPTXiM2l4nNHtolh5W2HdanvsEFhkY2Y2o9sRIytOa5bM+iS9RCL5GsZwLgGKdjfuqk0GF6KK4AIgi7WKtVM73vM7HQaAVRpyUWZ/h8Vu5IRdkORC20WwHZ/Jg6pUy3pkN1VlcKE5uanaPik/npq/uCGe9YC2bh5IoclmqdJUHrkzFPb+f8wRBvbof0zU1B6UMSdiug5oDk3a0Q8kk2AppfjTs7x8NHi3KYXdUphi9HrWQ="
           distributions: "sdist bdist_wheel"
           on:
             all_branches: true
+        # push the dev tag to github
+        - provider: releases
+          api_key: ${GITHUB_TOKEN}
+          on:
+            all_branches: true
+            tags: false
 
-    - # stage: publish
-      sudo: required
-      services:
-        - docker
-      install:
-        - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-        - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-        - sudo apt-get update
-        - sudo apt-get -y install docker-ce
-      script: make docker-login docker-push
-
-    - # stage: brew 🍺
+    - stage: brew 🍺
       language: generic
       sudo: true
       os: osx
@@ -187,7 +189,6 @@ jobs:
             all_branches: true
         - provider: pages
           skip-cleanup: true
-          # Set in the settings page of your repository, as a secure variable
           github-token: ${GITHUB_TOKEN}
           repo: swissdatasciencecenter/homebrew-renku
           target-branch: master

@@ -440,6 +440,39 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
         assert inode not in original_inodes
 
 
+def test_dataset_file_path_from_subdirectory(runner, project, client):
+    """Test adding a file into a dataset and check path independent
+    of the CWD """
+    # create a dataset
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    client.repo.git.add('a')
+    client.repo.git.commit(message='Added file a')
+
+    # add data
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'dataset', 'a'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset('dataset') as dataset:
+        datasetfile = dataset.find_file('a')
+        assert datasetfile
+
+        assert datasetfile.full_path == client.path / 'a'
+
+        os.chdir('./data')
+
+        assert datasetfile.full_path == client.path / 'a'
+
+
 def test_datasets_ls_files_tabular_empty(runner, project):
     """Test listing of data within empty dataset."""
     # create a dataset
