@@ -64,8 +64,7 @@ def datasets(ctx, client):
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
         dataset = dataset.rename_files(
-            lambda key: os.path.
-            relpath(str(old_path.parent / key), start=str(new_path.parent))
+            lambda key: old_path.parent / key
         )
 
         with new_path.open('w') as fp:

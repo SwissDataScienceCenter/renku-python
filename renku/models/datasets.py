@@ -434,7 +434,20 @@ class Dataset(Entity, CreatorsMixin):
 
         for file_ in self.files:
             new_path = rename(file_.path)
-            new_file = attr.evolve(file_, path=new_path)
+            client, commit, path = self.client.resolve_in_submodules(
+                self.client.find_previous_commit(new_path, revision='HEAD'),
+                new_path,
+            )
+            new_file = attr.evolve(
+                file_,
+                path=new_path.relative_to(self.client.path),
+                dataset=self.name,
+                client=client,
+                commit=commit
+            )
+            new_file._id = new_file.default_id()
+            new_file._label = new_file.default_label()
+
             if not self.find_file(new_file.path):
                 files.append(new_file)
             else:
