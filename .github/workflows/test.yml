@@ -17,8 +17,7 @@ jobs:
         version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip pipenv
-        pipenv install --deploy --system --dev
+        python -m pip install --upgrade pip 
+        python -m pip install .[all]
     - name: Test with pytest
-      run: |
-        pipenv run ./run-tests.sh
+      run: ./run-tests.sh
