@@ -26,21 +26,67 @@ import requests
 from renku.cli._providers.api import ExporterApi, ProviderApi
 from renku.cli._providers.doi import DOIProvider
 from renku.models.datasets import Dataset, DatasetFile
+from renku.utils.doi import extract_doi
 
-DATAVERSE_BASE_URL = 'https://dataverse.harvard.edu/'
 DATAVERSE_API_PATH = 'api'
 
-DATAVERSE_METADATA_URL = 'datasets/export'
+DATAVERSE_VERSION_API = 'info/version'
+DATAVERSE_METADATA_API = 'datasets/export'
+DATAVERSE_FILE_API = 'access/datafile/:persistentId/'
 DATAVERSE_EXPORTER = 'schema.org'
 
 
-def make_records_url(record_id):
-    """Create URL to access record by ID."""
-    url_parts = list(urlparse.urlparse(DATAVERSE_BASE_URL))
+def check_dataverse_uri(url):
+    """Check if an URL points to a dataverse instance."""
+    url_parts = list(urlparse.urlparse(url))
     url_parts[2] = pathlib.posixpath.join(
-        DATAVERSE_API_PATH, DATAVERSE_METADATA_URL
+        DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+    )
+    url_parts[3:6] = [''] * 3
+    version_url = urlparse.urlunparse(url_parts)
+
+    response = requests.get(version_url)
+    if response.status_code != 200:
+        return False
+
+    version_data = response.json()
+
+    if 'status' not in version_data or 'data' not in version_data:
+        return False
+
+    version_info = version_data['data']
+
+    if 'version' not in version_info or 'build' not in version_info:
+        return False
+
+    return True
+
+
+def check_dataverse_doi(doi):
+    """Check if a DOI points to a dataverse dataset."""
+    doi = DOIProvider().find_record(doi)
+
+    return check_dataverse_uri(doi.url)
+
+
+def make_records_url(record_id, base_url):
+    """Create URL to access record by ID."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(
+        DATAVERSE_API_PATH, DATAVERSE_METADATA_API
     )
     args_dict = {'exporter': DATAVERSE_EXPORTER, 'persistentId': record_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)
+
+
+def make_file_url(file_id, base_url):
+    """Create URL to access record by ID."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(
+        DATAVERSE_API_PATH, DATAVERSE_FILE_API
+    )
+    args_dict = {'persistentId': file_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
 
@@ -73,16 +119,18 @@ class DataverseProvider(ProviderApi):
         :return: ``DataverseRecord``
         """
         if self.is_doi:
-            return self.find_record_by_doi(uri)
+            doi = DOIProvider().find_record(uri)
+            uri = doi.url
+
+        uri = self.get_export_uri(uri)
 
         return self.get_record(uri)
 
-    def find_record_by_doi(self, doi):
-        """Resolve the DOI and make a record for the retrieved record id."""
-        doi = DOIProvider().find_record(doi)
-        record_id = DataverseProvider.record_id(doi.url)
-        uri = make_records_url(record_id)
-        return self.get_record(uri)
+    def get_export_uri(self, uri):
+        """Gets a dataverse api export URI from a dataverse entry."""
+        record_id = DataverseProvider.record_id(uri)
+        uri = make_records_url(record_id, uri)
+        return uri
 
     def get_record(self, uri):
         """Retrieve metadata and return ``DataverseRecordSerializer``."""
@@ -94,7 +142,7 @@ class DataverseProvider(ProviderApi):
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
-        return DataverseExporter(dataset=dataset, access_token=access_token)
+        raise NotImplementedError()
 
 
 @attr.s
@@ -114,8 +162,13 @@ class DataverseRecordSerializer:
     @property
     def files(self):
         """Get all file metadata entries."""
-        return [{k.strip('@'): v
-                 for k, v in f.items()} for f in self._json['distribution']]
+        file_list = []
+
+        for f in self._json['distribution']:
+            mapped_file = {k.strip('@'): v for k, v in f.items()}
+            mapped_file['parentUrl'] = self._uri
+            file_list.append(mapped_file)
+        return file_list
 
     def get_jsonld(self):
         """Get record metadata as jsonld."""
@@ -140,7 +193,7 @@ class DataverseRecordSerializer:
             remote_ = file_.remote_url
             dataset_file = DatasetFile(
                 url=remote_,
-                id=file_.name,
+                id=file_._id if file_._id else file_.name,
                 filename=file_.name,
                 filesize=file_.contentSize,
                 filetype=file_.fileFormat,
@@ -151,16 +204,16 @@ class DataverseRecordSerializer:
 
         dataset.files = serialized_files
 
-        if isinstance(dataset.url, dict) and '_id' in dataset.url:
-            dataset.url = urllib.parse.urlparse(dataset.url.pop('_id'))
-            dataset.url = dataset.url.geturl()
-
         return dataset
 
 
 @attr.s
 class DataverseFileSerializer:
     """Dataverse record file."""
+
+    _id = attr.ib(default=None, kw_only=True)
+
+    identifier = attr.ib(default=None, kw_only=True)
 
     name = attr.ib(default=None, kw_only=True)
 
@@ -172,12 +225,27 @@ class DataverseFileSerializer:
 
     contentUrl = attr.ib(default=None, kw_only=True)
 
+    parentUrl = attr.ib(default=None, kw_only=True)
+
     _type = attr.ib(default=None, kw_only=True)
 
     @property
     def remote_url(self):
         """Get remote URL as ``urllib.ParseResult``."""
-        return urllib.parse.urlparse(self.contentUrl)
+        if self.contentUrl is not None:
+            return urllib.parse.urlparse(self.contentUrl)
+
+        if self.identifier is None:
+            return None
+
+        doi = extract_doi(self.identifier)
+
+        if doi is None:
+            return None
+
+        file_url = make_file_url('doi:' + doi, self.parentUrl)
+
+        return urllib.parse.urlparse(file_url)
 
 
 class DataverseExporter(ExporterApi):

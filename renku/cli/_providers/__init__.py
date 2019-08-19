@@ -19,7 +19,9 @@
 from urllib.parse import urlparse
 
 from renku.cli._providers.zenodo import ZenodoProvider
-from renku.cli._providers.dataverse import DataverseProvider
+from renku.cli._providers.dataverse import (
+    DataverseProvider, check_dataverse_uri, check_dataverse_doi
+)
 from renku.utils.doi import is_doi
 
 
@@ -37,17 +39,21 @@ class ProviderFactory:
             if bool(url.scheme and url.netloc and url.params == '') is False:
                 return None, 'Cannot parse URL.'
 
+        uri_lower = uri.lower()
+
         provider = None
-        if 'zenodo' in uri:
+        if 'zenodo' in uri_lower:
             provider = ZenodoProvider(is_doi=is_doi_)
-        elif 'dataverse' in uri:
+        elif ((is_doi_ is None and check_dataverse_uri(uri)) or
+              check_dataverse_doi(is_doi_.group(0))):
             provider = DataverseProvider(is_doi=is_doi_)
 
         if is_doi_ and provider is None:
             return None, (
                 'Provider {} not found. '.format(
                     uri.split('/')[1].split('.')[0]  # Get DOI provider name.
-                ) + 'Currently supporting following providers: (Zenodo, )'
+                ) +
+                'Currently supporting following providers: (Zenodo, Dataverse)'
             )
 
         return provider, None

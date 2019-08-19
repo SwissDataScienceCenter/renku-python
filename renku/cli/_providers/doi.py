@@ -47,6 +47,8 @@ class DOIMetadataSerializer:
 
     author = attr.ib(kw_only=True, default=None)
 
+    contributor = attr.ib(kw_only=True, default=None)
+
     version = attr.ib(kw_only=True, default=None)
 
     issued = attr.ib(kw_only=True, default=None)
@@ -95,6 +97,8 @@ class DOIProvider(ProviderApi):
 
     def find_record(self, uri):
         """Finds DOI record."""
+        if uri.startswith('doi:'):
+            uri = uri[4:]
         response = self._query(uri).json()
         return DOIProvider._serialize(response)
 

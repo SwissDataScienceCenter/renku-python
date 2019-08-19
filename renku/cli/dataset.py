@@ -603,6 +603,7 @@ def import_(ctx, client, uri, name, extract):
 
         for p in processing:
             p.wait()
+            p.get()
         pool.close()
 
         dataset_name = name or dataset_.display_name
@@ -624,10 +625,10 @@ def download_file(extract, data_folder, file, chunk_size=16384):
     local_filename = Path(file.filename).name
     download_to = Path(data_folder) / Path(local_filename)
 
-    def extract_dataset(data_folder_, filename, file_):
+    def extract_dataset(data_folder_, filename):
         """Extract downloaded dataset."""
         import patoolib
-        filepath = data_folder_ / filename
+        filepath = Path(data_folder_) / Path(filename)
         patoolib.extract_archive(filepath, outdir=data_folder_)
         filepath.unlink()
 
@@ -673,7 +674,7 @@ def download_file(extract, data_folder, file, chunk_size=16384):
                 progressbar_.close()
 
         if extract:
-            extract_dataset(data_folder, local_filename, file)
+            extract_dataset(data_folder, local_filename)
 
     with requests.get(file.url.geturl(), stream=True) as r:
         r.raise_for_status()
