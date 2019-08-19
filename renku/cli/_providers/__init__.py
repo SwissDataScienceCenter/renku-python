@@ -19,6 +19,7 @@
 from urllib.parse import urlparse
 
 from renku.cli._providers.zenodo import ZenodoProvider
+from renku.cli._providers.dataverse import DataverseProvider
 from renku.utils.doi import is_doi
 
 
@@ -31,7 +32,7 @@ class ProviderFactory:
     def from_uri(uri):
         """Get provider type based on uri."""
         is_doi_ = is_doi(uri)
-        if is_doi_ is False:
+        if is_doi_ is None:
             url = urlparse(uri)
             if bool(url.scheme and url.netloc and url.params == '') is False:
                 return None, 'Cannot parse URL.'
@@ -39,6 +40,8 @@ class ProviderFactory:
         provider = None
         if 'zenodo' in uri:
             provider = ZenodoProvider(is_doi=is_doi_)
+        elif 'dataverse' in uri:
+            provider = DataverseProvider(is_doi=is_doi_)
 
         if is_doi_ and provider is None:
             return None, (
