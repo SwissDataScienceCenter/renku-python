@@ -68,7 +68,11 @@ def check_or_raise(response):
                 for err in err_response['errors']
             ]
 
-            raise HTTPError('\n' + '\n'.join(errors))
+            raise HTTPError(
+                '\n' + '\n'.join(errors) +
+                '\nSee `renku dataset edit -h` for details on how to edit'
+                ' metadata'
+            )
 
         else:
             raise HTTPError(response.content)

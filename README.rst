@@ -68,7 +68,7 @@ repository:
 
 ::
 
-    $ pip install --dev renku
+    $ pip install --pre renku
     # - OR -
     $ pip install -e git+https://github.com/SwissDataScienceCenter/renku-python.git#egg=renku
 
