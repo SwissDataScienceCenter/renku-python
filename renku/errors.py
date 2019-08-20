@@ -158,9 +158,11 @@ class IgnoredFiles(RenkuException, click.ClickException):
 class FailedMerge(RenkuException, click.ClickException):
     """Raise when automatic merge failed."""
 
-    def __init__(self, repo):
+    def __init__(self, repo, branch, merge_args):
         """Build a custom message."""
         super(FailedMerge, self).__init__(
+            'Failed merge of branch {0} with args {1}'.
+            format(branch, ','.join(merge_args)) +
             'The automatic merge failed.\n\n'
             'Please use the "git" command to clean resolve it.'
             '\n\n' + str(repo.git.status())

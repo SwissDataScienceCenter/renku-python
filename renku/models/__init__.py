@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Model objects used in Python SDK."""
-
 from ._datastructures import Collection, Model
 
 __all__ = ('Collection', 'Model')

@@ -20,6 +20,7 @@
 import os
 import shutil
 import tempfile
+import time
 
 import pytest
 import responses
@@ -48,6 +49,39 @@ def runner(monkeypatch):
     from renku.api.config import RENKU_HOME
     monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     return CliRunner()
+
+
+@pytest.fixture()
+def run_shell():
+    """Create a shell cmd runner."""
+    import subprocess
+
+    def run_(cmd, return_ps=None, sleep_for=None):
+        """Spawn subprocess and execute shell command.
+
+        :param return_ps: Return process object.
+        :param sleep_for: After executing command sleep for n seconds.
+        :returns: Process object or tuple (stdout, stderr).
+        """
+        ps = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        if return_ps:
+            return ps
+
+        output = ps.communicate()
+
+        if sleep_for:
+            time.sleep(sleep_for)
+
+        return output
+
+    return run_
 
 
 @pytest.fixture()

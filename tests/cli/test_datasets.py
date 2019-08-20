@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test dataset command."""
+"""Test ``dataset`` command."""
 
 from __future__ import absolute_import, print_function
 
@@ -679,6 +679,7 @@ def test_dataset_unlink_file_not_found(runner, project):
         ['dataset', 'unlink', 'my-dataset', '--include', 'notthere.csv']
     )
     assert 0 == result.exit_code
+
     assert '' == result.output
 
 
@@ -829,5 +830,24 @@ def test_dataset_edit(runner, client, project):
         cli.cli, ['dataset', 'edit', dataset.identifier],
         input='wq',
         catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+
+def test_dataset_edit_dirty(runner, client, project):
+    """Check dataset metadata editing when dirty repository."""
+    # Create a file in root of the repository.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    # Create a dataset.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'edit', dataset.identifier], input='wq'
     )
     assert 0 == result.exit_code
