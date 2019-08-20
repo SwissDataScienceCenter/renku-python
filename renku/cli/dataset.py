@@ -167,7 +167,7 @@ from requests import HTTPError
 from tqdm import tqdm
 
 from renku.api._git import COMMIT_DIFF_STRATEGY
-from renku.api.datasets import get_dataset_metadata_paths
+from renku.api.datasets import DATASET_METADATA_PATHS
 from renku.cli._providers import ProviderFactory
 from renku.models._tabulate import tabulate
 from renku.models.datasets import Dataset
@@ -208,7 +208,7 @@ def dataset(ctx, client, revision, datadir, format):
 @dataset.command()
 @click.argument('name')
 @pass_local_client(
-    clean=False, commit=True, commit_only=get_dataset_metadata_paths()
+    clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
 def create(client, name):
     """Create an empty dataset in the current repo."""
@@ -228,7 +228,7 @@ def create(client, name):
 @dataset.command()
 @click.argument('id')
 @pass_local_client(
-    clean=False, commit=True, commit_only=get_dataset_metadata_paths()
+    clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
 def edit(client, id):
     """Edit dataset metadata."""

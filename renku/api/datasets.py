@@ -461,9 +461,7 @@ def check_for_git_repo(url):
     return is_git
 
 
-def get_dataset_metadata_paths():
-    """Return filesystem paths for dataset metadata."""
-    return [
-        Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
-        Path(RENKU_HOME) / Path(LinkReference.REFS),
-    ]
+DATASET_METADATA_PATHS = [
+    Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
+    Path(RENKU_HOME) / Path(LinkReference.REFS),
+]
