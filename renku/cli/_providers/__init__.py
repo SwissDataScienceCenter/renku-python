@@ -39,10 +39,8 @@ class ProviderFactory:
             if bool(url.scheme and url.netloc and url.params == '') is False:
                 return None, 'Cannot parse URL.'
 
-        uri_lower = uri.lower()
-
         provider = None
-        if 'zenodo' in uri_lower:
+        if 'zenodo' in uri.lower():
             provider = ZenodoProvider(is_doi=is_doi_)
         elif ((is_doi_ is None and check_dataverse_uri(uri)) or
               check_dataverse_doi(is_doi_.group(0))):
