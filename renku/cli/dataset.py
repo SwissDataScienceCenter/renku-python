@@ -601,9 +601,15 @@ def import_(ctx, client, uri, name, extract):
             ) for file_ in files_
         ]
 
-        for p in processing:
-            p.wait()
-            p.get()
+        try:
+            for p in processing:
+                p.wait()
+                p.get()
+        except HTTPError as e:
+            raise BadParameter((
+                'Could not process {0}.\n'
+                'URI not found.'.format(e.request.url)
+            ))
         pool.close()
 
         dataset_name = name or dataset_.display_name

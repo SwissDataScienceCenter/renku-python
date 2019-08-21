@@ -17,6 +17,7 @@
 # limitations under the License.
 """Dataverse API integration."""
 import pathlib
+import re
 import urllib
 import urllib.parse as urlparse
 
@@ -26,7 +27,7 @@ import requests
 from renku.cli._providers.api import ExporterApi, ProviderApi
 from renku.cli._providers.doi import DOIProvider
 from renku.models.datasets import Dataset, DatasetFile
-from renku.utils.doi import extract_doi
+from renku.utils.doi import extract_doi, is_doi
 
 DATAVERSE_API_PATH = 'api'
 
@@ -99,6 +100,16 @@ class DataverseProvider(ProviderApi):
     _accept = attr.ib(default='application/json')
 
     @staticmethod
+    def supports(uri):
+        """Whether or not this provider supports a given uri."""
+        is_doi_ = is_doi(uri)
+        if ((is_doi_ is None and check_dataverse_uri(uri)) or
+            check_dataverse_doi(is_doi_.group(0))):
+            return True
+
+        return False
+
+    @staticmethod
     def record_id(uri):
         """Extract record id from uri."""
         parsed = urlparse.urlparse(uri)
@@ -159,14 +170,23 @@ class DataverseRecordSerializer:
         """Check if record is at last possible version."""
         return True
 
+    def _convert_json_property_name(self, property_name):
+        """Removes '@' and converts names to snake_case."""
+        property_name = property_name.strip('@')
+        property_name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', property_name)
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', property_name).lower()
+
     @property
     def files(self):
         """Get all file metadata entries."""
         file_list = []
 
         for f in self._json['distribution']:
-            mapped_file = {k.strip('@'): v for k, v in f.items()}
-            mapped_file['parentUrl'] = self._uri
+            mapped_file = {
+                self._convert_json_property_name(k): v
+                for k, v in f.items()
+            }
+            mapped_file['parent_url'] = self._uri
             file_list.append(mapped_file)
         return file_list
 
@@ -195,8 +215,8 @@ class DataverseRecordSerializer:
                 url=remote_,
                 id=file_._id if file_._id else file_.name,
                 filename=file_.name,
-                filesize=file_.contentSize,
-                filetype=file_.fileFormat,
+                filesize=file_.content_size,
+                filetype=file_.file_format,
                 dataset=dataset.name,
                 path='',
             )
@@ -217,23 +237,23 @@ class DataverseFileSerializer:
 
     name = attr.ib(default=None, kw_only=True)
 
-    fileFormat = attr.ib(default=None, kw_only=True)
+    file_format = attr.ib(default=None, kw_only=True)
 
-    contentSize = attr.ib(default=None, kw_only=True)
+    content_size = attr.ib(default=None, kw_only=True)
 
     description = attr.ib(default=None, kw_only=True)
 
-    contentUrl = attr.ib(default=None, kw_only=True)
+    content_url = attr.ib(default=None, kw_only=True)
 
-    parentUrl = attr.ib(default=None, kw_only=True)
+    parent_url = attr.ib(default=None, kw_only=True)
 
     _type = attr.ib(default=None, kw_only=True)
 
     @property
     def remote_url(self):
         """Get remote URL as ``urllib.ParseResult``."""
-        if self.contentUrl is not None:
-            return urllib.parse.urlparse(self.contentUrl)
+        if self.content_url is not None:
+            return urllib.parse.urlparse(self.content_url)
 
         if self.identifier is None:
             return None
@@ -243,7 +263,7 @@ class DataverseFileSerializer:
         if doi is None:
             return None
 
-        file_url = make_file_url('doi:' + doi, self.parentUrl)
+        file_url = make_file_url('doi:' + doi, self.parent_url)
 
         return urllib.parse.urlparse(file_url)
 

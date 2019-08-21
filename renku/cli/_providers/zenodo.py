@@ -469,6 +469,14 @@ class ZenodoProvider(ProviderApi):
     _accept = attr.ib(default='application/json')
 
     @staticmethod
+    def supports(uri):
+        """Whether or not this provider supports a given uri."""
+        if 'zenodo' in uri.lower():
+            return True
+
+        return False
+
+    @staticmethod
     def record_id(uri):
         """Extract record id from uri."""
         return urlparse(uri).path.split('/')[-1]

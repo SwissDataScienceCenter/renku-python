@@ -19,16 +19,14 @@
 from urllib.parse import urlparse
 
 from renku.cli._providers.zenodo import ZenodoProvider
-from renku.cli._providers.dataverse import (
-    DataverseProvider, check_dataverse_uri, check_dataverse_doi
-)
+from renku.cli._providers.dataverse import DataverseProvider
 from renku.utils.doi import is_doi
 
 
 class ProviderFactory:
     """Create a provider type from URI."""
 
-    PROVIDERS = {'zenodo': ZenodoProvider}
+    PROVIDERS = {'zenodo': ZenodoProvider, 'dataverse': DataverseProvider}
 
     @staticmethod
     def from_uri(uri):
@@ -40,11 +38,11 @@ class ProviderFactory:
                 return None, 'Cannot parse URL.'
 
         provider = None
-        if 'zenodo' in uri.lower():
-            provider = ZenodoProvider(is_doi=is_doi_)
-        elif ((is_doi_ is None and check_dataverse_uri(uri)) or
-              check_dataverse_doi(is_doi_.group(0))):
-            provider = DataverseProvider(is_doi=is_doi_)
+
+        for _, potential_provider in ProviderFactory.PROVIDERS.items():
+            if potential_provider.supports(uri):
+                provider = potential_provider
+                break
 
         if is_doi_ and provider is None:
             return None, (
@@ -53,8 +51,8 @@ class ProviderFactory:
                 ) +
                 'Currently supporting following providers: (Zenodo, Dataverse)'
             )
-
-        return provider, None
+        else:
+            return provider(is_doi=is_doi_), None
 
     @staticmethod
     def from_id(provider_id):
