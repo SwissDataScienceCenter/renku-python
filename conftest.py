@@ -263,3 +263,188 @@ def zenodo_sandbox(client):
         'zenodo', 'access_token',
         'HPwXfABPZ7JNiwXMrktL7pevuuo9jt4gsUCkh3Gs2apg65ixa3JPyFukdGup'
     )
+
+
+@pytest.fixture
+def doi_responses():
+    """Responses for doi.org requests."""
+    from renku.cli._providers.doi import DOI_BASE_URL
+    import json
+    import re
+
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def doi_callback(request):
+            return (
+                200, {
+                    'Content-Type': 'application/json'
+                },
+                json.dumps({
+                    'type': 'dataset',
+                    'id': request.url,
+                    'author': [{
+                        'family': 'Doe',
+                        'given': 'John'
+                    }],
+                    'contributor': [{
+                        'contributorType': 'ContactPerson',
+                        'family': 'Doe',
+                        'given': 'John'
+                    }],
+                    'issued': {
+                        'date-parts': [[2019]]
+                    },
+                    'abstract': 'Test Dataset',
+                    'DOI': '10.11588/data/yyxx1122',
+                    'publisher': 'heiDATA',
+                    'title': 'dataset',
+                    'URL':
+                        'https://dataverse.harvard.edu/citation?persistentId=doi:10.11588/data/yyxx1122'
+                })
+            )
+
+        rsps.add_callback(
+            method='GET',
+            url=re.compile('{base_url}/.*'.format(base_url=DOI_BASE_URL)),
+            callback=doi_callback
+        )
+        yield rsps
+
+
+@pytest.fixture
+def dataverse_responses(doi_responses):
+    """Responses for dataverse requests."""
+    from renku.cli._providers.dataverse import (
+        DATAVERSE_API_PATH, DATAVERSE_VERSION_API, DATAVERSE_METADATA_API,
+        DATAVERSE_FILE_API
+    )
+    import json
+    import re
+    import urllib
+    import pathlib
+
+    base_url = 'https://dataverse.harvard.edu'
+
+    # metadata requests
+    def metadata_callback(request):
+        return (
+            200, {
+                'Content-Type': 'application/json'
+            },
+            json.dumps({
+                '@context': 'http://schema.org',
+                '@type': 'Dataset',
+                '@id': 'https://doi.org/10.11588/data/yyxx1122',
+                'identifier': '10.11588/data/yyxx1122',
+                'name': 'dataset',
+                'creator': [{
+                    'name': 'John Doe',
+                    'affiliation': 'CIAT',
+                    '@id': 'https://orcid.org/0000-0001-5572-0000',
+                    'identifier': 'https://orcid.org/0000-0001-5572-0000'
+                }],
+                'author': [{
+                    'name': 'John Doe',
+                    'affiliation': 'CIAT',
+                    '@id': 'https://orcid.org/0000-0001-5572-0000',
+                    'identifier': 'https://orcid.org/0000-0001-5572-0000'
+                }],
+                'datePublished': '2015-02-19',
+                'dateModified': '2019-07-03',
+                'version': '5',
+                'description': ['test'],
+                'keywords': ['test'],
+                'temporalCoverage': ['2011/2013'],
+                'license': {
+                    '@type': 'Dataset',
+                    'text': 'WTFPL'
+                },
+                'includedInDataCatalog': {
+                    '@type': 'DataCatalog',
+                    'name': 'Harvard Dataverse',
+                    'url': 'https://dataverse.harvard.edu'
+                },
+                'publisher': {
+                    '@type': 'Organization',
+                    'name': 'Harvard Dataverse'
+                },
+                'provider': {
+                    '@type': 'Organization',
+                    'name': 'Harvard Dataverse'
+                },
+                'spatialCoverage': ['Zurich'],
+                'distribution': [
+                    {
+                        '@type': 'DataDownload',
+                        'name': 'test.pdf',
+                        'fileFormat': 'application/pdf',
+                        'contentSize': 1258929,
+                        'description': 'test pdf',
+                        '@id': 'https://doi.org/10.11588/data/yyxx1122/1',
+                        'identifier':
+                            'https://doi.org/10.11588/data/yyxx1122/1'
+                    },
+                    {
+                        '@type': 'DataDownload',
+                        'name': 'test.txt',
+                        'fileFormat': 'application/text',
+                        'contentSize': 1258929,
+                        'description': 'test txt',
+                        '@id': 'https://doi.org/10.11588/data/yyxx1122/2',
+                        'identifier':
+                            'https://doi.org/10.11588/data/yyxx1122/2'
+                    },
+                ]
+            })
+        )
+
+    url_parts = list(urllib.parse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(
+        DATAVERSE_API_PATH, DATAVERSE_METADATA_API
+    )
+    pattern = '{url}.*'.format(url=urllib.parse.urlunparse(url_parts))
+
+    doi_responses.add_callback(
+        method='GET', url=re.compile(pattern), callback=metadata_callback
+    )
+
+    # version requests
+    def version_callback(request):
+        return (
+            200, {
+                'Content-Type': 'application/json'
+            },
+            json.dumps({
+                'status': 'OK',
+                'data': {
+                    'version': '4.1.3',
+                    'build': 'abcdefg'
+                }
+            })
+        )
+
+    url_parts = list(urllib.parse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(
+        DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+    )
+    pattern = '{url}.*'.format(url=urllib.parse.urlunparse(url_parts))
+
+    doi_responses.add_callback(
+        method='GET', url=re.compile(pattern), callback=version_callback
+    )
+
+    # file requests
+    def file_callback(request):
+        return (200, {'Content-Type': 'application/json'}, 'Some test content')
+
+    url_parts = list(urllib.parse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(
+        DATAVERSE_API_PATH, DATAVERSE_FILE_API
+    )
+    pattern = '{url}.*'.format(url=urllib.parse.urlunparse(url_parts))
+
+    doi_responses.add_callback(
+        method='GET', url=re.compile(pattern), callback=file_callback
+    )
+
+    yield doi_responses

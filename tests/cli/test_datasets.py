@@ -31,6 +31,8 @@ from renku.api.config import RENKU_HOME
 from renku.api.datasets import DatasetsApiMixin
 from renku.cli._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
 from renku.cli._format.datasets import FORMATS as DATASETS_FORMATS
+from renku.cli._providers import DataverseProvider, ProviderFactory, \
+    ZenodoProvider
 from renku.models.refs import LinkReference
 
 
@@ -831,3 +833,80 @@ def test_dataset_edit(runner, client, project):
         catch_exceptions=False
     )
     assert 0 == result.exit_code
+
+
+@pytest.mark.parametrize(
+    'uri', (
+        '10.5281/zenodo.3363060', 'doi:10.5281/zenodo.3363060',
+        'hhttps://zenodo.org/record/3363060'
+    )
+)
+def test_dataset_provider_resolution_zenodo(dataverse_responses, uri):
+    """Check that zenodo uris resolve to ZenodoProvider."""
+    provider, _ = ProviderFactory.from_uri(uri)
+    assert type(provider) is ZenodoProvider
+
+
+@pytest.mark.parametrize(
+    'uri', (
+        '10.7910/DVN/TJCLKP', 'doi:10.7910/DVN/TJCLKP',
+        'https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/TJCLKP'
+    )
+)
+def test_dataset_provider_resolution_dataverse(dataverse_responses, uri):
+    """Check that dataverse uris resolve to DataverseProvider."""
+    provider, _ = ProviderFactory.from_uri(uri)
+    assert type(provider) is DataverseProvider
+
+
+@pytest.mark.parametrize(
+    'uri', (
+        '10.7910/DVN/TJCLKP', 'doi:10.7910/DVN/TJCLKP',
+        'https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/TJCLKP'
+    )
+)
+def test_dataverse_get_dataset(dataverse_responses, client, uri):
+    provider, err = ProviderFactory.from_uri(uri)
+
+    assert err is None
+
+    record = provider.find_record(uri)
+
+    assert record is not None
+    assert record._json is not None
+
+    dataset_ = record.as_dataset(client)
+
+    assert dataset_ is not None
+    assert len(dataset_.creator) == 1
+    assert len(dataset_.files) == 2
+    assert dataset_.identifier == '10.11588/data/yyxx1122'
+    assert dataset_.name == 'dataset'
+    assert len(dataset_.keywords) == 1
+
+
+@pytest.mark.parametrize(
+    'uri', (
+        '10.7910/DVN/TJCLKP', 'doi:10.7910/DVN/TJCLKP',
+        'https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/TJCLKP'
+    )
+)
+def test_get_dataset_from_dataverse(
+    runner, project, client, uri, dataverse_responses
+):
+    """Test importing data from dataverse via cli."""
+    # create a dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'import', '-n', 'dataset', uri],
+        input='y',
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    with client.with_dataset('dataset') as dataset:
+        assert dataset.name == 'dataset'
+        assert len(dataset.creator) == 1
+        assert len(dataset.files) == 2
+        assert len(dataset.keywords) == 1
