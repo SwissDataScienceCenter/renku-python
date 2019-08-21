@@ -52,11 +52,12 @@ if:
 .. topic:: Specifying auxiliary inputs (``--input``)
 
    You can specify extra inputs to your program explicitly by using the
-   ``--input`` option. These input file must exist before execution of
-   ``renku run`` command. This option is not a replacement for the arguments
-   that are passed on the command line. Files or directories specified with
-   this option will not appear on the command line unless they are passed as
-   arguments.
+   ``--input`` option. This is useful for specifying hidden dependencies
+   that don't appear on the command line. These input file must exist before
+   execution of ``renku run`` command. This option is not a replacement for
+   the arguments that are passed on the command line. Files or directories
+   specified with this option will not be passed as input arguments to the
+   script.
 
 Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~

@@ -262,8 +262,40 @@ class CommandLineToolFactory(object):
             inputs = {input.id: input for input in self.inputs}
             outputs = list(tool.outputs)
 
+            # Keep track of unmodified output files.
+            unmodified = set()
+            # Possible output paths.
+            candidates = set(repo.untracked_files)
+            candidates |= {
+                item.a_path
+                for item in repo.index.diff(None) if not item.deleted_file
+            }
+
+            from renku.cli._graph import _safe_path
+            candidates = {path for path in candidates if _safe_path(path)}
+
+            for output, input, path in self.guess_outputs(candidates):
+                outputs.append(output)
+                paths.append(path)
+
+                if input is not None:
+                    if input.id not in inputs:  # pragma: no cover
+                        raise RuntimeError('Inconsistent input name.')
+
+                    inputs[input.id] = input
+
+            for stream_name in ('stdout', 'stderr'):
+                stream = getattr(self, stream_name)
+                if (
+                    stream and stream not in candidates and
+                    Path(stream).resolve() not in self.explicit_outputs
+                ):
+                    unmodified.add(stream)
+                elif stream:
+                    paths.append(stream)
+
             if self.explicit_outputs:
-                last_output_id = len(tool.outputs)
+                last_output_id = len(outputs)
 
                 for output, input, path in self.find_explicit_outputs(
                     last_output_id
@@ -277,43 +309,11 @@ class CommandLineToolFactory(object):
 
                         inputs[input.id] = input
 
-                std_streams = [s for s in (self.stdout, self.stderr) if s]
-                paths += std_streams
-            else:
-                # Keep track of unmodified output files.
-                unmodified = set()
-                # Possible output paths.
-                candidates = set(repo.untracked_files)
-                candidates |= {
-                    item.a_path
-                    for item in repo.index.diff(None) if not item.deleted_file
-                }
+            if unmodified:
+                raise errors.UnmodifiedOutputs(repo, unmodified)
 
-                from renku.cli._graph import _safe_path
-                candidates = {path for path in candidates if _safe_path(path)}
-
-                for output, input, path in self.guess_outputs(candidates):
-                    outputs.append(output)
-                    paths.append(path)
-
-                    if input is not None:
-                        if input.id not in inputs:  # pragma: no cover
-                            raise RuntimeError('Inconsistent input name.')
-
-                        inputs[input.id] = input
-
-                for stream_name in ('stdout', 'stderr'):
-                    stream = getattr(self, stream_name)
-                    if stream and stream not in candidates:
-                        unmodified.add(stream)
-                    elif stream:
-                        paths.append(stream)
-
-                if unmodified:
-                    raise errors.UnmodifiedOutputs(repo, unmodified)
-
-                if not no_output and not paths:
-                    raise errors.OutputsNotFound(repo, inputs.values())
+            if not no_output and not paths:
+                raise errors.OutputsNotFound(repo, inputs.values())
 
             if client.has_external_storage:
                 client.track_paths_in_storage(*paths)
@@ -536,25 +536,28 @@ class CommandLineToolFactory(object):
                     str(input_path / path)
                     for path in tree.get(input_path, default=[])
                 }
-                content = {
-                    str(path)
-                    for path in input_path.rglob('*')
-                    if not path.is_dir() and path.name != '.gitkeep'
-                }
-                extra_paths = content - subpaths
-                if extra_paths:
-                    raise errors.InvalidOutputPath(
-                        'The output directory "{0}" is not empty. \n\n'
-                        'Delete existing files before running the command:'
-                        '\n  (use "git rm <file>..." to remove them first)'
-                        '\n\n'.format(input_path) + '\n'.join(
-                            '\t' + click.style(path, fg='yellow')
-                            for path in extra_paths
-                        ) + '\n\n'
-                        'Once you have removed files that should be used '
-                        'as outputs,\n'
-                        'you can safely rerun the previous command.'
-                    )
+                if input_path.resolve() not in self.explicit_outputs:
+                    content = {
+                        str(path)
+                        for path in input_path.rglob('*')
+                        if not path.is_dir() and path.name != '.gitkeep'
+                    }
+                    extra_paths = content - subpaths
+                    if extra_paths:
+                        raise errors.InvalidOutputPath(
+                            'The output directory "{0}" is not empty. \n\n'
+                            'Delete existing files before running the '
+                            'command:'
+                            '\n  (use "git rm <file>..." to remove them '
+                            'first)'
+                            '\n\n'.format(input_path) + '\n'.join(
+                                '\t' + click.style(path, fg='yellow')
+                                for path in extra_paths
+                            ) + '\n\n'
+                            'Once you have removed files that should be used '
+                            'as outputs,\n'
+                            'you can safely rerun the previous command.'
+                        )
 
                 # Remove files from the input directory
                 paths = [path for path in paths if path not in subpaths]

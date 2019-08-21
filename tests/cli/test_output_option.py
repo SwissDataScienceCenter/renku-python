@@ -23,25 +23,6 @@ import yaml
 from renku.models.cwl import CWLClass
 
 
-@pytest.fixture
-def cli(client, run):
-    """
-    Return a function that runs the provided command and returns the exit code
-    and content of the resulting CWL command line tool.
-    """
-
-    def renku_cli(*args):
-        before_cwl_files = set(client.workflow_path.glob('*.cwl'))
-        exit_code = run(args)
-        after_cwl_files = set(client.workflow_path.glob('*.cwl'))
-        new_files = after_cwl_files - before_cwl_files
-        assert len(new_files) <= 1
-        content = read_cwl_file(new_files.pop()) if new_files else None
-        return exit_code, content
-
-    return renku_cli
-
-
 def read_all_cwl_files(client, glob='*.cwl'):
     """
     Return an array where its elements are content of CWL file
@@ -126,6 +107,36 @@ def test_explicit_output_results(cli, client):
     assert cwls[0].outputs == cwls[1].outputs
 
 
+def test_explicit_outputs_and_normal_outputs(cli, client):
+    """Test explicit outputs and normal outputs can both exist"""
+    cli('run', 'touch', 'foo')
+    exit_code, cwl = cli('run', '--output', 'foo', 'touch', 'foo', 'bar')
+
+    assert exit_code == 0
+    cwl.inputs.sort(key=lambda e: e.default)
+    assert len(cwl.inputs) == 2
+    assert cwl.inputs[0].type == 'string'
+    assert str(cwl.inputs[0].default) == 'bar'
+    assert cwl.inputs[1].type == 'string'
+    assert str(cwl.inputs[1].default) == 'foo'
+
+    assert len(cwl.outputs) == 2
+    assert cwl.outputs[0].outputBinding != cwl.outputs[1].outputBinding
+
+
+def test_explicit_outputs_and_std_output_streams(cli, client):
+    """Test that unchanged std output streams can be marked with explicit
+    outputs"""
+    exit_code, _ = cli('run', 'sh', '-c', 'echo foo > bar')
+    assert exit_code == 0
+
+    exit_code, _ = cli('run', 'sh', '-c', 'echo foo > bar')
+    assert exit_code == 1
+
+    exit_code, _ = cli('run', '--output', 'bar', 'sh', '-c', 'echo foo > bar')
+    assert exit_code == 0
+
+
 def test_output_directory_with_output_option(cli, client):
     """Test output directories are not deleted with --output"""
     A_SCRIPT = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
@@ -205,18 +216,18 @@ def test_explicit_inputs_in_subdirectories(cli, client):
 
     # Set up a script with hard dependency
     cli('run', '--no-output', 'mkdir', 'foo')
-    exit_code, cwl = cli('run', 'sh', '-c', 'echo "some changes" > foo/bar')
-    exit_code, cwl = cli('run', 'sh', '-c', 'echo "cat foo/bar" > script.sh')
+    cli('run', 'sh', '-c', 'echo "some changes" > foo/bar')
+    cli('run', 'sh', '-c', 'echo "cat foo/bar" > script.sh')
 
-    exit_code, cwl = cli(
+    exit_code, _ = cli(
         'run', '--input', 'foo/bar', '--input', 'script.sh', 'sh', '-c',
         'sh script.sh > output'
     )
     assert exit_code == 0
 
     # Status must be dirty if foo/bar changes
-    exit_code, cwl = cli('run', 'sh', '-c', 'echo "new changes" > foo/bar')
-    exit_code, cwl = cli('status')
+    cli('run', 'sh', '-c', 'echo "new changes" > foo/bar')
+    exit_code, _ = cli('status')
     assert exit_code == 1
 
     exit_code, cwl = cli('update')
