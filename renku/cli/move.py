@@ -37,7 +37,10 @@ from ._echo import WARNING, progressbar
 @click.command(name='mv')
 @click.argument('sources', type=click.Path(exists=True), nargs=-1)
 @click.argument('destination', type=click.Path(), nargs=1)
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=True,
+    commit=True,
+)
 @click.pass_context
 def move(ctx, client, sources, destination):
     """Move files and check repository for potential problems."""

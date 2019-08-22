@@ -228,14 +228,18 @@ def asjsonld(
     )
     rv = dict_factory()
 
-    def convert_value(v):
-        """Convert special types."""
-        if isinstance(v, Path):
-            v = str(v)
-            return os.path.relpath(v, str(basedir)) if basedir else v
-        if isinstance(v, datetime):
-            return str(v)
-        return v
+    def convert_value(value):
+        """Convert non-serializable types."""
+        if isinstance(value, Path):
+            result = str(value)
+            if basedir:
+                result = os.path.relpath(result, str(basedir))
+            return result
+
+        if isinstance(value, datetime):
+            return value.isoformat()
+
+        return value
 
     for a in attrs:
         v = getattr(inst, a.name)

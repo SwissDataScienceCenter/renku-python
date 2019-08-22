@@ -203,7 +203,6 @@ def run(
             for name, path in mapped_std.items()
         }
     )
-
     with client.with_workflow_storage() as wf:
         with factory.watch(client, no_output=no_output) as tool:
             # Don't compute paths if storage is disabled.
@@ -215,16 +214,16 @@ def run(
                 )
                 client.pull_paths_from_storage(*paths_)
 
-            returncode = call(
+            return_code = call(
                 factory.command_line,
                 cwd=os.getcwd(),
                 **{key: getattr(sys, key)
                    for key in mapped_std.keys()},
             )
 
-            if returncode not in (success_codes or {0}):
+            if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(
-                    returncode, success_codes=success_codes
+                    return_code, success_codes=success_codes
                 )
 
             sys.stdout.flush()

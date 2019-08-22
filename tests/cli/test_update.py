@@ -15,12 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test update functionality."""
+"""Test ``update`` command."""
 
 import git
 
 from renku import cli
 from renku._compat import Path
+
+
+def update_and_commit(data, file_, repo):
+    """Update source.txt."""
+    with file_.open('w') as fp:
+        fp.write(data)
+
+    repo.git.add(file_)
+    repo.index.commit('Updated source.txt')
 
 
 def test_update(runner, project, run):
@@ -33,15 +42,7 @@ def test_update(runner, project, run):
 
     repo = git.Repo(project)
 
-    def update_source(data):
-        """Update source.txt."""
-        with source.open('w') as fp:
-            fp.write(data)
-
-        repo.git.add('--all')
-        repo.index.commit('Updated source.txt')
-
-    update_source('1')
+    update_and_commit('1', source, repo)
 
     assert 0 == run(args=('run', 'wc', '-c'), stdin=source, stdout=output)
 
@@ -51,7 +52,7 @@ def test_update(runner, project, run):
     result = runner.invoke(cli.cli, ['status'])
     assert 0 == result.exit_code
 
-    update_source('12')
+    update_and_commit('12', source, repo)
 
     result = runner.invoke(cli.cli, ['status'])
     assert 1 == result.exit_code
@@ -68,7 +69,7 @@ def test_update(runner, project, run):
     assert '(part of' in result.output, result.output
 
     # Source has been updated but output is unchanged.
-    update_source('34')
+    update_and_commit('34', source, repo)
 
     result = runner.invoke(cli.cli, ['status'])
     assert 1 == result.exit_code

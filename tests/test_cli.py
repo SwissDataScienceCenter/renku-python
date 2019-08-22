@@ -89,35 +89,6 @@ def test_workon(runner, project):
     assert 0 == result.exit_code
 
 
-def test_run_simple(runner, project):
-    """Test tracking of run command."""
-    cmd = ['echo', 'test']
-    result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
-    assert 0 == result.exit_code
-
-    # There are no output files.
-    result = runner.invoke(cli.cli, ['log'])
-    assert 1 == len(result.output.strip().split('\n'))
-
-    # Display tools with no outputs.
-    result = runner.invoke(cli.cli, ['log', '--no-output'])
-    assert '.renku/workflow/' in result.output
-
-
-def test_run_many_args(client, run):
-    """Test a renku run command which implicitly relies on many inputs."""
-
-    os.mkdir('files')
-    output = 'output.txt'
-    for i in range(5003):
-        os.system('touch files/{}.txt'.format(i))
-    client.repo.index.add(['files/'])
-    client.repo.index.commit('add many files')
-
-    exit_code = run(args=('run', 'ls', 'files/'), stdout=output)
-    assert 0 == exit_code
-
-
 _CMD_EXIT_2 = ['bash', '-c', 'exit 2']
 
 
@@ -268,10 +239,6 @@ def test_streams_cleanup(runner, project, run):
         fp.write('first,second,third')
 
     # File outside the Git index should be deleted.
-    assert 1 == run(
-        args=('run', 'cat', source.name),
-        stdout=stdout,
-    ), 'The repo must be dirty.'
 
     with source.open('r') as fp:
         assert fp.read() == 'first,second,third'
@@ -279,6 +246,8 @@ def test_streams_cleanup(runner, project, run):
     assert not stdout.exists()
 
     result = runner.invoke(cli.cli, ['status'])
+
+    # Dirty repository check.
     assert 1 == result.exit_code
 
     # File from the Git index should be restored.
@@ -287,11 +256,6 @@ def test_streams_cleanup(runner, project, run):
         fp.write('1')
 
     repo.index.add(['result.txt'])
-
-    assert 1 == run(
-        args=('run', 'cat', 'source.txt'),
-        stdout=stdout,
-    ), 'The repo must be dirty.'
 
     with stdout.open('r') as fp:
         assert fp.read() == '1'
@@ -446,10 +410,7 @@ def test_file_tracking(isolated_runner):
 
     result = runner.invoke(cli.cli, ['run', 'touch', 'output'])
     assert 0 == result.exit_code
-
-    with open('.gitattributes') as f:
-        gitattributes = f.read()
-    assert 'output' in gitattributes
+    assert 'output' in Path('.gitattributes').read_text()
 
 
 def test_status_with_old_repository(isolated_runner, old_project):
@@ -800,147 +761,6 @@ def test_outputs(runner, project):
     assert siblings == set(result.output.strip().split('\n'))
 
 
-def test_simple_rerun(runner, project, run):
-    """Test simple file recreation."""
-    greetings = {'hello', 'hola', 'ahoj'}
-
-    cwd = Path(project)
-    source = cwd / 'source.txt'
-    selected = cwd / 'selected.txt'
-
-    repo = git.Repo(project)
-
-    with source.open('w') as f:
-        f.write('\n'.join(greetings))
-
-    repo.git.add('--all')
-    repo.index.commit('Created greetings')
-
-    cmd = [
-        'run', 'python', '-S', '-c',
-        'import sys, random; print(random.choice(sys.stdin.readlines()))'
-    ]
-
-    assert 0 == run(cmd, stdin=source, stdout=selected)
-
-    with selected.open('r') as f:
-        greeting = f.read().strip()
-        assert greeting in greetings
-
-    def _rerun():
-        """Return greeting after reruning."""
-        assert 0 == run(args=('rerun', str(selected)))
-        with selected.open('r') as fp:
-            greeting = fp.read().strip()
-            assert greeting in greetings
-            return greeting
-
-    for _ in range(100):
-        new_greeting = _rerun()
-        if greeting != new_greeting:
-            break
-
-    assert greeting != new_greeting, 'Something is not random'
-
-    for _ in range(100):
-        new_greeting = _rerun()
-        if greeting == new_greeting:
-            break
-
-    assert greeting == new_greeting, 'Something is not random'
-
-
-def test_rerun_with_inputs(runner, project, run):
-    """Test file recreation with specified inputs."""
-    cwd = Path(project)
-    first = cwd / 'first.txt'
-    second = cwd / 'second.txt'
-    inputs = (first, second)
-
-    output = cwd / 'output.txt'
-
-    cmd = [
-        'run', 'python', '-S', '-c', 'import random; print(random.random())'
-    ]
-
-    for file_ in inputs:
-        assert 0 == run(args=cmd, stdout=file_), 'Random number generation.'
-
-    cmd = ['run', 'cat'] + [str(path) for path in inputs]
-    assert 0 == run(args=cmd, stdout=output)
-
-    with output.open('r') as f:
-        initial_data = f.read()
-
-    assert 0 == run(args=('rerun', str(output)))
-
-    with output.open('r') as f:
-        assert f.read() != initial_data, 'The output should have changed.'
-
-    # Keep the first file unchanged.
-    with first.open('r') as f:
-        first_data = f.read()
-
-    assert 0 == run(args=('rerun', '--from', str(first), str(output)))
-
-    with output.open('r') as f:
-        assert f.read().startswith(first_data)
-
-
-def test_rerun_with_edited_inputs(runner, project, run):
-    """Test input modification."""
-    cwd = Path(project)
-    data = cwd / 'examples'
-    data.mkdir()
-    first = data / 'first.txt'
-    second = data / 'second.txt'
-    third = data / 'third.txt'
-
-    run(args=['run', 'echo', 'hello'], stdout=first)
-    run(args=['run', 'cat', str(first)], stdout=second)
-    run(args=['run', 'echo', '1'], stdout=third)
-
-    with first.open('r') as first_fp:
-        with second.open('r') as second_fp:
-            assert first_fp.read() == second_fp.read()
-
-    # Change the initial input from "hello" to "hola".
-    from click.testing import make_input_stream
-    stdin = make_input_stream('hola\n', 'utf-8')
-    assert 0 == run(args=('rerun', '--edit-inputs', str(second)), stdin=stdin)
-
-    with second.open('r') as second_fp:
-        assert 'hola\n' == second_fp.read()
-
-    # Change the input from examples/first.txt to examples/third.txt.
-    stdin = make_input_stream(str(third.name), 'utf-8')
-    old_dir = os.getcwd()
-    try:
-        # Make sure the input path is relative to the current directory.
-        os.chdir(str(data))
-
-        result = runner.invoke(
-            cli.cli,
-            ['rerun', '--show-inputs', '--from',
-             str(first),
-             str(second)],
-            catch_exceptions=False
-        )
-        assert 0 == result.exit_code
-        assert 'input_1: {0}\n'.format(first.name) == result.output
-
-        assert 0 == run(
-            args=('rerun', '--edit-inputs', '--from', str(first), str(second)),
-            stdin=stdin
-        )
-    finally:
-        os.chdir(old_dir)
-
-    with third.open('r') as third_fp:
-        with second.open('r') as second_fp:
-            assert third_fp.read() == second_fp.read()
-
-
 @pytest.mark.skipif(
     shutil.which('docker') is None, reason='requires docker command line'
 )
@@ -1012,21 +832,6 @@ def test_image_pull(runner, project):
     assert 1 == result.exit_code
 
 
-@pytest.mark.parametrize('cmd, exit_code', (('update', 0), ('rerun', 1)))
-def test_input_update_and_rerun(cmd, exit_code, runner, project, run):
-    """Test update and rerun of an input."""
-    repo = git.Repo(project)
-    cwd = Path(project)
-    input_ = cwd / 'input.txt'
-    with input_.open('w') as f:
-        f.write('first')
-
-    repo.git.add('--all')
-    repo.index.commit('Created input.txt')
-
-    assert exit_code == run(args=(cmd, input_.name))
-
-
 def test_moved_file(runner, project):
     """Test that moved files are displayed correctly."""
     repo = git.Repo(project)
@@ -1067,60 +872,6 @@ def test_deleted_input(runner, project, capsys):
     assert 0 == result.exit_code
     assert not input_.exists()
     assert Path('input.mv').exists()
-
-
-def test_output_directory(runner, project, run):
-    """Test detection of output directory."""
-    cwd = Path(project)
-    data = cwd / 'source' / 'data.txt'
-    source = data.parent
-    source.mkdir(parents=True)
-    data.write_text('data')
-
-    # Empty destination
-    destination = cwd / 'destination'
-    source_wc = cwd / 'destination_source.wc'
-    # Non empty destination
-    invalid_destination = cwd / 'invalid_destination'
-    invalid_destination.mkdir(parents=True)
-    (invalid_destination / 'non_empty').touch()
-
-    repo = git.Repo(project)
-    repo.git.add('--all')
-    repo.index.commit('Created source directory')
-
-    cmd = ['run', 'cp', '-LRf', str(source), str(destination)]
-    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert 0 == result.exit_code
-
-    destination_source = destination / data.name
-    assert destination_source.exists()
-
-    # check that the output in subdir is added to LFS
-    with (cwd / '.gitattributes').open() as f:
-        gitattr = f.read()
-    assert str(destination.relative_to(cwd)) + '/**' in gitattr
-    assert destination_source.name in subprocess.check_output([
-        'git', 'lfs', 'ls-files'
-    ]).decode()
-
-    cmd = ['run', 'wc']
-    assert 0 == run(args=cmd, stdin=destination_source, stdout=source_wc)
-
-    # Make sure the output directory can be recreated
-    assert 0 == run(args=('rerun', str(source_wc)))
-    assert {data.name} == {path.name for path in destination.iterdir()}
-
-    cmd = ['log', str(source_wc)]
-    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    destination_data = str(Path('destination') / 'data.txt')
-    assert destination_data in result.output, cmd
-    assert ' directory)' in result.output
-
-    cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
-    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
-    assert 1 == result.exit_code
-    assert not (invalid_destination / data.name).exists()
 
 
 def test_input_directory(runner, project, run):
