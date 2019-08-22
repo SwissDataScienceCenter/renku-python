@@ -314,6 +314,12 @@ def doi_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
         def doi_callback(request):
+            response_url = (
+                'https://dataverse.harvard.edu/citation'
+                '?persistentId=doi:10.11588/data/yyxx1122'
+            )
+            if 'zenodo' in request.url:
+                response_url = 'https://zenodo.org/record/3363060'
             return (
                 200, {
                     'Content-Type': 'application/json'
@@ -337,9 +343,7 @@ def doi_responses():
                     'DOI': '10.11588/data/yyxx1122',
                     'publisher': 'heiDATA',
                     'title': 'dataset',
-                    'URL':
-                        'https://dataverse.harvard.edu/citation' +
-                        '?persistentId=doi:10.11588/data/yyxx1122'
+                    'URL': response_url
                 })
             )
 
