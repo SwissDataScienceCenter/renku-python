@@ -24,6 +24,7 @@ import os
 
 import git
 import pytest
+import yaml
 
 from renku import cli
 from renku._compat import Path
@@ -34,6 +35,7 @@ from renku.cli._format.datasets import FORMATS as DATASETS_FORMATS
 from renku.cli._providers import DataverseProvider, ProviderFactory, \
     ZenodoProvider
 from renku.models.refs import LinkReference
+from renku.utils.datetime8601 import validate_iso8601
 
 
 def test_datasets_create_clean(data_repository, runner, project, client):
@@ -681,6 +683,7 @@ def test_dataset_unlink_file_not_found(runner, project):
         ['dataset', 'unlink', 'my-dataset', '--include', 'notthere.csv']
     )
     assert 0 == result.exit_code
+
     assert '' == result.output
 
 
@@ -833,6 +836,77 @@ def test_dataset_edit(runner, client, project):
         catch_exceptions=False
     )
     assert 0 == result.exit_code
+
+
+def test_dataset_edit_dirty(runner, client, project):
+    """Check dataset metadata editing when dirty repository."""
+    # Create a file in root of the repository.
+    with (client.path / 'a').open('w') as fp:
+        fp.write('a')
+
+    # Create a dataset.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset')
+
+    result = runner.invoke(
+        cli.cli, ['dataset', 'edit', dataset.identifier], input='wq'
+    )
+    assert 0 == result.exit_code
+
+
+def test_dataset_date_created_format(runner, client, project):
+    """Check format of date created field."""
+    # Create a dataset.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    path = client.dataset_path('dataset')
+    assert path.exists()
+
+    with path.open(mode='r') as fp:
+        import dateutil.parser as dp
+        data_yaml = yaml.safe_load(fp)
+
+        assert 'created' in data_yaml
+        assert dp.parse(data_yaml['created'])
+        assert validate_iso8601(data_yaml['created'])
+
+
+def test_dataset_file_date_created_format(tmpdir, runner, client, project):
+    """Check format of date created field."""
+    # Create a dataset.
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    path = client.dataset_path('dataset')
+    assert path.exists()
+
+    # Create data file.
+    new_file = tmpdir.join('datafile.csv')
+    new_file.write('1,2,3')
+
+    # Add data to dataset.
+    result = runner.invoke(
+        cli.cli, ['dataset', 'add', 'dataset',
+                  str(new_file)]
+    )
+    assert 0 == result.exit_code
+
+    with path.open(mode='r') as fp:
+        import dateutil.parser as dp
+        data_yaml = yaml.safe_load(fp)
+
+        assert 'created' in data_yaml
+        assert 'files' in data_yaml
+        assert dp.parse(data_yaml['files'][0]['added'])
+        assert dp.parse(data_yaml['created'])
+        assert validate_iso8601(data_yaml['created'])
+        assert validate_iso8601(data_yaml['files'][0]['added'])
 
 
 @pytest.mark.parametrize(

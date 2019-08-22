@@ -34,7 +34,10 @@ from ._echo import WARNING, progressbar
 
 @click.command(name='rm')
 @click.argument('sources', type=click.Path(exists=True), nargs=-1)
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=True,
+    commit=True,
+)
 @click.pass_context
 def remove(ctx, client, sources):
     """Remove files and check repository for potential problems."""

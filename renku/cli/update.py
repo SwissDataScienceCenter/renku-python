@@ -139,7 +139,10 @@ from ._options import option_siblings
 )
 @option_siblings
 @click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=True,
+    commit=True,
+)
 def update(client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)

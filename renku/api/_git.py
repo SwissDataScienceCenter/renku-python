@@ -22,6 +22,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
@@ -33,6 +34,9 @@ import gitdb
 
 from renku import errors
 from renku._compat import Path
+
+COMMIT_DIFF_STRATEGY = 'DIFF'
+STARTED_AT = int(time.time() * 1e3)
 
 
 def _mapped_std_streams(lookup_paths, streams=('stdin', 'stdout', 'stderr')):
@@ -230,30 +234,54 @@ class GitCore:
         from git import Actor
         from renku.version import __version__, version_url
 
+        diff_before = set()
         author_date = author_date or formatdate(localtime=True)
+
+        if commit_only == COMMIT_DIFF_STRATEGY:
+            staged = {item.a_path for item in self.repo.index.diff(None)}
+
+            modified = {item.a_path for item in self.repo.index.diff('HEAD')}
+
+            if staged or modified:
+                self.repo.git.reset()
+
+            # Exclude files created by pipes.
+            diff_before = {
+                file_
+                for file_ in self.repo.untracked_files
+                if STARTED_AT - int(Path(file_).stat().st_ctime * 1e3) >= 1e3
+            }
 
         if isinstance(commit_only, list):
             for path_ in commit_only:
                 self.ensure_untracked(str(path_))
                 self.ensure_unstaged(str(path_))
 
-        elif commit_only:
-            self.ensure_untracked(str(commit_only))
-            self.ensure_unstaged(str(commit_only))
-
         yield
 
         committer = Actor('renku {0}'.format(__version__), version_url)
 
+        if commit_only == COMMIT_DIFF_STRATEGY:
+            # Get diff generated in command.
+            staged_after = {item.a_path for item in self.repo.index.diff(None)}
+
+            modified_after = {
+                item.a_path
+                for item in self.repo.index.diff('HEAD')
+            }
+
+            diff_after = set(self.repo.untracked_files)\
+                .union(staged_after)\
+                .union(modified_after)
+
+            # Remove files not touched in command.
+            commit_only = list(diff_after - diff_before)
+
         if isinstance(commit_only, list):
             for path_ in commit_only:
-                self.repo.git.add(path_)
-
-        if isinstance(commit_only, str):
-            self.repo.git.add(commit_only)
-
-        if isinstance(commit_only, Path):
-            self.repo.git.add(str(commit_only))
+                p = Path(path_)
+                if p.exists():
+                    self.repo.git.add(path_)
 
         if not commit_only:
             self.repo.git.add('--all')
@@ -353,7 +381,7 @@ class GitCore:
         try:
             self.repo.git.merge(branch_name, *merge_args)
         except GitCommandError:
-            raise errors.FailedMerge(self.repo)
+            raise errors.FailedMerge(self.repo, branch_name, merge_args)
 
         if delete:
             shutil.rmtree(path)
