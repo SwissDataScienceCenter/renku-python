@@ -65,7 +65,10 @@ def check_dataverse_uri(url):
 
 def check_dataverse_doi(doi):
     """Check if a DOI points to a dataverse dataset."""
-    doi = DOIProvider().find_record(doi)
+    try:
+        doi = DOIProvider().find_record(doi)
+    except LookupError:
+        return False
 
     return check_dataverse_uri(doi.url)
 

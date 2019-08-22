@@ -38,21 +38,34 @@ class ProviderFactory:
                 return None, 'Cannot parse URL.'
 
         provider = None
+        warning = ''
 
         for _, potential_provider in ProviderFactory.PROVIDERS.items():
-            if potential_provider.supports(uri):
-                provider = potential_provider
-                break
+            try:
+                if potential_provider.supports(uri):
+                    provider = potential_provider
+                    break
+            except Exception as e:
+                print(e)
+                print(provider)
+                warning += 'Couldn\'t test provider {prov}: {err}\n'.format(
+                    prov=potential_provider, err=e
+                )
 
         if is_doi_ and provider is None:
             return None, (
-                'Provider {} not found. '.format(
+                warning + 'Provider {} not found. '.format(
                     uri.split('/')[1].split('.')[0]  # Get DOI provider name.
                 ) +
                 'Currently supporting following providers: (Zenodo, Dataverse)'
             )
+        elif provider is None:
+            return None, (
+                warning + 'Provider not found for {}. '.format(uri) +
+                'Currently supporting following providers: (Zenodo, Dataverse)'
+            )
         else:
-            return provider(is_doi=is_doi_), None
+            return provider(is_doi=is_doi_), warning
 
     @staticmethod
     def from_id(provider_id):

@@ -523,6 +523,8 @@ def import_(ctx, client, uri, name, extract):
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise BadParameter('Could not process {0}.\n{1}'.format(uri, err))
+    elif err:
+        click.echo(WARNING + err)
 
     try:
 
