@@ -90,7 +90,7 @@ install_requires = [
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',
     'tqdm>=4.31.1',
-    'werkzeug>=0.12',
+    'werkzeug>=0.15.5',
 ]
 
 packages = find_packages()
