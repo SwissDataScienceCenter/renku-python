@@ -106,8 +106,8 @@ class DataverseProvider(ProviderApi):
     def supports(uri):
         """Whether or not this provider supports a given uri."""
         is_doi_ = is_doi(uri)
-        if ((is_doi_ is None and check_dataverse_uri(uri)) or
-            check_dataverse_doi(is_doi_.group(0))):
+        if (is_doi_ is None and check_dataverse_uri(uri)) or \
+                check_dataverse_doi(is_doi_.group(0)):
             return True
 
         return False

@@ -125,7 +125,8 @@ def test_dataset_import_fake_doi(runner, project, doi):
 @pytest.mark.parametrize(
     'url', [
         'https://zenodo.org/record/2621208',
-        'https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/S8MSVF'
+        'https://dataverse.harvard.edu/dataset.xhtml' +
+        '?persistentId=doi:10.7910/DVN/S8MSVF'
     ]
 )
 @pytest.mark.integration
@@ -139,7 +140,8 @@ def test_dataset_import_real_http(runner, project, url):
 @pytest.mark.parametrize(
     'url', [
         'https://zenodo.org/record/2621201248',
-        'https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/S8MSVFXXXX'
+        'https://dataverse.harvard.edu/dataset.xhtml' +
+        '?persistentId=doi:10.7910/DVN/S8MSVFXXXX'
     ]
 )
 @pytest.mark.integration

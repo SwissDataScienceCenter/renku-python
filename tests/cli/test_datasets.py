@@ -924,7 +924,8 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
 @pytest.mark.parametrize(
     'uri', (
         '10.7910/DVN/TJCLKP', 'doi:10.7910/DVN/TJCLKP',
-        'https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/TJCLKP'
+        'https://dataverse.harvard.edu/dataset.xhtml' +
+        '?persistentId=doi:10.7910/DVN/TJCLKP'
     )
 )
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):

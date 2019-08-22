@@ -338,7 +338,8 @@ def doi_responses():
                     'publisher': 'heiDATA',
                     'title': 'dataset',
                     'URL':
-                        'https://dataverse.harvard.edu/citation?persistentId=doi:10.11588/data/yyxx1122'
+                        'https://dataverse.harvard.edu/citation' +
+                        '?persistentId=doi:10.11588/data/yyxx1122'
                 })
             )
 
