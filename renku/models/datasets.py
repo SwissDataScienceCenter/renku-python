@@ -69,7 +69,7 @@ class Creator(object):
         context='schema:name'
     )
 
-    _id = jsonld.ib(default=None, kw_only=True, context='@id')
+    _id = jsonld.ib(kw_only=True, context='@id')
 
     @property
     def short_name(self):
@@ -123,10 +123,18 @@ class Creator(object):
         """Create an instance from a Git commit."""
         return cls(name=commit.author.name, email=commit.author.email)
 
+    @_id.default
+    def default_id(self):
+        """Set the default id."""
+        if self.email:
+            return 'mailto:{email}'.format(email=self.email)
+        return '_' + str(uuid.uuid4())
+
     def __attrs_post_init__(self):
-        """Post-Init hook to set _id field."""
-        if not self._id:
-            self._id = 'mailto:{self.email}'.format(self=self)
+        """Finish object initialization."""
+        # handle the case where ids were improperly set
+        if self._id == 'mailto:None':
+            self._id = '_' + str(uuid.uuid4())
 
 
 @attr.s
