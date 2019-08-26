@@ -179,7 +179,9 @@ def _convert_dataset_files_creators(value):
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
-    context={'schema': 'http://schema.org/'}
+    context={
+        'schema': 'http://schema.org/',
+    }
 )
 class DatasetFile(Entity, CreatorsMixin):
     """Represent a file in a dataset."""
@@ -197,7 +199,9 @@ class DatasetFile(Entity, CreatorsMixin):
 
     dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
 
-    filename = attr.ib(kw_only=True)
+    filename = attr.ib(kw_only=True, converter=lambda x: Path(x).name)
+
+    name = jsonld.ib(context='schema:name', kw_only=True, default=None)
 
     filesize = attr.ib(default=None, kw_only=True)
 
@@ -227,6 +231,10 @@ class DatasetFile(Entity, CreatorsMixin):
     def size_in_mb(self):
         """Return file size in megabytes."""
         return self.filesize * 1e-6
+
+    def __attrs_post_init__(self):
+        """Set the property "name" after initialization."""
+        self.name = self.filename
 
 
 def _parse_date(value):
@@ -274,13 +282,7 @@ def _convert_keyword(keywords):
 @jsonld.s(
     type='schema:Dataset',
     context={
-        'added': 'schema:dateCreated',
-        'affiliation': 'schema:affiliation',
-        'alternate_name': 'schema:alternateName',
-        'email': 'schema:email',
-        'name': 'schema:name',
         'schema': 'http://schema.org/',
-        'url': 'schema:url'
     },
 )
 class Dataset(Entity, CreatorsMixin):
