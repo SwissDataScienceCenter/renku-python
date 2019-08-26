@@ -51,7 +51,7 @@ analysis tasks.
    ``renku-python`` is the python library for Renku that provides an SDK and a
    command-line interface (CLI). It *does not* start the Renku platform itself -
    for that, refer to the Renku docs on `running the platform
-   <https://renku.readthedocs.io/en/latest/user/setup.html>`_.
+   <https://renku.readthedocs.io/en/latest/developer/setup.html>`_.
 
 Installation
 ============
