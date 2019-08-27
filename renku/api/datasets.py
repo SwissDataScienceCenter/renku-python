@@ -50,7 +50,7 @@ class DatasetsApiMixin(object):
     @property
     def renku_datasets_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
-        return self.renku_path.joinpath(self.DATASETS)
+        return Path(self.renku_home).joinpath(self.DATASETS)
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
@@ -80,11 +80,11 @@ class DatasetsApiMixin(object):
             result[path] = self.get_dataset(path)
         return result
 
-    def get_dataset(self, path):
+    def get_dataset(self, path, commit=None):
         """Return a dataset from a given path."""
         if not path.is_absolute():
             path = self.path / path
-        return Dataset.from_yaml(path, client=self)
+        return Dataset.from_yaml(path, client=self, commit=commit)
 
     def dataset_path(self, name):
         """Get dataset path from name."""

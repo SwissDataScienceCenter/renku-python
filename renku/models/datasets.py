@@ -467,7 +467,7 @@ class Dataset(Entity, CreatorsMixin):
         return self.files.pop(index)
 
     def __attrs_post_init__(self):
-        """Post-Init hook to set _id field."""
+        """Post-Init hook."""
         self._id = self.identifier
 
         if not self._label:
@@ -487,3 +487,11 @@ class Dataset(Entity, CreatorsMixin):
                     )
 
                     datasetfile.client = client
+
+        try:
+            self.commit = self.client.find_previous_commit(
+                self.path, revision=self.commit or 'HEAD'
+            )
+        except KeyError:
+            # if with_dataset is used, the dataset is not committed yet
+            pass
