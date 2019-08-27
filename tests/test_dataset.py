@@ -77,7 +77,7 @@ def test_data_add(
                 'email': 'me@example.com',
                 'identifier': 'me_id'
             }]
-            client.add_data_to_dataset(d, '{}{}'.format(scheme, path))
+            client.add_data_to_dataset(d, ['{}{}'.format(scheme, path)])
 
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
@@ -100,7 +100,7 @@ def test_data_add(
                     'identifier': 'me_id'
                 }]
                 client.add_data_to_dataset(
-                    d, '{}{}'.format(scheme, path), nocopy=True
+                    d, ['{}{}'.format(scheme, path)], nocopy=True
                 )
             assert os.path.exists('data/dataset/file')
 
@@ -114,8 +114,7 @@ def test_data_add_recursive(directory_tree, client):
             'identifier': 'me_id'
         }]
         client.add_data_to_dataset(
-            dataset,
-            directory_tree.join('dir2').strpath
+            dataset, [directory_tree.join('dir2').strpath]
         )
 
         assert os.path.basename(
@@ -135,7 +134,7 @@ def dataset_serialization(client, dataset, data_file):
 
     assert all([key in d_dict for key in ('name', 'identifier', 'files')])
     assert not len(d_dict['files'].values())
-    client.add_data_to_dataset(dataset, str(data_file))
+    client.add_data_to_dataset(dataset, [str(data_file)])
     d_dict = dataset.to_dict()
     assert len(d_dict['files'].values())
 
@@ -145,7 +144,7 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
     # add data from local repo
     client.add_data_to_dataset(
         dataset,
-        os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')
+        [os.path.join(os.path.dirname(data_repository.git_dir), 'dir2')]
     )
     assert os.stat('data/dataset/dir2/file2')
     assert dataset.files[0].path.endswith('dir2/file2')
@@ -153,7 +152,7 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 
     # check that the creators are properly parsed from commits
     client.add_data_to_dataset(
-        dataset, os.path.dirname(data_repository.git_dir), target='file'
+        dataset, [os.path.dirname(data_repository.git_dir)], target='file'
     )
 
     assert len(dataset.files[1].creator) == 2
