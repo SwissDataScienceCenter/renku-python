@@ -314,6 +314,7 @@ class JSONLDMixin(ReferenceMixin):
         cls,
         data,
         client=None,
+        commit=None,
         __reference__=None,
         __source__=None,
     ):
@@ -331,7 +332,9 @@ class JSONLDMixin(ReferenceMixin):
             ) != type_:
                 new_cls = cls.__type_registry__[type_]
                 if cls != new_cls:
-                    return new_cls.from_jsonld(data, client=client)
+                    return new_cls.from_jsonld(
+                        data, client=client, commit=commit
+                    )
 
         if cls._jsonld_translate:
             data = ld.compact(data, {'@context': cls._jsonld_translate})
@@ -355,6 +358,7 @@ class JSONLDMixin(ReferenceMixin):
         data_ = {}
         if client:
             data_['client'] = client
+            data_['commit'] = commit
 
         for k, v in compacted.items():
             if k in fields:
@@ -372,7 +376,7 @@ class JSONLDMixin(ReferenceMixin):
         return self
 
     @classmethod
-    def from_yaml(cls, path, client=None):
+    def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
         import yaml
 
@@ -381,10 +385,10 @@ class JSONLDMixin(ReferenceMixin):
             self = cls.from_jsonld(
                 source,
                 client=client,
+                commit=commit,
                 __reference__=path,
-                __source__=deepcopy(source),
+                __source__=deepcopy(source)
             )
-
         return self
 
     def asjsonld(self):
