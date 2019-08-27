@@ -81,17 +81,17 @@ def test_dataset_import_real_param(doi, runner, project):
 def test_dataset_import_real_doi_warnings(runner, project):
     """Test dataset import for existing DOI and dataset"""
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y'
     )
     assert 0 == result.exit_code
-    assert 'Warning: Newer version found.' in result.output
+    assert 'Warning: Newer version found' in result.output
     assert 'OK'
 
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\ny'
+        cli.cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y\ny'
     )
     assert 0 == result.exit_code
-    assert 'Warning: Newer version found.' in result.output
+    assert 'Warning: Newer version found' in result.output
     assert 'Warning: This dataset already exists.' in result.output
     assert 'OK' in result.output
 
@@ -99,8 +99,8 @@ def test_dataset_import_real_doi_warnings(runner, project):
         cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\nn'
     )
     assert 0 == result.exit_code
-    assert 'Warning: Newer version found.' in result.output
-    assert 'Warning: This dataset already exists.' in result.output
+    assert 'Warning: Newer version found' not in result.output
+    assert 'Warning: This dataset already exists.' not in result.output
     assert 'OK' not in result.output
 
     result = runner.invoke(cli.cli, ['dataset'])

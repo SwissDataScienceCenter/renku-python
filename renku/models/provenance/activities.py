@@ -29,7 +29,7 @@ from renku.models.cwl import WORKFLOW_STEP_RUN_TYPES
 from renku.models.cwl._ascwl import CWLClass
 from renku.models.cwl.types import PATH_OBJECTS
 
-from .agents import renku_agent
+from .agents import Person, renku_agent
 from .entities import Collection, CommitMixin, Entity, Process, Workflow
 from .qualified import Association, Generation, Usage
 
@@ -102,6 +102,7 @@ class Activity(CommitMixin):
     )
 
     agent = jsonld.ib(context='prov:agent', kw_only=True, default=renku_agent)
+    person_agent = jsonld.ib(context='prov:agent', kw_only=True)
 
     @generated.default
     def default_generated(self):
@@ -219,6 +220,13 @@ class Activity(CommitMixin):
     def default_ended_at_time(self):
         """Configure calculated properties."""
         return self.commit.committed_datetime.isoformat()
+
+    @person_agent.default
+    def default_person_agent(self):
+        """Set person agent to be the author of the commit."""
+        if self.commit:
+            return Person.from_commit(self.commit)
+        return None
 
     @property
     def nodes(self):

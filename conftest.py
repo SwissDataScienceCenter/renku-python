@@ -379,3 +379,30 @@ def doi_responses():
             method='GET', url=re.compile(pattern), callback=version_callback
         )
         yield rsps
+
+
+@pytest.fixture
+def cli(client, run):
+    """Return a callable Renku CLI.
+
+    It returns the exit code and content of the resulting CWL tool.
+    """
+    import yaml
+    from renku.models.cwl import CWLClass
+
+    def renku_cli(*args):
+        before_cwl_files = set(client.workflow_path.glob('*.cwl'))
+        exit_code = run(args)
+        after_cwl_files = set(client.workflow_path.glob('*.cwl'))
+        new_files = after_cwl_files - before_cwl_files
+        assert len(new_files) <= 1
+        if new_files:
+            cwl_filepath = new_files.pop()
+            with cwl_filepath.open('r') as f:
+                content = CWLClass.from_cwl(yaml.safe_load(f))
+        else:
+            content = None
+
+        return exit_code, content
+
+    return renku_cli
