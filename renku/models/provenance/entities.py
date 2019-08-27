@@ -18,6 +18,7 @@
 """Represent provenance entities."""
 
 import weakref
+from pathlib import Path
 
 import attr
 
@@ -76,6 +77,13 @@ class CommitMixin:
         """Generate a default location."""
         if self.client:
             return self.client.project
+
+    def __attrs_post_init__(self):
+        """Post-init hook."""
+        if self.path:
+            path = Path(self.path)
+            if path.is_absolute():
+                self.path = str(path.relative_to(self.client.path))
 
 
 @jsonld.s(
