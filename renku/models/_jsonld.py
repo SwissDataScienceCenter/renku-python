@@ -315,7 +315,7 @@ class JSONLDMixin(ReferenceMixin):
         data,
         __reference__=None,
         __source__=None,
-        **kwargs,
+        **kwargs
     ):
         """Instantiate a JSON-LD class from data."""
         if isinstance(data, cls):
