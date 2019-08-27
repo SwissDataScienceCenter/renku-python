@@ -560,7 +560,9 @@ def import_(ctx, client, uri, name, extract):
 
         text_prompt = 'Do you wish to download this version?'
         if record.is_last_version(uri) is False:
-            text_prompt = WARNING + 'Newer version found.\n' + text_prompt
+            text_prompt = WARNING + 'Newer version found at {}\n'.format(
+                record.links.get('latest_html')
+            ) + text_prompt
 
     except KeyError as e:
         raise BadParameter((

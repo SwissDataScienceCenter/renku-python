@@ -49,6 +49,16 @@ if:
   as an **output**;
 * a path is not passed as an argument to ``renku run``.
 
+.. topic:: Specifying auxiliary inputs (``--input``)
+
+   You can specify extra inputs to your program explicitly by using the
+   ``--input`` option. This is useful for specifying hidden dependencies
+   that don't appear on the command line. These input file must exist before
+   execution of ``renku run`` command. This option is not a replacement for
+   the arguments that are passed on the command line. Files or directories
+   specified with this option will not be passed as input arguments to the
+   script.
+
 Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -83,6 +93,13 @@ those paths. Therefore:
 
    You can specify the ``--no-output`` option to force tracking of such
    an execution.
+
+.. topic:: Specifying outputs explicitly (``--output``)
+
+   You can specify expected outputs of your program explicitly by using the
+   ``--output`` option. These output must exist after the execution of the
+   ``renku run`` command. However, they do not need to be modified by
+   the command.
 
 .. cli-run-std
 
@@ -135,6 +152,12 @@ from ._options import option_isolation
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
 @click.option(
+    'inputs',
+    '--input',
+    multiple=True,
+    help='Force a path to be considered as an input.',
+)
+@click.option(
     'outputs',
     '--output',
     multiple=True,
@@ -162,12 +185,16 @@ from ._options import option_isolation
     commit=True,
     ignore_std_streams=True,
 )
-def run(client, outputs, no_output, success_codes, isolation, command_line):
+def run(
+    client, inputs, outputs, no_output, success_codes, isolation, command_line
+):
     """Tracking work on a specific problem."""
     working_dir = client.repo.working_dir
     mapped_std = _mapped_std_streams(client.candidate_paths)
     factory = CommandLineToolFactory(
         command_line=command_line,
+        explicit_inputs=inputs,
+        explicit_outputs=outputs,
         directory=os.getcwd(),
         working_dir=working_dir,
         successCodes=success_codes,
@@ -177,9 +204,7 @@ def run(client, outputs, no_output, success_codes, isolation, command_line):
         }
     )
     with client.with_workflow_storage() as wf:
-        with factory.watch(
-            client, no_output=no_output, outputs=outputs
-        ) as tool:
+        with factory.watch(client, no_output=no_output) as tool:
             # Don't compute paths if storage is disabled.
             if client.has_external_storage:
                 # Make sure all inputs are pulled from a storage.
