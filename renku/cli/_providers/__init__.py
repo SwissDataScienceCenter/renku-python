@@ -52,17 +52,20 @@ class ProviderFactory:
                     prov=potential_provider, err=e
                 )
 
+        supported_providers = ', '.join(ProviderFactory.PROVIDERS.keys())
+
         if is_doi_ and provider is None:
             return None, (
                 warning + 'Provider {} not found. '.format(
                     uri.split('/')[1].split('.')[0]  # Get DOI provider name.
-                ) +
-                'Currently supporting following providers: (Zenodo, Dataverse)'
+                ) + 'Currently supporting following providers: {}'.
+                format(supported_providers)
             )
         elif provider is None:
             return None, (
                 warning + 'Provider not found for {}. '.format(uri) +
-                'Currently supporting following providers: (Zenodo, Dataverse)'
+                'Currently supporting following providers: {}'.
+                format(supported_providers)
             )
         else:
             return provider(is_doi=is_doi_), warning

@@ -81,8 +81,7 @@ class DOIProvider(ProviderApi):
     @staticmethod
     def supports(uri):
         """Whether or not this provider supports a given uri."""
-        is_doi_ = is_doi(uri)
-        if is_doi_ is not None:
+        if is_doi(uri) is not None:
             return True
 
         return False
