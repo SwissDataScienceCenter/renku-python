@@ -28,3 +28,13 @@ doi_regexp = re.compile(
 def is_doi(uri):
     """Check if uri is DOI."""
     return doi_regexp.match(uri)
+
+
+def extract_doi(uri):
+    """Return the DOI in a string if there is one."""
+    match = doi_regexp.match(uri)
+
+    if match is None:
+        return None
+
+    return match.group(2)

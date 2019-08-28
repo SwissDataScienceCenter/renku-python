@@ -156,6 +156,7 @@ import os
 import tempfile
 from collections import OrderedDict
 from multiprocessing import RLock, freeze_support
+from time import sleep
 from urllib.parse import ParseResult
 
 import click
@@ -534,11 +535,13 @@ def export_(client, id, provider, publish):
 def import_(ctx, client, uri, name, extract):
     """Import data from a 3rd party provider.
 
-    Supported providers: [Zenodo, ]
+    Supported providers: [Zenodo, Dataverse]
     """
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise BadParameter('Could not process {0}.\n{1}'.format(uri, err))
+    elif err:
+        click.echo(WARNING + err)
 
     try:
 
@@ -584,27 +587,50 @@ def import_(ctx, client, uri, name, extract):
                           mp.cpu_count() // 2)), 4
         )
 
+        manager = mp.Manager()
+        id_queue = manager.Queue()
+
+        for i in range(pool_size):
+            id_queue.put(i)
+
+        def _init(lock, id_queue):
+            """Set up tqdm lock and worker process index.
+
+            See https://stackoverflow.com/a/42817946
+            Fixes tqdm line position when |files| > terminal-height
+            so only |workers| progressbars are shown at a time
+            """
+            global current_process_position
+            current_process_position = id_queue.get()
+            tqdm.set_lock(lock)
+
         freeze_support()  # Windows support
         pool = mp.Pool(
             pool_size,
             # Windows support
-            initializer=tqdm.set_lock,
-            initargs=(RLock(), )
+            initializer=_init,
+            initargs=(RLock(), id_queue)
         )
 
         processing = [
             pool.apply_async(
                 download_file, args=(
-                    i,
                     extract,
                     data_folder,
                     file_,
                 )
-            ) for i, file_ in enumerate(files_)
+            ) for file_ in files_
         ]
 
-        for p in processing:
-            p.wait()
+        try:
+            for p in processing:
+                p.wait()
+                p.get()
+        except HTTPError as e:
+            raise BadParameter((
+                'Could not process {0}.\n'
+                'URI not found.'.format(e.request.url)
+            ))
         pool.close()
 
         dataset_name = name or dataset_.display_name
@@ -619,45 +645,65 @@ def import_(ctx, client, uri, name, extract):
             click.secho('OK', fg='green')
 
 
-def download_file(position, extract, data_folder, file, chunk_size=16384):
+def download_file(extract, data_folder, file, chunk_size=16384):
     """Download a file with progress tracking."""
+    global current_process_position
+
     local_filename = Path(file.filename).name
     download_to = Path(data_folder) / Path(local_filename)
 
-    def extract_dataset(data_folder_, filename, file_):
+    def extract_dataset(data_folder_, filename):
         """Extract downloaded dataset."""
         import patoolib
-        filepath = data_folder_ / filename
+        filepath = Path(data_folder_) / Path(filename)
         patoolib.extract_archive(filepath, outdir=data_folder_)
         filepath.unlink()
 
     def stream_to_file(request):
         """Stream bytes to file."""
         with open(download_to, 'wb') as f_:
+            scaling_factor = 1e-6
+            unit = 'MB'
+
+            # We round sizes to 0.1, files smaller than 1e5 would
+            # get rounded to 0, so we display bytes instead
+            if file.filesize < 1e5:
+                scaling_factor = 1.0
+                unit = 'B'
+
+            total = round(file.filesize * scaling_factor, 1)
             progressbar_ = tqdm(
-                total=round(file.filesize * 1e-6, 1),
-                position=position,
+                total=total,
+                position=current_process_position,
                 desc=file.filename[:32],
                 bar_format=(
-                    '{percentage:3.0f}% '
-                    '{n_fmt}MB/{total_fmt}MB| '
-                    '{bar} | {desc}'
+                    '{{percentage:3.0f}}% '
+                    '{{n_fmt}}{unit}/{{total_fmt}}{unit}| '
+                    '{{bar}} | {{desc}}'.format(unit=unit)
                 ),
                 leave=False,
             )
-            bytes_downloaded = 0
-            for chunk in request.iter_content(chunk_size=chunk_size):
-                if chunk:  # remove keep-alive chunks
-                    f_.write(chunk)
-                    bytes_downloaded += chunk_size
-                    progressbar_.n = float(
-                        '{0:.1f}'.format(bytes_downloaded * 1e-6)
-                    )
-                    progressbar_.update(0)
-            progressbar_.close()
+
+            try:
+                bytes_downloaded = 0
+                for chunk in request.iter_content(chunk_size=chunk_size):
+                    if chunk:  # remove keep-alive chunks
+                        f_.write(chunk)
+                        bytes_downloaded += chunk_size
+                        progressbar_.n = min(
+                            float(
+                                '{0:.1f}'.format(
+                                    bytes_downloaded * scaling_factor
+                                )
+                            ), total
+                        )
+                        progressbar_.update(0)
+            finally:
+                sleep(0.1)
+                progressbar_.close()
 
         if extract:
-            extract_dataset(data_folder, local_filename, file)
+            extract_dataset(data_folder, local_filename)
 
     with requests.get(file.url.geturl(), stream=True) as r:
         r.raise_for_status()

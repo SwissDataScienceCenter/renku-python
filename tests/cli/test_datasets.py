@@ -32,6 +32,8 @@ from renku.api.config import RENKU_HOME
 from renku.api.datasets import DatasetsApiMixin
 from renku.cli._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
 from renku.cli._format.datasets import FORMATS as DATASETS_FORMATS
+from renku.cli._providers import DataverseProvider, ProviderFactory, \
+    ZenodoProvider
 from renku.models.refs import LinkReference
 from renku.utils.datetime8601 import validate_iso8601
 
@@ -905,3 +907,30 @@ def test_dataset_file_date_created_format(tmpdir, runner, client, project):
         assert dp.parse(data_yaml['created'])
         assert validate_iso8601(data_yaml['created'])
         assert validate_iso8601(data_yaml['files'][0]['added'])
+
+
+@pytest.mark.parametrize(
+    'uri', [
+        '10.5281/zenodo.3363060', 'doi:10.5281/zenodo.3363060',
+        'https://zenodo.org/record/3363060'
+    ]
+)
+def test_dataset_provider_resolution_zenodo(doi_responses, uri):
+    """Check that zenodo uris resolve to ZenodoProvider."""
+    provider, _ = ProviderFactory.from_uri(uri)
+    assert type(provider) is ZenodoProvider
+
+
+@pytest.mark.parametrize(
+    'uri', [
+        '10.7910/DVN/TJCLKP', 'doi:10.7910/DVN/TJCLKP',
+        (
+            'https://dataverse.harvard.edu/dataset.xhtml'
+            '?persistentId=doi:10.7910/DVN/TJCLKP'
+        )
+    ]
+)
+def test_dataset_provider_resolution_dataverse(doi_responses, uri):
+    """Check that dataverse URIs resolve to ``DataverseProvider``."""
+    provider, _ = ProviderFactory.from_uri(uri)
+    assert type(provider) is DataverseProvider

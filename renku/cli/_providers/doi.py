@@ -22,12 +22,17 @@ import attr
 import requests
 
 from renku.cli._providers.api import ProviderApi
+from renku.utils.doi import is_doi
 
 DOI_BASE_URL = 'https://dx.doi.org'
 
 
 def make_doi_url(doi):
     """Create URL to access DOI metadata."""
+    urlparts = urllib.parse.urlparse(doi)
+    if urlparts.scheme == 'doi':
+        urlparts = urlparts._replace(scheme='')
+        doi = urlparts.geturl()
     return urllib.parse.urljoin(DOI_BASE_URL, doi)
 
 
@@ -46,6 +51,8 @@ class DOIMetadataSerializer:
     categories = attr.ib(kw_only=True, default=None)
 
     author = attr.ib(kw_only=True, default=None)
+
+    contributor = attr.ib(kw_only=True, default=None)
 
     version = attr.ib(kw_only=True, default=None)
 
@@ -70,6 +77,14 @@ class DOIProvider(ProviderApi):
         default={'accept': 'application/vnd.citationstyles.csl+json'}
     )
     timeout = attr.ib(default=3)
+
+    @staticmethod
+    def supports(uri):
+        """Whether or not this provider supports a given uri."""
+        if is_doi(uri) is not None:
+            return True
+
+        return False
 
     @staticmethod
     def _serialize(response):

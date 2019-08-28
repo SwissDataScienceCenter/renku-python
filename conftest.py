@@ -17,10 +17,14 @@
 # limitations under the License.
 """Pytest configuration."""
 
+import json
 import os
+import pathlib
+import re
 import shutil
 import tempfile
 import time
+import urllib
 
 import pytest
 import responses
@@ -297,6 +301,84 @@ def zenodo_sandbox(client):
         'zenodo', 'access_token',
         'HPwXfABPZ7JNiwXMrktL7pevuuo9jt4gsUCkh3Gs2apg65ixa3JPyFukdGup'
     )
+
+
+@pytest.fixture
+def doi_responses():
+    """Responses for doi.org requests."""
+    from renku.cli._providers.doi import DOI_BASE_URL
+    from renku.cli._providers.dataverse import (
+        DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+    )
+
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def doi_callback(request):
+            response_url = (
+                'https://dataverse.harvard.edu/citation'
+                '?persistentId=doi:10.11588/data/yyxx1122'
+            )
+            if 'zenodo' in request.url:
+                response_url = 'https://zenodo.org/record/3363060'
+            return (
+                200, {
+                    'Content-Type': 'application/json'
+                },
+                json.dumps({
+                    'type': 'dataset',
+                    'id': request.url,
+                    'author': [{
+                        'family': 'Doe',
+                        'given': 'John'
+                    }],
+                    'contributor': [{
+                        'contributorType': 'ContactPerson',
+                        'family': 'Doe',
+                        'given': 'John'
+                    }],
+                    'issued': {
+                        'date-parts': [[2019]]
+                    },
+                    'abstract': 'Test Dataset',
+                    'DOI': '10.11588/data/yyxx1122',
+                    'publisher': 'heiDATA',
+                    'title': 'dataset',
+                    'URL': response_url
+                })
+            )
+
+        rsps.add_callback(
+            method='GET',
+            url=re.compile('{base_url}/.*'.format(base_url=DOI_BASE_URL)),
+            callback=doi_callback
+        )
+
+        def version_callback(request):
+            return (
+                200, {
+                    'Content-Type': 'application/json'
+                },
+                json.dumps({
+                    'status': 'OK',
+                    'data': {
+                        'version': '4.1.3',
+                        'build': 'abcdefg'
+                    }
+                })
+            )
+
+        base_url = 'https://dataverse.harvard.edu'
+
+        url_parts = list(urllib.parse.urlparse(base_url))
+        url_parts[2] = pathlib.posixpath.join(
+            DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+        )
+        pattern = '{url}.*'.format(url=urllib.parse.urlunparse(url_parts))
+
+        rsps.add_callback(
+            method='GET', url=re.compile(pattern), callback=version_callback
+        )
+        yield rsps
 
 
 @pytest.fixture
