@@ -118,6 +118,25 @@ done when invoking a command:
 
 .. warning:: Detecting inputs and outputs from pipes ``|`` is not supported.
 
+Specifying inputs and outputs programmatically
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes the list of inputs and outputs are not known before execution of the
+program. For example, a program might accept a date range as input and access
+all files within that range during its execution.
+
+To address this issue, the program can dump a list of input and output files
+that it is accessing in ``inputs.txt`` and ``outputs.txt``. Each line in these
+files is expected to be the path to an input or output file within the
+project's directory. When the program is finished, Renku will look for
+existence of these two files and adds their content to the list of explicit
+inputs and outputs. Renku will then delete these two files.
+
+By default, Renku looks for these two files in ``.renku/tmp`` directory. One
+can change this default location by setting ``RENKU_FILELIST_PATH``
+environment variable. When set, it points to the directory within the
+project's directory where ``inputs.txt`` and ``outputs.txt`` reside.
+
 Exit codes
 ~~~~~~~~~~
 
@@ -126,8 +145,8 @@ All Unix commands return a number between 0 and 255 which is called
 (-10 is equivalent to 246, 257 is equivalent to 1). The exit-code 0 represents
 a *success* and non-zero exit-code indicates a *failure*.
 
-Therefore the command speficied after ``renku run`` is expected to return
-exit-code 0. If the command returns different exit code, you can speficy them
+Therefore the command specified after ``renku run`` is expected to return
+exit-code 0. If the command returns different exit code, you can specify them
 with ``--success-code=<INT>`` parameter.
 
 .. code-block:: console
