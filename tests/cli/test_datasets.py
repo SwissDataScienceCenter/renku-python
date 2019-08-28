@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test dataset command."""
+"""Test ``dataset`` command."""
 
 from __future__ import absolute_import, print_function
 
@@ -910,10 +910,10 @@ def test_dataset_file_date_created_format(tmpdir, runner, client, project):
 
 
 @pytest.mark.parametrize(
-    'uri', (
+    'uri', [
         '10.5281/zenodo.3363060', 'doi:10.5281/zenodo.3363060',
         'https://zenodo.org/record/3363060'
-    )
+    ]
 )
 def test_dataset_provider_resolution_zenodo(doi_responses, uri):
     """Check that zenodo uris resolve to ZenodoProvider."""
@@ -922,13 +922,15 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
 
 
 @pytest.mark.parametrize(
-    'uri', (
+    'uri', [
         '10.7910/DVN/TJCLKP', 'doi:10.7910/DVN/TJCLKP',
-        'https://dataverse.harvard.edu/dataset.xhtml' +
-        '?persistentId=doi:10.7910/DVN/TJCLKP'
-    )
+        (
+            'https://dataverse.harvard.edu/dataset.xhtml'
+            '?persistentId=doi:10.7910/DVN/TJCLKP'
+        )
+    ]
 )
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):
-    """Check that dataverse uris resolve to DataverseProvider."""
+    """Check that dataverse URIs resolve to ``DataverseProvider``."""
     provider, _ = ProviderFactory.from_uri(uri)
     assert type(provider) is DataverseProvider

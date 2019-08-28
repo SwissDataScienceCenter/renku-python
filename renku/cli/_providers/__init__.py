@@ -45,9 +45,7 @@ class ProviderFactory:
                 if potential_provider.supports(uri):
                     provider = potential_provider
                     break
-            except Exception as e:
-                print(e)
-                print(provider)
+            except (Exception, BaseException) as e:
                 warning += 'Couldn\'t test provider {prov}: {err}\n'.format(
                     prov=potential_provider, err=e
                 )

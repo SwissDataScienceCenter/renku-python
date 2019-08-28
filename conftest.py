@@ -21,6 +21,10 @@ import os
 import shutil
 import tempfile
 import time
+import json
+import re
+import urllib
+import pathlib
 
 import pytest
 import responses
@@ -306,10 +310,6 @@ def doi_responses():
     from renku.cli._providers.dataverse import (
         DATAVERSE_API_PATH, DATAVERSE_VERSION_API
     )
-    import json
-    import re
-    import urllib
-    import pathlib
 
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 

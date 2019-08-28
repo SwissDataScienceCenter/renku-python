@@ -664,6 +664,8 @@ def download_file(extract, data_folder, file, chunk_size=16384):
             scaling_factor = 1e-6
             unit = 'MB'
 
+            # We round sizes to 0.1, files smaller than 1e5 would
+            # get rounded to 0, so we display bytes instead
             if file.filesize < 1e5:
                 scaling_factor = 1.0
                 unit = 'B'

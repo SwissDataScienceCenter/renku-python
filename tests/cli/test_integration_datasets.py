@@ -25,25 +25,31 @@ from renku import cli
 
 
 @pytest.mark.parametrize(
-    'doi', [(
-        '10.5281/zenodo.597964', 'y', 'pyndl_naive_discriminat_v064',
-        'K.Sering,M.Weitz,D.Künstle,L.Schneider'
-    ), ('10.7910/DVN/S8MSVF', 'y', 'hydrogen_mapping_laws_a_1', 'M.Trevor')]
+    'doi', [{
+        'doi': '10.5281/zenodo.597964',
+        'input': 'y',
+        'file': 'pyndl_naive_discriminat_v064',
+        'creator': 'K.Sering,M.Weitz,D.Künstle,L.Schneider'
+    }, {
+        'doi': '10.7910/DVN/S8MSVF',
+        'input': 'y',
+        'file': 'hydrogen_mapping_laws_a_1',
+        'creator': 'M.Trevor'
+    }]
 )
 @pytest.mark.integration
 def test_dataset_import_real_doi(runner, project, doi):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', doi[0]], input=doi[1]
+        cli.cli, ['dataset', 'import', doi['doi']], input=doi['input']
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(cli.cli, ['dataset'])
-    print(result.output)
     assert 0 == result.exit_code
-    assert doi[2] in result.output
-    assert doi[3] in result.output
+    assert doi['file'] in result.output
+    assert doi['creator'] in result.output
 
 
 @pytest.mark.parametrize(
@@ -125,8 +131,10 @@ def test_dataset_import_fake_doi(runner, project, doi):
 @pytest.mark.parametrize(
     'url', [
         'https://zenodo.org/record/2621208',
-        'https://dataverse.harvard.edu/dataset.xhtml' +
-        '?persistentId=doi:10.7910/DVN/S8MSVF'
+        (
+            'https://dataverse.harvard.edu/dataset.xhtml'
+            '?persistentId=doi:10.7910/DVN/S8MSVF'
+        )
     ]
 )
 @pytest.mark.integration
