@@ -315,7 +315,7 @@ def add_to_dataset(
                 dataset.update_metadata(with_metadata)
 
     except FileNotFoundError:
-        raise BadParameter('Could not process {0}'.format(', '.join(urls)))
+        raise BadParameter('Could not process \n{0}'.format('\n'.join(urls)))
 
 
 @dataset.command('ls-files')
