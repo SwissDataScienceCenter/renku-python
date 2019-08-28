@@ -289,6 +289,10 @@ def _convert_keyword(keywords):
 @jsonld.s(
     type='schema:Dataset',
     context={
+        'added': 'schema:dateCreated',
+        'affiliation': 'schema:affiliation',
+        'alternate_name': 'schema:alternateName',
+        'email': 'schema:email',
         'schema': 'http://schema.org/',
     },
 )
