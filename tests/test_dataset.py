@@ -88,7 +88,6 @@ def test_data_add(
         assert not os.access(
             'data/dataset/file', stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
         )
-        # assert os.stat('data/dataset/file/metadata.yml')
 
         # check the linking
         if scheme in ('', 'file://'):
