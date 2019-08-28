@@ -30,6 +30,7 @@ import click
 from renku import errors
 from renku._compat import Path
 
+from ...api.config import RENKU_HOME
 from .._datastructures import DirectoryTree
 from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
@@ -38,6 +39,11 @@ from .process import Process
 from .types import PATH_OBJECTS, Directory, File
 
 STARTED_AT = int(time.time() * 1000)
+
+RENKU_TMP_DIR = os.path.join(RENKU_HOME, 'tmp')
+RENKU_FILELIST_PATH = os.getenv('RENKU_FILELIST_PATH', RENKU_TMP_DIR)
+INDIRECT_INPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, 'inputs.txt')
+INDIRECT_OUTPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, 'outputs.txt')
 
 
 def convert_arguments(value):
@@ -250,6 +256,9 @@ class CommandLineToolFactory(object):
         tool = self.generate_tool()
         repo = client.repo
 
+        # Remove indirect files list if any
+        self.delete_indirect_files_list()
+
         # NOTE consider to use git index instead
         existing_directories = {
             str(p.relative_to(client.path))
@@ -259,6 +268,12 @@ class CommandLineToolFactory(object):
         yield tool
 
         if repo:
+            # Include indirect inputs and outputs before further processing
+            self.add_indirect_inputs()
+            self.add_indirect_outputs()
+            # Remove indirect files list if any
+            self.delete_indirect_files_list()
+
             # List of all output paths.
             paths = []
 
@@ -528,10 +543,8 @@ class CommandLineToolFactory(object):
             # Convert input defaults to paths relative to working directory.
             if input.type not in PATH_OBJECTS:
                 try:
-                    input_path = (self.directory /
-                                  str(input.default)).resolve().relative_to(
-                                      self.working_dir
-                                  )
+                    path = self.directory / str(input.default)
+                    input_path = path.resolve().relative_to(self.working_dir)
                 except FileNotFoundError:
                     continue
             else:
@@ -586,6 +599,10 @@ class CommandLineToolFactory(object):
         }
 
         # TODO group by a common prefix
+
+        for position, path in enumerate(paths):
+            if Path(path).resolve() in self.explicit_outputs:
+                del paths[position]
 
         for position, path in enumerate(paths):
             candidate = self.file_candidate(self.working_dir / path)
@@ -716,3 +733,44 @@ class CommandLineToolFactory(object):
                 )
 
             output_id += 1
+
+    def delete_indirect_files_list(self):
+        """Remove indirect inputs and outputs list."""
+        try:
+            path = str(self.working_dir / INDIRECT_INPUTS_LIST)
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        try:
+            path = str(self.working_dir / INDIRECT_OUTPUTS_LIST)
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+    def add_indirect_inputs(self):
+        """Read indirect inputs list and add them to explicit inputs."""
+        for indirect_input in self.read_files_list(INDIRECT_INPUTS_LIST):
+            # treat indirect inputs like explicit inputs
+            self.explicit_inputs.append(indirect_input)
+
+        # add new explicit inputs (if any) to inputs
+        for input in self.find_explicit_inputs():
+            self.inputs.append(input)
+
+    def add_indirect_outputs(self):
+        """Read indirect outputs list and add them to explicit outputs."""
+        for indirect_output in self.read_files_list(INDIRECT_OUTPUTS_LIST):
+            # treat indirect outputs like explicit outputs
+            self.explicit_outputs.append(indirect_output)
+
+    def read_files_list(self, files_list):
+        """Read files list where each line is a filepath."""
+        try:
+            path = str(files_list)
+            with open(path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        yield Path(line).resolve()
+        except FileNotFoundError:
+            return
