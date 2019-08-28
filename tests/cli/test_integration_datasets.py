@@ -24,49 +24,49 @@ import pytest
 from renku import cli
 
 
+@pytest.mark.parametrize(
+    'doi', [{
+        'doi': '10.5281/zenodo.597964',
+        'input': 'y',
+        'file': 'pyndl_naive_discriminat_v064',
+        'creator': 'K.Sering,M.Weitz,D.Künstle,L.Schneider'
+    }, {
+        'doi': '10.7910/DVN/S8MSVF',
+        'input': 'y',
+        'file': 'hydrogen_mapping_laws_a_1',
+        'creator': 'M.Trevor'
+    }]
+)
 @pytest.mark.integration
-def test_dataset_import_real_doi(runner, project):
+def test_dataset_import_real_doi(runner, project, doi):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
+        cli.cli, ['dataset', 'import', doi['doi']], input=doi['input']
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(cli.cli, ['dataset'])
     assert 0 == result.exit_code
-    assert 'pyndl_naive_discriminat_v064' in result.output
-    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
+    assert doi['file'] in result.output
+    assert doi['creator'] in result.output
 
 
 @pytest.mark.parametrize(
-    'doi', [
-        ('10.5281/zenodo.597964', 'y'),
-        ('10.5281/zenodo.3236928', 'n'),
-        ('10.5281/zenodo.2671633', 'n'),
-        ('10.5281/zenodo.3237420', 'n'),
-        ('10.5281/zenodo.3236928', 'n'),
-        ('10.5281/zenodo.3188334', 'y'),
-        ('10.5281/zenodo.3236928', 'n'),
-        ('10.5281/zenodo.2669459', 'n'),
-        ('10.5281/zenodo.2371189', 'n'),
-        ('10.5281/zenodo.2651343', 'n'),
-        ('10.5281/zenodo.1467859', 'n'),
-        ('10.5281/zenodo.3240078', 'n'),
-        ('10.5281/zenodo.3240053', 'n'),
-        ('10.5281/zenodo.3240010', 'n'),
-        ('10.5281/zenodo.3240012', 'n'),
-        ('10.5281/zenodo.3240006', 'n'),
-        ('10.5281/zenodo.3239996', 'n'),
-        ('10.5281/zenodo.3239256', 'n'),
-        ('10.5281/zenodo.3237813', 'n'),
-        ('10.5281/zenodo.3239988', 'y'),
-        ('10.5281/zenodo.3239986', 'n'),
-        ('10.5281/zenodo.3239984', 'n'),
-        ('10.5281/zenodo.3239982', 'n'),
-        ('10.5281/zenodo.3239980', 'n'),
-        ('10.5281/zenodo.3188334', 'y'),
-    ]
+    'doi', [('10.5281/zenodo.597964', 'y'), ('10.5281/zenodo.3236928', 'n'),
+            ('10.5281/zenodo.2671633', 'n'), ('10.5281/zenodo.3237420', 'n'),
+            ('10.5281/zenodo.3236928', 'n'), ('10.5281/zenodo.3188334', 'y'),
+            ('10.5281/zenodo.3236928', 'n'), ('10.5281/zenodo.2669459', 'n'),
+            ('10.5281/zenodo.2371189', 'n'), ('10.5281/zenodo.2651343', 'n'),
+            ('10.5281/zenodo.1467859', 'n'), ('10.5281/zenodo.3240078', 'n'),
+            ('10.5281/zenodo.3240053', 'n'), ('10.5281/zenodo.3240010', 'n'),
+            ('10.5281/zenodo.3240012', 'n'), ('10.5281/zenodo.3240006', 'n'),
+            ('10.5281/zenodo.3239996', 'n'), ('10.5281/zenodo.3239256', 'n'),
+            ('10.5281/zenodo.3237813', 'n'), ('10.5281/zenodo.3239988', 'y'),
+            ('10.5281/zenodo.3239986', 'n'), ('10.5281/zenodo.3239984', 'n'),
+            ('10.5281/zenodo.3239982', 'n'), ('10.5281/zenodo.3239980', 'n'),
+            ('10.5281/zenodo.3188334', 'y'), ('10.7910/DVN/TJCLKP', 'n'),
+            ('10.7910/DVN/S8MSVF', 'y')]
 )
 @pytest.mark.integration
 def test_dataset_import_real_param(doi, runner, project):
@@ -115,34 +115,47 @@ def test_dataset_import_real_doi_warnings(runner, project):
     assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
 
 
+@pytest.mark.parametrize(
+    'doi', [('10.5281/zenodo.5979642342', 'Zenodo'),
+            ('10.7910/DVN/S8MSVFXXXX', 'DVN')]
+)
 @pytest.mark.integration
-def test_dataset_import_fake_doi(runner, project):
+def test_dataset_import_fake_doi(runner, project, doi):
     """Test error raising for non-existing DOI."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.5979642342'], input='y'
-    )
+    result = runner.invoke(cli.cli, ['dataset', 'import', doi[0]], input='y')
     assert 2 == result.exit_code
-    assert 'URI not found.' in result.output
+    assert 'URI not found.' in result.output \
+        or 'Provider {} not found'.format(doi[1]) in result.output
 
 
+@pytest.mark.parametrize(
+    'url', [
+        'https://zenodo.org/record/2621208',
+        (
+            'https://dataverse.harvard.edu/dataset.xhtml'
+            '?persistentId=doi:10.7910/DVN/S8MSVF'
+        )
+    ]
+)
 @pytest.mark.integration
-def test_dataset_import_real_http(runner, project):
+def test_dataset_import_real_http(runner, project, url):
     """Test dataset import through HTTPS."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', 'https://zenodo.org/record/2621208'],
-        input='y'
-    )
+    result = runner.invoke(cli.cli, ['dataset', 'import', url], input='y')
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
 
+@pytest.mark.parametrize(
+    'url', [
+        'https://zenodo.org/record/2621201248',
+        'https://dataverse.harvard.edu/dataset.xhtml' +
+        '?persistentId=doi:10.7910/DVN/S8MSVFXXXX'
+    ]
+)
 @pytest.mark.integration
-def test_dataset_import_fake_http(runner, project):
+def test_dataset_import_fake_http(runner, project, url):
     """Test dataset import through HTTPS."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', 'https://zenodo.org/record/2621201248'],
-        input='y'
-    )
+    result = runner.invoke(cli.cli, ['dataset', 'import', url], input='y')
     assert 2 == result.exit_code
     assert 'URI not found.' in result.output
 

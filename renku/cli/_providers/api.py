@@ -30,6 +30,12 @@ class ProviderApi(abc.ABC):
         """Get export manager."""
         pass
 
+    @staticmethod
+    @abc.abstractmethod
+    def supports(uri):
+        """Whether or not this provider supports a given uri."""
+        pass
+
 
 class ExporterApi(abc.ABC):
     """Interface defining exporter methods."""
