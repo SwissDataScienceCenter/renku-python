@@ -34,7 +34,5 @@ def extract_doi(uri):
     """Return the DOI in a string if there is one."""
     match = doi_regexp.match(uri)
 
-    if match is None:
-        return None
-
-    return match.group(2)
+    if match:
+        return match.group(2)

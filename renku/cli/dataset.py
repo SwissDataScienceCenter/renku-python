@@ -624,8 +624,8 @@ def import_(ctx, client, uri, name, extract):
 
         try:
             for p in processing:
-                p.wait()
-                p.get()
+                p.get()  # Will internally do the wait() as well.
+
         except HTTPError as e:
             raise BadParameter((
                 'Could not process {0}.\n'
@@ -661,7 +661,7 @@ def download_file(extract, data_folder, file, chunk_size=16384):
 
     def stream_to_file(request):
         """Stream bytes to file."""
-        with open(download_to, 'wb') as f_:
+        with open(str(download_to), 'wb') as f_:
             scaling_factor = 1e-6
             unit = 'MB'
 
