@@ -128,13 +128,13 @@ class Creator(object):
         """Set the default id."""
         if self.email:
             return 'mailto:{email}'.format(email=self.email)
-        return '_' + str(uuid.uuid4())
+        return '_:{}'.format(str(uuid.uuid4()))
 
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
         if self._id == 'mailto:None':
-            self._id = '_' + str(uuid.uuid4())
+            self._id = self.default_id()
 
 
 @attr.s
@@ -321,7 +321,7 @@ class Dataset(Entity, CreatorsMixin):
     )
 
     description = jsonld.ib(
-        default=None, context='schema:description', kw_only=True
+        default='', context='schema:description', kw_only=True
     )
 
     identifier = jsonld.ib(
