@@ -441,14 +441,14 @@ class ZenodoExporter(ExporterApi):
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)
 
-        # Step 2. Upload all files to created deposition
+        # Step 2. Attach metadata to deposition
+        deposition.attach_metadata(self.dataset)
+
+        # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file_ in self.dataset.files:
                 deposition.upload_file(file_.full_path, )
                 progressbar.update(1)
-
-        # Step 3. Attach metadata to deposition
-        deposition.attach_metadata(self.dataset)
 
         # Step 4. Publish newly created deposition
         if publish:
