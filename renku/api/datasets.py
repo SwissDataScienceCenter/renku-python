@@ -145,29 +145,36 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def add_data_to_dataset(
-        self, dataset, url, git=False, force=False, **kwargs
+        self, dataset, urls, git=False, force=False, **kwargs
     ):
         """Import the data into the data directory."""
         dataset_path = self.path / self.datadir / dataset.name
-        git = git or check_for_git_repo(url)
 
-        target = kwargs.pop('target', None)
+        files = []
 
-        if git:
-            if isinstance(target, (str, NoneType)):
-                files = self._add_from_git(
-                    dataset, dataset_path, url, target, **kwargs
-                )
-            else:
-                files = []
-                for t in target:
+        for url in urls:
+            git = git or check_for_git_repo(url)
+
+            target = kwargs.pop('target', None)
+
+            if git:
+                if isinstance(target, (str, NoneType)):
                     files.extend(
                         self._add_from_git(
-                            dataset, dataset_path, url, t, **kwargs
+                            dataset, dataset_path, url, target, **kwargs
                         )
                     )
-        else:
-            files = self._add_from_url(dataset, dataset_path, url, **kwargs)
+                else:
+                    for t in target:
+                        files.extend(
+                            self._add_from_git(
+                                dataset, dataset_path, url, t, **kwargs
+                            )
+                        )
+            else:
+                files.extend(
+                    self._add_from_url(dataset, dataset_path, url, **kwargs)
+                )
 
         ignored = self.find_ignored_paths(*(data['path']
                                             for data in files)) or []

@@ -289,15 +289,14 @@ def add_to_dataset(
         with client.with_dataset(name=name) as dataset:
             target = target if target else None
             with progressbar(urls, label='Adding data to dataset') as bar:
-                for url in bar:
-                    client.add_data_to_dataset(
-                        dataset,
-                        url,
-                        link=link,
-                        target=target,
-                        relative_to=relative_to,
-                        force=force,
-                    )
+                client.add_data_to_dataset(
+                    dataset,
+                    bar,
+                    link=link,
+                    target=target,
+                    relative_to=relative_to,
+                    force=force,
+                )
 
             if with_metadata:
 
@@ -310,11 +309,13 @@ def add_to_dataset(
 
                             file_.path = added_.path
                             file_.creator = with_metadata.creator
+                            file_._label = added_._label
+                            file_.commit = added_.commit
 
                 dataset.update_metadata(with_metadata)
 
     except FileNotFoundError:
-        raise BadParameter('Could not process {0}'.format(url))
+        raise BadParameter('Could not process \n{0}'.format('\n'.join(urls)))
 
 
 @dataset.command('ls-files')

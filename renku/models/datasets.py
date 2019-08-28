@@ -432,10 +432,16 @@ class Dataset(Entity, CreatorsMixin):
 
     def update_files(self, files):
         """Update files with collection of DatasetFile objects."""
-        to_insert = [
-            new_file
-            for new_file in files if not self.find_file(new_file.path)
-        ]
+        to_insert = []
+
+        for new_file in files:
+            existing_file = self.find_file(new_file.path)
+            if existing_file is None:
+                to_insert.append(new_file)
+            else:
+                existing_file.commit = new_file.commit
+                existing_file._label = new_file._label
+
         self.files += to_insert
 
     def rename_files(self, rename):
