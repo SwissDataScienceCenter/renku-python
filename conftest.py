@@ -17,14 +17,14 @@
 # limitations under the License.
 """Pytest configuration."""
 
+import json
 import os
+import pathlib
+import re
 import shutil
 import tempfile
 import time
-import json
-import re
 import urllib
-import pathlib
 
 import pytest
 import responses
