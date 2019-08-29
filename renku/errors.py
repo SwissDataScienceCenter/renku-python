@@ -158,9 +158,11 @@ class IgnoredFiles(RenkuException, click.ClickException):
 class FailedMerge(RenkuException, click.ClickException):
     """Raise when automatic merge failed."""
 
-    def __init__(self, repo):
+    def __init__(self, repo, branch, merge_args):
         """Build a custom message."""
         super(FailedMerge, self).__init__(
+            'Failed merge of branch {0} with args {1}'.
+            format(branch, ','.join(merge_args)) +
             'The automatic merge failed.\n\n'
             'Please use the "git" command to clean resolve it.'
             '\n\n' + str(repo.git.status())
@@ -183,6 +185,7 @@ class UnmodifiedOutputs(RenkuException, click.ClickException):
                  for path in unmodified) + '\n'
             '\nOnce you have removed the files that should be used as outputs,'
             '\nyou can safely rerun the previous command.'
+            '\nYou can use --output flag to specify outputs explicitly.'
         )
 
 
@@ -212,6 +215,7 @@ class OutputsNotFound(RenkuException, click.ClickException):
                 ) + '\n\n'
                 'Once you have removed files that should be used as outputs,\n'
                 'you can safely rerun the previous command.'
+                '\nYou can use --output flag to specify outputs explicitly.'
             )
         else:
             msg += (
@@ -220,6 +224,10 @@ class OutputsNotFound(RenkuException, click.ClickException):
             )
 
         super(OutputsNotFound, self).__init__(msg)
+
+
+class InvalidInputPath(RenkuException, click.ClickException):
+    """Raise when input path does not exist or is not in the repository."""
 
 
 class InvalidSuccessCode(RenkuException, click.ClickException):

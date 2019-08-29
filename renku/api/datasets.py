@@ -31,8 +31,10 @@ import requests
 
 from renku import errors
 from renku._compat import Path
+from renku.api.config import RENKU_HOME
 from renku.models._git import GitURL
 from renku.models.datasets import Creator, Dataset, DatasetFile, NoneType
+from renku.models.refs import LinkReference
 
 
 @attr.s
@@ -48,7 +50,7 @@ class DatasetsApiMixin(object):
     @property
     def renku_datasets_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
-        return self.renku_path.joinpath(self.DATASETS)
+        return Path(self.renku_home).joinpath(self.DATASETS)
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
@@ -78,11 +80,11 @@ class DatasetsApiMixin(object):
             result[path] = self.get_dataset(path)
         return result
 
-    def get_dataset(self, path):
+    def get_dataset(self, path, commit=None):
         """Return a dataset from a given path."""
         if not path.is_absolute():
             path = self.path / path
-        return Dataset.from_yaml(path, client=self)
+        return Dataset.from_yaml(path, client=self, commit=commit)
 
     def dataset_path(self, name):
         """Get dataset path from name."""
@@ -143,29 +145,36 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def add_data_to_dataset(
-        self, dataset, url, git=False, force=False, **kwargs
+        self, dataset, urls, git=False, force=False, **kwargs
     ):
         """Import the data into the data directory."""
         dataset_path = self.path / self.datadir / dataset.name
-        git = git or check_for_git_repo(url)
 
-        target = kwargs.pop('target', None)
+        files = []
 
-        if git:
-            if isinstance(target, (str, NoneType)):
-                files = self._add_from_git(
-                    dataset, dataset_path, url, target, **kwargs
-                )
-            else:
-                files = []
-                for t in target:
+        for url in urls:
+            git = git or check_for_git_repo(url)
+
+            target = kwargs.pop('target', None)
+
+            if git:
+                if isinstance(target, (str, NoneType)):
                     files.extend(
                         self._add_from_git(
-                            dataset, dataset_path, url, t, **kwargs
+                            dataset, dataset_path, url, target, **kwargs
                         )
                     )
-        else:
-            files = self._add_from_url(dataset, dataset_path, url, **kwargs)
+                else:
+                    for t in target:
+                        files.extend(
+                            self._add_from_git(
+                                dataset, dataset_path, url, t, **kwargs
+                            )
+                        )
+            else:
+                files.extend(
+                    self._add_from_url(dataset, dataset_path, url, **kwargs)
+                )
 
         ignored = self.find_ignored_paths(*(data['path']
                                             for data in files)) or []
@@ -457,3 +466,9 @@ def check_for_git_repo(url):
         except InvalidGitRepositoryError:
             is_git = False
     return is_git
+
+
+DATASET_METADATA_PATHS = [
+    Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
+    Path(RENKU_HOME) / Path(LinkReference.REFS),
+]

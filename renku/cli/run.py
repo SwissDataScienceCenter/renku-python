@@ -49,6 +49,16 @@ if:
   as an **output**;
 * a path is not passed as an argument to ``renku run``.
 
+.. topic:: Specifying auxiliary inputs (``--input``)
+
+   You can specify extra inputs to your program explicitly by using the
+   ``--input`` option. This is useful for specifying hidden dependencies
+   that don't appear on the command line. These input file must exist before
+   execution of ``renku run`` command. This option is not a replacement for
+   the arguments that are passed on the command line. Files or directories
+   specified with this option will not be passed as input arguments to the
+   script.
+
 Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -84,6 +94,13 @@ those paths. Therefore:
    You can specify the ``--no-output`` option to force tracking of such
    an execution.
 
+.. topic:: Specifying outputs explicitly (``--output``)
+
+   You can specify expected outputs of your program explicitly by using the
+   ``--output`` option. These output must exist after the execution of the
+   ``renku run`` command. However, they do not need to be modified by
+   the command.
+
 .. cli-run-std
 
 Detecting standard streams
@@ -101,6 +118,25 @@ done when invoking a command:
 
 .. warning:: Detecting inputs and outputs from pipes ``|`` is not supported.
 
+Specifying inputs and outputs programmatically
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes the list of inputs and outputs are not known before execution of the
+program. For example, a program might accept a date range as input and access
+all files within that range during its execution.
+
+To address this issue, the program can dump a list of input and output files
+that it is accessing in ``inputs.txt`` and ``outputs.txt``. Each line in these
+files is expected to be the path to an input or output file within the
+project's directory. When the program is finished, Renku will look for
+existence of these two files and adds their content to the list of explicit
+inputs and outputs. Renku will then delete these two files.
+
+By default, Renku looks for these two files in ``.renku/tmp`` directory. One
+can change this default location by setting ``RENKU_FILELIST_PATH``
+environment variable. When set, it points to the directory within the
+project's directory where ``inputs.txt`` and ``outputs.txt`` reside.
+
 Exit codes
 ~~~~~~~~~~
 
@@ -109,8 +145,8 @@ All Unix commands return a number between 0 and 255 which is called
 (-10 is equivalent to 246, 257 is equivalent to 1). The exit-code 0 represents
 a *success* and non-zero exit-code indicates a *failure*.
 
-Therefore the command speficied after ``renku run`` is expected to return
-exit-code 0. If the command returns different exit code, you can speficy them
+Therefore the command specified after ``renku run`` is expected to return
+exit-code 0. If the command returns different exit code, you can specify them
 with ``--success-code=<INT>`` parameter.
 
 .. code-block:: console
@@ -134,6 +170,12 @@ from ._options import option_isolation
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
+@click.option(
+    'inputs',
+    '--input',
+    multiple=True,
+    help='Force a path to be considered as an input.',
+)
 @click.option(
     'outputs',
     '--output',
@@ -162,12 +204,16 @@ from ._options import option_isolation
     commit=True,
     ignore_std_streams=True,
 )
-def run(client, outputs, no_output, success_codes, isolation, command_line):
+def run(
+    client, inputs, outputs, no_output, success_codes, isolation, command_line
+):
     """Tracking work on a specific problem."""
     working_dir = client.repo.working_dir
     mapped_std = _mapped_std_streams(client.candidate_paths)
     factory = CommandLineToolFactory(
         command_line=command_line,
+        explicit_inputs=inputs,
+        explicit_outputs=outputs,
         directory=os.getcwd(),
         working_dir=working_dir,
         successCodes=success_codes,
@@ -176,11 +222,8 @@ def run(client, outputs, no_output, success_codes, isolation, command_line):
             for name, path in mapped_std.items()
         }
     )
-
     with client.with_workflow_storage() as wf:
-        with factory.watch(
-            client, no_output=no_output, outputs=outputs
-        ) as tool:
+        with factory.watch(client, no_output=no_output) as tool:
             # Don't compute paths if storage is disabled.
             if client.has_external_storage:
                 # Make sure all inputs are pulled from a storage.
@@ -190,16 +233,16 @@ def run(client, outputs, no_output, success_codes, isolation, command_line):
                 )
                 client.pull_paths_from_storage(*paths_)
 
-            returncode = call(
+            return_code = call(
                 factory.command_line,
                 cwd=os.getcwd(),
                 **{key: getattr(sys, key)
                    for key in mapped_std.keys()},
             )
 
-            if returncode not in (success_codes or {0}):
+            if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(
-                    returncode, success_codes=success_codes
+                    return_code, success_codes=success_codes
                 )
 
             sys.stdout.flush()

@@ -15,26 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utils for handling DOIs."""
+"""Renku datetime utilities."""
 import re
 
-doi_regexp = re.compile(
-    r'(doi:\s*|(?:https?://)?(?:dx\.)?doi\.org/)?(10\.\d+(.\d+)*/.+)$',
-    flags=re.I
+regex = (
+    r'^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12]['
+    r'0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|['
+    r'+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$'
 )
-"""See http://en.wikipedia.org/wiki/Digital_object_identifier."""
+match_iso8601 = re.compile(regex).match
 
 
-def is_doi(uri):
-    """Check if uri is DOI."""
-    return doi_regexp.match(uri)
-
-
-def extract_doi(uri):
-    """Return the DOI in a string if there is one."""
-    match = doi_regexp.match(uri)
-
-    if match is None:
-        return None
-
-    return match.group(2)
+def validate_iso8601(str_val):
+    """Check if datetime string is in ISO8601 format."""
+    try:
+        if match_iso8601(str_val) is not None:
+            return True
+    except re.error:
+        pass
+    return False

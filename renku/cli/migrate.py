@@ -31,6 +31,8 @@ import os
 import click
 import yaml
 
+from renku.api._git import COMMIT_DIFF_STRATEGY
+
 from ._client import pass_local_client
 
 
@@ -40,7 +42,11 @@ def migrate():
 
 
 @migrate.command()
-@pass_local_client(clean=True, commit=True)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 @click.pass_context
 def datasets(ctx, client):
     """Migrate dataset metadata."""

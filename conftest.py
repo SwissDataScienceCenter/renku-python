@@ -17,9 +17,14 @@
 # limitations under the License.
 """Pytest configuration."""
 
+import json
 import os
+import pathlib
+import re
 import shutil
 import tempfile
+import time
+import urllib
 
 import pytest
 import responses
@@ -48,6 +53,39 @@ def runner(monkeypatch):
     from renku.api.config import RENKU_HOME
     monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     return CliRunner()
+
+
+@pytest.fixture()
+def run_shell():
+    """Create a shell cmd runner."""
+    import subprocess
+
+    def run_(cmd, return_ps=None, sleep_for=None):
+        """Spawn subprocess and execute shell command.
+
+        :param return_ps: Return process object.
+        :param sleep_for: After executing command sleep for n seconds.
+        :returns: Process object or tuple (stdout, stderr).
+        """
+        ps = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        if return_ps:
+            return ps
+
+        output = ps.communicate()
+
+        if sleep_for:
+            time.sleep(sleep_for)
+
+        return output
+
+    return run_
 
 
 @pytest.fixture()
@@ -263,3 +301,108 @@ def zenodo_sandbox(client):
         'zenodo', 'access_token',
         'HPwXfABPZ7JNiwXMrktL7pevuuo9jt4gsUCkh3Gs2apg65ixa3JPyFukdGup'
     )
+
+
+@pytest.fixture
+def doi_responses():
+    """Responses for doi.org requests."""
+    from renku.cli._providers.doi import DOI_BASE_URL
+    from renku.cli._providers.dataverse import (
+        DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+    )
+
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def doi_callback(request):
+            response_url = (
+                'https://dataverse.harvard.edu/citation'
+                '?persistentId=doi:10.11588/data/yyxx1122'
+            )
+            if 'zenodo' in request.url:
+                response_url = 'https://zenodo.org/record/3363060'
+            return (
+                200, {
+                    'Content-Type': 'application/json'
+                },
+                json.dumps({
+                    'type': 'dataset',
+                    'id': request.url,
+                    'author': [{
+                        'family': 'Doe',
+                        'given': 'John'
+                    }],
+                    'contributor': [{
+                        'contributorType': 'ContactPerson',
+                        'family': 'Doe',
+                        'given': 'John'
+                    }],
+                    'issued': {
+                        'date-parts': [[2019]]
+                    },
+                    'abstract': 'Test Dataset',
+                    'DOI': '10.11588/data/yyxx1122',
+                    'publisher': 'heiDATA',
+                    'title': 'dataset',
+                    'URL': response_url
+                })
+            )
+
+        rsps.add_callback(
+            method='GET',
+            url=re.compile('{base_url}/.*'.format(base_url=DOI_BASE_URL)),
+            callback=doi_callback
+        )
+
+        def version_callback(request):
+            return (
+                200, {
+                    'Content-Type': 'application/json'
+                },
+                json.dumps({
+                    'status': 'OK',
+                    'data': {
+                        'version': '4.1.3',
+                        'build': 'abcdefg'
+                    }
+                })
+            )
+
+        base_url = 'https://dataverse.harvard.edu'
+
+        url_parts = list(urllib.parse.urlparse(base_url))
+        url_parts[2] = pathlib.posixpath.join(
+            DATAVERSE_API_PATH, DATAVERSE_VERSION_API
+        )
+        pattern = '{url}.*'.format(url=urllib.parse.urlunparse(url_parts))
+
+        rsps.add_callback(
+            method='GET', url=re.compile(pattern), callback=version_callback
+        )
+        yield rsps
+
+
+@pytest.fixture
+def cli(client, run):
+    """Return a callable Renku CLI.
+
+    It returns the exit code and content of the resulting CWL tool.
+    """
+    import yaml
+    from renku.models.cwl import CWLClass
+
+    def renku_cli(*args):
+        before_cwl_files = set(client.workflow_path.glob('*.cwl'))
+        exit_code = run(args)
+        after_cwl_files = set(client.workflow_path.glob('*.cwl'))
+        new_files = after_cwl_files - before_cwl_files
+        assert len(new_files) <= 1
+        if new_files:
+            cwl_filepath = new_files.pop()
+            with cwl_filepath.open('r') as f:
+                content = CWLClass.from_cwl(yaml.safe_load(f))
+        else:
+            content = None
+
+        return exit_code, content
+
+    return renku_cli

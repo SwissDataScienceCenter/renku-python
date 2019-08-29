@@ -31,7 +31,6 @@ from renku._compat import Path
 from renku.cli._providers.api import ExporterApi, ProviderApi
 from renku.cli._providers.doi import DOIProvider
 from renku.models.datasets import Dataset, DatasetFile
-from renku.utils.doi import is_doi
 
 ZENODO_BASE_URL = 'https://zenodo.org'
 ZENODO_SANDBOX_URL = 'https://sandbox.zenodo.org/'
@@ -190,7 +189,7 @@ class ZenodoRecordSerializer:
 
     owner = attr.ib(default=None, kw_only=True)
 
-    record_id = attr.ib(default=None, kw_only=True)
+    record_id = attr.ib(default=None, kw_only=True, converter=str)
 
     state = attr.ib(default=None, kw_only=True)
 
@@ -212,12 +211,10 @@ class ZenodoRecordSerializer:
         return self.metadata.version
 
     def is_last_version(self, uri):
-        """Check if record is at last possible version."""
-        if is_doi(uri):
-            return uri == self.metadata.prereserve_doi['doi']
-
-        record_id = self.metadata.prereserve_doi['recid']
-        return ZenodoProvider.record_id(uri) == record_id
+        """Check if this record is the latest version."""
+        return ZenodoProvider.record_id(
+            self.links.get('latest_html')
+        ) == self.record_id
 
     def get_jsonld(self):
         """Get record metadata as jsonld."""
@@ -444,14 +441,14 @@ class ZenodoExporter(ExporterApi):
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)
 
-        # Step 2. Upload all files to created deposition
+        # Step 2. Attach metadata to deposition
+        deposition.attach_metadata(self.dataset)
+
+        # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file_ in self.dataset.files:
                 deposition.upload_file(file_.full_path, )
                 progressbar.update(1)
-
-        # Step 3. Attach metadata to deposition
-        deposition.attach_metadata(self.dataset)
 
         # Step 4. Publish newly created deposition
         if publish:
@@ -467,6 +464,14 @@ class ZenodoProvider(ProviderApi):
 
     is_doi = attr.ib(default=False)
     _accept = attr.ib(default='application/json')
+
+    @staticmethod
+    def supports(uri):
+        """Whether or not this provider supports a given uri."""
+        if 'zenodo' in uri.lower():
+            return True
+
+        return False
 
     @staticmethod
     def record_id(uri):

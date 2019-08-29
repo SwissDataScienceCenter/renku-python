@@ -19,35 +19,54 @@
 from urllib.parse import urlparse
 
 from renku.cli._providers.zenodo import ZenodoProvider
+from renku.cli._providers.dataverse import DataverseProvider
 from renku.utils.doi import is_doi
 
 
 class ProviderFactory:
     """Create a provider type from URI."""
 
-    PROVIDERS = {'zenodo': ZenodoProvider}
+    PROVIDERS = {'dataverse': DataverseProvider, 'zenodo': ZenodoProvider}
 
     @staticmethod
     def from_uri(uri):
         """Get provider type based on uri."""
         is_doi_ = is_doi(uri)
-        if is_doi_ is False:
+        if is_doi_ is None:
             url = urlparse(uri)
             if bool(url.scheme and url.netloc and url.params == '') is False:
                 return None, 'Cannot parse URL.'
 
         provider = None
-        if 'zenodo' in uri:
-            provider = ZenodoProvider(is_doi=is_doi_)
+        warning = ''
+
+        for _, potential_provider in ProviderFactory.PROVIDERS.items():
+            try:
+                if potential_provider.supports(uri):
+                    provider = potential_provider
+                    break
+            except (Exception, BaseException) as e:
+                warning += 'Couldn\'t test provider {prov}: {err}\n'.format(
+                    prov=potential_provider, err=e
+                )
+
+        supported_providers = ', '.join(ProviderFactory.PROVIDERS.keys())
 
         if is_doi_ and provider is None:
             return None, (
-                'Provider {} not found. '.format(
+                warning + 'Provider {} not found. '.format(
                     uri.split('/')[1].split('.')[0]  # Get DOI provider name.
-                ) + 'Currently supporting following providers: (Zenodo, )'
+                ) + 'Currently supporting following providers: {}'.
+                format(supported_providers)
             )
-
-        return provider, None
+        elif provider is None:
+            return None, (
+                warning + 'Provider not found for {}. '.format(uri) +
+                'Currently supporting following providers: {}'.
+                format(supported_providers)
+            )
+        else:
+            return provider(is_doi=is_doi_), warning
 
     @staticmethod
     def from_id(provider_id):

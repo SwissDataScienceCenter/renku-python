@@ -21,6 +21,7 @@ import fnmatch
 import os
 import re
 import shlex
+import time
 from contextlib import contextmanager
 
 import attr
@@ -29,12 +30,20 @@ import click
 from renku import errors
 from renku._compat import Path
 
+from ...api.config import RENKU_HOME
 from .._datastructures import DirectoryTree
 from ._ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
 from .process import Process
 from .types import PATH_OBJECTS, Directory, File
+
+STARTED_AT = int(time.time() * 1000)
+
+RENKU_TMP_DIR = os.path.join(RENKU_HOME, 'tmp')
+RENKU_FILELIST_PATH = os.getenv('RENKU_FILELIST_PATH', RENKU_TMP_DIR)
+INDIRECT_INPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, 'inputs.txt')
+INDIRECT_OUTPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, 'outputs.txt')
 
 
 def convert_arguments(value):
@@ -159,6 +168,15 @@ class CommandLineToolFactory(object):
         if isinstance(cmd, (list, tuple)) else shlex.split(cmd),
     )
 
+    explicit_inputs = attr.ib(
+        default=[],
+        converter=lambda paths: [Path(path).resolve() for path in paths]
+    )
+    explicit_outputs = attr.ib(
+        default=[],
+        converter=lambda paths: [Path(path).resolve() for path in paths]
+    )
+
     directory = attr.ib(
         default='.',
         converter=lambda path: Path(path).resolve(),
@@ -180,7 +198,7 @@ class CommandLineToolFactory(object):
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
     def __attrs_post_init__(self):
-        """Derive basic informations."""
+        """Derive basic information."""
         self.baseCommand, detect = self.split_command_and_args()
         self.arguments = []
         self.inputs = []
@@ -215,6 +233,10 @@ class CommandLineToolFactory(object):
             else:
                 self.inputs.append(input_)
 
+        if self.explicit_inputs:
+            for input in self.find_explicit_inputs():
+                self.inputs.append(input)
+
     def generate_tool(self):
         """Return an instance of command line tool."""
         return CommandLineTool(
@@ -229,23 +251,13 @@ class CommandLineToolFactory(object):
         )
 
     @contextmanager
-    def watch(self, client, no_output=False, outputs=None):
+    def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         tool = self.generate_tool()
         repo = client.repo
 
-        if outputs:
-            directories = [
-                output for output in outputs if Path(output).is_dir()
-            ]
-
-            client.repo.git.rm(
-                *outputs, r=True, force=True, ignore_unmatch=True
-            )
-            client.repo.index.commit('renku: automatic removal of outputs')
-
-            for directory in directories:
-                Path(directory).mkdir(parents=True, exist_ok=True)
+        # Remove indirect files list if any
+        self.delete_indirect_files_list()
 
         # NOTE consider to use git index instead
         existing_directories = {
@@ -256,22 +268,33 @@ class CommandLineToolFactory(object):
         yield tool
 
         if repo:
+            # Include indirect inputs and outputs before further processing
+            self.add_indirect_inputs()
+            self.add_indirect_outputs()
+            # Remove indirect files list if any
+            self.delete_indirect_files_list()
+
             # List of all output paths.
             paths = []
+
+            inputs = {input.id: input for input in self.inputs}
+            outputs = list(tool.outputs)
+
             # Keep track of unmodified output files.
             unmodified = set()
-            # Possible output paths.
-            candidates = set(repo.untracked_files)
+
+            # Calculate possible output paths.
+            # Capture newly created files through redirects.
+            candidates = {file_ for file_ in repo.untracked_files}
+
+            # Capture modified files through redirects.
             candidates |= {
-                item.a_path
-                for item in repo.index.diff(None) if not item.deleted_file
+                o.a_path
+                for o in repo.index.diff(None) if not o.deleted_file
             }
 
             from renku.cli._graph import _safe_path
             candidates = {path for path in candidates if _safe_path(path)}
-
-            inputs = {input.id: input for input in self.inputs}
-            outputs = list(tool.outputs)
 
             for output, input, path in self.guess_outputs(candidates):
                 outputs.append(output)
@@ -285,10 +308,28 @@ class CommandLineToolFactory(object):
 
             for stream_name in ('stdout', 'stderr'):
                 stream = getattr(self, stream_name)
-                if stream and stream not in candidates:
+                if (
+                    stream and stream not in candidates and
+                    Path(stream).resolve() not in self.explicit_outputs
+                ):
                     unmodified.add(stream)
                 elif stream:
                     paths.append(stream)
+
+            if self.explicit_outputs:
+                last_output_id = len(outputs)
+
+                for output, input, path in self.find_explicit_outputs(
+                    last_output_id
+                ):
+                    outputs.append(output)
+                    paths.append(path)
+
+                    if input is not None:
+                        if input.id not in inputs:  # pragma: no cover
+                            raise RuntimeError('Inconsistent input name.')
+
+                        inputs[input.id] = input
 
             if unmodified:
                 raise errors.UnmodifiedOutputs(repo, unmodified)
@@ -296,16 +337,19 @@ class CommandLineToolFactory(object):
             if not no_output and not paths:
                 raise errors.OutputsNotFound(repo, inputs.values())
 
+            if client.has_external_storage:
+                client.track_paths_in_storage(*paths)
+
             tool.inputs = list(inputs.values())
             tool.outputs = outputs
-
-            client.track_paths_in_storage(*paths)
 
         # Requirement detection can be done anytime.
         from .process_requirements import InitialWorkDirRequirement, \
             InlineJavascriptRequirement
         initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
-            tool, existing_directories=existing_directories
+            tool,
+            existing_directories=existing_directories,
+            working_dir=self.working_dir
         )
         if initial_work_dir_requirement:
             tool.requirements.extend([
@@ -499,10 +543,8 @@ class CommandLineToolFactory(object):
             # Convert input defaults to paths relative to working directory.
             if input.type not in PATH_OBJECTS:
                 try:
-                    input_path = (self.directory /
-                                  str(input.default)).resolve().relative_to(
-                                      self.working_dir
-                                  )
+                    path = self.directory / str(input.default)
+                    input_path = path.resolve().relative_to(self.working_dir)
                 except FileNotFoundError:
                     continue
             else:
@@ -514,25 +556,28 @@ class CommandLineToolFactory(object):
                     str(input_path / path)
                     for path in tree.get(input_path, default=[])
                 }
-                content = {
-                    str(path)
-                    for path in input_path.rglob('*')
-                    if not path.is_dir() and path.name != '.gitkeep'
-                }
-                extra_paths = content - subpaths
-                if extra_paths:
-                    raise errors.InvalidOutputPath(
-                        'The output directory "{0}" is not empty. \n\n'
-                        'Delete existing files before running the command:'
-                        '\n  (use "git rm <file>..." to remove them first)'
-                        '\n\n'.format(input_path) + '\n'.join(
-                            '\t' + click.style(path, fg='yellow')
-                            for path in extra_paths
-                        ) + '\n\n'
-                        'Once you have removed files that should be used '
-                        'as outputs,\n'
-                        'you can safely rerun the previous command.'
-                    )
+                if input_path.resolve() not in self.explicit_outputs:
+                    content = {
+                        str(path)
+                        for path in input_path.rglob('*')
+                        if not path.is_dir() and path.name != '.gitkeep'
+                    }
+                    extra_paths = content - subpaths
+                    if extra_paths:
+                        raise errors.InvalidOutputPath(
+                            'The output directory "{0}" is not empty. \n\n'
+                            'Delete existing files before running the '
+                            'command:'
+                            '\n  (use "git rm <file>..." to remove them '
+                            'first)'
+                            '\n\n'.format(input_path) + '\n'.join(
+                                '\t' + click.style(path, fg='yellow')
+                                for path in extra_paths
+                            ) + '\n\n'
+                            'Once you have removed files that should be used '
+                            'as outputs,\n'
+                            'you can safely rerun the previous command.'
+                        )
 
                 # Remove files from the input directory
                 paths = [path for path in paths if path not in subpaths]
@@ -554,6 +599,10 @@ class CommandLineToolFactory(object):
         }
 
         # TODO group by a common prefix
+
+        for position, path in enumerate(paths):
+            if Path(path).resolve() in self.explicit_outputs:
+                del paths[position]
 
         for position, path in enumerate(paths):
             candidate = self.file_candidate(self.working_dir / path)
@@ -604,3 +653,124 @@ class CommandLineToolFactory(object):
                         outputBinding=dict(glob=glob, ),
                     ), None, glob
                 )
+
+    def find_explicit_inputs(self):
+        """Yield explicit inputs and command line input bindings if any."""
+        input_paths = [
+            input.default.path
+            for input in self.inputs if input.type in PATH_OBJECTS
+        ]
+        input_id = len(self.inputs) + len(self.arguments)
+
+        for explicit_input in self.explicit_inputs:
+            if explicit_input in input_paths:
+                continue
+
+            try:
+                explicit_input.relative_to(self.working_dir)
+            except ValueError:
+                raise errors.InvalidInputPath(
+                    'The input file or directory is not in the repository.'
+                    '\n\n\t' + click.style(str(explicit_input), fg='yellow') +
+                    '\n\n'
+                )
+            if self.file_candidate(explicit_input) is None:
+                raise errors.InvalidInputPath(
+                    'The input file or directory does not exist.'
+                    '\n\n\t' + click.style(str(explicit_input), fg='yellow') +
+                    '\n\n'
+                )
+            input_id += 1
+            default, type, _ = self.guess_type(explicit_input)
+            # Explicit inputs are either File or Directory
+            assert type in PATH_OBJECTS
+            # The inputBinging is None because these inputs won't
+            # appear on command-line
+            yield CommandInputParameter(
+                id='input_{0}'.format(input_id),
+                type=type,
+                default=default,
+                inputBinding=None
+            )
+
+    def find_explicit_outputs(self, starting_output_id):
+        """Yield explicit output and changed command input parameter."""
+        inputs = {
+            str(i.default.path.relative_to(self.working_dir)): i
+            for i in self.inputs if i.type in PATH_OBJECTS
+        }
+        output_id = starting_output_id
+
+        for path in self.explicit_outputs:
+            if self.file_candidate(path) is None:
+                raise errors.InvalidOutputPath(
+                    'The output file or directory does not exist.'
+                    '\n\n\t' + click.style(str(path), fg='yellow') + '\n\n'
+                )
+
+            output_path = str(path.relative_to(self.working_dir))
+            type = 'Directory' if path.is_dir() else 'File'
+            if output_path in inputs:
+                # change input type to note that it is also an output
+                input = inputs[output_path]
+                input = attr.evolve(input, type='string', default=output_path)
+                yield (
+                    CommandOutputParameter(
+                        id='output_{0}'.format(output_id),
+                        type=type,
+                        outputBinding=dict(
+                            glob='$(inputs.{0})'.format(input.id)
+                        )
+                    ), input, output_path
+                )
+            else:
+                yield (
+                    CommandOutputParameter(
+                        id='output_{0}'.format(output_id),
+                        type=type,
+                        outputBinding=dict(glob=str(output_path))
+                    ), None, output_path
+                )
+
+            output_id += 1
+
+    def delete_indirect_files_list(self):
+        """Remove indirect inputs and outputs list."""
+        try:
+            path = str(self.working_dir / INDIRECT_INPUTS_LIST)
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        try:
+            path = str(self.working_dir / INDIRECT_OUTPUTS_LIST)
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+    def add_indirect_inputs(self):
+        """Read indirect inputs list and add them to explicit inputs."""
+        for indirect_input in self.read_files_list(INDIRECT_INPUTS_LIST):
+            # treat indirect inputs like explicit inputs
+            self.explicit_inputs.append(indirect_input)
+
+        # add new explicit inputs (if any) to inputs
+        for input in self.find_explicit_inputs():
+            self.inputs.append(input)
+
+    def add_indirect_outputs(self):
+        """Read indirect outputs list and add them to explicit outputs."""
+        for indirect_output in self.read_files_list(INDIRECT_OUTPUTS_LIST):
+            # treat indirect outputs like explicit outputs
+            self.explicit_outputs.append(indirect_output)
+
+    def read_files_list(self, files_list):
+        """Read files list where each line is a filepath."""
+        try:
+            path = str(files_list)
+            with open(path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        yield Path(line).resolve()
+        except FileNotFoundError:
+            return
