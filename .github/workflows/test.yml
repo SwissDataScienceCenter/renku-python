@@ -39,9 +39,6 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew upgrade python
-        brew unlink python
-        brew link python
         brew install git-lfs jq node pipenv shellcheck;
         brew upgrade node
         python -m pip install --upgrade pip 
