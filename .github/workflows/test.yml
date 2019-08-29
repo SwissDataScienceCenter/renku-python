@@ -38,6 +38,12 @@ jobs:
         version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        brew update
+        brew upgrade python
+        brew unlink python
+        brew link python
+        brew install git-lfs jq node pipenv shellcheck;
+        brew upgrade node
         python -m pip install --upgrade pip 
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
