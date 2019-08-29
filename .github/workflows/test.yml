@@ -39,8 +39,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew install git-lfs shellcheck;
-        brew upgrade node
+        brew install git-lfs shellcheck node
         python -m pip install --upgrade pip 
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
