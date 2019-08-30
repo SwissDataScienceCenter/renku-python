@@ -132,12 +132,13 @@ class StorageApiMixin(RepositoryApiMixin):
                 # TODO create configurable filter and follow .gitattributes
                 track_paths.append(str(path))
 
-        call(
-            self._CMD_STORAGE_TRACK + track_paths,
-            stdout=PIPE,
-            stderr=STDOUT,
-            cwd=str(self.path),
-        )
+        if any(track_paths):
+            call(
+                self._CMD_STORAGE_TRACK + track_paths,
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=str(self.path),
+            )
 
     @ensure_external_storage
     def untrack_paths_from_storage(self, *paths):
