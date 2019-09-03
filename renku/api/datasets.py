@@ -196,6 +196,9 @@ class DatasetsApiMixin(object):
         # Generate the DatasetFiles
         dataset_files = []
         for data in files:
+            if os.path.basename(str(data['path'])) == '.git':
+                continue
+
             datasetfile = DatasetFile.from_revision(self, **data)
 
             # Set dataset file path relative to projects root for submodules
@@ -204,7 +207,7 @@ class DatasetsApiMixin(object):
             dataset_files.append(datasetfile)
         dataset.update_files(dataset_files)
 
-    def _add_from_url(self, dataset, path, url, link=False, **kwargs):
+    def _add_from_url(self, dataset, dataset_path, url, link=False, **kwargs):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
@@ -213,7 +216,7 @@ class DatasetsApiMixin(object):
                 '{} URLs are not supported'.format(u.scheme)
             )
 
-        # Respect the directory struture inside the source path.
+        # Respect the directory structure inside the source path.
         relative_to = kwargs.pop('relative_to', None)
         if relative_to:
             dst_path = Path(u.path).resolve().absolute().relative_to(
@@ -222,7 +225,7 @@ class DatasetsApiMixin(object):
         else:
             dst_path = os.path.basename(u.path)
 
-        dst = path.joinpath(dst_path).absolute()
+        dst = dataset_path.joinpath(dst_path).absolute()
 
         if u.scheme in ('', 'file'):
             src = Path(u.path).absolute()
@@ -280,11 +283,11 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_git(self, dataset, path, url, target, **kwargs):
+    def _add_from_git(self, dataset, dataset_path, url, target, **kwargs):
         """Process adding resources from another git repository.
 
         The submodules are placed in ``.renku/vendors`` and linked
-        to the *path* specified by the user.
+        to the *dataset_path* specified by the user.
         """
         from git import Repo
 
@@ -368,7 +371,7 @@ class DatasetsApiMixin(object):
                 target = src.relative_to(submodule_path / relative_to)
 
         # link the target into the data directory
-        dst = self.path / path / (target or '')
+        dst = self.path / dataset_path / (target or '')
 
         # if we have a directory, recurse
         if src.is_dir():
@@ -380,7 +383,7 @@ class DatasetsApiMixin(object):
                     files.extend(
                         self._add_from_git(
                             dataset,
-                            path,
+                            dataset_path,
                             url,
                             target=f.relative_to(submodule_path),
                             **kwargs
