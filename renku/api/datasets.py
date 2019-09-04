@@ -196,9 +196,6 @@ class DatasetsApiMixin(object):
         # Generate the DatasetFiles
         dataset_files = []
         for data in files:
-            if os.path.basename(str(data['path'])) == '.git':
-                continue
-
             datasetfile = DatasetFile.from_revision(self, **data)
 
             # Set dataset file path relative to projects root for submodules
@@ -298,8 +295,9 @@ class DatasetsApiMixin(object):
         u = parse.urlparse(url)
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
 
-        # Respect the directory struture inside the source path.
+        # Respect the directory structure inside the source path.
         relative_to = kwargs.get('relative_to', None)
+        relative_to = relative_to or ''
 
         if u.scheme in ('', 'file'):
             try:
@@ -355,69 +353,82 @@ class DatasetsApiMixin(object):
                 submodule_path.relative_to(self.path).as_posix()
             ])
 
-        src = submodule_path / (target or '')
+        target = target or ''
+        relative_to = relative_to or ''
 
-        if target and relative_to:
+        src = submodule_path / target
+
+        if relative_to:
             relative_to = Path(relative_to)
             if relative_to.is_absolute():
                 assert u.scheme in {
                     '', 'file'
                 }, 'Only relative paths can be used with URLs.'
-                target = (Path(url).resolve().absolute() / target).relative_to(
-                    relative_to.resolve()
+                relative_to = relative_to.resolve().relative_to(
+                    Path(url).resolve().absolute()
                 )
+
+            if target:
+                if str(target) != str(relative_to):
+                    # src already includes target so do not append it
+                    src_dir = src if src.is_dir() else src.parent
+                    target = src_dir.relative_to(submodule_path / relative_to)
             else:
-                # src already includes target so we do not have to append it
-                target = src.relative_to(submodule_path / relative_to)
+                target = relative_to
 
-        # link the target into the data directory
-        dst = self.path / dataset_path / (target or '')
+        if str(target) == '.':
+            target = ''
+        if str(relative_to) == '.':
+            relative_to = ''
 
+        submodule_repo = self.repo.submodule(submodule_name).module()
+        src_root = submodule_repo.head.commit.tree
+        if target:
+            src_root = submodule_repo.head.commit.tree / str(target)
+
+        files = [src_root.path]
         # if we have a directory, recurse
         if src.is_dir():
-            files = []
-            dst.mkdir(parents=True, exist_ok=True)
-            # FIXME get all files from submodule index
-            for f in src.iterdir():
-                try:
-                    files.extend(
-                        self._add_from_git(
-                            dataset,
-                            dataset_path,
-                            url,
-                            target=f.relative_to(submodule_path),
-                            **kwargs
-                        )
-                    )
-                except ValueError:
-                    pass  # skip files outside the relative path
-            return files
+            files.extend({e.path for e in src_root.traverse()})
 
-        if not dst.parent.exists():
-            dst.parent.mkdir(parents=True)
+        results = []
 
-        os.symlink(os.path.relpath(str(src), str(dst.parent)), str(dst))
+        for entry in files:
+            src = submodule_path / entry
+            dst_target = Path(entry).relative_to(relative_to)
+            # link the target into the data directory
+            dst = self.path / dataset_path / dst_target
 
-        # grab all the creators from the commit history
-        git_repo = Repo(str(submodule_path.absolute()))
-        creators = []
-        for commit in git_repo.iter_commits(paths=target):
-            creator = Creator.from_commit(commit)
-            if creator not in creators:
-                creators.append(creator)
+            if src.is_dir():
+                dst.mkdir(parents=True, exist_ok=True)
+            else:
+                dst.parent.mkdir(parents=True, exist_ok=True)
 
-        if u.scheme in ('', 'file'):
-            url = None
-        else:
-            url = '{}/{}'.format(url, target)
+                os.symlink(
+                    os.path.relpath(str(src), str(dst.parent)), str(dst)
+                )
 
-        return [{
-            'path': dst.relative_to(self.path),
-            'url': url,
-            'creator': creators,
-            'dataset': dataset.name,
-            'parent': self
-        }]
+                # grab all the creators from the commit history
+                creators = []
+                for commit in submodule_repo.iter_commits(paths=dst_target):
+                    creator = Creator.from_commit(commit)
+                    if creator not in creators:
+                        creators.append(creator)
+
+                if u.scheme in ('', 'file'):
+                    url = None
+                else:
+                    url = '{}/{}'.format(url, dst_target)
+
+                results.append({
+                    'path': dst.relative_to(self.path),
+                    'url': url,
+                    'creator': creators,
+                    'dataset': dataset.name,
+                    'parent': self
+                })
+
+        return results
 
     def get_relative_url(self, url):
         """Determine if the repo url should be relative."""
