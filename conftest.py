@@ -55,6 +55,19 @@ def runner(monkeypatch):
     return CliRunner()
 
 
+@pytest.fixture
+def config_dir(monkeypatch, tmpdir_factory):
+    """Create a temporary renku config directory."""
+    from renku.api.config import ConfigManagerMixin
+
+    with monkeypatch.context() as m:
+        home_dir = tmpdir_factory.mktemp('fake_home')
+        conf_path = home_dir / 'renku.ini'
+        m.setattr(ConfigManagerMixin, 'config_path', conf_path)
+
+        yield m
+
+
 @pytest.fixture()
 def run_shell():
     """Create a shell cmd runner."""

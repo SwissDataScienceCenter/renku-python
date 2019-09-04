@@ -764,7 +764,7 @@ def test_outputs(runner, project):
 @pytest.mark.skipif(
     shutil.which('docker') is None, reason='requires docker command line'
 )
-def test_image_pull(runner, project):
+def test_image_pull(runner, project, config_dir):
     """Test image pulling."""
     cmd = ['image', 'pull']
     result = runner.invoke(cli.cli, cmd)
@@ -952,7 +952,7 @@ def test_config_load_get_value(client):
     assert 'zenodo' not in config.sections()
 
 
-def test_config_manager_cli(client, runner, project):
+def test_config_manager_cli(client, runner, project, config_dir):
     """Check config command for global cfg."""
     result = runner.invoke(
         cli.cli, [

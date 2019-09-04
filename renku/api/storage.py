@@ -23,6 +23,7 @@ from shutil import which
 from subprocess import PIPE, STDOUT, call, run
 
 import attr
+from click import BadParameter
 from werkzeug.utils import cached_property
 
 from renku import errors
@@ -96,12 +97,15 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
-        call(
-            self._CMD_STORAGE_INSTALL + (['--force'] if force else []),
-            stdout=PIPE,
-            stderr=STDOUT,
-            cwd=str(self.path.absolute()),
-        )
+        try:
+            call(
+                self._CMD_STORAGE_INSTALL + (['--force'] if force else []),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=str(self.path.absolute()),
+            )
+        except (KeyboardInterrupt, OSError) as e:
+            raise BadParameter('Couldn\'t run \'git lfs\':\n{0}'.format(e))
 
     def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""
@@ -132,22 +136,29 @@ class StorageApiMixin(RepositoryApiMixin):
                 # TODO create configurable filter and follow .gitattributes
                 track_paths.append(str(path))
 
-        call(
-            self._CMD_STORAGE_TRACK + track_paths,
-            stdout=PIPE,
-            stderr=STDOUT,
-            cwd=str(self.path),
-        )
+        if track_paths:
+            try:
+                call(
+                    self._CMD_STORAGE_TRACK + track_paths,
+                    stdout=PIPE,
+                    stderr=STDOUT,
+                    cwd=str(self.path),
+                )
+            except (KeyboardInterrupt, OSError) as e:
+                raise BadParameter('Couldn\'t run \'git lfs\':\n{0}'.format(e))
 
     @ensure_external_storage
     def untrack_paths_from_storage(self, *paths):
         """Untrack paths from the external storage."""
-        call(
-            self._CMD_STORAGE_UNTRACK + list(paths),
-            stdout=PIPE,
-            stderr=STDOUT,
-            cwd=str(self.path),
-        )
+        try:
+            call(
+                self._CMD_STORAGE_UNTRACK + list(paths),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=str(self.path),
+            )
+        except (KeyboardInterrupt, OSError) as e:
+            raise BadParameter('Couldn\'t run \'git lfs\':\n{0}'.format(e))
 
     @ensure_external_storage
     def pull_paths_from_storage(self, *paths):
