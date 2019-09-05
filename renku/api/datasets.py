@@ -399,6 +399,9 @@ class DatasetsApiMixin(object):
             # link the target into the data directory
             dst = self.path / dataset_path / dst_target
 
+            if os.path.basename(entry) == '.gitmodules':
+                continue
+
             if src.is_dir():
                 dst.mkdir(parents=True, exist_ok=True)
             else:
