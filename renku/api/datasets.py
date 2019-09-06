@@ -289,6 +289,7 @@ class DatasetsApiMixin(object):
         to the *dataset_path* specified by the user.
         """
         from git import Repo
+        from renku import LocalClient
 
         # create the submodule
         if url.startswith('git@'):
@@ -393,6 +394,16 @@ class DatasetsApiMixin(object):
         if src.is_dir():
             files.extend({e.path for e in src_root.traverse()})
 
+        # create a map of all submodule's dataset files to be used to
+        # get creators. Use Dataset's creator if a file does not have
+        # a creator
+        submodule_client = LocalClient(submodule_path)
+        submodule_dataset_creators = {}
+        for sb_dataset in submodule_client.datasets.values():
+            for f in sb_dataset.files:
+                creators = f.creator if f.creator else sb_dataset.creator
+                submodule_dataset_creators[str(f.path)] = creators
+
         results = []
 
         for entry in files:
@@ -401,6 +412,7 @@ class DatasetsApiMixin(object):
             # link the target into the data directory
             dst = self.path / dataset_path / dst_target
 
+            # Ignore '.gitmodules'
             if os.path.basename(entry) == '.gitmodules':
                 continue
 
@@ -413,12 +425,19 @@ class DatasetsApiMixin(object):
                     os.path.relpath(str(src), str(dst.parent)), str(dst)
                 )
 
-                # grab all the creators from the commit history
                 creators = []
-                for commit in submodule_repo.iter_commits(paths=dst_target):
-                    creator = Creator.from_commit(commit)
-                    if creator not in creators:
-                        creators.append(creator)
+                # use creator from the original dataset if it exists
+                file_creator = submodule_dataset_creators.get(entry)
+                if file_creator:
+                    creators = file_creator
+                else:
+                    # grab all the creators from the commit history
+                    for commit in submodule_repo.iter_commits(
+                        paths=dst_target
+                    ):
+                        creator = Creator.from_commit(commit)
+                        if creator not in creators:
+                            creators.append(creator)
 
                 if u.scheme in ('', 'file'):
                     url = None

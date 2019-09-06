@@ -38,6 +38,65 @@ from renku.models.refs import LinkReference
 from renku.utils.datetime8601 import validate_iso8601
 
 
+def test_import_from_renku_project(directory_tree, tmpdir_factory):
+    """Test an imported dataset from other renku repos will have metadata."""
+    from click.testing import CliRunner
+    from renku.api import LocalClient
+
+    REMOTE_CREATOR = 'remote.creator'
+
+    # Create a remote Renku repo and dataset
+    remote_runner = CliRunner()
+    with remote_runner.isolated_filesystem():
+        remote_path = str(tmpdir_factory.mktemp('renku_remote'))
+
+        os.chdir(remote_path)
+        result = remote_runner.invoke(cli.cli, ['-S', 'init'])
+
+        result = remote_runner.invoke(
+            cli.cli, ['-S', 'dataset', 'create', 'remotedataset']
+        )
+        client = LocalClient(remote_path)
+
+        with client.with_dataset('remotedataset') as d:
+            d.creator.clear()
+            d.creator.append({
+                'name': REMOTE_CREATOR,
+                'email': 'remote@example.com',
+                'identifier': 'remote_creator_id'
+            })
+            # client.add_data_to_dataset(d, directory_tree.strpath)
+        result = remote_runner.invoke(
+            cli.cli,
+            ['-S', 'dataset', 'add', 'remotedataset', directory_tree.strpath],
+            catch_exceptions=False,
+        )
+        assert 0 == result.exit_code
+
+    isolated_runner = CliRunner()
+    with isolated_runner.isolated_filesystem():
+        local_path = str(tmpdir_factory.mktemp('renku_local'))
+        os.chdir(local_path)
+        result = isolated_runner.invoke(cli.cli, ['init'])
+        result = isolated_runner.invoke(
+            cli.cli, ['-S', 'dataset', 'create', 'dataset']
+        )
+
+        result = isolated_runner.invoke(
+            cli.cli,
+            [
+                '-S', 'dataset', 'add', '--relative-to', 'data', 'dataset',
+                str(remote_path)
+            ],
+            catch_exceptions=False,
+        )
+        assert 0 == result.exit_code
+
+        result = isolated_runner.invoke(cli.cli, ['dataset', 'ls-files'])
+        assert 0 == result.exit_code
+        assert REMOTE_CREATOR in result.output
+
+
 def test_datasets_create_clean(data_repository, runner, project, client):
     """Test creating a dataset in clean repository."""
     # create a dataset
