@@ -76,7 +76,9 @@ class DatasetsApiMixin(object):
     def datasets(self):
         """Return mapping from path to dataset."""
         result = {}
-        for path in self.renku_datasets_path.rglob(self.METADATA):
+        for path in (self.path / self.renku_datasets_path).rglob(
+            self.METADATA
+        ):
             result[path] = self.get_dataset(path)
         return result
 
