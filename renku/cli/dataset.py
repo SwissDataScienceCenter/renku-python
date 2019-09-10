@@ -579,7 +579,9 @@ def import_(ctx, client, uri, name, extract):
              'URI not found.'.format(uri))
         )
 
-    if files_ and click.confirm(text_prompt):
+    click.confirm(text_prompt, abort=True)
+
+    if files_:
         data_folder = tempfile.mkdtemp()
 
         pool_size = min(
@@ -781,5 +783,5 @@ def write_dataset(client, name):
     if client.load_dataset(name=name):
         warn_ = WARNING + 'This dataset already exists.'
         click.echo(warn_)
-        return click.confirm('Do you wish to overwrite it?')
+        return click.confirm('Do you wish to overwrite it?', abort=True)
     return True
