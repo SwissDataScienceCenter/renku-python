@@ -805,7 +805,7 @@ def test_dataset_overwrite_no_confirm(runner, project):
     result = runner.invoke(
         cli.cli, ['dataset', 'create', 'rokstar'], input='n'
     )
-    assert 0 == result.exit_code
+    assert 1 == result.exit_code
     assert 'OK' not in result.output
 
 
