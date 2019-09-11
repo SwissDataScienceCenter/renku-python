@@ -50,7 +50,7 @@ class Project(object):
     @updated.default
     def _now(self):
         """Define default value for datetime fields."""
-        return datetime.datetime.utcnow()
+        return datetime.datetime.now(datetime.timezone.utc)
 
 
 class ProjectCollection(Collection):

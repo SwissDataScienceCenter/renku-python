@@ -212,7 +212,7 @@ class DatasetFile(Entity, CreatorsMixin):
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
-        return datetime.datetime.utcnow()
+        return datetime.datetime.now(datetime.timezone.utc)
 
     @filename.default
     def default_filename(self):
@@ -360,7 +360,7 @@ class Dataset(Entity, CreatorsMixin):
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
-        return datetime.datetime.utcnow()
+        return datetime.datetime.now(datetime.timezone.utc)
 
     @property
     def display_name(self):

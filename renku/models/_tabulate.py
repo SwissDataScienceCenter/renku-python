@@ -26,6 +26,8 @@ from tabulate import tabulate as tblte
 def format_cell(cell, datetime_fmt=None):
     """Format a cell."""
     if datetime_fmt and isinstance(cell, datetime):
+        if cell.tzinfo:
+            cell = cell.astimezone()
         return cell.strftime(datetime_fmt)
     return cell
 

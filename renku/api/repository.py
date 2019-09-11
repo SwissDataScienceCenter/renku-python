@@ -17,10 +17,10 @@
 # limitations under the License.
 """Client for handling a local repository."""
 
-import datetime
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from subprocess import check_output
 
 import attr
@@ -373,6 +373,6 @@ class RepositoryApiMixin(GitCore):
 
         with self.with_metadata() as metadata:
             metadata.name = name
-            metadata.updated = datetime.datetime.utcnow()
+            metadata.updated = datetime.now(timezone.utc)
 
         return str(path)
