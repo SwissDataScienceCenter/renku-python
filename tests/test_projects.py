@@ -17,6 +17,8 @@
 # limitations under the License.
 """Test projects API."""
 
+from datetime import timezone
+
 import yaml
 from freezegun import freeze_time
 
@@ -47,11 +49,11 @@ def test_project_context():
 
 def test_project_serialization():
     """Test project serialization with JSON-LD context."""
-    with freeze_time('2017-03-01 08:00:00') as frozen_time:
+    with freeze_time('2017-03-01T08:00:00.000000+00:00') as frozen_time:
         project = Project(name='demo')
         assert project.name == 'demo'
-        assert project.created == frozen_time()
-        assert project.updated == frozen_time()
+        assert project.created == frozen_time().replace(tzinfo=timezone.utc)
+        assert project.updated == frozen_time().replace(tzinfo=timezone.utc)
 
     data = asjsonld(project)
     assert data['@type'].endswith('Project')

@@ -18,8 +18,8 @@
 """Third party data registry integration."""
 from urllib.parse import urlparse
 
-from renku.cli._providers.zenodo import ZenodoProvider
 from renku.cli._providers.dataverse import DataverseProvider
+from renku.cli._providers.zenodo import ZenodoProvider
 from renku.utils.doi import is_doi
 
 

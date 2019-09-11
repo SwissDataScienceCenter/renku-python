@@ -21,7 +21,7 @@ import json
 import os
 import weakref
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 
 import attr
 from attr._compat import iteritems
@@ -237,6 +237,10 @@ def asjsonld(
             return result
 
         if isinstance(value, datetime):
+            if not value.tzinfo:
+                # set timezone to local timezone
+                tz = datetime.now(timezone.utc).astimezone().tzinfo
+                value = value.replace(tzinfo=tz)
             return value.isoformat()
 
         return value
