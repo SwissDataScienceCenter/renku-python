@@ -147,7 +147,14 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def add_data_to_dataset(
-        self, dataset, urls, git=False, force=False, **kwargs
+        self,
+        dataset,
+        urls,
+        git=False,
+        force=False,
+        link=False,
+        target=None,
+        relative_to=None
     ):
         """Import the data into the data directory."""
         dataset_path = self.path / self.datadir / dataset.name
@@ -157,25 +164,25 @@ class DatasetsApiMixin(object):
         for url in urls:
             git = git or check_for_git_repo(url)
 
-            target = kwargs.pop('target', None)
-
             if git:
                 if isinstance(target, (str, NoneType)):
                     files.extend(
                         self._add_from_git(
-                            dataset, dataset_path, url, target, **kwargs
+                            dataset, dataset_path, url, target, relative_to
                         )
                     )
                 else:
                     for t in target:
                         files.extend(
                             self._add_from_git(
-                                dataset, dataset_path, url, t, **kwargs
+                                dataset, dataset_path, url, t, relative_to
                             )
                         )
             else:
                 files.extend(
-                    self._add_from_url(dataset, dataset_path, url, **kwargs)
+                    self._add_from_url(
+                        dataset, dataset_path, url, relative_to, link
+                    )
                 )
 
         ignored = self.find_ignored_paths(*(data['path']
@@ -206,7 +213,9 @@ class DatasetsApiMixin(object):
             dataset_files.append(datasetfile)
         dataset.update_files(dataset_files)
 
-    def _add_from_url(self, dataset, dataset_path, url, link=False, **kwargs):
+    def _add_from_url(
+        self, dataset, dataset_path, url, relative_to, link=False
+    ):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
@@ -216,7 +225,6 @@ class DatasetsApiMixin(object):
             )
 
         # Respect the directory structure inside the source path.
-        relative_to = kwargs.pop('relative_to', None)
         if relative_to:
             dst_path = Path(u.path).resolve().absolute().relative_to(
                 Path(relative_to).resolve().absolute()
@@ -239,8 +247,8 @@ class DatasetsApiMixin(object):
                             dataset,
                             dst,
                             f.absolute().as_posix(),
-                            link=link,
-                            **kwargs
+                            relative_to,
+                            link=link
                         )
                     )
                 return files
@@ -282,7 +290,7 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_git(self, dataset, dataset_path, url, target, **kwargs):
+    def _add_from_git(self, dataset, dataset_path, url, target, relative_to):
         """Process adding resources from another git repository.
 
         The submodules are placed in ``.renku/vendors`` and linked
@@ -299,7 +307,6 @@ class DatasetsApiMixin(object):
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
 
         # Respect the directory structure inside the source path.
-        relative_to = kwargs.get('relative_to', None)
         relative_to = relative_to or ''
 
         if u.scheme in ('', 'file'):
@@ -357,7 +364,6 @@ class DatasetsApiMixin(object):
             ])
 
         target = target or ''
-        relative_to = relative_to or ''
 
         src = submodule_path / target
 
@@ -401,7 +407,7 @@ class DatasetsApiMixin(object):
         submodule_dataset_creators = {}
         for sb_dataset in submodule_client.datasets.values():
             for f in sb_dataset.files:
-                creators = f.creator if f.creator else sb_dataset.creator
+                creators = f.creator or sb_dataset.creator
                 submodule_dataset_creators[str(f.path)] = creators
 
         results = []

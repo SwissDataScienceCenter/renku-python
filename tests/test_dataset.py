@@ -97,9 +97,7 @@ def test_data_add(
                     'email': 'me@example.com',
                     'identifier': 'me_id'
                 }]
-                client.add_data_to_dataset(
-                    d, ['{}{}'.format(scheme, path)], nocopy=True
-                )
+                client.add_data_to_dataset(d, ['{}{}'.format(scheme, path)])
             assert os.path.exists('data/dataset/file')
 
 
