@@ -73,7 +73,7 @@ from ._client import pass_local_client
 from ._graph import Graph
 
 
-@click.group()
+@click.group(hidden=True)
 def show():
     """Show information about objects in current repository.
 

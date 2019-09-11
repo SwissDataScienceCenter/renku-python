@@ -23,7 +23,7 @@ from ._client import pass_local_client
 from ._git import _safe_issue_checkout
 
 
-@click.command()
+@click.command(hidden=True)
 @click.argument('issue', type=click.INT)
 @pass_local_client(clean=True, up_to_date=True, commit=False)
 def workon(client, issue):
@@ -31,7 +31,7 @@ def workon(client, issue):
     _safe_issue_checkout(client.repo, issue=issue)
 
 
-@click.command()
+@click.command(hidden=True)
 @pass_local_client(clean=True, up_to_date=True, commit=False)
 def deactivate(client):
     """Deactivate environment for tracking work on a specific problem."""
