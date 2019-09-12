@@ -33,7 +33,7 @@ from renku import errors
 from renku._compat import Path
 from renku.api.config import RENKU_HOME
 from renku.models._git import GitURL
-from renku.models.datasets import Creator, Dataset, DatasetFile, NoneType
+from renku.models.datasets import Creator, Dataset, DatasetFile
 from renku.models.refs import LinkReference
 
 
@@ -76,9 +76,8 @@ class DatasetsApiMixin(object):
     def datasets(self):
         """Return mapping from path to dataset."""
         result = {}
-        for path in (self.path / self.renku_datasets_path).rglob(
-            self.METADATA
-        ):
+        paths = (self.path / self.renku_datasets_path).rglob(self.METADATA)
+        for path in paths:
             result[path] = self.get_dataset(path)
         return result
 
@@ -153,8 +152,8 @@ class DatasetsApiMixin(object):
         git=False,
         force=False,
         link=False,
-        target=None,
-        relative_to=None
+        targets=(),
+        relative_to=''
     ):
         """Import the data into the data directory."""
         dataset_path = self.path / self.datadir / dataset.name
@@ -165,17 +164,17 @@ class DatasetsApiMixin(object):
             git = git or check_for_git_repo(url)
 
             if git:
-                if isinstance(target, (str, NoneType)):
+                if not targets:
                     files.extend(
                         self._add_from_git(
-                            dataset, dataset_path, url, target, relative_to
+                            dataset, dataset_path, url, '', relative_to
                         )
                     )
                 else:
-                    for t in target:
+                    for target in targets:
                         files.extend(
                             self._add_from_git(
-                                dataset, dataset_path, url, t, relative_to
+                                dataset, dataset_path, url, target, relative_to
                             )
                         )
             else:
@@ -307,8 +306,6 @@ class DatasetsApiMixin(object):
         submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
 
         # Respect the directory structure inside the source path.
-        relative_to = relative_to or ''
-
         if u.scheme in ('', 'file'):
             try:
                 relative_url = Path(url).resolve().relative_to(self.path)
@@ -363,8 +360,6 @@ class DatasetsApiMixin(object):
                 submodule_path.relative_to(self.path).as_posix()
             ])
 
-        target = target or ''
-
         src = submodule_path / target
 
         if relative_to:
@@ -374,14 +369,13 @@ class DatasetsApiMixin(object):
                     '', 'file'
                 }, 'Only relative paths can be used with URLs.'
                 relative_to = relative_to.resolve().relative_to(
-                    Path(url).resolve().absolute()
+                    Path(url).resolve()
                 )
 
-            if target:
-                if str(target) != str(relative_to):
-                    # src already includes target so do not append it
-                    src_dir = src if src.is_dir() else src.parent
-                    target = src_dir.relative_to(submodule_path / relative_to)
+            if target and str(target) != str(relative_to):
+                # src already includes target so do not append it
+                src_dir = src if src.is_dir() else src.parent
+                target = src_dir.relative_to(submodule_path / relative_to)
             else:
                 target = relative_to
 

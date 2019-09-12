@@ -262,11 +262,12 @@ def edit(client, id):
 @click.argument('name')
 @click.argument('urls', nargs=-1)
 @click.option('--link', is_flag=True, help='Creates a hard link.')
-@click.option('--relative-to', default=None)
+@click.option('--relative-to', default='')
 @click.option(
     '-t',
     '--target',
-    default=None,
+    'targets',
+    default='',
     multiple=True,
     help='Target path in the git repo.'
 )
@@ -278,9 +279,9 @@ def edit(client, id):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def add(client, name, urls, link, relative_to, target, force):
+def add(client, name, urls, link, relative_to, targets, force):
     """Add data to a dataset."""
-    add_to_dataset(client, urls, name, link, force, relative_to, target)
+    add_to_dataset(client, urls, name, link, force, relative_to, targets)
 
 
 def add_to_dataset(
@@ -289,20 +290,19 @@ def add_to_dataset(
     name,
     link=False,
     force=False,
-    relative_to=None,
-    target=None,
+    relative_to='',
+    targets=(),
     with_metadata=None
 ):
     """Adds data to dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
-            target = target if target else None
             with progressbar(urls, label='Adding data to dataset') as bar:
                 client.add_data_to_dataset(
                     dataset,
                     bar,
                     link=link,
-                    target=target,
+                    targets=targets,
                     relative_to=relative_to,
                     force=force,
                 )

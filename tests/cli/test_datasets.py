@@ -65,7 +65,6 @@ def test_import_from_renku_project(directory_tree, tmpdir_factory):
                 'email': 'remote@example.com',
                 'identifier': 'remote_creator_id'
             })
-            # client.add_data_to_dataset(d, directory_tree.strpath)
         result = remote_runner.invoke(
             cli.cli,
             ['-S', 'dataset', 'add', 'remotedataset', directory_tree.strpath],

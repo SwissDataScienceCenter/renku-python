@@ -131,7 +131,8 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 
     # check that the creators are properly parsed from commits
     client.add_data_to_dataset(
-        dataset, [os.path.dirname(data_repository.git_dir)], target='file'
+        dataset, [os.path.dirname(data_repository.git_dir)],
+        targets=('file', )
     )
 
     assert len(dataset.files[1].creator) == 2
