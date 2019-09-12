@@ -42,6 +42,20 @@ _path_attr = partial(
 )
 
 
+def _parse_date(value):
+    """Convert date to datetime."""
+    if isinstance(value, datetime.datetime):
+        return value
+    date = parse_date(value)
+
+    if not date.tzinfo:
+        # set timezone to local timezone
+        tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+        date = date.replace(tzinfo=tz)
+
+    return date
+
+
 @jsonld.s(
     type='schema:Person',
     context={'schema': 'http://schema.org/'},
@@ -152,6 +166,55 @@ class CreatorsMixin:
 
 
 @jsonld.s(
+    type='schema:PublicationEvent',
+    context={'schema': 'http://schema.org/'},
+    slots=True,
+)
+class DatasetTag(object):
+    """Represents a Tag of an instance of a dataset."""
+
+    client = attr.ib(default=None, kw_only=True)
+
+    name = jsonld.ib(
+        default=None,
+        kw_only=True,
+        validator=instance_of(str),
+        context='schema:name'
+    )
+
+    description = jsonld.ib(
+        default=None,
+        kw_only=True,
+        validator=instance_of(str),
+        context='schema:description'
+    )
+
+    commit = jsonld.ib(
+        default=None,
+        kw_only=True,
+        validator=instance_of(str),
+        context='schema:location'
+    )
+
+    created = jsonld.ib(
+        converter=_parse_date, context='schema:startDate', kw_only=True
+    )
+
+    dataset = jsonld.ib(context='schema:about', default=None, kw_only=True)
+
+    _id = jsonld.ib(kw_only=True, context='@id')
+
+    @created.default
+    def _now(self):
+        """Define default value for datetime fields."""
+        return datetime.datetime.now(datetime.timezone.utc)
+
+    @_id.default
+    def default_id(self):
+        return '{0}@{1}'.format(self.name, self.commit)
+
+
+@jsonld.s(
     type='schema:Language',
     context={'schema': 'http://schema.org/'},
     slots=True,
@@ -193,7 +256,9 @@ class DatasetFile(Entity, CreatorsMixin):
         context='schema:creator'
     )
 
-    added = jsonld.ib(context='schema:dateCreated', kw_only=True)
+    added = jsonld.ib(
+        converter=_parse_date, context='schema:dateCreated', kw_only=True
+    )
 
     checksum = attr.ib(default=None, kw_only=True)
 
@@ -237,13 +302,6 @@ class DatasetFile(Entity, CreatorsMixin):
         self.name = self.filename
 
 
-def _parse_date(value):
-    """Convert date to datetime."""
-    if isinstance(value, datetime.datetime):
-        return value
-    return parse_date(value)
-
-
 def _convert_dataset_files(value):
     """Convert dataset files."""
     coll = value
@@ -252,6 +310,11 @@ def _convert_dataset_files(value):
         coll = value.values()
 
     return [DatasetFile.from_jsonld(v) for v in coll]
+
+
+def _convert_dataset_tags(value):
+    """Convert dataset tags."""
+    return [DatasetTag.from_jsonld(v) for v in value]
 
 
 def _convert_dataset_creator(value):
@@ -354,6 +417,14 @@ class Dataset(Entity, CreatorsMixin):
         default=None,
         converter=_convert_dataset_files,
         context='schema:hasPart',
+        kw_only=True
+    )
+
+    tags = jsonld.container.list(
+        DatasetTag,
+        default=None,
+        converter=_convert_dataset_tags,
+        context='schema:subjectOf',
         kw_only=True
     )
 

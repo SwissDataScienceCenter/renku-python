@@ -177,6 +177,7 @@ from .._compat import Path
 from ._client import pass_local_client
 from ._echo import WARNING, progressbar
 from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
+from ._format.dataset_tags import FORMATS as DATASET_TAGS_FORMATS
 from ._format.datasets import FORMATS as DATASETS_FORMATS
 
 
@@ -456,6 +457,53 @@ def remove(client, names):
                 ref.delete()
 
     click.secho('OK', fg='green')
+
+
+@dataset.command('tag')
+@click.argument('name')
+@click.argument('tag')
+@click.option(
+    '-d', '--description', default='', help='A description for this tag'
+)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
+@click.pass_context
+def tag(ctx, client, name, tag, description):
+    dataset_ = client.load_dataset(name)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    try:
+        dataset = client.add_dataset_tag(dataset_, tag, description)
+    except ValueError as e:
+        raise BadParameter(e)
+
+    dataset.to_yaml()
+
+    click.secho('OK', fg='green')
+
+
+@dataset.command('ls-tags')
+@click.argument('name')
+@click.option(
+    '--format',
+    type=click.Choice(DATASET_TAGS_FORMATS),
+    default='tabular',
+    help='Choose an output format.'
+)
+@pass_local_client(clean=False, commit=False)
+@click.pass_context
+def ls_tags(ctx, client, name, format):
+    dataset_ = client.load_dataset(name)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    tags = sorted(dataset_.tags, key=lambda t: t.created)
+
+    DATASET_TAGS_FORMATS[format](client, tags)
 
 
 @dataset.command('export')

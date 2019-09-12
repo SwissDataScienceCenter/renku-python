@@ -18,6 +18,7 @@
 """Client for handling datasets."""
 
 import os
+import re
 import shutil
 import stat
 import uuid
@@ -33,7 +34,7 @@ from renku import errors
 from renku._compat import Path
 from renku.api.config import RENKU_HOME
 from renku.models._git import GitURL
-from renku.models.datasets import Creator, Dataset, DatasetFile, NoneType
+from renku.models.datasets import Creator, Dataset, DatasetFile, DatasetTag, NoneType
 from renku.models.refs import LinkReference
 
 
@@ -448,6 +449,40 @@ class DatasetsApiMixin(object):
             )
             url = str(url / submodule_url.name)
         return url
+
+    def add_dataset_tag(self, dataset, tag, description=''):
+        """Adds a new tag to a dataset.
+
+        Validates if the tag already exists and that the tag follows
+        the same rules as docker tags.
+        See https://docs.docker.com/engine/reference/commandline/tag/
+        for a documentation of docker tag syntax.
+        """
+        if len(tag) > 128:
+            raise ValueError('Tags can be at most 128 characters long.')
+
+        if not re.match('^(?![.-])[a-zA-Z0-9_.-]{1,128}$', tag):
+            raise ValueError((
+                'Tag {} is invalid. \n'
+                'Only characters a-z, A-Z, 0-9, ., - and _ '
+                'are allowed. \nTag can\'t start with a . or -'
+            ).format(tag))
+
+        if any(t for t in dataset.tags if t.name == tag):
+            raise ValueError('Tag {} already exists'.format(tag))
+
+        latest_commit = self.repo.commit()
+
+        tag = DatasetTag(
+            name=tag,
+            description=description,
+            commit=latest_commit.hexsha,
+            dataset=dataset.name
+        )
+
+        dataset.tags.append(tag)
+
+        return dataset
 
 
 def check_for_git_repo(url):
