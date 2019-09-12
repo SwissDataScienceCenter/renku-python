@@ -169,7 +169,10 @@ from tqdm import tqdm
 
 from renku.api._git import COMMIT_DIFF_STRATEGY
 from renku.api.datasets import DATASET_METADATA_PATHS
+from renku.cli._checks.migrate_datasets import check_dataset_resources, \
+    dataset_pre_0_3
 from renku.cli._providers import ProviderFactory
+from renku.errors import MigrationRequired
 from renku.models._tabulate import tabulate
 from renku.models.datasets import Dataset
 
@@ -194,6 +197,12 @@ from ._format.datasets import FORMATS as DATASETS_FORMATS
 def dataset(ctx, client, revision, datadir, format):
     """Handle datasets."""
     ctx.meta['renku.datasets.datadir'] = datadir
+
+    missing_dataset, missing_files = check_dataset_resources(client)
+    old_datasets = [ds for ds in dataset_pre_0_3(client)]
+
+    if missing_dataset or missing_files or old_datasets:
+        raise MigrationRequired('datasets')
 
     if ctx.invoked_subcommand is not None:
         return
