@@ -176,6 +176,19 @@ def _convert_dataset_files_creators(value):
         return [Creator.from_jsonld(c) for c in coll]
 
 
+def _parse_date(value):
+    """Convert date to datetime."""
+    if isinstance(value, datetime.datetime):
+        return value
+    date = parse_date(value)
+    if not date.tzinfo:
+        # set timezone to local timezone
+        tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+        date = date.replace(tzinfo=tz)
+
+    return date
+
+
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
@@ -193,7 +206,9 @@ class DatasetFile(Entity, CreatorsMixin):
         context='schema:creator'
     )
 
-    added = jsonld.ib(context='schema:dateCreated', kw_only=True)
+    added = jsonld.ib(
+        converter=_parse_date, context='schema:dateCreated', kw_only=True
+    )
 
     checksum = attr.ib(default=None, kw_only=True)
 
@@ -235,13 +250,6 @@ class DatasetFile(Entity, CreatorsMixin):
     def __attrs_post_init__(self):
         """Set the property "name" after initialization."""
         self.name = self.filename
-
-
-def _parse_date(value):
-    """Convert date to datetime."""
-    if isinstance(value, datetime.datetime):
-        return value
-    return parse_date(value)
 
 
 def _convert_dataset_files(value):
