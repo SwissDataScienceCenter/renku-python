@@ -25,11 +25,11 @@ from functools import partial
 
 import attr
 from attr.validators import instance_of
-from dateutil.parser import parse as parse_date
 
 from renku import errors
 from renku._compat import Path
 from renku.models.provenance.entities import Entity
+from renku.utils.datetime8601 import parse_date
 from renku.utils.doi import is_doi
 
 from . import _jsonld as jsonld
@@ -176,19 +176,6 @@ def _convert_dataset_files_creators(value):
         return [Creator.from_jsonld(c) for c in coll]
 
 
-def _parse_date(value):
-    """Convert date to datetime."""
-    if isinstance(value, datetime.datetime):
-        return value
-    date = parse_date(value)
-    if not date.tzinfo:
-        # set timezone to local timezone
-        tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-        date = date.replace(tzinfo=tz)
-
-    return date
-
-
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
@@ -207,7 +194,7 @@ class DatasetFile(Entity, CreatorsMixin):
     )
 
     added = jsonld.ib(
-        converter=_parse_date, context='schema:dateCreated', kw_only=True
+        converter=parse_date, context='schema:dateCreated', kw_only=True
     )
 
     checksum = attr.ib(default=None, kw_only=True)
@@ -354,7 +341,7 @@ class Dataset(Entity, CreatorsMixin):
     version = jsonld.ib(default=None, context='schema:version', kw_only=True)
 
     created = jsonld.ib(
-        converter=_parse_date, context='schema:dateCreated', kw_only=True
+        converter=parse_date, context='schema:dateCreated', kw_only=True
     )
 
     files = jsonld.container.list(
