@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test projects API."""
 
-from datetime import timezone
+from datetime import datetime, timezone
 
 import yaml
 from freezegun import freeze_time
@@ -68,3 +68,14 @@ def test_project_metadata_compatibility():
 
     assert project.name == 'demo'
     assert project.version == '1'
+
+
+def test_project_datetime_loading():
+    """Check that datetime is correctly loaded."""
+    project = Project.from_jsonld(yaml.safe_load(PROJECT_V1))
+
+    assert isinstance(project.updated, datetime)
+    assert isinstance(project.created, datetime)
+
+    assert project.updated.tzinfo is not None
+    assert project.created.tzinfo is not None
