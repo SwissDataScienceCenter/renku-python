@@ -16,16 +16,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrations for dataset."""
+import os
+from pathlib import Path
 
 
-def migrate_dataset(data):
+def migrate_dataset_schema(data):
     """Migrate from old dataset formats."""
-    if data.get('@type') != 'dctypes:Dataset':
-        return data
+    if 'authors' not in data:
+        return
+
+    data['@context']['creator'] = data['@context'].pop(
+        'authors', {'@container': 'list'}
+    )
 
     data['creator'] = data.pop('authors', {})
-
     for file_name, file_ in data.get('files', {}).items():
         file_['creator'] = file_.pop('authors', {})
 
     return data
+
+
+def migrate_absolute_paths(data):
+    """Migrate dataset paths to use relative path."""
+    raw_path = data.get('path', '.')
+    path = Path(raw_path)
+
+    if path.is_absolute():
+        try:
+            data['path'] = path.relative_to(os.getcwd())
+        except ValueError:
+            elements = raw_path.split('/')
+            index = elements.index('.renku')
+            data['path'] = Path('/'.join(elements[index:]))
+
+    files = data.get('files', [])
+
+    if isinstance(files, dict):
+        files = files.values()
+
+    for file_ in files:
+        path = Path(file_.get('path'), '.')
+        if path.is_absolute():
+            file_['path'] = path.relative_to((os.getcwd()))
+
+    return data
+
+
+DATASET_MIGRATIONS = [
+    migrate_absolute_paths,
+    migrate_dataset_schema,
+]

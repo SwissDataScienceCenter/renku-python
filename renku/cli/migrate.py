@@ -26,12 +26,9 @@ All file paths inside a metadata file are relative to itself and the
 ``renku migrate datasets`` command will take care of it.
 """
 
-import os
-
 import click
-import yaml
 
-from renku.api._git import COMMIT_DIFF_STRATEGY
+from renku.cli._checks.migrate_datasets import STRUCTURE_MIGRATIONS
 
 from ._client import pass_local_client
 
@@ -43,35 +40,16 @@ def migrate():
 
 @migrate.command()
 @pass_local_client(
-    clean=False,
+    clean=True,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    allow_empty=False,
 )
 @click.pass_context
 def datasets(ctx, client):
     """Migrate dataset metadata."""
-    from renku.models._jsonld import asjsonld
-    from renku.models.datasets import Dataset
-    from renku.models.refs import LinkReference
+    results = [
+        migration(client) is not False for migration in STRUCTURE_MIGRATIONS
+    ]
 
-    from ._checks.location_datasets import _dataset_metadata_pre_0_3_4
-
-    for old_path in _dataset_metadata_pre_0_3_4(client):
-        dataset = Dataset.from_yaml(old_path, client=client)
-
-        name = str(old_path.parent.relative_to(client.path / 'data'))
-        new_path = (client.renku_datasets_path / dataset.uid / client.METADATA)
-        new_path.parent.mkdir(parents=True, exist_ok=True)
-
-        dataset = dataset.rename_files(
-            lambda key: os.path.
-            relpath(str(old_path.parent / key), start=str(new_path.parent))
-        )
-
-        with new_path.open('w') as fp:
-            yaml.dump(asjsonld(dataset), fp, default_flow_style=False)
-
-        old_path.unlink()
-
-        LinkReference.create(client=client,
-                             name='datasets/' + name).set_reference(new_path)
+    if all(results) and client.repo.index.diff(None):
+        click.secho('OK', fg='green')

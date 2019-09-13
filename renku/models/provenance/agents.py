@@ -39,17 +39,14 @@ class Person:
     """Represent a person."""
 
     name = jsonld.ib(context='rdfs:label')
-    email = jsonld.ib(context={
-        '@type': '@id',
-        '@id': 'schema:email',
-    })
+    email = jsonld.ib(context='schema:email')
 
     _id = jsonld.ib(context='@id', init=False, kw_only=True)
 
     @_id.default
     def default_id(self):
         """Configure calculated ID."""
-        return self.email
+        return 'mailto:{0}'.format(self.email)
 
     @email.validator
     def check_email(self, attribute, value):
@@ -62,7 +59,7 @@ class Person:
         """Create an instance from a Git commit."""
         return cls(
             name=commit.author.name,
-            email='mailto:{0}'.format(commit.author.email),
+            email=commit.author.email,
         )
 
 
@@ -79,7 +76,7 @@ class Person:
     slots=True,
 )
 class SoftwareAgent:
-    """Represent a person."""
+    """Represent executed software."""
 
     label = jsonld.ib(context='rdfs:label', kw_only=True)
     was_started_by = jsonld.ib(
