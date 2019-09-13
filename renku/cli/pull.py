@@ -20,7 +20,7 @@
 import click
 
 
-@click.group()
+@click.group(hidden=True)
 def pull():
     """Pull latest data from server."""
 
