@@ -182,10 +182,12 @@ def client(project):
 def dataset(client):
     """Create a dataset."""
     with client.with_dataset(name='dataset') as dataset:
-        dataset.author = {
-            'name': 'me',
+        dataset.creator = [{
+            'affiliation': 'xxx',
             'email': 'me@example.com',
-        }
+            '_id': 'me_id',
+            'name': 'me',
+        }]
     return dataset
 
 

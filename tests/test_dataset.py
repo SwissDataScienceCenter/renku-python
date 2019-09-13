@@ -24,9 +24,8 @@ from contextlib import contextmanager
 
 import git
 import pytest
-import yaml
 
-from renku.models.datasets import Creator, Dataset, DatasetFile
+from renku.models.datasets import Creator, DatasetFile
 
 
 def _key(client, dataset, filename):
@@ -119,23 +118,6 @@ def test_data_add_recursive(directory_tree, client):
         assert os.path.basename(
             os.path.dirname(dataset.files[0].path)
         ) == 'dir2'
-
-
-def dataset_serialization(client, dataset, data_file):
-    """Test deserializing a dataset object."""
-    with open(dataset.path / 'metadata.yml', 'r') as f:
-        source = yaml.safe_load(f)
-
-    dataset = Dataset.from_jsonld(source)
-    assert dataset.path == dataset.path
-
-    d_dict = dataset.to_dict()
-
-    assert all([key in d_dict for key in ('name', 'identifier', 'files')])
-    assert not len(d_dict['files'].values())
-    client.add_data_to_dataset(dataset, [str(data_file)])
-    d_dict = dataset.to_dict()
-    assert len(d_dict['files'].values())
 
 
 def test_git_repo_import(client, dataset, tmpdir, data_repository):
