@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Client for handling a local repository."""
-
+import subprocess
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
@@ -99,11 +99,13 @@ class RepositoryApiMixin(GitCore):
 
         # initialize submodules
         if self.repo:
-            check_output([
-                'git', 'submodule', 'update', '--init', '--recursive'
-            ],
-                         cwd=str(self.path))
-        # TODO except
+            try:
+                check_output([
+                    'git', 'submodule', 'update', '--init', '--recursive'
+                ],
+                             cwd=str(self.path))
+            except subprocess.CalledProcessError:
+                pass
 
     @property
     def lock(self):
@@ -251,42 +253,49 @@ class RepositoryApiMixin(GitCore):
                 Submodule.iter_items(self.repo, parent_commit=parent_commit)
             ]
         except (RuntimeError, ValueError):
-            # There are no submodules assiciated with the given commit.
+            # There are no submodules associated with the given commit.
             submodules = []
 
-        return self._subclients.setdefault(
-            parent_commit, {
-                submodule: self.__class__(
-                    path=(self.path / submodule.path).resolve(),
+        subclients = {}
+        for submodule in submodules:
+            subpath = (self.path / submodule.path).resolve()
+            is_renku = subpath / Path(self.renku_home)
+
+            if subpath.exists() and is_renku.exists():
+                subclients[submodule] = self.__class__(
+                    path=subpath,
                     parent=(self, submodule),
                 )
-                for submodule in submodules
-            }
-        )
+
+        return subclients
 
     def resolve_in_submodules(self, commit, path):
         """Resolve filename in submodules."""
         original_path = self.path / path
-        if original_path.is_symlink() or str(path
-                                             ).startswith('.renku/vendors'):
+        in_vendor = str(path).startswith('.renku/vendors')
+
+        if original_path.is_symlink() or in_vendor:
             original_path = original_path.resolve()
+
             for submodule, subclient in self.subclients(commit).items():
-                try:
-                    subpath = original_path.relative_to(subclient.path)
-                    return (
-                        subclient,
-                        subclient.find_previous_commit(
-                            subpath, revision=submodule.hexsha
-                        ),
-                        subpath,
-                    )
-                except ValueError:
-                    pass
+                if (Path(submodule.path) / Path('.git')).exists():
+
+                    try:
+                        subpath = original_path.relative_to(subclient.path)
+                        return (
+                            subclient,
+                            subclient.find_previous_commit(
+                                subpath, revision=submodule.hexsha
+                            ),
+                            subpath,
+                        )
+                    except ValueError:
+                        pass
 
         return self, commit, path
 
     @contextmanager
-    def with_metadata(self):
+    def with_metadata(self, read_only=False):
         """Yield an editable metadata object."""
         from renku.models.projects import Project
 
@@ -299,7 +308,8 @@ class RepositoryApiMixin(GitCore):
 
         yield metadata
 
-        metadata.to_yaml()
+        if not read_only:
+            metadata.to_yaml()
 
     @contextmanager
     def with_workflow_storage(self):

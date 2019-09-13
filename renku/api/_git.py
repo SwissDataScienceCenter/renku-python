@@ -34,6 +34,7 @@ import gitdb
 
 from renku import errors
 from renku._compat import Path
+from renku.errors import NothingToCommit
 
 COMMIT_DIFF_STRATEGY = 'DIFF'
 STARTED_AT = int(time.time() * 1e3)
@@ -229,7 +230,7 @@ class GitCore:
             pass
 
     @contextmanager
-    def commit(self, author_date=None, commit_only=None):
+    def commit(self, author_date=None, commit_only=None, allow_empty=True):
         """Automatic commit."""
         from git import Actor
         from renku.version import __version__, version_url
@@ -286,6 +287,9 @@ class GitCore:
         if not commit_only:
             self.repo.git.add('--all')
 
+        if not allow_empty and not self.repo.index.diff('HEAD'):
+            raise NothingToCommit()
+
         argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
 
         # Ignore pre-commit hooks since we have already done everything.
@@ -303,7 +307,8 @@ class GitCore:
         up_to_date=False,
         commit=True,
         commit_only=None,
-        ignore_std_streams=False
+        ignore_std_streams=False,
+        allow_empty=True,
     ):
         """Perform Git checks and operations."""
         if clean:
@@ -316,7 +321,7 @@ class GitCore:
             pass
 
         if commit:
-            with self.commit(commit_only=commit_only):
+            with self.commit(commit_only=commit_only, allow_empty=allow_empty):
                 yield self
         else:
             yield self
