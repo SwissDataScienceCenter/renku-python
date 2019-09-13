@@ -23,6 +23,7 @@ import attr
 
 from renku.core.models import jsonld as jsonld
 from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.mls import Run, Implementation
 
 
 @jsonld.s(
@@ -126,7 +127,7 @@ class Generation(EntityProxyMixin):
         },
         type=[
             'renku.core.models.entities.Entity',
-            'renku.core.models.entities.Collection', Dataset, DatasetFile
+            'renku.core.models.entities.Collection', Dataset, DatasetFile, Run, Implementation
         ]
     )
 

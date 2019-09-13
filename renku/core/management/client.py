@@ -21,6 +21,7 @@ import attr
 
 from renku.core.management.config import ConfigManagerMixin
 from renku.core.management.datasets import DatasetsApiMixin
+from renku.core.management.mls import MLSApiMixin
 from renku.core.management.repository import PathMixin, RepositoryApiMixin
 from renku.core.management.storage import StorageApiMixin
 
@@ -28,6 +29,6 @@ from renku.core.management.storage import StorageApiMixin
 @attr.s
 class LocalClient(
     PathMixin, StorageApiMixin, RepositoryApiMixin, DatasetsApiMixin,
-    ConfigManagerMixin
+    MLSApiMixin, ConfigManagerMixin
 ):
     """A low-level client for communicating with a local Renku repository."""

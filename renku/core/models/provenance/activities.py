@@ -156,6 +156,10 @@ class Activity(CommitMixin):
                 os.path.join(client.renku_home, client.DATASETS)
             ):
                 entity = client.get_dataset(Path(path), commit=commit)
+            elif str(path).startswith(
+                os.path.join(client.renku_home, client.MLS)
+            ):
+                entity = client.get_model(Path(path))
             else:
                 entity = entity_cls(
                     commit=commit,

@@ -501,3 +501,56 @@ def remote_project(data_repository, directory_tree):
         assert 0 == result.exit_code
 
         yield runner, project_path
+
+
+@pytest.fixture
+def mls(client):
+    """Create an mls run."""
+    with client.with_model(name='testrun') as model:
+        model.executes = {
+            '@type': 'mls:Implementation',
+            '_id': "_:LibSVM",
+            'parameters': [
+                {"_id": "_:C1", "@type": "mls:HyperParameter"},
+                {"_id": "_:C2", "@type": "mls:HyperParameter"},
+                {"_id": "_:use_bias", "@type": "mls:HyperParameter"}
+            ],
+            'implements': {
+                "_id": "_:binaryClassifier",
+                "@type": "mls:Algorithm"
+            }
+        }
+        model.input_values = [
+                {
+                    "_id": "_:C1Setting",
+                    "@type": "mls:HyperParameterSetting",
+                    "specified_by": {
+                        "_id": "_:C1"
+                    },
+                    "value": {
+                        "@type": "xsd:double",
+                        "@value": "0.000010"
+                    }
+                }, {
+                    "_id": "_:C2Setting",
+                    "@type": "mls:HyperParameterSetting",
+                    "value": {
+                        "@type": "xsd:double",
+                        "@value": "0.000010"
+                    },
+                    "specified_by": {
+                        "_id": "_:C2"
+                    }
+                }, {
+                    "_id": "_:use_biasSetting",
+                    "@type": "mls:HyperParameterSetting",
+                    "specified_by": {
+                        "_id": "_:use_bias"
+                    },
+                    "value": {
+                        "@type": "xsd:boolean",
+                        "@value": "true"
+                    }
+                }
+        ]
+    return model
