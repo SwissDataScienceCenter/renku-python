@@ -19,6 +19,10 @@
 
 import datetime
 
+import pytz
+
+from renku.utils.datetime8601 import parse_date
+
 from . import _jsonld as jsonld
 from ._datastructures import Collection
 
@@ -38,8 +42,14 @@ class Project(object):
     """Represent a project."""
 
     name = jsonld.ib(default=None, context='foaf:name')
-    created = jsonld.ib(context='http://schema.org/dateCreated', )
-    updated = jsonld.ib(context='http://schema.org/dateUpdated', )
+    created = jsonld.ib(
+        converter=parse_date,
+        context='http://schema.org/dateCreated',
+    )
+    updated = jsonld.ib(
+        converter=parse_date,
+        context='http://schema.org/dateUpdated',
+    )
     version = jsonld.ib(
         converter=str,
         default='1',
@@ -51,6 +61,14 @@ class Project(object):
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
+
+    def __attrs_post_init__(self):
+        """Initialize computed attributes."""
+        if self.created and self.created.tzinfo is None:
+            self.created = pytz.utc.localize(self.created)
+
+        if self.updated and self.updated.tzinfo is None:
+            self.updated = pytz.utc.localize(self.updated)
 
 
 class ProjectCollection(Collection):

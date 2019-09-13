@@ -16,7 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku datetime utilities."""
+import datetime
 import re
+
+from dateutil.parser import parse as dateutil_parse_date
 
 regex = (
     r'^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12]['
@@ -34,3 +37,16 @@ def validate_iso8601(str_val):
     except re.error:
         pass
     return False
+
+
+def parse_date(value):
+    """Convert date to datetime."""
+    if isinstance(value, datetime.datetime):
+        return value
+    date = dateutil_parse_date(value)
+    if not date.tzinfo:
+        # set timezone to local timezone
+        tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+        date = date.replace(tzinfo=tz)
+
+    return date
