@@ -34,7 +34,8 @@ from renku import errors
 from renku._compat import Path
 from renku.api.config import RENKU_HOME
 from renku.models._git import GitURL
-from renku.models.datasets import Creator, Dataset, DatasetFile, DatasetTag, NoneType
+from renku.models.datasets import Creator, Dataset, DatasetFile, DatasetTag, \
+    NoneType
 from renku.models.refs import LinkReference
 
 

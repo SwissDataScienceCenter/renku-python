@@ -481,6 +481,7 @@ def remove(client, names):
 )
 @click.pass_context
 def tag(ctx, client, name, tag, description):
+    """Create a tag for a dataset."""
     dataset_ = client.load_dataset(name)
     if not dataset_:
         raise BadParameter('Dataset not found.')
@@ -506,6 +507,7 @@ def tag(ctx, client, name, tag, description):
 @pass_local_client(clean=False, commit=False)
 @click.pass_context
 def ls_tags(ctx, client, name, format):
+    """List all tags of a dataset."""
     dataset_ = client.load_dataset(name)
     if not dataset_:
         raise BadParameter('Dataset not found.')

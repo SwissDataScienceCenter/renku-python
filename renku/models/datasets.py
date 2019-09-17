@@ -183,7 +183,7 @@ class DatasetTag(object):
     )
 
     created = jsonld.ib(
-        converter=_parse_date, context='schema:startDate', kw_only=True
+        converter=parse_date, context='schema:startDate', kw_only=True
     )
 
     dataset = jsonld.ib(context='schema:about', default=None, kw_only=True)
@@ -197,6 +197,7 @@ class DatasetTag(object):
 
     @_id.default
     def default_id(self):
+        """Define default value for id field."""
         return '{0}@{1}'.format(self.name, self.commit)
 
 
