@@ -74,7 +74,7 @@ from ._client import pass_local_client
 from ._docker import detect_registry_url
 
 
-@click.group()
+@click.group(hidden=True)
 def image():
     """Manipulate images related to the Renku project."""
 

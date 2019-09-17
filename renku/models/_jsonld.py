@@ -24,6 +24,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 import attr
+import yaml
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import Factory, fields
@@ -31,7 +32,7 @@ from pyld import jsonld as ld
 
 from renku._compat import Path
 from renku.models._locals import ReferenceMixin, with_reference
-from renku.models.migrations import MIGRATIONS
+from renku.models.migrations import JSONLD_MIGRATIONS
 
 KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
@@ -346,6 +347,22 @@ class JSONLDMixin(ReferenceMixin):
 
         data.setdefault('@context', cls._jsonld_context)
 
+        schema_type = data.get('@type')
+        migrations = []
+
+        if isinstance(schema_type, list):
+            for schema in schema_type:
+                mig_ = JSONLD_MIGRATIONS.get(schema)
+                if mig_:
+                    migrations += mig_
+
+        if isinstance(schema_type, str) and not migrations:
+            migrations += JSONLD_MIGRATIONS.get(schema_type, [])
+
+        for migration in set(migrations):
+            data = migration(data)
+            __source__ = migration(__source__)
+
         if data['@context'] != cls._jsonld_context:
             try:
                 compacted = ld.compact(data, {'@context': cls._jsonld_context})
@@ -353,9 +370,6 @@ class JSONLDMixin(ReferenceMixin):
                 compacted = data
         else:
             compacted = data
-
-        for migration in MIGRATIONS:
-            data = migration(data)
 
         fields = cls._jsonld_fields
 
@@ -405,8 +419,6 @@ class JSONLDMixin(ReferenceMixin):
 
     def to_yaml(self):
         """Store an instance to the referenced YAML file."""
-        import yaml
-
         dumper = yaml.dumper.Dumper
         dumper.ignore_aliases = lambda _, data: True
 

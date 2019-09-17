@@ -182,10 +182,12 @@ def client(project):
 def dataset(client):
     """Create a dataset."""
     with client.with_dataset(name='dataset') as dataset:
-        dataset.author = {
-            'name': 'me',
+        dataset.creator = [{
+            'affiliation': 'xxx',
             'email': 'me@example.com',
-        }
+            '_id': 'me_id',
+            'name': 'me',
+        }]
     return dataset
 
 
@@ -251,7 +253,24 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture(
-    params=['test-renku-v0.3.0.git', 'old-datasets-v0.3.0.git'],
+    params=[
+        {
+            'name': 'old-datasets-v0.3.0.git',
+            'exit_code': 1
+        },
+        {
+            'name': 'old-datasets-v0.5.0.git',
+            'exit_code': 1
+        },
+        {
+            'name': 'old-datasets-v0.5.1.git',
+            'exit_code': 0
+        },
+        {
+            'name': 'test-renku-v0.3.0.git',
+            'exit_code': 1
+        },
+    ],
     scope='module',
 )
 def old_bare_repository(request, tmpdir_factory):
@@ -261,13 +280,19 @@ def old_bare_repository(request, tmpdir_factory):
 
     compressed_repo_path = Path(
         __file__
-    ).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(request.param)
-    working_dir_path = tmpdir_factory.mktemp(request.param)
+    ).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(
+        request.param['name']
+    )
+
+    working_dir_path = tmpdir_factory.mktemp(request.param['name'])
 
     with tarfile.open(str(compressed_repo_path), 'r') as fixture:
         fixture.extractall(working_dir_path.strpath)
 
-    yield working_dir_path / request.param
+    yield {
+        'path': working_dir_path / request.param['name'],
+        'exit_code': request.param['exit_code']
+    }
 
     shutil.rmtree(working_dir_path.strpath)
 
@@ -279,21 +304,29 @@ def old_repository(tmpdir_factory, old_bare_repository):
     from git import Repo
 
     repo_path = tmpdir_factory.mktemp('repo')
-    yield Repo(old_bare_repository.strpath).clone(repo_path.strpath)
+    yield {
+        'repo':
+            Repo(old_bare_repository['path'].strpath).clone(repo_path.strpath),
+        'exit_code': old_bare_repository['exit_code']
+    }
     shutil.rmtree(repo_path.strpath)
 
 
 @pytest.fixture
 def old_project(old_repository):
     """Create a test project."""
-    repo = old_repository
-    repository = repo.working_dir
+    repo = old_repository['repo']
+    repository_path = repo.working_dir
 
     commit = repo.head.commit
 
-    os.chdir(repository)
-    yield repository
-    os.chdir(repository)
+    os.chdir(repository_path)
+    yield {
+        'repo': repo,
+        'path': repository_path,
+        'exit_code': old_repository['exit_code']
+    }
+    os.chdir(repository_path)
     repo.head.reset(commit, index=True, working_tree=True)
     # remove any extra non-tracked files (.pyc, etc)
     repo.git.clean('-xdff')

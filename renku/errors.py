@@ -155,6 +155,28 @@ class IgnoredFiles(RenkuException, click.ClickException):
         )
 
 
+class MigrationRequired(RenkuException, click.ClickException):
+    """Raise when migration is required."""
+
+    def __init__(self, resource_type):
+        """Build a custom message."""
+        super(MigrationRequired, self).__init__(
+            'Broken resource of type `{0}` found.\n'
+            'Migration is required.\n'
+            'Please check `renku migrate --help` '
+            'command to fix the issue.\n'
+            'Hint: `renku migrate datasets`'.format(resource_type)
+        )
+
+
+class NothingToCommit(RenkuException, click.ClickException):
+    """Raise when there is nothing to commit."""
+
+    def __init__(self):
+        """Build a custom message."""
+        super(NothingToCommit, self).__init__('There is nothing to commit.')
+
+
 class FailedMerge(RenkuException, click.ClickException):
     """Raise when automatic merge failed."""
 

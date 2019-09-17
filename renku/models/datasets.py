@@ -25,11 +25,11 @@ from functools import partial
 
 import attr
 from attr.validators import instance_of
-from dateutil.parser import parse as parse_date
 
 from renku import errors
 from renku._compat import Path
 from renku.models.provenance.entities import Entity
+from renku.utils.datetime8601 import parse_date
 from renku.utils.doi import is_doi
 
 from . import _jsonld as jsonld
@@ -40,20 +40,6 @@ _path_attr = partial(
     jsonld.ib,
     converter=Path,
 )
-
-
-def _parse_date(value):
-    """Convert date to datetime."""
-    if isinstance(value, datetime.datetime):
-        return value
-    date = parse_date(value)
-
-    if not date.tzinfo:
-        # set timezone to local timezone
-        tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-        date = date.replace(tzinfo=tz)
-
-    return date
 
 
 @jsonld.s(
@@ -142,13 +128,13 @@ class Creator(object):
         """Set the default id."""
         if self.email:
             return 'mailto:{email}'.format(email=self.email)
-        return '_' + str(uuid.uuid4())
+        return '_:{}'.format(str(uuid.uuid4()))
 
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
         if self._id == 'mailto:None':
-            self._id = '_' + str(uuid.uuid4())
+            self._id = self.default_id()
 
 
 @attr.s
@@ -257,7 +243,7 @@ class DatasetFile(Entity, CreatorsMixin):
     )
 
     added = jsonld.ib(
-        converter=_parse_date, context='schema:dateCreated', kw_only=True
+        converter=parse_date, context='schema:dateCreated', kw_only=True
     )
 
     checksum = attr.ib(default=None, kw_only=True)
@@ -282,7 +268,8 @@ class DatasetFile(Entity, CreatorsMixin):
     @filename.default
     def default_filename(self):
         """Generate default filename based on path."""
-        return Path(self.path).name
+        if self.path:
+            return Path(self.path).name
 
     @property
     def full_path(self):
@@ -299,15 +286,21 @@ class DatasetFile(Entity, CreatorsMixin):
 
     def __attrs_post_init__(self):
         """Set the property "name" after initialization."""
-        self.name = self.filename
+        super().__attrs_post_init__()
+
+        if not self.name:
+            self.name = self.filename
 
 
 def _convert_dataset_files(value):
     """Convert dataset files."""
     coll = value
 
-    if isinstance(value, dict):  # compatibility with previous versions
-        coll = value.values()
+    if isinstance(coll, dict):  # compatibility with previous versions
+        if any([key.startswith('@') for key in coll.keys()]):
+            return [DatasetFile.from_jsonld(coll)]
+        else:
+            coll = value.values()
 
     return [DatasetFile.from_jsonld(v) for v in coll]
 
@@ -345,6 +338,10 @@ def _convert_keyword(keywords):
 @jsonld.s(
     type='schema:Dataset',
     context={
+        'added': 'schema:dateCreated',
+        'affiliation': 'schema:affiliation',
+        'alternate_name': 'schema:alternateName',
+        'email': 'schema:email',
         'schema': 'http://schema.org/',
     },
 )
@@ -373,7 +370,7 @@ class Dataset(Entity, CreatorsMixin):
     )
 
     description = jsonld.ib(
-        default=None, context='schema:description', kw_only=True
+        default='', context='schema:description', kw_only=True
     )
 
     identifier = jsonld.ib(
@@ -409,7 +406,7 @@ class Dataset(Entity, CreatorsMixin):
     version = jsonld.ib(default=None, context='schema:version', kw_only=True)
 
     created = jsonld.ib(
-        converter=_parse_date, context='schema:dateCreated', kw_only=True
+        converter=parse_date, context='schema:dateCreated', kw_only=True
     )
 
     files = jsonld.container.list(
@@ -545,7 +542,10 @@ class Dataset(Entity, CreatorsMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook."""
-        self._id = self.identifier
+        super().__attrs_post_init__()
+
+        if not self._id:
+            self._id = self.identifier
 
         if not self._label:
             self._label = self.identifier
@@ -554,16 +554,18 @@ class Dataset(Entity, CreatorsMixin):
             self.path = str(self.client.renku_datasets_path / str(self.uid))
 
         if self.files:
-            for datasetfile in self.files:
-                if datasetfile.client is None:
+            for dataset_file in self.files:
+                file_exists = Path(dataset_file.path).exists()
+
+                if dataset_file.client is None and file_exists:
                     client, _, _ = self.client.resolve_in_submodules(
                         self.client.find_previous_commit(
-                            datasetfile.path, revision='HEAD'
+                            dataset_file.path, revision='HEAD'
                         ),
-                        datasetfile.path,
+                        dataset_file.path,
                     )
 
-                    datasetfile.client = client
+                    dataset_file.client = client
 
         try:
             self.commit = self.client.find_previous_commit(

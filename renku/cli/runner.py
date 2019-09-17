@@ -33,7 +33,7 @@ _REQUIREMENTS = 'requirements.txt'
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
-@click.group()
+@click.group(hidden=True)
 def runner():
     """Simplify running of CI scripts."""
 

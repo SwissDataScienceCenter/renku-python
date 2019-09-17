@@ -69,7 +69,7 @@ install_requires = [
     'appdirs>=1.4.3',
     'attrs>=18.2.0',
     'click-completion>=0.5.0',
-    'click>=6.7',
+    'click>=7.0',
     'cryptography>=2.7',
     'cwltool==1.0.20181012180214',
     'environ_config>=18.2.0',
