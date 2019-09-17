@@ -295,6 +295,18 @@ class RepositoryApiMixin(GitCore):
         return self, commit, path
 
     @contextmanager
+    def with_commit(self, commit):
+        """Yield the state of the repo at a specific commit."""
+        current_branch = self.repo.active_branch
+
+        self.repo.git.checkout(commit)
+
+        try:
+            yield
+        finally:
+            self.repo.git.checkout(current_branch)
+
+    @contextmanager
     def with_metadata(self, read_only=False):
         """Yield an editable metadata object."""
         from renku.models.projects import Project

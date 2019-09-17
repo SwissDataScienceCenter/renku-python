@@ -483,6 +483,17 @@ class Dataset(Entity, CreatorsMixin):
                     return index
                 return file_
 
+    def at_commit(self, commit):
+        """Get this dataset at a specific commit."""
+        if isinstance(commit, str):
+            commit = self.client.repo.commit(commit)
+
+        return Dataset.from_yaml(
+            self.client.dataset_path(self.name),
+            client=self.client,
+            commit=commit
+        )
+
     def update_metadata(self, other_dataset):
         """Updates instance attributes with other dataset attributes.
 

@@ -468,6 +468,20 @@ def remove(client, names):
     click.secho('OK', fg='green')
 
 
+def tag_dataset(client, name, tag, description):
+    """Creates a new tag for a dataset."""
+    dataset_ = client.load_dataset(name)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    try:
+        dataset = client.add_dataset_tag(dataset_, tag, description)
+    except ValueError as e:
+        raise BadParameter(e)
+
+    dataset.to_yaml()
+
+
 @dataset.command('tag')
 @click.argument('name')
 @click.argument('tag')
@@ -482,16 +496,7 @@ def remove(client, names):
 @click.pass_context
 def tag(ctx, client, name, tag, description):
     """Create a tag for a dataset."""
-    dataset_ = client.load_dataset(name)
-    if not dataset_:
-        raise BadParameter('Dataset not found.')
-
-    try:
-        dataset = client.add_dataset_tag(dataset_, tag, description)
-    except ValueError as e:
-        raise BadParameter(e)
-
-    dataset.to_yaml()
+    tag_dataset(client, name, tag, description)
 
     click.secho('OK', fg='green')
 
@@ -526,12 +531,13 @@ def ls_tags(ctx, client, name, format):
     is_flag=True,
     help='Automatically publish exported dataset.'
 )
+@click.option('-t', '--tag', help='Dataset tag to export')
 @pass_local_client(
     clean=False,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def export_(client, id, provider, publish):
+def export_(client, id, provider, publish, tag):
     """Export data to 3rd party provider."""
     config_key_secret = 'access_token'
     provider_id = provider
@@ -545,34 +551,70 @@ def export_(client, id, provider, publish):
     except KeyError:
         raise BadParameter('Unknown provider.')
 
-    access_token = client.get_value(provider_id, config_key_secret)
-    exporter = provider.get_exporter(dataset_, access_token=access_token)
+    selected_tag = None
+    selected_commit = client.repo.head.commit
 
-    if access_token is None:
-        text_prompt = 'Before exporting, you must configure an access token\n'
-        text_prompt += 'Create one at: {0}\n'.format(
-            exporter.access_token_url()
+    if tag:
+        selected_tag = next((t for t in dataset_.tags if t.name == tag), None)
+
+        if not selected_tag:
+            raise BadParameter('Tag {} not found'.format(tag))
+
+        selected_commit = selected_tag.commit
+    elif dataset_.tags:
+        # Prompt user to select a tag to export
+        tags = sorted(dataset_.tags, key=lambda t: t.created)
+
+        text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
+
+        text_prompt += '\n'.join(
+            '{}\t[{}]'.format(t.name, i) for i, t in enumerate(tags, start=2)
         )
-        text_prompt += 'Access token'
 
-        access_token = click.prompt(text_prompt, type=str)
-        if access_token is None or len(access_token) == 0:
-            raise BadParameter(
-                'You must provide an access token for the target provider.'
+        text_prompt += '\n\nTag'
+
+        selection = click.prompt(
+            text_prompt, type=click.IntRange(1,
+                                             len(tags) + 1), default=1
+        )
+
+        if selection > 1:
+            selected_tag = tags[selection - 2]
+            selected_commit = selected_tag.commit
+
+    with client.with_commit(selected_commit):
+        dataset_ = client.load_dataset(id)
+        if not dataset_:
+            raise BadParameter('Dataset not found.')
+
+        access_token = client.get_value(provider_id, config_key_secret)
+        exporter = provider.get_exporter(dataset_, access_token=access_token)
+
+        if access_token is None:
+            text_prompt = 'Before exporting, you must configure an access token\n'
+            text_prompt += 'Create one at: {0}\n'.format(
+                exporter.access_token_url()
             )
+            text_prompt += 'Access token'
 
-        client.set_value(provider_id, config_key_secret, access_token)
-        exporter.set_access_token(access_token)
+            access_token = click.prompt(text_prompt, type=str)
+            if access_token is None or len(access_token) == 0:
+                raise BadParameter(
+                    'You must provide an access token for the target provider.'
+                )
 
-    try:
-        destination = exporter.export(publish)
-    except HTTPError as e:
-        if 'unauthorized' in str(e):
-            client.remove_value(provider_id, config_key_secret)
+            client.set_value(provider_id, config_key_secret, access_token)
+            exporter.set_access_token(access_token)
 
-        raise BadParameter(e)
+        try:
+            destination = exporter.export(publish, selected_tag)
+        except HTTPError as e:
+            if 'unauthorized' in str(e):
+                client.remove_value(provider_id, config_key_secret)
 
-    click.secho('Exported to: {0}'.format(destination))
+            raise BadParameter(e)
+
+        click.secho('Exported to: {0}'.format(destination))
     click.secho('OK', fg='green')
 
 
@@ -702,6 +744,12 @@ def import_(ctx, client, uri, name, extract):
                 name=dataset_name,
                 with_metadata=dataset_
             )
+
+            if dataset_.version:
+                tag_dataset(
+                    client, dataset_name, dataset_.version,
+                    '{} tag created by renku import'.format(dataset_.version)
+                )
 
             click.secho('OK', fg='green')
 
