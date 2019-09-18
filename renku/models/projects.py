@@ -19,8 +19,6 @@
 
 import datetime
 
-import pytz
-
 from renku.utils.datetime8601 import parse_date
 
 from . import _jsonld as jsonld
@@ -61,14 +59,6 @@ class Project(object):
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
-
-    def __attrs_post_init__(self):
-        """Initialize computed attributes."""
-        if self.created and self.created.tzinfo is None:
-            self.created = pytz.utc.localize(self.created)
-
-        if self.updated and self.updated.tzinfo is None:
-            self.updated = pytz.utc.localize(self.updated)
 
 
 class ProjectCollection(Collection):
