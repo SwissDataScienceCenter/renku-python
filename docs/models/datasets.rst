@@ -18,13 +18,13 @@
 Datasets
 ========
 
-.. automodule:: renku.models.datasets
+.. automodule:: renku.core.models.datasets
    :no-members:
 
 Dataset object
 --------------
 
-.. autoclass:: renku.models.datasets.Dataset
+.. autoclass:: renku.core.models.datasets.Dataset
    :members:
    :inherited-members:
 
@@ -34,7 +34,7 @@ Dataset file
 
 Manage files in the dataset.
 
-.. autoclass:: renku.models.datasets.DatasetFile
+.. autoclass:: renku.core.models.datasets.DatasetFile
    :members:
    :inherited-members:
 
@@ -42,6 +42,6 @@ Manage files in the dataset.
 Creator
 -------
 
-.. autoclass:: renku.models.datasets.Creator
+.. autoclass:: renku.core.models.datasets.Creator
    :members:
    :inherited-members:

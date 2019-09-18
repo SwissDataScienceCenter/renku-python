@@ -66,15 +66,19 @@ was not installed previously.
 
 import contextlib
 import os
+from pathlib import Path
 
 import attr
 import click
 
-from renku._compat import Path
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.git import set_git_home
+from renku.core.commands.options import option_use_external_storage
 
-from ._client import pass_local_client
-from ._git import set_git_home
-from ._options import option_use_external_storage
+_GITLAB_CI = '.gitlab-ci.yml'
+_DOCKERFILE = 'Dockerfile'
+_REQUIREMENTS = 'requirements.txt'
+CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
 def validate_name(ctx, param, value):
@@ -89,6 +93,28 @@ def store_directory(ctx, param, value):
     Path(value).mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
+
+
+def template(client, force):
+    """Render templated configuration files."""
+    import pkg_resources
+
+    # create the templated files
+    for tpl_file in CI_TEMPLATES:
+        tpl_path = client.path / tpl_file
+        with pkg_resources.resource_stream(__name__, tpl_file) as tpl:
+            content = tpl.read()
+
+            if not force and tpl_path.exists():
+                click.confirm(
+                    'Do you want to override "{tpl_file}"'.format(
+                        tpl_file=tpl_file
+                    ),
+                    abort=True,
+                )
+
+            with tpl_path.open('wb') as dest:
+                dest.write(content)
 
 
 @click.command()
@@ -160,7 +186,6 @@ def init(ctx, client, directory, name, force, use_external_storage):
         ctx.invoke(install, force=force)
 
         # Create all necessary template files.
-        from .runner import template
-        ctx.invoke(template, force=force)
+        template(client, force=force)
 
     click.echo(msg.format(path=path, branch_name=branch_name))

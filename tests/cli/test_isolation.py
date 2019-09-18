@@ -20,8 +20,7 @@
 import subprocess
 import sys
 import time
-
-from renku._compat import Path
+from pathlib import Path
 
 
 def test_run_in_isolation(runner, project, client, run):
@@ -72,7 +71,7 @@ def test_file_modification_during_run(tmpdir, runner, project, client, run):
     prefix = [
         sys.executable,
         '-m',
-        'renku',
+        'renku.cli',
         'run',
         '--isolation',
     ]
@@ -87,7 +86,6 @@ def test_file_modification_during_run(tmpdir, runner, project, client, run):
         process = subprocess.Popen(
             prefix + cmd, stdin=subprocess.PIPE, stdout=stdout
         )
-
         while not lock.exists():
             time.sleep(1)
 

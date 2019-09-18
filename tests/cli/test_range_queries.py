@@ -17,8 +17,9 @@
 # limitations under the License.
 """Test Git ranges used by various commands."""
 
-from renku import cli
-from renku._compat import Path
+from pathlib import Path
+
+from renku.cli import cli
 
 
 def test_limit_log(runner, project, run):
@@ -34,13 +35,13 @@ def test_limit_log(runner, project, run):
     assert output.exists()
 
     cmd = ['log', '--revision', 'HEAD^..', output.name]
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert data.name not in result.output
     assert output.name in result.output
 
     cmd = ['log', '--revision', 'HEAD^']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert data.name in result.output
     assert output.name not in result.output

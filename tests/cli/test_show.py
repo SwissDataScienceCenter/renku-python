@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test ``show`` command."""
 
-from renku import cli
+from renku.cli import cli
 
 
 def test_show_outputs_with_directory(runner, client, run):
@@ -32,18 +32,18 @@ def test_show_outputs_with_directory(runner, client, run):
     assert (client.path / 'output' / 'bar').exists()
 
     cmd = ['show', 'outputs']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert {'output'} == set(result.output.strip().split('\n'))
 
-    result = runner.invoke(cli.cli, cmd + ['output'])
+    result = runner.invoke(cli, cmd + ['output'])
     assert 0 == result.exit_code
     assert {'output'} == set(result.output.strip().split('\n'))
 
-    result = runner.invoke(cli.cli, cmd + ['output/foo'])
+    result = runner.invoke(cli, cmd + ['output/foo'])
     assert 0 == result.exit_code
     assert {'output'} == set(result.output.strip().split('\n'))
 
-    result = runner.invoke(cli.cli, cmd + ['output/foo', 'output/bar'])
+    result = runner.invoke(cli, cmd + ['output/foo', 'output/bar'])
     assert 0 == result.exit_code
     assert {'output'} == set(result.output.strip().split('\n'))

@@ -23,21 +23,21 @@ import os
 
 import pytest
 
-from renku import cli
+from renku.cli import cli
 
 
 def test_run_simple(runner, project):
     """Test tracking of run command."""
     cmd = ['echo', 'test']
-    result = runner.invoke(cli.cli, ['run', '--no-output'] + cmd)
+    result = runner.invoke(cli, ['run', '--no-output'] + cmd)
     assert 0 == result.exit_code
 
     # There are no output files.
-    result = runner.invoke(cli.cli, ['log'])
+    result = runner.invoke(cli, ['log'])
     assert 1 == len(result.output.strip().split('\n'))
 
     # Display tools with no outputs.
-    result = runner.invoke(cli.cli, ['log', '--no-output'])
+    result = runner.invoke(cli, ['log', '--no-output'])
     assert '.renku/workflow/' in result.output
 
 
@@ -67,7 +67,7 @@ def test_run_clean(runner, project, run_shell):
     assert output[1] is None
 
     # Assert created output file.
-    result = runner.invoke(cli.cli, ['log'])
+    result = runner.invoke(cli, ['log'])
     assert 'output' in result.output
     assert '.cwl' in result.output
     assert '.renku/workflow/' in result.output
