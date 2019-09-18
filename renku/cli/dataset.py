@@ -565,7 +565,7 @@ def export_(client, id, provider, publish, tag):
         # Prompt user to select a tag to export
         tags = sorted(dataset_.tags, key=lambda t: t.created)
 
-        text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
+        text_prompt = 'Tag to export: \n\n<HEAD>\t[1]\n'
 
         text_prompt += '\n'.join(
             '{}\t[{}]'.format(t.name, i) for i, t in enumerate(tags, start=2)
@@ -591,7 +591,10 @@ def export_(client, id, provider, publish, tag):
         exporter = provider.get_exporter(dataset_, access_token=access_token)
 
         if access_token is None:
-            text_prompt = 'Before exporting, you must configure an access token\n'
+            text_prompt = (
+                'Before exporting, you must configure an access'
+                ' token\n'
+            )
             text_prompt += 'Create one at: {0}\n'.format(
                 exporter.access_token_url()
             )

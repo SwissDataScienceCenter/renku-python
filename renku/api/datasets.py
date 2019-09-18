@@ -451,6 +451,17 @@ class DatasetsApiMixin(object):
             url = str(url / submodule_url.name)
         return url
 
+    def get_newest_commit_for_dataset(self, dataset):
+        """Gets the newest commit in which the dataset or its files
+        were changes."""
+        paths = [(Path(dataset.path) / self.METADATA).resolve()]
+
+        paths.extend(f.full_path for f in dataset.files)
+
+        commit = list(self.repo.iter_commits(max_count=1, paths=paths))[0]
+
+        return commit
+
     def add_dataset_tag(self, dataset, tag, description=''):
         """Adds a new tag to a dataset.
 
@@ -472,7 +483,7 @@ class DatasetsApiMixin(object):
         if any(t for t in dataset.tags if t.name == tag):
             raise ValueError('Tag {} already exists'.format(tag))
 
-        latest_commit = self.repo.commit()
+        latest_commit = self.get_newest_commit_for_dataset(dataset)
 
         tag = DatasetTag(
             name=tag,
