@@ -65,6 +65,12 @@ for name, reqs in extras_require.items():
         continue
     extras_require['all'].extend(reqs)
 
+extras_require['nodocs'] = list(setup_requires)
+for name, reqs in extras_require.items():
+    if name.startswith(':') or name == 'docs':
+        continue
+    extras_require['nodocs'].extend(reqs)
+
 install_requires = [
     'appdirs>=1.4.3',
     'attrs>=18.2.0',

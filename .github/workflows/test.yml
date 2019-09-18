@@ -3,6 +3,26 @@ name: CI
 on: [push]
 
 jobs:
+  docs-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.6, 3.7]
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install .[all]
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test docs
+      run: ./run-tests.sh -d
   test-linux:
     runs-on: ubuntu-latest
     strategy:
@@ -17,12 +37,12 @@ jobs:
         version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip 
-        python -m pip install .[all]
+        python -m pip install --upgrade pip
+        python -m pip install .[nodocs]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
-      run: ./run-tests.sh
+      run: ./run-tests.sh -s -t
 
   test-macos:
     runs-on: macos-latest
@@ -40,7 +60,7 @@ jobs:
       run: |
         brew update
         brew install git-lfs shellcheck node || brew link --overwrite node
-        python -m pip install --upgrade pip 
+        python -m pip install --upgrade pip
         python -m pip install .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
