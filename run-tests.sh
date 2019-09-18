@@ -23,10 +23,46 @@ set -o errexit
 # quit on unbound symbols:
 set -o nounset
 
-pydocstyle renku tests conftest.py docs
-isort -rc -c -df
-unify -c -r renku tests conftest.py docs
-check-manifest --ignore ".travis-*,renku/version.py"
-find . -iname \*.sh -print0 | xargs -0 shellcheck
-sphinx-build -qnNW docs docs/_build/html
-pytest -v -m "not integration"
+run_tests(){
+    pydocstyle renku tests conftest.py docs
+    isort -rc -c -df
+    unify -c -r renku tests conftest.py docs
+    check-manifest --ignore ".travis-*,renku/version.py"
+    find . -iname \*.sh -print0 | xargs -0 shellcheck
+
+    pytest -v -m "not integration" -o testpaths="tests renku conftest.py"
+}
+
+build_docs(){
+    sphinx-build -qnNW docs docs/_build/html
+    pytest -v -m "not integration" -o testpaths="docs conftest.py"
+}
+
+all=1
+tests=
+docs=
+
+while [ "${1-}" != "" ]; do
+    case $1 in
+        -t | --tests )
+            tests=1
+            all=0
+            ;;
+        -d | --docs )
+            docs=1
+            all=0
+            ;;
+    esac
+    shift
+done
+
+docs=$((docs||all))
+tests=$((tests||all))
+
+if [ "$docs" = "1" ]; then
+    build_docs
+fi
+
+if [ "$tests" = "1" ]; then
+    run_tests
+fi

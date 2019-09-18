@@ -43,6 +43,7 @@ python:
 
 stages:
   - name: test
+  - name: docs
   - name: integration
     if: branch = master AND (type != pull_request)
   - name: test OSX
@@ -64,6 +65,9 @@ before_install:
         requirements-builder -e all --level=min setup.py > .travis-lowest-requirements.txt;
         requirements-builder -e all --level=pypi setup.py > .travis-release-requirements.txt;
         requirements-builder -e all --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements.txt;
+        requirements-builder -e nodocs --level=min setup.py > .travis-lowest-requirements-nodocs.txt;
+        requirements-builder -e nodocs --level=pypi setup.py > .travis-release-requirements-nodocs.txt;
+        requirements-builder -e nodocs --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements-nodocs.txt;
     elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
         brew update;
         brew upgrade python;
@@ -75,22 +79,30 @@ before_install:
 
 install:
   - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
-        travis_retry python -m pip install -r .travis-${REQUIREMENTS}-requirements.txt;
-        travis_retry python -m pip install -e .[all];
+        travis_retry python -m pip install -r .travis-${REQUIREMENTS}-requirements-nodocs.txt;
+        travis_retry python -m pip install -e .[nodocs];
     elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
         travis_retry pipenv install --deploy;
         source "$(pipenv --venv)/bin/activate";
-        travis_retry pip install -e .[all];
+        travis_retry pip install -e .[nodocs];
     fi
 
 script:
-  - "./run-tests.sh"
+  - "./run-tests.sh -t"
 
 after_success:
   - coveralls
 
 jobs:
   include:
+    - stage: docs
+      os: linux
+      dist: xenial
+      language: python
+      install:
+        - travis_retry python -m pip install -r .travis-${REQUIREMENTS}-requirements-all.txt;
+          travis_retry python -m pip install -e .[all];
+      script: ./run-tests.sh -d
     - stage: integration
       os: linux
       dist: xenial
