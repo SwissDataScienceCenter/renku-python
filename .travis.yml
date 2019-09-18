@@ -88,7 +88,7 @@ install:
     fi
 
 script:
-  - "./run-tests.sh -t"
+  - "./run-tests.sh -t -s"
 
 after_success:
   - coveralls
@@ -99,6 +99,9 @@ jobs:
       os: linux
       dist: xenial
       language: python
+      env:
+        - REQUIREMENTS=lowest
+        - REQUIREMENTS=release
       install:
         - travis_retry python -m pip install -r .travis-${REQUIREMENTS}-requirements-all.txt;
           travis_retry python -m pip install -e .[all];
