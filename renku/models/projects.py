@@ -19,16 +19,19 @@
 
 import datetime
 
+import attr
+
 from renku.utils.datetime8601 import parse_date
 
 from . import _jsonld as jsonld
 from ._datastructures import Collection
+from .datasets import Creator
 
 
 @jsonld.s(
-    type='foaf:Project',
+    type='schema:Project',
     context={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'schema': 'http://schema.org/',
     },
     # TODO show a working example
     # translate={
@@ -39,26 +42,49 @@ from ._datastructures import Collection
 class Project(object):
     """Represent a project."""
 
-    name = jsonld.ib(default=None, context='foaf:name')
+    name = jsonld.ib(default=None, context='schema:name')
+
     created = jsonld.ib(
         converter=parse_date,
-        context='http://schema.org/dateCreated',
+        context='schema:dateCreated',
     )
+
     updated = jsonld.ib(
         converter=parse_date,
-        context='http://schema.org/dateUpdated',
+        context='schema:dateUpdated',
     )
+
     version = jsonld.ib(
         converter=str,
         default='1',
-        context='http://schema.org/schemaVersion',
+        context='schema:schemaVersion',
     )
+
+    client = attr.ib(default=None, kw_only=True)
+
+    creator = jsonld.ib(default=None, kw_only=True, context='schema:creator')
+
+    _id = jsonld.ib(context='@id', kw_only=True, default=None)
 
     @created.default
     @updated.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
+
+    def __attrs_post_init__(self):
+        """Initialize computed attributes."""
+        if self.created and self.created.tzinfo is None:
+            self.created = pytz.utc.localize(self.created)
+
+        if self.updated and self.updated.tzinfo is None:
+            self.updated = pytz.utc.localize(self.updated)
+
+        if not self.creator:
+            self.creator = Creator.from_git(self.client.repo)
+
+        if not self._id:
+            self._id = self.client.project_id
 
 
 class ProjectCollection(Collection):

@@ -375,8 +375,10 @@ class JSONLDMixin(ReferenceMixin):
 
         data_ = {}
         if client:
-            data_['client'] = client
-            data_['commit'] = commit
+            if client:
+                data_['client'] = client
+            if commit:
+                data_['commit'] = commit
 
         for k, v in compacted.items():
             if k in fields:
