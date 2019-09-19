@@ -556,7 +556,7 @@ def ls_tags(ctx, client, name, format):
 )
 @click.option('-t', '--tag', help='Dataset tag to export')
 @pass_local_client(
-    clean=False,
+    clean=True,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
