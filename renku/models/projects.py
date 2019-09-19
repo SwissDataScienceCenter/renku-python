@@ -29,14 +29,18 @@ from .datasets import Creator
 
 
 @jsonld.s(
-    type='schema:Project',
+    type=[
+        'schema:Project',
+        'prov:Location',
+    ],
     context={
         'schema': 'http://schema.org/',
+        'prov': 'http://www.w3.org/ns/prov#'
     },
-    # TODO show a working example
-    # translate={
-    #     'http://xmlns.com/foaf/0.1/name': 'http://schema.org/description',
-    # },
+    translate={
+        'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
+        'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
+    },
     slots=True,
 )
 class Project(object):
@@ -56,7 +60,7 @@ class Project(object):
 
     version = jsonld.ib(
         converter=str,
-        default='1',
+        default='2',
         context='schema:schemaVersion',
     )
 
@@ -74,16 +78,10 @@ class Project(object):
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
-        if self.created and self.created.tzinfo is None:
-            self.created = pytz.utc.localize(self.created)
-
-        if self.updated and self.updated.tzinfo is None:
-            self.updated = pytz.utc.localize(self.updated)
-
-        if not self.creator:
+        if not self.creator and self.client:
             self.creator = Creator.from_git(self.client.repo)
 
-        if not self._id:
+        if not self._id and self.client:
             self._id = self.client.project_id
 
 
