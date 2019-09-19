@@ -42,8 +42,8 @@ python:
   - "3.7"
 
 stages:
-  - name: test
   - name: docs
+  - name: test
   - name: integration
     if: branch = master AND (type != pull_request)
   - name: test OSX
