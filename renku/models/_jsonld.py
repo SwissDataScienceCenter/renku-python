@@ -331,7 +331,14 @@ class JSONLDMixin(ReferenceMixin):
             raise ValueError(data)
 
         if '@type' in data:
-            type_ = tuple(sorted(data['@type']))
+            # @type could be a string or a list - make sure it is a list
+            type_ = data['@type']
+            if not isinstance(type_, list):
+                type_ = [type_]
+            # If a json-ld class has multiple types, they are in a
+            # sorted tuple. This is used as the key for the class
+            # registry, so we have to match it here.
+            type_ = tuple(sorted(type_))
             if type_ in cls.__type_registry__ and getattr(
                 cls, '_jsonld_type', None
             ) != type_:
@@ -342,8 +349,11 @@ class JSONLDMixin(ReferenceMixin):
                     )
 
         if cls._jsonld_translate:
-            data = ld.compact(data, {'@context': cls._jsonld_translate})
+            # perform the translation
+            data = ld.compact(data, cls._jsonld_translate)
+            # compact using the class json-ld context
             data.pop('@context', None)
+            data = ld.compact(data, cls._jsonld_context)
 
         data.setdefault('@context', cls._jsonld_context)
 
@@ -365,7 +375,7 @@ class JSONLDMixin(ReferenceMixin):
 
         if data['@context'] != cls._jsonld_context:
             try:
-                compacted = ld.compact(data, {'@context': cls._jsonld_context})
+                compacted = ld.compact(data, cls._jsonld_context)
             except Exception:
                 compacted = data
         else:
@@ -374,11 +384,13 @@ class JSONLDMixin(ReferenceMixin):
         fields = cls._jsonld_fields
 
         data_ = {}
+        # `client` and `commit` are passed in optionally for some classes
+        # They might be unset if the metadata is used to instantiate
+        # an object outside of a repo/client context.
         if client:
-            if client:
-                data_['client'] = client
-            if commit:
-                data_['commit'] = commit
+            data_['client'] = client
+        if commit:
+            data_['commit'] = commit
 
         for k, v in compacted.items():
             if k in fields:
@@ -401,7 +413,7 @@ class JSONLDMixin(ReferenceMixin):
         import yaml
 
         with path.open(mode='r') as fp:
-            source = yaml.safe_load(fp) or {}
+            source = yaml.load(fp, Loader=yaml.BaseLoader) or {}
             self = cls.from_jsonld(
                 source,
                 client=client,
