@@ -42,8 +42,9 @@ def validate_iso8601(str_val):
 def parse_date(value):
     """Convert date to datetime."""
     if isinstance(value, datetime.datetime):
-        return value
-    date = dateutil_parse_date(value)
+        date = value
+    else:
+        date = dateutil_parse_date(value)
     if not date.tzinfo:
         # set timezone to local timezone
         tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo

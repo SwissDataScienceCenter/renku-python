@@ -100,6 +100,29 @@ will yield:
       my-dataset/
         datafile
 
+
+Importing data from an external provider:
+
+.. code-block:: console
+
+    $ renku dataset import 10.5281/zenodo.3352150
+
+This will import the dataset with the DOI (Digital Object Identifier)
+``10.5281/zenodo.3352150`` and make it locally available.
+Dataverse and Zenodo are supported, with DOIs (e.g. ``10.5281/zenodo.3352150``
+or ``doi:10.5281/zenodo.3352150``) and full URLs (e.g.
+``http://zenodo.org/record/3352150``)
+
+Exporting data to an external provider:
+
+.. code-block:: console
+
+    $ renku dataset export my-dataset zenodo
+
+This will export the dataset ``my-dataset`` to ``zenodo.org`` as a draft,
+allowing for publication later on.
+
+
 Listing all files in the project associated with a dataset.
 
 .. code-block:: console
