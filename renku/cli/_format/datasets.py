@@ -37,6 +37,8 @@ def tabular(client, datasets):
                 ('created', None),
                 ('creators_csv', 'creators'),
             )),
+            # workaround for tabulate issue 181
+            disable_numparse=[0, 2] if any(datasets) else False
         )
     )
 

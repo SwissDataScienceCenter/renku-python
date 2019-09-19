@@ -209,6 +209,7 @@ class DataverseRecordSerializer:
     def as_dataset(self, client):
         """Deserialize `DataverseRecordSerializer` to `Dataset`."""
         files = self.get_files()
+        print(self._json)
         dataset = Dataset.from_jsonld(self._json, client=client)
 
         serialized_files = []

@@ -461,7 +461,7 @@ class DatasetsApiMixin(object):
 
         return commit
 
-    def add_dataset_tag(self, dataset, tag, description=''):
+    def add_dataset_tag(self, dataset, tag, description='', force=False):
         """Adds a new tag to a dataset.
 
         Validates if the tag already exists and that the tag follows
@@ -480,7 +480,11 @@ class DatasetsApiMixin(object):
             ).format(tag))
 
         if any(t for t in dataset.tags if t.name == tag):
-            raise ValueError('Tag {} already exists'.format(tag))
+            if force:
+                # remove duplicate tag
+                dataset.tags = [t for t in dataset.tags if t.name != tag]
+            else:
+                raise ValueError('Tag {} already exists'.format(tag))
 
         latest_commit = self.get_newest_commit_for_dataset(dataset)
 
@@ -492,6 +496,17 @@ class DatasetsApiMixin(object):
         )
 
         dataset.tags.append(tag)
+
+        return dataset
+
+    def remove_dataset_tags(self, dataset, tags):
+        """Removes tags from a dataset."""
+        tag_names = {t.name for t in dataset.tags}
+        not_found = set(tags).difference(tag_names)
+
+        if len(not_found) > 0:
+            raise ValueError('Tags {} not found'.format(', '.join(not_found)))
+        dataset.tags = [t for t in dataset.tags if t.name not in tags]
 
         return dataset
 

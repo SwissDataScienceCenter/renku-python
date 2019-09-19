@@ -40,6 +40,8 @@ def tabular(client, tags):
                 ('dataset', None),
                 ('commit', None),
             )),
+            # workaround for tabulate issue 181
+            disable_numparse=[1, 2, 4] if len(tags) > 0 else False
         )
     )
 

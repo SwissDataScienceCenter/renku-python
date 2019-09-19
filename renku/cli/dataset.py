@@ -176,6 +176,7 @@ Unlink all files from a dataset:
 """
 import multiprocessing as mp
 import os
+import re
 import tempfile
 from collections import OrderedDict
 from multiprocessing import RLock, freeze_support
@@ -491,14 +492,14 @@ def remove(client, names):
     click.secho('OK', fg='green')
 
 
-def tag_dataset(client, name, tag, description):
+def tag_dataset(client, name, tag, description, force=False):
     """Creates a new tag for a dataset."""
     dataset_ = client.load_dataset(name)
     if not dataset_:
         raise BadParameter('Dataset not found.')
 
     try:
-        dataset = client.add_dataset_tag(dataset_, tag, description)
+        dataset = client.add_dataset_tag(dataset_, tag, description, force)
     except ValueError as e:
         raise BadParameter(e)
 
@@ -511,15 +512,39 @@ def tag_dataset(client, name, tag, description):
 @click.option(
     '-d', '--description', default='', help='A description for this tag'
 )
+@click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
 @pass_local_client(
     clean=False,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
 @click.pass_context
-def tag(ctx, client, name, tag, description):
+def tag(ctx, client, name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset(client, name, tag, description)
+    tag_dataset(client, name, tag, description, force)
+
+    click.secho('OK', fg='green')
+
+
+@dataset.command('rm-tags')
+@click.argument('name')
+@click.argument('tags', nargs=-1)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
+def remove_tags(client, name, tags):
+    """Remove tags from a dataset."""
+    dataset = client.load_dataset(name)
+    if not dataset:
+        raise BadParameter('Dataset not found.')
+
+    try:
+        dataset = client.remove_dataset_tags(dataset, tags)
+    except ValueError as e:
+        raise BadParameter(e)
+    dataset.to_yaml()
 
     click.secho('OK', fg='green')
 
@@ -584,7 +609,7 @@ def export_(client, id, provider, publish, tag):
             raise BadParameter('Tag {} not found'.format(tag))
 
         selected_commit = selected_tag.commit
-    elif dataset_.tags:
+    elif dataset_.tags and len(dataset_.tags) > 0:
         # Prompt user to select a tag to export
         tags = sorted(dataset_.tags, key=lambda t: t.created)
 
@@ -761,6 +786,7 @@ def import_(ctx, client, uri, name, extract):
 
         dataset_name = name or dataset.display_name
         if write_dataset(client, dataset_name):
+
             add_to_dataset(
                 client,
                 urls=[str(p) for p in Path(data_folder).glob('*')],
@@ -768,10 +794,14 @@ def import_(ctx, client, uri, name, extract):
                 with_metadata=dataset
             )
 
-            if dataset_.version:
+            if dataset.version:
+                tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
                 tag_dataset(
-                    client, dataset_name, dataset_.version,
-                    '{} tag created by renku import'.format(dataset_.version)
+                    client,
+                    dataset_name,
+                    tag_name,
+                    'Tag {} created by renku import'.format(dataset.version),
+                    force=True
                 )
 
             click.secho('OK', fg='green')
