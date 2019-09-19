@@ -1127,13 +1127,6 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
     assert '2' not in result.output
     assert '3' not in result.output
 
-    result = runner.invoke(
-        cli.cli,
-        ['dataset', 'rm-tags', 'my-dataset', '1', '2', '3'],
-        catch_exceptions=False,
-    )
-    assert 2 == result.exit_code
-
 
 def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
     result = runner.invoke(

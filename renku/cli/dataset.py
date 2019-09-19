@@ -100,6 +100,32 @@ will yield:
       my-dataset/
         datafile
 
+Tagging a dataset:
+
+A dataset can be tagged with an arbitrary tag to refer to the dataset at that
+point in time. A tag can be added like this:
+
+.. code-block:: console
+
+    $ renku dataset tag my-dataset 1.0 -d "Version 1.0 tag"
+
+A list of all tags can be seen by running:
+
+.. code-block:: console
+
+    $ renku dataset ls-tags my-dataset
+    CREATED              NAME    DESCRIPTION      DATASET     COMMIT
+    -------------------  ------  ---------------  ----------  ----------------
+    2019-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
+
+
+A tag can be removed with:
+
+.. code-block:: console
+
+    $ renku dataset rm-tags my-dataset 1.0
+
+
 
 Importing data from an external provider:
 
@@ -111,7 +137,8 @@ This will import the dataset with the DOI (Digital Object Identifier)
 ``10.5281/zenodo.3352150`` and make it locally available.
 Dataverse and Zenodo are supported, with DOIs (e.g. ``10.5281/zenodo.3352150``
 or ``doi:10.5281/zenodo.3352150``) and full URLs (e.g.
-``http://zenodo.org/record/3352150``)
+``http://zenodo.org/record/3352150``). A tag with the remote version of the
+dataset is automatically created.
 
 Exporting data to an external provider:
 
@@ -120,7 +147,10 @@ Exporting data to an external provider:
     $ renku dataset export my-dataset zenodo
 
 This will export the dataset ``my-dataset`` to ``zenodo.org`` as a draft,
-allowing for publication later on.
+allowing for publication later on. If the dataset has any tags set, you
+can chose if the repository `HEAD` version or one of the tags should be
+exported. The remote version will be set to the local tag that is being
+exported.
 
 
 Listing all files in the project associated with a dataset.
