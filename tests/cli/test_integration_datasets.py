@@ -52,10 +52,8 @@ def test_dataset_import_real_doi(runner, project, doi):
     assert 0 == result.exit_code
     assert doi['file'] in result.output
     assert doi['creator'] in result.output
-    print(result.output)
 
     result = runner.invoke(cli, ['dataset', 'ls-tags', doi['file']])
-    print(result.output)
     assert 0 == result.exit_code
     assert doi['version'] in result.output
 

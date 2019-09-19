@@ -977,7 +977,8 @@ def test_dataset_tag(tmpdir, runner, project):
     assert 0 == result.exit_code
 
 
-def test_dataset_ls_tags(tmpdir, runner, project, client):
+@pytest.mark.parametrize('form', ['tabular', 'json-ld'])
+def test_dataset_ls_tags(tmpdir, runner, project, client, form):
     result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
@@ -1016,7 +1017,7 @@ def test_dataset_ls_tags(tmpdir, runner, project, client):
 
     result = runner.invoke(
         cli.cli,
-        ['dataset', 'ls-tags', 'my-dataset'],
+        ['dataset', 'ls-tags', 'my-dataset', '--format={}'.format(form)],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
