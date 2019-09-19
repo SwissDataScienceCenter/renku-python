@@ -667,18 +667,15 @@ def import_(ctx, client, uri, name, extract):
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise BadParameter('Could not process {0}.\n{1}'.format(uri, err))
-    elif err:
-        click.echo(WARNING + err)
 
     try:
-
         record = provider.find_record(uri)
-        dataset_ = record.as_dataset(client)
-        files_ = dataset_.files
+        dataset = record.as_dataset(client)
+        files = dataset.files
 
         click.echo(
             tabulate(
-                files_,
+                files,
                 headers=OrderedDict((
                     ('checksum', None),
                     ('filename', 'name'),
@@ -708,7 +705,7 @@ def import_(ctx, client, uri, name, extract):
 
     click.confirm(text_prompt, abort=True)
 
-    if files_:
+    if files:
         data_folder = tempfile.mkdtemp()
 
         pool_size = min(
@@ -748,7 +745,7 @@ def import_(ctx, client, uri, name, extract):
                     data_folder,
                     file_,
                 )
-            ) for file_ in files_
+            ) for file_ in files
         ]
 
         try:
@@ -762,13 +759,13 @@ def import_(ctx, client, uri, name, extract):
             ))
         pool.close()
 
-        dataset_name = name or dataset_.display_name
+        dataset_name = name or dataset.display_name
         if write_dataset(client, dataset_name):
             add_to_dataset(
                 client,
                 urls=[str(p) for p in Path(data_folder).glob('*')],
                 name=dataset_name,
-                with_metadata=dataset_
+                with_metadata=dataset
             )
 
             if dataset_.version:

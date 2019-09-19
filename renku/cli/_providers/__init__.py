@@ -38,7 +38,7 @@ class ProviderFactory:
                 return None, 'Cannot parse URL.'
 
         provider = None
-        warning = ''
+        err = ''
 
         for _, potential_provider in ProviderFactory.PROVIDERS.items():
             try:
@@ -46,7 +46,7 @@ class ProviderFactory:
                     provider = potential_provider
                     break
             except (Exception, BaseException) as e:
-                warning += 'Couldn\'t test provider {prov}: {err}\n'.format(
+                err += 'Couldn\'t test provider {prov}: {err}\n'.format(
                     prov=potential_provider, err=e
                 )
 
@@ -54,19 +54,19 @@ class ProviderFactory:
 
         if is_doi_ and provider is None:
             return None, (
-                warning + 'Provider {} not found. '.format(
+                err + 'Provider {} not found. '.format(
                     uri.split('/')[1].split('.')[0]  # Get DOI provider name.
                 ) + 'Currently supporting following providers: {}'.
                 format(supported_providers)
             )
         elif provider is None:
             return None, (
-                warning + 'Provider not found for {}. '.format(uri) +
+                err + 'Provider not found for {}. '.format(uri) +
                 'Currently supporting following providers: {}'.
                 format(supported_providers)
             )
         else:
-            return provider(is_doi=is_doi_), warning
+            return provider(is_doi=is_doi_), err
 
     @staticmethod
     def from_id(provider_id):

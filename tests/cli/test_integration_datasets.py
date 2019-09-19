@@ -21,7 +21,7 @@ import os
 import git
 import pytest
 
-from renku import cli
+from renku.cli import cli
 
 
 @pytest.mark.parametrize(
@@ -41,45 +41,73 @@ from renku import cli
 def test_dataset_import_real_doi(runner, project, doi):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', doi['doi']], input=doi['input']
+        cli, ['dataset', 'import', doi['doi']], input=doi['input']
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    result = runner.invoke(cli.cli, ['dataset'])
+    result = runner.invoke(cli, ['dataset'])
     assert 0 == result.exit_code
     assert doi['file'] in result.output
     assert doi['creator'] in result.output
 
 
 @pytest.mark.parametrize(
-    'doi', [('10.5281/zenodo.597964', 'y'), ('10.5281/zenodo.3236928', 'n'),
-            ('10.5281/zenodo.2671633', 'n'), ('10.5281/zenodo.3237420', 'n'),
-            ('10.5281/zenodo.3236928', 'n'), ('10.5281/zenodo.3188334', 'y'),
-            ('10.5281/zenodo.3236928', 'n'), ('10.5281/zenodo.2669459', 'n'),
-            ('10.5281/zenodo.2371189', 'n'), ('10.5281/zenodo.2651343', 'n'),
-            ('10.5281/zenodo.1467859', 'n'), ('10.5281/zenodo.3240078', 'n'),
-            ('10.5281/zenodo.3240053', 'n'), ('10.5281/zenodo.3240010', 'n'),
-            ('10.5281/zenodo.3240012', 'n'), ('10.5281/zenodo.3240006', 'n'),
-            ('10.5281/zenodo.3239996', 'n'), ('10.5281/zenodo.3239256', 'n'),
-            ('10.5281/zenodo.3237813', 'n'), ('10.5281/zenodo.3239988', 'y'),
-            ('10.5281/zenodo.3239986', 'n'), ('10.5281/zenodo.3239984', 'n'),
-            ('10.5281/zenodo.3239982', 'n'), ('10.5281/zenodo.3239980', 'n'),
-            ('10.5281/zenodo.3188334', 'y'), ('10.7910/DVN/TJCLKP', 'n'),
-            ('10.7910/DVN/S8MSVF', 'y')]
+    'doi', [
+        ('10.5281/zenodo.3239980', 'n'),
+        ('10.5281/zenodo.3188334', 'y'),
+        ('10.7910/DVN/TJCLKP', 'n'),
+        ('10.7910/DVN/S8MSVF', 'y'),
+        ('10.5281/zenodo.597964', 'y'),
+        ('10.5281/zenodo.3236928', 'n'),
+        ('10.5281/zenodo.2671633', 'n'),
+        ('10.5281/zenodo.3237420', 'n'),
+        ('10.5281/zenodo.3236928', 'n'),
+        ('10.5281/zenodo.3188334', 'y'),
+        ('10.5281/zenodo.3236928', 'n'),
+        ('10.5281/zenodo.2669459', 'n'),
+        ('10.5281/zenodo.2371189', 'n'),
+        ('10.5281/zenodo.2651343', 'n'),
+        ('10.5281/zenodo.1467859', 'n'),
+        ('10.5281/zenodo.3240078', 'n'),
+        ('10.5281/zenodo.3240053', 'n'),
+        ('10.5281/zenodo.3240010', 'n'),
+        ('10.5281/zenodo.3240012', 'n'),
+        ('10.5281/zenodo.3240006', 'n'),
+        ('10.5281/zenodo.3239996', 'n'),
+        ('10.5281/zenodo.3239256', 'n'),
+        ('10.5281/zenodo.3237813', 'n'),
+        ('10.5281/zenodo.3239988', 'y'),
+    ]
 )
 @pytest.mark.integration
 def test_dataset_import_real_param(doi, runner, project):
     """Test dataset import and check metadata parsing."""
-    result = runner.invoke(
-        cli.cli, ['dataset', 'import', doi[0]], input=doi[1]
-    )
+    result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
+    if 'y' == doi[1]:
+        assert 0 == result.exit_code
+        assert 'OK' in result.output
+    else:
+        assert 1 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset'])
     assert 0 == result.exit_code
 
-    if 'y' == doi[1]:
-        assert 'OK' in result.output
 
-    result = runner.invoke(cli.cli, ['dataset'])
+@pytest.mark.parametrize(
+    'doi', [
+        ('10.5281/zenodo.3239984', 'n'),
+        ('zenodo.org/record/3239986', 'n'),
+        ('10.5281/zenodo.3239982', 'n'),
+    ]
+)
+@pytest.mark.integration
+def test_dataset_import_uri_404(doi, runner, project):
+    """Test dataset import and check that correct exception is raised."""
+    result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
+    assert 2 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset'])
     assert 0 == result.exit_code
 
 
@@ -87,14 +115,14 @@ def test_dataset_import_real_param(doi, runner, project):
 def test_dataset_import_real_doi_warnings(runner, project):
     """Test dataset import for existing DOI and dataset"""
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y'
+        cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y'
     )
     assert 0 == result.exit_code
     assert 'Warning: Newer version found' in result.output
     assert 'OK'
 
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y\ny'
+        cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y\ny'
     )
     assert 0 == result.exit_code
     assert 'Warning: Newer version found' in result.output
@@ -102,14 +130,14 @@ def test_dataset_import_real_doi_warnings(runner, project):
     assert 'OK' in result.output
 
     result = runner.invoke(
-        cli.cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\n'
+        cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\n'
     )
     assert 0 == result.exit_code
     assert 'Warning: Newer version found' not in result.output
     assert 'Warning: This dataset already exists.' not in result.output
     assert 'OK' in result.output
 
-    result = runner.invoke(cli.cli, ['dataset'])
+    result = runner.invoke(cli, ['dataset'])
     assert 0 == result.exit_code
     assert 'pyndl_naive_discriminat_v064' in result.output
     assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
@@ -122,7 +150,7 @@ def test_dataset_import_real_doi_warnings(runner, project):
 @pytest.mark.integration
 def test_dataset_import_fake_doi(runner, project, doi):
     """Test error raising for non-existing DOI."""
-    result = runner.invoke(cli.cli, ['dataset', 'import', doi[0]], input='y')
+    result = runner.invoke(cli, ['dataset', 'import', doi[0]], input='y')
     assert 2 == result.exit_code
     assert 'URI not found.' in result.output \
         or 'Provider {} not found'.format(doi[1]) in result.output
@@ -140,7 +168,7 @@ def test_dataset_import_fake_doi(runner, project, doi):
 @pytest.mark.integration
 def test_dataset_import_real_http(runner, project, url):
     """Test dataset import through HTTPS."""
-    result = runner.invoke(cli.cli, ['dataset', 'import', url], input='y')
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -155,7 +183,7 @@ def test_dataset_import_real_http(runner, project, url):
 @pytest.mark.integration
 def test_dataset_import_fake_http(runner, project, url):
     """Test dataset import through HTTPS."""
-    result = runner.invoke(cli.cli, ['dataset', 'import', url], input='y')
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
     assert 2 == result.exit_code
     assert 'URI not found.' in result.output
 
@@ -165,7 +193,7 @@ def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
     """Test successful uploading of a file to Zenodo deposit."""
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -175,8 +203,8 @@ def test_dataset_export_upload_file(
 
     # add data to dataset
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'my-dataset',
-                  str(new_file)]
+        cli, ['dataset', 'add', 'my-dataset',
+              str(new_file)]
     )
     assert 0 == result.exit_code
 
@@ -188,9 +216,7 @@ def test_dataset_export_upload_file(
     data_repo.git.add(update=True)
     data_repo.index.commit('metadata updated')
 
-    result = runner.invoke(
-        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
-    )
+    result = runner.invoke(cli, ['dataset', 'export', 'my-dataset', 'zenodo'])
 
     assert 0 == result.exit_code
     assert 'Exported to:' in result.output
@@ -202,7 +228,7 @@ def test_dataset_export_upload_multiple(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
     """Test successful uploading of a files to Zenodo deposit."""
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -215,7 +241,7 @@ def test_dataset_export_upload_multiple(
 
     # add data
     result = runner.invoke(
-        cli.cli,
+        cli,
         ['dataset', 'add', 'my-dataset'] + paths,
         catch_exceptions=False,
     )
@@ -229,9 +255,7 @@ def test_dataset_export_upload_multiple(
     data_repo.git.add(update=True)
     data_repo.index.commit('metadata updated')
 
-    result = runner.invoke(
-        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
-    )
+    result = runner.invoke(cli, ['dataset', 'export', 'my-dataset', 'zenodo'])
 
     assert 0 == result.exit_code
     assert 'Exported to:' in result.output
@@ -241,7 +265,7 @@ def test_dataset_export_upload_multiple(
 @pytest.mark.integration
 def test_dataset_export_upload_failure(runner, project, tmpdir, client):
     """Test failed uploading of a file to Zenodo deposit."""
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -251,14 +275,12 @@ def test_dataset_export_upload_failure(runner, project, tmpdir, client):
 
     # add data to dataset
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'my-dataset',
-                  str(new_file)]
+        cli, ['dataset', 'add', 'my-dataset',
+              str(new_file)]
     )
     assert 0 == result.exit_code
 
-    result = runner.invoke(
-        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
-    )
+    result = runner.invoke(cli, ['dataset', 'export', 'my-dataset', 'zenodo'])
     assert 2 == result.exit_code
     assert 'metadata.creators.0.affiliation' in result.output
     assert 'metadata.description' in result.output
@@ -269,7 +291,7 @@ def test_dataset_export_published_url(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
     """Test publishing of dataset."""
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -279,8 +301,8 @@ def test_dataset_export_published_url(
 
     # add data to dataset
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'my-dataset',
-                  str(new_file)]
+        cli, ['dataset', 'add', 'my-dataset',
+              str(new_file)]
     )
     assert 0 == result.exit_code
 
@@ -293,7 +315,7 @@ def test_dataset_export_published_url(
     data_repo.index.commit('metadata updated')
 
     result = runner.invoke(
-        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo', '--publish']
+        cli, ['dataset', 'export', 'my-dataset', 'zenodo', '--publish']
     )
 
     assert 0 == result.exit_code
@@ -306,7 +328,7 @@ def test_export_dataset_wrong_provider(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
     """Test non-existing provider."""
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -316,13 +338,13 @@ def test_export_dataset_wrong_provider(
 
     # add data to dataset
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'my-dataset',
-                  str(new_file)]
+        cli, ['dataset', 'add', 'my-dataset',
+              str(new_file)]
     )
     assert 0 == result.exit_code
 
     result = runner.invoke(
-        cli.cli, ['dataset', 'export', 'my-dataset', 'notzenodo']
+        cli, ['dataset', 'export', 'my-dataset', 'notzenodo']
     )
     assert 2 == result.exit_code
     assert 'Unknown provider.' in result.output
@@ -332,7 +354,7 @@ def test_export_dataset_wrong_provider(
 def test_dataset_export(runner, client, project):
     """Check dataset not found exception raised."""
     result = runner.invoke(
-        cli.cli, ['dataset', 'export', 'doesnotexists', 'somewhere']
+        cli, ['dataset', 'export', 'doesnotexists', 'somewhere']
     )
     assert 2 == result.exit_code
     assert 'Dataset not found.' in result.output
@@ -344,7 +366,7 @@ def test_export_dataset_unauthorized(
 ):
     """Test unauthorized exception raised."""
     client.set_value('zenodo', 'access_token', 'not-a-token')
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -354,14 +376,12 @@ def test_export_dataset_unauthorized(
 
     # add data to dataset
     result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'my-dataset',
-                  str(new_file)]
+        cli, ['dataset', 'add', 'my-dataset',
+              str(new_file)]
     )
     assert 0 == result.exit_code
 
-    result = runner.invoke(
-        cli.cli, ['dataset', 'export', 'my-dataset', 'zenodo']
-    )
+    result = runner.invoke(cli, ['dataset', 'export', 'my-dataset', 'zenodo'])
     assert 2 == result.exit_code
     assert 'Access unauthorized - update access token.' in result.output
 
@@ -397,7 +417,7 @@ def test_datasets_remote_import(
 ):
     """Test importing data into a dataset."""
     # create a dataset
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -405,10 +425,7 @@ def test_datasets_remote_import(
         assert dataset.name == 'dataset'
 
     # add data
-    result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'dataset',
-                  str(data_file)]
-    )
+    result = runner.invoke(cli, ['dataset', 'add', 'dataset', str(data_file)])
     assert 0 == result.exit_code
     assert os.stat(
         os.path.join('data', 'dataset', os.path.basename(str(data_file)))
@@ -416,7 +433,7 @@ def test_datasets_remote_import(
 
     # add data from a git repo via http
     result = runner.invoke(
-        cli.cli, [
+        cli, [
             'dataset', 'add', 'dataset', '--target', remotes['filename'],
             remotes['url']
         ]
@@ -426,7 +443,7 @@ def test_datasets_remote_import(
 
     # add data from local git repo
     result = runner.invoke(
-        cli.cli, [
+        cli, [
             'dataset',
             'add',
             'dataset',
@@ -466,7 +483,7 @@ def test_datasets_import_target(
 ):
     """Test importing data into a dataset."""
     # create a dataset
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -475,7 +492,7 @@ def test_datasets_import_target(
 
     # add data
     result = runner.invoke(
-        cli.cli,
+        cli,
         ['dataset', 'add', 'dataset',
          str(data_file)],
         catch_exceptions=False,
@@ -487,7 +504,7 @@ def test_datasets_import_target(
 
     # add data from a git repo via http
     result = runner.invoke(
-        cli.cli,
+        cli,
         [
             'dataset', 'add', 'dataset', '--target', remotes['filename'],
             remotes['url']
@@ -499,7 +516,7 @@ def test_datasets_import_target(
 
     # add data from local git repo
     result = runner.invoke(
-        cli.cli,
+        cli,
         [
             'dataset',
             'add',
