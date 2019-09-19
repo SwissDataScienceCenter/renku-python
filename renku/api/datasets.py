@@ -452,8 +452,7 @@ class DatasetsApiMixin(object):
         return url
 
     def get_newest_commit_for_dataset(self, dataset):
-        """Gets the newest commit in which the dataset or its files
-        were changes."""
+        """Gets the newest commit for a dataset or its files."""
         paths = [(Path(dataset.path) / self.METADATA).resolve()]
 
         paths.extend(f.full_path for f in dataset.files)
