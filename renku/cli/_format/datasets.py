@@ -38,6 +38,7 @@ def tabular(client, datasets):
                 ('creators_csv', 'creators'),
             )),
             # workaround for tabulate issue 181
+            # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
             disable_numparse=[0, 2] if any(datasets) else False
         )
     )

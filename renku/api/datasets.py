@@ -451,15 +451,23 @@ class DatasetsApiMixin(object):
             url = str(url / submodule_url.name)
         return url
 
-    def get_newest_commit_for_dataset(self, dataset):
-        """Gets the newest commit for a dataset or its files."""
+    def dataset_commits(self, dataset, max_results=None):
+        """Gets the newest commit for a dataset or its files.
+
+        Commits are returned sorted from newest to oldest.
+        """
+        kwargs = {}
+
+        if max_results:
+            kwargs['max_count'] = max_results
+
         paths = [(Path(dataset.path) / self.METADATA).resolve()]
 
         paths.extend(f.full_path for f in dataset.files)
 
-        commit = list(self.repo.iter_commits(max_count=1, paths=paths))[0]
+        commits = self.repo.iter_commits(paths=paths, **kwargs)
 
-        return commit
+        return commits
 
     def add_dataset_tag(self, dataset, tag, description='', force=False):
         """Adds a new tag to a dataset.
@@ -468,6 +476,8 @@ class DatasetsApiMixin(object):
         the same rules as docker tags.
         See https://docs.docker.com/engine/reference/commandline/tag/
         for a documentation of docker tag syntax.
+
+        :raises: ValueError
         """
         if len(tag) > 128:
             raise ValueError('Tags can be at most 128 characters long.')
@@ -486,7 +496,7 @@ class DatasetsApiMixin(object):
             else:
                 raise ValueError('Tag {} already exists'.format(tag))
 
-        latest_commit = self.get_newest_commit_for_dataset(dataset)
+        latest_commit = list(self.dataset_commits(dataset, max_results=1))[0]
 
         tag = DatasetTag(
             name=tag,

@@ -234,7 +234,7 @@ from .._compat import Path
 from ._client import pass_local_client
 from ._echo import WARNING, progressbar
 from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
-from ._format.dataset_tags import FORMATS as DATASET_TAGS_FORMATS
+from ._format.dataset_tags import DATASET_TAGS_FORMATS
 from ._format.datasets import FORMATS as DATASETS_FORMATS
 
 
@@ -522,6 +522,11 @@ def remove(client, names):
     click.secho('OK', fg='green')
 
 
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
 def tag_dataset(client, name, tag, description, force=False):
     """Creates a new tag for a dataset."""
     dataset_ = client.load_dataset(name)
@@ -543,29 +548,20 @@ def tag_dataset(client, name, tag, description, force=False):
     '-d', '--description', default='', help='A description for this tag'
 )
 @click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
-@pass_local_client(
-    clean=False,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
-@click.pass_context
-def tag(ctx, client, name, tag, description, force):
+def tag(name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset(client, name, tag, description, force)
+    tag_dataset(name, tag, description, force)
 
     click.secho('OK', fg='green')
 
 
-@dataset.command('rm-tags')
-@click.argument('name')
-@click.argument('tags', nargs=-1)
 @pass_local_client(
     clean=False,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def remove_tags(client, name, tags):
-    """Remove tags from a dataset."""
+def remove_dataset_tags(client, name, tags):
+    """Removes tags from a dataset."""
     dataset = client.load_dataset(name)
     if not dataset:
         raise BadParameter('Dataset not found.')
@@ -576,7 +572,27 @@ def remove_tags(client, name, tags):
         raise BadParameter(e)
     dataset.to_yaml()
 
+
+@dataset.command('rm-tags')
+@click.argument('name')
+@click.argument('tags', nargs=-1)
+def remove_tags(name, tags):
+    """Remove tags from a dataset."""
+    remove_dataset_tags(name, tags)
+
     click.secho('OK', fg='green')
+
+
+@pass_local_client(clean=False, commit=False)
+def list_tags(client, name, format):
+    """List all tags for a dataset."""
+    dataset_ = client.load_dataset(name)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    tags = sorted(dataset_.tags, key=lambda t: t.created)
+
+    return DATASET_TAGS_FORMATS[format](client, tags)
 
 
 @dataset.command('ls-tags')
@@ -587,17 +603,9 @@ def remove_tags(client, name, tags):
     default='tabular',
     help='Choose an output format.'
 )
-@pass_local_client(clean=False, commit=False)
-@click.pass_context
-def ls_tags(ctx, client, name, format):
+def ls_tags(name, format):
     """List all tags of a dataset."""
-    dataset_ = client.load_dataset(name)
-    if not dataset_:
-        raise BadParameter('Dataset not found.')
-
-    tags = sorted(dataset_.tags, key=lambda t: t.created)
-
-    DATASET_TAGS_FORMATS[format](client, tags)
+    click.echo(list_tags(name, format))
 
 
 @dataset.command('export')

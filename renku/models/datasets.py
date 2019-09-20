@@ -154,6 +154,7 @@ class CreatorsMixin:
 @jsonld.s(
     type='schema:PublicationEvent',
     context={'schema': 'http://schema.org/'},
+    frozen=True,
     slots=True,
 )
 class DatasetTag(object):

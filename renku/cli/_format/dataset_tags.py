@@ -19,8 +19,6 @@
 
 from collections import OrderedDict
 
-from renku.cli._echo import echo_via_pager
-
 
 def tabular(client, tags):
     """Format dataset tags with a tabular output.
@@ -30,19 +28,18 @@ def tabular(client, tags):
     """
     from renku.models._tabulate import tabulate
 
-    echo_via_pager(
-        tabulate(
-            tags,
-            headers=OrderedDict((
-                ('created', None),
-                ('name', None),
-                ('description', None),
-                ('dataset', None),
-                ('commit', None),
-            )),
-            # workaround for tabulate issue 181
-            disable_numparse=[1, 2, 4] if len(tags) > 0 else False
-        )
+    return tabulate(
+        tags,
+        headers=OrderedDict((
+            ('created', None),
+            ('name', None),
+            ('description', None),
+            ('dataset', None),
+            ('commit', None),
+        )),
+        # workaround for tabulate issue 181
+        # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
+        disable_numparse=[1, 2, 4] if len(tags) > 0 else False
     )
 
 
@@ -56,10 +53,10 @@ def jsonld(client, tags):
     from renku.models._jsonld import asjsonld
 
     data = [asjsonld(tag) for tag in tags]
-    echo_via_pager(dumps(data, indent=2))
+    return dumps(data, indent=2)
 
 
-FORMATS = {
+DATASET_TAGS_FORMATS = {
     'tabular': tabular,
     'json-ld': jsonld,
 }
