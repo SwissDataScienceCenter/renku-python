@@ -31,6 +31,7 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
+from renku.core.models.git import GitURL
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
 
@@ -133,14 +134,19 @@ class RepositoryApiMixin(GitCore):
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
 
-    @property
-    def project_id(self):
-        """Return the id for the project based on the repo origin remote."""
-        from renku.core.models.git import GitURL
+    @cached_property
+    def project(self):
+        """Return the Project instance."""
+        if self.renku_metadata_path.exists():
+            return Project.from_yaml(self.renku_metadata_path, client=self)
 
-        remote_name = 'origin'
+    @property
+    def remote(self, remote_name='origin'):
+        """Return host, owner and name of the remote if it exists."""
+        host = owner = name = None
         try:
-            remote_branch = self.repo.head.reference.tracking_branch()
+            remote_branch = \
+                self.repo.head.reference.tracking_branch()
             if remote_branch is not None:
                 remote_name = remote_branch.remote_name
         except TypeError:
@@ -158,22 +164,10 @@ class RepositoryApiMixin(GitCore):
             url = None
 
         if url:
-            remote_url = 'https://' + url.hostname
-
-            if url.owner:
-                remote_url += '/' + url.owner
-            if url.name:
-                remote_url += '/' + url.name
-
-            return remote_url
-
-        return 'file://{0}'.format(self.path)
-
-    @cached_property
-    def project(self):
-        """Return the FOAF/PROV representation of the project."""
-        if self.renku_metadata_path.exists():
-            return Project.from_yaml(self.renku_metadata_path, client=self)
+            host = url.hostname
+            owner = url.owner
+            name = url.name
+        return {'host': host, 'owner': owner, 'name': name}
 
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.core.models.provenance.activities.Activity`.
@@ -334,16 +328,15 @@ class RepositoryApiMixin(GitCore):
                 self.repo.git.checkout(current_commit)
 
     @contextmanager
-    def with_metadata(self, read_only=False):
+    def with_metadata(self, read_only=False, name=None):
         """Yield an editable metadata object."""
         metadata_path = self.renku_metadata_path
 
         if metadata_path.exists():
             metadata = Project.from_yaml(metadata_path, client=self)
         else:
-            metadata = Project.from_jsonld({},
-                                           client=self,
-                                           __reference__=metadata_path)
+            metadata = Project(name=name, client=self)
+            metadata.__reference__ = metadata_path
 
         yield metadata
 
@@ -420,8 +413,7 @@ class RepositoryApiMixin(GitCore):
                 ) + '\n'
             )
 
-        with self.with_metadata() as metadata:
-            metadata.name = name
+        with self.with_metadata(name=name) as metadata:
             metadata.updated = datetime.now(timezone.utc)
 
         return str(path)
