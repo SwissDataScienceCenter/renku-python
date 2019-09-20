@@ -23,7 +23,6 @@
 from .activities import Activity, ProcessRun, WorkflowRun
 from .agents import Person, SoftwareAgent
 from .entities import Collection, Entity, Process, Workflow
-from .expanded import Project
 from .qualified import Generation, Usage
 
 __all__ = (
