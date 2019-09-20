@@ -18,6 +18,84 @@
 Changes
 =======
 
+`0.6.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.5.2...v0.6.0>`__ (2019-09-18)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  adds \_label and commit data to imported dataset files, single commit
+   for imports
+   (`#651 <https://github.com/SwissDataScienceCenter/renku-python/issues/651>`__)
+   (`75ce369 <https://github.com/SwissDataScienceCenter/renku-python/commit/75ce369>`__)
+-  always add commit to dataset if possible
+   (`#648 <https://github.com/SwissDataScienceCenter/renku-python/issues/648>`__)
+   (`7659bc8 <https://github.com/SwissDataScienceCenter/renku-python/commit/7659bc8>`__),
+   closes
+   `#646 <https://github.com/SwissDataScienceCenter/renku-python/issues/646>`__
+-  cleanup needed for integration tests on py35
+   (`#653 <https://github.com/SwissDataScienceCenter/renku-python/issues/653>`__)
+   (`fdd7215 <https://github.com/SwissDataScienceCenter/renku-python/commit/fdd7215>`__)
+-  fixed serialization of datetime to iso format
+   (`#629 <https://github.com/SwissDataScienceCenter/renku-python/issues/629>`__)
+   (`693d59d <https://github.com/SwissDataScienceCenter/renku-python/commit/693d59d>`__)
+-  fixes broken integration test
+   (`#649 <https://github.com/SwissDataScienceCenter/renku-python/issues/649>`__)
+   (`04eba66 <https://github.com/SwissDataScienceCenter/renku-python/commit/04eba66>`__)
+-  hide image, pull, runner, show, workon and deactivate commands
+   (`#672 <https://github.com/SwissDataScienceCenter/renku-python/issues/672>`__)
+   (`a3e9998 <https://github.com/SwissDataScienceCenter/renku-python/commit/a3e9998>`__)
+-  integration tests fixed
+   (`#685 <https://github.com/SwissDataScienceCenter/renku-python/issues/685>`__)
+   (`f0ea8f0 <https://github.com/SwissDataScienceCenter/renku-python/commit/f0ea8f0>`__)
+-  migration of old datasets
+   (`#639 <https://github.com/SwissDataScienceCenter/renku-python/issues/639>`__)
+   (`4d4d7d2 <https://github.com/SwissDataScienceCenter/renku-python/commit/4d4d7d2>`__)
+-  migration timezones
+   (`#683 <https://github.com/SwissDataScienceCenter/renku-python/issues/683>`__)
+   (`58c2de4 <https://github.com/SwissDataScienceCenter/renku-python/commit/58c2de4>`__)
+-  Removes unneccesary call to git lfs with no paths
+   (`#658 <https://github.com/SwissDataScienceCenter/renku-python/issues/658>`__)
+   (`e32d48b <https://github.com/SwissDataScienceCenter/renku-python/commit/e32d48b>`__)
+-  renku home directory overwrite in tests
+   (`#657 <https://github.com/SwissDataScienceCenter/renku-python/issues/657>`__)
+   (`90e1c48 <https://github.com/SwissDataScienceCenter/renku-python/commit/90e1c48>`__)
+-  upload metadata before actual files
+   (`#652 <https://github.com/SwissDataScienceCenter/renku-python/issues/652>`__)
+   (`95ed468 <https://github.com/SwissDataScienceCenter/renku-python/commit/95ed468>`__)
+-  use latest_html for version check
+   (`#647 <https://github.com/SwissDataScienceCenter/renku-python/issues/647>`__)
+   (`c6b0309 <https://github.com/SwissDataScienceCenter/renku-python/commit/c6b0309>`__),
+   closes
+   `#641 <https://github.com/SwissDataScienceCenter/renku-python/issues/641>`__
+-  user-related metadata
+   (`#655 <https://github.com/SwissDataScienceCenter/renku-python/issues/655>`__)
+   (`44183e6 <https://github.com/SwissDataScienceCenter/renku-python/commit/44183e6>`__)
+-  zenodo export failing with relative paths
+   (`d40967c <https://github.com/SwissDataScienceCenter/renku-python/commit/d40967c>`__)
+
+Features
+~~~~~~~~
+
+-  dataverse import
+   (`#626 <https://github.com/SwissDataScienceCenter/renku-python/issues/626>`__)
+   (`9f0f9a1 <https://github.com/SwissDataScienceCenter/renku-python/commit/9f0f9a1>`__)
+-  enable all datasets command to operate on dirty repository
+   (`#607 <https://github.com/SwissDataScienceCenter/renku-python/issues/607>`__)
+   (`74e328b <https://github.com/SwissDataScienceCenter/renku-python/commit/74e328b>`__)
+-  explicit input output specification
+   (`#598 <https://github.com/SwissDataScienceCenter/renku-python/issues/598>`__)
+   (`ce8ba67 <https://github.com/SwissDataScienceCenter/renku-python/commit/ce8ba67>`__)
+-  export filename as schema:name
+   (`#643 <https://github.com/SwissDataScienceCenter/renku-python/issues/643>`__)
+   (`aed54bf <https://github.com/SwissDataScienceCenter/renku-python/commit/aed54bf>`__),
+   closes
+   `#640 <https://github.com/SwissDataScienceCenter/renku-python/issues/640>`__
+-  support for indirect inputs and outputs
+   (`#650 <https://github.com/SwissDataScienceCenter/renku-python/issues/650>`__)
+   (`e960a98 <https://github.com/SwissDataScienceCenter/renku-python/commit/e960a98>`__)
+
+
 `0.5.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.5.1...v0.5.2>`__ (2019-07-26)
 -------------------------------------------------------------------------------------------------------
 
@@ -37,12 +115,9 @@ Features
    closes
    `#508 <https://github.com/SwissDataScienceCenter/renku-python/issues/508>`__
 
-.. _section-2:
 
 `0.5.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.5.0...v0.5.1>`__ (2019-07-12)
 -------------------------------------------------------------------------------------------------------
-
-.. _bug-fixes-1:
 
 Bug Fixes
 ~~~~~~~~~
@@ -101,7 +176,6 @@ Bug Fixes
 -  **deps:** updated dependencies
    (`691644d <https://github.com/SwissDataScienceCenter/renku-python/commit/691644d>`__)
 
-.. _features-1:
 
 Features
 ~~~~~~~~
@@ -131,7 +205,6 @@ Features
 `0.5.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.4.0...v0.5.0>`__ (2019-03-28)
 -------------------------------------------------------------------------------------------------------
 
-.. _bug-fixes-2:
 
 Bug Fixes
 ~~~~~~~~~
@@ -147,7 +220,6 @@ Bug Fixes
 -  **datasets:** link flag on dataset add
    (`eae30f4 <https://github.com/SwissDataScienceCenter/renku-python/commit/eae30f4>`__)
 
-.. _features-2:
 
 Features
 ~~~~~~~~

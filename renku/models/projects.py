@@ -19,46 +19,70 @@
 
 import datetime
 
+import attr
+
 from renku.utils.datetime8601 import parse_date
 
 from . import _jsonld as jsonld
 from ._datastructures import Collection
+from .datasets import Creator
 
 
 @jsonld.s(
-    type='foaf:Project',
+    type=[
+        'schema:Project',
+        'prov:Location',
+    ],
     context={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
+        'schema': 'http://schema.org/',
+        'prov': 'http://www.w3.org/ns/prov#'
     },
-    # TODO show a working example
-    # translate={
-    #     'http://xmlns.com/foaf/0.1/name': 'http://schema.org/description',
-    # },
+    translate={
+        'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
+        'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
+    },
     slots=True,
 )
 class Project(object):
     """Represent a project."""
 
-    name = jsonld.ib(default=None, context='foaf:name')
+    name = jsonld.ib(default=None, context='schema:name')
+
     created = jsonld.ib(
         converter=parse_date,
-        context='http://schema.org/dateCreated',
+        context='schema:dateCreated',
     )
+
     updated = jsonld.ib(
         converter=parse_date,
-        context='http://schema.org/dateUpdated',
+        context='schema:dateUpdated',
     )
+
     version = jsonld.ib(
         converter=str,
-        default='1',
-        context='http://schema.org/schemaVersion',
+        default='2',
+        context='schema:schemaVersion',
     )
+
+    client = attr.ib(default=None, kw_only=True)
+
+    creator = jsonld.ib(default=None, kw_only=True, context='schema:creator')
+
+    _id = jsonld.ib(context='@id', kw_only=True, default=None)
 
     @created.default
     @updated.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
+
+    def __attrs_post_init__(self):
+        """Initialize computed attributes."""
+        if not self.creator and self.client:
+            self.creator = Creator.from_git(self.client.repo)
+
+        if not self._id and self.client:
+            self._id = self.client.project_id
 
 
 class ProjectCollection(Collection):

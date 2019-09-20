@@ -89,13 +89,3 @@ Relations
 .. autoclass:: Generation
    :members:
    :inherited-members:
-
-
-Expanded
---------
-
-.. py:module:: renku.models.provenance.expanded
-
-.. autoclass:: Project
-   :members:
-   :inherited-members:

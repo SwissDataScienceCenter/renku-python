@@ -19,6 +19,7 @@
 
 from datetime import datetime, timezone
 
+import pytest
 import yaml
 from freezegun import freeze_time
 
@@ -40,11 +41,59 @@ updated: 2018-02-22 15:33:11.089204
 version: '1'
 """
 
+PROJECT_V2 = """
+'@context':
+  _id: '@id'
+  created: schema:dateCreated
+  creator: schema:creator
+  name: schema:name
+  prov: http://www.w3.org/ns/prov#
+  schema: http://schema.org/
+  updated: schema:dateUpdated
+  version: schema:schemaVersion
+'@type':
+- prov:Location
+- schema:Project
+_id: https://renku.ch/demo/demo
+created: '2019-09-18T15:18:16.866609+00:00'
+creator:
+  '@context':
+    _id: '@id'
+    affiliation: schema:affiliation
+    alternate_name: schema:alternateName
+    email: schema:email
+    name: schema:name
+    schema: http://schema.org/
+  '@type': schema:Person
+  _id: mailto:demo@example.com
+  affiliation: null
+  alternate_name: null
+  email: demo@example.com
+  name: demo user
+name: demo
+updated: '2019-09-18T15:18:16.868838+00:00'
+version: 2
+"""
+
+PROJECT_V1_BROKEN = """
+'@context':
+  created: http://schema.org/dateCreated
+  foaf: http://xmlns.com/foaf/0.1/
+  name: notexisting:name
+  updated: http://schema.org/dateUpdated
+  version: http://schema.org/schemaVersion
+'@type': foaf:Project
+created: 2018-02-22 10:40:14.878009
+name: demo
+updated: 2018-02-22 15:33:11.089204
+version: '1'
+"""
+
 
 def test_project_context():
     """Test project context definition."""
-    assert 'foaf' in Project._jsonld_context
-    assert 'created' in Project._jsonld_context
+    keys = ['schema', 'created', 'creator', 'name', 'updated']
+    assert all(k in Project._jsonld_context for k in keys)
 
 
 def test_project_serialization():
@@ -56,24 +105,49 @@ def test_project_serialization():
         assert project.updated == frozen_time().replace(tzinfo=timezone.utc)
 
     data = asjsonld(project)
-    assert data['@type'].endswith('Project')
+    assert 'schema:Project' in data['@type']
+    assert 'prov:Location' in data['@type']
 
     context = data['@context']
-    assert 'created' in context
+    assert 'schema:name' == context['name']
+    assert 'schema:creator' == context['creator']
+    assert 'schema:dateUpdated' == context['updated']
+    assert 'schema:dateCreated' == context['created']
+    assert 'schema:schemaVersion' == context['version']
 
 
-def test_project_metadata_compatibility():
+@pytest.mark.parametrize(
+    'project_meta,version,is_broken', [
+        (PROJECT_V1, 1, False),
+        (PROJECT_V1_BROKEN, 1, True),
+        (PROJECT_V2, 2, False),
+    ]
+)
+def test_project_metadata_compatibility(project_meta, version, is_broken):
     """Test loading of the initial version."""
-    project = Project.from_jsonld(yaml.safe_load(PROJECT_V1))
+    from renku.models._jsonld import NoDatesSafeLoader
+    project = Project.from_jsonld(
+        yaml.load(project_meta, Loader=NoDatesSafeLoader)
+    )
+    assert str(version) == project.version
 
-    assert project.name == 'demo'
-    assert project.version == '1'
+    if not is_broken:
+        assert 'demo' == project.name
+
+    assert 'schema:name' == project._jsonld_context['name']
+    assert 'schema:creator' == project._jsonld_context['creator']
+    assert 'schema:dateUpdated' == project._jsonld_context['updated']
+    assert 'schema:dateCreated' == project._jsonld_context['created']
+    assert 'schema:schemaVersion' == project._jsonld_context['version']
 
 
-def test_project_datetime_loading():
+@pytest.mark.parametrize('project_meta', [PROJECT_V1, PROJECT_V2])
+def test_project_datetime_loading(project_meta):
     """Check that datetime is correctly loaded."""
-    project = Project.from_jsonld(yaml.safe_load(PROJECT_V1))
-
+    from renku.models._jsonld import NoDatesSafeLoader
+    project = Project.from_jsonld(
+        yaml.load(project_meta, Loader=NoDatesSafeLoader)
+    )
     assert isinstance(project.updated, datetime)
     assert isinstance(project.created, datetime)
 
