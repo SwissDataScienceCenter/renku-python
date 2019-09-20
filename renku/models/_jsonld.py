@@ -50,6 +50,36 @@ DOC_TPL = (
 make_type = type
 
 
+# Shamelessly copy/pasting from SO:
+# https://stackoverflow.com/questions/34667108/ignore-dates-and-times-while-parsing-yaml
+# This is needed to allow us to load from yaml and use json down the line.
+class NoDatesSafeLoader(yaml.SafeLoader):
+    """Used to safely load basic python objects but ignore datetime strings."""
+
+    @classmethod
+    def remove_implicit_resolver(cls, tag_to_remove):
+        """
+        Remove implicit resolvers for a particular tag.
+
+        Takes care not to modify resolvers in super classes.
+
+        We want to load datetimes as strings, not dates, because we
+        go on to serialise as json which doesn't have the advanced types
+        of yaml, and leads to incompatibilities down the track.
+        """
+        if 'yaml_implicit_resolvers' not in cls.__dict__:
+            cls.yaml_implicit_resolvers = cls.yaml_implicit_resolvers.copy()
+
+        for first_letter, mappings in cls.yaml_implicit_resolvers.items():
+            cls.yaml_implicit_resolvers[first_letter] = [
+                (tag, regexp)
+                for tag, regexp in mappings if tag != tag_to_remove
+            ]
+
+
+NoDatesSafeLoader.remove_implicit_resolver('tag:yaml.org,2002:timestamp')
+
+
 def attrs(
     maybe_cls=None, type=None, context=None, translate=None, **attrs_kwargs
 ):
@@ -413,7 +443,7 @@ class JSONLDMixin(ReferenceMixin):
         import yaml
 
         with path.open(mode='r') as fp:
-            source = yaml.load(fp, Loader=yaml.BaseLoader) or {}
+            source = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
             self = cls.from_jsonld(
                 source,
                 client=client,

@@ -125,8 +125,9 @@ def test_project_serialization():
 )
 def test_project_metadata_compatibility(project_meta, version, is_broken):
     """Test loading of the initial version."""
+    from renku.models._jsonld import NoDatesSafeLoader
     project = Project.from_jsonld(
-        yaml.load(project_meta, Loader=yaml.BaseLoader)
+        yaml.load(project_meta, Loader=NoDatesSafeLoader)
     )
     assert str(version) == project.version
 
@@ -143,8 +144,9 @@ def test_project_metadata_compatibility(project_meta, version, is_broken):
 @pytest.mark.parametrize('project_meta', [PROJECT_V1, PROJECT_V2])
 def test_project_datetime_loading(project_meta):
     """Check that datetime is correctly loaded."""
+    from renku.models._jsonld import NoDatesSafeLoader
     project = Project.from_jsonld(
-        yaml.load(project_meta, Loader=yaml.BaseLoader)
+        yaml.load(project_meta, Loader=NoDatesSafeLoader)
     )
     assert isinstance(project.updated, datetime)
     assert isinstance(project.created, datetime)
