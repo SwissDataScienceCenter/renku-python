@@ -456,16 +456,11 @@ class DatasetsApiMixin(object):
 
         Commits are returned sorted from newest to oldest.
         """
-        kwargs = {}
-
-        if max_results:
-            kwargs['max_count'] = max_results
-
         paths = [(Path(dataset.path) / self.METADATA).resolve()]
 
         paths.extend(f.full_path for f in dataset.files)
 
-        commits = self.repo.iter_commits(paths=paths, **kwargs)
+        commits = self.repo.iter_commits(paths=paths, max_count=max_results)
 
         return commits
 
