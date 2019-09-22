@@ -359,7 +359,7 @@ class ZenodoDeposition:
 
         return response
 
-    def attach_metadata(self, dataset):
+    def attach_metadata(self, dataset, tag):
         """Attach metadata to deposition on Zenodo."""
         request_payload = {
             'metadata': {
@@ -372,6 +372,11 @@ class ZenodoDeposition:
                 } for creator in dataset.creator]
             }
         }
+
+        version = tag.name if tag else dataset.version
+
+        if version:
+            request_payload['metadata']['version'] = version
 
         response = requests.put(
             url=self.attach_metadata_url,
@@ -436,13 +441,13 @@ class ZenodoExporter(ExporterApi):
         jsonld['upload_type'] = 'dataset'
         return jsonld
 
-    def export(self, publish):
+    def export(self, publish, tag=None):
         """Execute entire export process."""
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)
 
         # Step 2. Attach metadata to deposition
-        deposition.attach_metadata(self.dataset)
+        deposition.attach_metadata(self.dataset, tag)
 
         # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:

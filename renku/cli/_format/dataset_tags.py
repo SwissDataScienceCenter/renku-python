@@ -15,52 +15,48 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Serializers for datasets."""
+"""Serializers for dataset tags list."""
 
-import os
 from collections import OrderedDict
 
-import click
 
+def tabular(client, tags):
+    """Format dataset tags with a tabular output.
 
-def tabular(client, datasets):
-    """Format datasets with a tabular output."""
+    :param client: LocalClient instance.
+    :param tags: Dataset tags.
+    """
     from renku.models._tabulate import tabulate
 
-    click.echo(
-        tabulate(
-            datasets,
-            headers=OrderedDict((
-                ('uid', 'id'),
-                ('display_name', None),
-                ('version', None),
-                ('created', None),
-                ('creators_csv', 'creators'),
-            )),
-            # workaround for tabulate issue 181
-            # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
-            disable_numparse=[0, 2] if any(datasets) else False
-        )
+    return tabulate(
+        tags,
+        headers=OrderedDict((
+            ('created', None),
+            ('name', None),
+            ('description', None),
+            ('dataset', None),
+            ('commit', None),
+        )),
+        # workaround for tabulate issue 181
+        # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
+        disable_numparse=[1, 2, 4] if len(tags) > 0 else False
     )
 
 
-def jsonld(client, datasets):
-    """Format datasets as JSON-LD."""
+def jsonld(client, tags):
+    """Format dataset tags as JSON-LD.
+
+    :param client: LocalClient instance.
+    :param tags: Dataset tags.
+    """
     from renku.models._json import dumps
     from renku.models._jsonld import asjsonld
 
-    data = [
-        asjsonld(
-            dataset,
-            basedir=os.path.relpath(
-                '.', start=str(dataset.__reference__.parent)
-            )
-        ) for dataset in datasets
-    ]
-    click.echo(dumps(data, indent=2))
+    data = [asjsonld(tag) for tag in tags]
+    return dumps(data, indent=2)
 
 
-FORMATS = {
+DATASET_TAGS_FORMATS = {
     'tabular': tabular,
     'json-ld': jsonld,
 }

@@ -100,6 +100,32 @@ will yield:
       my-dataset/
         datafile
 
+Tagging a dataset:
+
+A dataset can be tagged with an arbitrary tag to refer to the dataset at that
+point in time. A tag can be added like this:
+
+.. code-block:: console
+
+    $ renku dataset tag my-dataset 1.0 -d "Version 1.0 tag"
+
+A list of all tags can be seen by running:
+
+.. code-block:: console
+
+    $ renku dataset ls-tags my-dataset
+    CREATED              NAME    DESCRIPTION      DATASET     COMMIT
+    -------------------  ------  ---------------  ----------  ----------------
+    2019-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
+
+
+A tag can be removed with:
+
+.. code-block:: console
+
+    $ renku dataset rm-tags my-dataset 1.0
+
+
 
 Importing data from an external provider:
 
@@ -111,7 +137,8 @@ This will import the dataset with the DOI (Digital Object Identifier)
 ``10.5281/zenodo.3352150`` and make it locally available.
 Dataverse and Zenodo are supported, with DOIs (e.g. ``10.5281/zenodo.3352150``
 or ``doi:10.5281/zenodo.3352150``) and full URLs (e.g.
-``http://zenodo.org/record/3352150``)
+``http://zenodo.org/record/3352150``). A tag with the remote version of the
+dataset is automatically created.
 
 Exporting data to an external provider:
 
@@ -120,7 +147,10 @@ Exporting data to an external provider:
     $ renku dataset export my-dataset zenodo
 
 This will export the dataset ``my-dataset`` to ``zenodo.org`` as a draft,
-allowing for publication later on.
+allowing for publication later on. If the dataset has any tags set, you
+can chose if the repository `HEAD` version or one of the tags should be
+exported. The remote version will be set to the local tag that is being
+exported.
 
 
 Listing all files in the project associated with a dataset.
@@ -176,6 +206,7 @@ Unlink all files from a dataset:
 """
 import multiprocessing as mp
 import os
+import re
 import tempfile
 from collections import OrderedDict
 from multiprocessing import RLock, freeze_support
@@ -203,6 +234,7 @@ from .._compat import Path
 from ._client import pass_local_client
 from ._echo import WARNING, progressbar
 from ._format.dataset_files import FORMATS as DATASET_FILES_FORMATS
+from ._format.dataset_tags import DATASET_TAGS_FORMATS
 from ._format.datasets import FORMATS as DATASETS_FORMATS
 
 
@@ -490,6 +522,92 @@ def remove(client, names):
     click.secho('OK', fg='green')
 
 
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
+def tag_dataset(client, name, tag, description, force=False):
+    """Creates a new tag for a dataset."""
+    dataset_ = client.load_dataset(name)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    try:
+        dataset = client.add_dataset_tag(dataset_, tag, description, force)
+    except ValueError as e:
+        raise BadParameter(e)
+
+    dataset.to_yaml()
+
+
+@dataset.command('tag')
+@click.argument('name')
+@click.argument('tag')
+@click.option(
+    '-d', '--description', default='', help='A description for this tag'
+)
+@click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
+def tag(name, tag, description, force):
+    """Create a tag for a dataset."""
+    tag_dataset(name, tag, description, force)
+
+    click.secho('OK', fg='green')
+
+
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=COMMIT_DIFF_STRATEGY,
+)
+def remove_dataset_tags(client, name, tags):
+    """Removes tags from a dataset."""
+    dataset = client.load_dataset(name)
+    if not dataset:
+        raise BadParameter('Dataset not found.')
+
+    try:
+        dataset = client.remove_dataset_tags(dataset, tags)
+    except ValueError as e:
+        raise BadParameter(e)
+    dataset.to_yaml()
+
+
+@dataset.command('rm-tags')
+@click.argument('name')
+@click.argument('tags', nargs=-1)
+def remove_tags(name, tags):
+    """Remove tags from a dataset."""
+    remove_dataset_tags(name, tags)
+
+    click.secho('OK', fg='green')
+
+
+@pass_local_client(clean=False, commit=False)
+def list_tags(client, name, format):
+    """List all tags for a dataset."""
+    dataset_ = client.load_dataset(name)
+    if not dataset_:
+        raise BadParameter('Dataset not found.')
+
+    tags = sorted(dataset_.tags, key=lambda t: t.created)
+
+    return DATASET_TAGS_FORMATS[format](client, tags)
+
+
+@dataset.command('ls-tags')
+@click.argument('name')
+@click.option(
+    '--format',
+    type=click.Choice(DATASET_TAGS_FORMATS),
+    default='tabular',
+    help='Choose an output format.'
+)
+def ls_tags(name, format):
+    """List all tags of a dataset."""
+    click.echo(list_tags(name, format))
+
+
 @dataset.command('export')
 @click.argument('id')
 @click.argument('provider')
@@ -499,12 +617,13 @@ def remove(client, names):
     is_flag=True,
     help='Automatically publish exported dataset.'
 )
+@click.option('-t', '--tag', help='Dataset tag to export')
 @pass_local_client(
-    clean=False,
+    clean=True,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def export_(client, id, provider, publish):
+def export_(client, id, provider, publish, tag):
     """Export data to 3rd party provider."""
     config_key_secret = 'access_token'
     provider_id = provider
@@ -518,34 +637,73 @@ def export_(client, id, provider, publish):
     except KeyError:
         raise BadParameter('Unknown provider.')
 
-    access_token = client.get_value(provider_id, config_key_secret)
-    exporter = provider.get_exporter(dataset_, access_token=access_token)
+    selected_tag = None
+    selected_commit = client.repo.head.commit
 
-    if access_token is None:
-        text_prompt = 'Before exporting, you must configure an access token\n'
-        text_prompt += 'Create one at: {0}\n'.format(
-            exporter.access_token_url()
+    if tag:
+        selected_tag = next((t for t in dataset_.tags if t.name == tag), None)
+
+        if not selected_tag:
+            raise BadParameter('Tag {} not found'.format(tag))
+
+        selected_commit = selected_tag.commit
+    elif dataset_.tags and len(dataset_.tags) > 0:
+        # Prompt user to select a tag to export
+        tags = sorted(dataset_.tags, key=lambda t: t.created)
+
+        text_prompt = 'Tag to export: \n\n<HEAD>\t[1]\n'
+
+        text_prompt += '\n'.join(
+            '{}\t[{}]'.format(t.name, i) for i, t in enumerate(tags, start=2)
         )
-        text_prompt += 'Access token'
 
-        access_token = click.prompt(text_prompt, type=str)
-        if access_token is None or len(access_token) == 0:
-            raise BadParameter(
-                'You must provide an access token for the target provider.'
+        text_prompt += '\n\nTag'
+
+        selection = click.prompt(
+            text_prompt, type=click.IntRange(1,
+                                             len(tags) + 1), default=1
+        )
+
+        if selection > 1:
+            selected_tag = tags[selection - 2]
+            selected_commit = selected_tag.commit
+
+    with client.with_commit(selected_commit):
+        dataset_ = client.load_dataset(id)
+        if not dataset_:
+            raise BadParameter('Dataset not found.')
+
+        access_token = client.get_value(provider_id, config_key_secret)
+        exporter = provider.get_exporter(dataset_, access_token=access_token)
+
+        if access_token is None:
+            text_prompt = (
+                'Before exporting, you must configure an access'
+                ' token\n'
             )
+            text_prompt += 'Create one at: {0}\n'.format(
+                exporter.access_token_url()
+            )
+            text_prompt += 'Access token'
 
-        client.set_value(provider_id, config_key_secret, access_token)
-        exporter.set_access_token(access_token)
+            access_token = click.prompt(text_prompt, type=str)
+            if access_token is None or len(access_token) == 0:
+                raise BadParameter(
+                    'You must provide an access token for the target provider.'
+                )
 
-    try:
-        destination = exporter.export(publish)
-    except HTTPError as e:
-        if 'unauthorized' in str(e):
-            client.remove_value(provider_id, config_key_secret)
+            client.set_value(provider_id, config_key_secret, access_token)
+            exporter.set_access_token(access_token)
 
-        raise BadParameter(e)
+        try:
+            destination = exporter.export(publish, selected_tag)
+        except HTTPError as e:
+            if 'unauthorized' in str(e):
+                client.remove_value(provider_id, config_key_secret)
 
-    click.secho('Exported to: {0}'.format(destination))
+            raise BadParameter(e)
+
+        click.secho('Exported to: {0}'.format(destination))
     click.secho('OK', fg='green')
 
 
@@ -666,12 +824,23 @@ def import_(ctx, client, uri, name, extract):
 
         dataset_name = name or dataset.display_name
         if write_dataset(client, dataset_name):
+
             add_to_dataset(
                 client,
                 urls=[str(p) for p in Path(data_folder).glob('*')],
                 name=dataset_name,
                 with_metadata=dataset
             )
+
+            if dataset.version:
+                tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
+                tag_dataset(
+                    client,
+                    dataset_name,
+                    tag_name,
+                    'Tag {} created by renku import'.format(dataset.version),
+                    force=True
+                )
 
             click.secho('OK', fg='green')
 

@@ -934,3 +934,229 @@ def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     """Check that dataverse URIs resolve to ``DataverseProvider``."""
     provider, _ = ProviderFactory.from_uri(uri)
     assert type(provider) is DataverseProvider
+
+
+def test_dataset_tag(tmpdir, runner, project):
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create some data
+    new_file = tmpdir.join('file')
+    new_file.write(str('test'))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset',
+         str(new_file)],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    # tag dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'tag', 'my-dataset', '1.0'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'tag', 'my-dataset', 'A', '-d', 'short descriptiön'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'tag', 'my-dataset', 'aBc9.34-11_55.t'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+
+@pytest.mark.parametrize('form', ['tabular', 'json-ld'])
+def test_dataset_ls_tags(tmpdir, runner, project, client, form):
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create some data
+    new_file = tmpdir.join('file')
+    new_file.write(str('test'))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset',
+         str(new_file)],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    commit1 = client.repo.head.commit.hexsha
+
+    # tag dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'tag', 'my-dataset', '1.0', '-d', 'first tag!'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    commit2 = client.repo.head.commit.hexsha
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'tag', 'my-dataset', 'aBc9.34-11_55.t'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'ls-tags', 'my-dataset', '--format={}'.format(form)],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert '1.0' in result.output
+    assert 'aBc9.34-11_55.t' in result.output
+    assert 'first tag!' in result.output
+    assert commit1 in result.output
+    assert commit2 in result.output
+
+
+def test_dataset_rm_tag(tmpdir, runner, project, client):
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create some data
+    new_file = tmpdir.join('file')
+    new_file.write(str('test'))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset',
+         str(new_file)],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    commit1 = client.repo.head.commit.hexsha
+
+    # tag dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'tag', 'my-dataset', '1.0', '-d', 'first tag!'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'ls-tags', 'my-dataset'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert '1.0' in result.output
+    assert 'first tag!' in result.output
+    assert commit1 in result.output
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'rm-tags', 'my-dataset', '2.0'],
+        catch_exceptions=False,
+    )
+    assert 2 == result.exit_code
+    assert 'not found' in result.output
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'rm-tags', 'my-dataset', '1.0'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'rm-tags', 'my-dataset', '1.0'],
+        catch_exceptions=False,
+    )
+    assert 2 == result.exit_code
+    assert 'not found' in result.output
+
+
+def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create some data
+    new_file = tmpdir.join('file')
+    new_file.write(str('test'))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset',
+         str(new_file)],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    for i in range(1, 4):
+        # tag dataset
+        result = runner.invoke(
+            cli.cli,
+            ['dataset', 'tag', 'my-dataset',
+             str(i)],
+            catch_exceptions=False,
+        )
+        assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'rm-tags', 'my-dataset', '1', '2', '3'],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert '1' not in result.output
+    assert '2' not in result.output
+    assert '3' not in result.output
+
+
+def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'rm-tags', 'my-dataset', '1'],
+        catch_exceptions=False,
+    )
+
+    assert 2 == result.exit_code
+    result = runner.invoke(cli.cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # create some data
+    new_file = tmpdir.join('file')
+    new_file.write(str('test'))
+
+    # add data to dataset
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'add', 'my-dataset',
+         str(new_file)],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli.cli,
+        ['dataset', 'rm-tags', 'my-dataset', '1'],
+        catch_exceptions=False,
+    )
+    assert 2 == result.exit_code

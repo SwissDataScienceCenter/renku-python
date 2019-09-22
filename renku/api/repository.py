@@ -300,6 +300,31 @@ class RepositoryApiMixin(GitCore):
         return self, commit, path
 
     @contextmanager
+    def with_commit(self, commit):
+        """Yield the state of the repo at a specific commit."""
+        current_branch = None
+        current_commit = None
+
+        try:
+            current_branch = self.repo.active_branch
+        except TypeError as e:
+            # not on a branch, detached head
+            if 'HEAD is a detached' in str(e):
+                current_commit = self.repo.head.commit
+            else:
+                raise ValueError('Couldn\'t get active branch or commit', e)
+
+        self.repo.git.checkout(commit)
+
+        try:
+            yield
+        finally:
+            if current_branch:
+                self.repo.git.checkout(current_branch)
+            elif current_commit:
+                self.repo.git.checkout(current_commit)
+
+    @contextmanager
     def with_metadata(self, read_only=False):
         """Yield an editable metadata object."""
         metadata_path = self.renku_metadata_path
