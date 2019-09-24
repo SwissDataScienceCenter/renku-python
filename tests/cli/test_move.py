@@ -91,7 +91,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     # add data from local git repo
     result = runner.invoke(
         cli, [
-            'dataset', 'add', 'dataset', '-t', 'file',
+            'dataset', 'add', 'dataset', '-s', 'file',
             data_repository.working_dir
         ],
         catch_exceptions=False
@@ -99,10 +99,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     assert 0 == result.exit_code
 
     src = client.path / client.datadir / 'dataset' / 'file'
-    assert src.is_symlink()
     assert src.exists()
-
-    linked = src.resolve()
 
     result = runner.invoke(
         cli, ['mv', str(src), destination], catch_exceptions=False
@@ -110,7 +107,4 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     assert 0 == result.exit_code
 
     dst = client.path / destination
-    assert dst.is_symlink()
     assert dst.exists()
-
-    assert linked == dst.resolve()
