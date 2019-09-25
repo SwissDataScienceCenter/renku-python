@@ -33,22 +33,25 @@ Setup & general
 
 Test new repository
 -------------------
-- [ ] Init renku in a bare repo
-- [ ] Create a dataset and add a file
-- [ ] List datasets and files
-- [ ] Import a dataset from Zenodo and/or Dataverse
-- [ ] List datasets and files
-- [ ] Remove a dataset
-- [ ] ``renku run`` a simple command, e.g. ``cp``
-- [ ] ``renku rerun`` the command with changed input
-- [ ] Check that renku log looks sensible
-- [ ] Check that git log looks sensible
+- [ ] Init renku in a bare repo.
+- [ ] Create a dataset and add a file.
+- [ ] List datasets and files.
+- [ ] Import a dataset from Zenodo and/or Dataverse.
+- [ ] List datasets and files.
+- [ ] Remove a dataset.
+- [ ] Create a workflow process with at least two steps, which counts the
+  words in a file and outputs the result into another file, utilizing
+  `renku run`.
+- [ ] Change the input file from the previous step and rerun the workflow
+  to check the new results.
+- [ ] Check that renku log looks sensible.
+- [ ] Check that git log looks sensible.
 
 Test existing repository
 ------------------------
-- [ ] Enter an existing repository
-- [ ] Run ``renku migrate`` commands
-- [ ] List datasets and dataset files
-- [ ] Rerun an existing workflow
-- [ ] Check that renku log looks sensible
-- [ ] Check that git log looks sensible
+- [ ] Enter an existing repository.
+- [ ] Run ``renku migrate`` commands.
+- [ ] List datasets and dataset files.
+- [ ] Rerun an existing workflow.
+- [ ] Check that renku log looks sensible.
+- [ ] Check that git log looks sensible.
