@@ -30,6 +30,7 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku._compat import Path
 from renku.api.config import RENKU_HOME
+from renku.models.projects import Project
 from renku.models.refs import LinkReference
 
 from ._git import GitCore
@@ -131,11 +132,10 @@ class RepositoryApiMixin(GitCore):
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
 
-    @cached_property
-    def project(self):
-        """Return FOAF/PROV representation of the project."""
+    @property
+    def project_id(self):
+        """Return the id for the project based on the repo origin remote."""
         from renku.cli._docker import GitURL
-        from renku.models.provenance import Project
 
         remote_name = 'origin'
         try:
@@ -164,9 +164,14 @@ class RepositoryApiMixin(GitCore):
             if url.name:
                 remote_url += '/' + url.name
 
-            return Project(id=remote_url)
+            return remote_url
 
-        return Project(id='file://{0}'.format(self.path))
+        return 'file://{0}'.format(self.path)
+
+    @cached_property
+    def project(self):
+        """Return the FOAF/PROV representation of the project."""
+        return Project.from_yaml(self.renku_metadata_path, client=self)
 
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.models.provenance.activities.Activity` instance.
@@ -295,16 +300,41 @@ class RepositoryApiMixin(GitCore):
         return self, commit, path
 
     @contextmanager
+    def with_commit(self, commit):
+        """Yield the state of the repo at a specific commit."""
+        current_branch = None
+        current_commit = None
+
+        try:
+            current_branch = self.repo.active_branch
+        except TypeError as e:
+            # not on a branch, detached head
+            if 'HEAD is a detached' in str(e):
+                current_commit = self.repo.head.commit
+            else:
+                raise ValueError('Couldn\'t get active branch or commit', e)
+
+        self.repo.git.checkout(commit)
+
+        try:
+            yield
+        finally:
+            if current_branch:
+                self.repo.git.checkout(current_branch)
+            elif current_commit:
+                self.repo.git.checkout(current_commit)
+
+    @contextmanager
     def with_metadata(self, read_only=False):
         """Yield an editable metadata object."""
-        from renku.models.projects import Project
-
         metadata_path = self.renku_metadata_path
 
         if metadata_path.exists():
-            metadata = Project.from_yaml(metadata_path)
+            metadata = Project.from_yaml(metadata_path, client=self)
         else:
-            metadata = Project.from_jsonld({}, __reference__=metadata_path)
+            metadata = Project.from_jsonld({},
+                                           client=self,
+                                           __reference__=metadata_path)
 
         yield metadata
 
