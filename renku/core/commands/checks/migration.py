@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Checks needed to determine dataset migration policy."""
+import os.path
 import shutil
 import uuid
 from collections import defaultdict
@@ -29,9 +30,19 @@ from renku.core.models.refs import LinkReference
 from ..echo import WARNING
 
 
+def is_dataset_in_submodule(project_root, dataset_path):
+    """Return true if the path is in a submodule of this dataset."""
+    sub_path = str(dataset_path)[len(str(project_root)):]
+    return '{0}.renku{0}'.format(os.path.sep) in sub_path
+
+
 def dataset_pre_0_3(client):
     """Return paths of dataset metadata for pre 0.3.4."""
-    return (client.path / 'data').rglob(client.METADATA)
+    hits = (client.path / 'data').rglob(client.METADATA)
+    # Filter out any paths are in .renku folders
+    project_root = client.path
+    in_proj = [f for f in hits if not is_dataset_in_submodule(project_root, f)]
+    return in_proj
 
 
 def check_dataset_metadata(client):
