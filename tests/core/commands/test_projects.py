@@ -153,3 +153,31 @@ def test_project_datetime_loading(project_meta):
 
     assert project.updated.tzinfo is not None
     assert project.created.tzinfo is not None
+
+
+def test_project_creator_deserialization(client, project):
+    """Check that the correct creator is returned on deserialization."""
+    from renku.core.models.datasets import Creator
+
+    # modify the project metadata to change the creator
+    project = client.project
+    project.creator = Creator(email='johndoe@example.com', name='Johnny Doe')
+    project.to_yaml()
+    client.repo.git.commit(
+        '-a', '--amend', '-C', 'HEAD', '--author',
+        'Johnny Doe <johndoe@example.com>', '--no-verify'
+    )
+    # the project creator should always be the one in the metadata
+    assert client.project.creator.email == 'johndoe@example.com'
+
+    # Remove the creator from metadata
+    project = client.project
+    project.creator = None
+    project.to_yaml()
+    client.repo.git.commit(
+        '-a', '--amend', '-C', 'HEAD', '--author',
+        'Jane Doe <janedoe@example.com>', '--no-verify'
+    )
+    # now the creator should be the one from the commit
+    project = Project.from_yaml(client.renku_metadata_path, client=client)
+    assert project.creator.email == 'janedoe@example.com'

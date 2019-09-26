@@ -25,7 +25,7 @@ from contextlib import contextmanager
 import git
 import pytest
 
-from renku.core.models.datasets import Creator, DatasetFile
+from renku.core.models.datasets import Creator, Dataset, DatasetFile
 
 
 def _key(client, dataset, filename):
@@ -162,3 +162,25 @@ def test_creator_parse(creators, data_file):
     # creators must be a set or list of dicts or Creator
     with pytest.raises(ValueError):
         f = DatasetFile(path='file', creator=['name'])
+
+
+def test_dataset_serialization(dataset):
+    """Test dataset (de)serialization."""
+    dataset_metadata = dataset.asjsonld()
+    dataset = Dataset.from_jsonld(dataset_metadata)
+
+    # assert that all attributes found in metadata are set in the instance
+    assert dataset.created
+    assert dataset.creator
+    assert dataset.identifier
+    assert dataset.name
+    assert dataset.path
+    assert dataset._project
+
+    # check values
+    assert str(dataset.created.isoformat()) == dataset_metadata.get('created')
+    assert dataset.creator[0].email == dataset_metadata.get('creator'
+                                                            )[0].get('email')
+    assert dataset.identifier == dataset_metadata.get('identifier')
+    assert dataset.name == dataset_metadata.get('name')
+    assert dataset.path == dataset_metadata.get('path')
