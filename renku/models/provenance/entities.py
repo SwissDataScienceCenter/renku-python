@@ -45,7 +45,7 @@ class CommitMixin:
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _project = jsonld.ib(context='schema:isPartOf', kw_only=True)
+    _project = jsonld.ib(context='schema:isPartOf', kw_only=True, default=None)
 
     @property
     def submodules(self):
@@ -72,18 +72,16 @@ class CommitMixin:
             return '{self.path}@{hexsha}'.format(hexsha=hexsha, self=self)
         return '{hexsha}'.format(hexsha=hexsha, self=self)
 
-    @_project.default
-    def default_project(self):
-        """Generate a default location."""
-        if self.client:
-            return self.client.project
-
     def __attrs_post_init__(self):
         """Post-init hook."""
         if self.path:
             path = Path(self.path)
             if path.is_absolute():
                 self.path = str(path.relative_to(self.client.path))
+
+        # always force "project" to be the current project
+        if self.client:
+            self._project = self.client.project
 
 
 @jsonld.s(
