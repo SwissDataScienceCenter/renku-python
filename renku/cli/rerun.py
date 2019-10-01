@@ -44,16 +44,16 @@ a tool, then these files must be recreated as well. See the explanation in
 import os
 import sys
 import uuid
+from pathlib import Path
 
 import click
 
-from renku._compat import Path
-from renku.models.cwl._ascwl import ascwl
-from renku.models.cwl.types import File
-
-from ._client import pass_local_client
-from ._graph import Graph
-from ._options import option_siblings
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.cwl_runner import execute
+from renku.core.commands.graph import Graph
+from renku.core.commands.options import option_siblings
+from renku.core.models.cwl.ascwl import ascwl
+from renku.core.models.cwl.types import File
 
 
 def _format_default(client, value):
@@ -184,7 +184,6 @@ def rerun(client, revision, roots, siblings, inputs, paths):
         )
 
     # Execute the workflow and relocate all output files.
-    from ._cwl import execute
     # FIXME get new output paths for edited tools
     # output_paths = {path for _, path in workflow.iter_output_files()}
     execute(

@@ -36,9 +36,9 @@ filename before ``@``.
 
 import click
 
-from ._ascii import _format_sha1
-from ._client import pass_local_client
-from ._graph import Graph
+from renku.core.commands.ascii import _format_sha1
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.graph import Graph
 
 
 @click.command()

@@ -24,14 +24,13 @@ after the move.
 """
 
 import os
+from pathlib import Path
 from subprocess import run
 
 import click
 
-from renku._compat import Path
-
-from ._client import pass_local_client
-from ._echo import WARNING, progressbar
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.echo import WARNING, progressbar
 
 
 @click.command(name='mv')
@@ -44,7 +43,7 @@ from ._echo import WARNING, progressbar
 @click.pass_context
 def move(ctx, client, sources, destination):
     """Move files and check repository for potential problems."""
-    from renku.api._git import _expand_directories
+    from renku.core.management.git import _expand_directories
 
     dst = Path(destination)
 

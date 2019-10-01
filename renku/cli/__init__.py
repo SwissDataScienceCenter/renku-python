@@ -81,32 +81,30 @@ import click
 import click_completion
 import yaml
 
-from ..api.client import LocalClient
-from ..api.config import RENKU_HOME, default_config_dir, print_app_config_path
-from ..api.repository import default_path
-from ._exc import IssueFromTraceback
-from ._options import install_completion, option_use_external_storage
-from ._version import check_version, print_version
-from .config import config
-from .dataset import dataset
-from .doctor import doctor
-from .githooks import githooks
-from .image import image
-from .init import init
-from .log import log
-from .migrate import migrate
-from .move import move
-from .pull import pull
-from .remove import remove
-from .rerun import rerun
-from .run import run
-from .runner import runner
-from .show import show
-from .status import status
-from .storage import storage
-from .update import update
-from .workflow import workflow
-from .workon import deactivate, workon
+from renku.cli.config import config
+from renku.cli.dataset import dataset
+from renku.cli.doctor import doctor
+from renku.cli.githooks import githooks
+from renku.cli.init import init
+from renku.cli.log import log
+from renku.cli.migrate import migrate
+from renku.cli.move import move
+from renku.cli.remove import remove
+from renku.cli.rerun import rerun
+from renku.cli.run import run
+from renku.cli.show import show
+from renku.cli.status import status
+from renku.cli.storage import storage
+from renku.cli.update import update
+from renku.cli.workflow import workflow
+from renku.core.commands.exception_handler import IssueFromTraceback
+from renku.core.commands.options import install_completion, \
+    option_use_external_storage
+from renku.core.commands.version import check_version, print_version
+from renku.core.management.client import LocalClient
+from renku.core.management.config import RENKU_HOME, default_config_dir, \
+    print_app_config_path
+from renku.core.management.repository import default_path
 
 #: Monkeypatch Click application.
 click_completion.init()
@@ -204,22 +202,17 @@ def help(ctx):
 # Register subcommands:
 cli.add_command(config)
 cli.add_command(dataset)
-cli.add_command(deactivate)
 cli.add_command(doctor)
 cli.add_command(githooks)
-cli.add_command(image)
 cli.add_command(init)
 cli.add_command(log)
 cli.add_command(migrate)
 cli.add_command(move)
-cli.add_command(pull)
 cli.add_command(remove)
 cli.add_command(rerun)
 cli.add_command(run)
-cli.add_command(runner)
 cli.add_command(show)
 cli.add_command(status)
 cli.add_command(storage)
 cli.add_command(update)
 cli.add_command(workflow)
-cli.add_command(workon)

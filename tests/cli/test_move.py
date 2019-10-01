@@ -21,20 +21,20 @@ import os
 
 import pytest
 
-from renku import cli
+from renku.cli import cli
 
 
 def test_move_dataset_file(tmpdir, runner, client):
     """Test move of a file that belongs to a dataset."""
     # create a dataset
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
+    result = runner.invoke(cli, ['dataset', 'create', 'testing'])
     assert 0 == result.exit_code
 
     source = tmpdir.join('source')
     source.write('Source file')
 
     result = runner.invoke(
-        cli.cli,
+        cli,
         ['dataset', 'add', 'testing', source.strpath],
         catch_exceptions=False,
     )
@@ -42,28 +42,28 @@ def test_move_dataset_file(tmpdir, runner, client):
 
     assert (client.path / client.datadir / 'testing' / 'source').exists()
 
-    result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
+    result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli.cli, ['mv', 'data', 'files'])
+    result = runner.invoke(cli, ['mv', 'data', 'files'])
     assert 0 == result.exit_code
 
     assert not (client.path / client.datadir / 'testing' / 'source').exists()
     assert (client.path / 'files' / 'testing' / 'source').exists()
 
-    result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
+    result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
 
     src = os.path.join('files', 'testing', 'source')
     dst = os.path.join('files', 'testing', 'newname')
 
-    result = runner.invoke(cli.cli, ['mv', src, dst], catch_exceptions=False)
+    result = runner.invoke(cli, ['mv', src, dst], catch_exceptions=False)
     assert 0 == result.exit_code
 
     assert not (client.path / src).exists()
     assert (client.path / dst).exists()
 
-    result = runner.invoke(cli.cli, ['doctor'], catch_exceptions=False)
+    result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
 
 
@@ -81,7 +81,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     """Test importing data into a dataset."""
     # create a dataset
     dataset_name = 'dataset'
-    result = runner.invoke(cli.cli, ['dataset', 'create', dataset_name])
+    result = runner.invoke(cli, ['dataset', 'create', dataset_name])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -90,7 +90,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
 
     # add data from local git repo
     result = runner.invoke(
-        cli.cli, [
+        cli, [
             'dataset', 'add', 'dataset', '-t', 'file',
             data_repository.working_dir
         ],
@@ -105,7 +105,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     linked = src.resolve()
 
     result = runner.invoke(
-        cli.cli, ['mv', str(src), destination], catch_exceptions=False
+        cli, ['mv', str(src), destination], catch_exceptions=False
     )
     assert 0 == result.exit_code
 

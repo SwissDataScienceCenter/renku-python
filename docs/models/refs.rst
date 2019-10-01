@@ -18,5 +18,5 @@
 File References
 ===============
 
-.. automodule:: renku.models.refs
+.. automodule:: renku.core.models.refs
    :members:

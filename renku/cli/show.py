@@ -69,11 +69,11 @@ respectively.
 
 import click
 
-from ._client import pass_local_client
-from ._graph import Graph
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.graph import Graph
 
 
-@click.group(hidden=True)
+@click.group()
 def show():
     """Show information about objects in current repository.
 
@@ -114,7 +114,7 @@ def inputs(ctx, client, revision, paths):
 
     <PATHS>    Files to show. If no files are given all input files are shown.
     """
-    from renku.models.provenance import ProcessRun
+    from renku.core.models.provenance.activities import ProcessRun
 
     graph = Graph(client)
     paths = set(paths)
@@ -168,7 +168,7 @@ def outputs(ctx, client, revision, paths):
         if not output_paths:
             ctx.exit(1)
 
-        from renku.models._datastructures import DirectoryTree
+        from renku.core.models.datastructures import DirectoryTree
         tree = DirectoryTree.from_list(item.path for item in filter)
 
         for output in output_paths:
@@ -181,8 +181,8 @@ def _context_names():
     """Return list of valid context names."""
     import inspect
 
-    from renku.models import provenance
-    from renku.models._jsonld import JSONLDMixin
+    from renku.core.models import provenance
+    from renku.core.models.jsonld import JSONLDMixin
 
     for name in dir(provenance):
         cls = getattr(provenance, name)
@@ -200,7 +200,7 @@ def print_context_names(ctx, param, value):
 
 def _context_json(name):
     """Return JSON-LD string for given context name."""
-    from renku.models import provenance
+    from renku.core.models import provenance
 
     cls = getattr(provenance, name)
     return {

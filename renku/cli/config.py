@@ -38,22 +38,9 @@ You display a previously set value with:
     https://registry.gitlab.com/demo/demo
 
 """
-import configparser
-
 import click
-from click import BadParameter
 
-from renku.api.config import get_config
-
-from ._client import pass_local_client
-
-
-def _split_section_and_key(key):
-    """Return a tuple with config section and key."""
-    parts = key.split('.')
-    if len(parts) > 1:
-        return 'renku "{0}"'.format(parts[0]), '.'.join(parts[1:])
-    return 'renku', key
+from renku.core.commands.config import update_config
 
 
 @click.command()
@@ -65,18 +52,7 @@ def _split_section_and_key(key):
     is_flag=True,
     help='Store to global configuration.'
 )
-@pass_local_client
-def config(client, key, value, is_global):
+def config(key, value, is_global):
     """Manage configuration options."""
-    write_op = value is not None
-    config_ = get_config(client, write_op, is_global)
-    if write_op:
-        with config_:
-            section, config_key = _split_section_and_key(key)
-            config_.set_value(section, config_key, value)
-            click.echo(value)
-    else:
-        try:
-            click.echo(config_.get_value(*_split_section_and_key(key)))
-        except configparser.NoSectionError:
-            raise BadParameter('Requested configuration not found')
+    updated = update_config(key, value, is_global)
+    click.secho(updated)

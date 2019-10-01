@@ -67,9 +67,9 @@ using the :program:`dot` program.
 import click
 from git import NULL_TREE
 
-from ._client import pass_local_client
-from ._format.graph import FORMATS
-from ._graph import Graph
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.format.graph import FORMATS
+from renku.core.commands.graph import Graph
 
 
 @click.command()
