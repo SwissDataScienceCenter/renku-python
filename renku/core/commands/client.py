@@ -62,6 +62,14 @@ def pass_local_client(
 
     def new_func(*args, **kwargs):
         ctx = click.get_current_context()
+
+        client = next((a for a in args if isinstance(a, LocalClient)), None)
+        client = client or kwargs.get('client', None)
+
+        if client and isinstance(client, LocalClient):
+            result = ctx.invoke(method, *args, **kwargs)
+            return result
+
         client = ctx.ensure_object(LocalClient)
         stack = contextlib.ExitStack()
 
