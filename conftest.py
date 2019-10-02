@@ -253,24 +253,22 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture(
-    params=[
-        {
-            'name': 'old-datasets-v0.3.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.1.git',
-            'exit_code': 0
-        },
-        {
-            'name': 'test-renku-v0.3.0.git',
-            'exit_code': 1
-        },
-    ],
+    params=[{
+        'name': 'old-datasets-v0.3.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.1.git',
+        'exit_code': 0
+    }, {
+        'name': 'test-renku-v0.3.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-submodule-v0.6.1.git',
+        'exit_code': 0
+    }],
     scope='module',
 )
 def old_bare_repository(request, tmpdir_factory):
