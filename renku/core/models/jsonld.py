@@ -401,7 +401,8 @@ class JSONLDMixin(ReferenceMixin):
 
         for migration in set(migrations):
             data = migration(data)
-            __source__ = migration(__source__)
+            if __source__:
+                __source__ = migration(__source__)
 
         if data['@context'] != cls._jsonld_context:
             try:
