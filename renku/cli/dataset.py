@@ -412,7 +412,7 @@ def ls_tags(name, format):
 @click.option('-t', '--tag', help='Dataset tag to export')
 def export_(id, provider, publish, tag):
     """Export data to 3rd party provider."""
-    output = export_dataset(id, provider, publish, tag)
+    output = export_dataset(id, provider, publish, tag, with_prompt=True)
     click.echo(output)
     click.secho('OK', fg='green')
 

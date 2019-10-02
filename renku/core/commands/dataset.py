@@ -266,7 +266,7 @@ def dataset_remove(client, names, with_output=False):
     clean=True,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
-)  # TODO: Finish refactor (ticket #702)
+)
 def export_dataset(client, id, provider, publish, tag, with_prompt=False):
     """Export data to 3rd party provider."""
     config_key_secret = 'access_token'
