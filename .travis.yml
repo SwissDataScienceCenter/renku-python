@@ -120,6 +120,7 @@ jobs:
       language: python
       env:
         - REQUIREMENTS=release
+      script: pytest -m integration -v
     - stage: integration
       python: "3.7"
       os: linux
@@ -127,6 +128,7 @@ jobs:
       language: python
       env:
         - REQUIREMENTS=release
+      script: pytest -m integration -v
     - stage: integration
       os: linux
       dist: xenial
@@ -141,6 +143,7 @@ jobs:
       language: python
       env:
         - REQUIREMENTS=lowest
+      script: pytest -m integration -v
     - stage: integration
       python: "3.7"
       os: linux
@@ -148,7 +151,7 @@ jobs:
       language: python
       env:
         - REQUIREMENTS=lowest
-
+      script: pytest -m integration -v
     - stage: test OSX
       if: branch = master
       language: generic
