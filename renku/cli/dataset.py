@@ -211,7 +211,7 @@ import yaml
 from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_parent, dataset_remove, edit_dataset, export_dataset, \
     file_unlink, import_dataset, list_files, list_tags, remove_dataset_tags, \
-    tag_dataset
+    tag_dataset_with_client
 from renku.core.commands.echo import WARNING, echo_via_pager
 from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -373,7 +373,7 @@ def remove(names):
 @click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset(name, tag, description, force)
+    tag_dataset_with_client(name, tag, description, force)
     click.secho('OK', fg='green')
 
 
@@ -426,7 +426,10 @@ def export_(id, provider, publish, tag):
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-def import_(uri, name, extract):
+@click.option(
+    '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
+)
+def import_(uri, name, extract, yes):
     """Import data from a 3rd party provider.
 
     Supported providers: [Zenodo, Dataverse]
@@ -436,6 +439,7 @@ def import_(uri, name, extract):
         name,
         extract,
         with_prompt=True,
-        handle_duplicate_fn=write_dataset
+        handle_duplicate_fn=write_dataset,
+        force=yes
     )
     click.secho('OK', fg='green')

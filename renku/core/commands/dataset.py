@@ -19,6 +19,7 @@
 
 import multiprocessing as mp
 import os
+import re
 import tempfile
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -355,7 +356,13 @@ def export_dataset(client, id, provider, publish, tag, with_prompt=False):
     commit_only=COMMIT_DIFF_STRATEGY,
 )
 def import_dataset(
-    client, uri, name, extract, with_prompt=False, handle_duplicate_fn=None
+    client,
+    uri,
+    name,
+    extract,
+    with_prompt=False,
+    force=False,
+    handle_duplicate_fn=None
 ):
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -386,7 +393,8 @@ def import_dataset(
                     record.links.get('latest_html')
                 ) + text_prompt
 
-            click.confirm(text_prompt, abort=True)
+            if not force:
+                click.confirm(text_prompt, abort=True)
 
     except KeyError as e:
         raise BadParameter((
@@ -455,13 +463,28 @@ def import_dataset(
         pool.close()
 
         dataset_name = name or dataset.display_name
-        if handle_duplicate_fn and handle_duplicate_fn(client, dataset_name):
+        if (
+            force or (
+                handle_duplicate_fn and
+                handle_duplicate_fn(client, dataset_name)
+            )
+        ):
             add_to_dataset(
                 client,
                 urls=[str(p) for p in Path(data_folder).glob('*')],
                 name=dataset_name,
                 with_metadata=dataset
             )
+
+            if dataset.version:
+                tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
+                tag_dataset(
+                    client,
+                    dataset_name,
+                    tag_name,
+                    'Tag {} created by renku import'.format(dataset.version),
+                    force=True
+                )
 
 
 def download_file(extract, data_folder, file, chunk_size=16384):
@@ -589,6 +612,11 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
+def tag_dataset_with_client(client, name, tag, description, force=False):
+    """Creates a new tag for a dataset and injects a LocalClient."""
+    tag_dataset(client, name, tag, description, force)
+
+
 def tag_dataset(client, name, tag, description, force=False):
     """Creates a new tag for a dataset."""
     dataset_ = client.load_dataset(name)
