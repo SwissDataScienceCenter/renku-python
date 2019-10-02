@@ -36,10 +36,11 @@ from collections import defaultdict
 import click
 import yaml
 
-from renku.models.cwl._ascwl import ascwl
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.graph import Graph
+from renku.core.models.cwl.ascwl import ascwl
 
-from ._client import pass_local_client
-from ._graph import Graph
+# TODO: Finish refactoring (ticket #703)
 
 
 def _ref(name):
@@ -59,7 +60,7 @@ def _deref(ref):
 def workflow(ctx, client):
     """List or manage workflows with subcommands."""
     if ctx.invoked_subcommand is None:
-        from renku.models.refs import LinkReference
+        from renku.core.models.refs import LinkReference
 
         names = defaultdict(list)
         for ref in LinkReference.iter_items(client, common_path='workflows'):
@@ -82,7 +83,7 @@ def validate_path(ctx, param, value):
     client = ctx.obj
 
     if value is None:
-        from renku.models.provenance import ProcessRun
+        from renku.core.models.provenance.activities import ProcessRun
         activity = client.process_commit()
 
         if not isinstance(activity, ProcessRun):
@@ -107,7 +108,7 @@ def validate_path(ctx, param, value):
 @pass_local_client(clean=True, commit=True)
 def set_name(client, name, path, force):
     """Sets the <name> for remote <path>."""
-    from renku.models.refs import LinkReference
+    from renku.core.models.refs import LinkReference
     LinkReference.create(client=client, name=_ref(name),
                          force=force).set_reference(path)
 
@@ -119,7 +120,7 @@ def set_name(client, name, path, force):
 @pass_local_client(clean=True, commit=True)
 def rename(client, old, new, force):
     """Rename the workflow named <old> to <new>."""
-    from renku.models.refs import LinkReference
+    from renku.core.models.refs import LinkReference
     LinkReference(client=client, name=_ref(old)).rename(_ref(new), force=force)
 
 
@@ -128,7 +129,7 @@ def rename(client, old, new, force):
 @pass_local_client(clean=True, commit=True)
 def remove(client, name):
     """Remove the remote named <name>."""
-    from renku.models.refs import LinkReference
+    from renku.core.models.refs import LinkReference
     LinkReference(client=client, name=_ref(name)).delete()
 
 

@@ -16,34 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Check your system and repository for potential problems."""
-
 import textwrap
 
 import click
 
-from ._client import pass_local_client
-
-DOCTOR_INFO = """\
-Please note that the diagnosis report is used to help Renku maintainers with
-debugging if you file an issue. Use all proposed solutions with maximal care
-and if in doubt ask an expert around or file an issue. Thanks!
-"""
+from renku.core.commands.doctor import DOCTOR_INFO, doctor_check
 
 
 @click.command()
-@pass_local_client
 @click.pass_context
-def doctor(ctx, client):
+def doctor(ctx):
     """Check your system and repository for potential problems."""
     click.secho('\n'.join(textwrap.wrap(DOCTOR_INFO)) + '\n', bold=True)
-
-    from . import _checks
-
-    is_ok = True
-    for check in _checks.__all__:
-        is_ok &= getattr(_checks, check)(client)
+    is_ok, problems = doctor_check()
 
     if is_ok:
         click.secho('Everything seems to be ok.', fg='green')
+        ctx.exit(0)
 
-    ctx.exit(0 if is_ok else 1)
+    click.secho(problems)
+    ctx.exit(1)

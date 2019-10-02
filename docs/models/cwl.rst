@@ -18,7 +18,7 @@
 Tools and Workflows
 ===================
 
-.. py:module:: renku.models.cwl
+.. py:module:: renku.core.models.cwl
 
 Manage creation of tools and workflows using the `Common Workflow Language
 <http://www.commonwl.org/>`_ (CWL).
@@ -35,29 +35,29 @@ workflows.
 Command-line tool
 ~~~~~~~~~~~~~~~~~
 
-.. automodule:: renku.models.cwl.command_line_tool
+.. automodule:: renku.core.models.cwl.command_line_tool
    :members:
 
 Parameter
 ~~~~~~~~~
 
-.. automodule:: renku.models.cwl.parameter
+.. automodule:: renku.core.models.cwl.parameter
    :members:
 
 Process
 ~~~~~~~
 
-.. automodule:: renku.models.cwl.process
+.. automodule:: renku.core.models.cwl.process
    :members:
 
 Types
 ~~~~~
 
-.. automodule:: renku.models.cwl.types
+.. automodule:: renku.core.models.cwl.types
    :members:
 
 Workflow
 ~~~~~~~~
 
-.. automodule:: renku.models.cwl.workflow
+.. automodule:: renku.core.models.cwl.workflow
    :members:

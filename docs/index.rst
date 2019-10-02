@@ -55,8 +55,7 @@ Trace the data provenance:
 These are the basics, but there is much more that Renku allows you to do with
 your data analysis workflows.
 
-For more information about using `renku`, refer to the :doc:`Renku command
-line <cli>` instructions.
+For more information about using `renku`, refer to the `renku --help`.
 
 Project Information
 ===================
@@ -76,6 +75,6 @@ Full Table of Contents
    :maxdepth: 2
 
    comparison
-   cli
+   commands
    models/index
-   api
+   management

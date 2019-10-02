@@ -17,10 +17,11 @@
 # limitations under the License.
 """Test ``update`` command."""
 
+from pathlib import Path
+
 import git
 
-from renku import cli
-from renku._compat import Path
+from renku.cli import cli
 
 
 def update_and_commit(data, file_, repo):
@@ -49,34 +50,34 @@ def test_update(runner, project, run):
     with output.open('r') as f:
         assert f.read().strip() == '1'
 
-    result = runner.invoke(cli.cli, ['status'])
+    result = runner.invoke(cli, ['status'])
     assert 0 == result.exit_code
 
     update_and_commit('12', source, repo)
 
-    result = runner.invoke(cli.cli, ['status'])
+    result = runner.invoke(cli, ['status'])
     assert 1 == result.exit_code
 
     assert 0 == run()
 
-    result = runner.invoke(cli.cli, ['status'])
+    result = runner.invoke(cli, ['status'])
     assert 0 == result.exit_code
 
     with output.open('r') as f:
         assert f.read().strip() == '2'
 
-    result = runner.invoke(cli.cli, ['log'], catch_exceptions=False)
+    result = runner.invoke(cli, ['log'], catch_exceptions=False)
     assert '(part of' in result.output, result.output
 
     # Source has been updated but output is unchanged.
     update_and_commit('34', source, repo)
 
-    result = runner.invoke(cli.cli, ['status'])
+    result = runner.invoke(cli, ['status'])
     assert 1 == result.exit_code
 
     assert 0 == run()
 
-    result = runner.invoke(cli.cli, ['status'])
+    result = runner.invoke(cli, ['status'])
     assert 0 == result.exit_code
 
     with output.open('r') as f:
@@ -86,7 +87,7 @@ def test_update(runner, project, run):
     for output_format in FORMATS:
         # Make sure the log contains the original parent.
         result = runner.invoke(
-            cli.cli,
+            cli,
             ['log', '--format', output_format],
             catch_exceptions=False,
         )
@@ -106,11 +107,11 @@ def test_workflow_without_outputs(runner, project, run):
     repo.index.commit('Created input.txt')
 
     cmd = ['run', 'cat', '--no-output', input_.name]
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
 
     cmd = ['status', '--no-output']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
 
     with input_.open('w') as f:
@@ -120,13 +121,13 @@ def test_workflow_without_outputs(runner, project, run):
     repo.index.commit('Updated input.txt')
 
     cmd = ['status', '--no-output']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli, cmd)
     assert 1 == result.exit_code
 
     assert 0 == run(args=('update', '--no-output'))
 
     cmd = ['status', '--no-output']
-    result = runner.invoke(cli.cli, cmd)
+    result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
 
 

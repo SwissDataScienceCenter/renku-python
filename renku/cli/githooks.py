@@ -39,12 +39,11 @@ some output file is manually modified.
 """
 
 import stat
+from pathlib import Path
 
 import click
 
-from renku._compat import Path
-
-from ._client import pass_local_client
+from renku.core.commands.client import pass_local_client
 
 HOOKS = ('pre-commit', )
 

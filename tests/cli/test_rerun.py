@@ -21,12 +21,12 @@ from __future__ import absolute_import, print_function
 
 import os
 import subprocess
+from pathlib import Path
 
 import git
 import pytest
 
-from renku import cli
-from renku._compat import Path
+from renku.cli import cli
 
 
 def test_simple_rerun(runner, project, run):
@@ -149,10 +149,9 @@ def test_rerun_with_edited_inputs(runner, project, run):
         os.chdir(str(data))
 
         result = runner.invoke(
-            cli.cli,
-            ['rerun', '--show-inputs', '--from',
-             str(first),
-             str(second)],
+            cli, ['rerun', '--show-inputs', '--from',
+                  str(first),
+                  str(second)],
             catch_exceptions=False
         )
         assert 0 == result.exit_code
@@ -206,7 +205,7 @@ def test_output_directory(runner, project, run):
     repo.index.commit('Created source directory')
 
     cmd = ['run', 'cp', '-LRf', str(source), str(destination)]
-    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert 0 == result.exit_code
 
     destination_source = destination / data.name
@@ -228,12 +227,12 @@ def test_output_directory(runner, project, run):
     assert {data.name} == {path.name for path in destination.iterdir()}
 
     cmd = ['log', str(source_wc)]
-    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, cmd, catch_exceptions=False)
     destination_data = str(Path('destination') / 'data.txt')
     assert destination_data in result.output, cmd
     assert ' directory)' in result.output
 
     cmd = ['run', 'cp', '-r', str(source), str(invalid_destination)]
-    result = runner.invoke(cli.cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert 1 == result.exit_code
     assert not (invalid_destination / data.name).exists()

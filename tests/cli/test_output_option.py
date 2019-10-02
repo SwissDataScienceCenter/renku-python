@@ -20,7 +20,7 @@
 import pytest
 import yaml
 
-from renku.models.cwl import CWLClass
+from renku.core.models.cwl import CWLClass
 
 
 def read_all_cwl_files(client, glob='*.cwl'):

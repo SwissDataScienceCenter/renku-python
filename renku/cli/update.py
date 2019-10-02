@@ -122,11 +122,11 @@ import uuid
 
 import click
 
-from renku.models.cwl._ascwl import ascwl
-
-from ._client import pass_local_client
-from ._graph import Graph, _safe_path
-from ._options import option_siblings
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.cwl_runner import execute
+from renku.core.commands.graph import Graph, _safe_path
+from renku.core.commands.options import option_siblings
+from renku.core.models.cwl.ascwl import ascwl
 
 
 @click.command()
@@ -193,5 +193,4 @@ def update(client, revision, no_output, siblings, paths):
             )
         )
 
-    from ._cwl import execute
     execute(client, output_file, output_paths=output_paths)
