@@ -204,12 +204,12 @@ Unlink all files from a dataset:
 .. note:: The ``unlink`` command does not delete files,
     only the dataset record.
 """
+from functools import partial
+
 import click
 import editor
 import requests
 import yaml
-
-from functools import partial
 from tqdm import tqdm
 
 from renku.core.commands.dataset import add_file, create_dataset, \
@@ -225,6 +225,7 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken
 
 def prompt_duplicate_dataset(existing_dataset):
     """Check if existing dataset should be overwritten.
+
     :return: True if user confirmed overwriting.
     """
     warn_ = WARNING + 'This dataset already exists.'
@@ -234,7 +235,9 @@ def prompt_duplicate_dataset(existing_dataset):
 
 def prompt_access_token(exporter):
     """Prompt user for an access token for a provider.
-    :return: The new access token"""
+
+    :return: The new access token
+    """
     text_prompt = ('You must configure an access token\n')
     text_prompt += 'Create one at: {0}\n'.format(exporter.access_token_url())
     text_prompt += 'Access token'
@@ -473,7 +476,7 @@ def remove(names):
     dataset_remove(
         names,
         with_output=True,
-        datadatasetscontext=datasetscontext,
+        datasetscontext=datasetscontext,
         referencescontext=referencescontext
     )
     click.secho('OK', fg='green')

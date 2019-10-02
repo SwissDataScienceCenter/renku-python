@@ -17,10 +17,10 @@
 # limitations under the License.
 """Compatibility layer for different Python versions."""
 
+import contextlib
 import os
 import sys
 from pathlib import Path
-import contextlib
 
 if sys.version_info < (3, 6):
     original_resolve = Path.resolve
@@ -35,10 +35,11 @@ if sys.version_info < (3, 6):
 
 try:
     contextlib.nullcontext
-except NameError:
+except AttributeError:
 
-    class nullcontext(AbstractContextManager):
+    class nullcontext(object):
         """Context manager that does no additional processing.
+
         Used as a stand-in for a normal context manager, when a particular
         block of code is only sometimes used with a normal context manager:
         cm = optional_cm if condition else nullcontext()
