@@ -23,9 +23,8 @@ import re
 import tempfile
 from collections import OrderedDict
 from contextlib import contextmanager
-from multiprocessing import RLock, freeze_support
+from multiprocessing import freeze_support
 from pathlib import Path
-from time import sleep
 from urllib.parse import ParseResult
 
 import click
@@ -388,7 +387,8 @@ def import_dataset(
     with_prompt=False,
     force=False,
     handle_duplicate_fn=None,
-    pool_init=None,
+    pool_init_fn=None,
+    pool_init_args=None,
     download_file_fn=default_download_file
 ):
     """Import data from a 3rd party provider."""
@@ -444,11 +444,12 @@ def import_dataset(
         )
 
         freeze_support()  # Windows support
+
         pool = mp.Pool(
             pool_size,
             # Windows support
-            initializer=pool_init,
-            initargs=(RLock(), id_queue)
+            initializer=pool_init_fn,
+            initargs=pool_init_args
         )
 
         processing = [

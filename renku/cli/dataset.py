@@ -204,7 +204,11 @@ Unlink all files from a dataset:
 .. note:: The ``unlink`` command does not delete files,
     only the dataset record.
 """
+import multiprocessing as mp
+import os
 from functools import partial
+from pathlib import Path
+from time import sleep
 
 import click
 import editor
@@ -568,6 +572,8 @@ def import_(uri, name, extract, yes):
     manager = mp.Manager()
     id_queue = manager.Queue()
 
+    pool_size = min(int(os.getenv('RENKU_POOL_SIZE', mp.cpu_count() // 2)), 4)
+
     for i in range(pool_size):
         id_queue.put(i)
 
@@ -589,6 +595,7 @@ def import_(uri, name, extract, yes):
         with_prompt=True,
         handle_duplicate_fn=prompt_duplicate_dataset,
         pool_init_fn=_init,
+        pool_init_args=(mp.RLock(), id_queue),
         download_file_fn=download_file_with_progress,
         force=yes
     )
