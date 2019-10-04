@@ -789,7 +789,7 @@ def test_dataset_rm(tmpdir, runner, project, client):
     result = runner.invoke(cli, ['status'])
 
     # Dirty repository check.
-    assert 1 == result.exit_code
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
