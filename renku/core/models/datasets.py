@@ -262,7 +262,9 @@ class DatasetFile(Entity, CreatorsMixin):
 
     url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
-    source = jsonld.ib(default=None, context='schema:isBasedOn', kw_only=True)
+    based_on = jsonld.ib(
+        default=None, context='schema:isBasedOn', kw_only=True
+    )
 
     @added.default
     def _now(self):
@@ -398,7 +400,9 @@ class Dataset(Entity, CreatorsMixin):
         kw_only=True
     )
 
-    source = jsonld.ib(default=None, context='schema:isBasedOn', kw_only=True)
+    based_on = jsonld.ib(
+        default=None, context='schema:isBasedOn', kw_only=True
+    )
 
     license = jsonld.ib(default=None, context='schema:license', kw_only=True)
 

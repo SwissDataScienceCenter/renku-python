@@ -218,7 +218,6 @@ class DatasetsApiMixin(object):
 
         dst = self.path / dataset_path / destination
 
-        # FIXME raise if destination is a file and source is a directory
         if dst.exists() and dst.is_dir():
             dst = dst / Path(u.path).name
 
@@ -227,6 +226,11 @@ class DatasetsApiMixin(object):
 
             # if we have a directory, recurse
             if src.is_dir():
+                if dst.exists() and not dst.is_dir():
+                    raise errors.InvalidFileOperation(
+                        'Cannot copy directory to a file'
+                    )
+
                 files = []
                 dst.mkdir(parents=True, exist_ok=True)
                 for f in src.iterdir():
@@ -371,7 +375,7 @@ class DatasetsApiMixin(object):
                     dst_url = url
 
                 base = DatasetFile.from_revision(
-                    client, path=path, url=url, dataset=None, parent=None
+                    client, path=path, url=url, creator=creators
                 )
 
                 results.append({
@@ -380,11 +384,11 @@ class DatasetsApiMixin(object):
                     'creator': creators,
                     'dataset': dataset.name,
                     'parent': self,
-                    'source': base
+                    'based_on': base
                 })
 
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(str(src), str(dst))
+                shutil.copy(str(src), str(dst))
 
         return results
 
