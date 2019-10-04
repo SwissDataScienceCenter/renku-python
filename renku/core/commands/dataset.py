@@ -45,6 +45,7 @@ from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Creator, Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
+from renku.core.utils.doi import extract_doi
 
 from .client import pass_local_client
 from .echo import WARNING
@@ -162,8 +163,12 @@ def add_to_dataset(
     urlscontext=contextlib.nullcontext
 ):
     """Add data to a dataset."""
+    # check for identifier before creating the dataset
+    identifier = extract_doi(
+        with_metadata.identifier
+    ) if with_metadata else None
     try:
-        with client.with_dataset(name=name) as dataset:
+        with client.with_dataset(name=name, identifier=identifier) as dataset:
             with urlscontext(urls) as bar:
                 client.add_data_to_dataset(
                     dataset,

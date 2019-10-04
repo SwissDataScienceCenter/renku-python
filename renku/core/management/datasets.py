@@ -109,13 +109,18 @@ class DatasetsApiMixin(object):
                 return self.get_dataset(path)
 
     @contextmanager
-    def with_dataset(self, name=None):
+    def with_dataset(self, name=None, identifier=None):
         """Yield an editable metadata object for a dataset."""
+        from urllib.parse import quote
+
         dataset = self.load_dataset(name=name)
 
         if dataset is None:
-            identifier = str(uuid.uuid4())
-            path = (self.renku_datasets_path / identifier / self.METADATA)
+            identifier = identifier or str(uuid.uuid4())
+            path = (
+                self.renku_datasets_path / quote(identifier, safe='') /
+                self.METADATA
+            )
             path.parent.mkdir(parents=True, exist_ok=True)
 
             with with_reference(path):
