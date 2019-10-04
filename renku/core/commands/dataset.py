@@ -314,6 +314,7 @@ def export_dataset(
     :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
              ``DatasetNotFound``
     """
+    # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = 'access_token'
     provider_id = provider
 
