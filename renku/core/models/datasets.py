@@ -340,7 +340,6 @@ def _convert_keyword(keywords):
 @jsonld.s(
     type='schema:Dataset',
     context={
-        'added': 'schema:dateCreated',
         'affiliation': 'schema:affiliation',
         'alternate_name': 'schema:alternateName',
         'email': 'schema:email',
@@ -570,9 +569,10 @@ class Dataset(Entity, CreatorsMixin):
                     dataset_file.client = client
 
         try:
-            self.commit = self.client.find_previous_commit(
-                self.path, revision=self.commit or 'HEAD'
-            )
+            if self.client:
+                self.commit = self.client.find_previous_commit(
+                    self.path, revision=self.commit or 'HEAD'
+                )
         except KeyError:
             # if with_dataset is used, the dataset is not committed yet
             pass

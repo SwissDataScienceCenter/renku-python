@@ -217,8 +217,13 @@ class RepositoryApiMixin(GitCore):
         """Check if the path is a valid CWL file."""
         return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
 
-    def find_previous_commit(self, paths, revision='HEAD'):
-        """Return a previous commit for a given path."""
+    def find_previous_commit(self, paths, revision='HEAD', return_first=False):
+        """Return a previous commit for a given path starting from ``revision``.
+
+        :param revision: revision to start from, defaults to ``HEAD``
+        :param return_first: show the first commit in the history
+        :raises KeyError: if path is not present in the given commit
+        """
         file_commits = list(self.repo.iter_commits(revision, paths=paths))
 
         if not file_commits:
@@ -228,7 +233,7 @@ class RepositoryApiMixin(GitCore):
                 )
             )
 
-        return file_commits[0]
+        return file_commits[-1 if return_first else 0]
 
     @cached_property
     def workflow_names(self):

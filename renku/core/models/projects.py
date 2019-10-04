@@ -78,7 +78,15 @@ class Project(object):
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         if not self.creator and self.client:
-            self.creator = Creator.from_git(self.client.repo)
+            if self.client.renku_metadata_path.exists():
+                self.creator = Creator.from_commit(
+                    self.client.find_previous_commit(
+                        self.client.renku_metadata_path, return_first=True
+                    ),
+                )
+            else:
+                # this assumes the project is being newly created
+                self.creator = Creator.from_git(self.client.repo)
 
         if not self._id and self.client:
             self._id = self.client.project_id
