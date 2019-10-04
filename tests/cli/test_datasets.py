@@ -786,6 +786,11 @@ def test_dataset_rm(tmpdir, runner, project, client):
     assert 'OK' in result.output
     assert not client.load_dataset(name='my-dataset')
 
+    result = runner.invoke(cli, ['status'])
+
+    # Dirty repository check.
+    assert 1 == result.exit_code
+
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
 

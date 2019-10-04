@@ -263,12 +263,20 @@ class GitCore:
 
         if commit_only == COMMIT_DIFF_STRATEGY:
             # Get diff generated in command.
-            staged_after = {item.a_path for item in self.repo.index.diff(None)}
+            change_types = {
+                item.a_path: item.change_type
+                for item in self.repo.index.diff(None)
+            }
+            staged_after = set(change_types.keys())
 
-            modified_after = {
-                item.a_path
+            modified_after_change_types = {
+                item.a_path: item.change_type
                 for item in self.repo.index.diff('HEAD')
             }
+
+            modified_after = set(modified_after_change_types.keys())
+
+            change_types.update(modified_after_change_types)
 
             diff_after = set(self.repo.untracked_files)\
                 .union(staged_after)\
@@ -280,7 +288,7 @@ class GitCore:
         if isinstance(commit_only, list):
             for path_ in commit_only:
                 p = Path(path_)
-                if p.exists():
+                if p.exists() or change_types.get(path_) == 'D':
                     self.repo.git.add(path_)
 
         if not commit_only:
