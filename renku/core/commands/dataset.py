@@ -23,9 +23,8 @@ import re
 import tempfile
 from collections import OrderedDict
 from contextlib import contextmanager
-from multiprocessing import RLock, freeze_support
+from multiprocessing import freeze_support
 from pathlib import Path
-from time import sleep
 from urllib.parse import ParseResult
 
 import click
@@ -33,12 +32,12 @@ import requests
 import yaml
 from click import BadParameter
 from requests import HTTPError
-from tqdm import tqdm
 
 from renku.core.commands.checks.migration import check_dataset_resources, \
     dataset_pre_0_3
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
+from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired
 from renku.core.management.datasets import DATASET_METADATA_PATHS
@@ -48,9 +47,35 @@ from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
 
 from .client import pass_local_client
-from .echo import WARNING, progressbar
+from .echo import WARNING
 from .format.dataset_files import DATASET_FILES_FORMATS
 from .format.datasets import DATASETS_FORMATS
+
+
+def default_download_file(extract, data_folder, file, chunk_size=16384):
+    """Download a file."""
+    local_filename = Path(file.filename).name
+    download_to = Path(data_folder) / Path(local_filename)
+
+    def extract_dataset(data_folder_, filename):
+        """Extract downloaded dataset."""
+        import patoolib
+        filepath = Path(data_folder_) / Path(filename)
+        patoolib.extract_archive(filepath, outdir=data_folder_)
+        filepath.unlink()
+
+    def stream_to_file(request):
+        """Stream bytes to file."""
+        with open(str(download_to), 'wb') as f_:
+            for chunk in request.iter_content(chunk_size=chunk_size):
+                if chunk:  # remove keep-alive chunks
+                    f_.write(chunk)
+        if extract:
+            extract_dataset(data_folder, local_filename)
+
+    with requests.get(file.url.geturl(), stream=True) as r:
+        r.raise_for_status()
+        stream_to_file(r)
 
 
 @pass_local_client(clean=False, commit=False)
@@ -78,7 +103,8 @@ def create_dataset(client, name, handle_duplicate_fn=None):
 
     :raises: ``click.BadParameter``
     """
-    if handle_duplicate_fn and handle_duplicate_fn(client, name):
+    existing = client.load_dataset(name=name)
+    if (not existing or handle_duplicate_fn and handle_duplicate_fn(existing)):
         with client.with_dataset(name=name) as dataset:
             creator = Creator.from_git(client.repo)
             if creator not in dataset.creator:
@@ -114,11 +140,13 @@ def add_file(
     force=False,
     relative_to=None,
     target=None,
-    with_metadata=None
+    with_metadata=None,
+    urlscontext=contextlib.nullcontext
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, relative_to, target, with_metadata
+        client, urls, name, link, force, relative_to, target, with_metadata,
+        urlscontext
     )
 
 
@@ -130,13 +158,16 @@ def add_to_dataset(
     force=False,
     relative_to=None,
     target=None,
-    with_metadata=None
+    with_metadata=None,
+    urlscontext=contextlib.nullcontext
 ):
     """Add data to a dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
             target = target if target else None
-            with progressbar(urls, label='Adding data to dataset') as bar:
+
+            urls = urlscontext(urls)
+            with urls as bar:
                 client.add_data_to_dataset(
                     dataset,
                     bar,
@@ -211,7 +242,13 @@ def file_unlink(client, name, include, exclude):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def dataset_remove(client, names, with_output=False):
+def dataset_remove(
+    client,
+    names,
+    with_output=False,
+    datasetscontext=contextlib.nullcontext,
+    referencescontext=contextlib.nullcontext
+):
     """Delete a dataset."""
     datasets = {name: client.dataset_path(name) for name in names}
 
@@ -243,20 +280,16 @@ def dataset_remove(client, names, with_output=False):
 
         return datasets, references
 
-    with progressbar(
-        datasets,
-        label='Removing metadata files'.ljust(30),
-        item_show_func=lambda item: str(item) if item else '',
-    ) as bar:
+    datasets_c = datasetscontext(datasets)
+
+    with datasets_c as bar:
         for dataset in bar:
             if dataset and dataset.exists():
                 dataset.unlink()
 
-    with progressbar(
-        references,
-        label='Removing aliases'.ljust(30),
-        item_show_func=lambda item: item.name if item else '',
-    ) as bar:
+    references_c = referencescontext(references)
+
+    with references_c as bar:
         for ref in bar:
             if ref.reference in datasets:
                 ref.delete()
@@ -266,20 +299,33 @@ def dataset_remove(client, names, with_output=False):
     clean=True,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
-)  # TODO: Finish refactor (ticket #702)
-def export_dataset(client, id, provider, publish, tag, with_prompt=False):
-    """Export data to 3rd party provider."""
+)
+def export_dataset(
+    client,
+    id,
+    provider,
+    publish,
+    tag,
+    handle_access_token_fn=None,
+    handle_tag_selection_fn=None
+):
+    """Export data to 3rd party provider.
+
+    :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
+             ``DatasetNotFound``
+    """
+    # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = 'access_token'
     provider_id = provider
 
     dataset_ = client.load_dataset(id)
     if not dataset_:
-        raise BadParameter('Dataset not found.')
+        raise DatasetNotFound()
 
     try:
         provider = ProviderFactory.from_id(provider_id)
     except KeyError:
-        raise BadParameter('Unknown provider.')
+        raise ValueError('Unknown provider.')
 
     selected_tag = None
     selected_commit = client.repo.head.commit
@@ -288,50 +334,29 @@ def export_dataset(client, id, provider, publish, tag, with_prompt=False):
         selected_tag = next((t for t in dataset_.tags if t.name == tag), None)
 
         if not selected_tag:
-            raise BadParameter('Tag {} not found'.format(tag))
+            raise ValueError('Tag {} not found'.format(tag))
 
         selected_commit = selected_tag.commit
-    elif dataset_.tags and len(dataset_.tags) > 0:
-        # Prompt user to select a tag to export
-        tags = sorted(dataset_.tags, key=lambda t: t.created)
+    elif dataset_.tags and len(dataset_.tags) > 0 and handle_tag_selection_fn:
+        tag_result = handle_tag_selection_fn(dataset_.tags)
 
-        text_prompt = 'Tag to export: \n\n<HEAD>\t[1]\n'
-
-        text_prompt += '\n'.join(
-            '{}\t[{}]'.format(t.name, i) for i, t in enumerate(tags, start=2)
-        )
-
-        text_prompt += '\n\nTag'
-
-        if with_prompt:
-            selection = click.prompt(
-                text_prompt, type=click.IntRange(1,
-                                                 len(tags) + 1), default=1
-            )
-
-            if selection > 1:
-                selected_tag = tags[selection - 2]
-                selected_commit = selected_tag.commit
+        if tag_result:
+            selected_tag = tag_result
+            selected_commit = tag_result.commit
 
     with client.with_commit(selected_commit):
         dataset_ = client.load_dataset(id)
         if not dataset_:
-            raise BadParameter('Dataset not found.')
+            raise DatasetNotFound()
 
         access_token = client.get_value(provider_id, config_key_secret)
         exporter = provider.get_exporter(dataset_, access_token=access_token)
 
         if access_token is None:
-            text_prompt = (
-                'Before exporting, you must configure an access'
-                ' token\n'
-            )
-            text_prompt += 'Create one at: {0}\n'.format(
-                exporter.access_token_url()
-            )
-            text_prompt += 'Access token'
 
-            access_token = click.prompt(text_prompt, type=str)
+            if handle_access_token_fn:
+                access_token = handle_access_token_fn(exporter)
+
             if access_token is None or len(access_token) == 0:
                 raise InvalidAccessToken()
 
@@ -344,7 +369,7 @@ def export_dataset(client, id, provider, publish, tag, with_prompt=False):
             if 'unauthorized' in str(e):
                 client.remove_value(provider_id, config_key_secret)
 
-            raise BadParameter(e)
+            raise
 
     result = 'Exported to: {0}'.format(destination)
     return result
@@ -362,7 +387,10 @@ def import_dataset(
     extract,
     with_prompt=False,
     force=False,
-    handle_duplicate_fn=None
+    handle_duplicate_fn=None,
+    pool_init_fn=None,
+    pool_init_args=None,
+    download_file_fn=default_download_file
 ):
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -416,34 +444,18 @@ def import_dataset(
                           mp.cpu_count() // 2)), 4
         )
 
-        manager = mp.Manager()
-        id_queue = manager.Queue()
-
-        for i in range(pool_size):
-            id_queue.put(i)
-
-        def _init(lock, id_queue):
-            """Set up tqdm lock and worker process index.
-
-            See https://stackoverflow.com/a/42817946
-            Fixes tqdm line position when |files| > terminal-height
-            so only |workers| progressbars are shown at a time
-            """
-            global current_process_position
-            current_process_position = id_queue.get()
-            tqdm.set_lock(lock)
-
         freeze_support()  # Windows support
+
         pool = mp.Pool(
             pool_size,
             # Windows support
-            initializer=_init,
-            initargs=(RLock(), id_queue)
+            initializer=pool_init_fn,
+            initargs=pool_init_args
         )
 
         processing = [
             pool.apply_async(
-                download_file, args=(
+                download_file_fn, args=(
                     extract,
                     data_folder,
                     file_,
@@ -485,71 +497,6 @@ def import_dataset(
                     'Tag {} created by renku import'.format(dataset.version),
                     force=True
                 )
-
-
-def download_file(extract, data_folder, file, chunk_size=16384):
-    """Download a file with progress tracking."""
-    global current_process_position
-
-    local_filename = Path(file.filename).name
-    download_to = Path(data_folder) / Path(local_filename)
-
-    def extract_dataset(data_folder_, filename):
-        """Extract downloaded dataset."""
-        import patoolib
-        filepath = Path(data_folder_) / Path(filename)
-        patoolib.extract_archive(filepath, outdir=data_folder_)
-        filepath.unlink()
-
-    def stream_to_file(request):
-        """Stream bytes to file."""
-        with open(str(download_to), 'wb') as f_:
-            scaling_factor = 1e-6
-            unit = 'MB'
-
-            # We round sizes to 0.1, files smaller than 1e5 would
-            # get rounded to 0, so we display bytes instead
-            if file.filesize < 1e5:
-                scaling_factor = 1.0
-                unit = 'B'
-
-            total = round(file.filesize * scaling_factor, 1)
-            progressbar_ = tqdm(
-                total=total,
-                position=current_process_position,
-                desc=file.filename[:32],
-                bar_format=(
-                    '{{percentage:3.0f}}% '
-                    '{{n_fmt}}{unit}/{{total_fmt}}{unit}| '
-                    '{{bar}} | {{desc}}'.format(unit=unit)
-                ),
-                leave=False,
-            )
-
-            try:
-                bytes_downloaded = 0
-                for chunk in request.iter_content(chunk_size=chunk_size):
-                    if chunk:  # remove keep-alive chunks
-                        f_.write(chunk)
-                        bytes_downloaded += chunk_size
-                        progressbar_.n = min(
-                            float(
-                                '{0:.1f}'.format(
-                                    bytes_downloaded * scaling_factor
-                                )
-                            ), total
-                        )
-                        progressbar_.update(0)
-            finally:
-                sleep(0.1)
-                progressbar_.close()
-
-        if extract:
-            extract_dataset(data_folder, local_filename)
-
-    with requests.get(file.url.geturl(), stream=True) as r:
-        r.raise_for_status()
-        stream_to_file(r)
 
 
 def _include_exclude(file_path, include=None, exclude=None):
