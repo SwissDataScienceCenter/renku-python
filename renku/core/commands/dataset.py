@@ -28,9 +28,9 @@ from pathlib import Path
 from urllib.parse import ParseResult
 
 import click
+import git
 import requests
 import yaml
-from click import BadParameter
 from requests import HTTPError
 
 from renku.core.commands.checks.migration import check_dataset_resources, \
@@ -38,8 +38,8 @@ from renku.core.commands.checks.migration import check_dataset_resources, \
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
-from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired
+from renku.core.errors import BadParameter, DatasetNotFound, \
+    InvalidAccessToken, MigrationRequired
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Creator, Dataset
@@ -101,7 +101,7 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 def create_dataset(client, name, handle_duplicate_fn=None):
     """Create an empty dataset in the current repo.
 
-    :raises: ``click.BadParameter``
+    :raises: ``renku.core.errors.BadParameter``
     """
     existing = client.load_dataset(name=name)
     if (not existing or handle_duplicate_fn and handle_duplicate_fn(existing)):
@@ -189,7 +189,7 @@ def add_to_dataset(
 
                 dataset.update_metadata(with_metadata)
 
-    except FileNotFoundError:
+    except (FileNotFoundError, git.exc.NoSuchPathError):
         raise BadParameter('Could not process \n{0}'.format('\n'.join(urls)))
 
 
