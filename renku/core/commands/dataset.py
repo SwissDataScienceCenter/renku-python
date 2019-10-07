@@ -475,11 +475,10 @@ def import_dataset(
         pool.close()
 
         dataset_name = name or dataset.display_name
+        existing = client.load_dataset(name=dataset_name)
         if (
-            force or (
-                handle_duplicate_fn and
-                handle_duplicate_fn(client, dataset_name)
-            )
+            not existing or force or
+            (handle_duplicate_fn and handle_duplicate_fn(dataset_name))
         ):
             add_to_dataset(
                 client,
