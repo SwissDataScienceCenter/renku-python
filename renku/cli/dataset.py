@@ -408,7 +408,13 @@ def add(name, urls, link, force, sources, destination):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
-        urls, name, link, force, relative_to, target, urlscontext=progress
+        urls=urls,
+        name=name,
+        link=link,
+        force=force,
+        sources=sources,
+        destination=destination,
+        urlscontext=progress
     )
 
 
