@@ -408,6 +408,17 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     )
     assert 1 == result.exit_code
 
+    # copy a non-existing source
+    result = runner.invoke(
+        cli,
+        [
+            'dataset', 'add', 'relative', '--source', 'non-existing',
+            str(tmpdir)
+        ],
+        catch_exceptions=True,
+    )
+    assert 2 == result.exit_code
+
 
 def test_dataset_add_with_link(tmpdir, runner, project, client):
     """Test adding data to dataset with --link flag."""

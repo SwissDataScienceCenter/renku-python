@@ -337,6 +337,7 @@ class DatasetsApiMixin(object):
         dst_root = self.path / dataset_path / destination
 
         # Get all files from repo that match sources
+        copied_sources = set()
         files = set()
         for file in repo.head.commit.tree.traverse():
             path = file.path
@@ -344,13 +345,25 @@ class DatasetsApiMixin(object):
 
             if result:
                 files.add(result)
+                source = result[3]
+                copied_sources.add(source)
+
+        uncopied_sources = sources - copied_sources
+        if uncopied_sources:
+            uncopied_sources = {str(s) for s in uncopied_sources}
+            # FIXME use errors.BadParameter
+            # https://github.com/SwissDataScienceCenter/renku-python/issues/720
+            import click
+            raise click.BadParameter(
+                'No such file or directory', param_hint=uncopied_sources
+            )
 
         # Create metadata and move files to dataset
         results = []
         client = LocalClient(repo_path)
 
         paths = set()
-        for path, src, _ in files:
+        for path, src, _, __ in files:
             if src.is_dir():
                 continue
             if src.is_symlink():
@@ -358,7 +371,7 @@ class DatasetsApiMixin(object):
             paths.add(path)
         self._fetch_lfs_files(str(repo_path), paths)
 
-        for path, src, dst in files:
+        for path, src, dst, _ in files:
             if not src.is_dir():
                 creators = []
                 # grab all the creators from the commit history
@@ -447,7 +460,7 @@ class DatasetsApiMixin(object):
                     'Cannot copy multiple files or directories to a file'
                 )
 
-        return (path, src, dst)
+        return (path, src, dst, source)
 
     def _fetch_lfs_files(self, repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
