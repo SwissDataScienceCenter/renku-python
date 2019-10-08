@@ -31,7 +31,10 @@ from ..echo import WARNING
 
 def dataset_pre_0_3(client):
     """Return paths of dataset metadata for pre 0.3.4."""
-    return (client.path / 'data').rglob(client.METADATA)
+    project_is_pre_0_3 = int(client.project.version) < 2
+    if project_is_pre_0_3:
+        return (client.path / 'data').rglob(client.METADATA)
+    return []
 
 
 def check_dataset_metadata(client):
