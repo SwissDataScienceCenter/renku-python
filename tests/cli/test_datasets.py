@@ -269,7 +269,7 @@ def test_repository_file_to_dataset(runner, project, client):
 
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
-        assert dataset.find_file('a')
+        assert dataset.find_file('a') is not None
 
 
 def test_relative_import_to_dataset(
@@ -284,33 +284,32 @@ def test_relative_import_to_dataset(
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
 
-    zero_data = tmpdir.join('data.txt')
+    zero_data = tmpdir.join('zero.txt')
     zero_data.write('zero')
 
     first_level = tmpdir.mkdir('first')
     second_level = first_level.mkdir('second')
 
-    first_data = first_level.join('data.txt')
+    first_data = first_level.join('first.txt')
     first_data.write('first')
 
-    second_data = second_level.join('data.txt')
+    second_data = second_level.join('second.txt')
     second_data.write('second')
 
-    paths = [str(zero_data), str(first_data), str(second_data)]
+    paths = [str(zero_data), str(first_level), str(second_level)]
 
     # add data in subdirectory
     result = runner.invoke(
         cli,
-        ['dataset', 'add', 'dataset', '--relative-to',
-         str(tmpdir)] + paths,
+        ['dataset', 'add', 'dataset'] + paths,
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
-    assert os.stat(os.path.join('data', 'dataset', 'data.txt'))
-    assert os.stat(os.path.join('data', 'dataset', 'first', 'data.txt'))
+    assert os.stat(os.path.join('data', 'dataset', 'zero.txt'))
+    assert os.stat(os.path.join('data', 'dataset', 'first', 'first.txt'))
     assert os.stat(
-        os.path.join('data', 'dataset', 'first', 'second', 'data.txt')
+        os.path.join('data', 'dataset', 'first', 'second', 'second.txt')
     )
 
 
@@ -326,16 +325,16 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
 
     data_repo = git.Repo.init(str(tmpdir))
 
-    zero_data = tmpdir.join('data.txt')
+    zero_data = tmpdir.join('zero.txt')
     zero_data.write('zero')
 
     first_level = tmpdir.mkdir('first')
     second_level = first_level.mkdir('second')
 
-    first_data = first_level.join('data.txt')
+    first_data = first_level.join('first.txt')
     first_data.write('first')
 
-    second_data = second_level.join('data.txt')
+    second_data = second_level.join('second.txt')
     second_data.write('second')
 
     paths = [str(zero_data), str(first_data), str(second_data)]
@@ -346,7 +345,7 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     result = runner.invoke(
         cli,
         [
-            'dataset', 'add', 'dataset', '--relative-to',
+            'dataset', 'add', 'dataset', '--source',
             str(first_level),
             str(tmpdir)
         ],
@@ -354,20 +353,71 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     )
     assert 0 == result.exit_code
 
-    assert os.stat(os.path.join('data', 'dataset', 'data.txt'))
-    assert os.stat(os.path.join('data', 'dataset', 'second', 'data.txt'))
+    assert os.stat(os.path.join('data', 'dataset', 'first', 'first.txt'))
+    assert os.stat(
+        os.path.join('data', 'dataset', 'first', 'second', 'second.txt')
+    )
 
-    # add data in subdirectory
+    # add data to a non-existing destination
     result = runner.invoke(
         cli,
-        ['dataset', 'add', 'relative', '--relative-to', 'first',
-         str(tmpdir)],
+        [
+            'dataset', 'add', 'relative', '--source', 'first', '--destination',
+            'new',
+            str(tmpdir)
+        ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
-    assert os.stat(os.path.join('data', 'relative', 'data.txt'))
-    assert os.stat(os.path.join('data', 'relative', 'second', 'data.txt'))
+    assert os.stat(os.path.join('data', 'relative', 'new', 'first.txt'))
+    assert os.stat(
+        os.path.join('data', 'relative', 'new', 'second', 'second.txt')
+    )
+
+    # add data to a existing destination
+    result = runner.invoke(
+        cli,
+        [
+            'dataset', 'add', 'relative', '--source', 'first', '--destination',
+            'new',
+            str(tmpdir)
+        ],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    assert os.stat(
+        os.path.join('data', 'relative', 'new', 'first', 'first.txt')
+    )
+    assert os.stat(
+        os.path.join(
+            'data', 'relative', 'new', 'first', 'second', 'second.txt'
+        )
+    )
+
+    # copy a directory to a file
+    result = runner.invoke(
+        cli,
+        [
+            'dataset', 'add', 'relative', '--source', 'first', '--destination',
+            os.path.join('new', 'first', 'first.txt'),
+            str(tmpdir)
+        ],
+        catch_exceptions=True,
+    )
+    assert 1 == result.exit_code
+
+    # copy a non-existing source
+    result = runner.invoke(
+        cli,
+        [
+            'dataset', 'add', 'relative', '--source', 'non-existing',
+            str(tmpdir)
+        ],
+        catch_exceptions=True,
+    )
+    assert 2 == result.exit_code
 
 
 def test_dataset_add_with_link(tmpdir, runner, project, client):
@@ -468,7 +518,7 @@ def test_dataset_file_path_from_subdirectory(runner, project, client):
 
     with client.with_dataset('dataset') as dataset:
         datasetfile = dataset.find_file('a')
-        assert datasetfile
+        assert datasetfile is not None
 
         assert datasetfile.full_path == client.path / 'a'
 
