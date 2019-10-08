@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test ``remove`` command."""
 
-from renku import cli
+from renku.cli import cli
 
 
 def test_remove_dataset_file(isolated_runner, client, tmpdir):
@@ -25,30 +25,28 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir):
     runner = isolated_runner
 
     # create a dataset
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
+    result = runner.invoke(cli, ['dataset', 'create', 'testing'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     source = tmpdir.join('remove_dataset.file')
     source.write('data')
 
-    result = runner.invoke(
-        cli.cli, ['dataset', 'add', 'testing', source.strpath]
-    )
+    result = runner.invoke(cli, ['dataset', 'add', 'testing', source.strpath])
     assert 0 == result.exit_code
 
     assert (client.path / client.datadir / 'testing' /
             'remove_dataset.file').exists()
 
-    result = runner.invoke(cli.cli, ['doctor'])
+    result = runner.invoke(cli, ['doctor'])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli.cli, ['rm', 'data'])
+    result = runner.invoke(cli, ['rm', 'data'])
     assert 0 == result.exit_code
 
     assert not (
         client.path / client.datadir / 'testing' / 'remove_dataset.file'
     ).exists()
 
-    result = runner.invoke(cli.cli, ['doctor'])
+    result = runner.invoke(cli, ['doctor'])
     assert 0 == result.exit_code

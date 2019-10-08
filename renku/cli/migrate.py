@@ -25,12 +25,9 @@ The location of dataset metadata files has been changed from the
 All file paths inside a metadata file are relative to itself and the
 ``renku migrate datasets`` command will take care of it.
 """
-
 import click
 
-from renku.cli._checks.migrate_datasets import STRUCTURE_MIGRATIONS
-
-from ._client import pass_local_client
+from renku.core.commands.migrate import migrate_datasets
 
 
 @click.group()
@@ -39,17 +36,7 @@ def migrate():
 
 
 @migrate.command()
-@pass_local_client(
-    clean=True,
-    commit=True,
-    allow_empty=False,
-)
-@click.pass_context
-def datasets(ctx, client):
+def datasets():
     """Migrate dataset metadata."""
-    results = [
-        migration(client) is not False for migration in STRUCTURE_MIGRATIONS
-    ]
-
-    if all(results) and client.repo.index.diff(None):
+    if migrate_datasets():
         click.secho('OK', fg='green')

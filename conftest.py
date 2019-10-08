@@ -50,7 +50,7 @@ def instance_path(renku_path, monkeypatch):
 @pytest.fixture()
 def runner(monkeypatch):
     """Create a runner on isolated filesystem."""
-    from renku.api.config import RENKU_HOME
+    from renku.core.management.config import RENKU_HOME
     monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     return CliRunner()
 
@@ -58,7 +58,7 @@ def runner(monkeypatch):
 @pytest.fixture
 def config_dir(monkeypatch, tmpdir_factory):
     """Create a temporary renku config directory."""
-    from renku.api.config import ConfigManagerMixin
+    from renku.core.management.config import ConfigManagerMixin
 
     with monkeypatch.context() as m:
         home_dir = tmpdir_factory.mktemp('fake_home')
@@ -104,16 +104,16 @@ def run_shell():
 @pytest.fixture()
 def run(runner, capsys):
     """Return a callable runner."""
-    from renku import cli
-    from renku._contexts import Isolation
+    from renku.cli import cli
+    from renku.core.utils.contexts import Isolation
 
     def generate(args=('update', ), cwd=None, **streams):
         """Generate an output."""
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
-                cli.cli.main(
+                cli.main(
                     args=args,
-                    prog_name=runner.get_default_prog_name(cli.cli),
+                    prog_name=runner.get_default_prog_name(cli),
                 )
             except SystemExit as e:
                 return 0 if e.code is None else e.code
@@ -126,7 +126,7 @@ def run(runner, capsys):
 @pytest.fixture()
 def isolated_runner(monkeypatch):
     """Create a runner on isolated filesystem."""
-    from renku.api.config import RENKU_HOME
+    from renku.core.management.config import RENKU_HOME
     monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     runner_ = CliRunner()
     with runner_.isolated_filesystem():
@@ -144,11 +144,11 @@ def data_file(tmpdir):
 @pytest.fixture(scope='module')
 def repository():
     """Yield a Renku repository."""
-    from renku import cli
+    from renku.cli import cli
     runner = CliRunner()
 
     with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli.cli, ['init', '.'], catch_exceptions=False)
+        result = runner.invoke(cli, ['init', '.'], catch_exceptions=False)
         assert 0 == result.exit_code
 
         yield project_path
@@ -173,7 +173,7 @@ def project(repository):
 @pytest.fixture
 def client(project):
     """Return a Renku repository."""
-    from renku.api import LocalClient
+    from renku.core.management import LocalClient
 
     yield LocalClient(path=project)
 
@@ -276,7 +276,7 @@ def data_repository(directory_tree):
 def old_bare_repository(request, tmpdir_factory):
     """Prepares a testing repo created by old version of renku."""
     import tarfile
-    from renku._compat import Path
+    from pathlib import Path
 
     compressed_repo_path = Path(
         __file__
@@ -335,7 +335,7 @@ def old_project(old_repository):
 @pytest.fixture(autouse=True)
 def add_client(doctest_namespace):
     """Add Renku client to doctest namespace."""
-    from renku.api import LocalClient
+    from renku.core.management import LocalClient
     doctest_namespace['client'] = LocalClient(path=tempfile.mkdtemp())
 
 
@@ -352,8 +352,8 @@ def zenodo_sandbox(client):
 @pytest.fixture
 def doi_responses():
     """Responses for doi.org requests."""
-    from renku.cli._providers.doi import DOI_BASE_URL
-    from renku.cli._providers.dataverse import (
+    from renku.core.commands.providers.doi import DOI_BASE_URL
+    from renku.core.commands.providers.dataverse import (
         DATAVERSE_API_PATH, DATAVERSE_VERSION_API
     )
 
@@ -434,7 +434,7 @@ def cli(client, run):
     It returns the exit code and content of the resulting CWL tool.
     """
     import yaml
-    from renku.models.cwl import CWLClass
+    from renku.core.models.cwl import CWLClass
 
     def renku_cli(*args):
         before_cwl_files = set(client.workflow_path.glob('*.cwl'))

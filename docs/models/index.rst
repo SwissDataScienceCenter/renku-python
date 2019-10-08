@@ -20,7 +20,7 @@
 Models
 ======
 
-.. automodule:: renku.models
+.. automodule:: renku.core.models
 
 .. toctree::
    :maxdepth: 1

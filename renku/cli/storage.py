@@ -19,7 +19,7 @@
 
 import click
 
-from ._client import pass_local_client
+from renku.core.commands.client import pass_local_client
 
 
 @click.group()

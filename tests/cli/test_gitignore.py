@@ -16,14 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test compliance with ``.gitignore`` file."""
-
-from renku import cli
+from renku.cli import cli
 
 
 def test_dataset_add(tmpdir, runner, client):
     """Test importing data into a dataset."""
     # create a dataset
-    result = runner.invoke(cli.cli, ['dataset', 'create', 'testing'])
+    result = runner.invoke(cli, ['dataset', 'create', 'testing'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
@@ -33,7 +32,7 @@ def test_dataset_add(tmpdir, runner, client):
 
     # The file should be ignored and command fail
     result = runner.invoke(
-        cli.cli,
+        cli,
         ['dataset', 'add', 'testing', ignored_file.strpath],
         catch_exceptions=False,
     )
@@ -43,7 +42,6 @@ def test_dataset_add(tmpdir, runner, client):
 
     # Use the --force ;)
     result = runner.invoke(
-        cli.cli,
-        ['dataset', 'add', 'testing', '--force', ignored_file.strpath]
+        cli, ['dataset', 'add', 'testing', '--force', ignored_file.strpath]
     )
     assert 0 == result.exit_code

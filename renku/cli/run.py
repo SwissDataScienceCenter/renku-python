@@ -161,12 +161,11 @@ from subprocess import call
 
 import click
 
-from renku import errors
-from renku.api._git import _mapped_std_streams
-from renku.models.cwl.command_line_tool import CommandLineToolFactory
-
-from ._client import pass_local_client
-from ._options import option_isolation
+from renku.core import errors
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.options import option_isolation
+from renku.core.management.git import _mapped_std_streams
+from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
