@@ -790,6 +790,26 @@ def test_dataset_rm(tmpdir, runner, project, client):
     assert 0 == result.exit_code
 
 
+def test_dataset_rm_commit(tmpdir, runner, project, client):
+    """Test removal of a dataset repository state."""
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    # try to delete a non empty dataset
+    result = runner.invoke(cli, ['dataset', 'rm', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    # check output
+    assert 'OK' in result.output
+    assert not client.load_dataset(name='my-dataset')
+
+    # Dirty repository check.
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+
 def test_dataset_overwrite_no_confirm(runner, project):
     """Check dataset overwrite behaviour without confirmation."""
     result = runner.invoke(cli, ['dataset', 'create', 'rokstar'])
