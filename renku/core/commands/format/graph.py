@@ -53,8 +53,6 @@ def dot(graph, simple=True, debug=False, landscape=False):
 
     register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
-    print(_jsonld(graph, 'expand'))
-
     g = ConjunctiveGraph().parse(
         data=_jsonld(graph, 'expand'),
         format='json-ld',
