@@ -299,7 +299,9 @@ class ProcessRun(Activity):
         kw_only=True,
     )
 
-    qualified_usage = jsonld.ib(context='prov:qualifiedUsage', kw_only=True)
+    qualified_usage = jsonld.ib(
+        context='prov:qualifiedUsage', kw_only=True, type=Usage
+    )
 
     @generated.default
     def default_generated(self):
