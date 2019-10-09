@@ -33,7 +33,8 @@ import requests
 
 from renku.core import errors
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.datasets import Creator, Dataset, DatasetFile, \
+from renku.core.models.creators import Creator
+from renku.core.models.datasets import Dataset, DatasetFile, \
     DatasetTag, NoneType
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference

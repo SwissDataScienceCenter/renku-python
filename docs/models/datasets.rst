@@ -42,6 +42,6 @@ Manage files in the dataset.
 Creator
 -------
 
-.. autoclass:: renku.core.models.datasets.Creator
+.. autoclass:: renku.core.models.creators.Creator
    :members:
    :inherited-members:

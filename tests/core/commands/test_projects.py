@@ -157,7 +157,7 @@ def test_project_datetime_loading(project_meta):
 
 def test_project_creator_deserialization(client, project):
     """Check that the correct creator is returned on deserialization."""
-    from renku.core.models.datasets import Creator
+    from renku.core.models.creators import Creator
 
     # modify the project metadata to change the creator
     project = client.project

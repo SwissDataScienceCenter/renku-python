@@ -42,7 +42,8 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.datasets import Creator, Dataset
+from renku.core.models.creators import Creator
+from renku.core.models.datasets import Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
 
