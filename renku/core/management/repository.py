@@ -172,7 +172,8 @@ class RepositoryApiMixin(GitCore):
     @cached_property
     def project(self):
         """Return the FOAF/PROV representation of the project."""
-        return Project.from_yaml(self.renku_metadata_path, client=self)
+        if self.renku_metadata_path.exists():
+            return Project.from_yaml(self.renku_metadata_path, client=self)
 
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.core.models.provenance.activities.Activity`.

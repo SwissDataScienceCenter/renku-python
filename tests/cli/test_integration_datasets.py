@@ -451,7 +451,7 @@ def test_dataset_export(runner, client, project):
     )
 
     assert 2 == result.exit_code
-    assert 'Dataset not found.' in result.output
+    assert 'Dataset is not found.' in result.output
 
 
 @pytest.mark.integration
@@ -531,7 +531,7 @@ def test_datasets_remote_import(
     # add data from a git repo via http
     result = runner.invoke(
         cli, [
-            'dataset', 'add', 'dataset', '--target', remotes['filename'],
+            'dataset', 'add', 'dataset', '--source', remotes['filename'],
             remotes['url']
         ]
     )
@@ -544,7 +544,7 @@ def test_datasets_remote_import(
             'dataset',
             'add',
             'dataset',
-            '-t',
+            '-s',
             'dir2/file2',
             os.path.dirname(data_repository.git_dir),
         ]
@@ -604,7 +604,7 @@ def test_datasets_import_target(
     result = runner.invoke(
         cli,
         [
-            'dataset', 'add', 'dataset', '--target', remotes['filename'],
+            'dataset', 'add', 'dataset', '--source', remotes['filename'],
             remotes['url']
         ],
         catch_exceptions=False,
@@ -619,7 +619,7 @@ def test_datasets_import_target(
             'dataset',
             'add',
             'dataset',
-            '-t',
+            '-s',
             'dir2/file2',
             os.path.dirname(data_repository.git_dir),
         ],

@@ -97,9 +97,7 @@ def test_data_add(
                     'email': 'me@example.com',
                     'identifier': 'me_id'
                 }]
-                client.add_data_to_dataset(
-                    d, ['{}{}'.format(scheme, path)], nocopy=True
-                )
+                client.add_data_to_dataset(d, ['{}{}'.format(scheme, path)])
             assert os.path.exists('data/dataset/file')
 
 
@@ -129,13 +127,13 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
     )
     assert os.stat('data/dataset/dir2/file2')
     assert dataset.files[0].path.endswith('dir2/file2')
-    assert os.stat('.renku/vendors/local')
 
     # check that the creators are properly parsed from commits
     client.add_data_to_dataset(
-        dataset, [os.path.dirname(data_repository.git_dir)], target='file'
+        dataset, [os.path.dirname(data_repository.git_dir)], sources=['file']
     )
 
+    assert dataset.files[1].name == 'file'
     assert len(dataset.files[1].creator) == 2
     assert all(x.name in ('me', 'me2') for x in dataset.files[1].creator)
 
