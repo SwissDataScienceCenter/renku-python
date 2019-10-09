@@ -1217,3 +1217,17 @@ def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
         catch_exceptions=False,
     )
     assert 2 == result.exit_code
+
+
+def test_dataset_clean_up_when_add_fails(runner, client):
+    """Test project is cleaned when dataset add fails for a new dataset."""
+    # add a non-existing path to a new dataset
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'new-dataset', 'non-existing-file'],
+        catch_exceptions=True,
+    )
+
+    assert result.exit_code == 1
+    ref = client.renku_path / 'refs' / 'datasets' / 'new-dataset'
+    assert not ref.is_symlink() and not ref.exists()
