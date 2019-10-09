@@ -203,7 +203,6 @@ def _convert_dataset_files(value):
 
 def _convert_dataset_tags(value):
     """Convert dataset tags."""
-
     if isinstance(value, dict):  # compatibility with previous versions
         value = [value]
 

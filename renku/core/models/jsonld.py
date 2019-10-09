@@ -260,7 +260,7 @@ def asjsonld(
     filter=None,
     dict_factory=dict,
     retain_collection_types=False,
-    export_context=True,
+    add_context=True,
     basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
@@ -295,9 +295,6 @@ def asjsonld(
         if isinstance(v, weakref.ReferenceType):
             continue
 
-        # do not export context for containers
-        ec = export_context and KEY_CLS not in a.metadata
-
         if filter is not None and not filter(a, v):
             continue
         if recurse is True:
@@ -307,6 +304,7 @@ def asjsonld(
                     recurse=True,
                     filter=filter,
                     dict_factory=dict_factory,
+                    add_context=False,
                     basedir=basedir,
                 )
             elif isinstance(v, (tuple, list, set)):
@@ -317,7 +315,7 @@ def asjsonld(
                         recurse=True,
                         filter=filter,
                         dict_factory=dict_factory,
-                        export_context=ec,
+                        add_context=False,
                         basedir=basedir,
                     ) if has(i.__class__) else i for i in v
                 ])
@@ -327,12 +325,13 @@ def asjsonld(
                     asjsonld(
                         kk,
                         dict_factory=df,
+                        add_context=False,
                         basedir=basedir,
                     ) if has(kk.__class__) else convert_value(kk),
                     asjsonld(
                         vv,
                         dict_factory=df,
-                        export_context=ec,
+                        add_context=False,
                         basedir=basedir,
                     ) if has(vv.__class__) else vv
                 ) for kk, vv in iteritems(v))
@@ -343,7 +342,7 @@ def asjsonld(
 
     inst_cls = type(inst)
 
-    if export_context:
+    if add_context:
         rv['@context'] = deepcopy(inst_cls._jsonld_context)
 
     if inst_cls._jsonld_type:

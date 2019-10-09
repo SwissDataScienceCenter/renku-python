@@ -34,7 +34,11 @@ class Association:
     """Assign responsibility to an agent for an activity."""
 
     plan = jsonld.ib(context='prov:hadPlan')
-    agent = jsonld.ib(context='prov:agent', default=None)
+    agent = jsonld.ib(
+        context='prov:agent',
+        default=None,
+        type='renku.core.models.provenance.agents.SoftwareAgent'
+    )
 
     _id = jsonld.ib(context='@id', kw_only=True)
 
@@ -80,7 +84,11 @@ class EntityProxyMixin:
 class Usage(EntityProxyMixin):
     """Represent a dependent path."""
 
-    entity = jsonld.ib(context='prov:entity', kw_only=True)
+    entity = jsonld.ib(
+        context='prov:entity',
+        kw_only=True,
+        type='renku.core.models.provenance.entities.Entity'
+    )
     role = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
 
     _id = jsonld.ib(context='@id', default=None, kw_only=True)
