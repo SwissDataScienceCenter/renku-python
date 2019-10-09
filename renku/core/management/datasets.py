@@ -21,11 +21,13 @@ import os
 import re
 import shutil
 import stat
+import tempfile
 import uuid
 import warnings
 from configparser import NoSectionError
 from contextlib import contextmanager
 from pathlib import Path
+from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
 
 import attr
@@ -34,8 +36,7 @@ import requests
 from renku.core import errors
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.creators import Creator
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
-    NoneType
+from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.refs import LinkReference
@@ -111,11 +112,19 @@ class DatasetsApiMixin(object):
     def with_dataset(self, name=None):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
+        clean_up_required = False
 
         if dataset is None:
+            clean_up_required = True
+            dataset_ref = None
             identifier = str(uuid.uuid4())
             path = (self.renku_datasets_path / identifier / self.METADATA)
-            path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                path.parent.mkdir(parents=True, exist_ok=False)
+            except FileExistsError:
+                raise errors.DatasetExistsError(
+                    'Dataset with reference {} exists'.format(path.parent)
+                )
 
             with with_reference(path):
                 dataset = Dataset(
@@ -123,13 +132,23 @@ class DatasetsApiMixin(object):
                 )
 
             if name:
-                LinkReference.create(client=self, name='datasets/' +
-                                     name).set_reference(path)
+                dataset_ref = LinkReference.create(
+                    client=self, name='datasets/' + name
+                )
+                dataset_ref.set_reference(path)
 
         dataset_path = self.path / self.datadir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
-        yield dataset
+        try:
+            yield dataset
+        except Exception:
+            # TODO use a general clean-up strategy
+            # https://github.com/SwissDataScienceCenter/renku-python/issues/736
+            if clean_up_required and dataset_ref:
+                dataset_ref.delete()
+                shutil.rmtree(path.parent, ignore_errors=True)
+            raise
 
         # TODO
         # if path is None:
@@ -140,7 +159,14 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def add_data_to_dataset(
-        self, dataset, urls, git=False, force=False, **kwargs
+        self,
+        dataset,
+        urls,
+        git=False,
+        force=False,
+        sources=(),
+        destination='',
+        link=False
     ):
         """Import the data into the data directory."""
         dataset_path = self.path / self.datadir / dataset.name
@@ -150,25 +176,18 @@ class DatasetsApiMixin(object):
         for url in urls:
             git = git or check_for_git_repo(url)
 
-            target = kwargs.pop('target', None)
-
             if git:
-                if isinstance(target, (str, NoneType)):
-                    files.extend(
-                        self._add_from_git(
-                            dataset, dataset_path, url, target, **kwargs
-                        )
+                sources = sources or ()
+                files.extend(
+                    self._add_from_git(
+                        dataset, dataset_path, url, sources, destination
                     )
-                else:
-                    for t in target:
-                        files.extend(
-                            self._add_from_git(
-                                dataset, dataset_path, url, t, **kwargs
-                            )
-                        )
+                )
             else:
                 files.extend(
-                    self._add_from_url(dataset, dataset_path, url, **kwargs)
+                    self._add_from_url(
+                        dataset, dataset_path, url, link, destination
+                    )
                 )
 
         ignored = self.find_ignored_paths(*(data['path']
@@ -191,6 +210,9 @@ class DatasetsApiMixin(object):
         # Generate the DatasetFiles
         dataset_files = []
         for data in files:
+            if os.path.basename(str(data['path'])) == '.git':
+                continue
+
             datasetfile = DatasetFile.from_revision(self, **data)
 
             # Set dataset file path relative to projects root for submodules
@@ -199,7 +221,7 @@ class DatasetsApiMixin(object):
             dataset_files.append(datasetfile)
         dataset.update_files(dataset_files)
 
-    def _add_from_url(self, dataset, path, url, link=False, **kwargs):
+    def _add_from_url(self, dataset, dataset_path, url, link, destination):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
 
@@ -208,32 +230,35 @@ class DatasetsApiMixin(object):
                 '{} URLs are not supported'.format(u.scheme)
             )
 
-        # Respect the directory struture inside the source path.
-        relative_to = kwargs.pop('relative_to', None)
-        if relative_to:
-            dst_path = Path(u.path).resolve().absolute().relative_to(
-                Path(relative_to).resolve().absolute()
-            )
-        else:
-            dst_path = os.path.basename(u.path)
+        if destination:
+            destination = self._resolve_paths(dataset_path,
+                                              [destination]).pop()
 
-        dst = path.joinpath(dst_path).absolute()
+        dst = self.path / dataset_path / destination
+
+        if dst.exists() and dst.is_dir():
+            dst = dst / Path(u.path).name
 
         if u.scheme in ('', 'file'):
             src = Path(u.path).absolute()
 
             # if we have a directory, recurse
             if src.is_dir():
+                if dst.exists() and not dst.is_dir():
+                    raise errors.InvalidFileOperation(
+                        'Cannot copy directory to a file'
+                    )
+
                 files = []
                 dst.mkdir(parents=True, exist_ok=True)
                 for f in src.iterdir():
                     files.extend(
                         self._add_from_url(
                             dataset,
-                            dst,
+                            dataset_path,
                             f.absolute().as_posix(),
                             link=link,
-                            **kwargs
+                            destination=dst
                         )
                     )
                 return files
@@ -275,141 +300,208 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_git(self, dataset, path, url, target, **kwargs):
-        """Process adding resources from another git repository.
-
-        The submodules are placed in ``.renku/vendors`` and linked
-        to the *path* specified by the user.
-        """
+    def _add_from_git(self, dataset, dataset_path, url, sources, destination):
+        """Process adding resources from another git repository."""
         from git import Repo
-
-        # create the submodule
-        if url.startswith('git@'):
-            url = 'git+ssh://' + url
+        from renku import LocalClient
 
         u = parse.urlparse(url)
-        submodule_path = self.renku_path / 'vendors' / (u.netloc or 'local')
 
-        # Respect the directory struture inside the source path.
-        relative_to = kwargs.get('relative_to', None)
-
-        if u.scheme in ('', 'file'):
+        if u.scheme in ('', 'file') and not url.startswith('git@'):
             try:
-                relative_url = Path(url).resolve().relative_to(self.path)
-            except Exception:
-                relative_url = None
-
-            if relative_url:
-                return [{
-                    'path': url,
-                    'url': url,
-                    'creator': dataset.creator,
-                    'dataset': dataset.name,
-                    'parent': self
-                }]
+                Path(u.path).resolve().relative_to(self.path)
+            except ValueError:
+                pass
+            else:
+                if not destination:
+                    return [{
+                        'path': url,
+                        'url': url,
+                        'creator': dataset.creator,
+                        'dataset': dataset.name,
+                        'parent': self
+                    }]
 
             warnings.warn('Importing local git repository, use HTTPS')
-            # determine where is the base repo path
-            r = Repo(url, search_parent_directories=True)
-            src_repo_path = Path(r.git_dir).parent.resolve()
-            submodule_name = src_repo_path.name
-            submodule_path = submodule_path / str(src_repo_path).lstrip('/')
 
-            # if repo path is a parent, rebase the paths and update url
-            if src_repo_path != Path(u.path):
-                top_target = Path(
-                    u.path
-                ).resolve().absolute().relative_to(src_repo_path)
-                if target:
-                    target = top_target / target
-                else:
-                    target = top_target
-                url = src_repo_path.as_posix()
-        elif u.scheme in {'http', 'https', 'git+https', 'git+ssh'}:
-            submodule_name = os.path.splitext(os.path.basename(u.path))[0]
-            submodule_path = submodule_path.joinpath(
-                os.path.dirname(u.path).lstrip('/'), submodule_name
-            )
+            # determine where is the base repo path
+            repo = Repo(url, search_parent_directories=True)
+            repo_path = Path(repo.git_dir).parent.resolve()
+
+            # if repo path is a parent of the url, treat the url as a source
+            if repo_path != Path(u.path):
+                if sources:
+                    raise errors.UsageError(
+                        'Cannot use --source within local repo subdirectories'
+                    )
+                source = Path(u.path).resolve().relative_to(repo_path)
+                sources = (source, )
+                url = repo_path.as_posix()
+        elif u.scheme in {'http', 'https', 'git+https', 'git+ssh'} or \
+                url.startswith('git@'):
+            repo_path = Path(tempfile.mkdtemp())
+            repo = Repo.clone_from(url, repo_path, recursive=True)
         else:
             raise NotImplementedError(
                 'Scheme {} not supported'.format(u.scheme)
             )
 
-        # FIXME: do a proper check that the repos are not the same
-        if submodule_name not in (s.name for s in self.repo.submodules):
-            if u.scheme in {'http', 'https', 'git+https', 'git+ssh'}:
-                url = self.get_relative_url(url)
+        dataset_path = self.path / dataset_path
 
-            # Submodule in python git does some custom magic that does not
-            # allow for relative URLs, so we call the git function directly
-            self.repo.git.submodule([
-                'add', '--force', '--name', submodule_name, url,
-                submodule_path.relative_to(self.path).as_posix()
-            ])
+        sources = self._resolve_paths(u.path, sources)
+        destination = destination or Path('.')
+        destination = self._resolve_paths(dataset_path, [destination]).pop()
 
-        src = submodule_path / (target or '')
+        dst_root = self.path / dataset_path / destination
 
-        if target and relative_to:
-            relative_to = Path(relative_to)
-            if relative_to.is_absolute():
-                assert u.scheme in {
-                    '', 'file'
-                }, 'Only relative paths can be used with URLs.'
-                target = (Path(url).resolve().absolute() / target).relative_to(
-                    relative_to.resolve()
+        # Get all files from repo that match sources
+        copied_sources = set()
+        files = set()
+        for file in repo.head.commit.tree.traverse():
+            path = file.path
+            result = self._get_src_and_dst(path, repo_path, sources, dst_root)
+
+            if result:
+                files.add(result)
+                source = result[3]
+                copied_sources.add(source)
+
+        uncopied_sources = sources - copied_sources
+        if uncopied_sources:
+            uncopied_sources = {str(s) for s in uncopied_sources}
+            # FIXME use errors.BadParameter
+            # https://github.com/SwissDataScienceCenter/renku-python/issues/720
+            import click
+            raise click.BadParameter(
+                'No such file or directory', param_hint=uncopied_sources
+            )
+
+        # Create metadata and move files to dataset
+        results = []
+        client = LocalClient(repo_path)
+
+        paths = set()
+        for path, src, _, __ in files:
+            if src.is_dir():
+                continue
+            if src.is_symlink():
+                path = str(src.resolve().relative_to(repo_path))
+            paths.add(path)
+        self._fetch_lfs_files(str(repo_path), paths)
+
+        for path, src, dst, _ in files:
+            if not src.is_dir():
+                creators = []
+                # grab all the creators from the commit history
+                for commit in repo.iter_commits(paths=path):
+                    creator = Creator.from_commit(commit)
+                    if creator not in creators:
+                        creators.append(creator)
+
+                if u.scheme in ('', 'file'):
+                    dst_url = None
+                elif path:
+                    dst_url = '{}/{}'.format(url, path)
+                else:
+                    dst_url = url
+
+                base = DatasetFile.from_revision(
+                    client, path=path, url=url, creator=creators
+                )
+
+                results.append({
+                    'path': dst.relative_to(self.path),
+                    'url': dst_url,
+                    'creator': creators,
+                    'dataset': dataset.name,
+                    'parent': self,
+                    'based_on': base
+                })
+
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(str(src), str(dst))
+
+        return results
+
+    def _resolve_paths(self, root_path, paths):
+        """Check if paths are within a root path and resolve them."""
+        results = set()
+
+        for p in paths:
+            try:
+                root_path = Path(root_path).resolve()
+                path = (root_path / p).resolve().relative_to(root_path)
+            except ValueError:
+                raise errors.InvalidFileOperation(
+                    'File {} is not within path {}'.format(p, root_path)
                 )
             else:
-                # src already includes target so we do not have to append it
-                target = src.relative_to(submodule_path / relative_to)
+                results.add(path)
 
-        # link the target into the data directory
-        dst = self.path / path / (target or '')
+        return results
 
-        # if we have a directory, recurse
-        if src.is_dir():
-            files = []
-            dst.mkdir(parents=True, exist_ok=True)
-            # FIXME get all files from submodule index
-            for f in src.iterdir():
-                try:
-                    files.extend(
-                        self._add_from_git(
-                            dataset,
-                            path,
-                            url,
-                            target=f.relative_to(submodule_path),
-                            **kwargs
-                        )
-                    )
-                except ValueError:
-                    pass  # skip files outside the relative path
-            return files
-
-        if not dst.parent.exists():
-            dst.parent.mkdir(parents=True)
-
-        os.symlink(os.path.relpath(str(src), str(dst.parent)), str(dst))
-
-        # grab all the creators from the commit history
-        git_repo = Repo(str(submodule_path.absolute()))
-        creators = []
-        for commit in git_repo.iter_commits(paths=target):
-            creator = Creator.from_commit(commit)
-            if creator not in creators:
-                creators.append(creator)
-
-        if u.scheme in ('', 'file'):
-            url = None
+    def _get_src_and_dst(self, path, repo_path, sources, dst_root):
+        if not sources:
+            source = Path('.')
         else:
-            url = '{}/{}'.format(url, target)
+            source = None
+            for s in sources:
+                try:
+                    Path(path).relative_to(s)
+                except ValueError:
+                    pass
+                else:
+                    source = s
+                    break
 
-        return [{
-            'path': dst.relative_to(self.path),
-            'url': url,
-            'creator': creators,
-            'dataset': dataset.name,
-            'parent': self
-        }]
+            if not source:
+                return
+
+        src = repo_path / path
+        source_name = Path(source).name
+        relative_path = Path(path).relative_to(source)
+
+        if not dst_root.exists():
+            if len(sources) == 1:
+                dst = dst_root / relative_path
+            else:  # Treat destination as a directory
+                dst = dst_root / source_name / relative_path
+        elif dst_root.is_dir():
+            dst = dst_root / source_name / relative_path
+        else:  # Destination is an existing file
+            if len(sources) == 1 and not src.is_dir():
+                dst = dst_root
+            elif not sources:
+                raise errors.InvalidFileOperation('Cannot copy repo to file')
+            else:
+                raise errors.InvalidFileOperation(
+                    'Cannot copy multiple files or directories to a file'
+                )
+
+        return (path, src, dst, source)
+
+    def _fetch_lfs_files(self, repo_path, paths):
+        """Fetch and checkout paths that are tracked by Git LFS."""
+        try:
+            output = run(('git', 'lfs', 'ls-files', '--name-only'),
+                         stdout=PIPE,
+                         cwd=repo_path,
+                         universal_newlines=True)
+        except SubprocessError:
+            return
+
+        lfs_files = set(output.stdout.split('\n'))
+        files = lfs_files & paths
+        if not files:
+            return
+
+        try:
+            for path in files:
+                run(['git', 'lfs', 'pull', '--include', path], cwd=repo_path)
+        except KeyboardInterrupt:
+            raise
+        except SubprocessError:
+            pass
 
     def get_relative_url(self, url):
         """Determine if the repo url should be relative."""

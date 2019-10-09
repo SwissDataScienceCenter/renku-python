@@ -285,6 +285,10 @@ class DatasetNotFound(RenkuException, click.ClickException):
         super(DatasetNotFound, self).__init__(msg)
 
 
+class DatasetExistsError(RenkuException, click.ClickException):
+    """Raise when trying to create an existing dataset."""
+
+
 class ExternalStorageNotInstalled(RenkuException, click.ClickException):
     """Raise when LFS is required but not found or installed in the repo."""
 

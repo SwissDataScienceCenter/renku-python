@@ -139,14 +139,14 @@ def add_file(
     name,
     link=False,
     force=False,
-    relative_to=None,
-    target=None,
+    sources=(),
+    destination='',
     with_metadata=None,
     urlscontext=contextlib.nullcontext
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, relative_to, target, with_metadata,
+        client, urls, name, link, force, sources, destination, with_metadata,
         urlscontext
     )
 
@@ -157,25 +157,22 @@ def add_to_dataset(
     name,
     link=False,
     force=False,
-    relative_to=None,
-    target=None,
+    sources=(),
+    destination='',
     with_metadata=None,
     urlscontext=contextlib.nullcontext
 ):
     """Add data to a dataset."""
     try:
         with client.with_dataset(name=name) as dataset:
-            target = target if target else None
-
-            urls = urlscontext(urls)
-            with urls as bar:
+            with urlscontext(urls) as bar:
                 client.add_data_to_dataset(
                     dataset,
                     bar,
                     link=link,
-                    target=target,
-                    relative_to=relative_to,
                     force=force,
+                    sources=sources,
+                    destination=destination,
                 )
 
             if with_metadata:
@@ -476,11 +473,10 @@ def import_dataset(
         pool.close()
 
         dataset_name = name or dataset.display_name
+        existing = client.load_dataset(name=dataset_name)
         if (
-            force or (
-                handle_duplicate_fn and
-                handle_duplicate_fn(client, dataset_name)
-            )
+            not existing or force or
+            (handle_duplicate_fn and handle_duplicate_fn(dataset_name))
         ):
             add_to_dataset(
                 client,

@@ -65,31 +65,34 @@ URL schemes. For example,
 
     $ renku dataset add my-dataset git+ssh://host.io/namespace/project.git
 
-Sometimes you want to import just a specific path within the parent project.
-In this case, use the ``--target`` flag:
+Sometimes you want to import just specific paths within the parent project.
+In this case, use the ``--source`` or ``-s`` flag:
 
 .. code-block:: console
 
-    $ renku dataset add my-dataset --target relative-path/datafile \
+    $ renku dataset add my-dataset --source path/within/repo/to/datafile \
         git+ssh://host.io/namespace/project.git
 
-To trim part of the path from the parent directory, use the ``--relative-to``
-option. For example, the command above will result in a structure like
+The command above will result in a structure like
 
 .. code-block:: console
 
     data/
       my-dataset/
-        relative-path/
-          datafile
+        datafile
 
-Using instead
+You can use ``--destination`` or ``-d`` flag to change the name of the target
+file or directory. The semantics here are similar to the POSIX copy command:
+if the destination does not exist or if it is a file then the source will be
+renamed; if the destination exists and is a directory the source will be copied
+to it. You will get an error message if you try to move a directory to a file
+or copy multiple files into one.
 
 .. code-block:: console
 
     $ renku dataset add my-dataset \
-        --target relative-path/datafile \
-        --relative-to relative-path \
+        --source path/within/repo/to/datafile \
+        --destination new-dir/new-filename \
         git+ssh://host.io/namespace/project.git
 
 will yield:
@@ -98,7 +101,8 @@ will yield:
 
     data/
       my-dataset/
-        datafile
+        new-dir/
+          new-filename
 
 Tagging a dataset:
 
@@ -380,22 +384,37 @@ def edit(dataset_id):
 @click.argument('name')
 @click.argument('urls', nargs=-1)
 @click.option('--link', is_flag=True, help='Creates a hard link.')
-@click.option('--relative-to', default=None)
-@click.option(
-    '-t',
-    '--target',
-    default=None,
-    multiple=True,
-    help='Target path in the git repo.'
-)
 @click.option(
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
-def add(name, urls, link, relative_to, target, force):
+@click.option(
+    '-s',
+    '--src',
+    '--source',
+    'sources',
+    default=None,
+    multiple=True,
+    help='Path(s) within remote git repo to be added'
+)
+@click.option(
+    '-d',
+    '--dst',
+    '--destination',
+    'destination',
+    default='',
+    help='Destination file or directory within the dataset path'
+)
+def add(name, urls, link, force, sources, destination):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
-        urls, name, link, force, relative_to, target, urlscontext=progress
+        urls=urls,
+        name=name,
+        link=link,
+        force=force,
+        sources=sources,
+        destination=destination,
+        urlscontext=progress
     )
 
 
