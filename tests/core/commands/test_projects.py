@@ -23,6 +23,7 @@ import pytest
 import yaml
 from freezegun import freeze_time
 
+from renku.core.models.creators import Creator
 from renku.core.models.jsonld import NoDatesSafeLoader, asjsonld
 from renku.core.models.projects import Project
 
@@ -110,7 +111,7 @@ def test_project_serialization():
 
     context = data['@context']
     assert 'schema:name' == context['name']
-    assert 'schema:creator' == context['creator']
+    assert Creator._jsonld_context == context['creator']['@context']
     assert 'schema:dateUpdated' == context['updated']
     assert 'schema:dateCreated' == context['created']
     assert 'schema:schemaVersion' == context['version']
@@ -135,7 +136,8 @@ def test_project_metadata_compatibility(project_meta, version, is_broken):
         assert 'demo' == project.name
 
     assert 'schema:name' == project._jsonld_context['name']
-    assert 'schema:creator' == project._jsonld_context['creator']
+    main_context_creator = project._jsonld_context['creator']
+    assert Creator._jsonld_context == main_context_creator['@context']
     assert 'schema:dateUpdated' == project._jsonld_context['updated']
     assert 'schema:dateCreated' == project._jsonld_context['created']
     assert 'schema:schemaVersion' == project._jsonld_context['version']

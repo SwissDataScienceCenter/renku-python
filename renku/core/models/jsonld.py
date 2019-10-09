@@ -421,7 +421,7 @@ class JSONLDMixin(ReferenceMixin):
             data['@context'].update(cls._jsonld_context)
             try:
                 compacted = ld.compact(data, cls._jsonld_context)
-            except Exception as e:
+            except Exception:
                 compacted = data
         else:
             compacted = data

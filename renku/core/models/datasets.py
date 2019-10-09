@@ -17,7 +17,6 @@
 # limitations under the License.
 """Model objects representing datasets."""
 
-import configparser
 import datetime
 import re
 import uuid
@@ -27,7 +26,6 @@ from pathlib import Path
 import attr
 from attr.validators import instance_of
 
-from renku.core import errors
 from renku.core.models.creators import Creator, CreatorsMixin
 from renku.core.models.provenance.entities import Entity
 from renku.core.utils.datetime8601 import parse_date

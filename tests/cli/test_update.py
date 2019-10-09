@@ -92,6 +92,9 @@ def test_update(runner, project, run):
             catch_exceptions=False,
         )
         assert 0 == result.exit_code, output_format
+        print('---------')
+        print(source.name)
+        print(result.output)
         assert source.name in result.output, output_format
 
 
