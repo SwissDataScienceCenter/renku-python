@@ -143,7 +143,7 @@ def attrs(
                     merge_ctx = t._jsonld_context
 
                     if not current_context:
-                        current_context = {}
+                        current_context = {'@id': ctx}
                     elif not isinstance(current_context, dict):
                         current_context = {'@id': current_context}
 
