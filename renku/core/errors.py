@@ -49,6 +49,10 @@ class APIError(requests.exceptions.HTTPError, RenkuException):
         raise cls(message)
 
 
+class NotFound(APIError):
+    """Raise when an API object is not found."""
+
+
 class UnexpectedStatusCode(APIError):
     """Raise when the status code does not match specification."""
 
@@ -72,15 +76,30 @@ class UnexpectedStatusCode(APIError):
         raise cls(response)
 
 
+class ParameterError(RenkuException):
+    """Raise in case of invalid parameter."""
+
+    def __init__(self, message, param_hint=None):
+        """Build a custom message."""
+        if param_hint:
+            if isinstance(param_hint, (tuple, list)):
+                param_hint = ' / '.join('"{}"'.format(x) for x in param_hint)
+            message = 'Invalid value for {}: {}'.format(param_hint, message)
+        else:
+            message = 'Invalid value: {}'.format(message)
+
+        super().__init__(message)
+
+
 class InvalidFileOperation(RenkuException):
     """Raise when trying to perfrom invalid file operation."""
 
 
-class UsageError(RenkuException, click.UsageError):
+class UsageError(RenkuException):
     """Raise in case of unintended usage of certain function calls."""
 
 
-class ConfigurationError(RenkuException, click.ClickException):
+class ConfigurationError(RenkuException):
     """Raise in case of misconfiguration."""
 
 
@@ -110,11 +129,11 @@ class MissingEmail(ConfigurationError):
         super(MissingUsername, self).__init__(message)
 
 
-class AuthenticationError(RenkuException, click.ClickException):
+class AuthenticationError(RenkuException):
     """Raise when there is a problem with authentication."""
 
 
-class DirtyRepository(RenkuException, click.ClickException):
+class DirtyRepository(RenkuException):
     """Raise when trying to work with dirty repository."""
 
     def __init__(self, repo):
@@ -128,7 +147,7 @@ class DirtyRepository(RenkuException, click.ClickException):
         )
 
 
-class DirtyRenkuDirectory(RenkuException, click.ClickException):
+class DirtyRenkuDirectory(RenkuException):
     """Raise when a directory in the renku repository is dirty."""
 
     def __init__(self, repo):
@@ -141,7 +160,7 @@ class DirtyRenkuDirectory(RenkuException, click.ClickException):
         ).format(RENKU_HOME) + '\n\n' + str(repo.git.status()) + '\n\n')
 
 
-class IgnoredFiles(RenkuException, click.ClickException):
+class IgnoredFiles(RenkuException):
     """Raise when trying to work with ignored files."""
 
     def __init__(self, ignored):
@@ -155,7 +174,7 @@ class IgnoredFiles(RenkuException, click.ClickException):
         )
 
 
-class MigrationRequired(RenkuException, click.ClickException):
+class MigrationRequired(RenkuException):
     """Raise when migration is required."""
 
     def __init__(self, resource_type):
@@ -169,7 +188,7 @@ class MigrationRequired(RenkuException, click.ClickException):
         )
 
 
-class NothingToCommit(RenkuException, click.ClickException):
+class NothingToCommit(RenkuException):
     """Raise when there is nothing to commit."""
 
     def __init__(self):
@@ -177,7 +196,7 @@ class NothingToCommit(RenkuException, click.ClickException):
         super(NothingToCommit, self).__init__('There is nothing to commit.')
 
 
-class FailedMerge(RenkuException, click.ClickException):
+class FailedMerge(RenkuException):
     """Raise when automatic merge failed."""
 
     def __init__(self, repo, branch, merge_args):
@@ -191,7 +210,7 @@ class FailedMerge(RenkuException, click.ClickException):
         )
 
 
-class UnmodifiedOutputs(RenkuException, click.ClickException):
+class UnmodifiedOutputs(RenkuException):
     """Raise when there are unmodified outputs in the repository."""
 
     def __init__(self, repo, unmodified):
@@ -211,11 +230,11 @@ class UnmodifiedOutputs(RenkuException, click.ClickException):
         )
 
 
-class InvalidOutputPath(RenkuException, click.ClickException):
+class InvalidOutputPath(RenkuException):
     """Raise when trying to work with an invalid output path."""
 
 
-class OutputsNotFound(RenkuException, click.ClickException):
+class OutputsNotFound(RenkuException):
     """Raise when there are not any detected outputs in the repository."""
 
     def __init__(self, repo, inputs):
@@ -248,11 +267,11 @@ class OutputsNotFound(RenkuException, click.ClickException):
         super(OutputsNotFound, self).__init__(msg)
 
 
-class InvalidInputPath(RenkuException, click.ClickException):
+class InvalidInputPath(RenkuException):
     """Raise when input path does not exist or is not in the repository."""
 
 
-class InvalidSuccessCode(RenkuException, click.ClickException):
+class InvalidSuccessCode(RenkuException):
     """Raise when the exit-code is not 0 or redefined."""
 
     def __init__(self, returncode, success_codes=None):
@@ -271,11 +290,7 @@ class InvalidSuccessCode(RenkuException, click.ClickException):
         super(InvalidSuccessCode, self).__init__(msg)
 
 
-class NotFound(APIError):
-    """Raise when an API object is not found."""
-
-
-class DatasetNotFound(RenkuException, click.ClickException):
+class DatasetNotFound(RenkuException):
     """Raise when dataset is not found."""
 
     def __init__(self):
@@ -285,11 +300,11 @@ class DatasetNotFound(RenkuException, click.ClickException):
         super(DatasetNotFound, self).__init__(msg)
 
 
-class DatasetExistsError(RenkuException, click.ClickException):
+class DatasetExistsError(RenkuException):
     """Raise when trying to create an existing dataset."""
 
 
-class ExternalStorageNotInstalled(RenkuException, click.ClickException):
+class ExternalStorageNotInstalled(RenkuException):
     """Raise when LFS is required but not found or installed in the repo."""
 
     def __init__(self, repo):
@@ -308,7 +323,7 @@ class ExternalStorageNotInstalled(RenkuException, click.ClickException):
         super(ExternalStorageNotInstalled, self).__init__(msg)
 
 
-class ExternalStorageDisabled(RenkuException, click.ClickException):
+class ExternalStorageDisabled(RenkuException):
     """Raise when disabled repository storage API is trying to be used."""
 
     def __init__(self, repo):
@@ -327,7 +342,7 @@ class ExternalStorageDisabled(RenkuException, click.ClickException):
         super(ExternalStorageDisabled, self).__init__(msg)
 
 
-class UninitializedProject(RenkuException, click.ClickException):
+class UninitializedProject(RenkuException):
     """Raise when a project does not seem to have been initialized yet."""
 
     def __init__(self, repo_path):
@@ -339,7 +354,7 @@ class UninitializedProject(RenkuException, click.ClickException):
         super(UninitializedProject, self).__init__(msg)
 
 
-class InvalidAccessToken(RenkuException, click.ClickException):
+class InvalidAccessToken(RenkuException):
     """Raise when access token is incorrect."""
 
     def __init__(self):

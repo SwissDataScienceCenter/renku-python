@@ -69,3 +69,22 @@ def test_dataset_deserialization(client, dataset):
 
     for attribute, type_ in creator_types.items():
         assert type(creator.get(attribute)) is type_
+
+
+def test_doi_migration(doi_dataset):
+    """Test migration of id with doi."""
+    import yaml
+    from urllib.parse import quote, urljoin
+    from renku.core.utils.doi import is_doi
+    from renku.core.models.datasets import Dataset
+    from renku.core.models.jsonld import NoDatesSafeLoader
+
+    dataset = Dataset.from_jsonld(
+        yaml.load(doi_dataset, Loader=NoDatesSafeLoader)
+    )
+
+    assert is_doi(dataset.identifier)
+    assert urljoin(
+        'https://localhost', 'datasets/' + quote(dataset.identifier, safe='')
+    ) == dataset._id
+    assert dataset.same_as == urljoin('https://doi.org', dataset.identifier)

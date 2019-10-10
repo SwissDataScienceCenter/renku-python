@@ -41,6 +41,8 @@ def validate_iso8601(str_val):
 
 def parse_date(value):
     """Convert date to datetime."""
+    if value is None:
+        return
     if isinstance(value, datetime.datetime):
         date = value
     else:

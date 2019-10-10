@@ -109,7 +109,7 @@ class DatasetsApiMixin(object):
                 return self.get_dataset(path)
 
     @contextmanager
-    def with_dataset(self, name=None):
+    def with_dataset(self, name=None, identifier=None):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
         clean_up_required = False
@@ -369,10 +369,7 @@ class DatasetsApiMixin(object):
         uncopied_sources = sources - copied_sources
         if uncopied_sources:
             uncopied_sources = {str(s) for s in uncopied_sources}
-            # FIXME use errors.BadParameter
-            # https://github.com/SwissDataScienceCenter/renku-python/issues/720
-            import click
-            raise click.BadParameter(
+            raise errors.ParameterError(
                 'No such file or directory', param_hint=uncopied_sources
             )
 

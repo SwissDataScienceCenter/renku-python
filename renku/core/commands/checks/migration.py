@@ -20,6 +20,7 @@ import shutil
 import uuid
 from collections import defaultdict
 from pathlib import Path
+from urllib.parse import quote
 
 import click
 
@@ -152,7 +153,18 @@ def migrate_broken_dataset_paths(client):
     for dataset in client.datasets.values():
         dataset_path = Path(dataset.path)
 
-        expected_path = (client.renku_datasets_path / Path(dataset.identifier))
+        expected_path = (
+            client.renku_datasets_path /
+            Path(quote(dataset.identifier, safe=''))
+        )
+
+        # migrate the refs
+        ref = LinkReference.create(
+            client=client,
+            name='datasets/{0}'.format(dataset.display_name),
+            force=True,
+        )
+        ref.set_reference(expected_path / client.METADATA)
 
         if not dataset_path.exists():
             dataset_path = (
