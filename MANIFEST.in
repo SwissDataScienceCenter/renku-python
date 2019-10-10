@@ -20,6 +20,7 @@
 include .dockerignore
 include .editorconfig
 include .tx/config
+include *.md
 prune docs/_build
 recursive-include renku *.po *.pot *.mo
 
