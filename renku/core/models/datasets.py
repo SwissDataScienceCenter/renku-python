@@ -122,9 +122,9 @@ class Creator(object):
             )
 
         # Check the git configuration.
-        if name is None:  # pragma: no cover
+        if not name:  # pragma: no cover
             raise errors.MissingUsername()
-        if email is None:  # pragma: no cover
+        if not email:  # pragma: no cover
             raise errors.MissingEmail()
 
         return cls(name=name, email=email)

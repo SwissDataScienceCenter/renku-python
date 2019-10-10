@@ -84,6 +84,7 @@ import yaml
 from renku.cli.config import config
 from renku.cli.dataset import dataset
 from renku.cli.doctor import doctor
+from renku.cli.exception_handler import IssueFromTraceback
 from renku.cli.githooks import githooks
 from renku.cli.init import init
 from renku.cli.log import log
@@ -97,7 +98,6 @@ from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
 from renku.cli.workflow import workflow
-from renku.core.commands.exception_handler import IssueFromTraceback
 from renku.core.commands.options import install_completion, \
     option_use_external_storage
 from renku.core.commands.version import check_version, print_version
