@@ -223,7 +223,7 @@ from tqdm import tqdm
 from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_parent, dataset_remove, edit_dataset, export_dataset, \
     file_unlink, import_dataset, list_files, list_tags, remove_dataset_tags, \
-    tag_dataset_with_client
+    tag_dataset_with_client, update_datasets
 from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -618,4 +618,31 @@ def import_(uri, name, extract, yes):
         download_file_fn=download_file_with_progress,
         force=yes
     )
+    click.secho('OK', fg='green')
+
+
+@dataset.command('update')
+@click.argument('names', nargs=-1)
+@click.option(
+    '--creators',
+    help='Filter files which where authored by specific creators. '
+    'Multiple creators are specified by comma.'
+)
+@click.option(
+    '-I',
+    '--include',
+    default=None,
+    multiple=True,
+    help='Include files matching given pattern.'
+)
+@click.option(
+    '-X',
+    '--exclude',
+    default=None,
+    multiple=True,
+    help='Exclude files matching given pattern.'
+)
+def update(names, creators, include, exclude):
+    """Updates files in dataset from a remote Git repo."""
+    update_datasets(names, creators, include, exclude)
     click.secho('OK', fg='green')

@@ -427,6 +427,7 @@ class Dataset(Entity, CreatorsMixin):
             else:
                 existing_file.commit = new_file.commit
                 existing_file._label = new_file._label
+                existing_file.based_on = new_file.based_on
 
         self.files += to_insert
 
