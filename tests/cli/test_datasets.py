@@ -1228,6 +1228,6 @@ def test_dataset_clean_up_when_add_fails(runner, client):
         catch_exceptions=True,
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     ref = client.renku_path / 'refs' / 'datasets' / 'new-dataset'
     assert not ref.is_symlink() and not ref.exists()

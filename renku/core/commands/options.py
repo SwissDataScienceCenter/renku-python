@@ -19,6 +19,8 @@
 
 import click
 
+from renku.core.errors import RenkuException, UsageError
+
 from .git import set_git_isolation
 
 
@@ -87,7 +89,7 @@ def default_endpoint(ctx, param, value):
     endpoint = default_endpoint_from_config(config, option=value)
 
     if endpoint is None:
-        raise click.UsageError('No default endpoint found.')
+        raise UsageError('No default endpoint found.')
 
     return endpoint
 
@@ -102,7 +104,7 @@ def validate_endpoint(ctx, param, value):
     endpoint = default_endpoint(ctx, param, value)
 
     if endpoint not in config.get('endpoints', {}):
-        raise click.UsageError('Unknown endpoint: {0}'.format(endpoint))
+        raise UsageError('Unknown endpoint: {0}'.format(endpoint))
 
     return endpoint
 
@@ -142,7 +144,7 @@ def check_siblings(graph, outputs):
             'Include the files above in the command '
             'or use the --with-siblings option.'
         )
-        raise click.ClickException(
+        raise RenkuException(
             'There are missing output siblings:\n\n'
             '\t{0}\n\n{1}'.format(
                 '\n\t'.join(click.style(path, fg='red') for path in missing),

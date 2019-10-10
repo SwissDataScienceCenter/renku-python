@@ -28,9 +28,9 @@ from pathlib import Path
 from urllib.parse import ParseResult
 
 import click
+import git
 import requests
 import yaml
-from click import BadParameter
 from requests import HTTPError
 
 from renku.core.commands.checks.migration import check_dataset_resources, \
@@ -39,7 +39,7 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired
+    MigrationRequired, ParameterError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Creator, Dataset
@@ -101,7 +101,7 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 def create_dataset(client, name, handle_duplicate_fn=None):
     """Create an empty dataset in the current repo.
 
-    :raises: ``click.BadParameter``
+    :raises: ``renku.core.errors.ParameterError``
     """
     existing = client.load_dataset(name=name)
     if (not existing or handle_duplicate_fn and handle_duplicate_fn(existing)):
@@ -189,8 +189,8 @@ def add_to_dataset(
 
                 dataset.update_metadata(with_metadata)
 
-    except FileNotFoundError:
-        raise BadParameter('Could not process \n{0}'.format('\n'.join(urls)))
+    except (FileNotFoundError, git.exc.NoSuchPathError):
+        raise ParameterError('Could not process \n{0}'.format('\n'.join(urls)))
 
 
 @pass_local_client(clean=False, commit=False)
@@ -218,13 +218,13 @@ def file_unlink(client, name, include, exclude):
     dataset = client.load_dataset(name=name)
 
     if not dataset:
-        raise BadParameter('Dataset does not exist.')
+        raise ParameterError('Dataset does not exist.')
 
     records = _filter(
         client, names=[dataset.name], include=include, exclude=exclude
     )
     if not records:
-        raise BadParameter('No records found.')
+        raise ParameterError('No records found.')
 
     yield records
 
@@ -250,7 +250,7 @@ def dataset_remove(
     datasets = {name: client.dataset_path(name) for name in names}
 
     if not datasets:
-        raise BadParameter(
+        raise ParameterError(
             'use dataset name or identifier', param_hint='names'
         )
 
@@ -259,7 +259,7 @@ def dataset_remove(
         for name, path in datasets.items() if not path or not path.exists()
     ]
     if unknown:
-        raise BadParameter(
+        raise ParameterError(
             'unknown datasets ' + ', '.join(unknown), param_hint='names'
         )
 
@@ -392,7 +392,7 @@ def import_dataset(
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
-        raise BadParameter('Could not process {0}.\n{1}'.format(uri, err))
+        raise ParameterError('Could not process {0}.\n{1}'.format(uri, err))
 
     try:
         record = provider.find_record(uri)
@@ -422,13 +422,13 @@ def import_dataset(
                 click.confirm(text_prompt, abort=True)
 
     except KeyError as e:
-        raise BadParameter((
+        raise ParameterError((
             'Could not process {0}.\n'
             'Unable to fetch metadata due to {1}'.format(uri, e)
         ))
 
     except LookupError:
-        raise BadParameter(
+        raise ParameterError(
             ('Could not process {0}.\n'
              'URI not found.'.format(uri))
         )
@@ -465,7 +465,7 @@ def import_dataset(
                 p.get()  # Will internally do the wait() as well.
 
         except HTTPError as e:
-            raise BadParameter((
+            raise ParameterError((
                 'Could not process {0}.\n'
                 'URI not found.'.format(e.request.url)
             ))
@@ -564,12 +564,12 @@ def tag_dataset(client, name, tag, description, force=False):
     """Creates a new tag for a dataset."""
     dataset_ = client.load_dataset(name)
     if not dataset_:
-        raise BadParameter('Dataset not found.')
+        raise ParameterError('Dataset not found.')
 
     try:
         dataset = client.add_dataset_tag(dataset_, tag, description, force)
     except ValueError as e:
-        raise BadParameter(e)
+        raise ParameterError(e)
 
     dataset.to_yaml()
 
@@ -583,12 +583,12 @@ def remove_dataset_tags(client, name, tags):
     """Removes tags from a dataset."""
     dataset = client.load_dataset(name)
     if not dataset:
-        raise BadParameter('Dataset not found.')
+        raise ParameterError('Dataset not found.')
 
     try:
         dataset = client.remove_dataset_tags(dataset, tags)
     except ValueError as e:
-        raise BadParameter(e)
+        raise ParameterError(e)
 
     dataset.to_yaml()
 
@@ -599,7 +599,7 @@ def list_tags(client, name, format):
     dataset_ = client.load_dataset(name)
 
     if not dataset_:
-        raise BadParameter('Dataset not found.')
+        raise ParameterError('Dataset not found.')
 
     tags = sorted(dataset_.tags, key=lambda t: t.created)
 

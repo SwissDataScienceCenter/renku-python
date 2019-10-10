@@ -59,6 +59,8 @@ from urllib.parse import urlencode
 
 import click
 
+from renku.core.errors import ParameterError, RenkuException, UsageError
+
 _BUG = click.style(
     'Ahhhhhhhh! You have found a bug. 🐞\n\n',
     fg='red',
@@ -79,7 +81,22 @@ if SENTRY_DSN:
         HAS_SENTRY = True
 
 
-class IssueFromTraceback(click.Group):
+class RenkuExceptionsHandler(click.Group):
+    """Handles all RenkuExceptions."""
+
+    def main(self, *args, **kwargs):
+        """Catch and print all Renku exceptions."""
+        try:
+            return super().main(*args, **kwargs)
+        except RenkuException as e:
+            click.echo('Error: {}'.format(e))
+            exit_code = 1
+            if isinstance(e, (ParameterError, UsageError)):
+                exit_code = 2
+            sys.exit(exit_code)
+
+
+class IssueFromTraceback(RenkuExceptionsHandler):
     """Create an issue with formatted exception."""
 
     REPO_URL = 'https://github.com/SwissDataScienceCenter/renku-python'

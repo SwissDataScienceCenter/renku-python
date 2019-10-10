@@ -369,10 +369,7 @@ class DatasetsApiMixin(object):
         uncopied_sources = sources - copied_sources
         if uncopied_sources:
             uncopied_sources = {str(s) for s in uncopied_sources}
-            # FIXME use errors.BadParameter
-            # https://github.com/SwissDataScienceCenter/renku-python/issues/720
-            import click
-            raise click.BadParameter(
+            raise errors.ParameterError(
                 'No such file or directory', param_hint=uncopied_sources
             )
 
