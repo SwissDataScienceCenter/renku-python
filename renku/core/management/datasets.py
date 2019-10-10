@@ -111,8 +111,6 @@ class DatasetsApiMixin(object):
     @contextmanager
     def with_dataset(self, name=None, identifier=None):
         """Yield an editable metadata object for a dataset."""
-        from urllib.parse import quote
-
         dataset = self.load_dataset(name=name)
         clean_up_required = False
 
