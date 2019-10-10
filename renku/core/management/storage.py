@@ -104,7 +104,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 cwd=str(self.path.absolute()),
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.BadParameter(
+            raise errors.ParameterError(
                 'Couldn\'t run \'git lfs\':\n{0}'.format(e)
             )
 
@@ -146,7 +146,7 @@ class StorageApiMixin(RepositoryApiMixin):
                     cwd=str(self.path),
                 )
             except (KeyboardInterrupt, OSError) as e:
-                raise errors.BadParameter(
+                raise errors.ParameterError(
                     'Couldn\'t run \'git lfs\':\n{0}'.format(e)
                 )
 
@@ -161,7 +161,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 cwd=str(self.path),
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.BadParameter(
+            raise errors.ParameterError(
                 'Couldn\'t run \'git lfs\':\n{0}'.format(e)
             )
 

@@ -76,7 +76,7 @@ class UnexpectedStatusCode(APIError):
         raise cls(response)
 
 
-class BadParameter(RenkuException):
+class ParameterError(RenkuException):
     """Raise in case of invalid parameter."""
 
     def __init__(self, message, param_hint=None):

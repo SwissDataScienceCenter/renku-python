@@ -417,7 +417,7 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
         ],
         catch_exceptions=True,
     )
-    assert 1 == result.exit_code
+    assert 2 == result.exit_code
 
 
 def test_dataset_add_with_link(tmpdir, runner, project, client):
@@ -728,7 +728,7 @@ def test_dataset_unlink_file_not_found(runner, project):
         cli, ['dataset', 'unlink', 'my-dataset', '--include', 'notthere.csv']
     )
 
-    assert 1 == result.exit_code
+    assert 2 == result.exit_code
 
 
 def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
@@ -803,10 +803,10 @@ def test_dataset_rm(tmpdir, runner, project, client):
     """Test removal of a dataset."""
     # try to delete non existing dataset
     result = runner.invoke(cli, ['dataset', 'rm'])
-    assert 1 == result.exit_code
+    assert 2 == result.exit_code
 
     result = runner.invoke(cli, ['dataset', 'rm', 'does-not-exist'])
-    assert 1 == result.exit_code
+    assert 2 == result.exit_code
 
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
@@ -1128,7 +1128,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, client):
         ['dataset', 'rm-tags', 'my-dataset', '2.0'],
         catch_exceptions=False,
     )
-    assert 1 == result.exit_code
+    assert 2 == result.exit_code
     assert 'not found' in result.output
 
     result = runner.invoke(
@@ -1143,7 +1143,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, client):
         ['dataset', 'rm-tags', 'my-dataset', '1.0'],
         catch_exceptions=False,
     )
-    assert 1 == result.exit_code
+    assert 2 == result.exit_code
     assert 'not found' in result.output
 
 
@@ -1193,7 +1193,7 @@ def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
         catch_exceptions=False,
     )
 
-    assert 1 == result.exit_code
+    assert 2 == result.exit_code
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
@@ -1228,6 +1228,6 @@ def test_dataset_clean_up_when_add_fails(runner, client):
         catch_exceptions=True,
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     ref = client.renku_path / 'refs' / 'datasets' / 'new-dataset'
     assert not ref.is_symlink() and not ref.exists()

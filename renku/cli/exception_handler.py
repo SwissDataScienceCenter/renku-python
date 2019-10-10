@@ -59,7 +59,7 @@ from urllib.parse import urlencode
 
 import click
 
-from renku.core.errors import RenkuException
+from renku.core.errors import ParameterError, RenkuException, UsageError
 
 _BUG = click.style(
     'Ahhhhhhhh! You have found a bug. 🐞\n\n',
@@ -90,7 +90,10 @@ class RenkuExceptionsHandler(click.Group):
             return super().main(*args, **kwargs)
         except RenkuException as e:
             click.echo('Error: {}'.format(e))
-            sys.exit(1)
+            exit_code = 1
+            if isinstance(e, (ParameterError, UsageError)):
+                exit_code = 2
+            sys.exit(exit_code)
 
 
 class IssueFromTraceback(RenkuExceptionsHandler):
