@@ -1,0 +1,57 @@
+'@context':
+  _id: '@id'
+  _label: rdfs:label
+  _project: schema:isPartOf
+  created: schema:dateCreated
+  creator: schema:creator
+  date_published: schema:datePublished
+  description: schema:description
+  files: schema:hasPart
+  identifier: schema:identifier
+  in_language: schema:inLanguage
+  keywords: schema:keywords
+  license: schema:license
+  name: schema:name
+  path: prov:atLocation
+  prov: http://www.w3.org/ns/prov#
+  schema: http://schema.org/
+  url: schema:url
+  version: schema:version
+  wfprov: http://purl.org/wf4ever/wfprov#
+'@type':
+- prov:Entity
+- schema:Dataset
+- wfprov:Artifact
+_id: https://doi.org/10.5281/zenodo.3247009
+_label: f2e6b3f3-5987-4800-9b7c-07d4821aa5c6
+_project:
+  '@context':
+    _id: '@id'
+    foaf: http://xmlns.com/foaf/0.1/
+    prov: http://www.w3.org/ns/prov#
+  '@type':
+  - foaf:Project
+  - prov:Location
+  _id: https://dev.renku.ch/virginiafriedrich/datasets-test
+created: '2019-07-31T07:22:25.503110+02:00'
+creator:
+- '@type': schema:Person
+  _id: https://orcid.org/0000-0002-3730-5348
+  affiliation: RWTH University Aachen
+  alternate_name: null
+  email: null
+  name: Kather, Jakob Nikolas
+date_published:
+  '@type': schema:Date
+  '@value': '2019-06-16'
+description: ""
+files: []
+identifier: f2e6b3f3-5987-4800-9b7c-07d4821aa5c6
+in_language: null
+keywords: []
+license:
+  _id: http://creativecommons.org/licenses/by/4.0/legalcode
+name: Tissue blocks for EBV detection in stomach cancer
+path: .renku/datasets/f2e6b3f3-5987-4800-9b7c-07d4821aa5c6
+url: https://zenodo.org/record/3247009
+version: v0.1

@@ -59,7 +59,7 @@ def test_list_with_old_repository(isolated_runner, old_project):
 
 
 @pytest.mark.migration
-def test_migrate_with_old_repository(isolated_runner, old_project):
+def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
     assert 0 == result.exit_code

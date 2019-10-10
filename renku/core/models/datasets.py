@@ -19,7 +19,10 @@
 
 import configparser
 import datetime
+import os
+import pathlib
 import re
+import urllib
 import uuid
 from functools import partial
 from pathlib import Path
@@ -30,7 +33,7 @@ from attr.validators import instance_of
 from renku.core import errors
 from renku.core.models.provenance.entities import Entity
 from renku.core.utils.datetime8601 import parse_date
-from renku.core.utils.doi import is_doi
+from renku.core.utils.doi import extract_doi, is_doi
 
 from . import jsonld as jsonld
 
@@ -40,6 +43,14 @@ _path_attr = partial(
     jsonld.ib,
     converter=Path,
 )
+
+
+def _extract_doi(value):
+    """Return either a string or the doi part of a URL."""
+    value = str(value)
+    if is_doi(value):
+        return extract_doi(value)
+    return value
 
 
 @jsonld.s(
@@ -382,7 +393,7 @@ class Dataset(Entity, CreatorsMixin):
         default=attr.Factory(uuid.uuid4),
         context='schema:identifier',
         kw_only=True,
-        converter=str
+        converter=_extract_doi
     )
 
     in_language = jsonld.ib(
@@ -434,6 +445,8 @@ class Dataset(Entity, CreatorsMixin):
         kw_only=True
     )
 
+    same_as = jsonld.ib(context='schema:sameAs', default=None, kw_only=True)
+
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
@@ -462,13 +475,15 @@ class Dataset(Entity, CreatorsMixin):
     @property
     def uid(self):
         """UUID part of identifier."""
+        if is_doi(self.identifier):
+            return self.identifier
         return self.identifier.split('/')[-1]
 
     @property
     def short_id(self):
         """Shorter version of identifier."""
-        if is_doi(self._id):
-            return self._id
+        if is_doi(self.identifier):
+            return self.identifier
         return str(self.uid)[:8]
 
     @property
@@ -498,7 +513,9 @@ class Dataset(Entity, CreatorsMixin):
         :return: self
         """
         if is_doi(other_dataset.identifier):
-            self._id = other_dataset.identifier
+            self.same_as = urllib.parse.urljoin(
+                'https://doi.org', other_dataset.identifier
+            )
 
         for field_ in self.EDITABLE_FIELDS:
             val = getattr(other_dataset, field_)
@@ -551,16 +568,38 @@ class Dataset(Entity, CreatorsMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook."""
+        from urllib.parse import quote
+
         super().__attrs_post_init__()
 
-        if not self._id:
-            self._id = self.identifier
+        # Determine the hostname for the resource URIs.
+        # If RENKU_DOMAIN is set, it overrides the host from remote.
+        # Default is localhost.
+        host = 'localhost'
+        if self.client:
+            host = self.client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
 
-        if not self._label:
-            self._label = self.identifier
+        # always set the id by the identifier
+        self._id = urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join(
+                '/datasets', quote(self.identifier, safe='')
+            )
+        )
+
+        # if `date_published` is set, we are probably dealing with
+        # an imported dataset so `created` is not needed
+        if self.date_published:
+            self.created = None
+
+        self._label = self.identifier
 
         if not self.path:
-            self.path = str(self.client.renku_datasets_path / str(self.uid))
+            self.path = str(
+                self.client.renku_datasets_path /
+                quote(str(self.uid), safe='')
+            )
 
         if self.files:
             for dataset_file in self.files:
