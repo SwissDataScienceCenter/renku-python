@@ -31,7 +31,6 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.git import GitURL
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
 
@@ -139,35 +138,6 @@ class RepositoryApiMixin(GitCore):
         """Return the Project instance."""
         if self.renku_metadata_path.exists():
             return Project.from_yaml(self.renku_metadata_path, client=self)
-
-    @property
-    def remote(self, remote_name='origin'):
-        """Return host, owner and name of the remote if it exists."""
-        host = owner = name = None
-        try:
-            remote_branch = \
-                self.repo.head.reference.tracking_branch()
-            if remote_branch is not None:
-                remote_name = remote_branch.remote_name
-        except TypeError:
-            pass
-
-        try:
-            url = GitURL.parse(self.repo.remotes[remote_name].url)
-
-            # Remove gitlab. unless running on gitlab.com.
-            hostname_parts = url.hostname.split('.')
-            if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
-                hostname_parts = hostname_parts[1:]
-            url = attr.evolve(url, hostname='.'.join(hostname_parts))
-        except IndexError:
-            url = None
-
-        if url:
-            host = url.hostname
-            owner = url.owner
-            name = url.name
-        return {'host': host, 'owner': owner, 'name': name}
 
     @property
     def remote(self, remote_name='origin'):
