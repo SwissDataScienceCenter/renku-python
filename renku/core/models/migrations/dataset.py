@@ -62,6 +62,18 @@ def migrate_absolute_paths(data):
     return data
 
 
+def migrate_doi_identifier(data):
+    """If the dataset has a doi, make identifier be based on it."""
+    from renku.core.utils.doi import is_doi, extract_doi
+
+    if is_doi(data.get('_id', '')):
+        data['identifier'] = extract_doi(data.get('_id'))
+        data['same_as'] = data['_id']
+        if data.get('@context'):
+            data['@context'].setdefault('same_as', 'schema:sameAs')
+    return data
+
+
 DATASET_MIGRATIONS = [
     migrate_absolute_paths,
     migrate_dataset_schema,

@@ -452,3 +452,16 @@ def cli(client, run):
         return exit_code, content
 
     return renku_cli
+
+
+@pytest.fixture
+def doi_dataset():
+    """Return a yaml of dataset using DOI for its id."""
+    from pathlib import Path
+    dataset_path = Path(
+        __file__
+    ).parent / 'tests' / 'fixtures' / 'doi-dataset.yml'
+    with open(dataset_path.as_posix()) as f:
+        dataset_yaml = f.read()
+
+    return dataset_yaml

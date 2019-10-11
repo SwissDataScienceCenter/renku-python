@@ -169,6 +169,37 @@ class RepositoryApiMixin(GitCore):
             name = url.name
         return {'host': host, 'owner': owner, 'name': name}
 
+    @property
+    def remote(self, remote_name='origin'):
+        """Return host, owner and name of the remote if it exists."""
+        from renku.core.models.git import GitURL
+
+        host = owner = name = None
+        try:
+            remote_branch = \
+                self.repo.head.reference.tracking_branch()
+            if remote_branch is not None:
+                remote_name = remote_branch.remote_name
+        except TypeError:
+            pass
+
+        try:
+            url = GitURL.parse(self.repo.remotes[remote_name].url)
+
+            # Remove gitlab. unless running on gitlab.com.
+            hostname_parts = url.hostname.split('.')
+            if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
+                hostname_parts = hostname_parts[1:]
+            url = attr.evolve(url, hostname='.'.join(hostname_parts))
+        except IndexError:
+            url = None
+
+        if url:
+            host = url.hostname
+            owner = url.owner
+            name = url.name
+        return {'host': host, 'owner': owner, 'name': name}
+
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.core.models.provenance.activities.Activity`.
 

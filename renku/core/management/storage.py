@@ -24,7 +24,6 @@ from shutil import which
 from subprocess import PIPE, STDOUT, call, run
 
 import attr
-from click import BadParameter
 from werkzeug.utils import cached_property
 
 from renku.core import errors
@@ -105,7 +104,9 @@ class StorageApiMixin(RepositoryApiMixin):
                 cwd=str(self.path.absolute()),
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise BadParameter('Couldn\'t run \'git lfs\':\n{0}'.format(e))
+            raise errors.ParameterError(
+                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
+            )
 
     def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""
@@ -145,7 +146,9 @@ class StorageApiMixin(RepositoryApiMixin):
                     cwd=str(self.path),
                 )
             except (KeyboardInterrupt, OSError) as e:
-                raise BadParameter('Couldn\'t run \'git lfs\':\n{0}'.format(e))
+                raise errors.ParameterError(
+                    'Couldn\'t run \'git lfs\':\n{0}'.format(e)
+                )
 
     @ensure_external_storage
     def untrack_paths_from_storage(self, *paths):
@@ -158,7 +161,9 @@ class StorageApiMixin(RepositoryApiMixin):
                 cwd=str(self.path),
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise BadParameter('Couldn\'t run \'git lfs\':\n{0}'.format(e))
+            raise errors.ParameterError(
+                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
+            )
 
     @ensure_external_storage
     def pull_paths_from_storage(self, *paths):

@@ -136,4 +136,4 @@ Renku Command Line
 Error Tracking
 --------------
 
-.. automodule:: renku.core.commands.exception_handler
+.. automodule:: renku.cli.exception_handler

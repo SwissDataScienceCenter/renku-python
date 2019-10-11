@@ -103,7 +103,6 @@ class LinkReference:
         """Create symlink to object in reference path."""
         ref = cls(client=client, name=name)
         path = ref.path
-
         if not force and path.exists():
             raise OSError(str(path))
         elif force and path.exists():

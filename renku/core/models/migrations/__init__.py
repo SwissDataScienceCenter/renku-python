@@ -18,9 +18,9 @@
 """Renku JSON-LD migrations."""
 
 from renku.core.models.migrations.dataset import migrate_absolute_paths, \
-    migrate_dataset_schema
+    migrate_dataset_schema, migrate_doi_identifier
 
 JSONLD_MIGRATIONS = {
     'dctypes:Dataset': [migrate_dataset_schema, migrate_absolute_paths],
-    'schema:Dataset': [migrate_absolute_paths],
+    'schema:Dataset': [migrate_absolute_paths, migrate_doi_identifier],
 }
