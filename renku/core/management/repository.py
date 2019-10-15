@@ -133,45 +133,9 @@ class RepositoryApiMixin(GitCore):
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
 
-    @property
-    def project_id(self):
-        """Return the id for the project based on the repo origin remote."""
-        from renku.core.models.git import GitURL
-
-        remote_name = 'origin'
-        try:
-            remote_branch = self.repo.head.reference.tracking_branch()
-            if remote_branch is not None:
-                remote_name = remote_branch.remote_name
-        except TypeError:
-            pass
-
-        try:
-            url = GitURL.parse(self.repo.remotes[remote_name].url)
-
-            # Remove gitlab. unless running on gitlab.com.
-            hostname_parts = url.hostname.split('.')
-            if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
-                hostname_parts = hostname_parts[1:]
-            url = attr.evolve(url, hostname='.'.join(hostname_parts))
-        except IndexError:
-            url = None
-
-        if url:
-            remote_url = 'https://' + url.hostname
-
-            if url.owner:
-                remote_url += '/' + url.owner
-            if url.name:
-                remote_url += '/' + url.name
-
-            return remote_url
-
-        return 'file://{0}'.format(self.path)
-
     @cached_property
     def project(self):
-        """Return the FOAF/PROV representation of the project."""
+        """Return the Project instance."""
         if self.renku_metadata_path.exists():
             return Project.from_yaml(self.renku_metadata_path, client=self)
 
@@ -365,16 +329,15 @@ class RepositoryApiMixin(GitCore):
                 self.repo.git.checkout(current_commit)
 
     @contextmanager
-    def with_metadata(self, read_only=False):
+    def with_metadata(self, read_only=False, name=None):
         """Yield an editable metadata object."""
         metadata_path = self.renku_metadata_path
 
         if metadata_path.exists():
             metadata = Project.from_yaml(metadata_path, client=self)
         else:
-            metadata = Project.from_jsonld({},
-                                           client=self,
-                                           __reference__=metadata_path)
+            metadata = Project(name=name, client=self)
+            metadata.__reference__ = metadata_path
 
         yield metadata
 
@@ -451,8 +414,7 @@ class RepositoryApiMixin(GitCore):
                 ) + '\n'
             )
 
-        with self.with_metadata() as metadata:
-            metadata.name = name
+        with self.with_metadata(name=name) as metadata:
             metadata.updated = datetime.now(timezone.utc)
 
         return str(path)
