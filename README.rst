@@ -194,7 +194,7 @@ Finally, run ``renku`` via the debugger:
 
 ::
 
-    $ ~/.local/pipx/venvs/renku/bin/python -m ptvsd --host localhost --wait -m renku <command>
+    $ ~/.local/pipx/venvs/renku/bin/python -m ptvsd --host localhost --wait -m renku.cli <command>
 
 
 If using Visual Studio Code, you may also want to set the ``Remote Attach`` configuration
