@@ -18,6 +18,7 @@
 """Model objects representing projects."""
 
 import datetime
+import os
 
 import attr
 
@@ -25,6 +26,8 @@ from renku.core.models import jsonld
 from renku.core.models.datasets import Creator
 from renku.core.models.datastructures import Collection
 from renku.core.utils.datetime8601 import parse_date
+
+PROJECT_URL_PATH = 'projects'
 
 
 @jsonld.s(
@@ -65,7 +68,14 @@ class Project(object):
 
     client = attr.ib(default=None, kw_only=True)
 
-    creator = jsonld.ib(default=None, kw_only=True, context='schema:creator')
+    creator = jsonld.ib(
+        default=None,
+        kw_only=True,
+        context={
+            '@id': 'schema:creator',
+            '@type': 'schema:Person',
+        },
+    )
 
     _id = jsonld.ib(context='@id', kw_only=True, default=None)
 
@@ -88,8 +98,32 @@ class Project(object):
                 # this assumes the project is being newly created
                 self.creator = Creator.from_git(self.client.repo)
 
-        if not self._id and self.client:
-            self._id = self.client.project_id
+        self._id = self.project_id
+
+    @property
+    def project_id(self):
+        """Return the id for the project based on the repo origin remote."""
+        import pathlib
+        import urllib
+
+        # Determine the hostname for the resource URIs.
+        # If RENKU_DOMAIN is set, it overrides the host from remote.
+        # Default is localhost.
+        host = 'localhost'
+        owner = self.creator.email.split('@')[0] if self.creator else 'NULL'
+        name = self.name
+
+        if self.client:
+            remote = self.client.remote
+            host = self.client.remote.get('host') or host
+            owner = remote.get('owner') or owner
+            name = remote.get('name') or name
+        host = os.environ.get('RENKU_DOMAIN') or host
+        project_url = urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or 'NULL')
+        )
+        return project_url
 
 
 class ProjectCollection(Collection):

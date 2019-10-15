@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test projects API."""
-
+import os
 from datetime import datetime, timezone
 
 import pytest
@@ -110,7 +110,8 @@ def test_project_serialization():
 
     context = data['@context']
     assert 'schema:name' == context['name']
-    assert 'schema:creator' == context['creator']
+    assert 'schema:creator' == context['creator'].get('@id')
+    assert 'schema:Person' == context['creator'].get('@type')
     assert 'schema:dateUpdated' == context['updated']
     assert 'schema:dateCreated' == context['created']
     assert 'schema:schemaVersion' == context['version']
@@ -135,7 +136,8 @@ def test_project_metadata_compatibility(project_meta, version, is_broken):
         assert 'demo' == project.name
 
     assert 'schema:name' == project._jsonld_context['name']
-    assert 'schema:creator' == project._jsonld_context['creator']
+    assert 'schema:creator' == project._jsonld_context['creator'].get('@id')
+    assert 'schema:Person' == project._jsonld_context['creator'].get('@type')
     assert 'schema:dateUpdated' == project._jsonld_context['updated']
     assert 'schema:dateCreated' == project._jsonld_context['created']
     assert 'schema:schemaVersion' == project._jsonld_context['version']
@@ -181,3 +183,46 @@ def test_project_creator_deserialization(client, project):
     # now the creator should be the one from the commit
     project = Project.from_yaml(client.renku_metadata_path, client=client)
     assert project.creator.email == 'janedoe@example.com'
+
+
+def test_project_uri(client, project, monkeypatch):
+    """Test that the project URI is correctly formed."""
+    from git.refs import RemoteReference
+    from git.refs.head import Head
+
+    # 1. the simple case where no other hostname exists
+    assert client.project._id.startswith('https://localhost')
+
+    # use the RENKU_DOMAIN environment variable to override localhost
+    with monkeypatch.context() as monkey:
+        monkey.setenv('RENKU_DOMAIN', 'renku.ch')
+        project = Project.from_yaml(client.renku_metadata_path, client=client)
+        assert project._id.startswith('https://renku.ch')
+
+    # 2. set up the master remote to be at https://example.com
+    # This should yield a project id that starts with https://example.com
+    host = 'example.com'
+    client.repo.git.remote(
+        'add', 'origin', 'https://{host}/namespace/{name}.git'.format(
+            host=host, name=client.project.name
+        )
+    )
+
+    def mock_tracking():
+        return RemoteReference('refs/remotes/origin/master')
+
+    with monkeypatch.context() as monkey:
+        monkey.setattr(Head, 'tracking_branch', mock_tracking)
+        project = Project.from_yaml(client.renku_metadata_path, client=client)
+        project_id = 'https://{host}/projects/namespace/{name}'.format(
+            host=host, name=client.project.name
+        )
+        assert project._id == project_id
+
+        # use the RENKU_DOMAIN environment variable to override remote
+        monkey.setenv('RENKU_DOMAIN', 'renku.ch')
+        project = Project.from_yaml(client.renku_metadata_path, client=client)
+        project_id = 'https://{host}/projects/namespace/{name}'.format(
+            host=os.environ.get('RENKU_DOMAIN'), name=client.project.name
+        )
+        assert project._id == project_id
