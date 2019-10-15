@@ -1260,7 +1260,7 @@ def test_dataset_update(
         cli, ['dataset', 'update'] + update_params, catch_exceptions=False
     )
     assert 0 == result.exit_code
-    data = open(file_path).read()
+    data = open(str(file_path)).read()
     assert data == 'new content'
 
     after = read_dataset_file_metadata(client, 'remote-dataset', 'file')
@@ -1319,7 +1319,7 @@ def test_dataset_multiple_update(
 
     result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
     assert 0 == result.exit_code
-    assert open(file_path).read() == 'new content'
+    assert open(str(file_path)).read() == 'new content'
 
     # Update again and commit
     file_.write('newer content')
@@ -1328,7 +1328,7 @@ def test_dataset_multiple_update(
 
     result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
     assert 0 == result.exit_code
-    assert open(file_path).read() == 'newer content'
+    assert open(str(file_path)).read() == 'newer content'
 
 
 @pytest.mark.parametrize(
@@ -1386,7 +1386,7 @@ def test_dataset_update_multiple_datasets(
         cli, ['dataset', 'update'] + update_params, catch_exceptions=False
     )
     assert 0 == result.exit_code
-    data = open(client.path / 'data' / 'dataset-1' / 'file').read()
+    data = open(str(client.path / 'data' / 'dataset-1' / 'file')).read()
     assert data == 'new content'
-    data = open(client.path / 'data' / 'dataset-2' / 'file').read()
+    data = open(str(client.path / 'data' / 'dataset-2' / 'file')).read()
     assert data == 'new content'
