@@ -502,7 +502,14 @@ def import_dataset(
 
 
 @pass_local_client(clean=True, commit=True, commit_only=DATASET_METADATA_PATHS)
-def update_datasets(client, names, creators, include, exclude):
+def update_datasets(
+    client,
+    names,
+    creators,
+    include,
+    exclude,
+    progress_context=contextlib.nullcontext
+):
     """Update files from a remote Git repo."""
     records = _filter(
         client,
@@ -516,23 +523,24 @@ def update_datasets(client, names, creators, include, exclude):
         raise ParameterError('No files matched the criteria.')
 
     datasets = {}
-    datasets_files = {}
+    possible_updates = []
 
     for file_ in records:
         if file_.based_on:
             dataset_name = file_.dataset
+            dataset = datasets.get(dataset_name)
 
-            if dataset_name not in datasets:
+            if not dataset:
                 dataset = client.load_dataset(name=dataset_name)
                 datasets[dataset_name] = dataset
-                datasets_files[dataset_name] = []
 
-            datasets_files[dataset_name].append(file_)
+            file_.dataset = dataset
+            possible_updates.append(file_)
 
-    for dataset_name, files in datasets_files.items():
-        dataset = datasets[dataset_name]
-        # TODO pass a progressbar here
-        client.update_dataset_files(dataset, files)
+    with progress_context(
+        possible_updates, item_show_func=lambda x: x.path if x else None
+    ) as progressbar:
+        client.update_dataset_files(progressbar)
 
 
 def _include_exclude(file_path, include=None, exclude=None):

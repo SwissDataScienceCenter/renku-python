@@ -599,7 +599,7 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def update_dataset_files(self, dataset, files):
+    def update_dataset_files(self, files):
         """Update files and dataset metadata according to their remotes."""
         from renku import LocalClient
 
@@ -642,13 +642,12 @@ class DatasetsApiMixin(object):
                     # Fetch file is it is tracked by Git LFS
                     self._fetch_lfs_files(repo_path, {based_on.path})
                     shutil.copy(str(src), str(dst))
+                    file_.based_on = remote_file
                     updated_files.append(file_)
                 else:
                     # File was removed or renamed
                     os.remove(dst)
                     deleted_files.append(file_)
-
-                file_.based_on = remote_file
 
         if not updated_files and not deleted_files:
             # Nothing to commit or update
@@ -660,12 +659,14 @@ class DatasetsApiMixin(object):
         # Force-add to include possible ignored files that are in datasets
         self.repo.git.add(*(file_paths), force=True)
         self.repo.index.commit(
-            'renku dataset {}: updated {} files and deleted {} files'.format(
-                dataset.name, len(updated_files), len(deleted_files)
+            'renku dataset: updated {} files and deleted {} files'.format(
+                len(updated_files), len(deleted_files)
             )
         )
 
         # Update datasets' metadata
+
+        modified_datasets = {}
 
         for file_ in updated_files:
             # Re-create list of creators
@@ -682,14 +683,15 @@ class DatasetsApiMixin(object):
                 based_on=file_.based_on,
                 creator=creators
             )
-            file_.update_from(new_file)
-
-        dataset.update_files(updated_files)
+            file_.dataset.update_files([new_file])
+            modified_datasets[file_.dataset.name] = file_.dataset
 
         for file_ in deleted_files:
-            dataset.unlink_file(file_.path)
+            file_.dataset.unlink_file(file_.path)
+            modified_datasets[file_.dataset.name] = file_.dataset
 
-        dataset.to_yaml()
+        for dataset in modified_datasets.values():
+            dataset.to_yaml()
 
     def _prepare_git_repo(self, url, repo_path):
         try:

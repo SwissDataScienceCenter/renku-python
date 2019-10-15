@@ -644,5 +644,6 @@ def import_(uri, name, extract, yes):
 )
 def update(names, creators, include, exclude):
     """Updates files in dataset from a remote Git repo."""
-    update_datasets(names, creators, include, exclude)
+    progress_context = partial(progressbar, label='Updating files')
+    update_datasets(names, creators, include, exclude, progress_context)
     click.secho('OK', fg='green')
