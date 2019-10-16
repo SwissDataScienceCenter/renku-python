@@ -419,7 +419,7 @@ class JSONLDMixin(ReferenceMixin):
             # merge new context into old context to prevent properties
             # getting lost in jsonld expansion
             if isinstance(data['@context'], str):
-                data['@context'] = {"@base": data['@context']}
+                data['@context'] = {'@base': data['@context']}
             data['@context'].update(cls._jsonld_context)
             try:
                 compacted = ld.compact(data, cls._jsonld_context)
