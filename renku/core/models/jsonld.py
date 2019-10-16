@@ -23,6 +23,7 @@ import weakref
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
+from pydoc import locate
 
 import attr
 import yaml
@@ -91,6 +92,9 @@ def attrs(
     context = context or {}
     translate = translate or {}
 
+    if '@version' not in context:
+        context['@version'] = 1.1
+
     def wrap(cls):
         """Decorate an attr enabled class."""
         jsonld_cls = attr.s(cls, **attrs_kwargs)
@@ -100,7 +104,6 @@ def attrs(
                 make_type(cls.__name__, (jsonld_cls, JSONLDMixin), {}),
                 **attrs_kwargs
             )
-
         # Merge types
         for subcls in jsonld_cls.mro():
             subtype = getattr(subcls, '_jsonld_type', None)
@@ -121,26 +124,33 @@ def attrs(
             if ctx is None:
                 continue
 
-            if ':' in ctx:
+            current_context = None
+            if isinstance(ctx, str) and ':' in ctx:
                 prefix, _ = ctx.split(':', 1)
                 if prefix in context:
-                    context[key] = ctx
-                    continue
+                    current_context = ctx
 
-            if isinstance(ctx, dict) or ctx not in context:
-                context[key] = ctx
+            elif isinstance(ctx, dict) or ctx not in context:
+                current_context = ctx
 
             if KEY_CLS in a.metadata:
-                merge_ctx = a.metadata[KEY_CLS]._jsonld_context
-                for ctx_key, ctx_value in merge_ctx.items():
-                    context.setdefault(ctx_key, ctx_value)
+                t = a.metadata[KEY_CLS]
 
-                    if context[ctx_key] != ctx_value:
-                        raise TypeError(
-                            'Can not merge {0} and {1} because of {2}'.format(
-                                jsonld_cls, a.metadata[KEY_CLS], ctx_key
-                            )
-                        )
+                if isinstance(t, str):
+                    t = locate(t)
+
+                if t and hasattr(t, '_jsonld_context'):
+                    merge_ctx = t._jsonld_context
+
+                    if not current_context:
+                        current_context = {'@id': ctx}
+                    elif not isinstance(current_context, dict):
+                        current_context = {'@id': current_context}
+
+                    current_context['@context'] = merge_ctx
+
+            if current_context:
+                context[key] = current_context
 
         jsonld_cls.__module__ = cls.__module__
         jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
@@ -178,7 +188,7 @@ def attrs(
             raise TypeError(
                 'Type {0!r} is already registered for class {1!r}.'.format(
                     jsonld_cls._jsonld_type,
-                    jsonld_cls.__type_registry__[jsonld_cls._jsonld_type],
+                    jsonld_cls.__type_registry__[type_],
                 )
             )
         jsonld_cls.__type_registry__[type_] = jsonld_cls
@@ -189,10 +199,12 @@ def attrs(
     return wrap(maybe_cls)
 
 
-def attrib(context=None, **kwargs):
+def attrib(context=None, type=None, **kwargs):
     """Create a new attribute with context."""
     kwargs.setdefault('metadata', {})
     kwargs['metadata'][KEY] = context
+    if type:
+        kwargs['metadata'][KEY_CLS] = type
     return attr.ib(**kwargs)
 
 
@@ -248,7 +260,7 @@ def asjsonld(
     filter=None,
     dict_factory=dict,
     retain_collection_types=False,
-    export_context=True,
+    add_context=True,
     basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
@@ -283,9 +295,6 @@ def asjsonld(
         if isinstance(v, weakref.ReferenceType):
             continue
 
-        # do not export context for containers
-        ec = export_context and KEY_CLS not in a.metadata
-
         if filter is not None and not filter(a, v):
             continue
         if recurse is True:
@@ -295,6 +304,7 @@ def asjsonld(
                     recurse=True,
                     filter=filter,
                     dict_factory=dict_factory,
+                    add_context=False,
                     basedir=basedir,
                 )
             elif isinstance(v, (tuple, list, set)):
@@ -305,7 +315,7 @@ def asjsonld(
                         recurse=True,
                         filter=filter,
                         dict_factory=dict_factory,
-                        export_context=ec,
+                        add_context=False,
                         basedir=basedir,
                     ) if has(i.__class__) else i for i in v
                 ])
@@ -315,12 +325,13 @@ def asjsonld(
                     asjsonld(
                         kk,
                         dict_factory=df,
+                        add_context=False,
                         basedir=basedir,
                     ) if has(kk.__class__) else convert_value(kk),
                     asjsonld(
                         vv,
                         dict_factory=df,
-                        export_context=ec,
+                        add_context=False,
                         basedir=basedir,
                     ) if has(vv.__class__) else vv
                 ) for kk, vv in iteritems(v))
@@ -331,7 +342,7 @@ def asjsonld(
 
     inst_cls = type(inst)
 
-    if export_context:
+    if add_context:
         rv['@context'] = deepcopy(inst_cls._jsonld_context)
 
     if inst_cls._jsonld_type:
@@ -405,6 +416,9 @@ class JSONLDMixin(ReferenceMixin):
                 __source__ = migration(__source__)
 
         if data['@context'] != cls._jsonld_context:
+            # merge new context into old context to prevent properties
+            # getting lost in jsonld expansion
+            data['@context'].update(cls._jsonld_context)
             try:
                 compacted = ld.compact(data, cls._jsonld_context)
             except Exception:

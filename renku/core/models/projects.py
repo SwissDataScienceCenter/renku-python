@@ -23,7 +23,7 @@ import os
 import attr
 
 from renku.core.models import jsonld
-from renku.core.models.datasets import Creator
+from renku.core.models.creators import Creator
 from renku.core.models.datastructures import Collection
 from renku.core.utils.datetime8601 import parse_date
 
@@ -75,6 +75,7 @@ class Project(object):
             '@id': 'schema:creator',
             '@type': 'schema:Person',
         },
+        type=Creator
     )
 
     _id = jsonld.ib(context='@id', kw_only=True, default=None)

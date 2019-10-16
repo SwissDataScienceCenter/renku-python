@@ -17,7 +17,6 @@
 # limitations under the License.
 """Model objects representing datasets."""
 
-import configparser
 import datetime
 import os
 import pathlib
@@ -30,7 +29,7 @@ from pathlib import Path
 import attr
 from attr.validators import instance_of
 
-from renku.core import errors
+from renku.core.models.creators import Creator, CreatorsMixin
 from renku.core.models.provenance.entities import Entity
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -51,115 +50,6 @@ def _extract_doi(value):
     if is_doi(value):
         return extract_doi(value)
     return value
-
-
-@jsonld.s(
-    type='schema:Person',
-    context={'schema': 'http://schema.org/'},
-    slots=True,
-)
-class Creator(object):
-    """Represent the creator of a resource."""
-
-    client = attr.ib(default=None, kw_only=True)
-
-    affiliation = jsonld.ib(
-        default=None, kw_only=True, context='schema:affiliation'
-    )
-
-    email = jsonld.ib(default=None, kw_only=True, context='schema:email')
-
-    alternate_name = jsonld.ib(
-        default=None, kw_only=True, context='schema:alternateName'
-    )
-
-    name = jsonld.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-        context='schema:name'
-    )
-
-    _id = jsonld.ib(kw_only=True, context='@id')
-
-    @property
-    def short_name(self):
-        """Gives full name in short form."""
-        names = self.name.split()
-        if len(names) == 1:
-            return self.name
-
-        last_name = names[-1]
-        initials = [name[0] for name in names]
-        initials.pop()
-
-        return '{0}.{1}'.format('.'.join(initials), last_name)
-
-    @email.validator
-    def check_email(self, attribute, value):
-        """Check that the email is valid."""
-        if self.email and not (
-            isinstance(value, str) and re.match(r'[^@]+@[^@]+\.[^@]+', value)
-        ):
-            raise ValueError('Email address is invalid.')
-
-    @classmethod
-    def from_git(cls, git):
-        """Create an instance from a Git repo."""
-        git_config = git.config_reader()
-        try:
-            name = git_config.get_value('user', 'name', None)
-            email = git_config.get_value('user', 'email', None)
-        except (
-            configparser.NoOptionError, configparser.NoSectionError
-        ):  # pragma: no cover
-            raise errors.ConfigurationError(
-                'The user name and email are not configured. '
-                'Please use the "git config" command to configure them.\n\n'
-                '\tgit config --global --add user.name "John Doe"\n'
-                '\tgit config --global --add user.email '
-                '"john.doe@example.com"\n'
-            )
-
-        # Check the git configuration.
-        if not name:  # pragma: no cover
-            raise errors.MissingUsername()
-        if not email:  # pragma: no cover
-            raise errors.MissingEmail()
-
-        return cls(name=name, email=email)
-
-    @classmethod
-    def from_commit(cls, commit):
-        """Create an instance from a Git commit."""
-        return cls(name=commit.author.name, email=commit.author.email)
-
-    @_id.default
-    def default_id(self):
-        """Set the default id."""
-        if self.email:
-            return 'mailto:{email}'.format(email=self.email)
-        return '_:{}'.format(str(uuid.uuid4()))
-
-    def __attrs_post_init__(self):
-        """Finish object initialization."""
-        # handle the case where ids were improperly set
-        if self._id == 'mailto:None':
-            self._id = self.default_id()
-
-
-@attr.s
-class CreatorsMixin:
-    """Mixin for handling creators container."""
-
-    creator = jsonld.container.list(
-        Creator, kw_only=True, context='schema:creator'
-    )
-
-    @property
-    def creators_csv(self):
-        """Comma-separated list of creators associated with dataset."""
-        return ','.join(creator.name for creator in self.creator)
 
 
 @jsonld.s(
@@ -324,6 +214,9 @@ def _convert_dataset_files(value):
 
 def _convert_dataset_tags(value):
     """Convert dataset tags."""
+    if isinstance(value, dict):  # compatibility with previous versions
+        value = [value]
+
     return [DatasetTag.from_jsonld(v) for v in value]
 
 
@@ -355,9 +248,6 @@ def _convert_keyword(keywords):
 @jsonld.s(
     type='schema:Dataset',
     context={
-        'affiliation': 'schema:affiliation',
-        'alternate_name': 'schema:alternateName',
-        'email': 'schema:email',
         'schema': 'http://schema.org/',
     },
 )
@@ -441,7 +331,9 @@ class Dataset(Entity, CreatorsMixin):
         DatasetTag,
         default=None,
         converter=_convert_dataset_tags,
-        context='schema:subjectOf',
+        context={
+            '@id': 'schema:subjectOf',
+        },
         kw_only=True
     )
 
