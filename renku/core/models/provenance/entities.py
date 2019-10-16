@@ -23,6 +23,7 @@ from pathlib import Path
 import attr
 
 from renku.core.models import jsonld as jsonld
+from renku.core.models.projects import Project
 
 
 def _str_or_none(data):
@@ -45,7 +46,9 @@ class CommitMixin:
 
     _id = jsonld.ib(context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _project = jsonld.ib(context='schema:isPartOf', kw_only=True, default=None)
+    _project = jsonld.ib(
+        context='schema:isPartOf', type=Project, kw_only=True, default=None
+    )
 
     @property
     def submodules(self):

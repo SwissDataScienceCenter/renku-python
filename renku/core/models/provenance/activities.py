@@ -104,8 +104,17 @@ class Activity(CommitMixin):
         kw_only=True,
     )
 
-    agent = jsonld.ib(context='prov:agent', kw_only=True, default=renku_agent)
-    person_agent = jsonld.ib(context='prov:agent', kw_only=True)
+    agent = jsonld.ib(
+        context='prov:agent',
+        kw_only=True,
+        default=renku_agent,
+        type='renku.core.models.provenance.agents.SoftwareAgent'
+    )
+    person_agent = jsonld.ib(
+        context='prov:agent',
+        kw_only=True,
+        type='renku.core.models.provenance.agents.Person'
+    )
 
     @generated.default
     def default_generated(self):
@@ -290,7 +299,9 @@ class ProcessRun(Activity):
         kw_only=True,
     )
 
-    qualified_usage = jsonld.ib(context='prov:qualifiedUsage', kw_only=True)
+    qualified_usage = jsonld.ib(
+        context='prov:qualifiedUsage', kw_only=True, type=Usage
+    )
 
     @generated.default
     def default_generated(self):

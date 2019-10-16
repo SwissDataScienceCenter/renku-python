@@ -134,7 +134,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
             with capture_internal_exceptions():
                 from git import Repo
                 from renku.core.commands import get_git_home
-                from renku.core.models.datasets import Creator
+                from renku.core.models.creators import Creator
 
                 user = Creator.from_git(Repo(get_git_home()))
 

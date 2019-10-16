@@ -25,7 +25,8 @@ from contextlib import contextmanager
 import git
 import pytest
 
-from renku.core.models.datasets import Creator, Dataset, DatasetFile
+from renku.core.models.creators import Creator
+from renku.core.models.datasets import Dataset, DatasetFile
 
 
 def _key(client, dataset, filename):

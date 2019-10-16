@@ -23,7 +23,7 @@ from renku.core.models import jsonld as jsonld
 def test_inheritance():
     """Test type and context inheritance."""
     types = {'prov:Activity', 'wfprov:ProcessRun'}
-    context_keys = {'prov', 'wfprov'}
+    context_keys = {'prov', 'wfprov', '@version'}
 
     @jsonld.s(type='prov:Activity', context={'prov': 'A'})
     class Activity:
