@@ -21,7 +21,6 @@ import os
 import re
 import shutil
 import stat
-import tempfile
 import uuid
 import warnings
 from configparser import NoSectionError
@@ -32,6 +31,7 @@ from urllib import error, parse
 
 import attr
 import requests
+from git import GitCommandError, GitError, Repo
 
 from renku.core import errors
 from renku.core.management.config import RENKU_HOME
@@ -302,12 +302,13 @@ class DatasetsApiMixin(object):
 
     def _add_from_git(self, dataset, dataset_path, url, sources, destination):
         """Process adding resources from another git repository."""
-        from git import Repo
         from renku import LocalClient
 
         u = parse.urlparse(url)
 
-        if u.scheme in ('', 'file') and not url.startswith('git@'):
+        is_local_repo = u.scheme in ('', 'file') and not url.startswith('git@')
+
+        if is_local_repo:
             try:
                 Path(u.path).resolve().relative_to(self.path)
             except ValueError:
@@ -325,7 +326,7 @@ class DatasetsApiMixin(object):
             warnings.warn('Importing local git repository, use HTTPS')
 
             # determine where is the base repo path
-            repo = Repo(url, search_parent_directories=True)
+            repo = Repo(u.path, search_parent_directories=True)
             repo_path = Path(repo.git_dir).parent.resolve()
 
             # if repo path is a parent of the url, treat the url as a source
@@ -337,14 +338,13 @@ class DatasetsApiMixin(object):
                 source = Path(u.path).resolve().relative_to(repo_path)
                 sources = (source, )
                 url = repo_path.as_posix()
-        elif u.scheme in {'http', 'https', 'git+https', 'git+ssh'} or \
-                url.startswith('git@'):
-            repo_path = Path(tempfile.mkdtemp())
-            repo = Repo.clone_from(url, repo_path, recursive=True)
-        else:
-            raise NotImplementedError(
+        elif u.scheme not in {'http', 'https', 'git+https', 'git+ssh'} and \
+                not url.startswith('git@'):
+            raise errors.UrlSchemaNotSupported(
                 'Scheme {} not supported'.format(u.scheme)
             )
+
+        repo, repo_path = self._prepare_git_repo(url)
 
         dataset_path = self.path / dataset_path
 
@@ -384,7 +384,7 @@ class DatasetsApiMixin(object):
             if src.is_symlink():
                 path = str(src.resolve().relative_to(repo_path))
             paths.add(path)
-        self._fetch_lfs_files(str(repo_path), paths)
+        self._fetch_lfs_files(repo_path, paths)
 
         for path, src, dst, _ in files:
             if not src.is_dir():
@@ -395,15 +395,15 @@ class DatasetsApiMixin(object):
                     if creator not in creators:
                         creators.append(creator)
 
-                if u.scheme in ('', 'file'):
+                if is_local_repo:
                     dst_url = None
                 elif path:
                     dst_url = '{}/{}'.format(url, path)
                 else:
                     dst_url = url
 
-                base = DatasetFile.from_revision(
-                    client, path=path, url=url, creator=creators
+                based_on = DatasetFile.from_revision(
+                    client, path=path, url=url
                 )
 
                 results.append({
@@ -412,7 +412,7 @@ class DatasetsApiMixin(object):
                     'creator': creators,
                     'dataset': dataset.name,
                     'parent': self,
-                    'based_on': base
+                    'based_on': based_on
                 })
 
                 dst.parent.mkdir(parents=True, exist_ok=True)
@@ -479,6 +479,7 @@ class DatasetsApiMixin(object):
 
     def _fetch_lfs_files(self, repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
+        repo_path = str(repo_path)
         try:
             output = run(('git', 'lfs', 'ls-files', '--name-only'),
                          stdout=PIPE,
@@ -596,6 +597,138 @@ class DatasetsApiMixin(object):
         dataset.tags = [t for t in dataset.tags if t.name not in tags]
 
         return dataset
+
+    def update_dataset_files(self, files):
+        """Update files and dataset metadata according to their remotes."""
+        from renku import LocalClient
+
+        visited_repos = {}
+        updated_files = []
+        deleted_files = []
+
+        for file_ in files:
+            based_on = DatasetFile.from_jsonld(file_.based_on)
+            url = based_on.url
+            if url in visited_repos:
+                repo, repo_path, remote_client = visited_repos[url]
+            else:
+                repo, repo_path = self._prepare_git_repo(url)
+                remote_client = LocalClient(repo_path)
+                visited_repos[url] = repo, repo_path, remote_client
+
+            try:
+                remote_file = DatasetFile.from_revision(
+                    remote_client,
+                    path=based_on.path,
+                    url=url,
+                    added=based_on.added
+                )
+            except KeyError:
+                raise errors.InvalidFileOperation(
+                    'Cannot find file {} in the repo {}'.format(
+                        based_on.url, url
+                    )
+                )
+
+            commit_sha = based_on._id.split('/')[1]
+            if commit_sha != remote_file.commit.hexsha:
+                src = Path(repo.working_dir) / based_on.path
+                dst = self.renku_path.parent / file_.path
+
+                if src.exists():
+                    # Fetch file is it is tracked by Git LFS
+                    self._fetch_lfs_files(repo_path, {based_on.path})
+                    shutil.copy(str(src), str(dst))
+                    file_.based_on = remote_file
+                    updated_files.append(file_)
+                else:
+                    # File was removed or renamed
+                    os.remove(str(dst))
+                    deleted_files.append(file_)
+
+        if not updated_files and not deleted_files:
+            # Nothing to commit or update
+            return
+
+        # Commit changes in files
+
+        file_paths = {str(f.path) for f in updated_files + deleted_files}
+        # Force-add to include possible ignored files that are in datasets
+        self.repo.git.add(*(file_paths), force=True)
+        self.repo.index.commit(
+            'renku dataset: updated {} files and deleted {} files'.format(
+                len(updated_files), len(deleted_files)
+            )
+        )
+
+        # Update datasets' metadata
+
+        modified_datasets = {}
+
+        for file_ in updated_files:
+            # Re-create list of creators
+            creators = []
+            # grab all the creators from the commit history
+            for commit in repo.iter_commits(paths=file_.path):
+                creator = Creator.from_commit(commit)
+                if creator not in creators:
+                    creators.append(creator)
+
+            new_file = DatasetFile.from_revision(
+                self,
+                path=file_.path,
+                based_on=file_.based_on,
+                creator=creators
+            )
+            file_.dataset.update_files([new_file])
+            modified_datasets[file_.dataset.name] = file_.dataset
+
+        for file_ in deleted_files:
+            file_.dataset.unlink_file(file_.path)
+            modified_datasets[file_.dataset.name] = file_.dataset
+
+        for dataset in modified_datasets.values():
+            dataset.to_yaml()
+
+    def _prepare_git_repo(self, url):
+        u = GitURL.parse(url)
+        path = u.pathname
+        if u.hostname == 'localhost':
+            path = str(Path(path).resolve())
+            url = path
+        repo_name = os.path.splitext(os.path.basename(path))[0]
+        path = os.path.dirname(path).lstrip('/')
+        repo_path = self.renku_path / 'cache' / u.hostname / path / repo_name
+
+        if repo_path.exists():
+            repo = Repo(str(repo_path))
+            origin = repo.remotes.origin
+            if origin.url == url:
+                try:
+                    origin.fetch()
+                    origin.pull()
+                except GitError:
+                    # ignore the error and try re-cloning
+                    pass
+                else:
+                    return repo, repo_path
+
+            try:
+                shutil.rmtree(str(repo_path))
+            except PermissionError:
+                raise errors.InvalidFileOperation(
+                    'Cannot delete files in {}: Permission denied'.
+                    format(repo_path)
+                )
+
+        try:
+            repo = Repo.clone_from(url, str(repo_path), recursive=True)
+        except GitCommandError:
+            raise errors.GitError(
+                'Cannot access remote Git repo: {}'.format(url)
+            )
+        else:
+            return repo, repo_path
 
 
 def check_for_git_repo(url):

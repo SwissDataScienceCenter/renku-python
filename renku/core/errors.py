@@ -361,3 +361,11 @@ class InvalidAccessToken(RenkuException):
         """Build a custom message."""
         msg = ('Invalid access token.\n' 'Please, update access token.')
         super(InvalidAccessToken, self).__init__(msg)
+
+
+class GitError(RenkuException):
+    """Raised when a remote Git repo cannot be accessed."""
+
+
+class UrlSchemaNotSupported(RenkuException):
+    """Raised when adding data from unsupported URL schemas."""

@@ -38,7 +38,7 @@ from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import validate_iso8601
 
 
-def test_datasets_create_clean(data_repository, runner, project, client):
+def test_datasets_create_clean(runner, project, client):
     """Test creating a dataset in clean repository."""
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
@@ -57,7 +57,7 @@ def test_datasets_create_clean(data_repository, runner, project, client):
         assert 'datasets' not in file_path
 
 
-def test_datasets_create_dirty(data_repository, runner, project, client):
+def test_datasets_create_dirty(runner, project, client):
     """Test creating a dataset in dirty repository."""
     # Create a file in root of the repository.
     with (client.path / 'a').open('w') as fp:
@@ -79,9 +79,7 @@ def test_datasets_create_dirty(data_repository, runner, project, client):
         assert 'datasets' not in file_path
 
 
-def test_datasets_create_dirty_exception_untracked(
-    data_repository, runner, project, client
-):
+def test_datasets_create_dirty_exception_untracked(runner, project, client):
     """Test exception raise for untracked file in renku directory."""
     # 1. Create a problem.
     datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
@@ -97,9 +95,7 @@ def test_datasets_create_dirty_exception_untracked(
     assert '.renku contains uncommitted changes.' in result.output
 
 
-def test_datasets_create_dirty_exception_staged(
-    data_repository, runner, project, client
-):
+def test_datasets_create_dirty_exception_staged(runner, project, client):
     """Test exception raise for staged file in renku directory."""
     # 1. Create a problem within .renku directory
     datasets_dir = client.path / RENKU_HOME / DatasetsApiMixin.DATASETS
@@ -118,9 +114,7 @@ def test_datasets_create_dirty_exception_staged(
     assert '.renku contains uncommitted changes.' in result.output
 
 
-def test_dataset_create_dirty_exception_all_untracked(
-    data_repository, runner, project, client
-):
+def test_dataset_create_dirty_exception_all_untracked(runner, project, client):
     """Test exception raise for all untracked files."""
     # 1. Create unclean root to enforce ensure checks.
     with (client.path / 'a').open('w') as fp:
@@ -140,9 +134,7 @@ def test_dataset_create_dirty_exception_all_untracked(
     assert '.renku contains uncommitted changes.' in result.output
 
 
-def test_datasets_create_dirty_exception_all_staged(
-    data_repository, runner, project, client
-):
+def test_datasets_create_dirty_exception_all_staged(runner, project, client):
     """Test exception raise for all staged files."""
     # 1. Create unclean root to enforce ensure checks.
     with (client.path / 'a').open('w') as fp:
@@ -166,9 +158,7 @@ def test_datasets_create_dirty_exception_all_staged(
     assert '.renku contains uncommitted changes.' in result.output
 
 
-def test_dataset_create_exception_refs(
-    data_repository, runner, project, client
-):
+def test_dataset_create_exception_refs(runner, project, client):
     """Test untracked/unstaged exception raise in dirty renku home dir."""
     with (client.path / 'a').open('w') as fp:
         fp.write('a')
@@ -219,9 +209,7 @@ def test_datasets_list_non_empty(output_format, runner, project):
     assert 'dataset' not in result.output
 
 
-def test_multiple_file_to_dataset(
-    tmpdir, data_repository, runner, project, client
-):
+def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
@@ -272,9 +260,7 @@ def test_repository_file_to_dataset(runner, project, client):
         assert dataset.find_file('a') is not None
 
 
-def test_relative_import_to_dataset(
-    tmpdir, data_repository, runner, project, client
-):
+def test_relative_import_to_dataset(tmpdir, runner, client):
     """Test importing data from a directory structure."""
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
@@ -1231,3 +1217,176 @@ def test_dataset_clean_up_when_add_fails(runner, client):
     assert result.exit_code == 2
     ref = client.renku_path / 'refs' / 'datasets' / 'new-dataset'
     assert not ref.is_symlink() and not ref.exists()
+
+
+def read_dataset_file_metadata(client, dataset_name, filename):
+
+    path = client.dataset_path(dataset_name)
+    assert path.exists()
+
+    with path.open(mode='r') as fp:
+        metadata = yaml.safe_load(fp)
+        for file_ in metadata['files']:
+            if file_['name'] == filename:
+                return file_
+
+
+@pytest.mark.parametrize(
+    'update_params', [[], ['-I', 'file'], ['-I', 'f*'], ['remote-dataset']]
+)
+def test_dataset_update(
+    client, runner, data_repository, directory_tree, update_params
+):
+    """Test local copy is updated when remote file is updates."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'remote-dataset',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    file_path = client.path / 'data' / 'remote-dataset' / 'file'
+    assert file_path.exists()
+
+    file_ = directory_tree.join('file')
+    # Update and commit
+    file_.write('new content')
+    data_repository.index.add([file_.strpath])
+    data_repository.index.commit('updated')
+
+    before = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+
+    result = runner.invoke(
+        cli, ['dataset', 'update'] + update_params, catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    data = open(str(file_path)).read()
+    assert data == 'new content'
+
+    after = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+    assert after['_id'] == before['_id']
+    assert after['_label'] != before['_label']
+    assert after['added'] == before['added']
+    assert after['url'] == before['url']
+    assert after['based_on']['_id'] != before['based_on']['_id']
+    assert after['based_on']['path'] == before['based_on']['path']
+
+
+def test_dataset_update_remove_file(
+    client, runner, data_repository, directory_tree
+):
+    """Test local copy is removed when remote file is removed."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'remote-dataset',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    file_path = client.path / 'data' / 'remote-dataset' / 'file'
+    assert file_path.exists()
+
+    file_ = directory_tree.join('file')
+    # Remove and commit
+    data_repository.index.remove([file_.strpath])
+    data_repository.index.commit('removed')
+
+    result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
+    assert 0 == result.exit_code
+    assert not file_path.exists()
+
+
+def test_dataset_multiple_update(
+    client, runner, data_repository, directory_tree
+):
+    """Test a local copy is updated multiple times."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'remote-dataset',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    file_path = client.path / 'data' / 'remote-dataset' / 'file'
+    assert file_path.exists()
+
+    file_ = directory_tree.join('file')
+
+    # Update and commit
+    file_.write('new content')
+    data_repository.index.add([file_.strpath])
+    data_repository.index.commit('updated')
+
+    result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
+    assert 0 == result.exit_code
+    assert open(str(file_path)).read() == 'new content'
+
+    # Update again and commit
+    file_.write('newer content')
+    data_repository.index.add([file_.strpath])
+    data_repository.index.commit('updated again')
+
+    result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
+    assert 0 == result.exit_code
+    assert open(str(file_path)).read() == 'newer content'
+
+
+@pytest.mark.parametrize(
+    'update_params', [['-I', 'non-existing'], ['non-existing-dataset']]
+)
+def test_dataset_invalid_update(
+    client, runner, data_repository, directory_tree, update_params
+):
+    """Test updating a non-existing path."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'remote-dataset',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    file_path = client.path / 'data' / 'remote-dataset' / 'file'
+    assert file_path.exists()
+
+    result = runner.invoke(
+        cli, ['dataset', 'update'] + update_params, catch_exceptions=False
+    )
+    assert 2 == result.exit_code
+
+
+@pytest.mark.parametrize(
+    'update_params',
+    [[], ['-I', 'file'], ['-I', 'f*'], ['dataset-1', 'dataset-2']]
+)
+def test_dataset_update_multiple_datasets(
+    client, runner, data_repository, directory_tree, update_params
+):
+    """Test update with multiple datasets."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'dataset-1',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'dataset-2',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    file_ = directory_tree.join('file')
+    # Update and commit
+    file_.write('new content')
+    data_repository.index.add([file_.strpath])
+    data_repository.index.commit('updated')
+
+    result = runner.invoke(
+        cli, ['dataset', 'update'] + update_params, catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    data = open(str(client.path / 'data' / 'dataset-1' / 'file')).read()
+    assert data == 'new content'
+    data = open(str(client.path / 'data' / 'dataset-2' / 'file')).read()
+    assert data == 'new content'
