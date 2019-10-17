@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - 739-github-actions
 
 jobs:
   test-linux-integration:
