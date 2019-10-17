@@ -84,9 +84,11 @@ class ParameterError(RenkuException):
         if param_hint:
             if isinstance(param_hint, (tuple, list)):
                 param_hint = ' / '.join('"{}"'.format(x) for x in param_hint)
-            message = 'Invalid value for {}: {}'.format(param_hint, message)
+            message = 'Invalid parameter value for {}: {}'.format(
+                param_hint, message
+            )
         else:
-            message = 'Invalid value: {}'.format(message)
+            message = 'Invalid parameter value: {}'.format(message)
 
         super().__init__(message)
 
@@ -367,3 +369,7 @@ class GitError(RenkuException):
 
 class UrlSchemaNotSupported(RenkuException):
     """Raised when adding data from unsupported URL schemas."""
+
+
+class OperationError(RenkuException):
+    """Raised when an operation at runtime raises an error."""

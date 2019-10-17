@@ -1295,8 +1295,10 @@ def test_dataset_update(
     assert after['_label'] != before['_label']
     assert after['added'] == before['added']
     assert after['url'] == before['url']
-    assert after['based_on']['_id'] != before['based_on']['_id']
+    assert after['based_on']['_id'] == before['based_on']['_id']
+    assert after['based_on']['_label'] != before['based_on']['_label']
     assert after['based_on']['path'] == before['based_on']['path']
+    assert after['based_on']['based_on'] is None
 
 
 def test_dataset_update_remove_file(

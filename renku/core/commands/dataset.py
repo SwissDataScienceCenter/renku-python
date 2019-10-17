@@ -39,7 +39,7 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired, ParameterError
+    MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.creators import Creator
@@ -166,6 +166,14 @@ def add_to_dataset(
     urlscontext=contextlib.nullcontext
 ):
     """Add data to a dataset."""
+    if sources or destination:
+        if len(urls) == 0:
+            raise UsageError('No URL is specified')
+        elif len(urls) > 1:
+            raise UsageError(
+                'Cannot add multiple URLs whit --source or --destination'
+            )
+
     # check for identifier before creating the dataset
     identifier = extract_doi(
         with_metadata.identifier
@@ -208,7 +216,9 @@ def add_to_dataset(
             'automatic dataset creation.'.format(name)
         )
     except (FileNotFoundError, git.exc.NoSuchPathError):
-        raise ParameterError('Could not process \n{0}'.format('\n'.join(urls)))
+        raise ParameterError(
+            'Could not find paths/URLs: \n{0}'.format('\n'.join(urls))
+        )
 
 
 @pass_local_client(clean=False, commit=False)

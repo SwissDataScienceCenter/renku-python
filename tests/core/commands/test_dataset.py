@@ -25,6 +25,7 @@ from contextlib import contextmanager
 import git
 import pytest
 
+from renku.core import errors
 from renku.core.models.creators import Creator
 from renku.core.models.datasets import Dataset, DatasetFile
 
@@ -59,7 +60,7 @@ def raises(error):
                             ('', 'tempp', git.NoSuchPathError),
                             ('http://', 'example.com/file', None),
                             ('https://', 'example.com/file', None),
-                            ('bla://', 'file', NotImplementedError)]
+                            ('bla://', 'file', errors.UrlSchemaNotSupported)]
 )
 def test_data_add(
     scheme, path, error, client, data_file, directory_tree, dataset_responses
