@@ -74,7 +74,7 @@ before_install:
         brew upgrade python;
         brew unlink python;
         brew link python;
-        brew install git-lfs jq node pipenv shellcheck;
+        brew -v install git-lfs jq node pipenv shellcheck;
         brew upgrade node;
     fi
 
@@ -193,7 +193,7 @@ jobs:
       sudo: true
       os: osx
       osx_image: xcode10.2
-      before_install: brew install jq
+      before_install: brew -v install jq
       install: python -m pip install requests
       script:
         - echo PY_BREW_VERSION=$(python setup.py --version)
