@@ -717,7 +717,8 @@ class DatasetsApiMixin(object):
                 shutil.rmtree(str(repo_path))
             except PermissionError:
                 raise errors.InvalidFileOperation(
-                    'Cannot delete cached files: {}'.format(repo_path)
+                    'Cannot delete files in {}: Permission denied'.
+                    format(repo_path)
                 )
 
         try:
