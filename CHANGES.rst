@@ -18,6 +18,71 @@
 Changes
 =======
 
+`0.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.6.0...v0.6.1>`__ (2019-10-15)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  use UI-resolved project path as project ID (`#701`_) (`dfcc9e6`_)
+
+.. _section-1:
+
+`0.6.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.6.0...v0.6.1>`__ (2019-10-10)
+-------------------------------------------------------------------------------------------------------
+
+.. _bug-fixes-1:
+
+Bug Fixes
+~~~~~~~~~
+
+-  add .renku/tmp to default .gitignore (`#728`_) (`6212148`_)
+-  dataset import causes renku exception due to duplicate LocalClient
+   (`#724`_) (`89411b0`_)
+-  delete new dataset ref if file add fails (`#729`_) (`2dea711`_)
+-  fixes bug with deleted files not getting committed (`#741`_)
+   (`5de4b6f`_)
+-  force current project for entities (`#707`_) (`538ef07`_)
+-  integration tests for `#681`_ (`#747`_) (`b08435d`_)
+-  use commit author for project creator (`#715`_) (`1a40ebe`_), closes
+   `#713`_
+-  zenodo dataset import error (`f1d623a`_)
+
+Features
+~~~~~~~~
+
+-  adds basic QA checklist (`#698`_) (`c97e9bd`_)
+-  dataset tagging (`#693`_) (`797161f`_)
+-  include creator in project metadata (`#687`_) ([9c7753e](https://git
+
+.. _0.7.0: https://github.com/SwissDataScienceCenter/renku-python/compare/v0.6.1...v
+.. _#701: https://github.com/SwissDataScienceCenter/renku-python/issues/701
+.. _dfcc9e6: https://github.com/SwissDataScienceCenter/renku-python/commit/dfcc9e6aa1899cf89d90223f2adc2b0dd8676ef4
+.. _0.6.1: https://github.com/SwissDataScienceCenter/renku-python/compare/v0.6.0...v
+.. _#728: https://github.com/SwissDataScienceCenter/renku-python/issues/728
+.. _6212148: https://github.com/SwissDataScienceCenter/renku-python/commit/62121485119ed02a28a5b2e2990395bee284e348
+.. _#724: https://github.com/SwissDataScienceCenter/renku-python/issues/724
+.. _89411b0: https://github.com/SwissDataScienceCenter/renku-python/commit/89411b010a2671790aafccaa42216e5ccdf5a660
+.. _#729: https://github.com/SwissDataScienceCenter/renku-python/issues/729
+.. _2dea711: https://github.com/SwissDataScienceCenter/renku-python/commit/2dea711939a11c8c8c358bfd76499ae8865958ee
+.. _#741: https://github.com/SwissDataScienceCenter/renku-python/issues/741
+.. _5de4b6f: https://github.com/SwissDataScienceCenter/renku-python/commit/5de4b6feaa17d4db3fbec8e65523c28cfd80ca3e
+.. _#707: https://github.com/SwissDataScienceCenter/renku-python/issues/707
+.. _538ef07: https://github.com/SwissDataScienceCenter/renku-python/commit/538ef078b95c78d43907294147ca4fd359779b9e
+.. _#681: https://github.com/SwissDataScienceCenter/renku-python/issues/681
+.. _#747: https://github.com/SwissDataScienceCenter/renku-python/issues/747
+.. _b08435d: https://github.com/SwissDataScienceCenter/renku-python/commit/b08435d26a19e69bff9a9b376526aee9ab3ecd70
+.. _#715: https://github.com/SwissDataScienceCenter/renku-python/issues/715
+.. _1a40ebe: https://github.com/SwissDataScienceCenter/renku-python/commit/1a40ebe75ea7c49cf52a9fce5c757d7352f159b0
+.. _#713: https://github.com/SwissDataScienceCenter/renku-python/issues/713
+.. _f1d623a: https://github.com/SwissDataScienceCenter/renku-python/commit/f1d623abf16287d62a3a0fecaf40e16d4ed5fc8b
+.. _#698: https://github.com/SwissDataScienceCenter/renku-python/issues/698
+.. _c97e9bd: https://github.com/SwissDataScienceCenter/renku-python/commit/c97e9bdc0c65fb6b06c7467624a988bf533f0b80
+.. _#693: https://github.com/SwissDataScienceCenter/renku-python/issues/693
+.. _797161f: https://github.com/SwissDataScienceCenter/renku-python/commit/797161fe48746137ae4c2761dfcbc7819124f154
+.. _#687: https://github.com/SwissDataScienceCenter/renku-python/issues/687
+
+
 `0.6.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.5.2...v0.6.0>`__ (2019-09-18)
 -------------------------------------------------------------------------------------------------------
 
