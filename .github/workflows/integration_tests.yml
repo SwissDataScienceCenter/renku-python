@@ -1,9 +1,10 @@
 name: CI-integration-tests
 
-on: [push]
-  # push:
-  #   branches:
-  #     - master
+on:
+  push:
+    branches:
+      - master
+      - 739-github-actions
 
 jobs:
   test-linux-integration:
