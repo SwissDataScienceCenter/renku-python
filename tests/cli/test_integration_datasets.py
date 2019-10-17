@@ -17,7 +17,6 @@
 # limitations under the License.
 """Integration tests for dataset command."""
 import os
-import time
 
 import git
 import pytest
