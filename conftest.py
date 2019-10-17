@@ -217,7 +217,7 @@ def dataset_responses():
         yield rsps
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def directory_tree(tmpdir_factory):
     """Create a test directory tree."""
     # initialize
@@ -228,7 +228,7 @@ def directory_tree(tmpdir_factory):
     return p
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def data_repository(directory_tree):
     """Create a test repo."""
     from git import Repo, Actor
