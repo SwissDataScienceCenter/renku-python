@@ -41,7 +41,7 @@ from renku.cli import cli
     }]
 )
 @pytest.mark.integration
-def test_dataset_import_real_doi(runner, project, doi):
+def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
         cli, ['dataset', 'import', doi['doi']], input=doi['input']
@@ -89,7 +89,7 @@ def test_dataset_import_real_doi(runner, project, doi):
     ]
 )
 @pytest.mark.integration
-def test_dataset_import_real_param(doi, runner, project):
+def test_dataset_import_real_param(doi, runner, project, sleep_after):
     """Test dataset import and check metadata parsing."""
     result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
 
@@ -111,7 +111,7 @@ def test_dataset_import_real_param(doi, runner, project):
     ]
 )
 @pytest.mark.integration
-def test_dataset_import_uri_404(doi, runner, project):
+def test_dataset_import_uri_404(doi, runner, project, sleep_after):
     """Test dataset import and check that correct exception is raised."""
     result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
     assert 2 == result.exit_code
@@ -121,7 +121,7 @@ def test_dataset_import_uri_404(doi, runner, project):
 
 
 @pytest.mark.integration
-def test_dataset_import_real_doi_warnings(runner, project):
+def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     """Test dataset import for existing DOI and dataset"""
     result = runner.invoke(
         cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y'
@@ -177,7 +177,7 @@ def test_dataset_import_fake_doi(runner, project, doi):
     ]
 )
 @pytest.mark.integration
-def test_dataset_import_real_http(runner, project, url):
+def test_dataset_import_real_http(runner, project, url, sleep_after):
     """Test dataset import through HTTPS."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
 
@@ -626,8 +626,3 @@ def test_datasets_import_target(
         ],
     )
     assert 0 == result.exit_code
-
-
-def teardown_function(): 
-    # prevent hitting Zenodo rate limits by not spamming tests
-    time.sleep(0.5)

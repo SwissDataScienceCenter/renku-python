@@ -465,3 +465,14 @@ def doi_dataset():
         dataset_yaml = f.read()
 
     return dataset_yaml
+
+
+@pytest.fixture()
+def sleep_after():
+    """Fixture that causes a delay after executing a test.
+
+    Prevents spamming external providers when used, in case of rate limits.
+    """
+    import time
+    yield
+    time.sleep(0.5)
