@@ -17,6 +17,7 @@
 # limitations under the License.
 """Integration tests for dataset command."""
 import os
+import time
 
 import git
 import pytest
@@ -625,3 +626,8 @@ def test_datasets_import_target(
         ],
     )
     assert 0 == result.exit_code
+
+
+def teardown_function(function):  # the function parameter is optional
+    # prevent hitting Zenodo rate limits by not spamming tests
+    time.sleep(0.5)
