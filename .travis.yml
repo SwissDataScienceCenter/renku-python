@@ -69,6 +69,7 @@ before_install:
         requirements-builder -e nodocs --level=pypi setup.py > .travis-release-requirements-nodocs.txt;
         requirements-builder -e nodocs --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements-nodocs.txt;
     elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
+        ulimit -n 1024;
         brew update;
         brew upgrade python;
         brew unlink python;
