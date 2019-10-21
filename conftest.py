@@ -30,6 +30,10 @@ import pytest
 import responses
 from click.testing import CliRunner
 
+import ptvsd
+ptvsd.enable_attach()
+ptvsd.wait_for_attach()
+
 
 @pytest.fixture(scope='module')
 def renku_path(tmpdir_factory):
