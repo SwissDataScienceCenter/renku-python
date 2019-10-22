@@ -104,6 +104,26 @@ will yield:
         new-dir/
           new-filename
 
+Updating a dataset:
+
+After adding files from a remote Git repository, you can check for updates in
+those files by using ``renku dataset update`` command. This command checks all
+remote files and copies over new content if there are any. It also deletes
+files from the local dataset if they are deleted from the remote Git
+repository.
+
+You can limit the scope of updated files by specifying dataset names, using
+``--include`` and ``--exclude`` to filter based on file names, or using
+``--creators`` to filter based on creators. For example, the following command
+updates only CSV files from ``my-dataset``:
+
+.. code-block:: console
+
+    $ renku dataset update -I '*.csv' my-dataset
+
+Note that putting glob patterns in quotation is needed to tell Unix shell not
+to expand them.
+
 Tagging a dataset:
 
 A dataset can be tagged with an arbitrary tag to refer to the dataset at that
