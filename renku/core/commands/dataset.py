@@ -505,7 +505,12 @@ def import_dataset(
                 )
 
 
-@pass_local_client(clean=True, commit=True, commit_only=DATASET_METADATA_PATHS)
+@pass_local_client(
+    clean=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS,
+    do_not_commit_if_empty=True
+)
 def update_datasets(
     client,
     names,
