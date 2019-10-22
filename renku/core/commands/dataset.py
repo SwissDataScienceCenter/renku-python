@@ -171,7 +171,7 @@ def add_to_dataset(
             raise UsageError('No URL is specified')
         elif len(urls) > 1:
             raise UsageError(
-                'Cannot add multiple URLs whit --source or --destination'
+                'Cannot add multiple URLs with --source or --destination'
             )
 
     # check for identifier before creating the dataset
