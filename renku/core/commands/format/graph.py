@@ -43,20 +43,27 @@ def _jsonld(graph, format, *args, **kwargs):
     return json.dumps(output, indent=2)
 
 
+def _conjunctive_graph(graph):
+    """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``."""
+
+    from rdflib import ConjunctiveGraph
+    from rdflib.plugin import register, Parser
+
+    register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
+
+    return ConjunctiveGraph().parse(
+        data=_jsonld(graph, 'expand'),
+        format='json-ld',
+    )
+
+
 def dot(graph, simple=True, debug=False, landscape=False):
     """Format graph as a dot file."""
     import sys
 
-    from rdflib import ConjunctiveGraph
-    from rdflib.plugin import register, Parser
     from rdflib.tools.rdf2dot import rdf2dot
 
-    register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
-
-    g = ConjunctiveGraph().parse(
-        data=_jsonld(graph, 'expand'),
-        format='json-ld',
-    )
+    g = _conjunctive_graph(graph)
 
     g.bind('prov', 'http://www.w3.org/ns/prov#')
     g.bind('foaf', 'http://xmlns.com/foaf/0.1/')
@@ -328,31 +335,13 @@ def jsonld_graph(graph):
 
 def nt(graph):
     """Format graph as n-tuples."""
-    from rdflib import ConjunctiveGraph
-    from rdflib.plugin import register, Parser
-
-    register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
-
-    click.echo(
-        ConjunctiveGraph().parse(
-            data=_jsonld(graph, 'expand'),
-            format='json-ld',
-        ).serialize(format='nt')
-    )
+    click.echo(_conjunctive_graph(graph).serialize(format='nt'))
 
 
 def rdf(graph):
     """Output the graph as RDF."""
-    from rdflib import ConjunctiveGraph
-    from rdflib.plugin import register, Parser
-
-    register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
-
     click.echo(
-        ConjunctiveGraph().parse(
-            data=_jsonld(graph, 'expand'),
-            format='json-ld',
-        ).serialize(format='application/rdf+xml')
+        _conjunctive_graph(graph).serialize(format='application/rdf+xml')
     )
 
 
