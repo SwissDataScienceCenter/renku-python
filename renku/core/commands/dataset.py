@@ -146,7 +146,7 @@ def add_file(
     destination='',
     ref=None,
     with_metadata=None,
-    urlscontext=contextlib.nullcontext
+    urlscontext=contextlib.nullcontext,
 ):
     """Add data file to a dataset."""
     add_to_dataset(

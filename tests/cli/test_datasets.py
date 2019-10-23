@@ -1196,8 +1196,8 @@ def test_avoid_empty_commits(runner, client, directory_tree):
 
 def test_add_removes_credentials(runner, client):
     """Test credentials are removed when adding to a dataset."""
-    URL = 'https://username:password@example.com/index.html'
-    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', URL])
+    url = 'https://username:password@example.com/index.html'
+    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', url])
     assert 0 == result.exit_code
 
     with client.with_dataset('my-dataset') as dataset:

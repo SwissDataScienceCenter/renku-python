@@ -25,6 +25,8 @@ import click
 import yaml
 
 from renku.core.management import LocalClient
+from renku.core.management.config import RENKU_HOME
+from renku.core.management.repository import default_path
 
 from .git import get_git_isolation
 
@@ -63,8 +65,17 @@ def pass_local_client(
         )
 
     def new_func(*args, **kwargs):
-        ctx = click.get_current_context()
-        client = ctx.ensure_object(LocalClient)
+        ctx = click.get_current_context(silent=True)
+        if not ctx:
+            client = LocalClient(
+                path=default_path(),
+                renku_home=RENKU_HOME,
+                use_external_storage=True,
+            )
+            ctx = click.Context(click.Command(method))
+        else:
+            client = ctx.ensure_object(LocalClient)
+
         stack = contextlib.ExitStack()
 
         # Handle --isolation option:
@@ -85,8 +96,11 @@ def pass_local_client(
         if lock or (lock is None and commit):
             stack.enter_context(client.lock)
 
-        with stack:
-            result = ctx.invoke(method, client, *args, **kwargs)
+        result = None
+        if ctx:
+            with stack:
+                result = ctx.invoke(method, client, *args, **kwargs)
+
         return result
 
     return functools.update_wrapper(new_func, method)

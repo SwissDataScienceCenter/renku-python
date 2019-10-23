@@ -1,0 +1,55 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright 2019 - Swiss Data Science Center (SDSC)
+# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Renku service utility functions."""
+from git import Repo
+
+from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
+
+
+def make_project_path(user, project):
+    """Construct full path for cached project."""
+    valid_user = user and 'uid' in user
+    valid_project = project and 'owner' in project and 'name' in project
+
+    if valid_user and valid_project:
+        return (
+            CACHE_PROJECTS_PATH / user['uid'] / project['owner'] /
+            project['name']
+        )
+
+
+def make_file_path(user, cached_file):
+    """Construct full path for cache file."""
+    valid_user = user and 'uid' in user
+    valid_file = cached_file and 'file_name' in cached_file
+
+    if valid_user and valid_file:
+        return CACHE_UPLOADS_PATH / user['uid'] / cached_file['relative_path']
+
+
+def repo_sync(repo_path, remote_names=('origin', )):
+    """Sync the repo with the remotes."""
+    repo = Repo(repo_path)
+    is_pushed = False
+
+    for remote in repo.remotes:
+        if remote.name in remote_names:
+            remote.push()
+            is_pushed = True
+
+    return is_pushed

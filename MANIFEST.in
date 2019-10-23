@@ -17,15 +17,17 @@
 # limitations under the License.
 
 # Check manifest will not automatically add these two files:
+include renku/service/.env-example
 include .dockerignore
 include .editorconfig
 include .tx/config
 include *.md
 prune docs/_build
 recursive-include renku *.po *.pot *.mo
-
+recursive-include renku *.py
 # added by check_manifest.py
 include *.py
+include *.yml
 include *.rst
 include *.sh
 include *.txt
@@ -39,6 +41,7 @@ include babel.ini
 include brew.py
 include pytest.ini
 include snap/snapcraft.yaml
+recursive-include renku *.json
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
 recursive-include docs *.bat
@@ -60,3 +63,4 @@ recursive-include renku *.json
 recursive-include renku Dockerfile
 recursive-include tests *.py *.gz *.yml *.json
 prune .github
+prune .env

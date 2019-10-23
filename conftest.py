@@ -25,8 +25,10 @@ import shutil
 import tempfile
 import time
 import urllib
+import uuid
 from pathlib import Path
 
+import fakeredis
 import pytest
 import responses
 import yaml
@@ -510,3 +512,176 @@ def remote_project(data_repository, directory_tree):
         assert 0 == result.exit_code
 
         yield runner, project_path
+
+
+@pytest.fixture(scope='function')
+def dummy_datapack():
+    """Creates dummy data folder."""
+    temp_dir = tempfile.TemporaryDirectory()
+
+    data_file_txt = Path(temp_dir.name) / Path('file.txt')
+    data_file_txt.write_text('my awesome data')
+
+    data_file_csv = Path(temp_dir.name) / Path('file.csv')
+    data_file_csv.write_text('more,awesome,data')
+
+    yield temp_dir
+
+
+@pytest.fixture(scope='function')
+def datapack_zip(dummy_datapack):
+    """Returns dummy data folder as a zip archive."""
+    from renku.core.utils.contexts import chdir
+    workspace_dir = tempfile.TemporaryDirectory()
+    with chdir(workspace_dir.name):
+        shutil.make_archive('datapack', 'zip', dummy_datapack.name)
+
+    yield Path(workspace_dir.name) / 'datapack.zip'
+
+
+@pytest.fixture(scope='function')
+def datapack_tar(dummy_datapack):
+    """Returns dummy data folder as a tar archive."""
+    from renku.core.utils.contexts import chdir
+    workspace_dir = tempfile.TemporaryDirectory()
+    with chdir(workspace_dir.name):
+        shutil.make_archive('datapack', 'tar', dummy_datapack.name)
+
+    yield Path(workspace_dir.name) / 'datapack.tar'
+
+
+@pytest.fixture(scope='function')
+def mock_redis(monkeypatch):
+    """Monkey patch service cache with mocked redis."""
+    from renku.service.cache import ServiceCache
+    with monkeypatch.context() as m:
+        m.setattr(ServiceCache, 'cache', fakeredis.FakeRedis())
+        yield
+
+
+@pytest.fixture(scope='function')
+def svc_client(mock_redis):
+    """Renku service client."""
+    from renku.service.entrypoint import create_app
+
+    flask_app = create_app()
+
+    testing_client = flask_app.test_client()
+    testing_client.testing = True
+
+    ctx = flask_app.app_context()
+    ctx.push()
+
+    yield testing_client
+
+    ctx.pop()
+
+
+@pytest.fixture(scope='function')
+def svc_client_with_repo(svc_client, mock_redis):
+    """Renku service remote repository."""
+    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-tests'
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': 'b4b4de0eda0f471ab82702bd5c367fa7',
+        'Renku-User-FullName': 'Just Sam',
+        'Renku-User-Email': 'contact@justsam.io',
+        'Authorization': 'Bearer LkoLiyLqnhMCAa4or5qa',
+    }
+
+    payload = {'git_url': remote_url}
+
+    response = svc_client.post(
+        '/cache/project-clone',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert 'result' in response.json
+    assert 'error' not in response.json
+    project_id = response.json['result']['project_id']
+    assert isinstance(uuid.UUID(project_id), uuid.UUID)
+
+    yield svc_client, headers, project_id
+
+
+@pytest.fixture(
+    params=[
+        {
+            'url': '/cache/files-list',
+            'allowed_method': 'GET',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/cache/files-upload',
+            'allowed_method': 'POST',
+            'headers': {}
+        },
+        {
+            'url': '/cache/project-clone',
+            'allowed_method': 'POST',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/cache/project-list',
+            'allowed_method': 'GET',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/datasets/add',
+            'allowed_method': 'POST',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/datasets/create',
+            'allowed_method': 'POST',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/datasets/files-list',
+            'allowed_method': 'GET',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/datasets/list',
+            'allowed_method': 'GET',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+    ]
+)
+def service_allowed_endpoint(request, svc_client, mock_redis):
+    """Ensure allowed methods and correct headers."""
+    methods = {
+        'GET': svc_client.get,
+        'POST': svc_client.post,
+        'HEAD': svc_client.head,
+        'PUT': svc_client.put,
+        'DELETE': svc_client.delete,
+        'OPTIONS': svc_client.options,
+        'TRACE': svc_client.trace,
+        'PATCH': svc_client.patch,
+    }
+
+    yield methods, request.param, svc_client

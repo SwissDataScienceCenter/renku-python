@@ -60,7 +60,7 @@ before_install:
   - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
         sudo apt-get update;
         sudo apt-get -y install shellcheck;
-        travis_retry python -m pip install --upgrade pip setuptools py;
+        travis_retry python -m pip install --upgrade six pip setuptools py;
         travis_retry python -m pip install twine wheel coveralls requirements-builder;
         requirements-builder -e all --level=min setup.py > .travis-lowest-requirements.txt;
         requirements-builder -e all --level=pypi setup.py > .travis-release-requirements.txt;
