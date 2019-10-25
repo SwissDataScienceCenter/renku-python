@@ -1341,6 +1341,12 @@ def test_dataset_update_remove_file(
 
     result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
     assert 0 == result.exit_code
+    assert file_path.exists()
+
+    result = runner.invoke(
+        cli, ['dataset', 'update', '--delete'], catch_exceptions=False
+    )
+    assert 0 == result.exit_code
     assert not file_path.exists()
 
 

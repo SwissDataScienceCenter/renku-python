@@ -241,8 +241,8 @@ class DatasetsApiMixin(object):
         u = parse.urlparse(url)
 
         if u.scheme not in Dataset.SUPPORTED_SCHEMES:
-            raise errors.UrlSchemaNotSupported(
-                'Schema {} not supported'.format(u.scheme)
+            raise errors.UrlSchemeNotSupported(
+                'Scheme {} not supported'.format(u.scheme)
             )
 
         if destination:
@@ -357,8 +357,8 @@ class DatasetsApiMixin(object):
                 url = repo_path.as_posix()
         elif u.scheme not in {'http', 'https', 'git+https', 'git+ssh'} and \
                 not url.startswith('git@'):
-            raise errors.UrlSchemaNotSupported(
-                'Schema {} not supported'.format(u.scheme)
+            raise errors.UrlSchemeNotSupported(
+                'Scheme {} not supported'.format(u.scheme)
             )
 
         repo, repo_path = self._prepare_git_repo(url, ref)
@@ -412,8 +412,6 @@ class DatasetsApiMixin(object):
             if not src.is_dir():
                 if is_local_repo:
                     dst_url = None
-                elif path:
-                    dst_url = '{}/{}'.format(url, path)
                 else:
                     dst_url = url
 
@@ -642,8 +640,14 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def update_dataset_files(self, files, ref=None):
-        """Update files and dataset metadata according to their remotes."""
+    def update_dataset_files(self, files, ref, delete=False):
+        """Update files and dataset metadata according to their remotes.
+
+        :param files: List of files to be updated
+        :param delete: Indicates whether to delete files or not
+
+        :return: List of files that should be deleted
+        """
         from renku import LocalClient
 
         visited_repos = {}
@@ -695,12 +699,13 @@ class DatasetsApiMixin(object):
                     updated_files.append(file_)
                 else:
                     # File was removed or renamed
-                    os.remove(str(dst))
+                    if delete:
+                        os.remove(str(dst))
                     deleted_files.append(file_)
 
-        if not updated_files and not deleted_files:
+        if not updated_files and (not delete or not deleted_files):
             # Nothing to commit or update
-            return
+            return deleted_files
 
         # Commit changes in files
 
@@ -735,12 +740,15 @@ class DatasetsApiMixin(object):
             file_.dataset.update_files([new_file])
             modified_datasets[file_.dataset.name] = file_.dataset
 
-        for file_ in deleted_files:
-            file_.dataset.unlink_file(file_.path)
-            modified_datasets[file_.dataset.name] = file_.dataset
+        if delete:
+            for file_ in deleted_files:
+                file_.dataset.unlink_file(file_.path)
+                modified_datasets[file_.dataset.name] = file_.dataset
 
         for dataset in modified_datasets.values():
             dataset.to_yaml()
+
+        return deleted_files
 
     def _prepare_git_repo(self, url, ref):
         def checkout(repo, ref):
@@ -804,9 +812,9 @@ class DatasetsApiMixin(object):
                 ],
                 with_exceptions=False
             )
-        except GitCommandError:
+        except GitCommandError as e:
             raise errors.GitError(
-                'Cannot access remote Git repo: {}'.format(url)
+                'Cannot clone remote Git repo: {}\n\n{}'.format(url, e)
             )
         else:
             return repo, repo_path

@@ -367,8 +367,8 @@ class GitError(RenkuException):
     """Raised when a remote Git repo cannot be accessed."""
 
 
-class UrlSchemaNotSupported(RenkuException):
-    """Raised when adding data from unsupported URL schemas."""
+class UrlSchemeNotSupported(RenkuException):
+    """Raised when adding data from unsupported URL schemes."""
 
 
 class OperationError(RenkuException):

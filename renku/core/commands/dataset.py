@@ -525,6 +525,7 @@ def update_datasets(
     include,
     exclude,
     ref,
+    delete,
     progress_context=contextlib.nullcontext
 ):
     """Update files from a remote Git repo."""
@@ -566,7 +567,15 @@ def update_datasets(
     with progress_context(
         possible_updates, item_show_func=lambda x: x.path if x else None
     ) as progressbar:
-        client.update_dataset_files(progressbar, ref)
+        deleted_files = client.update_dataset_files(
+            files=progressbar, ref=ref, delete=delete
+        )
+
+    if deleted_files and not delete:
+        click.echo(
+            'Some files are deleted from remote. To also delete them locally '
+            'run update command with `--delete` flag.'
+        )
 
 
 def _include_exclude(file_path, include=None, exclude=None):

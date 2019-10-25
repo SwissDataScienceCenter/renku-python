@@ -119,7 +119,7 @@ Updating a dataset:
 
 After adding files from a remote Git repository, you can check for updates in
 those files by using ``renku dataset update`` command. This command checks all
-remote files and copies over new content if there are any. It does not delete
+remote files and copies over new content if there is any. It does not delete
 files from the local dataset if they are deleted from the remote Git
 repository; to force the delete use ``--delete`` argument.
 
@@ -132,7 +132,7 @@ updates only CSV files from ``my-dataset``:
 
     $ renku dataset update -I '*.csv' my-dataset
 
-Note that putting glob patterns in quotation is needed to tell Unix shell not
+Note that putting glob patterns in quotes is needed to tell Unix shell not
 to expand them.
 
 Tagging a dataset:
@@ -669,8 +669,21 @@ def import_(uri, name, extract):
 @click.option(
     '--ref', default=None, help='Update to a specific commit/tag/branch.'
 )
-def update(names, creators, include, exclude, ref):
+@click.option(
+    '--delete',
+    is_flag=True,
+    help='Delete local files that are deleted from remote.'
+)
+def update(names, creators, include, exclude, ref, delete):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')
-    update_datasets(names, creators, include, exclude, ref, progress_context)
+    update_datasets(
+        names=names,
+        creators=creators,
+        include=include,
+        exclude=exclude,
+        ref=ref,
+        delete=delete,
+        progress_context=progress_context
+    )
     click.secho('OK', fg='green')
