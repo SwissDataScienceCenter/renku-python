@@ -29,7 +29,17 @@
   targetClass:
     "@id": sh:targetClass
     "@type": "@id"
+  target:
+    "@id": sh:target
+    "@type": "@id"
 "@graph":
+  - "@id": "schema:"
+    sh:declare:
+      - sh:prefix:
+        - "@value": "schema"
+        sh:namespace:
+        - "@value": "http://schema.org/"
+          "@type": xsd:anyURI
   - "@id": _:oldProjecShape
     "@type": sh:NodeShape
     targetClass: foaf:Project
@@ -39,7 +49,7 @@
       minCount: 99999
       maxCount: 99999
       sh:message: Project should be schema:Project, not foaf:Project
-  - "@id": _:projecShape
+  - "@id": _:projectShape
     "@type": sh:NodeShape
     ignoredProperties:
     - "@id": rdf:type
@@ -105,12 +115,19 @@
     "@type": sh:NodeShape
     ignoredProperties:
     - "@id": rdf:type
+    - "@id": schema:license
     closed: true
-    targetClass: schema:Dataset
-    sh:filterShape:
-      sh:not:
-        sh:targetObjectsOf:
-          - "@id": schema:Dataset
+    target:
+      - "@type": sh:SPARQLTarget
+        sh:prefixes:
+          - "@id": "schema:"
+        sh:select:
+          - "@value": |
+              SELECT ?this
+              WHERE {
+                ?this a schema:Dataset .
+                MINUS { ?x schema:license ?this .}
+              }
     property:
     - nodeKind: sh:Literal
       path: schema:isBasedOn
@@ -147,10 +164,6 @@
       maxCount: 1
     - nodeKind: sh:Literal
       path: schema:keywords
-      datatype:
-        "@id": xsd:string
-    - nodeKind: sh:Literal
-      path: schema:license
       datatype:
         "@id": xsd:string
     - nodeKind: sh:Literal

@@ -21,9 +21,9 @@ from pyld import jsonld as ld
 from rdflib.namespace import Namespace
 from rdflib.term import BNode
 
-from renku.core.utils.shacl import validate_graph
-from renku.core.models.jsonld import NoDatesSafeLoader
 from renku.core.commands.echo import WARNING
+from renku.core.models.jsonld import NoDatesSafeLoader
+from renku.core.utils.shacl import validate_graph
 
 
 def _shacl_graph_to_string(graph):
@@ -56,7 +56,7 @@ def check_project_structure(client):
     """Validate project metadata against SHACL."""
     project_path = client.renku_metadata_path
 
-    conform, graph, _ = check_shacl_structure(project_path)
+    conform, graph, t = check_shacl_structure(project_path)
 
     if conform:
         return True, None
@@ -77,7 +77,7 @@ def check_datasets_structure(client):
 
     for path in client.renku_datasets_path.rglob(client.METADATA):
         try:
-            conform, graph, _ = check_shacl_structure(path)
+            conform, graph, t = check_shacl_structure(path)
         except (Exception, BaseException) as e:
             problems += 'Couldn\'t validate {}: {}\n\n'.format(path, e)
             continue

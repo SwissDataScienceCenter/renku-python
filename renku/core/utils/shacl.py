@@ -18,10 +18,10 @@
 """JSON-LD SHACL validation."""
 
 import json
-from pkg_resources import resource_string
 
-from pyshacl import validate
 import yaml
+from pkg_resources import resource_string
+from pyshacl import validate
 
 
 def validate_graph(graph, shacl_path=None, format='nquads'):
