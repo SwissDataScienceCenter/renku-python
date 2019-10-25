@@ -755,43 +755,62 @@ def test_input_directory(runner, project, run):
     ) == set(result.output.strip().split('\n'))
 
 
-def test_config_manager_creation(client):
+@pytest.mark.parametrize(
+    'global_only,config_path_attr',
+    ((False, 'local_config_path'), (True, 'global_config_path'))
+)
+def test_config_manager_creation(
+    client, global_config_dir, global_only, config_path_attr
+):
     """Check creation of configuration file."""
-    path_ = client.config_path
-    assert str(path_).endswith('renku.ini')
-    config = client.load_config()
-    client.store_config(config)
-    assert path_.exists()
+    path = getattr(client, config_path_attr)
+    assert path.endswith('renku.ini')
+    config = client.load_config(local_only=False, global_only=False)
+    client.store_config(config, global_only=global_only)
+    assert Path(path).exists()
 
 
-def test_config_manager_set_value(client):
+@pytest.mark.parametrize('global_only', (False, True))
+def test_config_manager_set_value(client, global_config_dir, global_only):
     """Check writing to configuration."""
-    client.set_value('zenodo', 'access_token', 'my-secret')
+    local_only = not global_only
 
-    config = client.load_config()
+    client.set_value(
+        'zenodo', 'access_token', 'my-secret', global_only=global_only
+    )
+
+    config = client.load_config(local_only=local_only, global_only=global_only)
     assert config.get('zenodo', 'access_token') == 'my-secret'
 
-    config = client.remove_value('zenodo', 'access_token')
+    client.remove_value('zenodo', 'access_token', global_only=global_only)
+    config = client.load_config(local_only=local_only, global_only=global_only)
     assert 'zenodo' not in config.sections()
 
 
-def test_config_load_get_value(client):
+def test_config_get_value(client):
     """Check reading from configuration."""
-    client.set_value('zenodo', 'access_token', 'my-secret')
-    secret = client.get_value('zenodo', 'access_token')
-    assert secret == 'my-secret'
+    # Value set locally is not visible globally
+    client.set_value('local', 'key', 'local-value')
+    value = client.get_value('local', 'key')
+    assert value == 'local-value'
+    value = client.get_value('local', 'key', global_only=True)
+    assert value is None
 
-    secret = client.get_value('zenodo2', 'access_token')
-    assert secret is None
+    # Value set globally is stored globally
+    client.set_value('global', 'key', 'global-value', global_only=True)
+    value = client.get_value('global', 'key', local_only=True)
+    assert value is None
+    value = client.get_value('global', 'key', global_only=True)
+    assert value == 'global-value'
+    value = client.get_value('global', 'key')
+    assert value == 'global-value'
 
-    secret = client.get_value('zenodo', 'not-secret')
-    assert secret is None
-
-    config = client.remove_value('zenodo', 'access_token')
-    assert 'zenodo' not in config.sections()
+    # Reading non-existing values returns None
+    value = client.get_value('non-existing', 'key')
+    assert value is None
 
 
-def test_config_manager_cli(client, runner, project, config_dir):
+def test_config_manager_cli(client, runner, project, global_config_dir):
     """Check config command for global cfg."""
     result = runner.invoke(
         cli, [
@@ -799,8 +818,8 @@ def test_config_manager_cli(client, runner, project, config_dir):
             '--global'
         ]
     )
-    assert 'http://demo:demo@global.example.com\n' == result.output
     assert 0 == result.exit_code
+    assert 'http://demo:demo@global.example.com\n' == result.output
 
     value = client.get_value('renku', 'registry')
     assert 'http://demo:demo@global.example.com' == value

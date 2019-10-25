@@ -56,14 +56,14 @@ def runner(monkeypatch):
 
 
 @pytest.fixture
-def config_dir(monkeypatch, tmpdir_factory):
+def global_config_dir(monkeypatch, tmpdir_factory):
     """Create a temporary renku config directory."""
     from renku.core.management.config import ConfigManagerMixin
 
     with monkeypatch.context() as m:
         home_dir = tmpdir_factory.mktemp('fake_home')
-        conf_path = home_dir / 'renku.ini'
-        m.setattr(ConfigManagerMixin, 'config_path', conf_path)
+        conf_path = str(home_dir / 'renku.ini')
+        m.setattr(ConfigManagerMixin, 'global_config_path', conf_path)
 
         yield m
 

@@ -102,7 +102,7 @@ from renku.core.commands.options import install_completion, \
     option_use_external_storage
 from renku.core.commands.version import check_version, print_version
 from renku.core.management.client import LocalClient
-from renku.core.management.config import RENKU_HOME, default_config_dir, \
+from renku.core.management.config import RENKU_HOME, global_config_dir, \
     print_app_config_path
 from renku.core.management.repository import default_path
 
@@ -136,7 +136,7 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
 @click.option(
     '--config',
     envvar='RENKU_CONFIG',
-    default=default_config_dir,
+    default=global_config_dir,
     type=click.Path(),
     expose_value=False,
     help='Location of client config files.'

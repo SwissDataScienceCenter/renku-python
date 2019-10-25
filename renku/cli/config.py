@@ -27,6 +27,10 @@ URL, with a command like:
 
     $ renku config registry https://registry.gitlab.com/demo/demo
 
+By default, configuration is stored locally in the project's directory. Use
+``--global`` option to store configuration for all projects in your home
+directory.
+
 Query values
 ~~~~~~~~~~~~
 
@@ -37,6 +41,9 @@ You display a previously set value with:
     $ renku config registry
     https://registry.gitlab.com/demo/demo
 
+Both local and global configuration files are read and values in local
+configuration take precedence over global values. Use ``--local`` or
+``--global`` flags to read corresponding configuration only.
 """
 import click
 
@@ -47,12 +54,18 @@ from renku.core.commands.config import update_config
 @click.argument('key', required=True)
 @click.argument('value', required=False, default=None)
 @click.option(
-    '--global',
-    'is_global',
+    '--local',
+    'local_only',
     is_flag=True,
-    help='Store to global configuration.'
+    help='Read from local configuration only.'
 )
-def config(key, value, is_global):
+@click.option(
+    '--global',
+    'global_only',
+    is_flag=True,
+    help='Read/store from/to global configuration only.'
+)
+def config(key, value, local_only, global_only):
     """Manage configuration options."""
-    updated = update_config(key, value, is_global)
+    updated = update_config(key, value, local_only, global_only)
     click.secho(updated)

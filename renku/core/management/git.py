@@ -261,6 +261,8 @@ class GitCore:
 
         committer = Actor('renku {0}'.format(__version__), version_url)
 
+        change_types = {}
+
         if commit_only == COMMIT_DIFF_STRATEGY:
             # Get diff generated in command.
             change_types = {

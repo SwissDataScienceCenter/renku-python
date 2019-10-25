@@ -16,9 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Get and set Renku repository or global options."""
-import configparser
-
-from renku.core.management.config import get_config
+from renku.core.management.config import CONFIG_LOCAL_PATH
 
 from .client import pass_local_client
 
@@ -31,18 +29,15 @@ def _split_section_and_key(key):
     return 'renku', key
 
 
-@pass_local_client
-def update_config(client, key, value, is_global):
+@pass_local_client(clean=False, commit=True, commit_only=CONFIG_LOCAL_PATH)
+def update_config(client, key, value, local_only, global_only):
     """Manage configuration options."""
-    write_op = value is not None
-    config_ = get_config(client, write_op, is_global)
-    if write_op:
-        with config_:
-            section, config_key = _split_section_and_key(key)
-            config_.set_value(section, config_key, value)
-            return value
+    is_write = value is not None
+    section, key = _split_section_and_key(key)
+    if is_write:
+        client.set_value(section, key, value, global_only=global_only)
+        return value
     else:
-        try:
-            return config_.get_value(*_split_section_and_key(key))
-        except configparser.NoSectionError:
-            raise KeyError('Requested configuration not found')
+        return client.get_value(
+            section, key, local_only=local_only, global_only=global_only
+        )
