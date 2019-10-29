@@ -29,7 +29,12 @@ def _split_section_and_key(key):
     return 'renku', key
 
 
-@pass_local_client(clean=False, commit=True, commit_only=CONFIG_LOCAL_PATH)
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=CONFIG_LOCAL_PATH,
+    do_not_commit_if_empty=True
+)
 def update_config(client, key, value, local_only, global_only):
     """Manage configuration options."""
     is_write = value is not None

@@ -823,3 +823,36 @@ def test_config_manager_cli(client, runner, project, global_config_dir):
 
     value = client.get_value('renku', 'registry')
     assert 'http://demo:demo@global.example.com' == value
+
+
+def test_local_config_committed(
+    client, runner, data_repository, directory_tree
+):
+    """Test local configuration update is committed only when it is changed."""
+    commit_sha_before = client.repo.head.object.hexsha
+
+    result = runner.invoke(
+        cli, ['config', 'local-registry', 'http://www.example.com']
+    )
+    assert result.exit_code == 0
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_after != commit_sha_before
+
+    # Adding the same config should not create a new commit
+    commit_sha_before = client.repo.head.object.hexsha
+
+    result = runner.invoke(
+        cli, ['config', 'local-registry', 'http://www.example.com']
+    )
+    assert result.exit_code == 0
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_after == commit_sha_before
+
+    # Adding a global config should not create a new commit
+    result = runner.invoke(
+        cli,
+        ['config', 'local-registry', 'http://www.example.com', '--global']
+    )
+    assert result.exit_code == 0
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_after == commit_sha_before
