@@ -107,7 +107,7 @@ def create_dataset(client, name, handle_duplicate_fn=None):
     """
     existing = client.load_dataset(name=name)
     if (not existing or handle_duplicate_fn and handle_duplicate_fn(existing)):
-        with client.with_dataset(name=name) as dataset:
+        with client.with_dataset(name=name, create=True) as dataset:
             creator = Creator.from_git(client.repo)
             if creator not in dataset.creator:
                 dataset.creator.append(creator)
@@ -140,6 +140,7 @@ def add_file(
     name,
     link=False,
     force=False,
+    create=False,
     sources=(),
     destination='',
     with_metadata=None,
@@ -147,8 +148,8 @@ def add_file(
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, sources, destination, with_metadata,
-        urlscontext
+        client, urls, name, link, force, create, sources, destination,
+        with_metadata, urlscontext
     )
 
 
@@ -158,10 +159,12 @@ def add_to_dataset(
     name,
     link=False,
     force=False,
+    create=False,
     sources=(),
     destination='',
     with_metadata=None,
-    urlscontext=contextlib.nullcontext
+    urlscontext=contextlib.nullcontext,
+    fail_if_exists=True
 ):
     """Add data to a dataset."""
     # check for identifier before creating the dataset
@@ -169,7 +172,12 @@ def add_to_dataset(
         with_metadata.identifier
     ) if with_metadata else None
     try:
-        with client.with_dataset(name=name, identifier=identifier) as dataset:
+        with client.with_dataset(
+            name=name,
+            identifier=identifier,
+            create=create,
+            fail_if_exists=fail_if_exists
+        ) as dataset:
             with urlscontext(urls) as bar:
                 client.add_data_to_dataset(
                     dataset,
@@ -195,6 +203,11 @@ def add_to_dataset(
 
                 dataset.update_metadata(with_metadata)
 
+    except DatasetNotFound:
+        raise DatasetNotFound(
+            'Dataset "{}" does not exists. Create the dataset or retry with '
+            '--create option for automatic dataset creation.'.format(name)
+        )
     except (FileNotFoundError, git.exc.NoSuchPathError):
         raise ParameterError('Could not process \n{0}'.format('\n'.join(urls)))
 
@@ -491,7 +504,9 @@ def import_dataset(
                 client,
                 urls=[str(p) for p in Path(data_folder).glob('*')],
                 name=dataset_name,
-                with_metadata=dataset
+                with_metadata=dataset,
+                create=True,
+                fail_if_exists=False
             )
 
             if dataset.version:

@@ -58,6 +58,13 @@ Adding data to the dataset:
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
 
+You can create a dataset when you add data to it for the first time by passing
+``--create`` flag to add command:
+
+.. code-block:: console
+
+    $ renku dataset add --create new-dataset http://data-url
+
 To add data from a git repository, you can specify it via https or git+ssh
 URL schemes. For example,
 
@@ -388,6 +395,9 @@ def edit(dataset_id):
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
 @click.option(
+    '--create', is_flag=True, help='Create dataset if it does not exist.'
+)
+@click.option(
     '-s',
     '--src',
     '--source',
@@ -404,7 +414,7 @@ def edit(dataset_id):
     default='',
     help='Destination file or directory within the dataset path'
 )
-def add(name, urls, link, force, sources, destination):
+def add(name, urls, link, force, create, sources, destination):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
@@ -412,6 +422,7 @@ def add(name, urls, link, force, sources, destination):
         name=name,
         link=link,
         force=force,
+        create=create,
         sources=sources,
         destination=destination,
         urlscontext=progress

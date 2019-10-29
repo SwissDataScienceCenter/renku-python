@@ -176,7 +176,7 @@ def client(project):
 @pytest.fixture
 def dataset(client):
     """Create a dataset."""
-    with client.with_dataset(name='dataset') as dataset:
+    with client.with_dataset(name='dataset', create=True) as dataset:
         dataset.creator = [{
             'affiliation': 'xxx',
             'email': 'me@example.com',
