@@ -180,7 +180,6 @@ class RepositoryApiMixin(GitCore):
         from renku.core.models.provenance.activities import Activity
 
         commit = commit or self.repo.head.commit
-
         if len(commit.parents) > 1:
             return Activity(commit=commit, client=self)
 
