@@ -22,6 +22,7 @@ import weakref
 import attr
 
 from renku.core.models import jsonld as jsonld
+from renku.core.models.datasets import Dataset
 
 
 @jsonld.s(
@@ -87,7 +88,7 @@ class Usage(EntityProxyMixin):
     entity = jsonld.ib(
         context='prov:entity',
         kw_only=True,
-        type='renku.core.models.provenance.entities.Entity'
+        type=['renku.core.models.provenance.entities.Entity', Dataset]
     )
     role = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
 
@@ -113,9 +114,13 @@ class Usage(EntityProxyMixin):
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
-    entity = jsonld.ib(context={
-        '@reverse': 'prov:qualifiedGeneration',
-    }, )
+    entity = jsonld.ib(
+        context={
+            '@reverse': 'prov:qualifiedGeneration',
+        },
+        type=['renku.core.models.provenance.entities.Entity', Dataset]
+    )
+
     role = jsonld.ib(context='prov:hadRole', default=None)
 
     _activity = attr.ib(

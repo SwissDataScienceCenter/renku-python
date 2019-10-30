@@ -227,7 +227,7 @@ class Process(CommitMixin):
     """Represent a process."""
 
     _activity = jsonld.ib(
-        context='prov:activity',
+        context='prov:activity1',
         kw_only=True,
         converter=weakref.ref,
     )
