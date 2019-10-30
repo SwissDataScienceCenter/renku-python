@@ -32,14 +32,6 @@ RENKU_HOME = '.renku'
 """Project directory name."""
 
 
-def print_app_config_path(ctx, param, value):
-    """Print application config path."""
-    if not value or ctx.resilient_parsing:
-        return
-    click.echo(ConfigManagerMixin().global_config_path)
-    ctx.exit()
-
-
 def global_config_dir():
     """Return user's config directory."""
     return click.get_app_dir(APP_NAME, force_posix=True)

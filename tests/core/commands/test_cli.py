@@ -52,7 +52,7 @@ def test_help(arg, runner):
 
 def test_config_path(runner):
     """Test config path."""
-    result = runner.invoke(cli, ['--config-path'])
+    result = runner.invoke(cli, ['--global-config-path'])
     output = result.output.split('\n')[0]
     assert 'renku.ini' in output
 
