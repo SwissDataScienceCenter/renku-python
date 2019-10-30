@@ -33,7 +33,7 @@ def _split_section_and_key(key):
     clean=False,
     commit=True,
     commit_only=CONFIG_LOCAL_PATH,
-    do_not_commit_if_empty=True
+    commit_empty=False
 )
 def update_config(client, key, value, local_only, global_only):
     """Manage configuration options."""

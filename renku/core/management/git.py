@@ -233,8 +233,8 @@ class GitCore:
         self,
         author_date=None,
         commit_only=None,
-        allow_empty=True,
-        do_not_commit_if_empty=False
+        commit_empty=True,
+        raise_if_empty=False
     ):
         """Automatic commit."""
         from git import Actor
@@ -302,9 +302,9 @@ class GitCore:
         if not commit_only:
             self.repo.git.add('--all')
 
-        if not allow_empty and not self.repo.index.diff('HEAD'):
-            raise errors.NothingToCommit()
-        elif do_not_commit_if_empty and not self.repo.index.diff('HEAD'):
+        if not commit_empty and not self.repo.index.diff('HEAD'):
+            if raise_if_empty:
+                raise errors.NothingToCommit()
             return
 
         argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
@@ -325,8 +325,8 @@ class GitCore:
         commit=True,
         commit_only=None,
         ignore_std_streams=False,
-        allow_empty=True,
-        do_not_commit_if_empty=False,
+        commit_empty=True,
+        raise_if_empty=False
     ):
         """Perform Git checks and operations."""
         if clean:
@@ -341,8 +341,8 @@ class GitCore:
         if commit:
             with self.commit(
                 commit_only=commit_only,
-                allow_empty=allow_empty,
-                do_not_commit_if_empty=do_not_commit_if_empty
+                commit_empty=commit_empty,
+                raise_if_empty=raise_if_empty
             ):
                 yield self
         else:

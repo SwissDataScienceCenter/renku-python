@@ -44,8 +44,8 @@ def pass_local_client(
     commit=None,
     commit_only=None,
     ignore_std_streams=True,
-    allow_empty=True,
-    do_not_commit_if_empty=False,
+    commit_empty=True,
+    raise_if_empty=False,
     lock=None,
 ):
     """Pass client from the current context to the decorated command."""
@@ -57,8 +57,8 @@ def pass_local_client(
             commit=commit,
             commit_only=commit_only,
             ignore_std_streams=ignore_std_streams,
-            allow_empty=allow_empty,
-            do_not_commit_if_empty=do_not_commit_if_empty,
+            commit_empty=commit_empty,
+            raise_if_empty=raise_if_empty,
             lock=lock,
         )
 
@@ -77,8 +77,8 @@ def pass_local_client(
             commit=commit,
             commit_only=commit_only,
             ignore_std_streams=ignore_std_streams,
-            allow_empty=allow_empty,
-            do_not_commit_if_empty=do_not_commit_if_empty,
+            commit_empty=commit_empty,
+            raise_if_empty=raise_if_empty,
         )
         stack.enter_context(transaction)
 
