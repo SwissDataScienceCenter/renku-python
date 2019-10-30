@@ -41,8 +41,8 @@ Activities
    :inherited-members:
 
 
-Entities and Plans
-------------------
+Entities
+--------
 
 .. py:module:: renku.core.models.entities
 
@@ -54,6 +54,12 @@ Entities and Plans
    :members:
    :inherited-members:
 
+
+Plans
+-----
+
+.. py:module:: renku.core.models.provenance.processes
+
 .. autoclass:: Process
    :members:
    :inherited-members:
@@ -61,7 +67,6 @@ Entities and Plans
 .. autoclass:: Workflow
    :members:
    :inherited-members:
-
 
 Agents
 ------
