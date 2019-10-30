@@ -17,12 +17,13 @@
 # limitations under the License.
 """Client for handling a configuration."""
 import configparser
-import fcntl
 import os
+from io import StringIO
 from pathlib import Path
 
 import attr
 import click
+import filelock
 
 APP_NAME = 'Renku'
 """Application name for storing configuration."""
@@ -40,7 +41,7 @@ def print_app_config_path(ctx, param, value):
 
 
 def global_config_dir():
-    """Return User's config directory."""
+    """Return user's config directory."""
     return click.get_app_dir(APP_NAME, force_posix=True)
 
 
@@ -66,6 +67,14 @@ class ConfigManagerMixin:
         """Renku local (project) config path."""
         return str(self.renku_path / self.CONFIG_NAME)
 
+    @property
+    def global_config_lock(self):
+        """Create a user-level config lock."""
+        lock_file = '{0}/{1}.lock'.format(
+            self.global_config_dir, self.CONFIG_NAME
+        )
+        return filelock.FileLock(lock_file, timeout=0)
+
     def load_config(self, local_only, global_only):
         """Loads local, global or both configuration object."""
         config = configparser.ConfigParser()
@@ -77,7 +86,7 @@ class ConfigManagerMixin:
             config_files = [self.global_config_path, self.local_config_path]
 
         if not local_only:
-            with _GlobalConfigLock(self):
+            with self.global_config_lock:
                 config.read(config_files)
         else:
             config.read(config_files)
@@ -95,7 +104,7 @@ class ConfigManagerMixin:
         if global_only:
             os.umask(0)
             fd = os.open(filepath, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
-            with _GlobalConfigLock(self):
+            with self.global_config_lock:
                 with open(fd, 'w+') as file:
                     config.write(file)
         else:
@@ -103,6 +112,15 @@ class ConfigManagerMixin:
                 config.write(file)
 
         return self.load_config(local_only=True, global_only=True)
+
+    def get_config(self, local_only=False, global_only=False):
+        """Read all configurations."""
+        config = self.load_config(
+            local_only=local_only, global_only=global_only
+        )
+        with StringIO() as output:
+            config.write(output)
+            return output.getvalue()
 
     def get_value(self, section, key, local_only=False, global_only=False):
         """Get value from specified section and key."""
@@ -132,30 +150,13 @@ class ConfigManagerMixin:
         )
 
         if section in config:
-            config[section].pop(key)
+            value = config[section].pop(key, None)
 
             if not config[section].keys():
                 config.pop(section)
 
             self.store_config(config, global_only=global_only)
-
-
-class _GlobalConfigLock:
-    def __init__(self, client):
-        self._lock_filepath = '{0}/{1}.lock'.format(
-            client.global_config_dir, client.CONFIG_NAME
-        )
-        self._lock = None
-
-    def __enter__(self):
-        """Acquire a lock file."""
-        locked_file_descriptor = open(self._lock_filepath, 'w+')
-        fcntl.lockf(locked_file_descriptor, fcntl.LOCK_EX)
-        self._lock = locked_file_descriptor
-
-    def __exit__(self, type, value, traceback):
-        """Release lock file."""
-        self._lock.close()
+            return value
 
 
 CONFIG_LOCAL_PATH = [Path(RENKU_HOME) / ConfigManagerMixin.CONFIG_NAME]

@@ -31,28 +31,48 @@ By default, configuration is stored locally in the project's directory. Use
 ``--global`` option to store configuration for all projects in your home
 directory.
 
+Remove values
+~~~~~~~~~~~~~
+
+To remove a specific key from configuration use:
+
+.. code-block:: console
+
+    $ renku config --remove registry
+
+By default, only local configuration is searched for removal. Use ``--global``
+option to remove a global configuration value.
+
 Query values
 ~~~~~~~~~~~~
 
-You display a previously set value with:
+You can display all configuration values with:
+
+.. code-block:: console
+
+    $ renku config
+
+Both local and global configuration files are read. Values in local
+configuration take precedence over global values. Use ``--local`` or
+``--global`` flag to read corresponding configuration only.
+
+You can provide a KEY to display only its value:
 
 .. code-block:: console
 
     $ renku config registry
     https://registry.gitlab.com/demo/demo
-
-Both local and global configuration files are read and values in local
-configuration take precedence over global values. Use ``--local`` or
-``--global`` flags to read corresponding configuration only.
 """
 import click
 
-from renku.core.commands.config import update_config
+from renku.core import errors
+from renku.core.commands.config import read_config, update_config
 
 
 @click.command()
-@click.argument('key', required=True)
+@click.argument('key', required=False, default=None)
 @click.argument('value', required=False, default=None)
+@click.option('--remove', is_flag=True, help='Remove specified key.')
 @click.option(
     '--local',
     'local_only',
@@ -65,7 +85,21 @@ from renku.core.commands.config import update_config
     is_flag=True,
     help='Read/store from/to global configuration only.'
 )
-def config(key, value, local_only, global_only):
+def config(key, value, remove, local_only, global_only):
     """Manage configuration options."""
-    updated = update_config(key, value, local_only, global_only)
-    click.secho(updated)
+    is_write = value is not None
+
+    if is_write and remove:
+        raise errors.UsageError('Cannot remove and set at the same time.')
+    if remove and not key:
+        raise errors.UsageError('KEY is missing.')
+    if local_only and global_only:
+        raise errors.UsageError('Cannot use --local and --global together.')
+
+    if remove:
+        update_config(key, remove=remove, global_only=global_only)
+    elif is_write:
+        update_config(key, value=value, global_only=global_only)
+    else:
+        value = read_config(key, local_only, global_only)
+        click.secho(value)
