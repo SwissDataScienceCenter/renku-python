@@ -44,7 +44,7 @@ Activities
 Entities and Plans
 ------------------
 
-.. py:module:: renku.core.models.provenance.entities
+.. py:module:: renku.core.models.entities
 
 .. autoclass:: Entity
    :members:

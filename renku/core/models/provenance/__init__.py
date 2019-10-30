@@ -22,8 +22,8 @@
 
 from .activities import Activity, ProcessRun, WorkflowRun
 from .agents import Person, SoftwareAgent
-from .entities import Collection, Entity, Process, Workflow
 from .qualified import Generation, Usage
+from .processes import Process, Workflow
 
 __all__ = (
     'Activity',

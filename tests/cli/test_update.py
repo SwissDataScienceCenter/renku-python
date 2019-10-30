@@ -85,11 +85,10 @@ def test_update(runner, project, run):
 
     from renku.cli.log import FORMATS
     for output_format in FORMATS:
-        # Make sure the log contains the original parent.
         result = runner.invoke(
             cli,
             ['log', '--format', output_format],
-            catch_exceptions=False,
+            catch_exceptions=True,
         )
         assert 0 == result.exit_code, output_format
         assert source.name in result.output, output_format

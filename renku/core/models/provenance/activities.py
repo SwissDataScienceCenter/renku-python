@@ -29,10 +29,11 @@ from renku.core.models import jsonld
 from renku.core.models.cwl import WORKFLOW_STEP_RUN_TYPES
 from renku.core.models.cwl.ascwl import CWLClass
 from renku.core.models.cwl.types import PATH_OBJECTS
+from renku.core.models.entities import Collection, CommitMixin, Entity
+from renku.core.models.provenance.processes import Process, Workflow
 from renku.core.models.refs import LinkReference
 
 from .agents import Person, renku_agent
-from .entities import Collection, CommitMixin, Entity, Process, Workflow
 from .qualified import Association, Generation, Usage
 
 
@@ -271,6 +272,7 @@ class Activity(CommitMixin):
         yield from reversed(collections.values())
 
     def __attrs_post_init__(self):
+        """Sets ``generated`` default value if it's not set already."""
         if not self.generated:
             self.generated = self.default_generated()
 
@@ -300,6 +302,7 @@ class ProcessRun(Activity):
         context='prov:qualifiedAssociation',
         default=None,
         kw_only=True,
+        type=Association
     )
 
     qualified_usage = jsonld.ib(
@@ -430,6 +433,7 @@ class WorkflowRun(ProcessRun):
         },
         default=attr.Factory(list),
         kw_only=True,
+        type=Process
     )
     subprocesses = attr.ib(kw_only=True)
 
@@ -610,5 +614,8 @@ class WorkflowRun(ProcessRun):
             yield from subprocess.nodes
 
     def __attrs_post_init__(self):
+        """Attrs post initializations."""
         if not self.generated:
             self.generated = self.default_generated()
+
+        super().__attrs_post_init__()

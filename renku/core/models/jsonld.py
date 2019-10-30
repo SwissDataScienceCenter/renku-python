@@ -24,7 +24,6 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
-from pydoc import locate
 
 import attr
 import yaml
@@ -119,6 +118,8 @@ def attrs(
                     raise TypeError()
                 context.setdefault(key, value)
 
+        scoped_properties = []
+
         for a in attr.fields(jsonld_cls):
             key = a.name
             ctx = a.metadata.get(KEY)
@@ -139,16 +140,10 @@ def attrs(
 
                 if not isinstance(t, (list, set, tuple)):
                     t = [t]
-                if key == 'entity':
-                    print(t)
                 all_subclasses = [import_class_from_string(c) for c in t]
-                if key == 'entity':
-                    print(all_subclasses)
                 all_subclasses = [
                     c for c in all_subclasses if hasattr(c, '_jsonld_context')
                 ]
-                if key == 'entity':
-                    print(all_subclasses)
                 if len(all_subclasses) == 1:
                     merge_ctx = all_subclasses[0]._jsonld_context
 
@@ -159,6 +154,8 @@ def attrs(
 
                     current_context['@context'] = merge_ctx
                 else:
+                    scoped_properties.append(key)
+
                     for subcls in all_subclasses:
                         if hasattr(subcls, '_jsonld_context'):
                             merge_ctx = subcls._jsonld_context
@@ -170,13 +167,13 @@ def attrs(
 
                             if '@context' not in current_context:
                                 current_context['@context'] = []
-
-                            current_context['@context'].append({
-                                fullname(subcls): {
-                                    "@id": subcls._jsonld_type,
-                                    "@context": merge_ctx
-                                }
-                            })
+                            for subtype in subcls._jsonld_type:
+                                current_context['@context'].append({
+                                    fullname(subcls) + '_' + subtype: {
+                                        '@id': subtype,
+                                        '@context': merge_ctx
+                                    }
+                                })
 
             if current_context:
                 context[key] = current_context
@@ -185,7 +182,8 @@ def attrs(
         jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
             sorted(set(types))
         )
-        jsonld_cls._jsonld_renku_type = fullname(cls)
+        jsonld_cls._scoped_properties = scoped_properties
+        jsonld_cls._renku_type = fullname(cls)
 
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
@@ -294,6 +292,7 @@ def asjsonld(
     dict_factory=dict,
     retain_collection_types=False,
     add_context=True,
+    use_scoped_type_form=False,
     basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
@@ -321,8 +320,11 @@ def asjsonld(
 
         return value
 
+    inst_cls = type(inst)
+
     for a in attrs:
         v = getattr(inst, a.name)
+        scoped = a.name in inst_cls._scoped_properties
 
         # skip proxies
         if isinstance(v, weakref.ReferenceType):
@@ -338,6 +340,7 @@ def asjsonld(
                     filter=filter,
                     dict_factory=dict_factory,
                     add_context=False,
+                    use_scoped_type_form=scoped,
                     basedir=basedir,
                 )
             elif isinstance(v, (tuple, list, set)):
@@ -349,6 +352,7 @@ def asjsonld(
                         filter=filter,
                         dict_factory=dict_factory,
                         add_context=False,
+                        use_scoped_type_form=scoped,
                         basedir=basedir,
                     ) if has(i.__class__) else i for i in v
                 ])
@@ -373,8 +377,6 @@ def asjsonld(
         else:
             rv[a.name] = convert_value(v)
 
-    inst_cls = type(inst)
-
     if add_context:
         rv['@context'] = deepcopy(inst_cls._jsonld_context)
 
@@ -385,16 +387,11 @@ def asjsonld(
         else:
             rv_type.append(inst_cls._jsonld_type)
 
-    if hasattr(inst_cls, '_jsonld_renku_type'):
-        rv_type.append(inst_cls._jsonld_renku_type)
-        # print(inst_cls._jsonld_renku_type)
+    if use_scoped_type_form:
+        rv_type = ['{}_{}'.format(inst_cls._renku_type, t) for t in rv_type]
 
     if rv_type:
         rv['@type'] = rv_type[0] if len(rv_type) == 1 else rv_type
-    # print(inst.__class__)
-    # print(type(inst))
-    # print(json.dumps(rv, indent=4))
-    # print('--------------------------')
     return rv
 
 
@@ -544,7 +541,7 @@ def fullname(cls):
     if module is None or module == str.__class__.__module__:
         return cls.__name__  # Avoid reporting __builtin__
     else:
-        return ".".join([module, cls.__name__])
+        return '.'.join([module, cls.__name__])
 
 
 def import_class_from_string(dotted_path):
@@ -555,10 +552,7 @@ def import_class_from_string(dotted_path):
     module = import_module(module_path)
     try:
         return getattr(module, class_name)
-    except AttributeError as e:
-        print(module)
-        print(dir(module))
-        print(e)
+    except AttributeError:
         return None
 
 

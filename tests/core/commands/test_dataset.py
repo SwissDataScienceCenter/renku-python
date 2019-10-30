@@ -25,6 +25,7 @@ from contextlib import contextmanager
 import git
 import pytest
 
+from renku.core import errors
 from renku.core.models.creators import Creator
 from renku.core.models.datasets import Dataset, DatasetFile
 
