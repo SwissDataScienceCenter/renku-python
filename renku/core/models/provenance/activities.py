@@ -183,6 +183,7 @@ class Activity(CommitMixin):
 
         for file_ in self.commit.diff(self.commit.parents or NULL_TREE):
             path_ = Path(file_.a_path)
+
             is_dataset = self.client.DATASETS in str(path_)
             not_refs = LinkReference.REFS not in str(path_)
             does_not_exists = not path_.exists()

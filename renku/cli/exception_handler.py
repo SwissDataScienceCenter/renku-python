@@ -136,7 +136,8 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 from renku.core.commands import get_git_home
                 from renku.core.models.datasets import Creator
 
-                user = Creator.from_git(Repo(get_git_home()))
+                repo = Repo(get_git_home())
+                user = Creator.from_git(repo)
 
                 scope.user = {'name': user.name, 'email': user.email}
 
