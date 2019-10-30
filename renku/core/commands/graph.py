@@ -273,7 +273,6 @@ class Graph(object):
 
         visited = visited or set()
         queue = deque(dependencies)
-
         while queue:
             processing = queue.popleft()
 
@@ -282,7 +281,6 @@ class Graph(object):
 
             # Mark as visited:
             visited.add(processing.commit)
-
             activity = processing.client.process_commit(processing.commit)
 
             if activity is None:
@@ -400,6 +398,7 @@ class Graph(object):
             not ((self.client.path / node.path).exists() or
                  (self.client.path / node.path).is_dir())
         }
+
         return status
 
     def siblings(self, node):

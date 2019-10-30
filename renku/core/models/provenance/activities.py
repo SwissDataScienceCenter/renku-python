@@ -125,6 +125,7 @@ class Activity(CommitMixin):
                 self.commit,
                 path,
             )
+
             output_path = client.path / path
             parents = list(output_path.relative_to(client.path).parents)
 
@@ -134,6 +135,7 @@ class Activity(CommitMixin):
                 if str(parent) in self._collections:
                     collection = self._collections[str(parent)]
                 else:
+
                     collection = Collection(
                         client=client,
                         commit=commit,
@@ -142,6 +144,7 @@ class Activity(CommitMixin):
                         parent=collection,
                     )
                     members.append(collection)
+
                     self._collections[str(parent)] = collection
 
                 members = collection.members
@@ -192,6 +195,7 @@ class Activity(CommitMixin):
 
         for file_ in self.commit.diff(self.commit.parents or NULL_TREE):
             path_ = Path(file_.a_path)
+
             is_dataset = self.client.DATASETS in str(path_)
             not_refs = LinkReference.REFS not in str(path_)
             does_not_exists = not path_.exists()
