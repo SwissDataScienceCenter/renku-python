@@ -80,7 +80,7 @@ install_requires = [
     'cwltool==1.0.20181012180214',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
-    'gitpython==2.1.14',
+    'gitpython==3.0.3',
     'patool>=1.12',
     'psutil>=5.4.7',
     'pyasn1>=0.4.5',

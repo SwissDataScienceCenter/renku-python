@@ -125,7 +125,6 @@ class Activity(CommitMixin):
                 self.commit,
                 path,
             )
-
             output_path = client.path / path
             parents = list(output_path.relative_to(client.path).parents)
 
@@ -135,7 +134,6 @@ class Activity(CommitMixin):
                 if str(parent) in self._collections:
                     collection = self._collections[str(parent)]
                 else:
-
                     collection = Collection(
                         client=client,
                         commit=commit,
@@ -144,7 +142,6 @@ class Activity(CommitMixin):
                         parent=collection,
                     )
                     members.append(collection)
-
                     self._collections[str(parent)] = collection
 
                 members = collection.members

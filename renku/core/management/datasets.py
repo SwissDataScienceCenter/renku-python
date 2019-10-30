@@ -701,7 +701,7 @@ class DatasetsApiMixin(object):
         repo_path = self.renku_path / 'cache' / u.hostname / path / repo_name
 
         if repo_path.exists():
-            repo = Repo(str(repo_path), search_parent_directories=True)
+            repo = Repo(str(repo_path))
             origin = repo.remotes.origin
             if origin.url == url:
                 try:

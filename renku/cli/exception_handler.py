@@ -136,7 +136,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 from renku.core.commands import get_git_home
                 from renku.core.models.creators import Creator
 
-                repo = Repo(get_git_home(), search_parent_directories=True)
+                repo = Repo(get_git_home())
                 user = Creator.from_git(repo)
 
                 scope.user = {'name': user.name, 'email': user.email}
