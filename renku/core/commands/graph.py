@@ -284,7 +284,6 @@ class Graph(object):
             visited.add(processing.commit)
 
             activity = processing.client.process_commit(processing.commit)
-
             if activity is None:
                 continue
 
