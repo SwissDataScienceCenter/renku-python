@@ -218,7 +218,7 @@ def _add_class_property_contexts(jsonld_cls, context):
 def _propagate_reference_contexts(
     type_references, current_context, parent_context
 ):
-    """Get JSON-LD contexts for all types of a reference and propagate them"""
+    """Get JSON-LD contexts for all types of a reference and propagate them."""
     if not isinstance(type_references, (list, set, tuple)):
         type_references = [type_references]
     classes = [import_class_from_string(c) for c in type_references]
