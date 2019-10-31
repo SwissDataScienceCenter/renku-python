@@ -26,6 +26,7 @@ import click
 
 from renku.core.models.datasets import Dataset
 from renku.core.models.refs import LinkReference
+from renku.core.utils.urls import url_to_string
 
 from ..echo import WARNING
 
@@ -235,9 +236,19 @@ def fix_uncommitted_labels(client):
         dataset.to_yaml()
 
 
+def fix_dataset_files_urls(client):
+    """Ensure dataset files have correct url format."""
+    for dataset in client.datasets.values():
+        for file_ in dataset.files:
+            file_.url = url_to_string(file_.url)
+
+        dataset.to_yaml()
+
+
 STRUCTURE_MIGRATIONS = [
     ensure_clean_lock,
     migrate_datasets_pre_v0_3,
     migrate_broken_dataset_paths,
     fix_uncommitted_labels,
+    fix_dataset_files_urls,
 ]
