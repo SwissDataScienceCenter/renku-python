@@ -32,7 +32,7 @@ RENKU_HOME = '.renku'
 """Project directory name."""
 
 
-def global_config_dir():
+def _global_config_dir():
     """Return user's config directory."""
     return click.get_app_dir(APP_NAME, force_posix=True)
 
@@ -43,7 +43,7 @@ class ConfigManagerMixin:
 
     CONFIG_NAME = 'renku.ini'
 
-    global_config_dir = attr.ib(default=global_config_dir(), converter=str)
+    global_config_dir = attr.ib(default=_global_config_dir(), converter=str)
 
     @property
     def global_config_path(self):

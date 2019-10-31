@@ -33,7 +33,6 @@ execute ``renku help``:
 
     Options:
       --version                       Print version number.
-      --config PATH                   Location of client config files.
       --global-config-path            Print global application's config path.
       --install-completion            Install completion for the current shell.
       --path <path>                   Location of a Renku repository.
@@ -62,17 +61,6 @@ Windows:
 
 If in doubt where to look for the configuration file, you can display its path
 by running ``renku --global-config-path``.
-
-You can specify a different location via the ``RENKU_CONFIG`` environment
-variable or the ``--config`` command line option. If both are specified, then
-the ``--config`` option value is used. For example:
-
-.. code-block:: console
-
-    $ renku --config ~/renku/config/ init
-
-instructs Renku to store the configuration files in your ``~/renku/config/``
-directory when running the ``init`` command.
 """
 
 import uuid
@@ -102,8 +90,7 @@ from renku.core.commands.options import install_completion, \
     option_use_external_storage
 from renku.core.commands.version import check_version, print_version
 from renku.core.management.client import LocalClient
-from renku.core.management.config import ConfigManagerMixin, RENKU_HOME, \
-    global_config_dir
+from renku.core.management.config import ConfigManagerMixin, RENKU_HOME
 from renku.core.management.repository import default_path
 
 #: Monkeypatch Click application.
@@ -140,14 +127,6 @@ def print_global_config_path(ctx, param, value):
     expose_value=False,
     is_eager=True,
     help=print_version.__doc__
-)
-@click.option(
-    '--config',
-    envvar='RENKU_CONFIG',
-    default=global_config_dir,
-    type=click.Path(),
-    expose_value=False,
-    help='Location of client config files.'
 )
 @click.option(
     '--global-config-path',
