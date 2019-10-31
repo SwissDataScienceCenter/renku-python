@@ -110,7 +110,7 @@ class DatasetsApiMixin(object):
 
     @contextmanager
     def with_dataset(
-        self, name=None, identifier=None, create=False, fail_if_exists=False
+        self, name=None, identifier=None, create=False, fail_if_exists=True
     ):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
@@ -124,10 +124,7 @@ class DatasetsApiMixin(object):
                 )
 
             if not create:
-                raise errors.DatasetNotFound(
-                    'Dataset does not exists. Create the dataset or retry '
-                    'with --create option for automatic dataset creation.'
-                )
+                raise errors.DatasetNotFound
             clean_up_required = True
             dataset_ref = None
             identifier = str(uuid.uuid4())

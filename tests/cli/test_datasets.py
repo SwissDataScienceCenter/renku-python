@@ -225,7 +225,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
         catch_exceptions=False
     )
     assert result.exit_code == 1
-    assert 'Create the dataset or retry with --create' in result.output
+    assert 'Dataset "new-dataset" does not exists.' in result.output
 
     # Add succeeds with --create
     result = runner.invoke(

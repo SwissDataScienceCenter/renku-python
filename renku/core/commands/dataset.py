@@ -106,8 +106,10 @@ def create_dataset(client, name, handle_duplicate_fn=None):
     :raises: ``renku.core.errors.ParameterError``
     """
     existing = client.load_dataset(name=name)
-    if (not existing or handle_duplicate_fn and handle_duplicate_fn(existing)):
-        with client.with_dataset(name=name, create=True) as dataset:
+    if not existing or (handle_duplicate_fn and handle_duplicate_fn(existing)):
+        with client.with_dataset(
+            name=name, create=True, fail_if_exists=False
+        ) as dataset:
             creator = Creator.from_git(client.repo)
             if creator not in dataset.creator:
                 dataset.creator.append(creator)
@@ -205,8 +207,10 @@ def add_to_dataset(
 
     except DatasetNotFound:
         raise DatasetNotFound(
-            'Dataset "{}" does not exists. Create the dataset or retry with '
-            '--create option for automatic dataset creation.'.format(name)
+            'Dataset "{0}" does not exists.\n'
+            'Use "renku dataset create {0}" to create the dataset or retry '
+            '"renku dataset add {0}" command with "--create" option for '
+            'automatic dataset creation.'.format(name)
         )
     except (FileNotFoundError, git.exc.NoSuchPathError):
         raise ParameterError('Could not process \n{0}'.format('\n'.join(urls)))
