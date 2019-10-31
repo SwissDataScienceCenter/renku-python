@@ -19,7 +19,6 @@
 
 import json
 
-import yaml
 from pkg_resources import resource_string
 from pyshacl import validate
 
@@ -29,10 +28,11 @@ def validate_graph(graph, shacl_path=None, format='nquads'):
 
     uses default schema if not supplied.
     """
-    if not shacl_path:
-        shacl_path = resource_string('renku', 'data/shacl_shape.yml')
-
-    shacl = json.dumps(yaml.safe_load(shacl_path))
+    if shacl_path:
+        with open(shacl_path, 'r', encoding='utf-8') as f:
+            shacl = f.read()
+    else:
+        shacl = resource_string('renku', 'data/shacl_shape.json')
 
     return validate(
         graph,
