@@ -88,7 +88,7 @@ def test_update(runner, project, run):
         result = runner.invoke(
             cli,
             ['log', '--format', output_format],
-            catch_exceptions=True,
+            catch_exceptions=False,
         )
         assert 0 == result.exit_code, output_format
         assert source.name in result.output, output_format

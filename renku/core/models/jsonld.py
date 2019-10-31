@@ -98,6 +98,7 @@ def attrs(
     def wrap(cls):
         """Decorate an attr enabled class."""
         jsonld_cls = attr.s(cls, **attrs_kwargs)
+        ctx = context
 
         if not issubclass(jsonld_cls, JSONLDMixin):
             jsonld_cls = attr.s(
@@ -114,69 +115,15 @@ def attrs(
                     types.append(subtype)
 
             for key, value in getattr(subcls, '_jsonld_context', {}).items():
-                if key in context and context[key] != value:
+                if key in ctx and ctx[key] != value:
                     raise TypeError()
-                context.setdefault(key, value)
+                ctx.setdefault(key, value)
 
-        scoped_properties = []
+        property_context, scoped_properties = _add_class_property_contexts(
+            jsonld_cls, ctx
+        )
 
-        for a in attr.fields(jsonld_cls):
-            key = a.name
-            ctx = a.metadata.get(KEY)
-            if ctx is None:
-                continue
-
-            current_context = None
-            if isinstance(ctx, str) and ':' in ctx:
-                prefix, _ = ctx.split(':', 1)
-                if prefix in context:
-                    current_context = ctx
-
-            elif isinstance(ctx, dict) or ctx not in context:
-                current_context = ctx
-
-            if KEY_CLS in a.metadata:
-                t = a.metadata[KEY_CLS]
-
-                if not isinstance(t, (list, set, tuple)):
-                    t = [t]
-                all_subclasses = [import_class_from_string(c) for c in t]
-                all_subclasses = [
-                    c for c in all_subclasses if hasattr(c, '_jsonld_context')
-                ]
-                if len(all_subclasses) == 1:
-                    merge_ctx = all_subclasses[0]._jsonld_context
-
-                    if not current_context:
-                        current_context = {'@id': ctx}
-                    elif not isinstance(current_context, dict):
-                        current_context = {'@id': current_context}
-
-                    current_context['@context'] = merge_ctx
-                else:
-                    scoped_properties.append(key)
-
-                    for subcls in all_subclasses:
-                        if hasattr(subcls, '_jsonld_context'):
-                            merge_ctx = subcls._jsonld_context
-
-                            if not current_context:
-                                current_context = {'@id': ctx}
-                            elif not isinstance(current_context, dict):
-                                current_context = {'@id': current_context}
-
-                            if '@context' not in current_context:
-                                current_context['@context'] = []
-                            for subtype in subcls._jsonld_type:
-                                current_context['@context'].append({
-                                    fullname(subcls) + '_' + subtype: {
-                                        '@id': subtype,
-                                        '@context': merge_ctx
-                                    }
-                                })
-
-            if current_context:
-                context[key] = current_context
+        ctx.update(property_context)
 
         jsonld_cls.__module__ = cls.__module__
         jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
@@ -185,7 +132,7 @@ def attrs(
         jsonld_cls._scoped_properties = scoped_properties
         jsonld_cls._renku_type = fullname(cls)
 
-        jsonld_cls._jsonld_context = context
+        jsonld_cls._jsonld_context = ctx
         jsonld_cls._jsonld_translate = translate
         jsonld_cls._jsonld_fields = {
             a.name
@@ -193,7 +140,7 @@ def attrs(
         }
 
         context_doc = '\n'.join(
-            '   ' + line for line in json.dumps(context, indent=2).split('\n')
+            '   ' + line for line in json.dumps(ctx, indent=2).split('\n')
         )
         jsonld_cls.__doc__ = DOC_TPL.format(
             cls=cls,
@@ -205,7 +152,7 @@ def attrs(
         try:
             type_ = ld.expand({
                 '@type': jsonld_cls._jsonld_type,
-                '@context': context
+                '@context': ctx
             })[0]['@type']
             if isinstance(type_, list):
                 type_ = tuple(sorted(type_))
@@ -213,21 +160,104 @@ def attrs(
             # FIXME make sure all classes have @id defined
             return jsonld_cls
 
-        if type_ in jsonld_cls.__type_registry__:
-            if jsonld_cls.__type_registry__[type_] != jsonld_cls:
-                raise TypeError(
-                    'Type {0!r} is already registered for class {1!r}.'.format(
-                        jsonld_cls._jsonld_type,
-                        jsonld_cls.__type_registry__[type_],
-                    )
+        if (
+            type_ in jsonld_cls.__type_registry__ and
+            jsonld_cls.__type_registry__[type_] != jsonld_cls
+        ):
+            raise TypeError(
+                'Type {0!r} is already registered for class {1!r}.'.format(
+                    jsonld_cls._jsonld_type,
+                    jsonld_cls.__type_registry__[type_],
                 )
+            )
 
-            jsonld_cls.__type_registry__[type_] = jsonld_cls
+        jsonld_cls.__type_registry__[type_] = jsonld_cls
         return jsonld_cls
 
     if maybe_cls is None:
         return wrap
     return wrap(maybe_cls)
+
+
+def _add_class_property_contexts(jsonld_cls, context):
+    """Adds ``@context`` of a class' properties to the class' ``@context``."""
+    scoped_properties = []
+
+    property_context = {}
+
+    for a in attr.fields(jsonld_cls):
+        key = a.name
+        ctx = a.metadata.get(KEY)
+        if ctx is None:
+            continue
+
+        current_context = None
+        if isinstance(ctx, str) and ':' in ctx:
+            prefix, _ = ctx.split(':', 1)
+            if prefix in context:
+                current_context = ctx
+
+        elif isinstance(ctx, dict) or ctx not in context:
+            current_context = ctx
+
+        if KEY_CLS in a.metadata:
+            t = a.metadata[KEY_CLS]
+            current_context, is_scoped = _propagate_reference_contexts(
+                t, current_context, ctx
+            )
+
+            if is_scoped:
+                scoped_properties.append(key)
+
+        if current_context:
+            property_context[key] = current_context
+
+    return property_context, scoped_properties
+
+
+def _propagate_reference_contexts(
+    type_references, current_context, parent_context
+):
+    """Get JSON-LD contexts for all types of a reference and propagate them"""
+    if not isinstance(type_references, (list, set, tuple)):
+        type_references = [type_references]
+    classes = [import_class_from_string(c) for c in type_references]
+    classes = [c for c in classes if hasattr(c, '_jsonld_context')]
+    scoped_properties = False
+
+    if len(classes) == 1:
+        merge_ctx = classes[0]._jsonld_context
+
+        if not current_context:
+            current_context = {'@id': parent_context}
+        elif not isinstance(current_context, dict):
+            current_context = {'@id': current_context}
+
+        current_context['@context'] = merge_ctx
+    else:
+        scoped_properties = True
+
+        for cls in classes:
+            merge_ctx = cls._jsonld_context
+
+            if not current_context:
+                current_context = {'@id': parent_context}
+            elif not isinstance(current_context, dict):
+                current_context = {'@id': current_context}
+
+            if '@context' not in current_context:
+                current_context['@context'] = []
+            for subtype in cls._jsonld_type:
+                # Use nested, type scoped contexts for each semantic type
+                # of a reference, to uniquely bind a context to a type
+                current_context['@context'].append({
+                    fullname(cls) + '_' + subtype: {
+                        '@id': subtype,
+                        '@context': merge_ctx
+                    }
+                })
+
+    return current_context, scoped_properties
 
 
 def attrib(context=None, type=None, **kwargs):
@@ -387,11 +417,13 @@ def asjsonld(
         else:
             rv_type.append(inst_cls._jsonld_type)
 
-    if use_scoped_type_form:
-        rv_type = ['{}_{}'.format(inst_cls._renku_type, t) for t in rv_type]
+        if use_scoped_type_form:
+            rv_type = [
+                '{}_{}'.format(inst_cls._renku_type, t) for t in rv_type
+            ]
 
-    if rv_type:
         rv['@type'] = rv_type[0] if len(rv_type) == 1 else rv_type
+
     return rv
 
 
