@@ -21,7 +21,7 @@ import pytest
 from renku.cli import cli
 
 
-def test_config_value_locally(runner, project, global_config_dir):
+def test_config_value_locally(client, runner, project, global_config_dir):
     """Check setting/getting from local configuration."""
     result = runner.invoke(cli, ['config', 'key', 'local-value'])
     assert result.exit_code == 0
@@ -38,7 +38,7 @@ def test_config_value_locally(runner, project, global_config_dir):
     assert result.exit_code == 2
 
 
-def test_config_value_globally(runner, project, global_config_dir):
+def test_config_value_globally(client, runner, project, global_config_dir):
     """Check setting/getting from global configuration."""
     result = runner.invoke(cli, ['config', 'key', 'global-value', '--global'])
     assert result.exit_code == 0
@@ -54,13 +54,17 @@ def test_config_value_globally(runner, project, global_config_dir):
     assert result.exit_code == 2
 
 
-def test_config_get_non_existing_value(runner, project, global_config_dir):
+def test_config_get_non_existing_value(
+    client, runner, project, global_config_dir
+):
     """Check getting non-existing value is an error."""
     result = runner.invoke(cli, ['config', 'non-existing'])
     assert result.exit_code == 2
 
 
-def test_local_overrides_global_config(runner, project, global_config_dir):
+def test_local_overrides_global_config(
+    client, runner, project, global_config_dir
+):
     """Test setting config both global and locally."""
     result = runner.invoke(cli, ['config', 'key', 'global-value', '--global'])
     assert result.exit_code == 0
@@ -97,7 +101,7 @@ def test_config_remove_value_locally(
 
 
 def test_local_config_committed(
-    client, runner, data_repository, directory_tree
+    client, runner, data_repository, directory_tree, global_config_dir
 ):
     """Test local configuration update is committed only when it is changed."""
     commit_sha_before = client.repo.head.object.hexsha
@@ -130,7 +134,7 @@ def test_local_config_committed(
        ], 'Cannot use --local and --global together.')]
 )
 def test_invalid_command_args(
-    runner, project, global_config_dir, args, message
+    client, runner, project, global_config_dir, args, message
 ):
     """Test invalid combination of command-line arguments."""
     result = runner.invoke(cli, ['config'] + args)

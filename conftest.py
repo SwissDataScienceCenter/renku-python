@@ -60,8 +60,7 @@ def global_config_dir(monkeypatch, tmpdir_factory):
 
     with monkeypatch.context() as m:
         home_dir = tmpdir_factory.mktemp('fake_home')
-        conf_path = str(home_dir / 'renku.ini')
-        m.setattr(ConfigManagerMixin, 'global_config_path', conf_path)
+        m.setattr(ConfigManagerMixin, 'global_config_dir', home_dir)
 
         yield m
 
