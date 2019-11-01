@@ -2,41 +2,14 @@
     "@context": {
        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
        "sh": "http://www.w3.org/ns/shacl#",
-       "xsd": "http://www.w3.org/2001/XMLSchema#",
-       "schema": "http://schema.org/",
-       "foaf": "http://xmlns.com/foaf/0.1/",
-       "prov": "http://www.w3.org/ns/prov#",
-       "minCount": "sh:minCount",
-       "property": "sh:property",
-       "target": {
-          "@id": "sh:target",
-          "@type": "@id"
-       }
+       "schema": "http://schema.org/"
     },
     "@graph": [
         {
-            "@id": "schema:",
-            "sh:declare": [
-               {
-                  "sh:prefix": [
-                     {
-                        "@value": "schema"
-                     }
-                  ],
-                  "sh:namespace": [
-                     {
-                        "@value": "http://schema.org/",
-                        "@type": "xsd:anyURI"
-                     }
-                  ]
-               }
-            ]
-         },
-        {
             "@id": "_:forceProjectShape",
             "@type": "sh:NodeShape",
-            "targetNode": "schema:Project",
-             "property": [
+            "sh:targetNode": "schema:Project",
+             "sh:property": [
                 {
                     "sh:path": [
                         {
@@ -45,7 +18,7 @@
                              }
                         }
                     ],
-                    "minCount": 1
+                    "sh:minCount": 1
                 }
             ]
         }
