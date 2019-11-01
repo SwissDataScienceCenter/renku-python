@@ -21,11 +21,16 @@ import functools
 
 import click
 
+from renku.core.utils.shacl import validate_graph
 
-def ascii(graph):
+
+def ascii(graph, strict=False):
     """Format graph as an ASCII art."""
     from ..ascii import DAG
     from ..echo import echo_via_pager
+
+    if strict:
+        raise click.BadParameter("--strict not supported for json-ld-graph")
 
     echo_via_pager(str(DAG(graph)))
 
@@ -56,11 +61,14 @@ def _conjunctive_graph(graph):
     )
 
 
-def dot(graph, simple=True, debug=False, landscape=False):
+def dot(graph, simple=True, debug=False, landscape=False, strict=False):
     """Format graph as a dot file."""
     import sys
 
     from rdflib.tools.rdf2dot import rdf2dot
+
+    if strict:
+        raise click.BadParameter("--strict not supported for json-ld-graph")
 
     g = _conjunctive_graph(graph)
 
@@ -299,9 +307,12 @@ def _rdf2dot_reduced(g, stream):
     stream.write('}\n')
 
 
-def makefile(graph):
+def makefile(graph, strict=False):
     """Format graph as Makefile."""
     from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
+
+    if strict:
+        raise click.BadParameter("--strict not supported for json-ld-graph")
 
     for activity in graph.activities.values():
         if not isinstance(activity, ProcessRun):
@@ -322,26 +333,53 @@ def makefile(graph):
             )
 
 
-def jsonld(graph):
+def jsonld(graph, strict=False):
     """Format graph as JSON-LD file."""
-    click.echo(_jsonld(graph, 'expand'))
+    ld = _jsonld(graph, 'expand')
+
+    if strict:
+        r, _, t = validate_graph(ld, format='json-ld')
+
+        if not r:
+            click.BadParameter(
+                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
+            )
+    click.echo(ld)
 
 
-def jsonld_graph(graph):
+def jsonld_graph(graph, strict=False):
     """Format graph as JSON-LD graph file."""
+    if strict:
+        raise click.BadParameter("--strict not supported for json-ld-graph")
     click.echo(_jsonld(graph, 'flatten'))
 
 
-def nt(graph):
+def nt(graph, strict=False):
     """Format graph as n-tuples."""
-    click.echo(_conjunctive_graph(graph).serialize(format='nt'))
+    nt = _conjunctive_graph(graph).serialize(format='nt')
+    if strict:
+        r, _, t = validate_graph(nt, format='nt')
+
+        if not r:
+            click.BadParameter(
+                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
+            )
+
+    click.echo(nt)
 
 
-def rdf(graph):
+def rdf(graph, strict=False):
     """Output the graph as RDF."""
-    click.echo(
-        _conjunctive_graph(graph).serialize(format='application/rdf+xml')
-    )
+    xml = _conjunctive_graph(graph).serialize(format='application/rdf+xml')
+    if strict:
+        r, _, t = validate_graph(xml, format='xml')
+
+        if not r:
+            click.BadParameter(
+                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
+            )
+
+    click.echo()
 
 
 FORMATS = {

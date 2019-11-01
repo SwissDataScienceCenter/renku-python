@@ -86,7 +86,6 @@ def test_dataset_shacl(tmpdir, runner, project, client):
 def test_project_shacl(project, client):
     """Test project metadata structure."""
     from renku.core.models.creators import Creator
-    from renku.core.models.projects import Project
 
     path = Path(
         __file__

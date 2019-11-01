@@ -18,6 +18,10 @@
           "@id": "sh:ignoredProperties",
           "@container": "@list"
        },
+       "or": {
+          "@id": "sh:or",
+          "@container": "@list"
+       },
        "minCount": "sh:minCount",
        "maxCount": "sh:maxCount",
        "node": {
@@ -42,6 +46,7 @@
           "@type": "@id"
        }
     },
+    "version": "0.7.1.dev7+dirty",
     "@graph": [
        {
           "@id": "schema:",
@@ -318,11 +323,6 @@
              {
                 "path": "schema:inLanguage",
                 "node": "_:inLanguageShape"
-             },
-             {
-                "path": "schema:isPartOf",
-                "node": "_:projectShape",
-                "minCount": 1
              }
           ]
        },
@@ -386,15 +386,6 @@
              },
              {
                 "nodeKind": "sh:Literal",
-                "path": "schema:dateUpdated",
-                "datatype": {
-                   "@id": "xsd:string"
-                },
-                "minCount": 1,
-                "maxCount": 1
-             },
-             {
-                "nodeKind": "sh:Literal",
                 "path": "schema:url",
                 "datatype": {
                    "@id": "xsd:string"
@@ -404,7 +395,7 @@
              },
              {
                 "nodeKind": "sh:Literal",
-                "path": "schema:version",
+                "path": "prov:atLocation",
                 "datatype": {
                    "@id": "xsd:string"
                 },
@@ -413,8 +404,19 @@
              },
              {
                 "path": "schema:isPartOf",
-                "node": "_:projectShape",
-                "minCount": 1
+                "or": [
+                    {
+                        "sh:class": {
+                            "@id": "schema:Project"
+                        }
+                    },
+                    {
+                        "nodeKind": "sh:Literal",
+                        "datatype": {
+                            "@id": "xsd:string"
+                        }
+                    }
+                ]
              },
              {
                 "path": "schema:creator",

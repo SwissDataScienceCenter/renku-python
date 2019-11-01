@@ -86,9 +86,15 @@ from renku.core.commands.graph import Graph
     default=False,
     help='Display commands without output files.'
 )
+@click.option(
+    '--strict',
+    is_flag=True,
+    default=False,
+    help='Validate triples before output.'
+)
 @click.argument('paths', type=click.Path(exists=True), nargs=-1)
 @pass_local_client
-def log(client, revision, format, no_output, paths):
+def log(client, revision, format, no_output, strict, paths):
     """Show logs for a file."""
     graph = Graph(client)
     if not paths:
@@ -108,4 +114,4 @@ def log(client, revision, format, no_output, paths):
     # NOTE shall we warn when "not no_output and not paths"?
     graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
 
-    FORMATS[format](graph)
+    FORMATS[format](graph, strict=strict)
