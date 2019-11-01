@@ -159,7 +159,7 @@ def project(repository):
     """Create a test project."""
     from git import Repo
 
-    repo = Repo(repository)
+    repo = Repo(repository, search_parent_directories=True)
     commit = repo.head.commit
 
     os.chdir(repository)
@@ -306,7 +306,10 @@ def old_repository(tmpdir_factory, old_bare_repository):
     repo_path = tmpdir_factory.mktemp('repo')
     yield {
         'repo':
-            Repo(old_bare_repository['path'].strpath).clone(repo_path.strpath),
+            Repo(
+                old_bare_repository['path'].strpath,
+                search_parent_directories=True
+            ).clone(repo_path.strpath),
         'exit_code': old_bare_repository['exit_code']
     }
     shutil.rmtree(repo_path.strpath)
