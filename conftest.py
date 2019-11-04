@@ -48,22 +48,19 @@ def instance_path(renku_path, monkeypatch):
 
 
 @pytest.fixture()
-def runner(monkeypatch):
+def runner():
     """Create a runner on isolated filesystem."""
-    from renku.core.management.config import RENKU_HOME
-    monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     return CliRunner()
 
 
 @pytest.fixture
-def config_dir(monkeypatch, tmpdir_factory):
+def global_config_dir(monkeypatch, tmpdir_factory):
     """Create a temporary renku config directory."""
     from renku.core.management.config import ConfigManagerMixin
 
     with monkeypatch.context() as m:
-        home_dir = tmpdir_factory.mktemp('fake_home')
-        conf_path = home_dir / 'renku.ini'
-        m.setattr(ConfigManagerMixin, 'config_path', conf_path)
+        home_dir = tmpdir_factory.mktemp('fake_home').strpath
+        m.setattr(ConfigManagerMixin, 'global_config_dir', home_dir)
 
         yield m
 
@@ -124,10 +121,8 @@ def run(runner, capsys):
 
 
 @pytest.fixture()
-def isolated_runner(monkeypatch):
+def isolated_runner():
     """Create a runner on isolated filesystem."""
-    from renku.core.management.config import RENKU_HOME
-    monkeypatch.setenv('RENKU_CONFIG', RENKU_HOME)
     runner_ = CliRunner()
     with runner_.isolated_filesystem():
         yield runner_

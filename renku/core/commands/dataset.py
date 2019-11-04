@@ -363,14 +363,18 @@ def export_dataset(
             if access_token is None or len(access_token) == 0:
                 raise InvalidAccessToken()
 
-            client.set_value(provider_id, config_key_secret, access_token)
+            client.set_value(
+                provider_id, config_key_secret, access_token, global_only=True
+            )
             exporter.set_access_token(access_token)
 
         try:
             destination = exporter.export(publish, selected_tag)
         except HTTPError as e:
             if 'unauthorized' in str(e):
-                client.remove_value(provider_id, config_key_secret)
+                client.remove_value(
+                    provider_id, config_key_secret, global_only=True
+                )
 
             raise
 
