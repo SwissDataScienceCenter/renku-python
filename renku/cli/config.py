@@ -77,7 +77,7 @@ from renku.core.commands.config import read_config, update_config
     '--local',
     'local_only',
     is_flag=True,
-    help='Read from local configuration only.'
+    help='Read/store from/to local configuration only.'
 )
 @click.option(
     '--global',
