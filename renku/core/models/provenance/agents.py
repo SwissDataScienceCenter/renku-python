@@ -18,6 +18,7 @@
 """Represent provenance agents."""
 
 import re
+import uuid
 
 from renku.core.models import jsonld as jsonld
 from renku.version import __version__, version_url
@@ -38,21 +39,31 @@ from renku.version import __version__, version_url
 class Person:
     """Represent a person."""
 
-    name = jsonld.ib(context='rdfs:label')
-    email = jsonld.ib(context='schema:email')
+    name = jsonld.ib(context='schema:name')
+    email = jsonld.ib(context='schema:email', default=None, kw_only=True)
+    label = jsonld.ib(context='rdfs:label', kw_only=True)
 
-    _id = jsonld.ib(context='@id', init=False, kw_only=True)
+    _id = jsonld.ib(context='@id', kw_only=True)
 
     @_id.default
     def default_id(self):
-        """Configure calculated ID."""
-        return 'mailto:{0}'.format(self.email)
+        """Set the default id."""
+        if self.email:
+            return 'mailto:{email}'.format(email=self.email)
+        return '_:{}'.format(str(uuid.uuid4()))
 
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if not (isinstance(value, str) and re.match(r'[^@]+@[^@]+', value)):
-            raise ValueError('Email address "{0}" is invalid.'.format(value))
+        if self.email and not (
+            isinstance(value, str) and re.match(r'[^@]+@[^@]+\.[^@]+', value)
+        ):
+            raise ValueError('Email address is invalid.')
+
+    @label.default
+    def default_label(self):
+        """Set the default label."""
+        return self.name
 
     @classmethod
     def from_commit(cls, commit):
