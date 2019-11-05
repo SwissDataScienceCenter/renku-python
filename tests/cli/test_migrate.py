@@ -146,7 +146,7 @@ def test_graph_building_after_migration(isolated_runner, old_project):
     result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
     assert 0 == result.exit_code
 
-    result = isolated_runner.invoke(cli, ['log'])
+    result = isolated_runner.invoke(cli, ['log', '--strict'])
     assert 0 == result.exit_code
 
 

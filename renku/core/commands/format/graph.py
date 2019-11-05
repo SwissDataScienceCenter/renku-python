@@ -30,7 +30,7 @@ def ascii(graph, strict=False):
     from ..echo import echo_via_pager
 
     if strict:
-        raise click.BadParameter("--strict not supported for json-ld-graph")
+        raise click.BadParameter('--strict not supported for json-ld-graph')
 
     echo_via_pager(str(DAG(graph)))
 
@@ -68,7 +68,7 @@ def dot(graph, simple=True, debug=False, landscape=False, strict=False):
     from rdflib.tools.rdf2dot import rdf2dot
 
     if strict:
-        raise click.BadParameter("--strict not supported for json-ld-graph")
+        raise click.BadParameter('--strict not supported for json-ld-graph')
 
     g = _conjunctive_graph(graph)
 
@@ -312,7 +312,7 @@ def makefile(graph, strict=False):
     from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 
     if strict:
-        raise click.BadParameter("--strict not supported for json-ld-graph")
+        raise click.BadParameter('--strict not supported for json-ld-graph')
 
     for activity in graph.activities.values():
         if not isinstance(activity, ProcessRun):
@@ -350,7 +350,7 @@ def jsonld(graph, strict=False):
 def jsonld_graph(graph, strict=False):
     """Format graph as JSON-LD graph file."""
     if strict:
-        raise click.BadParameter("--strict not supported for json-ld-graph")
+        raise click.BadParameter('--strict not supported for json-ld-graph')
     click.echo(_jsonld(graph, 'flatten'))
 
 
