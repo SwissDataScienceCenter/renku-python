@@ -19,22 +19,3 @@
 
 .. seealso:: https://www.w3.org/TR/prov-o/
 """
-
-from .activities import Activity, ProcessRun, WorkflowRun
-from .agents import Person, SoftwareAgent
-from .qualified import Generation, Usage
-from .processes import Process, Workflow
-
-__all__ = (
-    'Activity',
-    'Entity',
-    'Collection',
-    'Generation',
-    'Person',
-    'Process',
-    'ProcessRun',
-    'SoftwareAgent',
-    'Usage',
-    'Workflow',
-    'WorkflowRun',
-)
