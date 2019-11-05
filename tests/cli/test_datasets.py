@@ -182,6 +182,14 @@ def test_dataset_create_exception_refs(runner, project, client):
     assert 'a' in result.output
 
 
+@pytest.mark.parametrize('name', ['dataset/new', '/dataset', 'dataset/'])
+def test_dataset_name_is_valid(client, runner, project, name):
+    """Test dataset name has no '/' character to avoid nested datasets."""
+    result = runner.invoke(cli, ['dataset', 'create', name])
+    assert result.exit_code == 2
+    assert 'is not valid' in result.output
+
+
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""

@@ -115,6 +115,12 @@ class DatasetsApiMixin(object):
         clean_up_required = False
 
         if dataset is None:
+            # Avoid nested datasets: name mustn't have '/' in it
+            if len(Path(name).parts) > 1:
+                raise errors.ParameterError(
+                    'Dataset name {} is not valid.'.format(name)
+                )
+
             clean_up_required = True
             dataset_ref = None
             identifier = str(uuid.uuid4())
@@ -123,7 +129,7 @@ class DatasetsApiMixin(object):
                 path.parent.mkdir(parents=True, exist_ok=False)
             except FileExistsError:
                 raise errors.DatasetExistsError(
-                    'Dataset with reference {} exists'.format(path.parent)
+                    'Dataset with UUID {} exists'.format(identifier)
                 )
 
             with with_reference(path):
