@@ -109,9 +109,7 @@ class DatasetsApiMixin(object):
                 return self.get_dataset(path)
 
     @contextmanager
-    def with_dataset(
-        self, name=None, identifier=None, create=False, fail_if_exists=True
-    ):
+    def with_dataset(self, name=None, identifier=None, create=False):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
         clean_up_required = False
@@ -147,9 +145,9 @@ class DatasetsApiMixin(object):
                 )
                 dataset_ref.set_reference(path)
 
-        elif create and fail_if_exists:
+        elif create:
             raise errors.DatasetExistsError(
-                'Dataset with name "{}" exists.'.format(name)
+                'Dataset exists: "{}".'.format(name)
             )
 
         dataset_path = self.path / self.datadir / dataset.name

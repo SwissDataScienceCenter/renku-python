@@ -225,7 +225,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
         catch_exceptions=False
     )
     assert result.exit_code == 1
-    assert 'Dataset "new-dataset" does not exists.' in result.output
+    assert 'Dataset "new-dataset" does not exist.' in result.output
 
     # Add succeeds with --create
     result = runner.invoke(
@@ -889,20 +889,9 @@ def test_dataset_overwrite_no_confirm(runner, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    result = runner.invoke(cli, ['dataset', 'create', 'rokstar'], input='n')
+    result = runner.invoke(cli, ['dataset', 'create', 'rokstar'])
     assert 1 == result.exit_code
     assert 'OK' not in result.output
-
-
-def test_dataset_overwrite_confirm(runner, project):
-    """Check dataset overwrite behaviour with confirmation."""
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'], input='y')
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
 
 
 def test_dataset_edit(runner, client, project):

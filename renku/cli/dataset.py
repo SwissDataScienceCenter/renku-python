@@ -238,16 +238,6 @@ from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 
 
-def prompt_duplicate_dataset(existing_dataset):
-    """Check if existing dataset should be overwritten.
-
-    :return: True if user confirmed overwriting.
-    """
-    warn_ = WARNING + 'This dataset already exists.'
-    click.echo(warn_)
-    return click.confirm('Do you wish to overwrite it?', abort=True)
-
-
 def prompt_access_token(exporter):
     """Prompt user for an access token for a provider.
 
@@ -372,7 +362,7 @@ def dataset(ctx, revision, datadir, format):
 @click.argument('name')
 def create(name):
     """Create an empty dataset in the current repo."""
-    create_dataset(name, handle_duplicate_fn=prompt_duplicate_dataset)
+    create_dataset(name)
     click.secho('OK', fg='green')
 
 
@@ -591,10 +581,7 @@ def export_(id, provider, publish, tag):
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-@click.option(
-    '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
-)
-def import_(uri, name, extract, yes):
+def import_(uri, name, extract):
     """Import data from a 3rd party provider.
 
     Supported providers: [Zenodo, Dataverse]
@@ -623,11 +610,9 @@ def import_(uri, name, extract, yes):
         name,
         extract,
         with_prompt=True,
-        handle_duplicate_fn=prompt_duplicate_dataset,
         pool_init_fn=_init,
         pool_init_args=(mp.RLock(), id_queue),
-        download_file_fn=download_file_with_progress,
-        force=yes
+        download_file_fn=download_file_with_progress
     )
     click.secho('OK', fg='green')
 
