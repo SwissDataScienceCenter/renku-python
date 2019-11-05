@@ -98,7 +98,6 @@ def attrs(
     def wrap(cls):
         """Decorate an attr enabled class."""
         jsonld_cls = attr.s(cls, **attrs_kwargs)
-        ctx = context
 
         if not issubclass(jsonld_cls, JSONLDMixin):
             jsonld_cls = attr.s(
@@ -115,15 +114,15 @@ def attrs(
                     types.append(subtype)
 
             for key, value in getattr(subcls, '_jsonld_context', {}).items():
-                if key in ctx and ctx[key] != value:
+                if key in context and context[key] != value:
                     raise TypeError()
-                ctx.setdefault(key, value)
+                context.setdefault(key, value)
 
         property_context, scoped_properties = _add_class_property_contexts(
-            jsonld_cls, ctx
+            jsonld_cls, context
         )
 
-        ctx.update(property_context)
+        context.update(property_context)
 
         jsonld_cls.__module__ = cls.__module__
         jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
@@ -132,7 +131,7 @@ def attrs(
         jsonld_cls._scoped_properties = scoped_properties
         jsonld_cls._renku_type = fullname(cls)
 
-        jsonld_cls._jsonld_context = ctx
+        jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
         jsonld_cls._jsonld_fields = {
             a.name
@@ -140,7 +139,7 @@ def attrs(
         }
 
         context_doc = '\n'.join(
-            '   ' + line for line in json.dumps(ctx, indent=2).split('\n')
+            '   ' + line for line in json.dumps(context, indent=2).split('\n')
         )
         jsonld_cls.__doc__ = DOC_TPL.format(
             cls=cls,
@@ -152,7 +151,7 @@ def attrs(
         try:
             type_ = ld.expand({
                 '@type': jsonld_cls._jsonld_type,
-                '@context': ctx
+                '@context': context
             })[0]['@type']
             if isinstance(type_, list):
                 type_ = tuple(sorted(type_))
