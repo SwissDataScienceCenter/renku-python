@@ -17,45 +17,25 @@
 # limitations under the License.
 """Model objects representing a creator."""
 import configparser
-import re
-import uuid
 
 import attr
-from attr.validators import instance_of
 
 from renku.core import errors
+from renku.core.models.provenance.agents import Person
 
 from . import jsonld as jsonld
 
 
-@jsonld.s(
-    type='schema:Person',
-    context={'schema': 'http://schema.org/'},
-    slots=True,
-)
-class Creator(object):
+class Creator(Person):
     """Represent the creator of a resource."""
-
-    client = attr.ib(default=None, kw_only=True)
 
     affiliation = jsonld.ib(
         default=None, kw_only=True, context='schema:affiliation'
     )
 
-    email = jsonld.ib(default=None, kw_only=True, context='schema:email')
-
     alternate_name = jsonld.ib(
         default=None, kw_only=True, context='schema:alternateName'
     )
-
-    name = jsonld.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-        context='schema:name'
-    )
-
-    _id = jsonld.ib(kw_only=True, context='@id')
 
     @property
     def short_name(self):
@@ -69,14 +49,6 @@ class Creator(object):
         initials.pop()
 
         return '{0}.{1}'.format('.'.join(initials), last_name)
-
-    @email.validator
-    def check_email(self, attribute, value):
-        """Check that the email is valid."""
-        if self.email and not (
-            isinstance(value, str) and re.match(r'[^@]+@[^@]+\.[^@]+', value)
-        ):
-            raise ValueError('Email address is invalid.')
 
     @classmethod
     def from_git(cls, git):
@@ -103,18 +75,6 @@ class Creator(object):
             raise errors.MissingEmail()
 
         return cls(name=name, email=email)
-
-    @classmethod
-    def from_commit(cls, commit):
-        """Create an instance from a Git commit."""
-        return cls(name=commit.author.name, email=commit.author.email)
-
-    @_id.default
-    def default_id(self):
-        """Set the default id."""
-        if self.email:
-            return 'mailto:{email}'.format(email=self.email)
-        return '_:{}'.format(str(uuid.uuid4()))
 
     def __attrs_post_init__(self):
         """Finish object initialization."""
