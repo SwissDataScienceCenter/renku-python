@@ -186,7 +186,7 @@ def test_dataset_create_exception_refs(runner, project, client):
 def test_dataset_name_is_valid(client, runner, project, name):
     """Test dataset name has no '/' character to avoid nested datasets."""
     result = runner.invoke(cli, ['dataset', 'create', name])
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
     assert 'is not valid' in result.output
 
 

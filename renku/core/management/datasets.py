@@ -129,7 +129,7 @@ class DatasetsApiMixin(object):
                 path.parent.mkdir(parents=True, exist_ok=False)
             except FileExistsError:
                 raise errors.DatasetExistsError(
-                    'Dataset with UUID {} exists'.format(identifier)
+                    'Dataset with reference {} exists'.format(path.parent)
                 )
 
             with with_reference(path):
