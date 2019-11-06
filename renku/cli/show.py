@@ -179,15 +179,10 @@ def outputs(ctx, client, revision, paths):
 
 def _context_names():
     """Return list of valid context names."""
-    import inspect
-
-    from renku.core.models import provenance
     from renku.core.models.jsonld import JSONLDMixin
 
-    for name in dir(provenance):
-        cls = getattr(provenance, name)
-        if inspect.isclass(cls) and issubclass(cls, JSONLDMixin):
-            yield name
+    for cls in JSONLDMixin.__type_registry__.values():
+        yield cls.__name__
 
 
 def print_context_names(ctx, param, value):
@@ -200,13 +195,14 @@ def print_context_names(ctx, param, value):
 
 def _context_json(name):
     """Return JSON-LD string for given context name."""
-    from renku.core.models import provenance
+    from renku.core.models.jsonld import JSONLDMixin
 
-    cls = getattr(provenance, name)
-    return {
-        '@context': cls._jsonld_context,
-        '@type': cls._jsonld_type,
-    }
+    for cls in JSONLDMixin.__type_registry__.values():
+        if cls.__name__ == name:
+            return {
+                '@context': cls._jsonld_context,
+                '@type': cls._jsonld_type,
+            }
 
 
 @show.command()
