@@ -29,10 +29,11 @@ from renku.core.models.cwl.parameter import InputParameter, \
     WorkflowOutputParameter
 from renku.core.models.cwl.types import PATH_TYPES
 from renku.core.models.cwl.workflow import Workflow
+from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
 from renku.core.models.provenance import Activity, Generation, ProcessRun, \
     Usage
-from renku.core.models.provenance.entities import Collection, Entity, Process
+from renku.core.models.provenance.processes import Process
 
 LINK_CWL = CommandLineTool(
     baseCommand=['true'],

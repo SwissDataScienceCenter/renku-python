@@ -16,9 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Get and set Renku repository or global options."""
-import configparser
-
-from renku.core.management.config import get_config
+from renku.core import errors
+from renku.core.management.config import CONFIG_LOCAL_PATH
 
 from .client import pass_local_client
 
@@ -31,18 +30,39 @@ def _split_section_and_key(key):
     return 'renku', key
 
 
-@pass_local_client
-def update_config(client, key, value, is_global):
-    """Manage configuration options."""
-    write_op = value is not None
-    config_ = get_config(client, write_op, is_global)
-    if write_op:
-        with config_:
-            section, config_key = _split_section_and_key(key)
-            config_.set_value(section, config_key, value)
-            return value
+@pass_local_client(
+    clean=False,
+    commit=True,
+    commit_only=CONFIG_LOCAL_PATH,
+    commit_empty=False
+)
+def update_config(client, key, *, value=None, remove=False, global_only=False):
+    """Add, update, or remove configuration values."""
+    section, section_key = _split_section_and_key(key)
+    if remove:
+        value = client.remove_value(
+            section, section_key, global_only=global_only
+        )
+        if value is None:
+            raise errors.ParameterError('Key "{}" not found.'.format(key))
     else:
-        try:
-            return config_.get_value(*_split_section_and_key(key))
-        except configparser.NoSectionError:
-            raise KeyError('Requested configuration not found')
+        client.set_value(section, section_key, value, global_only=global_only)
+        return value
+
+
+@pass_local_client
+def read_config(client, key, local_only, global_only):
+    """Read configuration."""
+    if key:
+        section, section_key = _split_section_and_key(key)
+        value = client.get_value(
+            section,
+            section_key,
+            local_only=local_only,
+            global_only=global_only
+        )
+        if value is None:
+            raise errors.ParameterError('Key "{}" not found.'.format(key))
+        return value
+
+    return client.get_config(local_only=local_only, global_only=global_only)

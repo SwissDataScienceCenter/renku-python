@@ -33,8 +33,7 @@ execute ``renku help``:
 
     Options:
       --version                       Print version number.
-      --config PATH                   Location of client config files.
-      --config-path                   Print application config path.
+      --global-config-path            Print global application's config path.
       --install-completion            Install completion for the current shell.
       --path <path>                   Location of a Renku repository.
                                       [default: (dynamic)]
@@ -61,18 +60,7 @@ Windows:
   ``C:\Users\<user>\AppData\Roaming\Renku``
 
 If in doubt where to look for the configuration file, you can display its path
-by running ``renku --config-path``.
-
-You can specify a different location via the ``RENKU_CONFIG`` environment
-variable or the ``--config`` command line option. If both are specified, then
-the ``--config`` option value is used. For example:
-
-.. code-block:: console
-
-    $ renku --config ~/renku/config/ init
-
-instructs Renku to store the configuration files in your ``~/renku/config/``
-directory when running the ``init`` command.
+by running ``renku --global-config-path``.
 """
 
 import uuid
@@ -102,8 +90,7 @@ from renku.core.commands.options import install_completion, \
     option_use_external_storage
 from renku.core.commands.version import check_version, print_version
 from renku.core.management.client import LocalClient
-from renku.core.management.config import RENKU_HOME, default_config_dir, \
-    print_app_config_path
+from renku.core.management.config import ConfigManagerMixin, RENKU_HOME
 from renku.core.management.repository import default_path
 
 #: Monkeypatch Click application.
@@ -116,6 +103,14 @@ def _uuid_representer(dumper, data):
 
 
 yaml.add_representer(uuid.UUID, _uuid_representer)
+
+
+def print_global_config_path(ctx, param, value):
+    """Print global application's config path."""
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(ConfigManagerMixin().global_config_path)
+    ctx.exit()
 
 
 @click.group(
@@ -134,20 +129,12 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
     help=print_version.__doc__
 )
 @click.option(
-    '--config',
-    envvar='RENKU_CONFIG',
-    default=default_config_dir,
-    type=click.Path(),
-    expose_value=False,
-    help='Location of client config files.'
-)
-@click.option(
-    '--config-path',
+    '--global-config-path',
     is_flag=True,
-    callback=print_app_config_path,
+    callback=print_global_config_path,
     expose_value=False,
     is_eager=True,
-    help=print_app_config_path.__doc__
+    help=print_global_config_path.__doc__
 )
 @click.option(
     '--install-completion',

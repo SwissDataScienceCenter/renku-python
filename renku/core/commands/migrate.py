@@ -22,9 +22,7 @@ from .client import pass_local_client
 
 
 @pass_local_client(
-    clean=True,
-    commit=True,
-    allow_empty=False,
+    clean=True, commit=True, commit_empty=False, raise_if_empty=True
 )
 def migrate_datasets(client):
     """Migrate dataset metadata."""

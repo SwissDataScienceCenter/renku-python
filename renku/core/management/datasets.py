@@ -115,6 +115,12 @@ class DatasetsApiMixin(object):
         clean_up_required = False
 
         if dataset is None:
+            # Avoid nested datasets: name mustn't have '/' in it
+            if len(Path(name).parts) > 1:
+                raise errors.ParameterError(
+                    'Dataset name {} is not valid.'.format(name)
+                )
+
             clean_up_required = True
             dataset_ref = None
             identifier = str(uuid.uuid4())

@@ -17,12 +17,13 @@
 # limitations under the License.
 """Client for handling a configuration."""
 import configparser
-import fcntl
 import os
+from io import StringIO
 from pathlib import Path
 
 import attr
 import click
+import filelock
 
 APP_NAME = 'Renku'
 """Application name for storing configuration."""
@@ -31,16 +32,8 @@ RENKU_HOME = '.renku'
 """Project directory name."""
 
 
-def print_app_config_path(ctx, param, value):
-    """Print application config path."""
-    if not value or ctx.resilient_parsing:
-        return
-    click.echo(ConfigManagerMixin().config_path)
-    ctx.exit()
-
-
-def default_config_dir():
-    """Return default config directory."""
+def _get_global_config_dir():
+    """Return user's config directory."""
     return click.get_app_dir(APP_NAME, force_posix=True)
 
 
@@ -48,84 +41,119 @@ def default_config_dir():
 class ConfigManagerMixin:
     """Client for handling global configuration."""
 
-    config_dir = attr.ib(default=default_config_dir(), converter=str)
-    config_name = attr.ib(default='renku.ini', converter=str)
+    CONFIG_NAME = 'renku.ini'
 
-    _lock = attr.ib(default=None)
-
-    def __enter__(self):
-        """Acquire a lock file."""
-        lock_name = '{0}/{1}.lock'.format(self.config_dir, self.config_name)
-        locked_file_descriptor = open(lock_name, 'w+')
-        fcntl.lockf(locked_file_descriptor, fcntl.LOCK_EX)
-        self._lock = locked_file_descriptor
-
-    def __exit__(self, type, value, traceback):
-        """Release lock file."""
-        self._lock.close()
+    _global_config_dir = _get_global_config_dir()
 
     @property
-    def config_path(self):
-        """Renku config path."""
-        config = Path(self.config_dir)
+    def global_config_dir(self):
+        """Return user's config directory."""
+        return self._global_config_dir
+
+    @property
+    def global_config_path(self):
+        """Renku global (user's) config path."""
+        config = Path(self.global_config_dir)
         if not config.exists():
             config.mkdir()
 
-        return config / Path(self.config_name)
+        return str(config / Path(self.CONFIG_NAME))
 
-    def load_config(self):
-        """Loads global configuration object."""
+    @property
+    def local_config_path(self):
+        """Renku local (project) config path."""
+        return str(self.renku_path / self.CONFIG_NAME)
+
+    @property
+    def global_config_lock(self):
+        """Create a user-level config lock."""
+        lock_file = '{0}/{1}.lock'.format(
+            self.global_config_dir, self.CONFIG_NAME
+        )
+        return filelock.FileLock(lock_file, timeout=0)
+
+    def load_config(self, local_only, global_only):
+        """Loads local, global or both configuration object."""
         config = configparser.ConfigParser()
-        config.read(str(self.config_path))
+        if local_only:
+            config_files = [self.local_config_path]
+        elif global_only:
+            config_files = [self.global_config_path]
+        else:
+            config_files = [self.global_config_path, self.local_config_path]
+
+        if not local_only:
+            with self.global_config_lock:
+                config.read(config_files)
+        else:
+            config.read(config_files)
         return config
 
-    def store_config(self, config):
-        """Persists global configuration object."""
-        os.umask(0)
-        fd = os.open(
-            str(self.config_path), os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600
+    def store_config(self, config, global_only):
+        """Persists locally or globally configuration object.
+
+        Global configuration is updated only when :global_only: is True,
+        otherwise, updates are written to local project configuration
+        """
+        filepath = self.global_config_path if global_only else \
+            self.local_config_path
+
+        if global_only:
+            os.umask(0)
+            fd = os.open(filepath, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
+            with self.global_config_lock:
+                with open(fd, 'w+') as file:
+                    config.write(file)
+        else:
+            with open(filepath, 'w+') as file:
+                config.write(file)
+
+        return self.load_config(local_only=True, global_only=True)
+
+    def get_config(self, local_only=False, global_only=False):
+        """Read all configurations."""
+        config = self.load_config(
+            local_only=local_only, global_only=global_only
         )
+        with StringIO() as output:
+            config.write(output)
+            return output.getvalue()
 
-        with open(fd, 'w+') as file:
-            config.write(file)
-
-        return self.load_config()
-
-    def get_value(self, section, key):
+    def get_value(self, section, key, local_only=False, global_only=False):
         """Get value from specified section and key."""
-        config = self.load_config()
+        config = self.load_config(
+            local_only=local_only, global_only=global_only
+        )
         return config.get(section, key, fallback=None)
 
-    def set_value(self, section, key, value):
+    def set_value(self, section, key, value, global_only=False):
         """Set value to specified section and key."""
-        config = self.load_config()
+        local_only = not global_only
+        config = self.load_config(
+            local_only=local_only, global_only=global_only
+        )
         if section in config:
             config[section][key] = value
         else:
             config[section] = {key: value}
 
-        config = self.store_config(config)
-        return config
+        self.store_config(config, global_only=global_only)
 
-    def remove_value(self, section, key):
+    def remove_value(self, section, key, global_only=False):
         """Remove key from specified section."""
-        config = self.load_config()
+        local_only = not global_only
+        config = self.load_config(
+            local_only=local_only, global_only=global_only
+        )
 
         if section in config:
-            config[section].pop(key)
+            value = config[section].pop(key, None)
 
             if not config[section].keys():
                 config.pop(section)
 
-        config = self.store_config(config)
-        return config
+            self.store_config(config, global_only=global_only)
+            return value
 
 
-def get_config(client, write_op, is_global):
-    """Get configuration object."""
-    if is_global:
-        return client
-
-    if write_op:
-        return client.repo.config_writer()
-    return client.repo.config_reader()
+CONFIG_LOCAL_PATH = [Path(RENKU_HOME) / ConfigManagerMixin.CONFIG_NAME]

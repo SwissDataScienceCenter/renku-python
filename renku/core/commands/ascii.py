@@ -122,7 +122,7 @@ class DAG(object):
         indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
 
         # Handle subprocesses of a workflow.
-        from renku.core.models.provenance.entities import Process
+        from renku.core.models.provenance.processes import Process
 
         part_of = None
         if isinstance(node, Process):

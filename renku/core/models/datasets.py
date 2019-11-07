@@ -30,7 +30,7 @@ import attr
 from attr.validators import instance_of
 
 from renku.core.models.creators import Creator, CreatorsMixin
-from renku.core.models.provenance.entities import Entity
+from renku.core.models.entities import Entity
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
 
