@@ -22,8 +22,8 @@ import os
 import weakref
 from copy import deepcopy
 from datetime import datetime, timezone
+from importlib import import_module
 from pathlib import Path
-from pydoc import locate
 
 import attr
 import yaml
@@ -118,44 +118,19 @@ def attrs(
                     raise TypeError()
                 context.setdefault(key, value)
 
-        for a in attr.fields(jsonld_cls):
-            key = a.name
-            ctx = a.metadata.get(KEY)
-            if ctx is None:
-                continue
+        property_context, scoped_properties = _add_class_property_contexts(
+            jsonld_cls, context
+        )
 
-            current_context = None
-            if isinstance(ctx, str) and ':' in ctx:
-                prefix, _ = ctx.split(':', 1)
-                if prefix in context:
-                    current_context = ctx
-
-            elif isinstance(ctx, dict) or ctx not in context:
-                current_context = ctx
-
-            if KEY_CLS in a.metadata:
-                t = a.metadata[KEY_CLS]
-
-                if isinstance(t, str):
-                    t = locate(t)
-
-                if t and hasattr(t, '_jsonld_context'):
-                    merge_ctx = t._jsonld_context
-
-                    if not current_context:
-                        current_context = {'@id': ctx}
-                    elif not isinstance(current_context, dict):
-                        current_context = {'@id': current_context}
-
-                    current_context['@context'] = merge_ctx
-
-            if current_context:
-                context[key] = current_context
+        context.update(property_context)
 
         jsonld_cls.__module__ = cls.__module__
         jsonld_cls._jsonld_type = types[0] if len(types) == 1 else list(
             sorted(set(types))
         )
+        jsonld_cls._scoped_properties = scoped_properties
+        jsonld_cls._renku_type = fullname(cls)
+
         jsonld_cls._jsonld_context = context
         jsonld_cls._jsonld_translate = translate
         jsonld_cls._jsonld_fields = {
@@ -184,19 +159,104 @@ def attrs(
             # FIXME make sure all classes have @id defined
             return jsonld_cls
 
-        if type_ in jsonld_cls.__type_registry__:
+        if (
+            type_ in jsonld_cls.__type_registry__ and
+            jsonld_cls.__type_registry__[type_] != jsonld_cls
+        ):
             raise TypeError(
                 'Type {0!r} is already registered for class {1!r}.'.format(
                     jsonld_cls._jsonld_type,
                     jsonld_cls.__type_registry__[type_],
                 )
             )
+
         jsonld_cls.__type_registry__[type_] = jsonld_cls
         return jsonld_cls
 
     if maybe_cls is None:
         return wrap
     return wrap(maybe_cls)
+
+
+def _add_class_property_contexts(jsonld_cls, context):
+    """Adds ``@context`` of a class' properties to the class' ``@context``."""
+    scoped_properties = []
+
+    property_context = {}
+
+    for a in attr.fields(jsonld_cls):
+        key = a.name
+        ctx = a.metadata.get(KEY)
+        if ctx is None:
+            continue
+
+        current_context = None
+        if isinstance(ctx, str) and ':' in ctx:
+            prefix, _ = ctx.split(':', 1)
+            if prefix in context:
+                current_context = ctx
+
+        elif isinstance(ctx, dict) or ctx not in context:
+            current_context = ctx
+
+        if KEY_CLS in a.metadata:
+            t = a.metadata[KEY_CLS]
+            current_context, is_scoped = _propagate_reference_contexts(
+                t, current_context, ctx
+            )
+
+            if is_scoped:
+                scoped_properties.append(key)
+
+        if current_context:
+            property_context[key] = current_context
+
+    return property_context, scoped_properties
+
+
+def _propagate_reference_contexts(
+    type_references, current_context, parent_context
+):
+    """Get JSON-LD contexts for all types of a reference and propagate them."""
+    if not isinstance(type_references, (list, set, tuple)):
+        type_references = [type_references]
+    classes = [import_class_from_string(c) for c in type_references]
+    classes = [c for c in classes if hasattr(c, '_jsonld_context')]
+    scoped_properties = False
+
+    if len(classes) == 1:
+        merge_ctx = classes[0]._jsonld_context
+
+        if not current_context:
+            current_context = {'@id': parent_context}
+        elif not isinstance(current_context, dict):
+            current_context = {'@id': current_context}
+
+        current_context['@context'] = merge_ctx
+    else:
+        scoped_properties = True
+
+        for cls in classes:
+            merge_ctx = cls._jsonld_context
+
+            if not current_context:
+                current_context = {'@id': parent_context}
+            elif not isinstance(current_context, dict):
+                current_context = {'@id': current_context}
+
+            if '@context' not in current_context:
+                current_context['@context'] = []
+            for subtype in cls._jsonld_type:
+                # Use nested, type scoped contexts for each semantic type
+                # of a reference, to uniquely bind a context to a type
+                current_context['@context'].append({
+                    fullname(cls) + '_' + subtype: {
+                        '@id': subtype,
+                        '@context': merge_ctx
+                    }
+                })
+
+    return current_context, scoped_properties
 
 
 def attrib(context=None, type=None, **kwargs):
@@ -261,6 +321,7 @@ def asjsonld(
     dict_factory=dict,
     retain_collection_types=False,
     add_context=True,
+    use_scoped_type_form=False,
     basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
@@ -288,8 +349,11 @@ def asjsonld(
 
         return value
 
+    inst_cls = type(inst)
+
     for a in attrs:
         v = getattr(inst, a.name)
+        scoped = a.name in inst_cls._scoped_properties
 
         # skip proxies
         if isinstance(v, weakref.ReferenceType):
@@ -305,6 +369,7 @@ def asjsonld(
                     filter=filter,
                     dict_factory=dict_factory,
                     add_context=False,
+                    use_scoped_type_form=scoped,
                     basedir=basedir,
                 )
             elif isinstance(v, (tuple, list, set)):
@@ -316,6 +381,7 @@ def asjsonld(
                         filter=filter,
                         dict_factory=dict_factory,
                         add_context=False,
+                        use_scoped_type_form=scoped,
                         basedir=basedir,
                     ) if has(i.__class__) else i for i in v
                 ])
@@ -340,13 +406,23 @@ def asjsonld(
         else:
             rv[a.name] = convert_value(v)
 
-    inst_cls = type(inst)
-
     if add_context:
         rv['@context'] = deepcopy(inst_cls._jsonld_context)
 
+    rv_type = []
     if inst_cls._jsonld_type:
-        rv['@type'] = inst_cls._jsonld_type
+        if isinstance(inst_cls._jsonld_type, (list, tuple, set)):
+            rv_type.extend(inst_cls._jsonld_type)
+        else:
+            rv_type.append(inst_cls._jsonld_type)
+
+        if use_scoped_type_form:
+            rv_type = [
+                '{}_{}'.format(inst_cls._renku_type, t) for t in rv_type
+            ]
+
+        rv['@type'] = rv_type[0] if len(rv_type) == 1 else rv_type
+
     return rv
 
 
@@ -486,6 +562,29 @@ class JSONLDMixin(ReferenceMixin):
         with self.__reference__.open('w') as fp:
             jsonld_ = self.asjsonld()
             yaml.dump(jsonld_, fp, default_flow_style=False, Dumper=dumper)
+
+
+def fullname(cls):
+    """Gets the fully qualified type name of this class."""
+    if type(cls) != type:
+        cls = type(cls)
+    module = cls.__module__
+    if module is None or module == str.__class__.__module__:
+        return cls.__name__  # Avoid reporting __builtin__
+    else:
+        return '.'.join([module, cls.__name__])
+
+
+def import_class_from_string(dotted_path):
+    """Imports a fully qualified class string."""
+    if not isinstance(dotted_path, str):
+        return dotted_path
+    module_path, class_name = dotted_path.rsplit('.', 1)
+    module = import_module(module_path)
+    try:
+        return getattr(module, class_name)
+    except AttributeError:
+        return None
 
 
 s = attrs

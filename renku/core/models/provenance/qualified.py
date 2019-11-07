@@ -22,6 +22,7 @@ import weakref
 import attr
 
 from renku.core.models import jsonld as jsonld
+from renku.core.models.datasets import Dataset, DatasetFile
 
 
 @jsonld.s(
@@ -33,7 +34,10 @@ from renku.core.models import jsonld as jsonld
 class Association:
     """Assign responsibility to an agent for an activity."""
 
-    plan = jsonld.ib(context='prov:hadPlan')
+    plan = jsonld.ib(
+        context='prov:hadPlan',
+        type='renku.core.models.provenance.processes.Process'
+    )
     agent = jsonld.ib(
         context='prov:agent',
         default=None,
@@ -87,7 +91,10 @@ class Usage(EntityProxyMixin):
     entity = jsonld.ib(
         context='prov:entity',
         kw_only=True,
-        type='renku.core.models.provenance.entities.Entity'
+        type=[
+            'renku.core.models.entities.Entity',
+            'renku.core.models.entities.Collection', Dataset, DatasetFile
+        ]
     )
     role = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
 
@@ -96,7 +103,7 @@ class Usage(EntityProxyMixin):
     @classmethod
     def from_revision(cls, client, path, revision='HEAD', **kwargs):
         """Return dependency from given path and revision."""
-        from .entities import Entity
+        from renku.core.models.entities import Entity
 
         return cls(
             entity=Entity.from_revision(client, path, revision), **kwargs
@@ -113,9 +120,16 @@ class Usage(EntityProxyMixin):
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
-    entity = jsonld.ib(context={
-        '@reverse': 'prov:qualifiedGeneration',
-    }, )
+    entity = jsonld.ib(
+        context={
+            '@reverse': 'prov:qualifiedGeneration',
+        },
+        type=[
+            'renku.core.models.entities.Entity',
+            'renku.core.models.entities.Collection', Dataset, DatasetFile
+        ]
+    )
+
     role = jsonld.ib(context='prov:hadRole', default=None)
 
     _activity = attr.ib(
