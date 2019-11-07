@@ -422,14 +422,18 @@ class DatasetsApiMixin(object):
                     client, path=path, url=url
                 )
 
+                path_in_dst_repo = dst.relative_to(self.path)
+
                 results.append({
-                    'path': dst.relative_to(self.path),
+                    'path': path_in_dst_repo,
                     'url': dst_url,
                     'creator': creators,
                     'dataset': dataset.name,
                     'parent': self,
                     'based_on': based_on
                 })
+
+                self.track_paths_in_storage(str(path_in_dst_repo))
 
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(str(src), str(dst))
