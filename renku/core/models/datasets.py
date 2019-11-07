@@ -100,7 +100,7 @@ class DatasetTag(object):
     @_id.default
     def default_id(self):
         """Define default value for id field."""
-        return '{0}@{1}'.format(self.name, self.commit)
+        return '_:{0}@{1}'.format(self.name, self.commit)
 
 
 @jsonld.s(
