@@ -379,7 +379,7 @@ def rdf(graph, strict=False):
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
 
-    click.echo()
+    click.echo(xml)
 
 
 FORMATS = {
