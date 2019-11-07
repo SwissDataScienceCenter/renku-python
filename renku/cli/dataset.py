@@ -404,7 +404,10 @@ def edit(dataset_id):
     default='',
     help='Destination file or directory within the dataset path'
 )
-def add(name, urls, link, force, create, sources, destination):
+@click.option(
+    '--ref', default=None, help='Add files from a specific commit/tag/branch.'
+)
+def add(name, urls, link, force, create, sources, destination, ref):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
@@ -415,6 +418,7 @@ def add(name, urls, link, force, create, sources, destination):
         create=create,
         sources=sources,
         destination=destination,
+        ref=ref,
         urlscontext=progress
     )
 
@@ -638,8 +642,11 @@ def import_(uri, name, extract):
     multiple=True,
     help='Exclude files matching given pattern.'
 )
-def update(names, creators, include, exclude):
+@click.option(
+    '--ref', default=None, help='Update to a specific commit/tag/branch.'
+)
+def update(names, creators, include, exclude, ref):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')
-    update_datasets(names, creators, include, exclude, progress_context)
+    update_datasets(names, creators, include, exclude, ref, progress_context)
     click.secho('OK', fg='green')

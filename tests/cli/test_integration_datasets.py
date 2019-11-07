@@ -624,3 +624,60 @@ def test_datasets_import_target(
         ],
     )
     assert 0 == result.exit_code
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'ref', ['v0.2.0', '8c1a547843f2916818beac5fdcfad547f0785ee0']
+)
+def test_datasets_add_specific_refs(ref, runner, client):
+    """Test adding a specific version of files."""
+    FILENAME = 'CHANGES.rst'
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+
+    # add data from a git repo
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', ref,
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ]
+    )
+    assert 0 == result.exit_code
+    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    assert 'v0.2.0' not in content
+    assert 'v0.3.0' not in content
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'ref', ['v0.3.0', 'fe6ec65cc84bcf01e879ef38c0793208f7fab4bb']
+)
+def test_datasets_update_specific_refs(ref, runner, client):
+    """Test updating to a specific version of files."""
+    FILENAME = 'CHANGES.rst'
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+
+    # add data from a git repo
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', 'v0.2.0',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ]
+    )
+    assert 0 == result.exit_code
+    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    assert 'v0.2.0' not in content
+    assert 'v0.3.0' not in content
+
+    # update data to a later version
+    result = runner.invoke(
+        cli, ['dataset', 'update', '--ref', ref]
+    )
+    assert 0 == result.exit_code
+    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    assert 'v0.3.0' in content
+    assert 'v0.4.0' not in content

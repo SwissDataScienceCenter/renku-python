@@ -179,6 +179,7 @@ class DatasetsApiMixin(object):
         force=False,
         sources=(),
         destination='',
+        ref=None,
         link=False
     ):
         """Import the data into the data directory."""
@@ -193,7 +194,7 @@ class DatasetsApiMixin(object):
                 sources = sources or ()
                 files.extend(
                     self._add_from_git(
-                        dataset, dataset_path, url, sources, destination
+                        dataset, dataset_path, url, sources, destination, ref
                     )
                 )
             else:
@@ -313,7 +314,9 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_git(self, dataset, dataset_path, url, sources, destination):
+    def _add_from_git(
+        self, dataset, dataset_path, url, sources, destination, ref
+    ):
         """Process adding resources from another git repository."""
         from renku import LocalClient
 
@@ -357,7 +360,7 @@ class DatasetsApiMixin(object):
                 'Scheme {} not supported'.format(u.scheme)
             )
 
-        repo, repo_path = self._prepare_git_repo(url)
+        repo, repo_path = self._prepare_git_repo(url, ref)
 
         dataset_path = self.path / dataset_path
 
@@ -611,7 +614,7 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def update_dataset_files(self, files):
+    def update_dataset_files(self, files, ref=None):
         """Update files and dataset metadata according to their remotes."""
         from renku import LocalClient
 
@@ -625,7 +628,7 @@ class DatasetsApiMixin(object):
             if url in visited_repos:
                 repo, repo_path, remote_client = visited_repos[url]
             else:
-                repo, repo_path = self._prepare_git_repo(url)
+                repo, repo_path = self._prepare_git_repo(url, ref)
                 remote_client = LocalClient(repo_path)
                 visited_repos[url] = repo, repo_path, remote_client
 
@@ -703,7 +706,19 @@ class DatasetsApiMixin(object):
         for dataset in modified_datasets.values():
             dataset.to_yaml()
 
-    def _prepare_git_repo(self, url):
+    def _prepare_git_repo(self, url, ref):
+        def checkout(repo, ref):
+            try:
+                repo.git.checkout(ref)
+            except GitCommandError:
+                raise errors.ParameterError(
+                    'Cannot find reference "{}" in Git repository: {}'.format(
+                        ref, url
+                    )
+                )
+
+        RENKU_BRANCH = 'renku-default-branch'
+        ref = ref or RENKU_BRANCH
         u = GitURL.parse(url)
         path = u.pathname
         if u.hostname == 'localhost':
@@ -715,11 +730,11 @@ class DatasetsApiMixin(object):
 
         if repo_path.exists():
             repo = Repo(str(repo_path))
-            origin = repo.remotes.origin
-            if origin.url == url:
+            if repo.remotes.origin.url == url:
                 try:
-                    origin.fetch()
-                    origin.pull()
+                    repo.git.fetch()
+                    repo.git.checkout(ref)
+                    repo.git.pull()
                 except GitError:
                     # ignore the error and try re-cloning
                     pass
@@ -736,6 +751,14 @@ class DatasetsApiMixin(object):
 
         try:
             repo = Repo.clone_from(url, str(repo_path), recursive=True)
+            # Because the name of the default branch is not always 'master', we
+            # create an alias of the default branch when cloning the repo. It
+            # is used to refer to the default branch later.
+            renku_ref = 'refs/heads/' + RENKU_BRANCH
+            repo.git.execute([
+                'git', 'symbolic-ref', renku_ref, repo.head.reference.path
+            ])
+            checkout(repo, ref)
         except GitCommandError:
             raise errors.GitError(
                 'Cannot access remote Git repo: {}'.format(url)
