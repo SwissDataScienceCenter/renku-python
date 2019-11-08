@@ -93,11 +93,11 @@ def test_update(runner, project, run):
             ['log', '--format', output_format],
             catch_exceptions=False,
         )
-        assert 0 == result.exit_code, output_format
+        assert 0 == result.exit_code, result.output
         assert source.name in result.output, output_format
 
         if output_format == 'nt':
-            r, _, t = validate_graph(result.output)
+            r, _, t = validate_graph(result.output, format='nt')
             assert r is True, t
 
 

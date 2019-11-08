@@ -7,6 +7,7 @@
       "schema": "http://schema.org/",
       "foaf": "http://xmlns.com/foaf/0.1/",
       "prov": "http://www.w3.org/ns/prov#",
+      "wfprov": "http://purl.org/wf4ever/wfprov#",
       "closed": {
          "@id": "sh:closed",
          "@type": "http://www.w3.org/2001/XMLSchema#boolean"
@@ -541,30 +542,20 @@
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "prov:wasInformedBy",
+               "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
+               }
             },
             {
-               "sh:class": {
-                  "@id": "prov:Association"
-               },
-               "path": {
-                  "sh:inversePath": {
-                     "@id": "prov:activity"
-                  }
-               },
+               "nodeKind": "sh:IRI",
+               "path": "prov:wasInformedBy",
                "minCount": 1,
                "maxCount": 1
             },
             {
                "nodeKind": "sh:Literal",
-               "path": "prov:influenced",
-               "minCount": 1,
-               "maxCount": 1
+               "path": "prov:influenced"
             },
             {
                "nodeKind": "sh:Literal",
@@ -592,10 +583,81 @@
                   },
                   {
                      "node": "_:creatorShape"
+                  },
+                  {
+                     "nodeKind": "sh:IRI"
                   }
                ],
                "minCount": 2,
                "maxCount": 2
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "prov:qualifiedUsage",
+               "node":"_:usageShape"
+            },
+            {
+               "path": "prov:qualifiedAssociation",
+               "node":"_:associationShape"
+            },
+            {
+               "path": "wfprov:wasPartOfWorkflowRun",
+               "sh:class": {
+                  "@id": "wfprov:WorkflowRun"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:associationShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:Association",
+         "property": [
+            {
+               "path": "prov:hadPlan",
+               "minCount": 1
+            },
+            {
+               "path": "prov:agent",
+               "node": "_:softwareAgentShape",
+               "minCount": 1,
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:usageShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:Usage",
+         "property": [
+            {
+               "path": "prov:entity",
+               "minCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:hadRole",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
@@ -615,16 +677,11 @@
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               },
-               "minCount": 1,
-               "maxCount": 1
+               }
             },
             {
-               "nodeKind": "sh:Literal",
+               "nodeKind": "sh:IRI",
                "path": "prov:wasStartedBy",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
                "minCount": 1,
                "maxCount": 1
             }
@@ -654,9 +711,14 @@
                "path": "prov:hadRole",
                "datatype": {
                   "@id": "xsd:string"
+               }
+            },
+            {
+               "sh:class": {
+                  "@id": "prov:Activity"
                },
-               "minCount": 1,
-               "maxCount": 1
+               "path": "prov:activity",
+               "minCount": 1
             }
          ]
       }
