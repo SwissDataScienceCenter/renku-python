@@ -17,8 +17,6 @@
 # limitations under the License.
 """JSON-LD SHACL validation."""
 
-import json
-
 from pkg_resources import resource_string
 from pyshacl import validate
 

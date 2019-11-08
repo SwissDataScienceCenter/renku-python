@@ -26,10 +26,6 @@
       },
       "minCount": "sh:minCount",
       "maxCount": "sh:maxCount",
-      "node": {
-         "@id": "sh:node",
-         "@type": "@id"
-      },
       "nodeKind": {
          "@id": "sh:nodeKind",
          "@type": "@id"
@@ -152,7 +148,9 @@
             },
             {
                "path": "schema:creator",
-               "node": "_:creatorShape",
+               "sh:class":{
+                  "@id": "schema:Person"
+               },
                "minCount": 1
             }
          ]
@@ -268,7 +266,9 @@
             },
             {
                "path": "schema:creator",
-               "node": "_:creatorShape",
+               "sh:class": {
+                  "@id": "schema:Person"
+               },
                "minCount": 1
             },
             {
@@ -345,21 +345,42 @@
             },
             {
                "path": "schema:isPartOf",
-               "node": "_:projectShape",
+               "sh:class": {
+                  "@id": "schema:Project"
+               },
                "minCount": 1,
                "maxCount": 1
             },
             {
                "path": "schema:subjectOf",
-               "node": "_:datasetTagShape"
+               "sh:class": {
+                  "@id": "schema:PublicationEvent"
+               }
             },
             {
                "path": "schema:hasPart",
-               "node": "_:datasetFileShape"
+               "sh:class": {
+                  "@id": "schema:DigitalDocument"
+               }
             },
             {
                "path": "schema:inLanguage",
-               "node": "_:inLanguageShape"
+               "sh:class": {
+                  "@id": "schema:Language"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "prov:qualifiedGeneration",
+               "sh:class": {
+                  "@id": "prov:Generation"
+               }
             }
          ]
       },
@@ -457,8 +478,17 @@
             },
             {
                "path": "schema:creator",
-               "node": "_:creatorShape",
+               "sh:class": {
+                  "@id": "schema:Person"
+               },
                "minCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       },
@@ -579,10 +609,14 @@
                "path": "prov:agent",
                "or": [
                   {
-                     "node": "_:softwareAgentShape"
+                     "sh:class": {
+                        "@id": "prov:SoftwareAgent"
+                     }
                   },
                   {
-                     "node": "_:creatorShape"
+                     "sh:class": {
+                        "@id": "schema:Person"
+                     }
                   },
                   {
                      "nodeKind": "sh:IRI"
@@ -600,11 +634,15 @@
             },
             {
                "path": "prov:qualifiedUsage",
-               "node":"_:usageShape"
+               "sh:class": {
+                  "@id": "prov:Usage"
+               }
             },
             {
                "path": "prov:qualifiedAssociation",
-               "node":"_:associationShape"
+               "sh:class": {
+                  "@id": "prov:Association"
+               }
             },
             {
                "path": "wfprov:wasPartOfWorkflowRun",
@@ -631,7 +669,9 @@
             },
             {
                "path": "prov:agent",
-               "node": "_:softwareAgentShape",
+               "sh:class": {
+                  "@id": "prov:SoftwareAgent"
+               },
                "minCount": 1,
                "maxCount": 1
             }
@@ -680,9 +720,16 @@
                }
             },
             {
-               "nodeKind": "sh:IRI",
                "path": "prov:wasStartedBy",
-               "minCount": 1,
+               "or": [
+                  {
+                     "nodeKind": "sh:IRI"
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "prov:Person"
+                     }
+                  }],
                "maxCount": 1
             }
          ]

@@ -341,7 +341,7 @@ def jsonld(graph, strict=False):
         r, _, t = validate_graph(ld, format='json-ld')
 
         if not r:
-            click.BadParameter(
+            raise click.BadParameter(
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
     click.echo(ld)
@@ -361,7 +361,7 @@ def nt(graph, strict=False):
         r, _, t = validate_graph(nt, format='nt')
 
         if not r:
-            click.BadParameter(
+            raise click.BadParameter(
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
 
@@ -375,7 +375,7 @@ def rdf(graph, strict=False):
         r, _, t = validate_graph(xml, format='xml')
 
         if not r:
-            click.BadParameter(
+            raise click.BadParameter(
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
 
