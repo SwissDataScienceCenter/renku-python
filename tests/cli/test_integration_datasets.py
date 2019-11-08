@@ -352,7 +352,9 @@ def test_dataset_export_upload_multiple(
 
 
 @pytest.mark.integration
-def test_dataset_export_upload_failure(runner, project, tmpdir, client):
+def test_dataset_export_upload_failure(
+    runner, project, tmpdir, client, zenodo_sandbox
+):
     """Test failed uploading of a file to Zenodo deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
 
