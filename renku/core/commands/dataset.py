@@ -100,17 +100,15 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def create_dataset(client, name, handle_duplicate_fn=None):
+def create_dataset(client, name):
     """Create an empty dataset in the current repo.
 
     :raises: ``renku.core.errors.ParameterError``
     """
-    existing = client.load_dataset(name=name)
-    if (not existing or handle_duplicate_fn and handle_duplicate_fn(existing)):
-        with client.with_dataset(name=name) as dataset:
-            creator = Creator.from_git(client.repo)
-            if creator not in dataset.creator:
-                dataset.creator.append(creator)
+    with client.with_dataset(name=name, create=True) as dataset:
+        creator = Creator.from_git(client.repo)
+        if creator not in dataset.creator:
+            dataset.creator.append(creator)
 
 
 @pass_local_client(
@@ -140,6 +138,7 @@ def add_file(
     name,
     link=False,
     force=False,
+    create=False,
     sources=(),
     destination='',
     with_metadata=None,
@@ -147,8 +146,8 @@ def add_file(
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, sources, destination, with_metadata,
-        urlscontext
+        client, urls, name, link, force, create, sources, destination,
+        with_metadata, urlscontext
     )
 
 
@@ -158,6 +157,7 @@ def add_to_dataset(
     name,
     link=False,
     force=False,
+    create=False,
     sources=(),
     destination='',
     with_metadata=None,
@@ -169,7 +169,9 @@ def add_to_dataset(
         with_metadata.identifier
     ) if with_metadata else None
     try:
-        with client.with_dataset(name=name, identifier=identifier) as dataset:
+        with client.with_dataset(
+            name=name, identifier=identifier, create=create
+        ) as dataset:
             with urlscontext(urls) as bar:
                 client.add_data_to_dataset(
                     dataset,
@@ -195,6 +197,13 @@ def add_to_dataset(
 
                 dataset.update_metadata(with_metadata)
 
+    except DatasetNotFound:
+        raise DatasetNotFound(
+            'Dataset "{0}" does not exist.\n'
+            'Use "renku dataset create {0}" to create the dataset or retry '
+            '"renku dataset add {0}" command with "--create" option for '
+            'automatic dataset creation.'.format(name)
+        )
     except (FileNotFoundError, git.exc.NoSuchPathError):
         raise ParameterError('Could not process \n{0}'.format('\n'.join(urls)))
 
@@ -393,8 +402,6 @@ def import_dataset(
     name,
     extract,
     with_prompt=False,
-    force=False,
-    handle_duplicate_fn=None,
     pool_init_fn=None,
     pool_init_args=None,
     download_file_fn=default_download_file
@@ -428,8 +435,7 @@ def import_dataset(
                     record.links.get('latest_html')
                 ) + text_prompt
 
-            if not force:
-                click.confirm(text_prompt, abort=True)
+            click.confirm(text_prompt, abort=True)
 
     except KeyError as e:
         raise ParameterError((
@@ -482,27 +488,20 @@ def import_dataset(
         pool.close()
 
         dataset_name = name or dataset.display_name
-        existing = client.load_dataset(name=dataset_name)
-        if (
-            not existing or force or
-            (handle_duplicate_fn and handle_duplicate_fn(dataset_name))
-        ):
-            add_to_dataset(
-                client,
-                urls=[str(p) for p in Path(data_folder).glob('*')],
-                name=dataset_name,
-                with_metadata=dataset
-            )
+        add_to_dataset(
+            client,
+            urls=[str(p) for p in Path(data_folder).glob('*')],
+            name=dataset_name,
+            with_metadata=dataset,
+            create=True
+        )
 
-            if dataset.version:
-                tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
-                tag_dataset(
-                    client,
-                    dataset_name,
-                    tag_name,
-                    'Tag {} created by renku import'.format(dataset.version),
-                    force=True
-                )
+        if dataset.version:
+            tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
+            tag_dataset(
+                client, dataset_name, tag_name,
+                'Tag {} created by renku import'.format(dataset.version)
+            )
 
 
 @pass_local_client(clean=True, commit=True, commit_only=DATASET_METADATA_PATHS)

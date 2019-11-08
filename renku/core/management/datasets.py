@@ -109,7 +109,7 @@ class DatasetsApiMixin(object):
                 return self.get_dataset(path)
 
     @contextmanager
-    def with_dataset(self, name=None, identifier=None):
+    def with_dataset(self, name=None, identifier=None, create=False):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=name)
         clean_up_required = False
@@ -121,6 +121,8 @@ class DatasetsApiMixin(object):
                     'Dataset name {} is not valid.'.format(name)
                 )
 
+            if not create:
+                raise errors.DatasetNotFound
             clean_up_required = True
             dataset_ref = None
             identifier = str(uuid.uuid4())
@@ -142,6 +144,11 @@ class DatasetsApiMixin(object):
                     client=self, name='datasets/' + name
                 )
                 dataset_ref.set_reference(path)
+
+        elif create:
+            raise errors.DatasetExistsError(
+                'Dataset exists: "{}".'.format(name)
+            )
 
         dataset_path = self.path / self.datadir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)

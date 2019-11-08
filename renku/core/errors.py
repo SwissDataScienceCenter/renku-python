@@ -293,10 +293,8 @@ class InvalidSuccessCode(RenkuException):
 class DatasetNotFound(RenkuException):
     """Raise when dataset is not found."""
 
-    def __init__(self):
+    def __init__(self, msg='Dataset is not found.'):
         """Build a custom message."""
-        msg = 'Dataset is not found.'
-
         super(DatasetNotFound, self).__init__(msg)
 
 
