@@ -111,6 +111,10 @@ will yield:
         new-dir/
           new-filename
 
+To add a specific version of files, use ``--ref`` option for selecting a
+branch, commit, or tag. The value passed to this option must be a valid
+reference in the remote Git repository.
+
 Tagging a dataset:
 
 A dataset can be tagged with an arbitrary tag to refer to the dataset at that
