@@ -754,6 +754,7 @@ class DatasetsApiMixin(object):
                 )
 
         try:
+            os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
             repo = Repo.clone_from(url, str(repo_path), recursive=True)
             # Because the name of the default branch is not always 'master', we
             # create an alias of the default branch when cloning the repo. It
