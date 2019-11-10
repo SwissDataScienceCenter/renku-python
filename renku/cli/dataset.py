@@ -58,6 +58,13 @@ Adding data to the dataset:
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
 
+You can create a dataset when you add data to it for the first time by passing
+``--create`` flag to add command:
+
+.. code-block:: console
+
+    $ renku dataset add --create new-dataset http://data-url
+
 To add data from a git repository, you can specify it via https or git+ssh
 URL schemes. For example,
 
@@ -231,16 +238,6 @@ from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 
 
-def prompt_duplicate_dataset(existing_dataset):
-    """Check if existing dataset should be overwritten.
-
-    :return: True if user confirmed overwriting.
-    """
-    warn_ = WARNING + 'This dataset already exists.'
-    click.echo(warn_)
-    return click.confirm('Do you wish to overwrite it?', abort=True)
-
-
 def prompt_access_token(exporter):
     """Prompt user for an access token for a provider.
 
@@ -365,7 +362,7 @@ def dataset(ctx, revision, datadir, format):
 @click.argument('name')
 def create(name):
     """Create an empty dataset in the current repo."""
-    create_dataset(name, handle_duplicate_fn=prompt_duplicate_dataset)
+    create_dataset(name)
     click.secho('OK', fg='green')
 
 
@@ -388,6 +385,9 @@ def edit(dataset_id):
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
 @click.option(
+    '--create', is_flag=True, help='Create dataset if it does not exist.'
+)
+@click.option(
     '-s',
     '--src',
     '--source',
@@ -404,7 +404,7 @@ def edit(dataset_id):
     default='',
     help='Destination file or directory within the dataset path'
 )
-def add(name, urls, link, force, sources, destination):
+def add(name, urls, link, force, create, sources, destination):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
@@ -412,6 +412,7 @@ def add(name, urls, link, force, sources, destination):
         name=name,
         link=link,
         force=force,
+        create=create,
         sources=sources,
         destination=destination,
         urlscontext=progress
@@ -580,10 +581,7 @@ def export_(id, provider, publish, tag):
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-@click.option(
-    '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
-)
-def import_(uri, name, extract, yes):
+def import_(uri, name, extract):
     """Import data from a 3rd party provider.
 
     Supported providers: [Zenodo, Dataverse]
@@ -612,11 +610,9 @@ def import_(uri, name, extract, yes):
         name,
         extract,
         with_prompt=True,
-        handle_duplicate_fn=prompt_duplicate_dataset,
         pool_init_fn=_init,
         pool_init_args=(mp.RLock(), id_queue),
-        download_file_fn=download_file_with_progress,
-        force=yes
+        download_file_fn=download_file_with_progress
     )
     click.secho('OK', fg='green')
 

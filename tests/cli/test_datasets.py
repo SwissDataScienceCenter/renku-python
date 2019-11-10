@@ -217,6 +217,35 @@ def test_datasets_list_non_empty(output_format, runner, project):
     assert 'dataset' not in result.output
 
 
+def test_add_and_create_dataset(directory_tree, runner, project, client):
+    """Test add data to a non-existing dataset."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'new-dataset',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert result.exit_code == 1
+    assert 'Dataset "new-dataset" does not exist.' in result.output
+
+    # Add succeeds with --create
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--create', 'new-dataset',
+         str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert result.exit_code == 0
+
+    # Further add with --create fails
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--create', 'new-dataset',
+         str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert result.exit_code == 1
+
+
 def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
@@ -356,8 +385,8 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     result = runner.invoke(
         cli,
         [
-            'dataset', 'add', 'relative', '--source', 'first', '--destination',
-            'new',
+            'dataset', 'add', '--create', 'relative', '--source', 'first',
+            '--destination', 'new',
             str(tmpdir)
         ],
         catch_exceptions=False,
@@ -860,20 +889,9 @@ def test_dataset_overwrite_no_confirm(runner, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    result = runner.invoke(cli, ['dataset', 'create', 'rokstar'], input='n')
+    result = runner.invoke(cli, ['dataset', 'create', 'rokstar'])
     assert 1 == result.exit_code
     assert 'OK' not in result.output
-
-
-def test_dataset_overwrite_confirm(runner, project):
-    """Check dataset overwrite behaviour with confirmation."""
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'], input='y')
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
 
 
 def test_dataset_edit(runner, client, project):
@@ -1218,7 +1236,7 @@ def test_dataset_clean_up_when_add_fails(runner, client):
     # add a non-existing path to a new dataset
     result = runner.invoke(
         cli,
-        ['dataset', 'add', 'new-dataset', 'non-existing-file'],
+        ['dataset', 'add', '--create', 'new-dataset', 'non-existing-file'],
         catch_exceptions=True,
     )
 
@@ -1248,8 +1266,9 @@ def test_dataset_update(
     """Test local copy is updated when remote file is updates."""
     # Add dataset to project
     result = runner.invoke(
-        cli, ['dataset', 'add', 'remote-dataset',
-              str(directory_tree)],
+        cli,
+        ['dataset', 'add', '--create', 'remote-dataset',
+         str(directory_tree)],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
@@ -1286,8 +1305,9 @@ def test_dataset_update_remove_file(
     """Test local copy is removed when remote file is removed."""
     # Add dataset to project
     result = runner.invoke(
-        cli, ['dataset', 'add', 'remote-dataset',
-              str(directory_tree)],
+        cli,
+        ['dataset', 'add', '--create', 'remote-dataset',
+         str(directory_tree)],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
@@ -1310,8 +1330,9 @@ def test_dataset_multiple_update(
     """Test a local copy is updated multiple times."""
     # Add dataset to project
     result = runner.invoke(
-        cli, ['dataset', 'add', 'remote-dataset',
-              str(directory_tree)],
+        cli,
+        ['dataset', 'add', '--create', 'remote-dataset',
+         str(directory_tree)],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
@@ -1348,8 +1369,9 @@ def test_dataset_invalid_update(
     """Test updating a non-existing path."""
     # Add dataset to project
     result = runner.invoke(
-        cli, ['dataset', 'add', 'remote-dataset',
-              str(directory_tree)],
+        cli,
+        ['dataset', 'add', '--create', 'remote-dataset',
+         str(directory_tree)],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
@@ -1372,13 +1394,13 @@ def test_dataset_update_multiple_datasets(
     """Test update with multiple datasets."""
     # Add dataset to project
     result = runner.invoke(
-        cli, ['dataset', 'add', 'dataset-1',
+        cli, ['dataset', 'add', '--create', 'dataset-1',
               str(directory_tree)],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
     result = runner.invoke(
-        cli, ['dataset', 'add', 'dataset-2',
+        cli, ['dataset', 'add', '--create', 'dataset-2',
               str(directory_tree)],
         catch_exceptions=False
     )
