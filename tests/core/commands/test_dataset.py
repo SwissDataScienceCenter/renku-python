@@ -71,7 +71,7 @@ def test_data_add(
         elif path == 'tempdir':
             path = str(directory_tree)
 
-        with client.with_dataset('dataset') as d:
+        with client.with_dataset('dataset', create=True) as d:
             d.creator = [{
                 'name': 'me',
                 'email': 'me@example.com',
@@ -104,7 +104,7 @@ def test_data_add(
 
 def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
-    with client.with_dataset('dataset') as dataset:
+    with client.with_dataset('dataset', create=True) as dataset:
         dataset.creator = [{
             'name': 'me',
             'email': 'me@example.com',
