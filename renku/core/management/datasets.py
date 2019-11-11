@@ -764,6 +764,14 @@ class DatasetsApiMixin(object):
                 'git', 'symbolic-ref', renku_ref, repo.head.reference.path
             ])
             checkout(repo, ref)
+            # Disable Git LFS smudge filter
+            repo.git.execute(
+                command=[
+                    'git', 'lfs', 'install', '--local', '--skip-smudge',
+                    '--force'
+                ],
+                with_exceptions=False
+            )
         except GitCommandError:
             raise errors.GitError(
                 'Cannot access remote Git repo: {}'.format(url)

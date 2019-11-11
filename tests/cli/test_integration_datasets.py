@@ -629,7 +629,7 @@ def test_datasets_import_target(
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    'ref', ['v0.2.0', '8c1a547843f2916818beac5fdcfad547f0785ee0']
+    'ref', ['v0.3.0', 'fe6ec65cc84bcf01e879ef38c0793208f7fab4bb']
 )
 def test_add_specific_refs(ref, runner, client):
     """Test adding a specific version of files."""
@@ -647,13 +647,13 @@ def test_add_specific_refs(ref, runner, client):
     )
     assert 0 == result.exit_code
     content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
-    assert 'v0.2.0' not in content
-    assert 'v0.3.0' not in content
+    assert 'v0.3.0' in content
+    assert 'v0.3.1' not in content
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    'ref', ['v0.3.0', 'fe6ec65cc84bcf01e879ef38c0793208f7fab4bb']
+    'ref', ['v0.3.1', '27e29abd409c83129a3fdb8b8b0b898b23bcb229']
 )
 def test_update_specific_refs(ref, runner, client):
     """Test updating to a specific version of files."""
@@ -665,20 +665,20 @@ def test_update_specific_refs(ref, runner, client):
     # add data from a git repo
     result = runner.invoke(
         cli, [
-            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', 'v0.2.0',
+            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', 'v0.3.0',
             'https://github.com/SwissDataScienceCenter/renku-python.git'
         ]
     )
     assert 0 == result.exit_code
     content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
-    assert 'v0.3.0' not in content
+    assert 'v0.3.1' not in content
 
     # update data to a later version
     result = runner.invoke(cli, ['dataset', 'update', '--ref', ref])
     assert 0 == result.exit_code
     content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
-    assert 'v0.3.0' in content
-    assert 'v0.4.0' not in content
+    assert 'v0.3.1' in content
+    assert 'v0.3.2' not in content
 
 
 @pytest.mark.integration
