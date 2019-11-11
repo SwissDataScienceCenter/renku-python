@@ -17,6 +17,7 @@
 # limitations under the License.
 """Client for handling a local repository."""
 import os
+import shutil
 import subprocess
 import uuid
 from collections import defaultdict
@@ -27,6 +28,7 @@ from subprocess import check_output
 import attr
 import filelock
 import yaml
+from jinja2 import Template
 from werkzeug.utils import cached_property, secure_filename
 
 from renku.core.compat import Path
@@ -417,3 +419,42 @@ class RepositoryApiMixin(GitCore):
             metadata.updated = datetime.now(timezone.utc)
 
         return str(path)
+
+    def init_empty_repository(self, force=False):
+        """Initialize an empty Renku repository."""
+        from git import Repo
+
+        if self.repo is not None and not force:
+            raise FileExistsError(self.repo.git_dir)
+
+        path = self.path.absolute()
+        self.repo = Repo.init(str(path))
+
+        return str(path)
+
+    def import_from_template(self, template_path, metadata, force=False):
+        """Render template files from a template directory."""
+        # adding author info? Creator.from_git(self.repo)
+        for file in template_path.glob('**/*'):
+            destination = self.path / file.relative_to(template_path)
+            try:
+                # TODO: notify about the expected variables - code stub:
+                # with file.open() as fr:
+                #     file_content = fr.read()
+                #     # look for the required keys
+                #     env = Environment()
+                #     parsed = env.parse(file_content)
+                #     variables = meta.find_undeclared_variables(parsed)
+
+                with open(file) as file_content:
+                    # open and parse the file
+                    template = Template(file_content.read())
+                    rendered_content = template.render(metadata)
+                    # write content to the new location
+                    with open(destination, 'w') as output_file:
+                        output_file.write(rendered_content)
+            except Exception:
+                if file.is_dir():
+                    destination.mkdir(parents=True, exist_ok=True)
+                else:
+                    shutil.copy(file, destination)

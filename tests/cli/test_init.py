@@ -21,6 +21,9 @@ import os
 import shutil
 from pathlib import Path
 
+import pytest
+from tests.core.commands.test_init import TEMPLATE_FOLDER, TEMPLATE_URL
+
 from renku.cli import cli
 
 
@@ -127,3 +130,31 @@ def test_init_force_in_empty_dir(isolated_runner):
     assert not new_project.exists()
     result = runner.invoke(cli, ['init', '--force', 'test-new-project'])
     assert 0 == result.exit_code
+
+
+@pytest.mark.integration
+def test_template_init(isolated_runner):
+    """Test project initialization from template."""
+    # create the project
+    new_project = Path('test-new-project')
+    assert not new_project.exists()
+    result = isolated_runner.invoke(
+        cli, [
+            'template-init', 'test-new-project', '--template-url',
+            TEMPLATE_URL, '--template-name', TEMPLATE_FOLDER
+        ]
+    )
+    assert 0 == result.exit_code
+    assert new_project.exists()
+    assert (new_project / '.renku').exists()
+    assert (new_project / '.renku' / 'metadata.yml').exists()
+
+    # try to re-create in the same folder
+    result_re = isolated_runner.invoke(
+        cli, [
+            'template-init', 'test-new-project', '--template-url',
+            TEMPLATE_URL, '--template-name', TEMPLATE_FOLDER
+        ]
+    )
+    assert 2 == result_re.exit_code
+    # TODO: check git lfs init options

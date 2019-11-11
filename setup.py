@@ -97,6 +97,7 @@ install_requires = [
     'tabulate>=0.7.7',
     'tqdm>=4.31.1',
     'werkzeug>=0.15.5',
+    'jinja2>=2.10.3',
 ]
 
 packages = find_packages()

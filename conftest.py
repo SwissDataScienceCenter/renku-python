@@ -340,6 +340,15 @@ def add_client(doctest_namespace):
 
 
 @pytest.fixture
+def local_client():
+    """Add a Renku local client."""
+    from renku.core.management import LocalClient
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        yield LocalClient(path=tempdir)
+
+
+@pytest.fixture
 def zenodo_sandbox(client):
     """Configure environment to use Zenodo sandbox environment."""
     os.environ['ZENODO_USE_SANDBOX'] = 'true'
