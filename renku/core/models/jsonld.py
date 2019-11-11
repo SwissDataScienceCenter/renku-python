@@ -246,7 +246,13 @@ def _propagate_reference_contexts(
 
             if '@context' not in current_context:
                 current_context['@context'] = []
-            for subtype in cls._jsonld_type:
+
+            subtypes = cls._jsonld_type
+
+            if not isinstance(subtypes, (tuple, list)):
+                subtypes = [subtypes]
+
+            for subtype in subtypes:
                 # Use nested, type scoped contexts for each semantic type
                 # of a reference, to uniquely bind a context to a type
                 current_context['@context'].append({
