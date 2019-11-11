@@ -1452,7 +1452,7 @@ def test_empty_update(client, runner, data_repository, directory_tree):
     """Test update when nothing changed."""
     # Add dataset to project
     result = runner.invoke(
-        cli, ['dataset', 'add', 'dataset', directory_tree.strpath],
+        cli, ['dataset', 'add', '--create', 'dataset', directory_tree.strpath],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
@@ -1531,7 +1531,7 @@ def test_update_renku_project_dataset(
     assert 0 == result.exit_code
 
     # Update project
-    os.chdir(client.path)
+    os.chdir(str(client.path))
     result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
     assert 0 == result.exit_code
     content = (client.path / 'data' / 'remote-dataset' / 'file').read_text()

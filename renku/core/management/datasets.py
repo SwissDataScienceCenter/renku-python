@@ -347,7 +347,7 @@ class DatasetsApiMixin(object):
             repo_path = Path(repo.git_dir).parent.resolve()
 
             # if repo path is a parent of the url, treat the url as a source
-            if repo_path != Path(u.path):
+            if repo_path != Path(u.path).resolve():
                 if sources:
                     raise errors.UsageError(
                         'Cannot use --source within local repo subdirectories'

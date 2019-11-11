@@ -60,7 +60,7 @@ def raises(error):
                             ('', 'tempp', git.NoSuchPathError),
                             ('http://', 'example.com/file', None),
                             ('https://', 'example.com/file', None),
-                            ('bla://', 'file', errors.UrlSchemaNotSupported)]
+                            ('bla://', 'file', errors.UrlSchemeNotSupported)]
 )
 def test_data_add(
     scheme, path, error, client, data_file, directory_tree, dataset_responses
