@@ -474,3 +474,30 @@ def sleep_after():
     import time
     yield
     time.sleep(0.5)
+
+
+@pytest.fixture
+def remote_project(data_repository, directory_tree):
+    """A second Renku project with a dataset."""
+    from renku.cli import cli
+
+    runner = CliRunner()
+
+    with runner.isolated_filesystem() as project_path:
+        runner.invoke(cli, ['-S', 'init'])
+        result = runner.invoke(
+            cli, ['-S', 'dataset', 'create', 'remote-dataset']
+        )
+        assert 0 == result.exit_code
+
+        result = runner.invoke(
+            cli,
+            [
+                '-S', 'dataset', 'add', '-s', 'file', '-s', 'dir2',
+                'remote-dataset', directory_tree.strpath
+            ],
+            catch_exceptions=False,
+        )
+        assert 0 == result.exit_code
+
+        yield runner, project_path
