@@ -17,7 +17,7 @@
 # limitations under the License.
 """test KG against SHACL shape."""
 
-from pathlib import Path
+from renku.core.compat import Path
 
 from pyld import jsonld as ld
 
