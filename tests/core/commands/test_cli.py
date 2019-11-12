@@ -787,7 +787,7 @@ def test_config_manager_set_value(client, global_config_dir, global_only):
     assert 'zenodo' not in config.sections()
 
 
-def test_config_get_value(client):
+def test_config_get_value(client, global_config_dir):
     """Check reading from configuration."""
     # Value set locally is not visible globally
     client.set_value('local', 'key', 'local-value')

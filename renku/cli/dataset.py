@@ -115,6 +115,27 @@ To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
 reference in the remote Git repository.
 
+Updating a dataset:
+
+After adding files from a remote Git repository, you can check for updates in
+those files by using ``renku dataset update`` command. This command checks all
+remote files and copies over new content if there is any. It does not delete
+files from the local dataset if they are deleted from the remote Git
+repository; to force the delete use ``--delete`` argument. You can update to a
+specific branch, commit, or tag by passing ``--ref`` option.
+
+You can limit the scope of updated files by specifying dataset names, using
+``--include`` and ``--exclude`` to filter based on file names, or using
+``--creators`` to filter based on creators. For example, the following command
+updates only CSV files from ``my-dataset``:
+
+.. code-block:: console
+
+    $ renku dataset update -I '*.csv' my-dataset
+
+Note that putting glob patterns in quotes is needed to tell Unix shell not
+to expand them.
+
 Tagging a dataset:
 
 A dataset can be tagged with an arbitrary tag to refer to the dataset at that
@@ -649,8 +670,21 @@ def import_(uri, name, extract):
 @click.option(
     '--ref', default=None, help='Update to a specific commit/tag/branch.'
 )
-def update(names, creators, include, exclude, ref):
+@click.option(
+    '--delete',
+    is_flag=True,
+    help='Delete local files that are deleted from remote.'
+)
+def update(names, creators, include, exclude, ref, delete):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')
-    update_datasets(names, creators, include, exclude, ref, progress_context)
+    update_datasets(
+        names=names,
+        creators=creators,
+        include=include,
+        exclude=exclude,
+        ref=ref,
+        delete=delete,
+        progress_context=progress_context
+    )
     click.secho('OK', fg='green')
