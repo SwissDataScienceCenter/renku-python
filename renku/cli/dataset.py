@@ -121,7 +121,8 @@ After adding files from a remote Git repository, you can check for updates in
 those files by using ``renku dataset update`` command. This command checks all
 remote files and copies over new content if there is any. It does not delete
 files from the local dataset if they are deleted from the remote Git
-repository; to force the delete use ``--delete`` argument.
+repository; to force the delete use ``--delete`` argument. You can update to a
+specific branch, commit, or tag by passing ``--ref`` option.
 
 You can limit the scope of updated files by specifying dataset names, using
 ``--include`` and ``--exclude`` to filter based on file names, or using

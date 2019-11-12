@@ -215,10 +215,10 @@ def add_to_dataset(
             '"renku dataset add {0}" command with "--create" option for '
             'automatic dataset creation.'.format(name)
         )
-    except (FileNotFoundError, git.exc.NoSuchPathError):
+    except (FileNotFoundError, git.exc.NoSuchPathError) as e:
         raise ParameterError(
             'Could not find paths/URLs: \n{0}'.format('\n'.join(urls))
-        )
+        ) from e
 
 
 @pass_local_client(clean=False, commit=False)

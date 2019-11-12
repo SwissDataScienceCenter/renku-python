@@ -814,8 +814,8 @@ class DatasetsApiMixin(object):
             )
         except GitCommandError as e:
             raise errors.GitError(
-                'Cannot clone remote Git repo: {}\n\n{}'.format(url, e)
-            )
+                'Cannot clone remote Git repo: {}'.format(url)
+            ) from e
         else:
             return repo, repo_path
 
