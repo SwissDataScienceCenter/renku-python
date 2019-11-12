@@ -141,12 +141,13 @@ def add_file(
     create=False,
     sources=(),
     destination='',
+    ref=None,
     with_metadata=None,
     urlscontext=contextlib.nullcontext
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, create, sources, destination,
+        client, urls, name, link, force, create, sources, destination, ref,
         with_metadata, urlscontext
     )
 
@@ -160,6 +161,7 @@ def add_to_dataset(
     create=False,
     sources=(),
     destination='',
+    ref=None,
     with_metadata=None,
     urlscontext=contextlib.nullcontext
 ):
@@ -180,6 +182,7 @@ def add_to_dataset(
                     force=force,
                     sources=sources,
                     destination=destination,
+                    ref=ref
                 )
 
             if with_metadata:
@@ -511,6 +514,7 @@ def update_datasets(
     creators,
     include,
     exclude,
+    ref,
     progress_context=contextlib.nullcontext
 ):
     """Update files from a remote Git repo."""
@@ -527,6 +531,7 @@ def update_datasets(
 
     datasets = {}
     possible_updates = []
+    unique_remotes = set()
 
     for file_ in records:
         if file_.based_on:
@@ -539,11 +544,19 @@ def update_datasets(
 
             file_.dataset = dataset
             possible_updates.append(file_)
+            unique_remotes.add(file_.based_on['url'])
+
+    if ref and len(unique_remotes) > 1:
+        raise ParameterError(
+            'Cannot use "--ref" with more than one Git repository.\n'
+            'Limit list of files to be updated to one repository. See'
+            '"renku dataset update -h" for more information.'
+        )
 
     with progress_context(
         possible_updates, item_show_func=lambda x: x.path if x else None
     ) as progressbar:
-        client.update_dataset_files(progressbar)
+        client.update_dataset_files(progressbar, ref)
 
 
 def _include_exclude(file_path, include=None, exclude=None):
