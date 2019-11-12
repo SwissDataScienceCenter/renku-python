@@ -69,13 +69,13 @@ def test_dataset_shacl(tmpdir, runner, project, client):
             }
         )
 
-        r, _, t = validate_graph(rdf, shacl_path=force_dataset_path)
+        r, _, t = validate_graph(rdf, shacl_path=str(force_dataset_path))
         assert r is True, t
 
-        r, _, t = validate_graph(rdf, shacl_path=force_datasetfile_path)
+        r, _, t = validate_graph(rdf, shacl_path=str(force_datasetfile_path))
         assert r is True, t
 
-        r, _, t = validate_graph(rdf, shacl_path=force_datasettag_path)
+        r, _, t = validate_graph(rdf, shacl_path=str(force_datasettag_path))
         assert r is True, t
 
         r, _, t = validate_graph(rdf)
@@ -101,7 +101,7 @@ def test_project_shacl(project, client):
             'produceGeneralizedRdf': False
         }
     )
-    r, _, t = validate_graph(rdf, shacl_path=path)
+    r, _, t = validate_graph(rdf, shacl_path=str(path))
     assert r is True, t
 
     r, _, t = validate_graph(rdf)
