@@ -17,11 +17,10 @@
 # limitations under the License.
 """test KG against SHACL shape."""
 
-from renku.core.compat import Path
-
 from pyld import jsonld as ld
 
 from renku.cli import cli
+from renku.core.compat import Path
 from renku.core.utils.shacl import validate_graph
 
 
