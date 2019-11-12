@@ -90,6 +90,8 @@ class RenkuExceptionsHandler(click.Group):
             return super().main(*args, **kwargs)
         except RenkuException as e:
             click.echo('Error: {}'.format(e))
+            if e.__cause__ is not None:
+                click.echo('\n{}'.format(traceback.format_exc()))
             exit_code = 1
             if isinstance(e, (ParameterError, UsageError)):
                 exit_code = 2
