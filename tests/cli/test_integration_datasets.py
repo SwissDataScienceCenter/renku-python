@@ -17,6 +17,7 @@
 # limitations under the License.
 """Integration tests for dataset command."""
 import os
+import subprocess
 
 import git
 import pytest
@@ -130,19 +131,18 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     assert 'OK'
 
     result = runner.invoke(
-        cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y\ny'
+        cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y'
     )
-    assert 0 == result.exit_code
+    assert 1 == result.exit_code
     assert 'Warning: Newer version found' in result.output
-    assert 'Warning: This dataset already exists.' in result.output
-    assert 'OK' in result.output
+    assert 'Error: Dataset exists:' in result.output
 
     result = runner.invoke(
-        cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y\n'
+        cli, ['dataset', 'import', '10.5281/zenodo.597964'], input='y'
     )
     assert 0 == result.exit_code
     assert 'Warning: Newer version found' not in result.output
-    assert 'Warning: This dataset already exists.' not in result.output
+    assert 'Error: Dataset exists:' not in result.output
     assert 'OK' in result.output
 
     result = runner.invoke(cli, ['dataset'])
@@ -627,3 +627,108 @@ def test_datasets_import_target(
         ],
     )
     assert 0 == result.exit_code
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'ref', ['v0.3.0', 'fe6ec65cc84bcf01e879ef38c0793208f7fab4bb']
+)
+def test_add_specific_refs(ref, runner, client):
+    """Test adding a specific version of files."""
+    FILENAME = 'CHANGES.rst'
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+
+    # add data from a git repo
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', ref,
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ]
+    )
+    assert 0 == result.exit_code
+    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    assert 'v0.3.0' in content
+    assert 'v0.3.1' not in content
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'ref', ['v0.3.1', '27e29abd409c83129a3fdb8b8b0b898b23bcb229']
+)
+def test_update_specific_refs(ref, runner, client):
+    """Test updating to a specific version of files."""
+    FILENAME = 'CHANGES.rst'
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+
+    # add data from a git repo
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', 'v0.3.0',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ]
+    )
+    assert 0 == result.exit_code
+    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    assert 'v0.3.1' not in content
+
+    # update data to a later version
+    result = runner.invoke(cli, ['dataset', 'update', '--ref', ref])
+    assert 0 == result.exit_code
+    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    assert 'v0.3.1' in content
+    assert 'v0.3.2' not in content
+
+
+@pytest.mark.integration
+def test_update_with_multiple_remotes_and_ref(runner, client):
+    """Test updating fails when ref is ambiguous."""
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+
+    # add data from a git repo
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', 'dataset', '-s', 'CHANGES.rst',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ]
+    )
+    assert 0 == result.exit_code
+
+    # add data from another git repo
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', 'dataset', '-s', 'LICENSE',
+            'https://github.com/SwissDataScienceCenter/renku-notebooks.git'
+        ]
+    )
+    assert 0 == result.exit_code
+
+    # update data to a later version
+    result = runner.invoke(cli, ['dataset', 'update', '--ref', 'any-value'])
+    assert 2 == result.exit_code
+    assert 'Cannot use "--ref" with more than one Git repo' in result.output
+
+
+@pytest.mark.integration
+def test_files_are_tracked_in_lfs(runner, client):
+    """Test files added from a Git repo are tacked in Git LFS."""
+    FILENAME = 'CHANGES.rst'
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+
+    # add data from a git repo
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', 'dataset', '-s', FILENAME,
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ]
+    )
+    assert 0 == result.exit_code
+    path = 'data/dataset/{}'.format(FILENAME)
+    assert path in subprocess.check_output(['git', 'lfs', 'ls-files']).decode()
