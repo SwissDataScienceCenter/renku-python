@@ -89,6 +89,20 @@ updated: 2018-02-22 15:33:11.089204
 version: '1'
 """
 
+PROJECT_V1_BROKEN_NO_DATES = """
+'@context':
+  created: http://schema.org/dateCreated
+  foaf: http://xmlns.com/foaf/0.1/
+  name: foaf:name
+  updated: http://schema.org/dateUpdated
+  version: http://schema.org/schemaVersion
+'@type': foaf:Project
+created: undefined
+name: demo
+updated: undefined
+version: '1'
+"""
+
 
 def test_project_context():
     """Test project context definition."""
@@ -120,6 +134,7 @@ def test_project_serialization():
     'project_meta,version,is_broken', [
         (PROJECT_V1, 1, False),
         (PROJECT_V1_BROKEN, 1, True),
+        (PROJECT_V1_BROKEN_NO_DATES, 1, True),
         (PROJECT_V2, 2, False),
     ]
 )

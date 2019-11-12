@@ -25,6 +25,7 @@ import shutil
 import tempfile
 import time
 import urllib
+from pathlib import Path
 
 import pytest
 import responses
@@ -271,7 +272,6 @@ def data_repository(directory_tree):
 def old_bare_repository(request, tmpdir_factory):
     """Prepares a testing repo created by old version of renku."""
     import tarfile
-    from pathlib import Path
 
     compressed_repo_path = Path(
         __file__

@@ -41,15 +41,17 @@ def validate_iso8601(str_val):
 
 def parse_date(value):
     """Convert date to datetime."""
-    if value is None:
-        return
     if isinstance(value, datetime.datetime):
-        date = value
-    else:
-        date = dateutil_parse_date(value)
-    if not date.tzinfo:
-        # set timezone to local timezone
-        tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-        date = date.replace(tzinfo=tz)
+        return value
 
-    return date
+    try:
+        date = dateutil_parse_date(value)
+
+        if not date.tzinfo:
+            # set timezone to local timezone
+            tz = datetime.datetime.now(datetime.timezone.utc).astimezone()
+            date = date.replace(tzinfo=tz.tzinfo)
+
+        return date
+    except (TypeError, ValueError):
+        return
