@@ -52,6 +52,15 @@ Following formats supported when specified with ``--format`` option:
 
 * `ascii`
 * `dot`
+* `dot-full`
+* `dot-landscape`
+* `dot-full-landscape`
+* `dot-debug`
+* `json-ld`
+* `json-ld-graph`
+* `Makefile`
+* `nt`
+* `rdf`
 
 You can generate a PNG of the full history of all files in the repository
 using the :program:`dot` program.
@@ -61,6 +70,15 @@ using the :program:`dot` program.
    $ FILES=$(git ls-files --no-empty-directory --recurse-submodules)
    $ renku log --format dot $FILES | dot -Tpng > /tmp/graph.png
    $ open /tmp/graph.png
+
+Output validation
+~~~~~~~~~~~~~~~~~
+
+The ``--strict`` option forces the output to be validated against the Renku
+SHACL schema, causing the command to fail if the generated output is not
+valid, as well as printing detailed information on all the issues found.
+The ``--strict`` option is only supported for the ``jsonld``, ``rdf`` and
+``nt`` output formats.
 
 """
 
