@@ -1,0 +1,19 @@
+name: "Label PR as needs documentation"
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    if: github.event.action == opened
+    steps:
+    - uses: actions/labeler@v2
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+  check_labels:
+    needs: triage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check documentation is added
+        run: echo ${{ github.event.pull_request.labels}}
