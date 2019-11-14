@@ -24,6 +24,7 @@ import yaml
 
 from renku.core.management.client import LocalClient
 from renku.core.models.datasets import Dataset
+from renku.core.utils.doi import is_doi
 
 
 def test_dataset_serialization(client, dataset, data_file):
@@ -99,8 +100,35 @@ def test_dataset_files_empty_metadata(dataset_metadata):
         dataset_metadata,
         client=LocalClient('.'),
     )
-
     files = [file.filename for file in dataset.files if not file.filename]
 
     if files:
         assert None in files
+
+
+def test_doi_migration(dataset_metadata):
+    """Test migration of id with doi."""
+    dataset = Dataset.from_jsonld(
+        dataset_metadata,
+        client=LocalClient('.'),
+    )
+    assert is_doi(dataset.identifier)
+    assert urljoin(
+        'https://localhost', 'datasets/' + quote(dataset.identifier, safe='')
+    ) == dataset._id
+    assert dataset.same_as == urljoin('https://doi.org', dataset.identifier)
+
+
+def test_dataset_creator_email(dataset_metadata):
+    """Check that creators without an email are assigned a blank node."""
+    # modify the dataset metadata to change the creator
+    dataset = Dataset.from_jsonld(
+        dataset_metadata,
+        client=LocalClient('.'),
+    )
+
+    dataset.creator[0]._id = 'mailto:None'
+    dataset_broken = Dataset.from_jsonld(
+        dataset.asjsonld(), client=LocalClient('.')
+    )
+    assert 'mailto:None' not in dataset_broken.creator[0]._id
