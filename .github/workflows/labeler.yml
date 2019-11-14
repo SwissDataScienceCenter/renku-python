@@ -6,7 +6,7 @@ on:
 jobs:
   triage:
     runs-on: ubuntu-latest
-    if: github.event.action == opened
+    if: github.event.action == 'opened'
     steps:
     - uses: actions/labeler@v2
       with:
