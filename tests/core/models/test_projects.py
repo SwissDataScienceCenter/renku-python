@@ -184,6 +184,8 @@ def test_project_creator_deserialization(client, project):
     )
     # the project creator should always be the one in the metadata
     assert client.project.creator.email == 'johndoe@example.com'
+    assert client.project.creator.name == 'Johnny Doe'
+    assert client.project.creator.label == client.project.creator.name
 
     # Remove the creator from metadata
     project = client.project
@@ -196,3 +198,5 @@ def test_project_creator_deserialization(client, project):
     # now the creator should be the one from the commit
     project = Project.from_yaml(client.renku_metadata_path, client=client)
     assert project.creator.email == 'janedoe@example.com'
+    assert project.creator.name == 'Jane Doe'
+    assert project.creator.label == project.creator.name
