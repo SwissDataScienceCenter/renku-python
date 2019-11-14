@@ -25,12 +25,12 @@ jobs:
         cd shacl_publish
         mkdir $(renku --version)
         cp ../renku/data/shacl_shape.json ./$(renku --version)/
-    - name: Commit files
-      run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        pwd
         #git commit -m "Add changes" -a
+        pwd
+        git status
+        git log
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
