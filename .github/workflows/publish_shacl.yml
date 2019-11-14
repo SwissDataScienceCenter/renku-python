@@ -1,0 +1,39 @@
+name: Publish SHACL shape for current version
+
+# on:
+#   push:
+#     branches:
+#       - master
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install .[all]
+    - name: Create local changes
+      run: |
+        git clone git@github.com:Panaetius/SHACL_test_repo.git shacl_publish
+        cd shacl_publish
+        mkdir $(renku --version)
+        cp ../renku/data/shacl_shape.json ./$(renku --version)/
+    - name: Commit files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        pwd
+        #git commit -m "Add changes" -a
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: e1409e7d16cb010e3cfacb2f3aac7fa7b22f83b3
+        repository: Panaetius/SHACL_test_repo
+        directory: shacl_publish
