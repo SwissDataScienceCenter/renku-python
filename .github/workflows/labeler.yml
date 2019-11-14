@@ -16,4 +16,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check documentation is added
-        run: echo "${{ toJson(github.event.pull_request.labels) }}" | grep -zqv 'needs_documentation'
+        run: echo '${{ toJson(github.event.pull_request.labels) }}'' | grep -zqv 'needs_documentation'
