@@ -44,7 +44,6 @@
          "@type": "@id"
       }
    },
-   "version": "0.7.1.dev7+dirty",
    "@graph": [
       {
          "@id": "schema:",
