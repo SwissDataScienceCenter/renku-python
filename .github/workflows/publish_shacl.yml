@@ -27,7 +27,8 @@ jobs:
         cp ../renku/data/shacl_shape.json ./$(renku --version)/
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git commit -m "Publish SHACL shape for $(renku --version)" -a
+        git add $(renku --version)/shacl_shape.json
+        git commit -m "Publish SHACL shape for $(renku --version)"
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
