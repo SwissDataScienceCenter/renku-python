@@ -42,7 +42,8 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.datasets import Creator, Dataset
+from renku.core.models.datasets import Dataset
+from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
 from renku.core.utils.doi import extract_doi
@@ -107,7 +108,7 @@ def create_dataset(client, name, handle_duplicate_fn=None):
     existing = client.load_dataset(name=name)
     if (not existing or handle_duplicate_fn and handle_duplicate_fn(existing)):
         with client.with_dataset(name=name) as dataset:
-            creator = Creator.from_git(client.repo)
+            creator = Person.from_git(client.repo)
             if creator not in dataset.creator:
                 dataset.creator.append(creator)
 

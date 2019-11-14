@@ -17,9 +17,11 @@
 # limitations under the License.
 """Represent provenance agents."""
 
+import configparser
 import re
 import uuid
 
+from renku.core import errors
 from renku.core.models import jsonld as jsonld
 from renku.version import __version__, version_url
 
@@ -33,7 +35,6 @@ from renku.version import __version__, version_url
         'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#',
     },
-    frozen=True,
     slots=True,
 )
 class Person:
@@ -42,7 +43,12 @@ class Person:
     name = jsonld.ib(context='schema:name')
     email = jsonld.ib(context='schema:email', default=None, kw_only=True)
     label = jsonld.ib(context='rdfs:label', kw_only=True)
-
+    affiliation = jsonld.ib(
+        default=None, kw_only=True, context='schema:affiliation'
+    )
+    alternate_name = jsonld.ib(
+        default=None, kw_only=True, context='schema:alternateName'
+    )
     _id = jsonld.ib(context='@id', kw_only=True)
 
     @_id.default
@@ -72,6 +78,51 @@ class Person:
             name=commit.author.name,
             email=commit.author.email,
         )
+
+    @property
+    def short_name(self):
+        """Gives full name in short form."""
+        names = self.name.split()
+        if len(names) == 1:
+            return self.name
+
+        last_name = names[-1]
+        initials = [name[0] for name in names]
+        initials.pop()
+
+        return '{0}.{1}'.format('.'.join(initials), last_name)
+
+    @classmethod
+    def from_git(cls, git):
+        """Create an instance from a Git repo."""
+        git_config = git.config_reader()
+        try:
+            name = git_config.get_value('user', 'name', None)
+            email = git_config.get_value('user', 'email', None)
+        except (
+            configparser.NoOptionError, configparser.NoSectionError
+        ):  # pragma: no cover
+            raise errors.ConfigurationError(
+                'The user name and email are not configured. '
+                'Please use the "git config" command to configure them.\n\n'
+                '\tgit config --global --add user.name "John Doe"\n'
+                '\tgit config --global --add user.email '
+                '"john.doe@example.com"\n'
+            )
+
+        # Check the git configuration.
+        if not name:  # pragma: no cover
+            raise errors.MissingUsername()
+        if not email:  # pragma: no cover
+            raise errors.MissingEmail()
+
+        return cls(name=name, email=email)
+
+    def __attrs_post_init__(self):
+        """Finish object initialization."""
+        # handle the case where ids were improperly set
+        if self._id == 'mailto:None':
+            self._id = self.default_id()
 
 
 @jsonld.s(

@@ -159,11 +159,11 @@ def test_project_datetime_loading(project_meta):
 
 def test_project_creator_deserialization(client, project):
     """Check that the correct creator is returned on deserialization."""
-    from renku.core.models.datasets import Creator
+    from renku.core.models.provenance.agents import Person
 
     # modify the project metadata to change the creator
     project = client.project
-    project.creator = Creator(email='johndoe@example.com', name='Johnny Doe')
+    project.creator = Person(email='johndoe@example.com', name='Johnny Doe')
     project.to_yaml()
     client.repo.git.commit(
         '-a', '--amend', '-C', 'HEAD', '--author',

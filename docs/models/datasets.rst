@@ -37,11 +37,3 @@ Manage files in the dataset.
 .. autoclass:: renku.core.models.datasets.DatasetFile
    :members:
    :inherited-members:
-
-
-Creator
--------
-
-.. autoclass:: renku.core.models.datasets.Creator
-   :members:
-   :inherited-members:

@@ -17,7 +17,6 @@
 # limitations under the License.
 """Model objects representing datasets."""
 
-import configparser
 import datetime
 import os
 import pathlib
@@ -30,7 +29,6 @@ from pathlib import Path
 import attr
 from attr.validators import instance_of
 
-from renku.core import errors
 from renku.core.models.provenance.agents import Person
 from renku.core.models.provenance.entities import Entity
 from renku.core.utils.datetime8601 import parse_date
@@ -54,69 +52,24 @@ def _extract_doi(value):
     return value
 
 
-class Creator(Person):
-    """Represent the creator of a resource."""
+def _convert_creators(value):
+    """Convert creators."""
+    if isinstance(value, dict):  # compatibility with previous versions
+        return [Person.from_jsonld(value)]
 
-    affiliation = jsonld.ib(
-        default=None, kw_only=True, context='schema:affiliation'
-    )
-
-    alternate_name = jsonld.ib(
-        default=None, kw_only=True, context='schema:alternateName'
-    )
-
-    @property
-    def short_name(self):
-        """Gives full name in short form."""
-        names = self.name.split()
-        if len(names) == 1:
-            return self.name
-
-        last_name = names[-1]
-        initials = [name[0] for name in names]
-        initials.pop()
-
-        return '{0}.{1}'.format('.'.join(initials), last_name)
-
-    @classmethod
-    def from_git(cls, git):
-        """Create an instance from a Git repo."""
-        git_config = git.config_reader()
-        try:
-            name = git_config.get_value('user', 'name', None)
-            email = git_config.get_value('user', 'email', None)
-        except (
-            configparser.NoOptionError, configparser.NoSectionError
-        ):  # pragma: no cover
-            raise errors.ConfigurationError(
-                'The user name and email are not configured. '
-                'Please use the "git config" command to configure them.\n\n'
-                '\tgit config --global --add user.name "John Doe"\n'
-                '\tgit config --global --add user.email '
-                '"john.doe@example.com"\n'
-            )
-
-        # Check the git configuration.
-        if not name:  # pragma: no cover
-            raise errors.MissingUsername()
-        if not email:  # pragma: no cover
-            raise errors.MissingEmail()
-
-        return cls(name=name, email=email)
-
-    def __attrs_post_init__(self):
-        """Finish object initialization."""
-        # handle the case where ids were improperly set
-        if self._id == 'mailto:None':
-            self._id = self.default_id()
+    if isinstance(value, list):
+        return [Person.from_jsonld(v) for v in value]
 
 
 @attr.s
-class CreatorsMixin:
+class PersonMixin:
     """Mixin for handling creators container."""
 
     creator = jsonld.container.list(
-        Creator, kw_only=True, context='schema:creator'
+        Person,
+        kw_only=True,
+        context='schema:creator',
+        converter=_convert_creators
     )
 
     @property
@@ -190,17 +143,6 @@ class Language:
     name = jsonld.ib(default=None, kw_only=True, context='schema:name')
 
 
-def _convert_dataset_files_creators(value):
-    """Convert dataset files creators."""
-    coll = value
-
-    if isinstance(coll, dict):
-        return [Creator.from_jsonld(coll)]
-
-    if isinstance(coll, list):
-        return [Creator.from_jsonld(c) for c in coll]
-
-
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
@@ -208,15 +150,8 @@ def _convert_dataset_files_creators(value):
         'schema': 'http://schema.org/',
     }
 )
-class DatasetFile(Entity, CreatorsMixin):
+class DatasetFile(Entity, PersonMixin):
     """Represent a file in a dataset."""
-
-    creator = jsonld.container.list(
-        Creator,
-        converter=_convert_dataset_files_creators,
-        kw_only=True,
-        context='schema:creator'
-    )
 
     added = jsonld.ib(
         converter=parse_date, context='schema:dateCreated', kw_only=True
@@ -290,15 +225,6 @@ def _convert_dataset_tags(value):
     return [DatasetTag.from_jsonld(v) for v in value]
 
 
-def _convert_dataset_creator(value):
-    """Convert dataset creators."""
-    if isinstance(value, dict):  # compatibility with previous versions
-        return [Creator.from_jsonld(value)]
-
-    if isinstance(value, list):
-        return [Creator.from_jsonld(v) for v in value]
-
-
 def _convert_language(obj):
     """Convert language object."""
     if isinstance(obj, dict):
@@ -324,7 +250,7 @@ def _convert_keyword(keywords):
         'schema': 'http://schema.org/',
     },
 )
-class Dataset(Entity, CreatorsMixin):
+class Dataset(Entity, PersonMixin):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
@@ -336,13 +262,6 @@ class Dataset(Entity, CreatorsMixin):
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
     _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
-
-    creator = jsonld.container.list(
-        Creator,
-        converter=_convert_dataset_creator,
-        context='schema:creator',
-        kw_only=True
-    )
 
     date_published = jsonld.ib(
         default=None, context='schema:datePublished', kw_only=True
