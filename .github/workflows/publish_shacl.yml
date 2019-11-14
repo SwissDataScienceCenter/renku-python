@@ -21,7 +21,7 @@ jobs:
         python -m pip install .[all]
     - name: Create local changes
       run: |
-        git clone git@github.com:Panaetius/SHACL_test_repo.git shacl_publish
+        git clone https://${{secrets.SHACL_ACCESS_TOKEN}}@github.com/Panaetius/SHACL_test_repo.git shacl_publish
         cd shacl_publish
         mkdir $(renku --version)
         cp ../renku/data/shacl_shape.json ./$(renku --version)/
@@ -34,6 +34,6 @@ jobs:
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
-        github_token: e1409e7d16cb010e3cfacb2f3aac7fa7b22f83b3
+        github_token: ${{secrets.SHACL_ACCESS_TOKEN}}
         repository: Panaetius/SHACL_test_repo
         directory: shacl_publish
