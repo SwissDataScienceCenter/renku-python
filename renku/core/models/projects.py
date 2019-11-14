@@ -23,8 +23,8 @@ import os
 import attr
 
 from renku.core.models import jsonld
-from renku.core.models.datasets import Creator
 from renku.core.models.datastructures import Collection
+from renku.core.models.provenance.agents import Person
 from renku.core.utils.datetime8601 import parse_date
 
 PROJECT_URL_PATH = 'projects'
@@ -89,14 +89,14 @@ class Project(object):
         """Initialize computed attributes."""
         if not self.creator and self.client:
             if self.client.renku_metadata_path.exists():
-                self.creator = Creator.from_commit(
+                self.creator = Person.from_commit(
                     self.client.find_previous_commit(
                         self.client.renku_metadata_path, return_first=True
                     ),
                 )
             else:
                 # this assumes the project is being newly created
-                self.creator = Creator.from_git(self.client.repo)
+                self.creator = Person.from_git(self.client.repo)
 
         self._id = self.project_id
 

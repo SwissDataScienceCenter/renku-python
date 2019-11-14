@@ -25,7 +25,8 @@ from contextlib import contextmanager
 import git
 import pytest
 
-from renku.core.models.datasets import Creator, Dataset, DatasetFile
+from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.provenance.agents import Person
 
 
 def _key(client, dataset, filename):
@@ -140,7 +141,7 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 
 @pytest.mark.parametrize(
     'creators', [
-        [Creator(name='me', email='me@example.com')],
+        [Person(name='me', email='me@example.com')],
         [{
             'name': 'me',
             'email': 'me@example.com',
@@ -150,14 +151,14 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 def test_creator_parse(creators, data_file):
     """Test that different options for specifying creators work."""
     f = DatasetFile(path='file', creator=creators)
-    creator = Creator(name='me', email='me@example.com')
+    creator = Person(name='me', email='me@example.com')
     assert creator in f.creator
 
     # email check
     with pytest.raises(ValueError):
-        Creator(name='me', email='meexample.com')
+        Person(name='me', email='meexample.com')
 
-    # creators must be a set or list of dicts or Creator
+    # creators must be a set or list of dicts or Person
     with pytest.raises(ValueError):
         f = DatasetFile(path='file', creator=['name'])
 
