@@ -16,4 +16,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check documentation is added
-        run: echo ${{ github.event.pull_request.labels}}
+        run: test "${{ contains(github.event.pull_request.labels, 'needs_documentation') }}" == "false"
