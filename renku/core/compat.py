@@ -21,7 +21,6 @@ import contextlib
 import json
 import os
 import sys
-from collections import deque
 from pathlib import Path
 
 import pyld
@@ -68,18 +67,8 @@ except NameError:  # pragma: no cover
     FileNotFoundError = IOError
 
 
-class ActiveContextCache(object):
+class PatchedActiveContextCache(pyld.jsonld.ActiveContextCache):
     """Pyld context cache without issue of missing contexts."""
-
-    def __init__(self, size=100):
-        self.order = deque()
-        self.cache = {}
-        self.size = size
-
-    def get(self, active_ctx, local_ctx):
-        key1 = json.dumps(active_ctx)
-        key2 = json.dumps(local_ctx)
-        return self.cache.get(key1, {}).get(key2)
 
     def set(self, active_ctx, local_ctx, result):
         if len(self.order) == self.size:
@@ -89,7 +78,6 @@ class ActiveContextCache(object):
                 e['localCtx'] == entry['localCtx'] for e in self.order
             ) == 0:
                 # only delete from cache if it doesn't exist in context deque
-                print("this totally works")
                 del self.cache[entry['activeCtx']][entry['localCtx']]
         key1 = json.dumps(active_ctx)
         key2 = json.dumps(local_ctx)
@@ -97,6 +85,6 @@ class ActiveContextCache(object):
         self.cache.setdefault(key1, {})[key2] = json.loads(json.dumps(result))
 
 
-pyld._cache = {'activeCtx': ActiveContextCache()}
+pyld.jsonld._cache = {'activeCtx': PatchedActiveContextCache()}
 
 __all__ = ('FileNotFoundError', 'Path', 'contextlib', 'pyld')
