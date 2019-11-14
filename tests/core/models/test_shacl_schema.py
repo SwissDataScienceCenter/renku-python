@@ -17,10 +17,8 @@
 # limitations under the License.
 """test KG against SHACL shape."""
 
-from pyld import jsonld as ld
-
 from renku.cli import cli
-from renku.core.compat import Path
+from renku.core.compat import Path, pyld
 from renku.core.utils.shacl import validate_graph
 
 
@@ -61,7 +59,7 @@ def test_dataset_shacl(tmpdir, runner, project, client):
 
     with client.with_dataset('dataset') as dataset:
         g = dataset.asjsonld()
-        rdf = ld.to_rdf(
+        rdf = pyld.jsonld.to_rdf(
             g,
             options={
                 'format': 'application/n-quads',
@@ -94,7 +92,7 @@ def test_project_shacl(project, client):
     project.creator = Creator(email='johndoe@example.com', name='Johnny Doe')
 
     g = project.asjsonld()
-    rdf = ld.to_rdf(
+    rdf = pyld.jsonld.to_rdf(
         g,
         options={
             'format': 'application/n-quads',

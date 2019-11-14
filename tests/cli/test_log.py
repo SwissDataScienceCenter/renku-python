@@ -62,5 +62,6 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format):
     result = runner.invoke(
         cli, ['log', '--strict', '--format={}'.format(format)]
     )
+
     assert 0 == result.exit_code, result.output
     assert all(p in result.output for p in paths)

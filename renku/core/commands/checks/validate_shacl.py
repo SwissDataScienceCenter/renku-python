@@ -17,11 +17,11 @@
 # limitations under the License.
 """Check KG structure using SHACL."""
 import yaml
-from pyld import jsonld as ld
 from rdflib.namespace import Namespace
 from rdflib.term import BNode
 
 from renku.core.commands.echo import WARNING
+from renku.core.compat import pyld
 from renku.core.models.jsonld import NoDatesSafeLoader
 from renku.core.utils.shacl import validate_graph
 
@@ -100,7 +100,7 @@ def check_shacl_structure(path):
     with path.open(mode='r') as fp:
         source = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
 
-    rdf = ld.to_rdf(
+    rdf = pyld.jsonld.to_rdf(
         source,
         options={
             'format': 'application/n-quads',
