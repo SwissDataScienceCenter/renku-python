@@ -1,2 +1,2 @@
-needs_documentation:
+"documentation:required":
   - renku/**/*
