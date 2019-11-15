@@ -1,8 +1,0 @@
-{
-	"options": {
-		"detectPull": true
-	},
-	"checks": {
-        "PR must have documentation": "pull.labels.filter(l => l.name === 'needs_documentation').length === 0"
-	}
-}
