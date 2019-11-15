@@ -183,7 +183,7 @@ def add_to_dataset(
             name=name, identifier=identifier, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
-                client.add_data_to_dataset(
+                message = client.add_data_to_dataset(
                     dataset,
                     bar,
                     link=link,
@@ -192,6 +192,9 @@ def add_to_dataset(
                     destination=destination,
                     ref=ref
                 )
+
+            if message:
+                click.echo(message)
 
             if with_metadata:
                 for file_ in with_metadata.files:

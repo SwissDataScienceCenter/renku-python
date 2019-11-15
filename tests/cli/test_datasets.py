@@ -335,6 +335,39 @@ def test_relative_import_to_dataset(tmpdir, runner, client):
     )
 
 
+@pytest.mark.parametrize(
+    'params,message', [
+        (['-s', 'file', 'https://example.com'
+          ], 'Cannot use "--source" with URLs or local files.'),
+        (['-s', 'file', '/some/local/path'
+          ], 'Cannot use "--source" with URLs or local files.'),
+    ]
+)
+def test_usage_error_in_add_from_url(runner, client, params, message):
+    """Test user's errors when adding URL/local file to a dataset."""
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'remote', '--create'] + params,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 2
+    assert message in result.output
+
+
+def test_add_from_local_repo_warning(
+    runner, client, data_repository, directory_tree
+):
+    """Test a warning is printed when adding from a local git repo."""
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'dataset', '--create',
+         str(directory_tree)],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert 'Use remote\'s Git URL instead to enable lineage ' in result.output
+
+
 def test_dataset_add_with_link(tmpdir, runner, project, client):
     """Test adding data to dataset with --link flag."""
     import stat
