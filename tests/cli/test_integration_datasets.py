@@ -556,6 +556,7 @@ def test_add_from_git_copies_metadata(runner, client):
 @pytest.mark.integration
 @pytest.mark.parametrize(
     'params,n_urls,message', [
+        ([], 0, 'No URL is specified'),
         (['-s', 'file', '-d', 'new-file'], 0, 'No URL is specified'),
         (['-s', 'file'], 2, 'Cannot add multiple URLs'),
         (['-d', 'file'], 2, 'Cannot add multiple URLs'),

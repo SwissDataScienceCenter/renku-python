@@ -662,7 +662,7 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
 
     output = json.loads(result.output)
     for record in output:
-        assert Path(record['url']).exists()
+        assert Path(record['path']).exists()
 
 
 def test_dataset_unlink_file_not_found(runner, project):
