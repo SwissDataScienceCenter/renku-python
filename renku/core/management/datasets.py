@@ -184,12 +184,13 @@ class DatasetsApiMixin(object):
         link=False
     ):
         """Import the data into the data directory."""
+        return_message = ''
         dataset_path = self.path / self.datadir / dataset.name
 
         files = []
 
         for url in urls:
-            git = git or check_for_git_repo(url)
+            git = git or _is_remote_git_repo(url)
 
             if git:
                 sources = sources or ()
@@ -199,6 +200,14 @@ class DatasetsApiMixin(object):
                     )
                 )
             else:
+                if sources:
+                    raise errors.UsageError(
+                        'Cannot use "--source" with URLs or local files.'
+                    )
+                if _is_local_git_repo(url):
+                    return_message = 'Adding data from local Git repository.' \
+                                     ' Use remote\'s Git URL instead to ' \
+                                     'enable lineage information and updates.'
                 files.extend(
                     self._add_from_url(
                         dataset, dataset_path, url, link, destination
@@ -236,6 +245,8 @@ class DatasetsApiMixin(object):
             dataset_files.append(datasetfile)
         dataset.update_files(dataset_files)
 
+        return return_message
+
     def _add_from_url(self, dataset, dataset_path, url, link, destination):
         """Process an add from url and return the location on disk."""
         u = parse.urlparse(url)
@@ -257,10 +268,32 @@ class DatasetsApiMixin(object):
         if u.scheme in ('', 'file'):
             src = Path(u.path).absolute()
 
+            if not src.exists():
+                raise errors.ParameterError(
+                    'Cannot find file/directory: {}'.format(url)
+                )
+
+            try:
+                Path(u.path).resolve().relative_to(self.path)
+            except ValueError:
+                pass
+            else:
+                if not destination:
+                    return [{
+                        'path': url,
+                        'url': url,
+                        'creator': dataset.creator,
+                        'dataset': dataset.name,
+                        'parent': self
+                    }]
+
             # if we have a directory, recurse
             if src.is_dir():
+                if src.name == '.git':
+                    return []
+
                 if dst.exists() and not dst.is_dir():
-                    raise errors.InvalidFileOperation(
+                    raise errors.ParameterError(
                         'Cannot copy directory to a file'
                     )
 
@@ -325,40 +358,10 @@ class DatasetsApiMixin(object):
 
         u = parse.urlparse(url)
 
-        is_local_repo = u.scheme in ('', 'file') and not url.startswith('git@')
-
-        if is_local_repo:
-            try:
-                Path(u.path).resolve().relative_to(self.path)
-            except ValueError:
-                pass
-            else:
-                if not destination:
-                    return [{
-                        'path': url,
-                        'url': url,
-                        'creator': dataset.creator,
-                        'dataset': dataset.name,
-                        'parent': self
-                    }]
-
-            # determine where is the base repo path
-            repo = Repo(u.path, search_parent_directories=True)
-            repo_path = Path(repo.git_dir).parent.resolve()
-
-            # if repo path is a parent of the url, treat the url as a source
-            if repo_path != Path(u.path).resolve():
-                if sources:
-                    raise errors.UsageError(
-                        'Cannot use --source within local repo subdirectories'
-                    )
-                source = Path(u.path).resolve().relative_to(repo_path)
-                sources = (source, )
-                url = repo_path.as_posix()
-        elif u.scheme not in {'http', 'https', 'git+https', 'git+ssh'} and \
+        if u.scheme not in {'http', 'https', 'git+https', 'git+ssh'} and \
                 not url.startswith('git@'):
             raise errors.UrlSchemeNotSupported(
-                'Scheme {} not supported'.format(u.scheme)
+                'Scheme "{}" not supported'.format(u.scheme)
             )
 
         repo, repo_path = self._prepare_git_repo(url, ref)
@@ -410,11 +413,6 @@ class DatasetsApiMixin(object):
 
         for path, src, dst, _ in files:
             if not src.is_dir():
-                if is_local_repo:
-                    dst_url = None
-                else:
-                    dst_url = url
-
                 # Use original metadata if it exists
                 based_on = metadata.get(path)
                 if based_on:
@@ -437,7 +435,7 @@ class DatasetsApiMixin(object):
 
                 results.append({
                     'path': path_in_dst_repo,
-                    'url': dst_url,
+                    'url': url,
                     'creator': creators,
                     'dataset': dataset.name,
                     'parent': self,
@@ -460,7 +458,7 @@ class DatasetsApiMixin(object):
                 root_path = Path(root_path).resolve()
                 path = (root_path / p).resolve().relative_to(root_path)
             except ValueError:
-                raise errors.InvalidFileOperation(
+                raise errors.ParameterError(
                     'File {} is not within path {}'.format(p, root_path)
                 )
             else:
@@ -500,9 +498,9 @@ class DatasetsApiMixin(object):
             if len(sources) == 1 and not src.is_dir():
                 dst = dst_root
             elif not sources:
-                raise errors.InvalidFileOperation('Cannot copy repo to file')
+                raise errors.ParameterError('Cannot copy repo to file')
             else:
-                raise errors.InvalidFileOperation(
+                raise errors.ParameterError(
                     'Cannot copy multiple files or directories to a file'
                 )
 
@@ -678,7 +676,7 @@ class DatasetsApiMixin(object):
                         added=based_on.added
                     )
                 except KeyError:
-                    raise errors.InvalidFileOperation(
+                    raise errors.ParameterError(
                         'Cannot find file {} in the repo {}'.format(
                             based_on.url, url
                         )
@@ -835,22 +833,29 @@ class DatasetsApiMixin(object):
         return label
 
 
-def check_for_git_repo(url):
+def _is_remote_git_repo(url):
     """Check if a url points to a git repository."""
     u = parse.urlparse(url)
-    is_git = False
+    is_remote = u.scheme not in ('', 'file') or url.startswith('git@')
 
-    if os.path.splitext(u.path)[1] == '.git':
-        is_git = True
-    elif u.scheme in ('', 'file'):
-        from git import InvalidGitRepositoryError, Repo
+    return is_remote and os.path.splitext(u.path)[1] == '.git'
 
+
+def _is_local_git_repo(url):
+    """Check if a path is within a git repository."""
+    from git import InvalidGitRepositoryError, NoSuchPathError, Repo
+
+    u = parse.urlparse(url)
+
+    if u.scheme in ('', 'file'):
         try:
-            Repo(u.path, search_parent_directories=True)
-            is_git = True
-        except InvalidGitRepositoryError:
-            is_git = False
-    return is_git
+            Repo(url, search_parent_directories=True)
+        except (InvalidGitRepositoryError, NoSuchPathError):
+            pass
+        else:
+            return True
+
+    return False
 
 
 DATASET_METADATA_PATHS = [
