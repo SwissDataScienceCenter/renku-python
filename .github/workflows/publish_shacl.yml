@@ -1,11 +1,12 @@
 name: Publish SHACL shape for current version
 
-on:
-  push:
-    branches:
-      - master
-    paths:
-      - 'renku/data/shacl_shape.json'
+# on:
+#   push:
+#     branches:
+#       - master
+#     paths:
+#       - 'renku/data/shacl_shape.json'
+on: [push]
 
 jobs:
   build:
