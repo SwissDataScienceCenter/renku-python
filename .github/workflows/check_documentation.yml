@@ -8,6 +8,5 @@ jobs:
   check_labels:
     runs-on: ubuntu-latest
     steps:
-      - uses: cchantep/probot-pr-status-label@ghaction-1.0.x
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check documentation is added
+        run: echo '${{ toJson(github.event.pull_request.labels) }}' | grep -zqv 'documentation:required'
