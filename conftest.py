@@ -25,9 +25,11 @@ import shutil
 import tempfile
 import time
 import urllib
+from pathlib import Path
 
 import pytest
 import responses
+import yaml
 from click.testing import CliRunner
 
 
@@ -452,17 +454,24 @@ def cli(client, run):
     return renku_cli
 
 
-@pytest.fixture
-def doi_dataset():
-    """Return a yaml of dataset using DOI for its id."""
-    from pathlib import Path
-    dataset_path = Path(
-        __file__
-    ).parent / 'tests' / 'fixtures' / 'doi-dataset.yml'
-    with open(dataset_path.as_posix()) as f:
-        dataset_yaml = f.read()
+@pytest.fixture(
+    params=[{
+        'path':
+            Path(__file__).parent / 'tests' / 'fixtures' / 'doi-dataset.yml',
+    }, {
+        'path':
+            Path(__file__).parent / 'tests' / 'fixtures' /
+            'broken-dataset-v0.5.2.yml',
+    }]
+)
+def dataset_metadata(request):
+    """Return dataset metadata fixture."""
+    from renku.core.models.jsonld import NoDatesSafeLoader
 
-    return dataset_yaml
+    file_path = request.param['path']
+
+    data = yaml.load(file_path.read_text(), Loader=NoDatesSafeLoader)
+    yield data
 
 
 @pytest.fixture()
