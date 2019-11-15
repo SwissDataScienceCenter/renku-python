@@ -1,11 +1,11 @@
 name: Check PR documentation label
 
-on
+on:
   pull_request:
     types: ['labeled', 'synchronize']
 
 jobs:
-  check_pr_milestone:
+  check_labels:
     runs-on: ubuntu-latest
     steps:
       - uses: cchantep/probot-pr-status-label@ghaction-1.0.x
