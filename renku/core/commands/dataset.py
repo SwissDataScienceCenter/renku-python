@@ -39,7 +39,7 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired, ParameterError
+    MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.creators import Creator
@@ -141,12 +141,13 @@ def add_file(
     create=False,
     sources=(),
     destination='',
+    ref=None,
     with_metadata=None,
     urlscontext=contextlib.nullcontext
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, create, sources, destination,
+        client, urls, name, link, force, create, sources, destination, ref,
         with_metadata, urlscontext
     )
 
@@ -160,10 +161,19 @@ def add_to_dataset(
     create=False,
     sources=(),
     destination='',
+    ref=None,
     with_metadata=None,
     urlscontext=contextlib.nullcontext
 ):
     """Add data to a dataset."""
+    if sources or destination:
+        if len(urls) == 0:
+            raise UsageError('No URL is specified')
+        elif len(urls) > 1:
+            raise UsageError(
+                'Cannot add multiple URLs with --source or --destination'
+            )
+
     # check for identifier before creating the dataset
     identifier = extract_doi(
         with_metadata.identifier
@@ -180,6 +190,7 @@ def add_to_dataset(
                     force=force,
                     sources=sources,
                     destination=destination,
+                    ref=ref
                 )
 
             if with_metadata:
@@ -204,8 +215,10 @@ def add_to_dataset(
             '"renku dataset add {0}" command with "--create" option for '
             'automatic dataset creation.'.format(name)
         )
-    except (FileNotFoundError, git.exc.NoSuchPathError):
-        raise ParameterError('Could not process \n{0}'.format('\n'.join(urls)))
+    except (FileNotFoundError, git.exc.NoSuchPathError) as e:
+        raise ParameterError(
+            'Could not find paths/URLs: \n{0}'.format('\n'.join(urls))
+        ) from e
 
 
 @pass_local_client(clean=False, commit=False)
@@ -504,13 +517,20 @@ def import_dataset(
             )
 
 
-@pass_local_client(clean=True, commit=True, commit_only=DATASET_METADATA_PATHS)
+@pass_local_client(
+    clean=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS,
+    commit_empty=False
+)
 def update_datasets(
     client,
     names,
     creators,
     include,
     exclude,
+    ref,
+    delete,
     progress_context=contextlib.nullcontext
 ):
     """Update files from a remote Git repo."""
@@ -527,6 +547,7 @@ def update_datasets(
 
     datasets = {}
     possible_updates = []
+    unique_remotes = set()
 
     for file_ in records:
         if file_.based_on:
@@ -539,11 +560,27 @@ def update_datasets(
 
             file_.dataset = dataset
             possible_updates.append(file_)
+            unique_remotes.add(file_.based_on['url'])
+
+    if ref and len(unique_remotes) > 1:
+        raise ParameterError(
+            'Cannot use "--ref" with more than one Git repository.\n'
+            'Limit list of files to be updated to one repository. See'
+            '"renku dataset update -h" for more information.'
+        )
 
     with progress_context(
         possible_updates, item_show_func=lambda x: x.path if x else None
     ) as progressbar:
-        client.update_dataset_files(progressbar)
+        deleted_files = client.update_dataset_files(
+            files=progressbar, ref=ref, delete=delete
+        )
+
+    if deleted_files and not delete:
+        click.echo(
+            'Some files are deleted from remote. To also delete them locally '
+            'run update command with `--delete` flag.'
+        )
 
 
 def _include_exclude(file_path, include=None, exclude=None):

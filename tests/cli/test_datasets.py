@@ -431,16 +431,34 @@ def test_relative_git_import_to_dataset(tmpdir, runner, project, client):
     )
     assert 1 == result.exit_code
 
-    # copy a non-existing source
+
+@pytest.mark.parametrize(
+    'add_options,n_urls,message', [
+        (['-s', 'file', '-d', 'new-file'], 0, 'No URL is specified'),
+        (['-s', 'file'], 2, 'Cannot add multiple URLs'),
+        (['-d', 'file'], 2, 'Cannot add multiple URLs'),
+        (['-s', 'non-existing'], 1, 'No such file or directory'),
+    ]
+)
+def test_usage_error_in_import_from_git_repo(
+    data_repository, directory_tree, runner, project, client, add_options,
+    n_urls, message
+):
+    """Test user's errors when adding to a dataset from a git repository."""
+    # create a dataset
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+
+    urls = n_urls * [directory_tree.strpath]
+
+    # add data in subdirectory
     result = runner.invoke(
         cli,
-        [
-            'dataset', 'add', 'relative', '--source', 'non-existing',
-            str(tmpdir)
-        ],
-        catch_exceptions=True,
+        ['dataset', 'add', 'dataset'] + add_options + urls,
+        catch_exceptions=False,
     )
-    assert 2 == result.exit_code
+    assert result.exit_code == 2
+    assert message in result.output
 
 
 def test_dataset_add_with_link(tmpdir, runner, project, client):
@@ -1246,7 +1264,7 @@ def test_dataset_clean_up_when_add_fails(runner, client):
 
 
 def read_dataset_file_metadata(client, dataset_name, filename):
-
+    """Return metadata from dataset's YAML file."""
     path = client.dataset_path(dataset_name)
     assert path.exists()
 
@@ -1295,8 +1313,10 @@ def test_dataset_update(
     assert after['_label'] != before['_label']
     assert after['added'] == before['added']
     assert after['url'] == before['url']
-    assert after['based_on']['_id'] != before['based_on']['_id']
+    assert after['based_on']['_id'] == before['based_on']['_id']
+    assert after['based_on']['_label'] != before['based_on']['_label']
     assert after['based_on']['path'] == before['based_on']['path']
+    assert after['based_on']['based_on'] is None
 
 
 def test_dataset_update_remove_file(
@@ -1320,6 +1340,12 @@ def test_dataset_update_remove_file(
     data_repository.index.commit('removed')
 
     result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
+    assert 0 == result.exit_code
+    assert file_path.exists()
+
+    result = runner.invoke(
+        cli, ['dataset', 'update', '--delete'], catch_exceptions=False
+    )
     assert 0 == result.exit_code
     assert not file_path.exists()
 
@@ -1420,3 +1446,103 @@ def test_dataset_update_multiple_datasets(
     assert data == 'new content'
     data = open(str(client.path / 'data' / 'dataset-2' / 'file')).read()
     assert data == 'new content'
+
+
+def test_empty_update(client, runner, data_repository, directory_tree):
+    """Test update when nothing changed."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, ['dataset', 'add', '--create', 'dataset', directory_tree.strpath],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    commit_sha_before = client.repo.head.object.hexsha
+    result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
+    assert 0 == result.exit_code
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_after == commit_sha_before
+
+
+def test_import_from_renku_project(remote_project, client, runner):
+    """Test an imported dataset from other renku repos will have metadata."""
+    from renku.core.management import LocalClient
+
+    _, remote_project_path = remote_project
+
+    remote_client = LocalClient(remote_project_path)
+    remote = read_dataset_file_metadata(
+        remote_client, 'remote-dataset', 'file'
+    )
+
+    runner.invoke(cli, ['-S', 'dataset', 'create', 'remote-dataset'])
+    result = runner.invoke(
+        cli,
+        [
+            '-S', 'dataset', 'add', '--src', 'data', 'remote-dataset',
+            str(remote_project_path)
+        ],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+    assert metadata['creator'] == remote['creator']
+    assert metadata['based_on']['_id'] == remote['_id']
+    assert metadata['based_on']['_label'] == remote['_label']
+    assert metadata['based_on']['path'] == remote['path']
+    assert metadata['based_on']['based_on'] is None
+    assert metadata['based_on']['url'] == remote_project_path
+
+
+def test_update_renku_project_dataset(
+    remote_project, client, runner, directory_tree, data_repository
+):
+    """Test an imported dataset from other renku repos will be updated."""
+    remote_runner, remote_project_path = remote_project
+
+    runner.invoke(cli, ['-S', 'dataset', 'create', 'remote-dataset'])
+    result = runner.invoke(
+        cli,
+        [
+            '-S', 'dataset', 'add', '--src', 'data/remote-dataset/file',
+            'remote-dataset',
+            str(remote_project_path)
+        ],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    before = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+
+    # Update and commit original file
+    file_ = directory_tree.join('file')
+    file_.write('new content')
+    data_repository.index.add([file_.strpath])
+    data_repository.index.commit('updated')
+
+    assert (Path(file_.strpath)).read_text() == 'new content'
+
+    # Update remote project
+    os.chdir(remote_project_path)
+    result = remote_runner.invoke(
+        cli, ['dataset', 'update'], catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    # Update project
+    os.chdir(str(client.path))
+    result = runner.invoke(cli, ['dataset', 'update'], catch_exceptions=False)
+    assert 0 == result.exit_code
+    content = (client.path / 'data' / 'remote-dataset' / 'file').read_text()
+    assert content == 'new content'
+
+    after = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+    assert after['_id'] == before['_id']
+    assert after['_label'] != before['_label']
+    assert after['added'] == before['added']
+    assert after['url'] == before['url']
+    assert after['based_on']['_id'] == before['based_on']['_id']
+    assert after['based_on']['_label'] != before['based_on']['_label']
+    assert after['based_on']['path'] == before['based_on']['path']
+    assert after['based_on']['based_on'] is None
