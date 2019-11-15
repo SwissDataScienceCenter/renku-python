@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'renku/data/shacl_shape.json'
 
 jobs:
   build:
