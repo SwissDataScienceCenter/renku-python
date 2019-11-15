@@ -35,10 +35,10 @@ from git import GitCommandError, GitError, Repo
 
 from renku.core import errors
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.creators import Creator
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
+from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 
 
@@ -425,7 +425,7 @@ class DatasetsApiMixin(object):
                     creators = []
                     # grab all the creators from the commit history
                     for commit in repo.iter_commits(paths=path):
-                        creator = Creator.from_commit(commit)
+                        creator = Person.from_commit(commit)
                         if creator not in creators:
                             creators.append(creator)
 
@@ -727,7 +727,7 @@ class DatasetsApiMixin(object):
             creators = []
             # grab all the creators from the commit history
             for commit in repo.iter_commits(paths=file_.path):
-                creator = Creator.from_commit(commit)
+                creator = Person.from_commit(commit)
                 if creator not in creators:
                     creators.append(creator)
 
