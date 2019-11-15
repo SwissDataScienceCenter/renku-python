@@ -37,7 +37,7 @@ def _shacl_graph_to_string(graph):
         res = graph.value(result, sh.resultMessage)
 
         if res:
-            message = '{}: {}'.format(path, res)
+            message = '{0}: {1}'.format(path, res)
         else:
             kind = graph.value(result, sh.sourceConstraintComponent)
             focusNode = graph.value(result, sh.focusNode)
@@ -45,7 +45,9 @@ def _shacl_graph_to_string(graph):
             if isinstance(focusNode, BNode):
                 focusNode = '<Anonymous>'
 
-            message = '{}: Type: {}, Node ID: {}'.format(path, kind, focusNode)
+            message = '{0}: Type: {1}, Node ID: {2}'.format(
+                path, kind, focusNode
+            )
 
         problems.append(message)
 
@@ -61,9 +63,8 @@ def check_project_structure(client):
     if conform:
         return True, None
 
-    problems = (
-        WARNING + 'Invalid structure of project metadata\n\t' +
-        _shacl_graph_to_string(graph)
+    problems = '{0}Invalid structure of project metadata\n\t{1}'.format(
+        WARNING, _shacl_graph_to_string(graph)
     )
 
     return False, problems
@@ -73,13 +74,13 @@ def check_datasets_structure(client):
     """Validate dataset metadata against SHACL."""
     ok = True
 
-    problems = WARNING + 'Invalid structure of dataset metadata\n'
+    problems = ['{0}Invalid structure of dataset metadata'.format(WARNING)]
 
     for path in client.renku_datasets_path.rglob(client.METADATA):
         try:
             conform, graph, t = check_shacl_structure(path)
         except (Exception, BaseException) as e:
-            problems += 'Couldn\'t validate {}: {}\n\n'.format(path, e)
+            problems.append('Couldn\'t validate {0}: {1}\n\n'.format(path, e))
             continue
 
         if conform:
@@ -87,12 +88,14 @@ def check_datasets_structure(client):
 
         ok = False
 
-        problems += str(path) + '\n\t' + _shacl_graph_to_string(graph) + '\n\n'
+        problems.append(
+            '{0}\n\t{1}\n'.format(path, _shacl_graph_to_string(graph))
+        )
 
     if ok:
         return True, None
 
-    return False, problems
+    return False, '\n'.join(problems)
 
 
 def check_shacl_structure(path):

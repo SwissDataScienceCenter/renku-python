@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""JSON-LD SHACL validation."""
+"""JSON-LD SHACL validations."""
 
 from pkg_resources import resource_string
 from pyshacl import validate
@@ -24,7 +24,7 @@ from pyshacl import validate
 def validate_graph(graph, shacl_path=None, format='nquads'):
     """Validate the current graph with a SHACL schema.
 
-    uses default schema if not supplied.
+    Uses default schema if not supplied.
     """
     if shacl_path:
         with open(shacl_path, 'r', encoding='utf-8') as f:
