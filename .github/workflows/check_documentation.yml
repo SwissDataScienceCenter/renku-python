@@ -2,7 +2,7 @@ name: Check PR documentation label
 
 on:
   pull_request:
-    types: ['labeled', 'synchronize']
+    types: ['labeled', 'unlabeled', 'synchronize']
 
 jobs:
   check_labels:
