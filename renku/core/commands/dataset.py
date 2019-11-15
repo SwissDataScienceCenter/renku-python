@@ -166,13 +166,12 @@ def add_to_dataset(
     urlscontext=contextlib.nullcontext
 ):
     """Add data to a dataset."""
-    if sources or destination:
-        if len(urls) == 0:
-            raise UsageError('No URL is specified')
-        elif len(urls) > 1:
-            raise UsageError(
-                'Cannot add multiple URLs with --source or --destination'
-            )
+    if len(urls) == 0:
+        raise UsageError('No URL is specified')
+    if (sources or destination) and len(urls) > 1:
+        raise UsageError(
+            'Cannot add multiple URLs with --source or --destination'
+        )
 
     # check for identifier before creating the dataset
     identifier = extract_doi(
@@ -183,7 +182,7 @@ def add_to_dataset(
             name=name, identifier=identifier, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
-                message = client.add_data_to_dataset(
+                warning_message = client.add_data_to_dataset(
                     dataset,
                     bar,
                     link=link,
@@ -193,8 +192,8 @@ def add_to_dataset(
                     ref=ref
                 )
 
-            if message:
-                click.echo(message)
+            if warning_message:
+                click.echo(WARNING + warning_message)
 
             if with_metadata:
                 for file_ in with_metadata.files:

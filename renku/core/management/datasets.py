@@ -176,7 +176,6 @@ class DatasetsApiMixin(object):
         self,
         dataset,
         urls,
-        git=False,
         force=False,
         sources=(),
         destination='',
@@ -184,35 +183,43 @@ class DatasetsApiMixin(object):
         link=False
     ):
         """Import the data into the data directory."""
-        return_message = ''
+        warning_message = ''
         dataset_path = self.path / self.datadir / dataset.name
+
+        destination = destination or Path('.')
+        destination = self._resolve_path(dataset_path, destination)
+        destination = self.path / dataset_path / destination
 
         files = []
 
         for url in urls:
-            git = git or _is_remote_git_repo(url)
+            is_remote, is_git = _check_url(url)
 
-            if git:
+            if is_git and is_remote:  # Remote git repo
                 sources = sources or ()
-                files.extend(
-                    self._add_from_git(
-                        dataset, dataset_path, url, sources, destination, ref
-                    )
+                data = self._add_from_git(
+                    dataset, url, sources, destination, ref
                 )
             else:
                 if sources:
                     raise errors.UsageError(
                         'Cannot use "--source" with URLs or local files.'
                     )
-                if _is_local_git_repo(url):
-                    return_message = 'Adding data from local Git repository.' \
-                                     ' Use remote\'s Git URL instead to ' \
-                                     'enable lineage information and updates.'
-                files.extend(
-                    self._add_from_url(
-                        dataset, dataset_path, url, link, destination
+
+                if not is_remote:  # Local path, might be git
+                    if is_git:
+                        warning_message = 'Adding data from local Git ' \
+                            'repository. Use remote\'s Git URL instead to ' \
+                            'enable lineage information and updates.'
+                    u = parse.urlparse(url)
+                    data = self._add_from_local(
+                        dataset, u.path, link, destination
                     )
-                )
+                else:  # Remote URL
+                    data = self._add_from_url(dataset, url, destination)
+
+            files.extend(data)
+            self.track_paths_in_storage(*(f['path'] for f in files))
 
         ignored = self.find_ignored_paths(*(data['path']
                                             for data in files)) or []
@@ -245,141 +252,120 @@ class DatasetsApiMixin(object):
             dataset_files.append(datasetfile)
         dataset.update_files(dataset_files)
 
-        return return_message
+        return warning_message
 
-    def _add_from_url(self, dataset, dataset_path, url, link, destination):
-        """Process an add from url and return the location on disk."""
-        u = parse.urlparse(url)
+    def _add_from_local(self, dataset, path, link, destination):
+        """Add a file or directory from local filesystem."""
+        src = Path(path).resolve()
 
-        if u.scheme not in Dataset.SUPPORTED_SCHEMES:
-            raise errors.UrlSchemeNotSupported(
-                'Scheme {} not supported'.format(u.scheme)
+        if not src.exists():
+            raise errors.ParameterError(
+                'Cannot find file/directory: {}'.format(path)
             )
 
-        if destination:
-            destination = self._resolve_paths(dataset_path,
-                                              [destination]).pop()
+        if destination.exists() and destination.is_dir():
+            destination = destination / src.name
 
-        dst = self.path / dataset_path / destination
+        # if we have a directory, recurse
+        if src.is_dir():
+            if destination.exists() and not destination.is_dir():
+                raise errors.ParameterError('Cannot copy directory to a file')
 
-        if dst.exists() and dst.is_dir():
-            dst = dst / Path(u.path).name
+            if src.name == '.git':
+                # Cannot have a '.git' directory inside a Git repo
+                return []
 
-        if u.scheme in ('', 'file'):
-            src = Path(u.path).absolute()
-
-            if not src.exists():
-                raise errors.ParameterError(
-                    'Cannot find file/directory: {}'.format(url)
+            files = []
+            destination.mkdir(parents=True, exist_ok=True)
+            for f in src.iterdir():
+                files.extend(
+                    self._add_from_local(
+                        dataset,
+                        f.absolute().as_posix(),
+                        link=link,
+                        destination=destination
+                    )
                 )
-
+            return files
+        else:
+            # Check if file is in the project and return it
             try:
-                Path(u.path).resolve().relative_to(self.path)
+                path_in_repo = src.relative_to(self.path)
             except ValueError:
                 pass
             else:
-                if not destination:
-                    return [{
-                        'path': url,
-                        'url': url,
-                        'creator': dataset.creator,
-                        'dataset': dataset.name,
-                        'parent': self
-                    }]
+                return [{
+                    'path': path_in_repo,
+                    'url': src.as_uri(),
+                    'creator': dataset.creator,
+                    'dataset': dataset.name,
+                    'parent': self
+                }]
 
-            # if we have a directory, recurse
-            if src.is_dir():
-                if src.name == '.git':
-                    return []
+        # Make sure the parent directory exists.
+        destination.parent.mkdir(parents=True, exist_ok=True)
 
-                if dst.exists() and not dst.is_dir():
-                    raise errors.ParameterError(
-                        'Cannot copy directory to a file'
-                    )
-
-                files = []
-                dst.mkdir(parents=True, exist_ok=True)
-                for f in src.iterdir():
-                    files.extend(
-                        self._add_from_url(
-                            dataset,
-                            dataset_path,
-                            f.absolute().as_posix(),
-                            link=link,
-                            destination=dst
-                        )
-                    )
-                return files
-
-            # Make sure the parent directory exists.
-            dst.parent.mkdir(parents=True, exist_ok=True)
-
-            if link:
-                try:
-                    os.link(str(src), str(dst))
-                except Exception as e:
-                    raise errors.OperationError(
-                        'Could not create hard link '
-                        '- retry without --link.'
-                    ) from e
-            else:
-                shutil.copy(str(src), str(dst))
-
-            # Do not expose local paths.
-            src = None
-        else:
+        if link:
             try:
-                response = requests.get(url)
-                dst.write_bytes(response.content)
-            except error.HTTPError as e:  # pragma nocover
+                os.link(str(src), str(destination))
+            except Exception as e:
                 raise errors.OperationError(
-                    'Cannot download from {}'.format(url)
+                    'Could not create hard link '
+                    '- retry without --link.'
                 ) from e
-
-        # make the added file read-only
-        mode = dst.stat().st_mode & 0o777
-        dst.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
-
-        self.track_paths_in_storage(str(dst.relative_to(self.path)))
+        else:
+            shutil.copy(str(src), str(destination))
 
         return [{
-            'path': dst.relative_to(self.path),
+            'path': destination.relative_to(self.path),
+            'url': src.as_uri(),
+            'creator': dataset.creator,
+            'dataset': dataset.name,
+            'parent': self
+        }]
+
+    def _add_from_url(self, dataset, url, destination):
+        """Process an add from url and return the location on disk."""
+        if destination.exists() and destination.is_dir():
+            u = parse.urlparse(url)
+            destination = destination / Path(u.path).name
+
+        try:
+            response = requests.get(url)
+            destination.write_bytes(response.content)
+        except error.HTTPError as e:  # pragma nocover
+            raise errors.OperationError(
+                'Cannot download from {}'.format(url)
+            ) from e
+
+        # make the added file read-only
+        mode = destination.stat().st_mode & 0o777
+        destination.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+
+        return [{
+            'path': destination.relative_to(self.path),
             'url': url,
             'creator': dataset.creator,
             'dataset': dataset.name,
             'parent': self
         }]
 
-    def _add_from_git(
-        self, dataset, dataset_path, url, sources, destination, ref
-    ):
+    def _add_from_git(self, dataset, url, sources, destination, ref):
         """Process adding resources from another git repository."""
         from renku import LocalClient
 
         u = parse.urlparse(url)
-
-        if u.scheme not in {'http', 'https', 'git+https', 'git+ssh'} and \
-                not url.startswith('git@'):
-            raise errors.UrlSchemeNotSupported(
-                'Scheme "{}" not supported'.format(u.scheme)
-            )
-
-        repo, repo_path = self._prepare_git_repo(url, ref)
-
-        dataset_path = self.path / dataset_path
-
         sources = self._resolve_paths(u.path, sources)
-        destination = destination or Path('.')
-        destination = self._resolve_paths(dataset_path, [destination]).pop()
-
-        dst_root = self.path / dataset_path / destination
 
         # Get all files from repo that match sources
+        repo, repo_path = self._prepare_git_repo(url, ref)
         copied_sources = set()
         files = set()
         for file in repo.head.commit.tree.traverse():
             path = file.path
-            result = self._get_src_and_dst(path, repo_path, sources, dst_root)
+            result = self._get_src_and_dst(
+                path, repo_path, sources, destination
+            )
 
             if result:
                 files.add(result)
@@ -442,8 +428,6 @@ class DatasetsApiMixin(object):
                     'based_on': based_on
                 })
 
-                self.track_paths_in_storage(str(path_in_dst_repo))
-
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(str(src), str(dst))
 
@@ -451,20 +435,17 @@ class DatasetsApiMixin(object):
 
     def _resolve_paths(self, root_path, paths):
         """Check if paths are within a root path and resolve them."""
-        results = set()
+        return {self._resolve_path(root_path, p) for p in paths}
 
-        for p in paths:
-            try:
-                root_path = Path(root_path).resolve()
-                path = (root_path / p).resolve().relative_to(root_path)
-            except ValueError:
-                raise errors.ParameterError(
-                    'File {} is not within path {}'.format(p, root_path)
-                )
-            else:
-                results.add(path)
-
-        return results
+    def _resolve_path(self, root_path, path):
+        """Check if a path is within a root path and resolve it."""
+        try:
+            root_path = Path(root_path).resolve()
+            return (root_path / path).resolve().relative_to(root_path)
+        except ValueError:
+            raise errors.ParameterError(
+                'File {} is not within path {}'.format(path, root_path)
+            )
 
     def _get_src_and_dst(self, path, repo_path, sources, dst_root):
         if not sources:
@@ -833,29 +814,29 @@ class DatasetsApiMixin(object):
         return label
 
 
-def _is_remote_git_repo(url):
-    """Check if a url points to a git repository."""
+def _check_url(url):
+    """Check if a url is local/remote and if it contains a git repository."""
     u = parse.urlparse(url)
+
+    if u.scheme not in Dataset.SUPPORTED_SCHEMES:
+        raise errors.UrlSchemeNotSupported(
+            'Scheme "{}" not supported'.format(u.scheme)
+        )
+
     is_remote = u.scheme not in ('', 'file') or url.startswith('git@')
+    is_git = False
 
-    return is_remote and os.path.splitext(u.path)[1] == '.git'
-
-
-def _is_local_git_repo(url):
-    """Check if a path is within a git repository."""
-    from git import InvalidGitRepositoryError, NoSuchPathError, Repo
-
-    u = parse.urlparse(url)
-
-    if u.scheme in ('', 'file'):
+    if is_remote:
+        is_git = u.path.endswith('.git')
+    else:
         try:
-            Repo(url, search_parent_directories=True)
-        except (InvalidGitRepositoryError, NoSuchPathError):
+            Repo(u.path, search_parent_directories=True)
+        except GitError:
             pass
         else:
-            return True
+            is_git = True
 
-    return False
+    return is_remote, is_git
 
 
 DATASET_METADATA_PATHS = [
