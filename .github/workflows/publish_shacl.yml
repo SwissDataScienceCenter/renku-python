@@ -1,12 +1,11 @@
 name: Publish SHACL shape for current version
 
-# on:
-#   push:
-#     branches:
-#       - master
-#     paths:
-#       - 'renku/data/shacl_shape.json'
-on: [push]
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'renku/data/shacl_shape.json'
 
 jobs:
   build:
@@ -27,8 +26,8 @@ jobs:
         cd shacl_publish
         mkdir $(renku --version)
         cp ../renku/data/shacl_shape.json ./$(renku --version)/
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --local user.email "renku@datascience.ch"
+        git config --local user.name "RenkuBot"
         git add $(renku --version)/shacl_shape.json
         git commit -m "Publish SHACL shape for $(renku --version)"
         git push
