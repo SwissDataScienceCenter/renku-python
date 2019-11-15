@@ -81,6 +81,7 @@ install_requires = [
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython==3.0.3',
+    'jinja2>=2.10.3',
     'patool>=1.12',
     'psutil>=5.4.7',
     'pyasn1>=0.4.5',
@@ -97,7 +98,6 @@ install_requires = [
     'tabulate>=0.7.7',
     'tqdm>=4.31.1',
     'werkzeug>=0.15.5',
-    'jinja2>=2.10.3',
 ]
 
 packages = find_packages()

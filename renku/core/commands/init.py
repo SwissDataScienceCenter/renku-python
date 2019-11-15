@@ -26,23 +26,27 @@ import git
 from renku.core.management.config import RENKU_HOME
 
 
-def fetch_remote_template(
-    url, folder, branch='master', tempdir=Path(tempfile.mkdtemp())
-):
+def fetch_remote_template(url, folder, branch='master', tempdir=None):
     """Fetch the remote template and checkout the relevant folder.
 
     Returns:
         The path with template files.
 
     """
+    if tempdir is None:
+        tempdir = Path(tempfile.mkdtemp())
+
     # clone the repo locally without checking out files
     template_repo = git.Repo.clone_from(
         url, tempdir, no_checkout=True, depth=1
     )
 
     # check branch
-    template_branches = [branch.name for branch in template_repo.branches]
-    if branch not in template_branches:
+    if len({
+        template_branch.name
+        for template_branch in template_repo.branches
+        if template_branch.name == branch
+    }) < 1:
         raise ValueError(
             f'Branch "{branch}" doesn\'t exist in template "{url}"'
         )

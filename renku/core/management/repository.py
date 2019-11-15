@@ -434,7 +434,6 @@ class RepositoryApiMixin(GitCore):
 
     def import_from_template(self, template_path, metadata, force=False):
         """Render template files from a template directory."""
-        # adding author info? Creator.from_git(self.repo)
         for file in template_path.glob('**/*'):
             destination = self.path / file.relative_to(template_path)
             try:

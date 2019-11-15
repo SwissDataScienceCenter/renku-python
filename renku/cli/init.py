@@ -217,7 +217,9 @@ def init(ctx, client, directory, name, force, use_external_storage):
     required=True,
     help='Provide templates repository URL (GitHub or GitLab allowed).'
 )
-@click.option('--template-name', required=True, help='Provide template name.')
+@click.option(
+    '--template-name', required=True, help='Provide name of template to use.'
+)
 @click.option(
     '--template-branch',
     default='master',
