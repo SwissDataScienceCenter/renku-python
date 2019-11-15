@@ -1,0 +1,1545 @@
+'@context':
+  _id: '@id'
+  _label: rdfs:label
+  _project: schema:isPartOf
+  added: schema:dateCreated
+  affiliation: schema:affiliation
+  alternate_name: schema:alternateName
+  created: schema:dateCreated
+  creator: schema:creator
+  date_published: schema:datePublished
+  description: schema:description
+  email: schema:email
+  files: schema:hasPart
+  identifier: schema:identifier
+  in_language: schema:inLanguage
+  keywords: schema:keywords
+  license: schema:license
+  name: schema:name
+  path: prov:atLocation
+  prov: http://www.w3.org/ns/prov#
+  schema: http://schema.org/
+  url: schema:url
+  version: schema:version
+  wfprov: http://purl.org/wf4ever/wfprov#
+'@type':
+- prov:Entity
+- schema:Dataset
+- wfprov:Artifact
+_id: https://doi.org/10.5281/zenodo.3348115
+_label: dd38afca-0e96-4034-a2e5-dc7505c0af30
+_project:
+  '@context':
+    _id: '@id'
+    foaf: http://xmlns.com/foaf/0.1/
+    prov: http://www.w3.org/ns/prov#
+  '@type':
+  - foaf:Project
+  - prov:Location
+  _id: https://dev.renku.ch/virginiafriedrich/zurich-bikes-2
+created: '2019-07-30 09:21:18.054971'
+creator:
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Scott E. Field
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Chad R. Galley
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Jan S. Hesthaven
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Jason Kaye
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Manuel Tiglio
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Jonathan Blackman
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: "B\xE9la Szil\xE1gyi"
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Mark A. Scheel
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Daniel A. Hemberger
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Patricia Schmidt
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Rory Smith
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Christian D. Ott
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Michael Boyle
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Lawrence E. Kidder
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Harald P. Pfeiffer
+- '@type': schema:Person
+  _id: mailto:None
+  affiliation: null
+  alternate_name: null
+  email: null
+  name: Vijay Varma
+date_published:
+  '@type': schema:Date
+  '@value': '2019-07-24'
+description: "<p>This repository contains all publicly available numerical relativity\
+  \ surrogate data for waveforms produced by the <a href=\"http://www.black-holes.org/SpEC.html\"\
+  >Spectral Einstein Code</a>. The base method for building surrogate models can be\
+  \ found in <a href=\"http://journals.aps.org/prx/references/10.1103/PhysRevX.4.031006\"\
+  >Field et al., PRX 4, 031006 (2014)</a>.</p>\n\n<p>Several numerical relativity\
+  \ surrogate models are currently available in this catalog:</p>\n\n<ul>\n\t<li>Current\
+  \ models\n\t<ol>\n\t\t<li>\n\t\t<p>NRSur7dq4.h5 &mdash; This is a surrogate model\
+  \ for binary black hole mergers with generic spins and mass ratios up to 4. A paper\
+  \ describing it can be found at <a href=\"https://arxiv.org/abs/1905.09300\">Varma\
+  \ et al., arxiv:1905.09300</a>. It is evaluated with the gwsurrogate Python package,\
+  \ which can be found on <a href=\"https://pypi.org/project/gwsurrogate\">PyPI</a>.\
+  \ Instructions for evaluating this surrogate can be found at <a href=\"https://data.black-holes.org/surrogates/NRSur7dq4.html\"\
+  >this example IPython code</a>.</p>\n\t\t</li>\n\t\t<li>\n\t\t<p>NRHybSur3dq8.h5\
+  \ &mdash; This is a surrogate model for binary black hole systems with generic mass\
+  \ ratios but restricted to nonprecessing spins. Before constructing the surrogate,\
+  \ the NR waveforms are hybridized with post-Newtonian waveforms to include the early\
+  \ inspiral. Therefore this model covers the full stellar mass range for ground-based\
+  \ detectors. A paper describing it can be found at <a href=\"https://journals.aps.org/prd/abstract/10.1103/PhysRevD.99.064045\"\
+  >Varma et al., PRD 99, 064045 (2019)</a>.&nbsp; It is evaluated with the gwsurrogate\
+  \ Python package, which can be found on <a href=\"https://pypi.python.org/pypi/gwsurrogate/\"\
+  >PyPI</a>. Instructions for evaluating this surrogate can be found this <a href=\"\
+  https://data.black-holes.org/surrogates/NRHybSur3dq8.html\">example IPython code</a>.</p>\n\
+  \t\t</li>\n\t</ol>\n\t</li>\n\t<li>Older models\n\t<ol>\n\t\t<li>\n\t\t<p>SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5\
+  \ &mdash; A surrogate model for binary black hole mergers with non-spinning black\
+  \ holes. This is described in <a href=\"http://journals.aps.org/prl/abstract/10.1103/PhysRevLett.115.121102\"\
+  >Blackman et al., PRL 115, 121102 (2015)</a>. It is evaluated with the gwsurrogate\
+  \ python package, which can be found on <a href=\"https://pypi.python.org/pypi/gwsurrogate/\"\
+  >PyPI</a>. Instructions for evaluating this surrogate can be found in tutorials\
+  \ included with the gwsurrogate package and in this <a href=\"https://data.black-holes.org/surrogates/GWSurrogate_example.html\"\
+  >example IPython code</a>.</p>\n\t\t</li>\n\t\t<li>\n\t\t<p>NRSur4d2s_FDROM_grid12.h5\
+  \ and NRSur4d2s_TDROM_grid12.h5 &mdash; These are fast frequency-domain and time-domain\
+  \ (respectively) surrogate models for binary black hole mergers where the black\
+  \ holes may be spinning, but the spins are restricted to a parameter subspace which\
+  \ includes some but not all precessing configurations. NRSur4d2s_FDROM_grid12.h5\
+  \ is the NRSur4d2s_FDROM model described in <a href=\"https://dx.doi.org/10.1103/PhysRevD.95.104023\"\
+  >Blackman et al., PRD 95, 104023, (2017)</a>, and NRSur4d2s_TDROM_grid12.h5 is built\
+  \ from the underlying (slower) NRSur4d2s time-domain model in the same way but without\
+  \ the FFTs. These surrogates are also evaluated using gwsurrogate, and a tutorial\
+  \ can be found in this <a href=\"https://data.black-holes.org/surrogates/NRSur4d2s_tutorial.html\"\
+  >example IPython code</a>.</p>\n\t\t</li>\n\t\t<li>\n\t\t<p>NRSur7dq2.h5 &mdash;\
+  \ This is a surrogate model for binary black hole mergers with generic spins. A\
+  \ paper describing it can be found at <a href=\"https://dx.doi.org/10.1103/PhysRevD.96.024058\"\
+  >Blackman et al., PRD 96, 024058 (2017)</a>. This surrogate is evaluated through\
+  \ a standalone python package contained in NRSur7dq2.tar.gz, which has simple installation\
+  \ instructions in its README file. A tutorial can be found for evaluating this surrogate\
+  \ in this <a href=\"https://data.black-holes.org/surrogates/NRSur7dq2_tutorial.html\"\
+  >example IPython code</a>.</p>\n\t\t</li>\n\t</ol>\n\t</li>\n</ul>\n\n<p>&nbsp;</p>\n\
+  \n<p>&nbsp;</p>\n\n<p>If you find these surrogate models useful in your own research\
+  \ please cite the Field et al., PRX (2014) paper as well as the relevant paper describing\
+  \ the specific numerical relativity surrogate model, if available (e.g., the Blackman\
+  \ et al. 2015 paper for non-spinning binary black hole coalescences).</p>\n\n<p>Caveats:</p>\n\
+  \n<ol>\n\t<li>\n\t<p>Evaluating surrogate models outside of the ranges they were\
+  \ trained upon may give inaccurate results. Please use with caution when extrapolating.</p>\n\
+  \t</li>\n\t<li>\n\t<p>The surrogate data available here for non-spinning binary\
+  \ black holes produced in Blackman et al. 2015 contains the (2,0) mode. However,\
+  \ this mode was not used in the paper. While this surrogate can predict a (2,0)\
+  \ mode, current numerical relativity simulations may not yet be able to accumulate\
+  \ (non-oscillatory) Christodoulou memory sufficiently. The surrogate (2,0) mode\
+  \ is founded upon basis SpEC waveforms that have been hybridized with leading order\
+  \ post-Newtonian waveforms. Therefore, the (2,0) mode can be included in the mode&rsquo;s\
+  \ output but should be used with caution. Currently, the default option to evaluate\
+  \ this surrogate (using GWSurrogate) is to exclude all m=0 modes.</p>\n\t</li>\n\
+  </ol>"
+files:
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: 5254c9ec-79b2-4db5-9b1d-f06f714deab9
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055151'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/GWSurrogate_example.html
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/GWSurrogate_example.html
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: b131abdf-674b-4318-9859-4e5c285562c8
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055190'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRHybSur3dq8.h5
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRHybSur3dq8.h5
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: f145dc52-4540-4e21-a4e3-512ff792f463
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055219'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRHybSur3dq8.html
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRHybSur3dq8.html
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: d60f372b-a12c-45fc-a3b4-5423fbe2d165
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055245'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur4d2s_FDROM_grid12.h5
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur4d2s_FDROM_grid12.h5
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: ea6f82cb-b571-4f9e-9bcd-2f6488ccca85
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055271'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur4d2s_TDROM_grid12.h5
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur4d2s_TDROM_grid12.h5
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: a8527f1a-351d-47d0-a9d1-11354f55e8ee
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055295'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur4d2s_tutorial.html
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur4d2s_tutorial.html
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: 3c9dd580-7402-4aac-86c7-15a5e19c43c3
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055320'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur7dq2.h5
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur7dq2.h5
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: 7c1bea71-0ae1-4ba0-a6f0-70b135a9d2a4
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055344'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur7dq2.tar.gz
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur7dq2.tar.gz
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: 3d49afc3-18d0-49f3-93ea-d05e3069addd
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055383'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur7dq2_tutorial.html
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur7dq2_tutorial.html
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: 6b598c26-ae6e-49df-8759-95f0e2f335ff
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055408'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur7dq4.h5
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur7dq4.h5
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: d56179d7-738b-43d2-b86b-5e3354ed2120
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055432'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/NRSur7dq4.html
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/NRSur7dq4.html
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: 09ed4c80-c62f-45bf-bf23-f310c4244ab3
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055457'
+  creator: []
+  dataset: Binary black-hole surrogate waveform catalog
+  path: ''
+  url:
+  - https
+  - zenodo.org
+  - /api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/remnant_fits/fit_3dq8.h5
+  - ''
+  - ''
+  - ''
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: c56f20fc-8ff1-457f-929f-d9a25d498544
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055481'
+  creator: []
+  dataset: Binary black-hole surrogate waveform catalog
+  path: ''
+  url:
+  - https
+  - zenodo.org
+  - /api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/remnant_fits/fit_7dq2.h5
+  - ''
+  - ''
+  - ''
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: 97f88726-b68d-4ab5-8acc-4489b2c8b31d
+  _label: UNCOMMITTED
+  _project: null
+  added: '2019-07-30 09:21:18.055506'
+  creator:
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Scott E. Field
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Chad R. Galley
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jan S. Hesthaven
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jason Kaye
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Manuel Tiglio
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Jonathan Blackman
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: "B\xE9la Szil\xE1gyi"
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Mark A. Scheel
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Daniel A. Hemberger
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Patricia Schmidt
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Rory Smith
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Christian D. Ott
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Michael Boyle
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Lawrence E. Kidder
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Harald P. Pfeiffer
+  - '@type': schema:Person
+    _id: mailto:None
+    affiliation: null
+    alternate_name: null
+    email: null
+    name: Vijay Varma
+  dataset: Binary black-hole surrogate waveform catalog
+  path: data/binary.blackhole.surrog/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/SpEC_q1_10_NoSpin_nu5thDegPoly_exclude_2_0.h5
+identifier: dd38afca-0e96-4034-a2e5-dc7505c0af30
+in_language: null
+keywords: []
+license:
+  _id: http://creativecommons.org/licenses/by/4.0/legalcode
+name: Binary black-hole surrogate waveform catalog
+path: /home/jovyan/zurich-bikes-2/.renku/datasets/dd38afca-0e96-4034-a2e5-dc7505c0af30
+url: https://zenodo.org/record/3348115
+version: null
