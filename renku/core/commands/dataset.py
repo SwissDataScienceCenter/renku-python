@@ -42,8 +42,8 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.creators import Creator
 from renku.core.models.datasets import Dataset
+from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
 from renku.core.utils.doi import extract_doi
@@ -106,7 +106,7 @@ def create_dataset(client, name):
     :raises: ``renku.core.errors.ParameterError``
     """
     with client.with_dataset(name=name, create=True) as dataset:
-        creator = Creator.from_git(client.repo)
+        creator = Person.from_git(client.repo)
         if creator not in dataset.creator:
             dataset.creator.append(creator)
 
