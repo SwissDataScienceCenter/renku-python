@@ -21,6 +21,7 @@ import functools
 import os
 
 import click
+from git.remote import RemoteProgress
 
 WARNING = click.style('Warning: ', bold=True, fg='yellow')
 
@@ -45,3 +46,23 @@ progressbar = functools.partial(
     show_pos=True,
     item_show_func=lambda x: x,
 )
+
+
+class GitProgress(RemoteProgress):
+    """Progress printing for GitPython."""
+
+    def __init__(self):
+        """Initialize a Git progress printer."""
+        super().__init__()
+        self._previous_line_length = 0
+
+    def update(self, op_code, cur_count, max_count=None, message=''):
+        """Callback for printing Git operation status."""
+        self._clear_line()
+        print(self._cur_line, end='\r')
+        self._previous_line_length = len(self._cur_line)
+        if (op_code & RemoteProgress.END) != 0:
+            print()
+
+    def _clear_line(self):
+        print(self._previous_line_length * ' ', end='\r')
