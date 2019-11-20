@@ -17,9 +17,6 @@
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
 
-import click
-
-from renku.core.commands.echo import GitProgress
 from renku.core.management.clone import clone
 
 from .client import pass_local_client
@@ -27,11 +24,14 @@ from .client import pass_local_client
 
 @pass_local_client
 def renku_clone(
-    client, url, path=None, install_githooks=True, skip_smudge=True
+    client,
+    url,
+    path=None,
+    install_githooks=True,
+    skip_smudge=True,
+    progress=None
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
-    click.echo('Cloning {} ...'.format(url))
-
     install_lfs = client.use_external_storage
     clone(
         url=url,
@@ -39,5 +39,5 @@ def renku_clone(
         install_githooks=install_githooks,
         install_lfs=install_lfs,
         skip_smudge=skip_smudge,
-        progress=GitProgress()
+        progress=progress
     )

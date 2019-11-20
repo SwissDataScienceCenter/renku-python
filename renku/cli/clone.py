@@ -33,6 +33,7 @@ To clone a Renku project and set up required Git hooks and Git LFS use
 import click
 
 from renku.core.commands.clone import renku_clone
+from renku.core.commands.echo import GitProgress
 
 
 @click.command()
@@ -43,6 +44,10 @@ from renku.core.commands.clone import renku_clone
 @click.argument('path', required=False, default=None)
 def clone(pull_data, url, path):
     """Clone a Renku repository."""
+    click.echo('Cloning {} ...'.format(url))
+
     skip_smudge = not pull_data
-    renku_clone(url=url, path=path, skip_smudge=skip_smudge)
+    renku_clone(
+        url=url, path=path, skip_smudge=skip_smudge, progress=GitProgress()
+    )
     click.secho('OK', fg='green')
