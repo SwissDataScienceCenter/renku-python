@@ -18,6 +18,60 @@
 Changes
 =======
 
+
+`0.8.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.7.0...v0.8.0>`__ (2019-11-21)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  addressed CI problems with git submodules
+   (`#783 <https://github.com/SwissDataScienceCenter/renku-python/issues/783>`__)
+   (`0d3eeb7 <https://github.com/SwissDataScienceCenter/renku-python/commit/0d3eeb7>`__)
+-  adds simple check on empty filename
+   (`#786 <https://github.com/SwissDataScienceCenter/renku-python/issues/786>`__)
+   (`8cd061b <https://github.com/SwissDataScienceCenter/renku-python/commit/8cd061b>`__)
+-  ensure all Person instances have valid ids
+   (`4f80efc <https://github.com/SwissDataScienceCenter/renku-python/commit/4f80efc>`__),
+   closes
+   `#812 <https://github.com/SwissDataScienceCenter/renku-python/issues/812>`__
+-  Fixes jsonld issue when importing from dataverse
+   (`#759 <https://github.com/SwissDataScienceCenter/renku-python/issues/759>`__)
+   (`ffe36c6 <https://github.com/SwissDataScienceCenter/renku-python/commit/ffe36c6>`__)
+-  fixes nested type scoped handling if a class only has a single class
+   (`#804 <https://github.com/SwissDataScienceCenter/renku-python/issues/804>`__)
+   (`16d03b6 <https://github.com/SwissDataScienceCenter/renku-python/commit/16d03b6>`__)
+-  ignore deleted paths in generated entities
+   (`86fedaf <https://github.com/SwissDataScienceCenter/renku-python/commit/86fedaf>`__),
+   closes
+   `#806 <https://github.com/SwissDataScienceCenter/renku-python/issues/806>`__
+-  integration tests
+   (`#831 <https://github.com/SwissDataScienceCenter/renku-python/issues/831>`__)
+   (`a4ad7f9 <https://github.com/SwissDataScienceCenter/renku-python/commit/a4ad7f9>`__)
+-  make Creator a subclass of Person
+   (`ac9bac3 <https://github.com/SwissDataScienceCenter/renku-python/commit/ac9bac3>`__),
+   closes
+   `#793 <https://github.com/SwissDataScienceCenter/renku-python/issues/793>`__
+-  Redesign scoped context in jsonld
+   (`#750 <https://github.com/SwissDataScienceCenter/renku-python/issues/750>`__)
+   (`2b1948d <https://github.com/SwissDataScienceCenter/renku-python/commit/2b1948d>`__)
+
+Features
+~~~~~~~~
+
+-  avoid creation of nested datasets
+   (`#796 <https://github.com/SwissDataScienceCenter/renku-python/issues/796>`__)
+   (`6084c87 <https://github.com/SwissDataScienceCenter/renku-python/commit/6084c87>`__)
+-  do not create dataset implicitly
+   (`#779 <https://github.com/SwissDataScienceCenter/renku-python/issues/779>`__)
+   (`84e59d0 <https://github.com/SwissDataScienceCenter/renku-python/commit/84e59d0>`__)
+-  local git repo not treated as remote
+   (`8cc2834 <https://github.com/SwissDataScienceCenter/renku-python/commit/8cc2834>`__)
+-  renku clone command
+   (`#828 <https://github.com/SwissDataScienceCenter/renku-python/issues/828>`__)
+   (`4b3b615 <https://github.com/SwissDataScienceCenter/renku-python/commit/4b3b615>`__)
+
+
 `0.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.6.0...v0.6.1>`__ (2019-10-15)
 -------------------------------------------------------------------------------------------------------
 
@@ -26,12 +80,9 @@ Bug Fixes
 
 -  use UI-resolved project path as project ID (`#701`_) (`dfcc9e6`_)
 
-.. _section-1:
 
 `0.6.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.6.0...v0.6.1>`__ (2019-10-10)
 -------------------------------------------------------------------------------------------------------
-
-.. _bug-fixes-1:
 
 Bug Fixes
 ~~~~~~~~~
