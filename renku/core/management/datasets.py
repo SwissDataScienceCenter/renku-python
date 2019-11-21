@@ -34,6 +34,7 @@ import requests
 from git import GitCommandError, GitError, Repo
 
 from renku.core import errors
+from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag
 from renku.core.models.git import GitURL
@@ -755,9 +756,13 @@ class DatasetsApiMixin(object):
             repo = Repo(str(repo_path))
             if repo.remotes.origin.url == url:
                 try:
-                    repo.git.fetch()
+                    repo.git.fetch(all=True)
                     repo.git.checkout(ref)
-                    repo.git.pull()
+                    try:
+                        repo.git.pull()
+                    except GitError:
+                        # When ref is not a branch, an error is thrown
+                        pass
                 except GitError:
                     # ignore the error and try re-cloning
                     pass
@@ -772,25 +777,17 @@ class DatasetsApiMixin(object):
                     format(repo_path)
                 )
 
+        repo = clone(url, path=str(repo_path), install_githooks=False)
+
+        # Because the name of the default branch is not always 'master', we
+        # create an alias of the default branch when cloning the repo. It
+        # is used to refer to the default branch later.
+        renku_ref = 'refs/heads/' + RENKU_BRANCH
         try:
-            os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
-            repo = Repo.clone_from(url, str(repo_path), recursive=True)
-            # Because the name of the default branch is not always 'master', we
-            # create an alias of the default branch when cloning the repo. It
-            # is used to refer to the default branch later.
-            renku_ref = 'refs/heads/' + RENKU_BRANCH
             repo.git.execute([
                 'git', 'symbolic-ref', renku_ref, repo.head.reference.path
             ])
             checkout(repo, ref)
-            # Disable Git LFS smudge filter
-            repo.git.execute(
-                command=[
-                    'git', 'lfs', 'install', '--local', '--skip-smudge',
-                    '--force'
-                ],
-                with_exceptions=False
-            )
         except GitCommandError as e:
             raise errors.GitError(
                 'Cannot clone remote Git repo: {}'.format(url)

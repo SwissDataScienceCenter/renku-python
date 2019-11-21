@@ -903,3 +903,30 @@ def test_files_are_tracked_in_lfs(runner, client):
     assert 0 == result.exit_code
     path = 'data/dataset/{}'.format(FILENAME)
     assert path in subprocess.check_output(['git', 'lfs', 'ls-files']).decode()
+
+
+@pytest.mark.integration
+def test_renku_clone(runner, monkeypatch):
+    """Test cloning of a Renku repo and existence of required settings."""
+    from renku.core.management.storage import StorageApiMixin
+
+    REMOTE = 'git@dev.renku.ch:virginiafriedrich/datasets-test.git'
+
+    with runner.isolated_filesystem() as project_path:
+        result = runner.invoke(cli, ['clone', REMOTE, project_path])
+        assert 0 == result.exit_code
+        assert (Path(project_path) / 'Dockerfile').exists()
+
+        # Check Git hooks are installed
+        result = runner.invoke(cli, ['githooks', 'install'])
+        assert 0 == result.exit_code
+        assert 'Hook already exists.' in result.output
+
+        # Check Git LFS is enabled
+        with monkeypatch.context() as monkey:
+            # Pretend that git-lfs is not installed.
+            monkey.setattr(StorageApiMixin, 'storage_installed', False)
+            # Repo is using external storage but it's not installed.
+            result = runner.invoke(cli, ['run', 'touch', 'output'])
+            assert 'is not configured' in result.output
+            assert 1 == result.exit_code
