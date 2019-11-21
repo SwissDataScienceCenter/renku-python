@@ -508,7 +508,7 @@ def test_export_dataset_unauthorized(
 )
 def test_add_data_from_git(runner, client, params, path):
     """Test add data to datasets from a git repository."""
-    REMOTE = 'git@github.com:SwissDataScienceCenter/renku-jupyter.git'
+    REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
 
     # create a dataset and add a file to it
     result = runner.invoke(
@@ -570,7 +570,7 @@ def test_add_from_git_copies_metadata(runner, client):
 )
 def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
     """Test user's errors when adding to a dataset from a git repository."""
-    REMOTE = 'git@github.com:SwissDataScienceCenter/renku-jupyter.git'
+    REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
 
     # create a dataset and add a file to it
     result = runner.invoke(
@@ -768,7 +768,7 @@ def test_import_from_renku_project(tmpdir, client, runner):
     """Test an imported dataset from other renku repos will have metadata."""
     from renku.core.management import LocalClient
 
-    REMOTE = 'git@dev.renku.ch:virginiafriedrich/datasets-test.git'
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     path = tmpdir.strpath
     os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
@@ -792,7 +792,7 @@ def test_import_from_renku_project(tmpdir, client, runner):
     assert 0 == result.exit_code
 
     metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
-    assert metadata['creator'] == remote['creator']
+    assert metadata['creator'][0]['name'] == remote['creator'][0]['name']
     assert metadata['based_on']['_id'] == remote['_id']
     assert metadata['based_on']['_label'] == remote['_label']
     assert metadata['based_on']['path'] == remote['path']
@@ -910,7 +910,7 @@ def test_renku_clone(runner, monkeypatch):
     """Test cloning of a Renku repo and existence of required settings."""
     from renku.core.management.storage import StorageApiMixin
 
-    REMOTE = 'git@dev.renku.ch:virginiafriedrich/datasets-test.git'
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli, ['clone', REMOTE, project_path])
