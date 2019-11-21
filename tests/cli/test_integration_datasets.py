@@ -18,9 +18,11 @@
 """Integration tests for dataset command."""
 import os
 import subprocess
+from pathlib import Path
 
 import git
 import pytest
+import yaml
 
 from renku.cli import cli
 
@@ -352,7 +354,7 @@ def test_dataset_export_upload_multiple(
 
 
 @pytest.mark.integration
-def test_dataset_export_upload_failure(runner, project, tmpdir, client):
+def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
     """Test failed uploading of a file to Zenodo deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
 
@@ -486,145 +488,316 @@ def test_export_dataset_unauthorized(
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    'remotes', [
-        {
-            'url': (
-                'https://github.com'
-                '/SwissDataScienceCenter/renku-python.git'
-            ),
-            'filename': 'README.rst',
-            'expected_path': 'data/dataset/README.rst'
-        },
-        {
-            'url': (
-                'https://gist.githubusercontent.com'
-                '/jsam/24e3763fe4912ddb5c3a0fe411002f21'
-                '/raw/ac45b51b5d6e20794e2ac73df5e309fa26e2f73a'
-                '/gistfile1.txt?foo=bar'
-            ),
-            'filename': 'gistfile1.txt',
-            'expected_path': 'data/dataset/gistfile1.txt'
-        },
+    'params,path',
+    [
+        # add data with no destination
+        (['-s', 'docker'], 'data/remote/docker/r/Dockerfile'),
+        (['-s', 'docker/r/Dockerfile'], 'data/remote/Dockerfile'),
+        # add data to a non-existing destination
+        (['-s', 'docker', '-d', 'new'], 'data/remote/new/r/Dockerfile'),
+        (['-s', 'docker/r', '-d', 'new'], 'data/remote/new/Dockerfile'),
+        (['-s', 'docker/r/Dockerfile', '-d', 'new'], 'data/remote/new'),
+        # add data to an existing destination
+        (['-s', 'docker', '-d', 'existing'
+          ], 'data/remote/existing/docker/r/Dockerfile'),
+        (['-s', 'docker/r', '-d', 'existing'
+          ], 'data/remote/existing/r/Dockerfile'),
+        (['-s', 'docker/r/Dockerfile', '-d', 'existing'
+          ], 'data/remote/existing/Dockerfile'),
     ]
 )
-def test_datasets_remote_import(
-    remotes, data_file, data_repository, runner, project, client
-):
-    """Test importing data into a dataset."""
-    # create a dataset
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+def test_add_data_from_git(runner, client, params, path):
+    """Test add data to datasets from a git repository."""
+    REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
 
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    with client.with_dataset('dataset') as dataset:
-        assert dataset.name == 'dataset'
-
-    # add data
-    result = runner.invoke(cli, ['dataset', 'add', 'dataset', str(data_file)])
-
-    assert 0 == result.exit_code
-    assert os.stat(
-        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
-    )
-
-    # add data from a git repo via http
+    # create a dataset and add a file to it
     result = runner.invoke(
-        cli, [
-            'dataset', 'add', 'dataset', '--source', remotes['filename'],
-            remotes['url']
-        ]
+        cli,
+        [
+            'dataset', 'add', 'remote', '--create', '--ref', '0.3.0', '-s',
+            'LICENSE', '-d', 'existing/LICENSE', REMOTE
+        ],
+        catch_exceptions=False,
     )
     assert 0 == result.exit_code
-    assert os.stat(remotes['expected_path'])
 
-    # add data from local git repo
     result = runner.invoke(
-        cli, [
-            'dataset',
-            'add',
-            'dataset',
-            '-s',
-            'dir2/file2',
-            os.path.dirname(data_repository.git_dir),
-        ]
+        cli,
+        ['dataset', 'add', 'remote', '--ref', '0.3.0', REMOTE] + params,
+        catch_exceptions=False,
+    )
+
+    assert 0 == result.exit_code
+    assert Path(path).exists()
+
+
+@pytest.mark.integration
+def test_add_from_git_copies_metadata(runner, client):
+    """Test an import from a git repository keeps creators name."""
+    # create a dataset and add a file to it
+    result = runner.invoke(
+        cli,
+        [
+            'dataset', 'add', 'remote', '--create', '--ref', 'v0.3.0', '-s',
+            'README.rst',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False,
     )
     assert 0 == result.exit_code
+
+    path = client.dataset_path('remote')
+    dataset = client.get_dataset(path)
+    assert dataset.files[0].name == 'README.rst'
+    assert 'mailto:jiri.kuncar@gmail.com' in str(dataset.files[0].creator)
+    assert 'mailto:rokroskar@gmail.co' in str(dataset.files[0].creator)
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    'remotes', [
-        {
-            'url': (
-                'https://github.com'
-                '/SwissDataScienceCenter/renku-python.git'
-            ),
-            'filename': 'README.rst',
-            'expected_path': 'data/dataset/README.rst'
-        },
-        {
-            'url': (
-                'https://gist.githubusercontent.com'
-                '/jsam/24e3763fe4912ddb5c3a0fe411002f21'
-                '/raw/ac45b51b5d6e20794e2ac73df5e309fa26e2f73a'
-                '/gistfile1.txt?foo=bar'
-            ),
-            'filename': 'gistfile1.txt',
-            'expected_path': 'data/dataset/gistfile1.txt'
-        },
+    'params,n_urls,message', [
+        ([], 0, 'No URL is specified'),
+        (['-s', 'file', '-d', 'new-file'], 0, 'No URL is specified'),
+        (['-s', 'file'], 2, 'Cannot add multiple URLs'),
+        (['-d', 'file'], 2, 'Cannot add multiple URLs'),
+        (['-s', 'non-existing'], 1, 'No such file or directory'),
+        (['-s', 'docker', '-d', 'LICENSE'
+          ], 1, 'Cannot copy multiple files or directories to a file'),
+        (['-s', 'LICENSE', '-s', 'Makefile', '-d', 'LICENSE'
+          ], 1, 'Cannot copy multiple files or directories to a file'),
+        (['-d', 'LICENSE'], 1, 'Cannot copy repo to file'),
     ]
 )
-def test_datasets_import_target(
-    remotes, data_file, data_repository, runner, project, client
+def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
+    """Test user's errors when adding to a dataset from a git repository."""
+    REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
+
+    # create a dataset and add a file to it
+    result = runner.invoke(
+        cli,
+        [
+            'dataset', 'add', 'remote', '--create', '--ref', '0.3.0', '-s',
+            'LICENSE', REMOTE
+        ],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    urls = n_urls * [REMOTE]
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'remote', '--ref', '0.3.0'] + params + urls,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 2
+    assert message in result.output
+
+
+def read_dataset_file_metadata(client, dataset_name, filename):
+    """Return metadata from dataset's YAML file."""
+    path = client.dataset_path(dataset_name)
+    assert path.exists()
+
+    with path.open(mode='r') as fp:
+        metadata = yaml.safe_load(fp)
+        for file_ in metadata['files']:
+            if file_['path'].endswith(filename):
+                return file_
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'params', [[], ['-I', 'CHANGES.rst'], ['-I', 'C*'], ['remote']]
+)
+def test_dataset_update(client, runner, params):
+    """Test local copy is updated when remote file is updates."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', 'remote', '--ref', 'v0.3.0', '-s',
+            'CHANGES.rst',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    before = read_dataset_file_metadata(client, 'remote', 'CHANGES.rst')
+
+    result = runner.invoke(
+        cli, ['dataset', 'update'] + params, catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    after = read_dataset_file_metadata(client, 'remote', 'CHANGES.rst')
+    assert after['_id'] == before['_id']
+    assert after['_label'] != before['_label']
+    assert after['added'] == before['added']
+    assert after['url'] == before['url']
+    assert after['based_on']['_id'] == before['based_on']['_id']
+    assert after['based_on']['_label'] != before['based_on']['_label']
+    assert after['based_on']['path'] == before['based_on']['path']
+    assert after['based_on']['based_on'] is None
+
+
+@pytest.mark.integration
+def test_dataset_update_remove_file(client, runner):
+    """Test local copy is removed when remote file is removed."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', 'remote', '-s', 'docs/authors.rst',
+            '--ref', 'v0.3.0',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    file_path = client.path / 'data' / 'remote' / 'authors.rst'
+    assert file_path.exists()
+
+    # docs/authors.rst does not exists in v0.5.0
+
+    result = runner.invoke(
+        cli, ['dataset', 'update', '--ref', 'v0.5.0'], catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert 'Some files are deleted from remote.' in result.output
+    assert file_path.exists()
+
+    result = runner.invoke(
+        cli, ['dataset', 'update', '--ref', 'v0.5.0', '--delete'],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert not file_path.exists()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'params', [['-I', 'non-existing'], ['non-existing-dataset']]
+)
+def test_dataset_invalid_update(client, runner, params):
+    """Test updating a non-existing path."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', 'remote', '-s', 'docs/authors.rst',
+            '--ref', 'v0.3.0',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'update'] + params, catch_exceptions=False
+    )
+    assert 2 == result.exit_code
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'params',
+    [[], ['-I', 'CHANGES.rst'], ['-I', 'CH*'], ['dataset-1', 'dataset-2']]
+)
+def test_dataset_update_multiple_datasets(
+    client, runner, data_repository, directory_tree, params
 ):
-    """Test importing data into a dataset."""
-    # create a dataset
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
-
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    with client.with_dataset('dataset') as dataset:
-        assert dataset.name == 'dataset'
-
-    # add data
+    """Test update with multiple datasets."""
+    path1 = client.path / 'data' / 'dataset-1' / 'CHANGES.rst'
+    path2 = client.path / 'data' / 'dataset-2' / 'CHANGES.rst'
+    # Add dataset to project
     result = runner.invoke(
-        cli,
-        ['dataset', 'add', 'dataset',
-         str(data_file)],
-        catch_exceptions=False,
+        cli, [
+            'dataset', 'add', '--create', 'dataset-1', '--ref', 'v0.3.0', '-s',
+            'CHANGES.rst',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False
     )
     assert 0 == result.exit_code
-    assert os.stat(
-        os.path.join('data', 'dataset', os.path.basename(str(data_file)))
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', 'dataset-2', '--ref', 'v0.3.0', '-s',
+            'CHANGES.rst',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    assert 'v0.4.0' not in path1.read_text()
+    assert 'v0.4.0' not in path2.read_text()
+
+    result = runner.invoke(
+        cli, ['dataset', 'update'] + params, catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    assert 'v0.4.0' in path1.read_text()
+    assert 'v0.4.0' in path2.read_text()
+
+
+@pytest.mark.integration
+def test_empty_update(client, runner, data_repository, directory_tree):
+    """Test update when nothing changed does not create a commit."""
+    # Add dataset to project
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', 'remote', '--ref', 'v0.3.0', '-s',
+            'CHANGES.rst',
+            'https://github.com/SwissDataScienceCenter/renku-python.git'
+        ],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    commit_sha_before = client.repo.head.object.hexsha
+    result = runner.invoke(
+        cli, ['dataset', 'update', '--ref', 'v0.3.0'], catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_after == commit_sha_before
+
+
+@pytest.mark.integration
+def test_import_from_renku_project(tmpdir, client, runner):
+    """Test an imported dataset from other renku repos will have metadata."""
+    from renku.core.management import LocalClient
+
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    path = tmpdir.strpath
+    os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
+    git.Repo.clone_from(REMOTE, path, recursive=True)
+
+    remote_client = LocalClient(path)
+    remote = read_dataset_file_metadata(
+        remote_client, 'zhbikes',
+        '2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
     )
 
-    # add data from a git repo via http
     result = runner.invoke(
         cli,
         [
-            'dataset', 'add', 'dataset', '--source', remotes['filename'],
-            remotes['url']
+            'dataset', 'add', '--create', 'remote-dataset', '-s',
+            'data/zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv',
+            '-d', 'file', '--ref', 'b973db5', REMOTE
         ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
-    assert os.stat(remotes['expected_path'])
 
-    # add data from local git repo
-    result = runner.invoke(
-        cli,
-        [
-            'dataset',
-            'add',
-            'dataset',
-            '-s',
-            'dir2/file2',
-            os.path.dirname(data_repository.git_dir),
-        ],
-    )
-    assert 0 == result.exit_code
+    metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+    assert metadata['creator'][0]['name'] == remote['creator'][0]['name']
+    assert metadata['based_on']['_id'] == remote['_id']
+    assert metadata['based_on']['_label'] == remote['_label']
+    assert metadata['based_on']['path'] == remote['path']
+    assert metadata['based_on']['based_on'] is None
+    assert metadata['based_on']['url'] == REMOTE
 
 
 @pytest.mark.integration
@@ -730,3 +903,30 @@ def test_files_are_tracked_in_lfs(runner, client):
     assert 0 == result.exit_code
     path = 'data/dataset/{}'.format(FILENAME)
     assert path in subprocess.check_output(['git', 'lfs', 'ls-files']).decode()
+
+
+@pytest.mark.integration
+def test_renku_clone(runner, monkeypatch):
+    """Test cloning of a Renku repo and existence of required settings."""
+    from renku.core.management.storage import StorageApiMixin
+
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with runner.isolated_filesystem() as project_path:
+        result = runner.invoke(cli, ['clone', REMOTE, project_path])
+        assert 0 == result.exit_code
+        assert (Path(project_path) / 'Dockerfile').exists()
+
+        # Check Git hooks are installed
+        result = runner.invoke(cli, ['githooks', 'install'])
+        assert 0 == result.exit_code
+        assert 'Hook already exists.' in result.output
+
+        # Check Git LFS is enabled
+        with monkeypatch.context() as monkey:
+            # Pretend that git-lfs is not installed.
+            monkey.setattr(StorageApiMixin, 'storage_installed', False)
+            # Repo is using external storage but it's not installed.
+            result = runner.invoke(cli, ['run', 'touch', 'output'])
+            assert 'is not configured' in result.output
+            assert 1 == result.exit_code
