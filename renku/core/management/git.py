@@ -26,7 +26,6 @@ import time
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
-from email.utils import formatdate
 from itertools import zip_longest
 from pathlib import Path
 
@@ -230,18 +229,13 @@ class GitCore:
 
     @contextmanager
     def commit(
-        self,
-        author_date=None,
-        commit_only=None,
-        commit_empty=True,
-        raise_if_empty=False
+        self, commit_only=None, commit_empty=True, raise_if_empty=False
     ):
         """Automatic commit."""
         from git import Actor
         from renku.version import __version__, version_url
 
         diff_before = set()
-        author_date = author_date or formatdate(localtime=True)
 
         if commit_only == COMMIT_DIFF_STRATEGY:
             staged = {item.a_path for item in self.repo.index.diff(None)}
@@ -312,7 +306,6 @@ class GitCore:
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(
             ' '.join(argv),
-            author_date=author_date,
             committer=committer,
             skip_hooks=True,
         )
