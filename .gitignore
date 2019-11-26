@@ -75,3 +75,5 @@ renku-*.bottle.tar.gz
 renku.rb
 
 .env
+
+renku-core-service-*
