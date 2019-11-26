@@ -26,7 +26,7 @@ from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_parent, list_files
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
-    INVALID_PARAMS_ERROR_CODE
+    INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
 from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetAddResponse, DatasetAddResponseRPC, DatasetCreateRequest, \
     DatasetCreateResponse, DatasetCreateResponseRPC, DatasetDetails, \
@@ -39,7 +39,7 @@ from renku.service.views.decorators import accepts_json, handle_base_except, \
     header_doc, requires_cache, requires_identity
 
 DATASET_BLUEPRINT_TAG = 'datasets'
-dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__)
+dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
 @use_kwargs(DatasetListRequest, locations=['query'])

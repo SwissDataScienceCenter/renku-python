@@ -1,3 +1,4 @@
 *           @SwissDataScienceCenter/BDFL @SwissDataScienceCenter/renku-python-maintainers
 /docs/      @SwissDataScienceCenter/documentation-reviewers
 *.rst       @SwissDataScienceCenter/documentation-reviewers
+/helm-chart/ @SwissDataScienceCenter/kartografen
