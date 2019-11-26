@@ -1170,8 +1170,8 @@ def test_dataset_clean_up_when_add_fails(runner, client):
     assert not ref.is_symlink() and not ref.exists()
 
 
-def test_add_removes_local_path_information(runner, client, directory_tree):
-    """Test local paths are removed when adding to a dataset."""
+def test_avoid_empty_commits(runner, client, directory_tree):
+    """Test no empty commit is created when adding existing data."""
     runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
 
     commit_sha_before = client.repo.head.object.hexsha
@@ -1192,3 +1192,27 @@ def test_add_removes_local_path_information(runner, client, directory_tree):
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before == commit_sha_after
     assert 'Error: There is nothing to commit.' in result.output
+
+
+def test_add_removes_credentials(runner, client):
+    """Test credentials are removed when adding to a dataset."""
+    URL = 'https://username:password@example.com/index.html'
+    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', URL])
+    assert 0 == result.exit_code
+
+    with client.with_dataset('my-dataset') as dataset:
+        file_ = dataset.files[0]
+        assert file_.url == 'https://example.com/index.html'
+
+
+def test_add_removes_local_path_information(runner, client, directory_tree):
+    """Test local paths are removed when adding to a dataset."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset('my-dataset') as dataset:
+        for file_ in dataset.files:
+            assert file_.url.startswith('file://../')
+            assert file_.url.endswith(file_.name)

@@ -47,6 +47,7 @@ from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
 from renku.core.utils.doi import extract_doi
+from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
 from .echo import WARNING
@@ -206,6 +207,7 @@ def add_to_dataset(
                                 file_.url = file_.url.geturl()
 
                             file_.path = added_.path
+                            file_.url = remove_credentials(file_.url)
                             file_.creator = with_metadata.creator
                             file_._label = added_._label
                             file_.commit = added_.commit
@@ -505,6 +507,7 @@ def import_dataset(
         pool.close()
 
         dataset_name = name or dataset.display_name
+        dataset.url = remove_credentials(dataset.url)
         add_to_dataset(
             client,
             urls=[str(p) for p in Path(data_folder).glob('*')],
