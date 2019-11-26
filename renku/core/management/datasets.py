@@ -234,6 +234,10 @@ class DatasetsApiMixin(object):
         # commit all new data
         file_paths = {str(data['path']) for data in files if str(data['path'])}
         self.repo.git.add(*(file_paths - set(ignored)))
+
+        if not self.repo.is_dirty():
+            return warning_message
+
         self.repo.index.commit(
             'renku dataset: commiting {} newly added files'.
             format(len(file_paths) + len(ignored))

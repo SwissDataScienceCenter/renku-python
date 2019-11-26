@@ -1168,3 +1168,27 @@ def test_dataset_clean_up_when_add_fails(runner, client):
     assert result.exit_code == 2
     ref = client.renku_path / 'refs' / 'datasets' / 'new-dataset'
     assert not ref.is_symlink() and not ref.exists()
+
+
+def test_add_removes_local_path_information(runner, client, directory_tree):
+    """Test local paths are removed when adding to a dataset."""
+    runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+
+    commit_sha_before = client.repo.head.object.hexsha
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
+
+    commit_sha_before = commit_sha_after
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before == commit_sha_after
+    assert 'Error: There is nothing to commit.' in result.output
