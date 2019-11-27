@@ -100,7 +100,7 @@ def validate_template_manifest(manifest):
             if not template[attribute]:
                 raise ValueError((
                     'Template "{0}" doesn\'t have a {1} attribute'.format(
-                        template["name"], attribute
+                        template['name'], attribute
                     )
                 ))
     return True
