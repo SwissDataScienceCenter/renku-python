@@ -131,6 +131,8 @@ def edit_dataset(client, dataset_id, transform_fn):
     clean=False,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
+    commit_empty=False,
+    raise_if_empty=True
 )
 def add_file(
     client,
