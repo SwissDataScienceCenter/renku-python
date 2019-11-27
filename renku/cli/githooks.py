@@ -38,14 +38,9 @@ some output file is manually modified.
 
 """
 
-import stat
-from pathlib import Path
-
 import click
 
-from renku.core.commands.client import pass_local_client
-
-HOOKS = ('pre-commit', )
+from renku.core.commands.githooks import install_githooks, uninstall_githooks
 
 
 @click.group()
@@ -55,42 +50,14 @@ def githooks():
 
 @githooks.command()
 @click.option('--force', is_flag=True, help='Override existing hooks.')
-@pass_local_client
-def install(client, force):
+def install(force):
     """Install Git hooks."""
-    import pkg_resources
-    from git.index.fun import hook_path as get_hook_path
-
-    for hook in HOOKS:
-        hook_path = Path(get_hook_path(hook, client.repo.git_dir))
-        if hook_path.exists():
-            if not force:
-                click.echo(
-                    'Hook already exists. Skipping {0}'.format(str(hook_path)),
-                    err=True
-                )
-                continue
-            else:
-                hook_path.unlink()
-
-        # Make sure the hooks directory exists.
-        hook_path.parent.mkdir(parents=True, exist_ok=True)
-
-        Path(hook_path).write_bytes(
-            pkg_resources.resource_string(
-                'renku.data', '{hook}.sh'.format(hook=hook)
-            )
-        )
-        hook_path.chmod(hook_path.stat().st_mode | stat.S_IEXEC)
+    install_githooks(force)
+    click.secho('OK', fg='green')
 
 
 @githooks.command()
-@pass_local_client
-def uninstall(client):
+def uninstall():
     """Uninstall Git hooks."""
-    from git.index.fun import hook_path as get_hook_path
-
-    for hook in HOOKS:
-        hook_path = Path(get_hook_path(hook, client.repo.git_dir))
-        if hook_path.exists():
-            hook_path.unlink()
+    uninstall_githooks()
+    click.secho('OK', fg='green')
