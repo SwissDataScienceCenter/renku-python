@@ -22,6 +22,7 @@ import os
 import weakref
 from copy import deepcopy
 from datetime import datetime, timezone
+from functools import partial
 from importlib import import_module
 from pathlib import Path
 
@@ -265,12 +266,23 @@ def _propagate_reference_contexts(
     return current_context, scoped_properties
 
 
+def _default_converter(cls, value):
+    """A default converter method that tries to deserialize objects."""
+    if isinstance(value, dict):
+        return cls.from_jsonld(value)
+
+    return value
+
+
 def attrib(context=None, type=None, **kwargs):
     """Create a new attribute with context."""
     kwargs.setdefault('metadata', {})
     kwargs['metadata'][KEY] = context
     if type:
         kwargs['metadata'][KEY_CLS] = type
+
+        if 'converter' not in kwargs and hasattr(type, 'from_jsonld'):
+            kwargs['converter'] = partial(_default_converter, type)
     return attr.ib(**kwargs)
 
 
