@@ -94,6 +94,7 @@ extras_require = {
 
 setup_requires = [
     'pytest-runner>=2.6.2',
+    'setuptools_scm>=3.1.0',
 ]
 
 extras_require['all'] = list(setup_requires)
@@ -136,6 +137,8 @@ install_requires = [
     'tqdm>=4.31.1',
     'werkzeug>=0.15.5',
 ]
+
+complete_setup_requires = list(set(install_requires + setup_requires))
 
 packages = find_packages()
 
@@ -204,7 +207,7 @@ setup(
     },
     extras_require=extras_require,
     install_requires=install_requires,
-    setup_requires=setup_requires + install_requires,
+    setup_requires=complete_setup_requires,
     tests_require=tests_require,
     cmdclass={'install': PostInstallCommand},
     classifiers=[
