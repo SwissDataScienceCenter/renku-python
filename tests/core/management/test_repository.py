@@ -21,9 +21,9 @@ import tempfile
 from pathlib import Path
 
 
-def test_init_empty_repository(local_client):
+def test_init_repository(local_client):
     """Test initializing an empty repository."""
-    local_client.init_empty_repository()
+    local_client.init_repository()
     assert (local_client.path / '.git').exists()
     assert (local_client.path / '.git' / 'HEAD').exists()
 
@@ -31,7 +31,7 @@ def test_init_empty_repository(local_client):
 def test_import_from_template(local_client):
     """Test importing data from template."""
     OUTPUT_FILE = 'metadata.yml'
-    local_client.init_empty_repository()
+    local_client.init_repository()
     with tempfile.TemporaryDirectory() as tempdir:
         template_path = Path(tempdir)
         fake_template_file = template_path / OUTPUT_FILE

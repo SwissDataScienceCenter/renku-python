@@ -22,7 +22,6 @@ import subprocess
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
-from datetime import datetime, timezone
 from subprocess import check_output
 
 import attr
@@ -377,50 +376,7 @@ class RepositoryApiMixin(GitCore):
                     default_flow_style=False
                 )
 
-    def init_repository(self, name=None, force=False):
-        """Initialize a local Renku repository."""
-        from git import Repo
-
-        path = self.path.absolute()
-        if force:
-            self.renku_path.mkdir(parents=True, exist_ok=force)
-            if self.repo is None:
-                self.repo = Repo.init(str(path))
-        else:
-            if self.repo is not None:
-                raise FileExistsError(self.repo.git_dir)
-
-            self.renku_path.mkdir(parents=True, exist_ok=force)
-            self.repo = Repo.init(str(path))
-
-        self.repo.description = name or path.name
-
-        # Check that an creator can be determined from Git.
-        from renku.core.models.provenance.agents import Person
-        Person.from_git(self.repo)
-
-        # TODO read existing gitignore and create a unique set of rules
-        import pkg_resources
-        gitignore_default = pkg_resources.resource_stream(
-            'renku.data', 'gitignore.default'
-        )
-        gitignore_path = path / '.gitignore'
-        with gitignore_path.open('w') as gitignore:
-            gitignore.write(gitignore_default.read().decode())
-
-            gitignore.write(
-                '\n' + str(
-                    self.renku_path.relative_to(self.path).
-                    with_suffix(self.LOCK_SUFFIX)
-                ) + '\n'
-            )
-
-        with self.with_metadata(name=name) as metadata:
-            metadata.updated = datetime.now(timezone.utc)
-
-        return str(path)
-
-    def init_empty_repository(self, force=False):
+    def init_repository(self, force=False):
         """Initialize an empty Renku repository."""
         from git import Repo
 

@@ -76,7 +76,6 @@ from renku.cli.doctor import doctor
 from renku.cli.exception_handler import IssueFromTraceback
 from renku.cli.githooks import githooks
 from renku.cli.init import init
-from renku.cli.init import template_init
 from renku.cli.log import log
 from renku.cli.migrate import migrate
 from renku.cli.move import move
@@ -195,7 +194,6 @@ cli.add_command(dataset)
 cli.add_command(doctor)
 cli.add_command(githooks)
 cli.add_command(init)
-cli.add_command(template_init)
 cli.add_command(log)
 cli.add_command(migrate)
 cli.add_command(move)

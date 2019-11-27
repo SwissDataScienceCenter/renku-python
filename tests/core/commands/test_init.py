@@ -23,16 +23,17 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
+from git.exc import GitCommandError
 
-from renku.core.commands.init import create_from_template, \
-    fetch_remote_template, validate_template
+from renku.core.commands.init import TEMPLATE_MANIFEST, create_from_template, \
+    fetch_template, read_template_manifest, validate_template
 from renku.core.management.config import RENKU_HOME
 
 TEMPLATE_URL = (
     'https://github.com/SwissDataScienceCenter/renku-project-template'
 )
-TEMPLATE_FOLDER = 'python-minimal'
-TEMPLATE_BRANCH = 'master'
+TEMPLATE_NAME = 'Basic Python Project'
+TEMPLATE_REF = '0.1.4'
 METADATA = {'name': 'myname', 'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 
@@ -54,64 +55,113 @@ def raises(error):
 
 
 @pytest.mark.parametrize(
-    'url, folder, branch, result, error',
-    [(TEMPLATE_URL, TEMPLATE_FOLDER, TEMPLATE_BRANCH, True, None),
-     (TEMPLATE_URL, FAKE, TEMPLATE_BRANCH, None, ValueError),
-     (TEMPLATE_URL, TEMPLATE_FOLDER, FAKE, None, ValueError)],
+    'url, ref, result, error', [(TEMPLATE_URL, TEMPLATE_REF, True, None),
+                                (FAKE, TEMPLATE_REF, None, GitCommandError),
+                                (TEMPLATE_URL, FAKE, None, GitCommandError)]
 )
 @pytest.mark.integration
-def test_fetch_remote_template(url, folder, branch, result, error):
-    """Test remote templates are correctly fetched."""
+def test_fetch_template(url, ref, result, error):
+    """Test fetching a template.
+
+    It fetches a template from remote and verifies that the manifest
+    file is there.
+    """
     with TemporaryDirectory() as tempdir:
         with raises(error):
-            temp_folder = fetch_remote_template(
-                url, folder, branch, Path(tempdir)
-            )
-            temp_path = Path(temp_folder)
-            assert temp_path.is_dir()
-            assert ((temp_path / 'Dockerfile').is_file())
+            manifest_file = fetch_template(url, ref, Path(tempdir))
+            assert manifest_file == Path(tempdir) / TEMPLATE_MANIFEST
+            assert manifest_file.exists()
+
+
+def test_read_template_manifest():
+    """Test reading template manifest file.
+
+    It creates a fake manifest file and it verifies it's read propery.
+    """
+    with TemporaryDirectory() as tempdir:
+        template_file = Path(tempdir) / TEMPLATE_MANIFEST
+        with template_file.open('w') as fp:
+            fp.writelines([
+                '-\n', '  folder: first\n', '  name: Basic Project 1\n',
+                '  description: Description 1\n', '-\n', '  folder: second\n',
+                '  name: Basic Project 2\n', '  description: Description 2\n'
+            ])
+
+        manifest = read_template_manifest(Path(tempdir), checkout=False)
+        assert len(manifest) == 2
+        assert manifest[0]['folder'] == 'first'
+        assert manifest[1]['folder'] == 'second'
+        assert manifest[0]['name'] == 'Basic Project 1'
+        assert manifest[1]['description'] == 'Description 2'
+
+
+@pytest.mark.integration
+def test_fetch_template_and_read_manifest():
+    """Test template fetch and manifest reading.
+
+    It fetches a remote template, reads the manifest, checkouts the
+    template folders and verify they exist.
+    """
+    with TemporaryDirectory() as tempdir:
+        template_path = Path(tempdir)
+        fetch_template(TEMPLATE_URL, TEMPLATE_REF, template_path)
+        manifest = read_template_manifest(template_path, checkout=True)
+        for template in manifest:
+            template_folder = template_path / template['folder']
+            assert template_folder.exists()
 
 
 @pytest.mark.integration
 def test_validate_template():
-    """Test template validation."""
+    """Test template validation.
+
+    It fetches a remote template, reads the manifest, checkouts the
+    template folders and validates each template.
+    """
     with TemporaryDirectory() as tempdir:
+        temppath = Path(tempdir)
         # file error
         with raises(ValueError):
-            validate_template(Path(tempdir))
+            validate_template(temppath)
 
         # folder error
         shutil.rmtree(tempdir)
-        renku_dir = Path(tempdir, RENKU_HOME)
+        renku_dir = temppath / RENKU_HOME
         renku_dir.mkdir(parents=True)
         with raises(ValueError):
-            validate_template(Path(tempdir))
+            validate_template(temppath)
 
         # valid template
         shutil.rmtree(tempdir)
-        template_folder = fetch_remote_template(
-            TEMPLATE_URL, TEMPLATE_FOLDER, TEMPLATE_BRANCH, Path(tempdir)
-        )
-        assert validate_template(template_folder) is True
+        fetch_template(TEMPLATE_URL, TEMPLATE_REF, temppath)
+        manifest = read_template_manifest(Path(tempdir), checkout=True)
+        for template in manifest:
+            template_folder = temppath / template['folder']
+            assert validate_template(template_folder) is True
 
 
 @pytest.mark.integration
 def test_create_from_template(local_client):
-    """Test repository creation from a template."""
+    """Test repository creation from a template.
+
+    It fetches and checkout a template, it creates a renku projects from
+    one of the template and it verifies the data are properly copied to
+    the new renku project folder.
+    """
     with TemporaryDirectory() as tempdir:
-        template_folder = fetch_remote_template(
-            TEMPLATE_URL, TEMPLATE_FOLDER, TEMPLATE_BRANCH, Path(tempdir)
-        )
+        temppath = Path(tempdir)
+        fetch_template(TEMPLATE_URL, TEMPLATE_REF, temppath)
+        manifest = read_template_manifest(temppath, checkout=True)
+        template_path = temppath / manifest[0]['folder']
         create_from_template(
-            template_folder, local_client, METADATA['name'],
+            template_path, local_client, METADATA['name'],
             METADATA['description']
         )
-
         template_files = [
             f for f in local_client.path.glob('**/*') if '.git' not in str(f)
         ]
         for template_file in template_files:
-            expected_file = template_folder / template_file.relative_to(
+            expected_file = template_path / template_file.relative_to(
                 local_client.path
             )
             assert expected_file.exists()

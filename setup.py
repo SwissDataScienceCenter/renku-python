@@ -18,8 +18,46 @@
 """Python SDK and CLI for the Renku platform."""
 
 import os
+import shutil
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from setuptools import find_packages, setup
+from setuptools.command.install import install
+
+URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
+REFERENCE = '0.1.4'
+
+
+class PostInstallCommand(install):
+    """Post-installation for installation mode."""
+
+    def run(self):
+        self._download_templates()
+        install.run(self)
+
+    def _download_templates(self):
+        from renku.core.commands.init import fetch_template, \
+            read_template_manifest
+
+        with TemporaryDirectory() as tempdir:
+            # download and extract template data
+            temppath = Path(tempdir)
+            print(f'downloading templates...')
+            print(str(temppath))
+            fetch_template(URL, REFERENCE, temppath)
+            read_template_manifest(temppath, checkout=True)
+
+            # copy templates
+            current_path = Path.cwd()
+            template_path = current_path / 'renku' / 'templates'
+            if template_path.exists():
+                print(f'rmdir on {str(template_path)}')
+                shutil.rmtree(str(template_path))
+            shutil.copytree(
+                temppath, template_path, ignore=shutil.ignore_patterns('.git')
+            )
+
 
 readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
@@ -56,7 +94,6 @@ extras_require = {
 
 setup_requires = [
     'pytest-runner>=2.6.2',
-    'setuptools_scm>=3.1.0',
 ]
 
 extras_require['all'] = list(setup_requires)
@@ -167,8 +204,9 @@ setup(
     },
     extras_require=extras_require,
     install_requires=install_requires,
-    setup_requires=setup_requires,
+    setup_requires=setup_requires + install_requires,
     tests_require=tests_require,
+    cmdclass={'install': PostInstallCommand},
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
