@@ -410,7 +410,10 @@ def edit(dataset_id):
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
 @click.option(
-    '--create', is_flag=True, help='Create dataset if it does not exist.'
+    '-c',
+    '--create',
+    is_flag=True,
+    help='Create dataset if it does not exist.'
 )
 @click.option(
     '-s',

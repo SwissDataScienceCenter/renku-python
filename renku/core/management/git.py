@@ -33,6 +33,7 @@ import attr
 import gitdb
 
 from renku.core import errors
+from renku.core.utils.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = 'DIFF'
 STARTED_AT = int(time.time() * 1e3)
@@ -301,7 +302,8 @@ class GitCore:
                 raise errors.NothingToCommit()
             return
 
-        argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
+        argv = [os.path.basename(sys.argv[0])
+                ] + [remove_credentials(arg) for arg in sys.argv[1:]]
 
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(

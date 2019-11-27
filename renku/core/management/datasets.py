@@ -41,6 +41,7 @@ from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
+from renku.core.utils.urls import remove_credentials
 
 
 @attr.s
@@ -301,7 +302,7 @@ class DatasetsApiMixin(object):
             else:
                 return [{
                     'path': path_in_repo,
-                    'url': src.as_uri(),
+                    'url': path_in_repo,
                     'creator': dataset.creator,
                     'dataset': dataset.name,
                     'parent': self
@@ -323,7 +324,7 @@ class DatasetsApiMixin(object):
 
         return [{
             'path': destination.relative_to(self.path),
-            'url': src.as_uri(),
+            'url': 'file://' + os.path.relpath(str(src), str(self.path)),
             'creator': dataset.creator,
             'dataset': dataset.name,
             'parent': self
@@ -349,7 +350,7 @@ class DatasetsApiMixin(object):
 
         return [{
             'path': destination.relative_to(self.path),
-            'url': url,
+            'url': remove_credentials(url),
             'creator': dataset.creator,
             'dataset': dataset.name,
             'parent': self
@@ -426,7 +427,7 @@ class DatasetsApiMixin(object):
 
                 results.append({
                     'path': path_in_dst_repo,
-                    'url': url,
+                    'url': remove_credentials(url),
                     'creator': creators,
                     'dataset': dataset.name,
                     'parent': self,
