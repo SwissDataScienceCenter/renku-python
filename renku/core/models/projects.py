@@ -73,7 +73,6 @@ class Project(object):
         kw_only=True,
         context={
             '@id': 'schema:creator',
-            '@type': 'schema:Person',
         },
         type=Creator
     )
@@ -120,6 +119,8 @@ class Project(object):
             owner = remote.get('owner') or owner
             name = remote.get('name') or name
         host = os.environ.get('RENKU_DOMAIN') or host
+        if name:
+            name = urllib.parse.quote(name, safe='')
         project_url = urllib.parse.urljoin(
             'https://{host}'.format(host=host),
             pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or 'NULL')
