@@ -105,11 +105,13 @@ def create_template_sentence(templates):
     """
     template_sentences = []
     for index, template_elem in enumerate(templates):
-        template_sentences.append(f'[{index + 1}] {template_elem["name"]}')
+        template_sentences.append(
+            '[{0}] {1}'.format(index + 1, template_elem['name'])
+        )
     template_sentence = ', '.join(template_sentences)
     return (
         'Please choose a template number by typing the number '
-        f'({template_sentence}). Default is 1'
+        '({0}). Default is 1'.format(template_sentence)
     )
 
 
@@ -171,8 +173,9 @@ def init(
     if len(list(client.path.glob('**/*'))) > 0:
         if not force:
             error = FileExistsError(
-                f'Folder "{str(path)}" is not empty. Please '
-                f'add --force flag to transform it into a Renku repository.'
+                'Folder "{0}" is not empty. Please '
+                'add --force flag to transform it into a Renku repository.'.
+                format(str(path))
             )
             raise click.UsageError(error)
         else:
@@ -186,16 +189,21 @@ def init(
                     commit=commit,
                     merge_args=['--no-ff', '-s', 'recursive', '-X', 'ours']
                 ):
-                    click.echo(f'Saving current data in branch {branch_name}')
+                    click.echo(
+                        'Saving current data in branch {0}'.
+                        format(branch_name)
+                    )
             except AttributeError:
-                click.echo(f'Warning! Overwriting non-empty folder.')
+                click.echo('Warning! Overwriting non-empty folder.')
             except GitCommandError as e:
                 click.UsageError(e)
 
     # select template source
     if template_source:
         click.echo(
-            f'Fetching template from {template_source}@{template_ref}...',
+            'Fetching template from {0}@{1}...'.format(
+                template_source, template_ref
+            ),
             nl=False
         )
         template_folder = Path(mkdtemp())
@@ -221,7 +229,10 @@ def init(
         if len(template_filtered) == 1:
             template_data = template_filtered[0]
         else:
-            click.echo(f'The template with name "{template}" is not avilable.')
+            click.echo(
+                'The template with name "{0}" is not avilable.'.
+                format(template)
+            )
             repeat = True
     if not template or repeat:
         templates = [template_elem for template_elem in template_manifest]

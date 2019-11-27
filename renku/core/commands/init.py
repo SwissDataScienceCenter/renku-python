@@ -48,7 +48,7 @@ def fetch_template(source, ref='master', tempdir=None):
     try:
         template_repo.head.reset(template_repo.commit(ref))
     except git.exc.BadName:
-        ref = f'origin/{ref}'
+        ref = 'origin/{0}'.format(ref)
         template_repo.head.reset(template_repo.commit(ref))
     git_repo = git.Git(tempdir)
 
@@ -64,16 +64,18 @@ def validate_template(template_path):
     """
     # TODO: implement a better check
     required_folders = [RENKU_HOME]
-    required_files = [f'{RENKU_HOME}/metadata.yml', 'Dockerfile']
+    required_files = ['{0}/metadata.yml'.format(RENKU_HOME), 'Dockerfile']
     for folder in required_folders:
         if not Path(template_path, folder).is_dir():
             raise ValueError(
-                f'Folder {folder} is required for the template to be valid'
+                'Folder {0} is required for the template to be valid'.
+                format(folder)
             )
     for file in required_files:
         if not Path(template_path, file).is_file():
             raise ValueError(
-                f'File {file} is required for the template to be valid'
+                'File {0} is required for the template to be valid'.
+                format(file)
             )
     return True
 
@@ -85,20 +87,21 @@ def validate_template_manifest(manifest):
     """
     if not isinstance(manifest, list):
         raise ValueError((
-            f'The repository doesn\'t contain a valid',
-            f'"{TEMPLATE_MANIFEST}" file'
+            'The repository doesn\'t contain a valid',
+            '"{0}" file'.format(TEMPLATE_MANIFEST)
         ))
     for template in manifest:
         if not template['name']:
             raise ValueError((
-                f'Every template listed in "{TEMPLATE_MANIFEST}"',
-                f' must have a name'
+                'Every template listed in "{0}"',
+                ' must have a name'.format(TEMPLATE_MANIFEST)
             ))
         for attribute in ['folder', 'description']:
             if not template[attribute]:
                 raise ValueError((
-                    f'Template "{template["name"]}" doesn\'t ',
-                    f'have a {attribute} attribute'
+                    'Template "{0}" doesn\'t have a {1} attribute'.format(
+                        template["name"], attribute
+                    )
                 ))
     return True
 

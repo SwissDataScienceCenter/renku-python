@@ -43,8 +43,7 @@ class PostInstallCommand(install):
         with TemporaryDirectory() as tempdir:
             # download and extract template data
             temppath = Path(tempdir)
-            print(f'downloading templates...')
-            print(str(temppath))
+            print('downloading Renku templates...')
             fetch_template(URL, REFERENCE, temppath)
             read_template_manifest(temppath, checkout=True)
 
@@ -52,7 +51,6 @@ class PostInstallCommand(install):
             current_path = Path.cwd()
             template_path = current_path / 'renku' / 'templates'
             if template_path.exists():
-                print(f'rmdir on {str(template_path)}')
                 shutil.rmtree(str(template_path))
             shutil.copytree(
                 temppath, template_path, ignore=shutil.ignore_patterns('.git')
