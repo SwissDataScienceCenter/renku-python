@@ -535,7 +535,9 @@ class JSONLDMixin(ReferenceMixin):
 
         for k, v in compacted.items():
             if k in fields:
-                if isinstance(v, dict) and '@context' not in v and k in compacted['@context'] and '@context' in compacted['@context'][k]:
+                if isinstance(v, dict) and '@context' not in v and\
+                   k in compacted['@context'] and\
+                   '@context' in compacted['@context'][k]:
                     # Propagate down context
                     v['@context'] = compacted['@context'][k]['@context']
 

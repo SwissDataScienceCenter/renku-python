@@ -245,7 +245,6 @@ class ZenodoRecordSerializer:
                 filename=file_.filename,
                 filesize=file_.filesize,
                 filetype=file_.type,
-                dataset=dataset.name,
                 path='',
             )
             serialized_files.append(dataset_file)
