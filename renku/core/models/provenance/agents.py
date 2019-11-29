@@ -58,9 +58,14 @@ class Person:
     @_id.default
     def default_id(self):
         """Set the default id."""
+        import string
         if self.email:
             return 'mailto:{email}'.format(email=self.email)
-        return '_:{}'.format(''.join(self.name.lower().split()))
+
+        # prep name to be a valid ntuple string
+        name = self.name.translate(str.maketrans('', '', string.punctuation))
+        name = ''.join(filter(lambda x: x in string.printable, name))
+        return '_:{}'.format(''.join(name.lower().split()))
 
     @email.validator
     def check_email(self, attribute, value):
