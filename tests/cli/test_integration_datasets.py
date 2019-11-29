@@ -22,7 +22,6 @@ from pathlib import Path
 
 import git
 import pytest
-import yaml
 
 from renku.cli import cli
 
@@ -596,13 +595,11 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
 
 def read_dataset_file_metadata(client, dataset_name, filename):
     """Return metadata from dataset's YAML file."""
-    path = client.dataset_path(dataset_name)
-    assert path.exists()
+    with client.with_dataset(dataset_name) as dataset:
+        assert client.dataset_path(dataset.name).exists()
 
-    with path.open(mode='r') as fp:
-        metadata = yaml.safe_load(fp)
-        for file_ in metadata['files']:
-            if file_['path'].endswith(filename):
+        for file_ in dataset.files:
+            if file_.path.endswith(filename):
                 return file_
 
 
@@ -631,14 +628,14 @@ def test_dataset_update(client, runner, params):
     assert 0 == result.exit_code
 
     after = read_dataset_file_metadata(client, 'remote', 'CHANGES.rst')
-    assert after['_id'] == before['_id']
-    assert after['_label'] != before['_label']
-    assert after['added'] == before['added']
-    assert after['url'] == before['url']
-    assert after['based_on']['_id'] == before['based_on']['_id']
-    assert after['based_on']['_label'] != before['based_on']['_label']
-    assert after['based_on']['path'] == before['based_on']['path']
-    assert after['based_on']['based_on'] is None
+    assert after._id == before._id
+    assert after._label != before._label
+    assert after.added == before.added
+    assert after.url == before.url
+    assert after.based_on._id == before.based_on._id
+    assert after.based_on._label != before.based_on._label
+    assert after.based_on.path == before.based_on.path
+    assert after.based_on.based_on is None
 
 
 @pytest.mark.integration
@@ -792,12 +789,12 @@ def test_import_from_renku_project(tmpdir, client, runner):
     assert 0 == result.exit_code
 
     metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
-    assert metadata['creator'][0]['name'] == remote['creator'][0]['name']
-    assert metadata['based_on']['_id'] == remote['_id']
-    assert metadata['based_on']['_label'] == remote['_label']
-    assert metadata['based_on']['path'] == remote['path']
-    assert metadata['based_on']['based_on'] is None
-    assert metadata['based_on']['url'] == REMOTE
+    assert metadata.creator[0].name == remote.creator[0].name
+    assert metadata.based_on._id == remote._id
+    assert metadata.based_on._label == remote._label
+    assert metadata.based_on.path == remote.path
+    assert metadata.based_on.based_on is None
+    assert metadata.based_on.url == REMOTE
 
 
 @pytest.mark.integration

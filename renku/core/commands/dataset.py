@@ -567,7 +567,7 @@ def update_datasets(
 
             file_.dataset = dataset
             possible_updates.append(file_)
-            unique_remotes.add(file_.based_on['url'])
+            unique_remotes.add(file_.based_on.url)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(

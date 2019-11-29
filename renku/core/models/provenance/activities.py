@@ -18,9 +18,10 @@
 """Represent a Git commit."""
 
 import os
+import urllib
 import uuid
 from collections import OrderedDict
-from pathlib import Path
+from pathlib import Path, posixpath
 
 import attr
 from git import NULL_TREE
@@ -217,7 +218,15 @@ class Activity(CommitMixin):
     @classmethod
     def generate_id(cls, commit):
         """Calculate action ID."""
-        return 'commit/{commit.hexsha}'.format(commit=commit)
+        host = os.environ.get('RENKU_DOMAIN') or 'localhost'
+
+        # always set the id by the identifier
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            posixpath.join(
+                '/activities', 'commit/{commit.hexsha}'.format(commit=commit)
+            )
+        )
 
     @_id.default
     def default_id(self):

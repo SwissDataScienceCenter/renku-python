@@ -18,9 +18,12 @@
 """Compatibility layer for different Python versions."""
 
 import contextlib
+import json
 import os
 import sys
 from pathlib import Path
+
+import pyld
 
 if sys.version_info < (3, 6):
     original_resolve = Path.resolve
@@ -63,4 +66,25 @@ try:
 except NameError:  # pragma: no cover
     FileNotFoundError = IOError
 
-__all__ = ('FileNotFoundError', 'Path', 'contextlib')
+
+class PatchedActiveContextCache(pyld.jsonld.ActiveContextCache):
+    """Pyld context cache without issue of missing contexts."""
+
+    def set(self, active_ctx, local_ctx, result):
+        if len(self.order) == self.size:
+            entry = self.order.popleft()
+            if sum(
+                e['activeCtx'] == entry['activeCtx'] and
+                e['localCtx'] == entry['localCtx'] for e in self.order
+            ) == 0:
+                # only delete from cache if it doesn't exist in context deque
+                del self.cache[entry['activeCtx']][entry['localCtx']]
+        key1 = json.dumps(active_ctx)
+        key2 = json.dumps(local_ctx)
+        self.order.append({'activeCtx': key1, 'localCtx': key2})
+        self.cache.setdefault(key1, {})[key2] = json.loads(json.dumps(result))
+
+
+pyld.jsonld._cache = {'activeCtx': PatchedActiveContextCache()}
+
+__all__ = ('FileNotFoundError', 'Path', 'contextlib', 'pyld')

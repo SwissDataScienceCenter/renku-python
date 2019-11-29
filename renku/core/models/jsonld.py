@@ -31,8 +31,8 @@ import yaml
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import Factory, fields
-from pyld import jsonld as ld
 
+from renku.core.compat import pyld
 from renku.core.models.locals import ReferenceMixin, with_reference
 from renku.core.models.migrations import JSONLD_MIGRATIONS
 
@@ -150,7 +150,7 @@ def attrs(
 
         # Register class for given JSON-LD @type
         try:
-            type_ = ld.expand({
+            type_ = pyld.jsonld.expand({
                 '@type': jsonld_cls._jsonld_type,
                 '@context': context
             })[0]['@type']
@@ -485,10 +485,10 @@ class JSONLDMixin(ReferenceMixin):
 
         if cls._jsonld_translate:
             # perform the translation
-            data = ld.compact(data, cls._jsonld_translate)
+            data = pyld.jsonld.compact(data, cls._jsonld_translate)
             # compact using the class json-ld context
             data.pop('@context', None)
-            data = ld.compact(data, cls._jsonld_context)
+            data = pyld.jsonld.compact(data, cls._jsonld_context)
 
         data.setdefault('@context', cls._jsonld_context)
 
@@ -516,7 +516,7 @@ class JSONLDMixin(ReferenceMixin):
                 data['@context'] = {'@base': data['@context']}
             data['@context'].update(cls._jsonld_context)
             try:
-                compacted = ld.compact(data, cls._jsonld_context)
+                compacted = pyld.jsonld.compact(data, cls._jsonld_context)
             except Exception:
                 compacted = data
         else:
