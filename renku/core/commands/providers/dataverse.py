@@ -220,7 +220,6 @@ class DataverseRecordSerializer:
                 filename=file_.name,
                 filesize=file_.content_size,
                 filetype=file_.file_format,
-                dataset=dataset.name,
                 path='',
             )
             serialized_files.append(dataset_file)

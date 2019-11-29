@@ -172,8 +172,6 @@ class DatasetFile(Entity, CreatorMixin):
 
     checksum = attr.ib(default=None, kw_only=True)
 
-    dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
-
     filename = attr.ib(kw_only=True, converter=convert_filename_path)
 
     name = jsonld.ib(context='schema:name', kw_only=True, default=None)
