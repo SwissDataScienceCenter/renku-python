@@ -65,6 +65,7 @@ was not installed previously.
 """
 
 import os
+import sys
 from pathlib import Path
 from tempfile import mkdtemp
 
@@ -110,9 +111,24 @@ def create_template_sentence(templates):
         )
     template_sentence = ', '.join(template_sentences)
     return (
-        'Please choose a template number by typing the number '
-        '({0}). Default is 1'.format(template_sentence)
+        'Please choose a template by typing the number '
+        '({0}) or [0] to print the description'.format(template_sentence)
     )
+
+
+def create_printable_descriptions(templates):
+    """Create description string of the templates.
+
+    :ref templates: list of templates coming from manifest file
+    """
+    template_descriptions = []
+    for index, template in enumerate(templates):
+        template_descriptions.append(
+            '[{0}] {1}: {2}'.format(
+                index + 1, template['name'], template['description']
+            )
+        )
+    return '\n'.join(template_descriptions)
 
 
 @click.command()
@@ -139,22 +155,17 @@ def create_template_sentence(templates):
     default='master',
     help='Specify the reference to checkout on remote template repository.',
 )
-@click.option('--force', is_flag=True, help='Override target path.')
 @click.option('--description', help='Describe your project.')
+@click.option(
+    '--print-manifest', is_flag=True, help='Print templates manifest only.'
+)
+@click.option('--force', is_flag=True, help='Override target path.')
 @option_use_external_storage
 @pass_local_client
 @click.pass_context
 def init(
-    ctx,
-    client,
-    use_external_storage,
-    path,
-    name,
-    template,
-    template_source,
-    template_ref,
-    force,
-    description,
+    ctx, client, use_external_storage, path, name, template, template_source,
+    template_ref, description, print_manifest, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # preparation
@@ -221,6 +232,7 @@ def init(
 
     # select specific template
     repeat = False
+    template_data = None
     if template:
         template_filtered = [
             template_elem for template_elem in template_manifest
@@ -234,19 +246,30 @@ def init(
                 format(template)
             )
             repeat = True
+
+    if print_manifest:
+        if template_data:
+            click.echo(create_printable_descriptions([template_data]))
+        else:
+            click.echo(create_printable_descriptions(template_manifest))
+        sys.exit()
+
     if not template or repeat:
         templates = [template_elem for template_elem in template_manifest]
         if len(templates) == 1:
             template_data = templates[0]
         else:
-            # template_names =
-            template_num = click.prompt(
-                text=create_template_sentence(templates),
-                type=click.IntRange(1, len(templates)),
-                default=1,
-                show_default=False,
-                show_choices=False
-            )
+            template_num = 0
+            while template_num == 0:
+                template_num = click.prompt(
+                    text=create_template_sentence(templates),
+                    type=click.IntRange(0, len(templates)),
+                    default=0,
+                    show_default=False,
+                    show_choices=False
+                )
+                if template_num == 0:
+                    click.echo(create_printable_descriptions(templates))
             template_data = templates[template_num - 1]
 
     # clone the repo

@@ -24,13 +24,31 @@ from tests.core.commands.test_init import TEMPLATE_NAME, TEMPLATE_REF, \
     TEMPLATE_URL
 
 from renku.cli import cli
-from renku.cli.init import create_template_sentence
+from renku.cli.init import create_printable_descriptions, \
+    create_template_sentence
 
 INIT = ['init', 'test-new-project', '--template', TEMPLATE_NAME]
 INIT_REMOTE = [
     '--template-source', TEMPLATE_URL, '--template-ref', TEMPLATE_REF
 ]
 INIT_FORCE = ['--force']
+
+
+def test_create_printable_descriptions():
+    templates = [{
+        'folder': 'folder_p',
+        'name': 'Template Python',
+        'description': 'Description Python'
+    }, {
+        'folder': 'folder_r',
+        'name': 'Template R',
+        'description': 'Description R'
+    }]
+    sentence = create_printable_descriptions(templates)
+    assert sentence == (
+        '[1] Template Python: Description Python\n'
+        '[2] Template R: Description R'
+    )
 
 
 def test_template_selection_helpers():
@@ -45,8 +63,9 @@ def test_template_selection_helpers():
     }]
     sentence = create_template_sentence(templates)
     assert sentence == (
-        'Please choose a template number by typing the number '
-        '([1] Template Python, [2] Template R). Default is 1'
+        'Please choose a template by typing the number '
+        '([1] Template Python, [2] Template R) '
+        'or [0] to print the description'
     )
 
 
