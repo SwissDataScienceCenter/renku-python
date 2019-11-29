@@ -359,43 +359,6 @@ class DatasetsApiMixin(object):
 
         u = parse.urlparse(url)
 
-        is_local_repo = u.scheme in ('', 'file') and not url.startswith('git@')
-
-        if is_local_repo:
-            try:
-                Path(u.path).resolve().relative_to(self.path)
-            except ValueError:
-                pass
-            else:
-                if not destination:
-                    return [{
-                        'path': url,
-                        'url': url,
-                        'creator': dataset.creator,
-                        'parent': self
-                    }]
-
-            # determine where is the base repo path
-            repo = Repo(u.path, search_parent_directories=True)
-            repo_path = Path(repo.git_dir).parent.resolve()
-
-            # if repo path is a parent of the url, treat the url as a source
-            if repo_path != Path(u.path).resolve():
-                if sources:
-                    raise errors.UsageError(
-                        'Cannot use --source within local repo subdirectories'
-                    )
-                source = Path(u.path).resolve().relative_to(repo_path)
-                sources = (source, )
-                url = repo_path.as_posix()
-        elif u.scheme not in {'http', 'https', 'git+https', 'git+ssh'} and \
-                not url.startswith('git@'):
-            raise errors.UrlSchemeNotSupported(
-                'Scheme {} not supported'.format(u.scheme)
-            )
-
-        repo, repo_path = self._prepare_git_repo(url, ref)
-
         sources = self._resolve_paths(u.path, sources)
 
         # Get all files from repo that match sources
