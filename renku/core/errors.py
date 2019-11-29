@@ -373,3 +373,7 @@ class UrlSchemeNotSupported(RenkuException):
 
 class OperationError(RenkuException):
     """Raised when an operation at runtime raises an error."""
+
+
+class SHACLValidationError(RenkuException):
+    """Raises when SHACL validation of the graph fails."""
