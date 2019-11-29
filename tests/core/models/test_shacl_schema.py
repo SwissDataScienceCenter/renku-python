@@ -82,14 +82,14 @@ def test_dataset_shacl(tmpdir, runner, project, client):
 
 def test_project_shacl(project, client):
     """Test project metadata structure."""
-    from renku.core.models.creators import Creator
+    from renku.core.models.provenance.agents import Person
 
     path = Path(
         __file__
     ).parent.parent.parent / 'fixtures' / 'force_project_shacl.json'
 
     project = client.project
-    project.creator = Creator(email='johndoe@example.com', name='Johnny Doe')
+    project.creator = Person(email='johndoe@example.com', name='Johnny Doe')
 
     g = project.asjsonld()
     rdf = pyld.jsonld.to_rdf(

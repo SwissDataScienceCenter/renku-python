@@ -47,10 +47,12 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format):
     assert 0 == result.exit_code
 
     paths = []
+    test_paths = []
     for i in range(3):
         new_file = tmpdir.join('file_{0}'.format(i))
         new_file.write(str(i))
         paths.append(str(new_file))
+        test_paths.append(str(new_file.relto(tmpdir.join('..'))))
 
     # add data
     result = runner.invoke(
@@ -64,4 +66,4 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format):
     )
 
     assert 0 == result.exit_code, result.output
-    assert all(p in result.output for p in paths)
+    assert all(p in result.output for p in test_paths)

@@ -21,6 +21,7 @@ import functools
 
 import click
 
+from renku.core.errors import SHACLValidationError
 from renku.core.utils.shacl import validate_graph
 
 
@@ -30,7 +31,7 @@ def ascii(graph, strict=False):
     from ..echo import echo_via_pager
 
     if strict:
-        raise click.BadParameter('--strict not supported for json-ld-graph')
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
 
     echo_via_pager(str(DAG(graph)))
 
@@ -68,7 +69,7 @@ def dot(graph, simple=True, debug=False, landscape=False, strict=False):
     from rdflib.tools.rdf2dot import rdf2dot
 
     if strict:
-        raise click.BadParameter('--strict not supported for json-ld-graph')
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
 
     g = _conjunctive_graph(graph)
 
@@ -312,7 +313,7 @@ def makefile(graph, strict=False):
     from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 
     if strict:
-        raise click.BadParameter('--strict not supported for json-ld-graph')
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
 
     for activity in graph.activities.values():
         if not isinstance(activity, ProcessRun):
@@ -341,7 +342,7 @@ def jsonld(graph, strict=False):
         r, _, t = validate_graph(ld, format='json-ld')
 
         if not r:
-            raise click.BadParameter(
+            raise SHACLValidationError(
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
     click.echo(ld)
@@ -350,7 +351,7 @@ def jsonld(graph, strict=False):
 def jsonld_graph(graph, strict=False):
     """Format graph as JSON-LD graph file."""
     if strict:
-        raise click.BadParameter('--strict not supported for json-ld-graph')
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
     click.echo(_jsonld(graph, 'flatten'))
 
 
@@ -361,7 +362,7 @@ def nt(graph, strict=False):
         r, _, t = validate_graph(nt, format='nt')
 
         if not r:
-            raise click.BadParameter(
+            raise SHACLValidationError(
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
 
@@ -375,7 +376,7 @@ def rdf(graph, strict=False):
         r, _, t = validate_graph(xml, format='xml')
 
         if not r:
-            raise click.BadParameter(
+            raise SHACLValidationError(
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
 

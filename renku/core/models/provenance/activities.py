@@ -193,6 +193,11 @@ class Activity(CommitMixin):
         index = set()
 
         for file_ in self.commit.diff(self.commit.parents or NULL_TREE):
+            # ignore deleted files (note they appear as ADDED)
+            # in this backwards diff
+            # TODO: set `deprecatedBy` for deleted paths
+            if file_.change_type == 'A':
+                continue
             path_ = Path(file_.a_path)
 
             is_dataset = self.client.DATASETS in str(path_)
@@ -282,6 +287,7 @@ class Activity(CommitMixin):
 
     def __attrs_post_init__(self):
         """Sets ``generated`` default value if it's not set already."""
+        super().__attrs_post_init__()
         if not self.generated:
             self.generated = self.default_generated()
 

@@ -561,6 +561,14 @@
          "targetClass": "prov:Activity",
          "property": [
             {
+               "path": "schema:isPartOf",
+               "sh:class": {
+                  "@id": "schema:Project"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
                "nodeKind": "sh:Literal",
                "path": "rdfs:comment",
                "datatype": {

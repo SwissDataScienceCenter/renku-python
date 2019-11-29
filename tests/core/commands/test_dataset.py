@@ -22,12 +22,11 @@ import shutil
 import stat
 from contextlib import contextmanager
 
-import git
 import pytest
 
 from renku.core import errors
-from renku.core.models.creators import Creator
 from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.provenance.agents import Person
 
 
 def _key(client, dataset, filename):
@@ -57,7 +56,7 @@ def raises(error):
 
 @pytest.mark.parametrize(
     'scheme, path, error', [('', 'temp', None), ('file://', 'temp', None),
-                            ('', 'tempp', git.NoSuchPathError),
+                            ('', 'tempp', errors.ParameterError),
                             ('http://', 'example.com/file', None),
                             ('https://', 'example.com/file', None),
                             ('bla://', 'file', errors.UrlSchemeNotSupported)]
@@ -130,19 +129,10 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
     assert os.stat('data/dataset/dir2/file2')
     assert dataset.files[0].path.endswith('dir2/file2')
 
-    # check that the creators are properly parsed from commits
-    client.add_data_to_dataset(
-        dataset, [os.path.dirname(data_repository.git_dir)], sources=['file']
-    )
-
-    assert dataset.files[1].name == 'file'
-    assert len(dataset.files[1].creator) == 2
-    assert all(x.name in ('me', 'me2') for x in dataset.files[1].creator)
-
 
 @pytest.mark.parametrize(
     'creators', [
-        [Creator(name='me', email='me@example.com')],
+        [Person(name='me', email='me@example.com')],
         [{
             'name': 'me',
             'email': 'me@example.com',
@@ -152,14 +142,14 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 def test_creator_parse(creators, data_file):
     """Test that different options for specifying creators work."""
     f = DatasetFile(path='file', creator=creators)
-    creator = Creator(name='me', email='me@example.com')
+    creator = Person(name='me', email='me@example.com')
     assert creator in f.creator
 
     # email check
     with pytest.raises(ValueError):
-        Creator(name='me', email='meexample.com')
+        Person(name='me', email='meexample.com')
 
-    # creators must be a set or list of dicts or Creator
+    # creators must be a set or list of dicts or Person
     with pytest.raises(ValueError):
         f = DatasetFile(path='file', creator=['name'])
 
