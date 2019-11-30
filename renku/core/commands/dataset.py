@@ -106,10 +106,8 @@ def create_dataset(client, name, commit_message=None):
 
     :raises: ``renku.core.errors.ParameterError``
     """
-    with client.with_dataset(name=name, create=True) as dataset:
-        creator = Person.from_git(client.repo)
-        if creator not in dataset.creator:
-            dataset.creator.append(creator)
+    creator = Person.from_git(client.repo)
+    client.create_dataset(name=name, creators=[creator])
 
 
 @pass_local_client(

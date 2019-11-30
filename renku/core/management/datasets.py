@@ -118,36 +118,11 @@ class DatasetsApiMixin(object):
         clean_up_required = False
 
         if dataset is None:
-            # Avoid nested datasets: name mustn't have '/' in it
-            if len(Path(name).parts) > 1:
-                raise errors.ParameterError(
-                    'Dataset name {} is not valid.'.format(name)
-                )
-
             if not create:
                 raise errors.DatasetNotFound
+
             clean_up_required = True
-            dataset_ref = None
-            identifier = str(uuid.uuid4())
-            path = (self.renku_datasets_path / identifier / self.METADATA)
-            try:
-                path.parent.mkdir(parents=True, exist_ok=False)
-            except FileExistsError:
-                raise errors.DatasetExistsError(
-                    'Dataset with reference {} exists'.format(path.parent)
-                )
-
-            with with_reference(path):
-                dataset = Dataset(
-                    identifier=identifier, name=name, client=self
-                )
-
-            if name:
-                dataset_ref = LinkReference.create(
-                    client=self, name='datasets/' + name
-                )
-                dataset_ref.set_reference(path)
-
+            dataset, path, dataset_ref = self.create_dataset(name)
         elif create:
             raise errors.DatasetExistsError(
                 'Dataset exists: "{}".'.format(name)
@@ -161,7 +136,7 @@ class DatasetsApiMixin(object):
         except Exception:
             # TODO use a general clean-up strategy
             # https://github.com/SwissDataScienceCenter/renku-python/issues/736
-            if clean_up_required and dataset_ref:
+            if clean_up_required:
                 dataset_ref.delete()
                 shutil.rmtree(path.parent, ignore_errors=True)
             raise
@@ -173,6 +148,48 @@ class DatasetsApiMixin(object):
         #         raise ValueError('Dataset already exists')
 
         dataset.to_yaml()
+
+    def create_dataset(self, name, creators=()):
+        """Create a dataset."""
+        # FIXME create a test for duplicate dataset creation
+        if self.load_dataset(name=name):
+            raise errors.DatasetExistsError(
+                'Dataset exists: "{}".'.format(name)
+            )
+
+        # Avoid nested datasets: name mustn't have '/' in it
+        if len(Path(name).parts) > 1:
+            raise errors.ParameterError(
+                'Dataset name {} is not valid.'.format(name)
+            )
+        if not name:
+            raise errors.ParameterError('Dataset name must be provided.')
+
+        identifier = str(uuid.uuid4())
+        path = (self.renku_datasets_path / identifier / self.METADATA)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise errors.DatasetExistsError(
+                'Dataset with reference {} exists'.format(path.parent)
+            )
+
+        with with_reference(path):
+            dataset = Dataset(
+                client=self,
+                identifier=identifier,
+                name=name,
+                creator=creators
+            )
+
+        dataset_ref = LinkReference.create(
+            client=self, name='datasets/' + name
+        )
+        dataset_ref.set_reference(path)
+
+        dataset.to_yaml()
+
+        return dataset, path, dataset_ref
 
     def add_data_to_dataset(
         self,
