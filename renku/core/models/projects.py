@@ -23,8 +23,8 @@ import os
 import attr
 
 from renku.core.models import jsonld
-from renku.core.models.creators import Creator
 from renku.core.models.datastructures import Collection
+from renku.core.models.provenance.agents import Person
 from renku.core.utils.datetime8601 import parse_date
 
 PROJECT_URL_PATH = 'projects'
@@ -73,9 +73,8 @@ class Project(object):
         kw_only=True,
         context={
             '@id': 'schema:creator',
-            '@type': 'schema:Person',
         },
-        type=Creator
+        type=Person
     )
 
     _id = jsonld.ib(context='@id', kw_only=True, default=None)
@@ -90,14 +89,14 @@ class Project(object):
         """Initialize computed attributes."""
         if not self.creator and self.client:
             if self.client.renku_metadata_path.exists():
-                self.creator = Creator.from_commit(
+                self.creator = Person.from_commit(
                     self.client.find_previous_commit(
                         self.client.renku_metadata_path, return_first=True
                     ),
                 )
             else:
                 # this assumes the project is being newly created
-                self.creator = Creator.from_git(self.client.repo)
+                self.creator = Person.from_git(self.client.repo)
 
         self._id = self.project_id
 
@@ -120,6 +119,8 @@ class Project(object):
             owner = remote.get('owner') or owner
             name = remote.get('name') or name
         host = os.environ.get('RENKU_DOMAIN') or host
+        if name:
+            name = urllib.parse.quote(name, safe='')
         project_url = urllib.parse.urljoin(
             'https://{host}'.format(host=host),
             pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or 'NULL')

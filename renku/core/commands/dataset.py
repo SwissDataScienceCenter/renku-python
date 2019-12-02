@@ -42,11 +42,12 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.creators import Creator
 from renku.core.models.datasets import Dataset
+from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
 from renku.core.utils.doi import extract_doi
+from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
 from .echo import WARNING
@@ -106,7 +107,7 @@ def create_dataset(client, name):
     :raises: ``renku.core.errors.ParameterError``
     """
     with client.with_dataset(name=name, create=True) as dataset:
-        creator = Creator.from_git(client.repo)
+        creator = Person.from_git(client.repo)
         if creator not in dataset.creator:
             dataset.creator.append(creator)
 
@@ -131,6 +132,8 @@ def edit_dataset(client, dataset_id, transform_fn):
     clean=False,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
+    commit_empty=False,
+    raise_if_empty=True
 )
 def add_file(
     client,
@@ -166,13 +169,12 @@ def add_to_dataset(
     urlscontext=contextlib.nullcontext
 ):
     """Add data to a dataset."""
-    if sources or destination:
-        if len(urls) == 0:
-            raise UsageError('No URL is specified')
-        elif len(urls) > 1:
-            raise UsageError(
-                'Cannot add multiple URLs with --source or --destination'
-            )
+    if len(urls) == 0:
+        raise UsageError('No URL is specified')
+    if (sources or destination) and len(urls) > 1:
+        raise UsageError(
+            'Cannot add multiple URLs with --source or --destination'
+        )
 
     # check for identifier before creating the dataset
     identifier = extract_doi(
@@ -183,7 +185,7 @@ def add_to_dataset(
             name=name, identifier=identifier, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
-                client.add_data_to_dataset(
+                warning_message = client.add_data_to_dataset(
                     dataset,
                     bar,
                     link=link,
@@ -192,6 +194,9 @@ def add_to_dataset(
                     destination=destination,
                     ref=ref
                 )
+
+            if warning_message:
+                click.echo(WARNING + warning_message)
 
             if with_metadata:
                 for file_ in with_metadata.files:
@@ -202,6 +207,7 @@ def add_to_dataset(
                                 file_.url = file_.url.geturl()
 
                             file_.path = added_.path
+                            file_.url = remove_credentials(file_.url)
                             file_.creator = with_metadata.creator
                             file_._label = added_._label
                             file_.commit = added_.commit
@@ -501,6 +507,7 @@ def import_dataset(
         pool.close()
 
         dataset_name = name or dataset.display_name
+        dataset.url = remove_credentials(dataset.url)
         add_to_dataset(
             client,
             urls=[str(p) for p in Path(data_folder).glob('*')],
@@ -560,7 +567,7 @@ def update_datasets(
 
             file_.dataset = dataset
             possible_updates.append(file_)
-            unique_remotes.add(file_.based_on['url'])
+            unique_remotes.add(file_.based_on.url)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(

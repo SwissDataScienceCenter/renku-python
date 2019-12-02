@@ -69,6 +69,7 @@ import click
 import click_completion
 import yaml
 
+from renku.cli.clone import clone
 from renku.cli.config import config
 from renku.cli.dataset import dataset
 from renku.cli.doctor import doctor
@@ -187,6 +188,7 @@ def help(ctx):
 
 
 # Register subcommands:
+cli.add_command(clone)
 cli.add_command(config)
 cli.add_command(dataset)
 cli.add_command(doctor)

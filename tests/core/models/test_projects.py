@@ -22,9 +22,9 @@ import pytest
 import yaml
 from freezegun import freeze_time
 
-from renku.core.models.creators import Creator
 from renku.core.models.jsonld import NoDatesSafeLoader, asjsonld
 from renku.core.models.projects import Project
+from renku.core.models.provenance.agents import Person
 
 # Do not modify the content so we can ensure backwards compatibility.
 PROJECT_V1 = """
@@ -124,7 +124,7 @@ def test_project_serialization():
 
     context = data['@context']
     assert 'schema:name' == context['name']
-    assert Creator._jsonld_context == context['creator']['@context']
+    assert Person._jsonld_context == context['creator']['@context']
     assert 'schema:dateUpdated' == context['updated']
     assert 'schema:dateCreated' == context['created']
     assert 'schema:schemaVersion' == context['version']
@@ -151,7 +151,7 @@ def test_project_metadata_compatibility(project_meta, version, is_broken):
 
     assert 'schema:name' == project._jsonld_context['name']
     main_context_creator = project._jsonld_context['creator']
-    assert Creator._jsonld_context == main_context_creator['@context']
+    assert Person._jsonld_context == main_context_creator['@context']
     assert 'schema:dateUpdated' == project._jsonld_context['updated']
     assert 'schema:dateCreated' == project._jsonld_context['created']
     assert 'schema:schemaVersion' == project._jsonld_context['version']
@@ -173,10 +173,11 @@ def test_project_datetime_loading(project_meta):
 
 def test_project_creator_deserialization(client, project):
     """Check that the correct creator is returned on deserialization."""
+    from renku.core.models.provenance.agents import Person
 
     # modify the project metadata to change the creator
     project = client.project
-    project.creator = Creator(email='johndoe@example.com', name='Johnny Doe')
+    project.creator = Person(email='johndoe@example.com', name='Johnny Doe')
     project.to_yaml()
     client.repo.git.commit(
         '-a', '--amend', '-C', 'HEAD', '--author',

@@ -62,7 +62,9 @@ class CommitMixin:
             hexsha = self.commit.hexsha
         else:
             hexsha = 'UNCOMMITTED'
-        return 'blob/{hexsha}/{self.path}'.format(hexsha=hexsha, self=self)
+        return 'file://blob/{hexsha}/{self.path}'.format(
+            hexsha=hexsha, self=self
+        )
 
     @_label.default
     def default_label(self):

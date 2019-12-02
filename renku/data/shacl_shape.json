@@ -1,0 +1,780 @@
+{
+   "@context": {
+      "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+      "sh": "http://www.w3.org/ns/shacl#",
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "schema": "http://schema.org/",
+      "foaf": "http://xmlns.com/foaf/0.1/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "wfprov": "http://purl.org/wf4ever/wfprov#",
+      "closed": {
+         "@id": "sh:closed",
+         "@type": "http://www.w3.org/2001/XMLSchema#boolean"
+      },
+      "datatype": {
+         "@id": "sh:datatype",
+         "@type": "@id"
+      },
+      "ignoredProperties": {
+         "@id": "sh:ignoredProperties",
+         "@container": "@list"
+      },
+      "or": {
+         "@id": "sh:or",
+         "@container": "@list"
+      },
+      "minCount": "sh:minCount",
+      "maxCount": "sh:maxCount",
+      "nodeKind": {
+         "@id": "sh:nodeKind",
+         "@type": "@id"
+      },
+      "property": "sh:property",
+      "path": {
+         "@id": "sh:path",
+         "@type": "@id"
+      },
+      "targetClass": {
+         "@id": "sh:targetClass",
+         "@type": "@id"
+      },
+      "target": {
+         "@id": "sh:target",
+         "@type": "@id"
+      }
+   },
+   "@graph": [
+      {
+         "@id": "schema:",
+         "sh:declare": [
+            {
+               "sh:prefix": [
+                  {
+                     "@value": "schema"
+                  }
+               ],
+               "sh:namespace": [
+                  {
+                     "@value": "http://schema.org/",
+                     "@type": "xsd:anyURI"
+                  }
+               ]
+            }
+         ]
+      },
+      {
+         "@id": "prov:",
+         "sh:declare": [
+            {
+               "sh:prefix": [
+                  {
+                     "@value": "prov"
+                  }
+               ],
+               "sh:namespace": [
+                  {
+                     "@value": "http://www.w3.org/ns/prov#",
+                     "@type": "xsd:anyURI"
+                  }
+               ]
+            }
+         ]
+      },
+      {
+         "@id": "_:oldProjecShape",
+         "@type": "sh:NodeShape",
+         "targetClass": "foaf:Project",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "ex:CheckOldProjectMetadata",
+               "minCount": 99999,
+               "maxCount": 99999,
+               "sh:message": "Project should be schema:Project, not foaf:Project"
+            }
+         ]
+      },
+      {
+         "@id": "_:projectShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:Project",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateCreated",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1,
+               "sh:lessThanOrEquals": {
+                  "@id": "schema:dateUpdated"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateUpdated",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:schemaVersion",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:creator",
+               "sh:class":{
+                  "@id": "schema:Person"
+               },
+               "minCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:creatorShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "target": [
+            {
+               "@type": "sh:SPARQLTarget",
+               "sh:prefixes": [
+                  {
+                     "@id": "schema:"
+                  },
+                  {
+                     "@id": "prov:"
+                  }
+               ],
+               "sh:select": [
+                  {
+                     "@value": "SELECT ?this\nWHERE {\n  ?this a schema:Person .\n  MINUS { ?this a prov:Person . }\n}\n"
+                  }
+               ]
+            }
+         ],
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:email",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:alternateName",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:affiliation",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:datasetShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            },
+            {
+               "@id": "schema:license"
+            }
+         ],
+         "closed": true,
+         "target": [
+            {
+               "@type": "sh:SPARQLTarget",
+               "sh:prefixes": [
+                  {
+                     "@id": "schema:"
+                  }
+               ],
+               "sh:select": [
+                  {
+                     "@value": "SELECT ?this\nWHERE {\n  ?this a schema:Dataset .\n  MINUS { ?x schema:license ?this .}\n}\n"
+                  }
+               ]
+            }
+         ],
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:isBasedOn",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateCreated",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1,
+               "sh:lessThanOrEquals": {
+                  "@id": "schema:datePublished"
+               }
+            },
+            {
+               "path": "schema:creator",
+               "sh:class": {
+                  "@id": "schema:Person"
+               },
+               "minCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:datePublished",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:identifier",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:keywords",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:sameAs",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:url",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:version",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "schema:isPartOf",
+               "sh:class": {
+                  "@id": "schema:Project"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:subjectOf",
+               "sh:class": {
+                  "@id": "schema:PublicationEvent"
+               }
+            },
+            {
+               "path": "schema:hasPart",
+               "sh:class": {
+                  "@id": "schema:DigitalDocument"
+               }
+            },
+            {
+               "path": "schema:inLanguage",
+               "sh:class": {
+                  "@id": "schema:Language"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "prov:qualifiedGeneration",
+               "sh:class": {
+                  "@id": "prov:Generation"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:inLanguageShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:Language",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:alternateName",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:datasetFileShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:DigitalDocument",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateCreated",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:url",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "schema:isPartOf",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "schema:Project"
+                     }
+                  },
+                  {
+                     "nodeKind": "sh:Literal",
+                     "datatype": {
+                        "@id": "xsd:string"
+                     }
+                  }
+               ]
+            },
+            {
+               "path": "schema:creator",
+               "sh:class": {
+                  "@id": "schema:Person"
+               },
+               "minCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:datasetTagShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:PublicationEvent",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:description",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:startDate",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:location",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:about",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:activityShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:Activity",
+         "property": [
+            {
+               "path": "schema:isPartOf",
+               "sh:class": {
+                  "@id": "schema:Project"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:comment",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:IRI",
+               "path": "prov:wasInformedBy",
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:influenced"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:startedAtTime",
+               "datatype": {
+                  "@id": "xsd:dateTime"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:endedAtTime",
+               "datatype": {
+                  "@id": "xsd:dateTime"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "prov:agent",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "prov:SoftwareAgent"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "schema:Person"
+                     }
+                  },
+                  {
+                     "nodeKind": "sh:IRI"
+                  }
+               ],
+               "minCount": 2,
+               "maxCount": 2
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "prov:qualifiedUsage",
+               "sh:class": {
+                  "@id": "prov:Usage"
+               }
+            },
+            {
+               "path": "prov:qualifiedAssociation",
+               "sh:class": {
+                  "@id": "prov:Association"
+               }
+            },
+            {
+               "path": "wfprov:wasPartOfWorkflowRun",
+               "sh:class": {
+                  "@id": "wfprov:WorkflowRun"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:associationShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:Association",
+         "property": [
+            {
+               "path": "prov:hadPlan",
+               "minCount": 1
+            },
+            {
+               "path": "prov:agent",
+               "sh:class": {
+                  "@id": "prov:SoftwareAgent"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:usageShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:Usage",
+         "property": [
+            {
+               "path": "prov:entity",
+               "minCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:hadRole",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:softwareAgentShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:SoftwareAgent",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "prov:wasStartedBy",
+               "or": [
+                  {
+                     "nodeKind": "sh:IRI"
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "prov:Person"
+                     }
+                  }],
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:generationShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "prov:Generation",
+         "property": [
+            {
+               "path": {
+                  "sh:inversePath": {
+                     "@id": "prov:qualifiedGeneration"
+                  }
+               },
+               "nodeKind": "sh:BlankNodeOrIRI"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:hadRole",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "sh:class": {
+                  "@id": "prov:Activity"
+               },
+               "path": "prov:activity",
+               "minCount": 1
+            }
+         ]
+      }
+   ]
+}

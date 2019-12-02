@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,18 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define repository checks for :program:`renku doctor`."""
+"""Clone a Renku repo along with all Renku-specific initializations."""
 
-from .migration import check_dataset_metadata, check_missing_files
-from .references import check_missing_references
-from .validate_shacl import check_project_structure, check_datasets_structure
+from renku.core.management.clone import clone
 
-# Checks will be executed in the order as they are listed in __all__.
-# They are mostly used in ``doctor`` command to inspect broken things.
-__all__ = (
-    'check_dataset_metadata',
-    'check_missing_files',
-    'check_missing_references',
-    'check_project_structure',
-    'check_datasets_structure',
-)
+from .client import pass_local_client
+
+
+@pass_local_client
+def renku_clone(
+    client,
+    url,
+    path=None,
+    install_githooks=True,
+    skip_smudge=True,
+    progress=None
+):
+    """Clone Renku project repo, install Git hooks and LFS."""
+    install_lfs = client.use_external_storage
+    clone(
+        url=url,
+        path=path,
+        install_githooks=install_githooks,
+        install_lfs=install_lfs,
+        skip_smudge=skip_smudge,
+        progress=progress
+    )

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2019- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,18 +15,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define repository checks for :program:`renku doctor`."""
+"""Install and uninstall Git hooks."""
 
-from .migration import check_dataset_metadata, check_missing_files
-from .references import check_missing_references
-from .validate_shacl import check_project_structure, check_datasets_structure
+import click
 
-# Checks will be executed in the order as they are listed in __all__.
-# They are mostly used in ``doctor`` command to inspect broken things.
-__all__ = (
-    'check_dataset_metadata',
-    'check_missing_files',
-    'check_missing_references',
-    'check_project_structure',
-    'check_datasets_structure',
-)
+from renku.core.management.githooks import install, uninstall
+
+from .client import pass_local_client
+from .echo import WARNING
+
+
+@pass_local_client
+def install_githooks(client, force):
+    """Install Git hooks."""
+    warning_messages = install(client=client, force=force)
+    if warning_messages:
+        for message in warning_messages:
+            click.echo(WARNING + message)
+
+
+@pass_local_client
+def uninstall_githooks(client):
+    """Uninstall Git hooks."""
+    uninstall(client=client)

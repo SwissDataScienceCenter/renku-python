@@ -29,8 +29,9 @@ from pathlib import Path
 import attr
 from attr.validators import instance_of
 
-from renku.core.models.creators import Creator, CreatorsMixin
+# from renku.core.models.creators import CreatorsMixin
 from renku.core.models.entities import Entity
+from renku.core.models.provenance.agents import Person
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
 
@@ -42,6 +43,32 @@ _path_attr = partial(
     jsonld.ib,
     converter=Path,
 )
+
+
+def _convert_creators(value):
+    """Convert creators."""
+    if isinstance(value, dict):  # compatibility with previous versions
+        return [Person.from_jsonld(value)]
+
+    if isinstance(value, list):
+        return [Person.from_jsonld(v) for v in value]
+
+
+@attr.s
+class CreatorMixin:
+    """Mixin for handling creators container."""
+
+    creator = jsonld.container.list(
+        Person,
+        kw_only=True,
+        context='schema:creator',
+        converter=_convert_creators
+    )
+
+    @property
+    def creators_csv(self):
+        """Comma-separated list of creators associated with dataset."""
+        return ','.join(creator.name for creator in self.creator)
 
 
 def _extract_doi(value):
@@ -100,7 +127,7 @@ class DatasetTag(object):
     @_id.default
     def default_id(self):
         """Define default value for id field."""
-        return '{0}@{1}'.format(self.name, self.commit)
+        return '_:{0}@{1}'.format(self.name, self.commit)
 
 
 @jsonld.s(
@@ -117,15 +144,16 @@ class Language:
     name = jsonld.ib(default=None, kw_only=True, context='schema:name')
 
 
-def _convert_dataset_files_creators(value):
-    """Convert dataset files creators."""
-    coll = value
+def convert_filename_path(p):
+    """Return name of the file."""
+    if p:
+        return Path(p).name
 
-    if isinstance(coll, dict):
-        return [Creator.from_jsonld(coll)]
 
-    if isinstance(coll, list):
-        return [Creator.from_jsonld(c) for c in coll]
+def convert_based_on(v):
+    """Convert based_on to DatasetFile."""
+    if v:
+        return DatasetFile.from_jsonld(v)
 
 
 @jsonld.s(
@@ -135,15 +163,8 @@ def _convert_dataset_files_creators(value):
         'schema': 'http://schema.org/',
     }
 )
-class DatasetFile(Entity, CreatorsMixin):
+class DatasetFile(Entity, CreatorMixin):
     """Represent a file in a dataset."""
-
-    creator = jsonld.container.list(
-        Creator,
-        converter=_convert_dataset_files_creators,
-        kw_only=True,
-        context='schema:creator'
-    )
 
     added = jsonld.ib(
         converter=parse_date, context='schema:dateCreated', kw_only=True
@@ -151,9 +172,7 @@ class DatasetFile(Entity, CreatorsMixin):
 
     checksum = attr.ib(default=None, kw_only=True)
 
-    dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
-
-    filename = attr.ib(kw_only=True, converter=lambda x: Path(x).name)
+    filename = attr.ib(kw_only=True, converter=convert_filename_path)
 
     name = jsonld.ib(context='schema:name', kw_only=True, default=None)
 
@@ -164,7 +183,10 @@ class DatasetFile(Entity, CreatorsMixin):
     url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
     based_on = jsonld.ib(
-        default=None, context='schema:isBasedOn', kw_only=True
+        default=None,
+        context='schema:isBasedOn',
+        kw_only=True,
+        converter=convert_based_on
     )
 
     @added.default
@@ -198,6 +220,11 @@ class DatasetFile(Entity, CreatorsMixin):
         if not self.name:
             self.name = self.filename
 
+        parsed_id = urllib.parse.urlparse(self._id)
+
+        if not parsed_id.scheme:
+            self._id = 'file://{}'.format(self._id)
+
 
 def _convert_dataset_files(value):
     """Convert dataset files."""
@@ -218,15 +245,6 @@ def _convert_dataset_tags(value):
         value = [value]
 
     return [DatasetTag.from_jsonld(v) for v in value]
-
-
-def _convert_dataset_creator(value):
-    """Convert dataset creators."""
-    if isinstance(value, dict):  # compatibility with previous versions
-        return [Creator.from_jsonld(value)]
-
-    if isinstance(value, list):
-        return [Creator.from_jsonld(v) for v in value]
 
 
 def _convert_language(obj):
@@ -251,7 +269,7 @@ def _convert_keyword(keywords):
         'schema': 'http://schema.org/',
     },
 )
-class Dataset(Entity, CreatorsMixin):
+class Dataset(Entity, CreatorMixin):
     """Repesent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
@@ -263,13 +281,6 @@ class Dataset(Entity, CreatorsMixin):
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
     _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
-
-    creator = jsonld.container.list(
-        Creator,
-        converter=_convert_dataset_creator,
-        context='schema:creator',
-        kw_only=True
-    )
 
     date_published = jsonld.ib(
         default=None, context='schema:datePublished', kw_only=True
