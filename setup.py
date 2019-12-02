@@ -23,38 +23,70 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from setuptools import find_packages, setup
+from setuptools.command.egg_info import egg_info
 from setuptools.command.install import install
 
 URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
 REFERENCE = '0.1.4'
 
 
+def download_templates():
+    import time
+    from renku.core.commands.init import fetch_template, \
+        read_template_manifest
+
+    with TemporaryDirectory() as tempdir:
+        # download and extract template data
+        temppath = Path(tempdir)
+        print('downloading Renku templates...')
+        fetch_template(URL, REFERENCE, temppath)
+        read_template_manifest(temppath, checkout=True)
+
+        # copy templates
+        current_path = Path.cwd()
+        template_path = current_path / 'renku' / 'templates'
+        if template_path.exists():
+            shutil.rmtree(str(template_path))
+        shutil.copytree(
+            temppath, template_path, ignore=shutil.ignore_patterns('.git')
+        )
+        time.sleep(1)  # ! REMOVE ME
+
+
+class CustomEggInfoCommand(egg_info):
+    def run(self):
+        download_templates()
+        egg_info.run(self)
+
+
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
 
     def run(self):
-        self._download_templates()
+        # download_templates()
         install.run(self)
 
-    def _download_templates(self):
-        from renku.core.commands.init import fetch_template, \
-            read_template_manifest
+    # def _download_templates(self):
+    #     import time
+    #     from renku.core.commands.init import fetch_template, \
+    #         read_template_manifest
 
-        with TemporaryDirectory() as tempdir:
-            # download and extract template data
-            temppath = Path(tempdir)
-            print('downloading Renku templates...')
-            fetch_template(URL, REFERENCE, temppath)
-            read_template_manifest(temppath, checkout=True)
+    #     with TemporaryDirectory() as tempdir:
+    #         # download and extract template data
+    #         temppath = Path(tempdir)
+    #         print('downloading Renku templates...')
+    #         fetch_template(URL, REFERENCE, temppath)
+    #         read_template_manifest(temppath, checkout=True)
 
-            # copy templates
-            current_path = Path.cwd()
-            template_path = current_path / 'renku' / 'templates'
-            if template_path.exists():
-                shutil.rmtree(str(template_path))
-            shutil.copytree(
-                temppath, template_path, ignore=shutil.ignore_patterns('.git')
-            )
+    #         # copy templates
+    #         current_path = Path.cwd()
+    #         template_path = current_path / 'renku' / 'templates'
+    #         if template_path.exists():
+    #             shutil.rmtree(str(template_path))
+    #         shutil.copytree(
+    #             temppath, template_path, ignore=shutil.ignore_patterns('.git')
+    #         )
+    #         time.sleep(1)  # ! REMOVE ME
 
 
 readme = open('README.rst').read()
@@ -121,7 +153,7 @@ install_requires = [
     'patool>=1.12',
     'psutil>=5.4.7',
     'pyasn1>=0.4.5',
-    'PyYAML>=3.12',
+    'PyYAML>=5.1.2',
     'pyld>=1.0.3',
     'pyOpenSSL>=19.0.0',
     'python-dateutil>=2.6.1',
@@ -164,11 +196,14 @@ __version__ = {version!r}
 
 
 def _get_disribution_url():
-    import pkg_resources
-    d = pkg_resources.get_distribution('renku')
-    metadata = d._get_metadata(d.PKG_INFO)
-    home_page = [m for m in metadata if m.startswith('Home-page:')]
-    return home_page[0].split(':', 1)[1].strip()
+    try:
+        import pkg_resources
+        d = pkg_resources.get_distribution('renku')
+        metadata = d._get_metadata(d.PKG_INFO)
+        home_page = [m for m in metadata if m.startswith('Home-page:')]
+        return home_page[0].split(':', 1)[1].strip()
+    except Exception:
+        return 'N/A'
 
 
 version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), 'v' + __version__)
@@ -207,7 +242,7 @@ setup(
     install_requires=install_requires,
     setup_requires=complete_setup_requires,
     tests_require=tests_require,
-    cmdclass={'install': PostInstallCommand},
+    cmdclass={'install': PostInstallCommand, 'egg_info': CustomEggInfoCommand},
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',

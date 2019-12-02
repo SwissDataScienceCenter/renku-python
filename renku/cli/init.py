@@ -252,7 +252,7 @@ def init(
             click.echo(create_printable_descriptions([template_data]))
         else:
             click.echo(create_printable_descriptions(template_manifest))
-        sys.exit()
+        return
 
     if not template or repeat:
         templates = [template_elem for template_elem in template_manifest]
