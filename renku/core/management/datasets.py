@@ -99,9 +99,12 @@ class DatasetsApiMixin(object):
         """Get dataset path from name."""
         path = self.renku_datasets_path / name / self.METADATA
         if not path.exists():
-            path = LinkReference(
-                client=self, name='datasets/' + name
-            ).reference
+            try:
+                path = LinkReference(
+                    client=self, name='datasets/' + name
+                ).reference
+            except errors.ParameterError:
+                return None
 
         return path
 
@@ -109,7 +112,7 @@ class DatasetsApiMixin(object):
         """Load dataset reference file."""
         if name:
             path = self.get_dataset_path(name)
-            if path.exists():
+            if path and path.exists():
                 return self.load_dataset_from_path(path)
 
     @contextmanager
@@ -129,7 +132,7 @@ class DatasetsApiMixin(object):
                 'Dataset exists: "{}".'.format(name)
             )
 
-        dataset_path = self.path / self.datadir / dataset.name
+        dataset_path = self.path / self.datadir / dataset.display_name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -150,7 +153,9 @@ class DatasetsApiMixin(object):
 
         dataset.to_yaml()
 
-    def create_dataset(self, name, creators=()):
+    def create_dataset(
+        self, name, display_name='', description='', creators=()
+    ):
         """Create a dataset."""
         # FIXME create a test for duplicate dataset creation
         if self.load_dataset(name=name):
@@ -180,11 +185,15 @@ class DatasetsApiMixin(object):
                 client=self,
                 identifier=identifier,
                 name=name,
+                display_name=display_name,
+                description=description,
                 creator=creators
             )
 
+        reference_name = display_name or name
+
         dataset_ref = LinkReference.create(
-            client=self, name='datasets/' + name
+            client=self, name='datasets/' + reference_name
         )
         dataset_ref.set_reference(path)
 
@@ -204,7 +213,7 @@ class DatasetsApiMixin(object):
     ):
         """Import the data into the data directory."""
         warning_message = ''
-        dataset_path = self.path / self.datadir / dataset.name
+        dataset_path = self.path / self.datadir / dataset.display_name
 
         destination = destination or Path('.')
         destination = self._resolve_path(dataset_path, destination)

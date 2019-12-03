@@ -58,7 +58,7 @@ class LinkReference:
     def name_validator(self, attribute, value):
         """Validate reference name."""
         if not self.check_ref_format(value):
-            raise errors.UsageError(
+            raise errors.ParameterError(
                 'The reference name "{0}" is not valid.'.format(value)
             )
 

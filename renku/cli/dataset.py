@@ -385,9 +385,27 @@ def dataset(ctx, revision, datadir, format):
 
 @dataset.command()
 @click.argument('name')
-def create(name):
+@click.option('--display-name', default='', help='Dataset\'s display name.')
+@click.option(
+    '-d', '--description', default='', help='Dataset\'s description.'
+)
+@click.option(
+    '-c',
+    '--creator',
+    default=None,
+    multiple=True,
+    help='Creator\'s name and <email>.'
+)
+def create(name, display_name, description, creator):
     """Create an empty dataset in the current repo."""
-    create_dataset(name)
+    creators = creator or ()
+
+    create_dataset(
+        name=name,
+        display_name=display_name,
+        description=description,
+        creators=creators
+    )
     click.secho('OK', fg='green')
 
 
@@ -606,14 +624,14 @@ def export_(id, provider, publish, tag):
 
 @dataset.command('import')
 @click.argument('uri')
-@click.option('-n', '--name', help='Dataset name.')
+@click.option('--display-name', default='', help='Alias for dataset\'s name.')
 @click.option(
     '-x',
     '--extract',
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-def import_(uri, name, extract):
+def import_(uri, display_name, extract):
     """Import data from a 3rd party provider.
 
     Supported providers: [Zenodo, Dataverse]
@@ -638,9 +656,9 @@ def import_(uri, name, extract):
         tqdm.set_lock(lock)
 
     import_dataset(
-        uri,
-        name,
-        extract,
+        uri=uri,
+        display_name=display_name,
+        extract=extract,
         with_prompt=True,
         pool_init_fn=_init,
         pool_init_args=(mp.RLock(), id_queue),

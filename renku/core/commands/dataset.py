@@ -42,7 +42,7 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.datasets import Dataset
+from renku.core.models.datasets import Dataset, generate_default_display_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
@@ -101,13 +101,21 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def create_dataset(client, name, commit_message=None):
+def create_dataset(
+    client, name, display_name, description, creators, commit_message=None
+):
     """Create an empty dataset in the current repo.
 
     :raises: ``renku.core.errors.ParameterError``
     """
-    creator = Person.from_git(client.repo)
-    client.create_dataset(name=name, creators=[creator])
+    if not creators:
+        creators = [Person.from_git(client.repo)]
+    client.create_dataset(
+        name=name,
+        display_name=display_name,
+        description=description,
+        creators=creators
+    )
 
 
 @pass_local_client(
@@ -420,8 +428,8 @@ def export_dataset(
 def import_dataset(
     client,
     uri,
-    name,
-    extract,
+    display_name='',
+    extract=False,
     with_prompt=False,
     pool_init_fn=None,
     pool_init_args=None,
@@ -472,6 +480,13 @@ def import_dataset(
         )
 
     if files:
+        if not display_name:
+            display_name = generate_default_display_name(dataset)
+
+        dataset.display_name = display_name
+
+        client.create_dataset(name=dataset.name, display_name=display_name)
+
         data_folder = tempfile.mkdtemp()
 
         pool_size = min(
@@ -509,20 +524,18 @@ def import_dataset(
             ))
         pool.close()
 
-        dataset_name = name or dataset.display_name
         dataset.url = remove_credentials(dataset.url)
         add_to_dataset(
             client,
             urls=[str(p) for p in Path(data_folder).glob('*')],
-            name=dataset_name,
-            with_metadata=dataset,
-            create=True
+            name=display_name,
+            with_metadata=dataset
         )
 
         if dataset.version:
             tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
             tag_dataset(
-                client, dataset_name, tag_name,
+                client, display_name, tag_name,
                 'Tag {} created by renku import'.format(dataset.version)
             )
 
