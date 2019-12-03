@@ -304,7 +304,6 @@ class DatasetsApiMixin(object):
                     'path': path_in_repo,
                     'url': path_in_repo,
                     'creator': dataset.creator,
-                    'dataset': dataset.name,
                     'parent': self
                 }]
 
@@ -326,7 +325,6 @@ class DatasetsApiMixin(object):
             'path': destination.relative_to(self.path),
             'url': 'file://' + os.path.relpath(str(src), str(self.path)),
             'creator': dataset.creator,
-            'dataset': dataset.name,
             'parent': self
         }]
 
@@ -352,7 +350,6 @@ class DatasetsApiMixin(object):
             'path': destination.relative_to(self.path),
             'url': remove_credentials(url),
             'creator': dataset.creator,
-            'dataset': dataset.name,
             'parent': self
         }]
 
@@ -361,6 +358,7 @@ class DatasetsApiMixin(object):
         from renku import LocalClient
 
         u = parse.urlparse(url)
+
         sources = self._resolve_paths(u.path, sources)
 
         # Get all files from repo that match sources
@@ -429,7 +427,6 @@ class DatasetsApiMixin(object):
                     'path': path_in_dst_repo,
                     'url': remove_credentials(url),
                     'creator': creators,
-                    'dataset': dataset.name,
                     'parent': self,
                     'based_on': based_on
                 })
