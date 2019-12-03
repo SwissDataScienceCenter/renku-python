@@ -861,7 +861,7 @@ def test_dataset_date_created_format(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    path = client.dataset_path('dataset')
+    path = client.get_dataset_path('dataset')
     assert path.exists()
 
     with path.open(mode='r') as fp:
@@ -880,7 +880,7 @@ def test_dataset_file_date_created_format(tmpdir, runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    path = client.dataset_path('dataset')
+    path = client.get_dataset_path('dataset')
     assert path.exists()
 
     # Create data file.

@@ -85,16 +85,17 @@ class DatasetsApiMixin(object):
         result = {}
         paths = (self.path / self.renku_datasets_path).rglob(self.METADATA)
         for path in paths:
-            result[path] = self.get_dataset(path)
+            result[path] = self.load_dataset_from_path(path)
         return result
 
-    def get_dataset(self, path, commit=None):
+    def load_dataset_from_path(self, path, commit=None):
         """Return a dataset from a given path."""
+        path = Path(path)
         if not path.is_absolute():
             path = self.path / path
         return Dataset.from_yaml(path, client=self, commit=commit)
 
-    def dataset_path(self, name):
+    def get_dataset_path(self, name):
         """Get dataset path from name."""
         path = self.renku_datasets_path / name / self.METADATA
         if not path.exists():
@@ -107,9 +108,9 @@ class DatasetsApiMixin(object):
     def load_dataset(self, name=None):
         """Load dataset reference file."""
         if name:
-            path = self.dataset_path(name)
+            path = self.get_dataset_path(name)
             if path.exists():
-                return self.get_dataset(path)
+                return self.load_dataset_from_path(path)
 
     @contextmanager
     def with_dataset(self, name=None, identifier=None, create=False):

@@ -282,7 +282,7 @@ def dataset_remove(
     commit_message=None
 ):
     """Delete a dataset."""
-    datasets = {name: client.dataset_path(name) for name in names}
+    datasets = {name: client.get_dataset_path(name) for name in names}
 
     if not datasets:
         raise ParameterError(
