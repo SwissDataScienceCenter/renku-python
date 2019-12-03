@@ -32,6 +32,7 @@ from attr.validators import instance_of
 from renku.core import errors
 from renku.core.models.entities import Entity
 from renku.core.models.provenance.agents import Person
+from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
 
@@ -362,12 +363,11 @@ class Dataset(Entity, CreatorMixin):
     @display_name.validator
     def display_name_validator(self, attribute, value):
         """Validate display_name."""
-        if value:
-            scaped = urllib.parse.quote(value, safe='%')
-            if scaped != value or '~' in value:
-                raise errors.ParameterError(
-                    'Invalid "display_name": {}'.format(value)
-                )
+        # display_name might have been scaped and have '%' in it
+        if value and not is_dataset_name_valid(value, safe='%'):
+            raise errors.ParameterError(
+                'Invalid "display_name": {}'.format(value)
+            )
 
     @property
     def uid(self):
@@ -524,13 +524,20 @@ class Dataset(Entity, CreatorMixin):
 
         if not self.display_name:
             # For compatibility with older versions use name as display_name
-            # if it is valid; otherwise, use converted name
-            try:
-                self.display_name_validator(None, self.name)
-            except errors.ParameterError:
-                self.display_name = generate_default_display_name(self)
-            else:
+            # if it is valid; otherwise, use encoded name
+            if is_dataset_name_valid(self.name):
                 self.display_name = self.name
+            else:
+                self.display_name = generate_default_display_name(self)
+
+
+def is_dataset_name_valid(name, safe=''):
+    """A valid name is a valid Git reference name with no /."""
+    # TODO make name an RFC 3986 compatible name and migrate old projects
+    return (
+        name and LinkReference.check_ref_format(name, no_slashes=True) and
+        '/' not in name
+    )
 
 
 def generate_default_display_name(dataset):

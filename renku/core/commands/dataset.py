@@ -485,7 +485,9 @@ def import_dataset(
 
         dataset.display_name = display_name
 
-        client.create_dataset(name=dataset.name, display_name=display_name)
+        client.create_dataset(
+            name=dataset.name, display_name=display_name, is_import=True
+        )
 
         data_folder = tempfile.mkdtemp()
 
@@ -644,7 +646,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
 
     records = []
     for path_, dataset in client.datasets.items():
-        if not names or dataset.name in names:
+        if not names or dataset.name in names or dataset.display_name in names:
             for file_ in dataset.files:
                 file_.dataset = dataset.name
                 path_ = file_.full_path.relative_to(client.path)

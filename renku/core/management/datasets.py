@@ -36,7 +36,8 @@ from git import GitCommandError, GitError, Repo
 from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag
+from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
+    is_dataset_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -154,22 +155,28 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, name, display_name='', description='', creators=()
+        self,
+        name,
+        display_name='',
+        description='',
+        creators=(),
+        is_import=False
     ):
         """Create a dataset."""
-        # FIXME create a test for duplicate dataset creation
-        if self.load_dataset(name=name):
+        if self.load_dataset(
+            name=name
+        ) or (is_import and self.load_dataset(name=display_name)):
             raise errors.DatasetExistsError(
                 'Dataset exists: "{}".'.format(name)
             )
 
-        # Avoid nested datasets: name mustn't have '/' in it
-        if len(Path(name).parts) > 1:
+        if not name:
+            raise errors.ParameterError('Dataset name must be provided.')
+        # Do not validate imported datasets' names
+        if not is_import and not is_dataset_name_valid(name):
             raise errors.ParameterError(
                 'Dataset name {} is not valid.'.format(name)
             )
-        if not name:
-            raise errors.ParameterError('Dataset name must be provided.')
 
         identifier = str(uuid.uuid4())
         path = (self.renku_datasets_path / identifier / self.METADATA)

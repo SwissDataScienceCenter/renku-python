@@ -380,6 +380,14 @@
                "sh:class": {
                   "@id": "prov:Generation"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:alternateName",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },
