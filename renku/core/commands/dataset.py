@@ -110,6 +110,9 @@ def create_dataset(
     """
     if not creators:
         creators = [Person.from_git(client.repo)]
+    else:
+        creators = [Person.from_string(c) for c in creators]
+
     client.create_dataset(
         name=name,
         display_name=display_name,

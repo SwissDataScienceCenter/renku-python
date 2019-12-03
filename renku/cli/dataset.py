@@ -394,7 +394,7 @@ def dataset(ctx, revision, datadir, format):
     '--creator',
     default=None,
     multiple=True,
-    help='Creator\'s name and <email>.'
+    help='Creator\'s name and email ("Name <email>").'
 )
 def create(name, display_name, description, creator):
     """Create an empty dataset in the current repo."""
