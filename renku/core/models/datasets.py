@@ -127,7 +127,7 @@ class DatasetTag(object):
     @_id.default
     def default_id(self):
         """Define default value for id field."""
-        return '{0}@{1}'.format(self.name, self.commit)
+        return '_:{0}@{1}'.format(self.name, self.commit)
 
 
 @jsonld.s(
@@ -150,6 +150,12 @@ def convert_filename_path(p):
         return Path(p).name
 
 
+def convert_based_on(v):
+    """Convert based_on to DatasetFile."""
+    if v:
+        return DatasetFile.from_jsonld(v)
+
+
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
@@ -166,8 +172,6 @@ class DatasetFile(Entity, CreatorMixin):
 
     checksum = attr.ib(default=None, kw_only=True)
 
-    dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
-
     filename = attr.ib(kw_only=True, converter=convert_filename_path)
 
     name = jsonld.ib(context='schema:name', kw_only=True, default=None)
@@ -179,7 +183,10 @@ class DatasetFile(Entity, CreatorMixin):
     url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
     based_on = jsonld.ib(
-        default=None, context='schema:isBasedOn', kw_only=True
+        default=None,
+        context='schema:isBasedOn',
+        kw_only=True,
+        converter=convert_based_on
     )
 
     @added.default
@@ -212,6 +219,11 @@ class DatasetFile(Entity, CreatorMixin):
 
         if not self.name:
             self.name = self.filename
+
+        parsed_id = urllib.parse.urlparse(self._id)
+
+        if not parsed_id.scheme:
+            self._id = 'file://{}'.format(self._id)
 
 
 def _convert_dataset_files(value):

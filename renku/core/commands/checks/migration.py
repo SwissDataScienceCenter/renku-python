@@ -240,7 +240,8 @@ def fix_dataset_files_urls(client):
     """Ensure dataset files have correct url format."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
-            file_.url = url_to_string(file_.url)
+            if file_.url:
+                file_.url = url_to_string(file_.url)
 
         dataset.to_yaml()
 

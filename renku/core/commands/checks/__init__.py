@@ -19,6 +19,7 @@
 
 from .migration import check_dataset_metadata, check_missing_files
 from .references import check_missing_references
+from .validate_shacl import check_project_structure, check_datasets_structure
 
 # Checks will be executed in the order as they are listed in __all__.
 # They are mostly used in ``doctor`` command to inspect broken things.
@@ -26,4 +27,6 @@ __all__ = (
     'check_dataset_metadata',
     'check_missing_files',
     'check_missing_references',
+    'check_project_structure',
+    'check_datasets_structure',
 )

@@ -52,6 +52,15 @@ Following formats supported when specified with ``--format`` option:
 
 * `ascii`
 * `dot`
+* `dot-full`
+* `dot-landscape`
+* `dot-full-landscape`
+* `dot-debug`
+* `json-ld`
+* `json-ld-graph`
+* `Makefile`
+* `nt`
+* `rdf`
 
 You can generate a PNG of the full history of all files in the repository
 using the :program:`dot` program.
@@ -61,6 +70,15 @@ using the :program:`dot` program.
    $ FILES=$(git ls-files --no-empty-directory --recurse-submodules)
    $ renku log --format dot $FILES | dot -Tpng > /tmp/graph.png
    $ open /tmp/graph.png
+
+Output validation
+~~~~~~~~~~~~~~~~~
+
+The ``--strict`` option forces the output to be validated against the Renku
+SHACL schema, causing the command to fail if the generated output is not
+valid, as well as printing detailed information on all the issues found.
+The ``--strict`` option is only supported for the ``jsonld``, ``rdf`` and
+``nt`` output formats.
 
 """
 
@@ -86,9 +104,15 @@ from renku.core.commands.graph import Graph
     default=False,
     help='Display commands without output files.'
 )
+@click.option(
+    '--strict',
+    is_flag=True,
+    default=False,
+    help='Validate triples before output.'
+)
 @click.argument('paths', type=click.Path(exists=True), nargs=-1)
 @pass_local_client
-def log(client, revision, format, no_output, paths):
+def log(client, revision, format, no_output, strict, paths):
     """Show logs for a file."""
     graph = Graph(client)
     if not paths:
@@ -108,4 +132,4 @@ def log(client, revision, format, no_output, paths):
     # NOTE shall we warn when "not no_output and not paths"?
     graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
 
-    FORMATS[format](graph)
+    FORMATS[format](graph, strict=strict)
