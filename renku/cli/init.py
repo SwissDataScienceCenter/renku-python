@@ -70,6 +70,7 @@ from tempfile import mkdtemp
 
 import attr
 import click
+import pkg_resources
 from git import GitCommandError
 
 from renku.core.commands.client import pass_local_client
@@ -226,7 +227,9 @@ def init(
             raise click.UsageError(e)
         print_done()
     else:
-        template_folder = Path(__file__).parent.parent / 'templates'
+        template_folder = Path(
+            pkg_resources.resource_filename('renku', 'templates')
+        )
         template_manifest = read_template_manifest(template_folder)
 
     # select specific template
