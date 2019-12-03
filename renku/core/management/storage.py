@@ -108,6 +108,16 @@ class StorageApiMixin(RepositoryApiMixin):
                 'Couldn\'t run \'git lfs\':\n{0}'.format(e)
             )
 
+    def init_repository(self, force=False):
+        """Initialize a local Renku repository."""
+        result = super().init_repository(force=force)
+
+        # initialize LFS if it is requested and installed
+        if self.use_external_storage and self.storage_installed:
+            self.init_external_storage(force=force)
+
+        return result
+
     @ensure_external_storage
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
