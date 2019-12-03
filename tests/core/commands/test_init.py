@@ -165,3 +165,41 @@ def test_create_from_template(local_client):
                 local_client.path
             )
             assert expected_file.exists()
+
+
+@pytest.mark.integration
+def test_setup_download_templates():
+    print('********** DOWNLOAD TEMPLATES 2')
+    from renku.core.commands.init import fetch_template, \
+        read_template_manifest
+
+    with TemporaryDirectory() as tempdir:
+        # download and extract template data
+        temppath = Path(tempdir)
+        print('downloading Renku templates...')
+        fetch_template(TEMPLATE_URL, TEMPLATE_REF, temppath)
+        read_template_manifest(temppath, checkout=True)
+
+        # copy templates
+        current_path = Path.cwd()
+        template_path = current_path / 'renku_data'  # / 'templates'
+        if template_path.exists():
+            shutil.rmtree(str(template_path))
+        shutil.copytree(
+            temppath, template_path, ignore=shutil.ignore_patterns('.git')
+        )
+        # return [(
+        #     str(current_path / 'renku_data'), [
+        #         str(current.relative_to(current_path / 'renku_data'))
+        #         for current in list((current_path / 'renku_data').rglob('*'))
+        #         if current.is_file()
+        #     ]
+        # )]
+        ret = [(
+            'templates', [
+                str(current.relative_to(template_path))
+                for current in list((template_path).rglob('*'))
+                if current.is_file()
+            ]
+        )]
+        assert ret
