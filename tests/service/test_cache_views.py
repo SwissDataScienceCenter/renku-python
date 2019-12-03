@@ -462,7 +462,7 @@ def test_upload_zip_unpack_archive(datapack_zip, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 2 == len(response.json['result']['files'])
+    assert 3 == len(response.json['result']['files'])
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
@@ -520,7 +520,7 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 2 == len(response.json['result']['files'])
+    assert 3 == len(response.json['result']['files'])
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
@@ -579,7 +579,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
     assert 200 == response.status_code
 
     assert {'result'} == set(response.json.keys())
-    assert 2 == len(response.json['result']['files'])
+    assert 3 == len(response.json['result']['files'])
     assert {
         'content_type',
         'file_id',

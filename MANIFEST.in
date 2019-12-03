@@ -41,7 +41,6 @@ include babel.ini
 include brew.py
 include pytest.ini
 include snap/snapcraft.yaml
-recursive-include renku *.json
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
 recursive-include docs *.bat

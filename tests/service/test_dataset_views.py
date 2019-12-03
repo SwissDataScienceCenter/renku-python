@@ -381,7 +381,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 2 == len(response.json['result']['files'])
+    assert 3 == len(response.json['result']['files'])
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
@@ -475,7 +475,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 2 == len(response.json['result']['files'])
+    assert 3 == len(response.json['result']['files'])
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']

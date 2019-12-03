@@ -514,38 +514,38 @@ def remote_project(data_repository, directory_tree):
         yield runner, project_path
 
 
+# @pytest.fixture(scope='function')
+# def dummy_datapack():
+#     """Creates dummy data folder."""
+#     temp_dir = tempfile.TemporaryDirectory()
+#
+#     data_file_txt = Path(temp_dir.name) / Path('file.txt')
+#     data_file_txt.write_text('my awesome data')
+#
+#     data_file_csv = Path(temp_dir.name) / Path('file.csv')
+#     data_file_csv.write_text('more,awesome,data')
+#
+#     yield temp_dir
+
+
 @pytest.fixture(scope='function')
-def dummy_datapack():
-    """Creates dummy data folder."""
-    temp_dir = tempfile.TemporaryDirectory()
-
-    data_file_txt = Path(temp_dir.name) / Path('file.txt')
-    data_file_txt.write_text('my awesome data')
-
-    data_file_csv = Path(temp_dir.name) / Path('file.csv')
-    data_file_csv.write_text('more,awesome,data')
-
-    yield temp_dir
-
-
-@pytest.fixture(scope='function')
-def datapack_zip(dummy_datapack):
+def datapack_zip(directory_tree):
     """Returns dummy data folder as a zip archive."""
     from renku.core.utils.contexts import chdir
     workspace_dir = tempfile.TemporaryDirectory()
     with chdir(workspace_dir.name):
-        shutil.make_archive('datapack', 'zip', dummy_datapack.name)
+        shutil.make_archive('datapack', 'zip', directory_tree)
 
     yield Path(workspace_dir.name) / 'datapack.zip'
 
 
 @pytest.fixture(scope='function')
-def datapack_tar(dummy_datapack):
+def datapack_tar(directory_tree):
     """Returns dummy data folder as a tar archive."""
     from renku.core.utils.contexts import chdir
     workspace_dir = tempfile.TemporaryDirectory()
     with chdir(workspace_dir.name):
-        shutil.make_archive('datapack', 'tar', dummy_datapack.name)
+        shutil.make_archive('datapack', 'tar', directory_tree)
 
     yield Path(workspace_dir.name) / 'datapack.tar'
 
