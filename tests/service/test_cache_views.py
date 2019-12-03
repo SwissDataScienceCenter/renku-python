@@ -18,6 +18,7 @@
 """Renku service cache view tests."""
 import io
 import json
+import os
 import uuid
 
 import pytest
@@ -27,7 +28,7 @@ from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
 
 REMOTE_URL = 'https://dev.renku.ch/gitlab/contact/integration-tests'
-PERSONAL_ACCESS_TOKEN = 'LkoLiyLqnhMCAa4or5qa'
+IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
 
 @pytest.mark.service
@@ -278,7 +279,7 @@ def test_clone_projects_with_auth(svc_client):
         'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
         'Renku-User-FullName': 'Just Sam',
         'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer {0}'.format(PERSONAL_ACCESS_TOKEN),
+        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
     }
 
     payload = {
@@ -304,7 +305,7 @@ def test_clone_projects_multiple(svc_client):
         'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
         'Renku-User-FullName': 'Just Sam',
         'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer {0}'.format(PERSONAL_ACCESS_TOKEN),
+        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
     }
 
     payload = {
@@ -364,7 +365,7 @@ def test_clone_projects_list_view_errors(svc_client):
         'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
         'Renku-User-FullName': 'Just Sam',
         'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer {0}'.format(PERSONAL_ACCESS_TOKEN),
+        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
     }
 
     payload = {
