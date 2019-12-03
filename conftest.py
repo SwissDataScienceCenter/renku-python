@@ -145,7 +145,10 @@ def repository():
     runner = CliRunner()
 
     with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ['init', '.'], catch_exceptions=False)
+        result = runner.invoke(
+            cli, ['init', '.', '--template', 'Basic Python Project'],
+            catch_exceptions=False
+        )
         assert 0 == result.exit_code
 
         yield project_path
@@ -502,7 +505,9 @@ def remote_project(data_repository, directory_tree):
     runner = CliRunner()
 
     with runner.isolated_filesystem() as project_path:
-        runner.invoke(cli, ['-S', 'init'])
+        runner.invoke(
+            cli, ['-S', 'init', '.', '--template', 'Basic Python Project']
+        )
         result = runner.invoke(
             cli, ['-S', 'dataset', 'create', 'remote-dataset']
         )

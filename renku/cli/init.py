@@ -65,7 +65,6 @@ was not installed previously.
 """
 
 import os
-import sys
 from pathlib import Path
 from tempfile import mkdtemp
 
