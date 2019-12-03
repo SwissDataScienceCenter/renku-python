@@ -22,91 +22,70 @@ import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from setuptools import find_packages, setup
-from setuptools.command.egg_info import egg_info
-from setuptools.command.install import install
-from setuptools.command.sdist import sdist
+from setuptools import Command, find_packages, setup
+from setuptools.command.bdist_egg import bdist_egg as _bdist_egg
+from setuptools.command.build_ext import build_ext as _build_ext
+from setuptools.command.build_py import build_py as _build_py
+from setuptools.command.develop import develop as _develop
 
 URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
 REFERENCE = '0.1.4'
 
 
-# trying to include files properly (as external resources not in the repo)
-def download_templates():
-    # import time
-    from renku.core.commands.init import fetch_template, \
-        read_template_manifest
+class DownloadTemplates(Command):
+    description = 'Download renku repository templates'
 
-    with TemporaryDirectory() as tempdir:
-        # download and extract template data
-        temppath = Path(tempdir)
-        print('downloading Renku templates...')
-        fetch_template(URL, REFERENCE, temppath)
-        read_template_manifest(temppath, checkout=True)
+    user_options = []
 
-        # copy templates
-        current_path = Path.cwd()
-        template_path = current_path / 'renku' / 'templates'
-        if template_path.exists():
-            shutil.rmtree(str(template_path))
-        shutil.copytree(
-            temppath, template_path, ignore=shutil.ignore_patterns('.git')
-        )
+    def initialize_options(self):
+        pass
 
-        # include the file in the sdist package
-        # init_file = template_path / '__init__.py'
-        # with init_file.open('w') as fp:
-        #     fp.write('"""Default templates."""')
-
-        # time.sleep(3)  # ! REMOVE ME
-
-
-class CustomEggInfoCommand(egg_info):
-    def run(self):
-        # ! uncomment this to properly copy the files
-        # download_templates()
-        egg_info.run(self)
-
-
-class CustomSDistCommand(sdist):
-    def run(self):
-        # download_templates()
-        sdist.run(self)
-
-
-class PostInstallCommand(install):
-    """Post-installation for installation mode."""
+    def finalize_options(self):
+        pass
 
     def run(self):
-        # download_templates()
-        import os
-        print('**************************************************')
-        print(os.getcwd())
-        import time
-        time.sleep(5)
-        install.run(self)
+        from renku.core.commands.init import fetch_template, \
+            read_template_manifest
 
-    # def _download_templates(self):
-    #     import time
-    #     from renku.core.commands.init import fetch_template, \
-    #         read_template_manifest
+        with TemporaryDirectory() as tempdir:
+            # download and extract template data
+            temppath = Path(tempdir)
+            print('downloading Renku templates...')
+            fetch_template(URL, REFERENCE, temppath)
+            read_template_manifest(temppath, checkout=True)
 
-    #     with TemporaryDirectory() as tempdir:
-    #         # download and extract template data
-    #         temppath = Path(tempdir)
-    #         print('downloading Renku templates...')
-    #         fetch_template(URL, REFERENCE, temppath)
-    #         read_template_manifest(temppath, checkout=True)
+            # copy templates
+            current_path = Path.cwd()
+            template_path = current_path / 'renku' / 'templates'
+            if template_path.exists():
+                shutil.rmtree(str(template_path))
+            shutil.copytree(
+                temppath, template_path, ignore=shutil.ignore_patterns('.git')
+            )
 
-    #         # copy templates
-    #         current_path = Path.cwd()
-    #         template_path = current_path / 'renku' / 'templates'
-    #         if template_path.exists():
-    #             shutil.rmtree(str(template_path))
-    #         shutil.copytree(
-    #             temppath, template_path, ignore=shutil.ignore_patterns('.git')
-    #         )
-    #         time.sleep(1)  # ! REMOVE ME
+
+class bdist_egg(_bdist_egg):
+    def run(self):
+        self.run_command('DownloadTemplates')
+        _bdist_egg.run(self)
+
+
+class build_ext(_build_ext):
+    def run(self):
+        self.run_command('DownloadTemplates')
+        _build_ext.run(self)
+
+
+class build_py(_build_py):
+    def run(self):
+        self.run_command('DownloadTemplates')
+        _build_py.run(self)
+
+
+class develop(_develop):
+    def run(self):
+        self.run_command('DownloadTemplates')
+        _develop.run(self)
 
 
 readme = open('README.rst').read()
@@ -229,45 +208,6 @@ def _get_disribution_url():
 version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), 'v' + __version__)
 """
 
-
-def download_templates2():
-    print('********** DOWNLOAD TEMPLATES 2')
-    from renku.core.commands.init import fetch_template, \
-        read_template_manifest
-
-    with TemporaryDirectory() as tempdir:
-        # download and extract template data
-        temppath = Path(tempdir)
-        print('downloading Renku templates...')
-        fetch_template(URL, REFERENCE, temppath)
-        read_template_manifest(temppath, checkout=True)
-
-        # copy templates
-        current_path = Path.cwd()
-        template_path = current_path / 'data'  # / 'templates'
-        if template_path.exists():
-            shutil.rmtree(str(template_path))
-        shutil.copytree(
-            temppath, template_path, ignore=shutil.ignore_patterns('.git')
-        )
-        # return [(
-        #     str(current_path / 'renku_data'), [
-        #         str(current.relative_to(current_path / 'renku_data'))
-        #         for current in list((current_path / 'renku_data').rglob('*'))
-        #         if current.is_file()
-        #     ]
-        # )]
-        # import glob
-        # return[('TEMPLATE', glob.glob(str(template_path)+'/**', recursive=True))]
-        return [(
-            'templates', [
-                'data/' + str(current.relative_to(template_path))
-                for current in list((template_path).rglob('*'))
-                if current.is_file()
-            ]
-        )]
-
-
 setup(
     name='renku',
     use_scm_version={
@@ -275,7 +215,6 @@ setup(
         'write_to': os.path.join('renku', 'version.py'),
         'write_to_template': version_template,
     },
-    data_files=download_templates2(),
     description=__doc__,
     long_description=readme + '\n\n' + history,
     long_description_content_type='text/x-rst',
@@ -292,7 +231,6 @@ setup(
         'Docs': 'https://renku-python.rtfd.io/',
     },
     packages=packages,
-    # package_data={'renku': ['templates/*']},
     zip_safe=False,
     include_package_data=True,
     platforms='any',
@@ -304,9 +242,11 @@ setup(
     setup_requires=complete_setup_requires,
     tests_require=tests_require,
     cmdclass={
-        'install': PostInstallCommand,
-        'egg_info': CustomEggInfoCommand,
-        # 'sdist': CustomSDistCommand
+        'bdist_egg': bdist_egg,
+        'build_py': build_py,
+        'build_ext': build_ext,
+        'develop': develop,
+        'DownloadTemplates': DownloadTemplates,
     },
     classifiers=[
         'Environment :: Web Environment',
