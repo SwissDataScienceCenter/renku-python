@@ -57,7 +57,7 @@ recursive-include renku *.sh
 recursive-include renku *.txt
 recursive-include renku *.yml
 recursive-include renku Dockerfile
-recursive-include tests *.py *.gz *.yml
+recursive-include tests *.py *.gz *.yml *.json
 recursive-include renku/templates *
 recursive-include renku_data *
 recursive-include python-minimal *
