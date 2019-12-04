@@ -56,6 +56,66 @@ def test_datasets_create_clean(runner, project, client):
         assert 'datasets' not in file_path
 
 
+def test_datasets_create_with_metadata(runner, client):
+    """Test creating a dataset with metadata."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'create', 'dataset', '--display-name', 'dataset-name',
+            '--description', 'some description here', '-c',
+            'John Doe <john.doe@mail.ch>', '-c',
+            'John Smiths<john.smiths@mail.ch>'
+        ]
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset-name')
+    assert dataset.name == 'dataset'
+    assert dataset.display_name == 'dataset-name'
+    assert dataset.description == 'some description here'
+    assert 'John Doe' in [c.name for c in dataset.creator]
+    assert 'john.doe@mail.ch' in [c.email for c in dataset.creator]
+    assert 'John Smiths' in [c.name for c in dataset.creator]
+    assert 'john.smiths@mail.ch' in [c.email for c in dataset.creator]
+
+
+def test_datasets_create_different_display_name(runner, client):
+    """Test creating datasets with same name but different display name."""
+    result = runner.invoke(
+        cli, ['dataset', 'create', 'dataset', '--display-name', 'dataset-1']
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = runner.invoke(
+        cli, ['dataset', 'create', 'dataset', '--display-name', 'dataset-2']
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+
+def test_datasets_create_with_same_name(runner, client):
+    """Test creating datasets with same name."""
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert 'Dataset exists: "dataset"' in result.output
+
+
+def test_datasets_display_name_generation(runner, client):
+    """Test display_name is same as name when not provided."""
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset-name'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='dataset-name')
+    assert dataset.name == 'dataset-name'
+    assert dataset.display_name == 'dataset-name'
+
+
 def test_datasets_create_dirty(runner, project, client):
     """Test creating a dataset in dirty repository."""
     # Create a file in root of the repository.
@@ -187,6 +247,18 @@ def test_dataset_name_is_valid(client, runner, project, name):
     result = runner.invoke(cli, ['dataset', 'create', name])
     assert 2 == result.exit_code
     assert 'is not valid' in result.output
+
+
+@pytest.mark.parametrize(
+    'creator,field', [('John Doe', 'Email'), ('John Doe<>', 'Email'),
+                      ('<john.doe@mail.ch>', 'Name'),
+                      ('John Doe<john.doe@mail>', 'Email')]
+)
+def test_dataset_creator_is_invalid(client, runner, creator, field):
+    """Test create dataset with invalid creator format."""
+    result = runner.invoke(cli, ['dataset', 'create', 'ds', '-c', creator])
+    assert 2 == result.exit_code
+    assert field + ' is not valid' in result.output
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
@@ -663,6 +735,34 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
     output = json.loads(result.output)
     for record in output:
         assert Path(record['path']).exists()
+
+
+def test_datasets_ls_files_with_display_name(directory_tree, runner, project):
+    """Test listing of data within dataset with include/exclude filters."""
+    # create a dataset
+    result = runner.invoke(
+        cli,
+        ['dataset', 'create', 'my-dataset', '--display-name', 'dataset-name']
+    )
+    assert 0 == result.exit_code
+
+    # add data to dataset
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'dataset-name', directory_tree.strpath],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    # list files with dataset name
+    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'dir2/file2' in result.output
+
+    # list files with dataset display name
+    result = runner.invoke(cli, ['dataset', 'ls-files', 'dataset-name'])
+    assert 0 == result.exit_code
+    assert 'dir2/file2' in result.output
 
 
 def test_dataset_unlink_file_not_found(runner, project):
