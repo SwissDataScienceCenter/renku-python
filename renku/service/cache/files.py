@@ -26,7 +26,7 @@ class FileManagementCache(BaseCache):
 
     def files_cache_key(self, user):
         """Construct cache key based on user and files suffix."""
-        return '{0}_{1}'.format(user, self.FILES_SUFFIX)
+        return '{0}_{1}'.format(user['user_id'], self.FILES_SUFFIX)
 
     def set_file(self, user, file_id, metadata):
         """Cache file metadata under user hash set."""

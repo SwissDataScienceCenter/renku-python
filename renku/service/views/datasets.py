@@ -59,7 +59,7 @@ dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__)
 def list_datasets_view(user, cache):
     """List all datasets in project."""
     req = DatasetListRequest().load(request.args)
-    project = cache.get_project(user['uid'], req['project_id'])
+    project = cache.get_project(user, req['project_id'])
     project_path = make_project_path(user, project)
 
     if not project_path:
@@ -98,7 +98,7 @@ def list_datasets_view(user, cache):
 def list_dataset_files_view(user, cache):
     """List files in a dataset."""
     ctx = DatasetFilesListRequest().load(request.args)
-    project = cache.get_project(user['uid'], ctx['project_id'])
+    project = cache.get_project(user, ctx['project_id'])
     project_path = make_project_path(user, project)
 
     if not project_path:
@@ -143,7 +143,7 @@ def list_dataset_files_view(user, cache):
 def add_file_to_dataset_view(user, cache):
     """Add uploaded file to cloned repository."""
     ctx = DatasetAddRequest().load(request.json)
-    project = cache.get_project(user['uid'], ctx['project_id'])
+    project = cache.get_project(user, ctx['project_id'])
     project_path = make_project_path(user, project)
     if not project_path:
         return jsonify(
@@ -155,7 +155,7 @@ def add_file_to_dataset_view(user, cache):
 
     local_paths = []
     for file_ in ctx['files']:
-        file = cache.get_file(user['uid'], file_['file_id'])
+        file = cache.get_file(user, file_['file_id'])
         local_path = make_file_path(user, file)
         if not local_path or not local_path.exists():
             return jsonify(
@@ -206,7 +206,7 @@ def add_file_to_dataset_view(user, cache):
 def create_dataset_view(user, cache):
     """Create a new dataset in a project."""
     ctx = DatasetCreateRequest().load(request.json)
-    project = cache.get_project(user['uid'], ctx['project_id'])
+    project = cache.get_project(user, ctx['project_id'])
 
     project_path = make_project_path(user, project)
     if not project_path:

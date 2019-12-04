@@ -59,8 +59,7 @@ cache_blueprint = Blueprint('cache', __name__)
 def list_uploaded_files_view(user, cache):
     """List uploaded files ready to be added to projects."""
     files = [
-        f for f in cache.get_files(user['uid'])
-        if make_file_path(user, f).exists()
+        f for f in cache.get_files(user) if make_file_path(user, f).exists()
     ]
 
     response = FileListResponseRPC().load({
@@ -97,7 +96,7 @@ def upload_file_view(user, cache):
     }
     response_builder.update(FileUploadRequest().load(request.args))
 
-    user_cache_dir = CACHE_UPLOADS_PATH / user['uid']
+    user_cache_dir = CACHE_UPLOADS_PATH / user['user_id']
     user_cache_dir.mkdir(exist_ok=True)
 
     file_path = user_cache_dir / file.filename
@@ -137,7 +136,11 @@ def upload_file_view(user, cache):
                 'file_name': file_.name,
                 'file_size': os.stat(str(file_path)).st_size,
                 'relative_path':
-                    str(file_.relative_to(CACHE_UPLOADS_PATH / user['uid']))
+                    str(
+                        file_.relative_to(
+                            CACHE_UPLOADS_PATH / user['user_id']
+                        )
+                    )
             }
 
             files.append(FileUploadContext().load(file_obj, unknown=EXCLUDE))
@@ -145,7 +148,7 @@ def upload_file_view(user, cache):
     else:
         response_builder['file_size'] = os.stat(str(file_path)).st_size
         response_builder['relative_path'] = str(
-            file_path.relative_to(CACHE_UPLOADS_PATH / user['uid'])
+            file_path.relative_to(CACHE_UPLOADS_PATH / user['user_id'])
         )
 
         files.append(
@@ -155,7 +158,7 @@ def upload_file_view(user, cache):
     response = FileUploadResponseRPC().load({
         'result': FileUploadResponse().load({'files': files})
     })
-    cache.set_files(user['uid'], files)
+    cache.set_files(user, files)
 
     return jsonify(response)
 
@@ -191,9 +194,9 @@ def project_clone(user, cache):
     if local_path.exists():
         shutil.rmtree(str(local_path))
 
-        for project in cache.get_projects(user['uid']):
+        for project in cache.get_projects(user):
             if project['git_url'] == ctx['git_url']:
-                cache.invalidate_project(user['uid'], project['project_id'])
+                cache.invalidate_project(user, project['project_id'])
 
     local_path.mkdir(parents=True, exist_ok=True)
     renku_clone(
@@ -206,7 +209,7 @@ def project_clone(user, cache):
             'user.email': ctx['email'],
         }
     )
-    cache.set_project(user['uid'], ctx['project_id'], ctx)
+    cache.set_project(user, ctx['project_id'], ctx)
 
     response = ProjectCloneResponseRPC().load({
         'result': ProjectCloneResponse().load(ctx, unknown=EXCLUDE)
@@ -232,7 +235,7 @@ def project_clone(user, cache):
 @requires_identity
 def list_projects_view(user, cache):
     """List cached projects."""
-    projects = cache.get_projects(user['uid'])
+    projects = cache.get_projects(user)
     projects = [
         ProjectCloneResponse().load(p, unknown=EXCLUDE)
         for p in projects if make_project_path(user, p).exists()

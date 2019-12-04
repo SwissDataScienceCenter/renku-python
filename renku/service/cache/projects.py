@@ -26,7 +26,7 @@ class ProjectManagementCache(BaseCache):
 
     def projects_cache_key(self, user):
         """Construct cache key based on user and projects suffix."""
-        return '{0}_{1}'.format(user, self.PROJECTS_SUFFIX)
+        return '{0}_{1}'.format(user['user_id'], self.PROJECTS_SUFFIX)
 
     def set_project(self, user, project_id, metadata):
         """Cache project metadata under user hash set."""

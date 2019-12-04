@@ -23,7 +23,7 @@ from werkzeug.utils import secure_filename
 class UserIdentityHeaders(Schema):
     """User identity schema."""
 
-    uid = fields.String(required=True, data_key='renku-user-id')
+    user_id = fields.String(required=True, data_key='renku-user-id')
     fullname = fields.String(data_key='renku-user-fullname')
     email = fields.String(data_key='renku-user-email')
     token = fields.String(data_key='authorization')

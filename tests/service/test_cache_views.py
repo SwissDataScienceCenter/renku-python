@@ -317,6 +317,7 @@ def test_clone_projects_multiple(svc_client):
     )
 
     assert response
+
     assert {'result'} == set(response.json.keys())
     project_ids.append(response.json['result'])
 
