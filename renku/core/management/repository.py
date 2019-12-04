@@ -401,13 +401,10 @@ class RepositoryApiMixin(GitCore):
                 #     parsed = env.parse(file_content)
                 #     variables = meta.find_undeclared_variables(parsed)
 
-                with open(file) as file_content:
-                    # open and parse the file
-                    template = Template(file_content.read())
-                    rendered_content = template.render(metadata)
-                    # write content to the new location
-                    with open(destination, 'w') as output_file:
-                        output_file.write(rendered_content)
+                # parse file and process it
+                template = Template(file.read_text())
+                rendered_content = template.render(metadata)
+                destination.write_text(rendered_content)
             except Exception:
                 if file.is_dir():
                     destination.mkdir(parents=True, exist_ok=True)

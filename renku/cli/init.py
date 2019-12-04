@@ -176,12 +176,8 @@ def init(
         client, path=path, use_external_storage=use_external_storage
     )
 
-    def print_done():
-        click.echo(' DONE ', nl=False)
-        click.echo(click.style('\u2713', fg='green'))
-
     # verify path status
-    if len(list(client.path.glob('**/*'))) > 0:
+    if list(client.path.glob('**/*')):
         if not force:
             error = FileExistsError(
                 'Folder "{0}" is not empty. Please '
@@ -189,25 +185,23 @@ def init(
                 format(str(path))
             )
             raise click.UsageError(error)
-        else:
-            try:
-                commit = client.find_previous_commit(
-                    str(client.renku_metadata_path),
+        try:
+            commit = client.find_previous_commit(
+                str(client.renku_metadata_path),
+            )
+            branch_name = 'pre_renku_init_{0}'.format(commit.hexsha[:7])
+            with client.worktree(
+                branch_name=branch_name,
+                commit=commit,
+                merge_args=['--no-ff', '-s', 'recursive', '-X', 'ours']
+            ):
+                click.echo(
+                    'Saving current data in branch {0}'.format(branch_name)
                 )
-                branch_name = 'pre_renku_init_' + str(commit)[:8]
-                with client.worktree(
-                    branch_name=branch_name,
-                    commit=commit,
-                    merge_args=['--no-ff', '-s', 'recursive', '-X', 'ours']
-                ):
-                    click.echo(
-                        'Saving current data in branch {0}'.
-                        format(branch_name)
-                    )
-            except AttributeError:
-                click.echo('Warning! Overwriting non-empty folder.')
-            except GitCommandError as e:
-                click.UsageError(e)
+        except AttributeError:
+            click.echo('Warning! Overwriting non-empty folder.')
+        except GitCommandError as e:
+            click.UsageError(e)
 
     # select template source
     if template_source:
@@ -225,7 +219,7 @@ def init(
             )
         except (ValueError, GitCommandError) as e:
             raise click.UsageError(e)
-        print_done()
+        click.secho('OK', fg='green')
     else:
         template_folder = Path(
             pkg_resources.resource_filename('renku', 'templates')
@@ -243,10 +237,7 @@ def init(
         if len(template_filtered) == 1:
             template_data = template_filtered[0]
         else:
-            click.echo(
-                'The template with name "{0}" is not avilable.'.
-                format(template)
-            )
+            click.echo('The template "{0}" is not available.'.format(template))
             repeat = True
 
     if print_manifest:
@@ -284,7 +275,7 @@ def init(
             )
         except FileExistsError as e:
             raise click.UsageError(e)
-        print_done()
+        click.secho('OK', fg='green')
 
         # Install git hooks
         from .githooks import install

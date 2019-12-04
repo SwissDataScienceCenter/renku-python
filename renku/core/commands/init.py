@@ -91,13 +91,13 @@ def validate_template_manifest(manifest):
             '"{0}" file'.format(TEMPLATE_MANIFEST)
         ))
     for template in manifest:
-        if not template['name']:
+        if not isinstance(template, dict) or 'name' not in template:
             raise ValueError((
                 'Every template listed in "{0}"',
                 ' must have a name'.format(TEMPLATE_MANIFEST)
             ))
         for attribute in ['folder', 'description']:
-            if not template[attribute]:
+            if attribute not in template:
                 raise ValueError((
                     'Template "{0}" doesn\'t have a {1} attribute'.format(
                         template['name'], attribute
@@ -114,19 +114,18 @@ def read_template_manifest(folder, checkout=False):
     """
     manifest_path = folder / TEMPLATE_MANIFEST
 
-    with manifest_path.open('r') as fp:
-        manifest = yaml.safe_load(fp)
-        validate_template_manifest(manifest)
+    manifest = yaml.safe_load(manifest_path.read_text())
+    validate_template_manifest(manifest)
 
-        if checkout:
-            git_repo = git.Git(folder)
-            template_folders = [template['folder'] for template in manifest]
-            for template_folder in template_folders:
-                template_path = folder / template_folder
-                git_repo.checkout(template_path)
-                validate_template(template_path)
+    if checkout:
+        git_repo = git.Git(folder)
+        template_folders = [template['folder'] for template in manifest]
+        for template_folder in template_folders:
+            template_path = folder / template_folder
+            git_repo.checkout(template_path)
+            validate_template(template_path)
 
-        return manifest
+    return manifest
 
 
 def create_from_template(
