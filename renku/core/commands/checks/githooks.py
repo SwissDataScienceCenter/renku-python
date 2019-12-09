@@ -15,20 +15,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define repository checks for :program:`renku doctor`."""
+"""Check for required Git hooks."""
+from pathlib import Path
 
-from .githooks import check_git_hooks_installed
-from .migration import check_dataset_metadata, check_missing_files
-from .references import check_missing_references
-from .validate_shacl import check_project_structure, check_datasets_structure
+from git.index.fun import hook_path as get_hook_path
 
-# Checks will be executed in the order as they are listed in __all__.
-# They are mostly used in ``doctor`` command to inspect broken things.
-__all__ = (
-    'check_git_hooks_installed',
-    'check_dataset_metadata',
-    'check_missing_files',
-    'check_missing_references',
-    'check_project_structure',
-    'check_datasets_structure',
-)
+from renku.core.management.githooks import HOOKS
+
+from ..echo import WARNING
+
+
+def check_git_hooks_installed(client):
+    """Checks if all necessary hooks are installed."""
+    for hook in HOOKS:
+        hook_path = Path(get_hook_path(hook, client.repo.git_dir))
+        if not hook_path.exists():
+            message = WARNING + 'Git hooks are not installed. ' \
+                'Use "renku githooks install" to install them. \n'
+            return False, message
+
+    return True, None
