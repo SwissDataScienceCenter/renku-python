@@ -206,7 +206,7 @@ def init(
     # select template source
     if template_source:
         click.echo(
-            'Fetching template from {0}@{1}...'.format(
+            'Fetching template from {0}@{1}... '.format(
                 template_source, template_ref
             ),
             nl=False
@@ -267,7 +267,7 @@ def init(
 
     # clone the repo
     template_path = template_folder / template_data['folder']
-    click.echo('Initializing new Renku repository...', nl=False)
+    click.echo('Initializing new Renku repository... ', nl=False)
     with client.lock:
         try:
             create_from_template(
@@ -275,8 +275,7 @@ def init(
             )
         except FileExistsError as e:
             raise click.UsageError(e)
-        click.secho('OK', fg='green')
 
-        # Install git hooks
-        from .githooks import install
-        ctx.invoke(install, force=force)
+    # Install git hooks
+    from .githooks import install
+    ctx.invoke(install, force=force)
