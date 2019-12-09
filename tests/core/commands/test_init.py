@@ -23,8 +23,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
-from git.exc import GitCommandError
 
+from renku.core import errors
 from renku.core.commands.init import TEMPLATE_MANIFEST, create_from_template, \
     fetch_template, read_template_manifest, validate_template
 from renku.core.management.config import RENKU_HOME
@@ -56,8 +56,8 @@ def raises(error):
 
 @pytest.mark.parametrize(
     'url, ref, result, error', [(TEMPLATE_URL, TEMPLATE_REF, True, None),
-                                (FAKE, TEMPLATE_REF, None, GitCommandError),
-                                (TEMPLATE_URL, FAKE, None, GitCommandError)]
+                                (FAKE, TEMPLATE_REF, None, errors.GitError),
+                                (TEMPLATE_URL, FAKE, None, errors.GitError)]
 )
 @pytest.mark.integration
 def test_fetch_template(url, ref, result, error):
@@ -80,6 +80,16 @@ def test_read_template_manifest():
     """
     with TemporaryDirectory() as tempdir:
         template_file = Path(tempdir) / TEMPLATE_MANIFEST
+
+        # error on missing template file
+        with raises(errors.InvalidTemplateError):
+            manifest = read_template_manifest(Path(tempdir), checkout=False)
+
+        template_file.touch(exist_ok=True)
+        # error on invalid template file
+        with raises(errors.InvalidTemplateError):
+            manifest = read_template_manifest(Path(tempdir), checkout=False)
+
         with template_file.open('w') as fp:
             fp.writelines([
                 '-\n', '  folder: first\n', '  name: Basic Project 1\n',
@@ -93,6 +103,15 @@ def test_read_template_manifest():
         assert manifest[1]['folder'] == 'second'
         assert manifest[0]['name'] == 'Basic Project 1'
         assert manifest[1]['description'] == 'Description 2'
+
+        with template_file.open('w') as fp:
+            fp.writelines([
+                '-\n', '  folder: first\n', '  description: Description 1\n',
+                '-\n', '  folder: second\n', '  name: Basic Project 2\n',
+                '  description: Description 2\n'
+            ])
+        with raises(errors.InvalidTemplateError):
+            manifest = read_template_manifest(Path(tempdir), checkout=False)
 
 
 @pytest.mark.integration
@@ -121,14 +140,14 @@ def test_validate_template():
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir)
         # file error
-        with raises(ValueError):
+        with raises(errors.InvalidTemplateError):
             validate_template(temppath)
 
         # folder error
         shutil.rmtree(tempdir)
         renku_dir = temppath / RENKU_HOME
         renku_dir.mkdir(parents=True)
-        with raises(ValueError):
+        with raises(errors.InvalidTemplateError):
             validate_template(temppath)
 
         # valid template

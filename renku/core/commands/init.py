@@ -24,6 +24,7 @@ from pathlib import Path
 import git
 import yaml
 
+from renku.core import errors
 from renku.core.management.config import RENKU_HOME
 
 TEMPLATE_MANIFEST = 'manifest.yaml'
@@ -40,20 +41,36 @@ def fetch_template(source, ref='master', tempdir=None):
     if tempdir is None:
         tempdir = Path(tempfile.mkdtemp())
 
-    # clone the repo locally without checking out files
-    template_repo = git.Repo.clone_from(source, tempdir, no_checkout=True)
-
-    # fetch ref and set the HEAD
-    template_repo.remotes.origin.fetch(ref)
     try:
-        template_repo.head.reset(template_repo.commit(ref))
-    except git.exc.BadName:
-        ref = 'origin/{0}'.format(ref)
-        template_repo.head.reset(template_repo.commit(ref))
-    git_repo = git.Git(tempdir)
+        # clone the repo locally without checking out files
+        template_repo = git.Repo.clone_from(source, tempdir, no_checkout=True)
+    except git.exc.GitCommandError as e:
+        raise errors.GitError(
+            'Cannot clone repo from {0}'.format(source)
+        ) from e
+
+    try:
+        # fetch ref and set the HEAD
+        template_repo.remotes.origin.fetch(ref)
+        try:
+            template_repo.head.reset(template_repo.commit(ref))
+        except git.exc.BadName:
+            ref = 'origin/{0}'.format(ref)
+            template_repo.head.reset(template_repo.commit(ref))
+        git_repo = git.Git(tempdir)
+    except git.exc.GitCommandError as e:
+        raise errors.GitError(
+            'Cannot fetch and checkout reference {0}'.format(ref)
+        ) from e
 
     # checkout the manifest
-    git_repo.checkout(TEMPLATE_MANIFEST)
+    try:
+        git_repo.checkout(TEMPLATE_MANIFEST)
+    except git.exc.GitCommandError as e:
+        raise errors.GitError(
+            'Cannot checkout manifest file {0}'.format(TEMPLATE_MANIFEST)
+        ) from e
+
     return tempdir / TEMPLATE_MANIFEST
 
 
@@ -67,13 +84,13 @@ def validate_template(template_path):
     required_files = ['{0}/metadata.yml'.format(RENKU_HOME), 'Dockerfile']
     for folder in required_folders:
         if not Path(template_path, folder).is_dir():
-            raise ValueError(
+            raise errors.InvalidTemplateError(
                 'Folder {0} is required for the template to be valid'.
                 format(folder)
             )
     for file in required_files:
         if not Path(template_path, file).is_file():
-            raise ValueError(
+            raise errors.InvalidTemplateError(
                 'File {0} is required for the template to be valid'.
                 format(file)
             )
@@ -86,19 +103,19 @@ def validate_template_manifest(manifest):
     :param manifest: manifest file content
     """
     if not isinstance(manifest, list):
-        raise ValueError((
+        raise errors.InvalidTemplateError((
             'The repository doesn\'t contain a valid',
             '"{0}" file'.format(TEMPLATE_MANIFEST)
         ))
     for template in manifest:
         if not isinstance(template, dict) or 'name' not in template:
-            raise ValueError((
+            raise errors.InvalidTemplateError((
                 'Every template listed in "{0}"',
                 ' must have a name'.format(TEMPLATE_MANIFEST)
             ))
         for attribute in ['folder', 'description']:
             if attribute not in template:
-                raise ValueError((
+                raise errors.InvalidTemplateError((
                     'Template "{0}" doesn\'t have a {1} attribute'.format(
                         template['name'], attribute
                     )
@@ -113,8 +130,12 @@ def read_template_manifest(folder, checkout=False):
     :param checkout: checkout the template folder from local repo
     """
     manifest_path = folder / TEMPLATE_MANIFEST
-
-    manifest = yaml.safe_load(manifest_path.read_text())
+    try:
+        manifest = yaml.safe_load(manifest_path.read_text())
+    except FileNotFoundError as e:
+        raise errors.InvalidTemplateError(
+            'There is no manifest file "{0}"'.format(TEMPLATE_MANIFEST)
+        ) from e
     validate_template_manifest(manifest)
 
     if checkout:

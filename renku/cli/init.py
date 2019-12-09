@@ -212,15 +212,17 @@ def init(
             nl=False
         )
         template_folder = Path(mkdtemp())
-        try:
-            fetch_template(template_source, template_ref, template_folder)
-            template_manifest = read_template_manifest(
-                template_folder, checkout=True
-            )
-        except (ValueError, GitCommandError) as e:
-            raise click.UsageError(e)
+        fetch_template(template_source, template_ref, template_folder)
+        template_manifest = read_template_manifest(
+            template_folder, checkout=True
+        )
         click.secho('OK', fg='green')
     else:
+        if template_ref:
+            click.echo(
+                'Warning: option --template-ref will be ignored since '
+                'no --template-source was provided'
+            )
         template_folder = Path(
             pkg_resources.resource_filename('renku', 'templates')
         )
