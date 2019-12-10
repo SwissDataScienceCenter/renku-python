@@ -88,7 +88,7 @@ CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 def validate_name(ctx, param, value):
     """Validate a project name."""
     if not value:
-        value = os.path.basename(ctx.params['directory'].rstrip(os.path.sep))
+        value = os.path.basename(ctx.params['path'].rstrip(os.path.sep))
     return value
 
 
@@ -140,11 +140,8 @@ def create_printable_descriptions(templates):
 )
 @click.option(
     '--name',
-    'name',
-    default='Renku project',
-    show_default=True,
     callback=validate_name,
-    help='Project name.',
+    help='Provide a custom project name.',
 )
 @click.option('--template', help='Provide the name of the template to use.')
 @click.option(
@@ -186,14 +183,16 @@ def init(
             )
             raise click.UsageError(error)
         try:
-            commit = client.find_previous_commit(
-                str(client.renku_metadata_path),
-            )
+            commit = client.find_previous_commit('*')
             branch_name = 'pre_renku_init_{0}'.format(commit.hexsha[:7])
             with client.worktree(
+                path=path,
                 branch_name=branch_name,
                 commit=commit,
-                merge_args=['--no-ff', '-s', 'recursive', '-X', 'ours']
+                merge_args=[
+                    '--no-ff', '-s', 'recursive', '-X', 'ours',
+                    '--allow-unrelated-histories'
+                ]
             ):
                 click.echo(
                     'Saving current data in branch {0}'.format(branch_name)

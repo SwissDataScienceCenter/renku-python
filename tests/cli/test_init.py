@@ -104,7 +104,7 @@ def test_init_force_in_empty_dir(isolated_runner):
 
 @pytest.mark.integration
 def test_init_force_in_dirty_dir(isolated_runner):
-    """Run init --force in empty directory."""
+    """Run init --force in dirty directory."""
     new_project = Path('test-new-project')
     assert not new_project.exists()
 
@@ -120,8 +120,28 @@ def test_init_force_in_dirty_dir(isolated_runner):
 
 
 @pytest.mark.integration
+def test_init_on_cloned_repo(isolated_runner, data_repository):
+    """Run init --force in directory containing another repo."""
+    new_project = Path('test-new-project')
+    import shutil
+    shutil.copytree(data_repository.working_dir, new_project)
+    assert new_project.exists()
+
+    # try to create in a dirty folder
+    result = isolated_runner.invoke(cli, INIT)
+    assert 0 != result.exit_code
+
+    # force re-create in the same folder
+    result = isolated_runner.invoke(cli, INIT + INIT_FORCE)
+    assert 0 == result.exit_code
+    assert new_project.exists()
+    assert (new_project / '.renku').exists()
+    assert (new_project / '.renku' / 'metadata.yml').exists()
+
+
+@pytest.mark.integration
 def test_init_remote(isolated_runner):
-    """Test project initialization from template."""
+    """Test project initialization from remote template."""
     # create the project
     new_project = Path('test-new-project')
     assert not new_project.exists()
@@ -130,23 +150,3 @@ def test_init_remote(isolated_runner):
     assert new_project.exists()
     assert (new_project / '.renku').exists()
     assert (new_project / '.renku' / 'metadata.yml').exists()
-
-
-# TODO fix and re-add this is missing
-# @pytest.mark.integration
-# def test_init_on_cloned_repo(isolated_runner, data_repository):
-#     new_project = Path('test-new-project')
-#     shutil.copytree(data_repository.working_dir, new_project)
-#     assert new_project.exists()
-
-#     # try to create in a dirty folder
-#     result = isolated_runner.invoke(cli, INIT)
-#     assert 0 != result.exit_code
-
-#     # force re-create in the same folder
-#     # ! data in os.gwtcwd()
-#     result = isolated_runner.invoke(cli, INIT + INIT_FORCE)
-#     assert 0 == result.exit_code
-#     assert new_project.exists()
-#     assert (new_project / '.renku').exists()
-#     assert (new_project / '.renku' / 'metadata.yml').exists()
