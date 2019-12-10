@@ -26,6 +26,7 @@ def test_init_repository(local_client):
     local_client.init_repository()
     assert (local_client.path / '.git').exists()
     assert (local_client.path / '.git' / 'HEAD').exists()
+    assert not (local_client.path / '.renku').exists()
 
 
 def test_import_from_template(local_client):

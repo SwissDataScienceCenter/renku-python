@@ -30,6 +30,7 @@ import yaml
 from jinja2 import Template
 from werkzeug.utils import cached_property, secure_filename
 
+from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.projects import Project
@@ -379,14 +380,21 @@ class RepositoryApiMixin(GitCore):
     def init_repository(self, force=False):
         """Initialize an empty Renku repository."""
         from git import Repo
+        from renku.core.models.provenance.agents import Person
 
+        # verify if folder is empty
         if self.repo is not None and not force:
-            raise FileExistsError(self.repo.git_dir)
+            raise errors.InvalidFileOperation(
+                'Folder {0} already contains file. Use --force to overwrite'.
+                format(self.repo.git_dir)
+            )
 
+        # initialize repo
         path = self.path.absolute()
         self.repo = Repo.init(str(path))
 
-        return str(path)
+        # verify if author information is available
+        Person.from_git(self.repo)
 
     def import_from_template(self, template_path, metadata, force=False):
         """Render template files from a template directory."""

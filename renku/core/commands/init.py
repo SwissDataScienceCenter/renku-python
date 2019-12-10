@@ -150,19 +150,16 @@ def read_template_manifest(folder, checkout=False):
 
 
 def create_from_template(
-    template_path, client, name=None, description=None, force=None
+    template_path,
+    client,
+    name=None,
+    description=None,
+    metadata={},
+    force=None
 ):
     """Initialize a new project from a template."""
-    # create empty repo
-    client.init_repository(force)
-
-    # initialize with proper medata
-    now = datetime.now(timezone.utc)
-    metadata = {
-        'name': name,
-        'description': description,
-        'date_created': now,
-        'date_updated': now,
-    }
     with client.commit():
-        client.import_from_template(template_path, metadata, force)
+        client.init_repository(force)
+        with client.with_metadata(name=name) as metadata:
+            client.import_from_template(template_path, metadata, force)
+            metadata.updated = datetime.now(timezone.utc)

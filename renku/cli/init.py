@@ -218,11 +218,6 @@ def init(
         )
         click.secho('OK', fg='green')
     else:
-        if template_ref:
-            click.echo(
-                'Warning: option --template-ref will be ignored since '
-                'no --template-source was provided'
-            )
         template_folder = Path(
             pkg_resources.resource_filename('renku', 'templates')
         )
@@ -268,12 +263,14 @@ def init(
             template_data = templates[template_num - 1]
 
     # clone the repo
+    # TODO: manage metadata for jinja templates
+    metadata = {}
     template_path = template_folder / template_data['folder']
     click.echo('Initializing new Renku repository... ', nl=False)
     with client.lock:
         try:
             create_from_template(
-                template_path, client, name, description, force
+                template_path, client, name, description, metadata, force
             )
         except FileExistsError as e:
             raise click.UsageError(e)
