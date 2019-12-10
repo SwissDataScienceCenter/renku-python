@@ -141,9 +141,18 @@ def read_template_manifest(folder, checkout=False):
     if checkout:
         git_repo = git.Git(folder)
         template_folders = [template['folder'] for template in manifest]
+        if len(template_folders) < 1:
+            raise errors.InvalidTemplateError(
+                'Cannot find any valid template in manifest file'
+            )
         for template_folder in template_folders:
             template_path = folder / template_folder
-            git_repo.checkout(template_path)
+            try:
+                git_repo.checkout(template_path)
+            except git.exc.GitCommandError as e:
+                raise errors.InvalidTemplateError(
+                    'Cannot checkout the folder "{0}"'.format(template_folder)
+                ) from e
             validate_template(template_path)
 
     return manifest

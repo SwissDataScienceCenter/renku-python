@@ -199,8 +199,6 @@ def init(
                 )
         except AttributeError:
             click.echo('Warning! Overwriting non-empty folder.')
-        except GitCommandError as e:
-            click.UsageError(e)
 
     # select template source
     if template_source:

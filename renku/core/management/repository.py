@@ -413,8 +413,7 @@ class RepositoryApiMixin(GitCore):
                 template = Template(file.read_text())
                 rendered_content = template.render(metadata)
                 destination.write_text(rendered_content)
-            except Exception:
-                if file.is_dir():
-                    destination.mkdir(parents=True, exist_ok=True)
-                else:
-                    shutil.copy(file, destination)
+            except IsADirectoryError:
+                destination.mkdir(parents=True, exist_ok=True)
+            except TypeError:
+                shutil.copy(file, destination)
