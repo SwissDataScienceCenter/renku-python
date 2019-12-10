@@ -104,7 +104,7 @@ jobs:
         - REQUIREMENTS=lowest
         - REQUIREMENTS=release
       install:
-        - travis_retry python -m pip install -r .travis-${REQUIREMENTS}-requirements-all.txt;
+        - travis_retry python -m pip install -r .travis-${REQUIREMENTS}-requirements.txt;
           travis_retry python -m pip install -e .[all];
       script: ./run-tests.sh -d
     - stage: integration
