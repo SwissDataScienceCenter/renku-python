@@ -71,7 +71,6 @@ from tempfile import mkdtemp
 import attr
 import click
 import pkg_resources
-from git import GitCommandError
 
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.git import set_git_home
