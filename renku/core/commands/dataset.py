@@ -42,7 +42,7 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.datasets import Dataset, generate_default_display_name
+from renku.core.models.datasets import Dataset, generate_default_internal_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
@@ -115,7 +115,7 @@ def create_dataset(
 
     client.create_dataset(
         name=name,
-        display_name=display_name,
+        internal_name=name,
         description=description,
         creators=creators
     )
@@ -431,7 +431,7 @@ def export_dataset(
 def import_dataset(
     client,
     uri,
-    display_name='',
+    internal_name='',
     extract=False,
     with_prompt=False,
     pool_init_fn=None,
@@ -483,14 +483,12 @@ def import_dataset(
         )
 
     if files:
-        if not display_name:
-            display_name = generate_default_display_name(dataset)
+        if not internal_name:
+            internal_name = generate_default_internal_name(dataset)
 
-        dataset.display_name = display_name
+        dataset.internal_name = internal_name
 
-        client.create_dataset(
-            name=dataset.name, display_name=display_name, is_import=True
-        )
+        client.create_dataset(name=dataset.name, internal_name=internal_name)
 
         data_folder = tempfile.mkdtemp()
 
@@ -533,14 +531,14 @@ def import_dataset(
         add_to_dataset(
             client,
             urls=[str(p) for p in Path(data_folder).glob('*')],
-            name=display_name,
+            name=internal_name,
             with_metadata=dataset
         )
 
         if dataset.version:
             tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
             tag_dataset(
-                client, display_name, tag_name,
+                client, internal_name, tag_name,
                 'Tag {} created by renku import'.format(dataset.version)
             )
 
@@ -649,7 +647,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
 
     records = []
     for path_, dataset in client.datasets.items():
-        if not names or dataset.name in names or dataset.display_name in names:
+        if not names or dataset.internal_name in names:
             for file_ in dataset.files:
                 file_.dataset = dataset.name
                 path_ = file_.full_path.relative_to(client.path)

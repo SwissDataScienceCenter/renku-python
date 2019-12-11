@@ -133,7 +133,7 @@ class DatasetsApiMixin(object):
                 'Dataset exists: "{}".'.format(name)
             )
 
-        dataset_path = self.path / self.datadir / dataset.display_name
+        dataset_path = self.path / self.datadir / dataset.internal_name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -155,27 +155,23 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self,
-        name,
-        display_name='',
-        description='',
-        creators=(),
-        is_import=False
+        self, name, internal_name='', description='', creators=()
     ):
         """Create a dataset."""
-        if self.load_dataset(
-            name=name
-        ) or (is_import and self.load_dataset(name=display_name)):
-            raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(name)
-            )
-
         if not name:
             raise errors.ParameterError('Dataset name must be provided.')
-        # Do not validate imported datasets' names
-        if not is_import and not is_dataset_name_valid(name):
+
+        if not internal_name:
+            internal_name = name
+
+        if not is_dataset_name_valid(internal_name):
             raise errors.ParameterError(
-                'Dataset name {} is not valid.'.format(name)
+                'Dataset name {} is not valid.'.format(internal_name)
+            )
+
+        if self.load_dataset(name=internal_name):
+            raise errors.DatasetExistsError(
+                'Dataset exists: "{}".'.format(internal_name)
             )
 
         identifier = str(uuid.uuid4())
@@ -192,15 +188,13 @@ class DatasetsApiMixin(object):
                 client=self,
                 identifier=identifier,
                 name=name,
-                display_name=display_name,
+                internal_name=internal_name,
                 description=description,
                 creator=creators
             )
 
-        reference_name = display_name or name
-
         dataset_ref = LinkReference.create(
-            client=self, name='datasets/' + reference_name
+            client=self, name='datasets/' + internal_name
         )
         dataset_ref.set_reference(path)
 
@@ -220,7 +214,7 @@ class DatasetsApiMixin(object):
     ):
         """Import the data into the data directory."""
         warning_message = ''
-        dataset_path = self.path / self.datadir / dataset.display_name
+        dataset_path = self.path / self.datadir / dataset.internal_name
 
         destination = destination or Path('.')
         destination = self._resolve_path(dataset_path, destination)

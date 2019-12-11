@@ -277,7 +277,8 @@ class Dataset(Entity, CreatorMixin):
 
     EDITABLE_FIELDS = [
         'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files', 'display_name'
+        'license', 'name', 'url', 'version', 'created', 'files',
+        'internal_name'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
@@ -351,22 +352,20 @@ class Dataset(Entity, CreatorMixin):
 
     same_as = jsonld.ib(context='schema:sameAs', default=None, kw_only=True)
 
-    display_name = jsonld.ib(
-        default=None, context='schema:alternateName', kw_only=True
-    )
+    internal_name = jsonld.ib(default='', context=None, kw_only=True)
 
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
 
-    @display_name.validator
-    def display_name_validator(self, attribute, value):
-        """Validate display_name."""
-        # display_name might have been scaped and have '%' in it
+    @internal_name.validator
+    def internal_name_validator(self, attribute, value):
+        """Validate internal_name."""
+        # internal_name might have been scaped and have '%' in it
         if value and not is_dataset_name_valid(value, safe='%'):
             raise errors.ParameterError(
-                'Invalid "display_name": {}'.format(value)
+                'Invalid "internal_name": {}'.format(value)
             )
 
     @property
@@ -522,13 +521,13 @@ class Dataset(Entity, CreatorMixin):
             # if with_dataset is used, the dataset is not committed yet
             pass
 
-        if not self.display_name:
-            # For compatibility with older versions use name as display_name
+        if not self.internal_name:
+            # For compatibility with older versions use name as internal_name
             # if it is valid; otherwise, use encoded name
             if is_dataset_name_valid(self.name):
-                self.display_name = self.name
+                self.internal_name = self.name
             else:
-                self.display_name = generate_default_display_name(self)
+                self.internal_name = generate_default_internal_name(self)
 
 
 def is_dataset_name_valid(name, safe=''):
@@ -540,13 +539,13 @@ def is_dataset_name_valid(name, safe=''):
     )
 
 
-def generate_default_display_name(dataset):
-    """Get dataset display name."""
-    name = re.sub(' +', ' ', dataset.name.lower()[:24])
+def generate_default_internal_name(dataset):
+    """Get dataset internal_name."""
+    name = re.sub(r'\s+', ' ', dataset.name.lower()[:24])
 
     def to_unix(el):
         """Parse string to unix friendly name."""
-        parsed_ = re.sub('[^a-zA-Z0-9]', '', re.sub(' +', ' ', el))
+        parsed_ = re.sub('[^a-zA-Z0-9]', '', re.sub(r'\s+', ' ', el))
         parsed_ = re.sub(' .+', '.', parsed_.lower())
         return parsed_
 
