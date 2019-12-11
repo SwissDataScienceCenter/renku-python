@@ -40,7 +40,9 @@ from renku.service.views.decorators import accepts_json, handle_base_except, \
     header_doc, requires_cache, requires_identity
 
 DATASET_BLUEPRINT_TAG = 'datasets'
-dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
+dataset_blueprint = Blueprint(
+    DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX
+)
 
 
 @use_kwargs(DatasetListRequest, locations=['query'])
