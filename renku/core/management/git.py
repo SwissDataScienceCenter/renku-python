@@ -230,7 +230,11 @@ class GitCore:
 
     @contextmanager
     def commit(
-        self, commit_only=None, commit_empty=True, raise_if_empty=False
+        self,
+        commit_only=None,
+        commit_empty=True,
+        raise_if_empty=False,
+        commit_message=None
     ):
         """Automatic commit."""
         from git import Actor
@@ -302,12 +306,15 @@ class GitCore:
                 raise errors.NothingToCommit()
             return
 
-        argv = [os.path.basename(sys.argv[0])
-                ] + [remove_credentials(arg) for arg in sys.argv[1:]]
+        if commit_message is None or not isinstance(commit_message, str):
+            argv = [os.path.basename(sys.argv[0])
+                    ] + [remove_credentials(arg) for arg in sys.argv[1:]]
+
+            commit_message = ' '.join(argv)
 
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(
-            ' '.join(argv),
+            commit_message,
             committer=committer,
             skip_hooks=True,
         )
@@ -316,12 +323,13 @@ class GitCore:
     def transaction(
         self,
         clean=True,
-        up_to_date=False,
         commit=True,
+        commit_empty=True,
+        commit_message=None,
         commit_only=None,
         ignore_std_streams=False,
-        commit_empty=True,
-        raise_if_empty=False
+        raise_if_empty=False,
+        up_to_date=False,
     ):
         """Perform Git checks and operations."""
         if clean:
@@ -335,8 +343,9 @@ class GitCore:
 
         if commit:
             with self.commit(
-                commit_only=commit_only,
                 commit_empty=commit_empty,
+                commit_message=commit_message,
+                commit_only=commit_only,
                 raise_if_empty=raise_if_empty
             ):
                 yield self
