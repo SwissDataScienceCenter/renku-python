@@ -193,8 +193,9 @@ def init(
         if not force:
             raise errors.InvalidFileOperation(
                 'Folder "{0}" is not empty. Please add --force '
-                'flag to transform it into a Renku repository.'.
-                format(str(path))
+                'flag to transform it into a Renku repository.'.format(
+                    str(path)
+                )
             )
         try:
             commit = client.find_previous_commit('*')
