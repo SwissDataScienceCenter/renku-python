@@ -28,7 +28,7 @@ from patoolib.util import PatoolError
 
 from renku.core.commands.clone import renku_clone
 from renku.service.config import CACHE_UPLOADS_PATH, \
-    INVALID_PARAMS_ERROR_CODE, SUPPORTED_ARCHIVES, SERVICE_PREFIX
+    INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponse, \
     FileListResponseRPC, FileUploadContext, FileUploadRequest, \
     FileUploadResponse, FileUploadResponseRPC, ProjectCloneContext, \

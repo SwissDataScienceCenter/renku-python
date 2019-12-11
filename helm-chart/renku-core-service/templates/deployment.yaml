@@ -39,7 +39,7 @@ spec:
             - name: PROJECT_CLONE_DEPTH_DEFAULT
               value: {{ .Values.projectCloneDepth | quote }}
             - name: CORE_SERVICE_PREFIX
-              value: /core
+              value: /renku
           ports:
             - name: http
               containerPort: 8080
