@@ -72,6 +72,7 @@ import attr
 import click
 import pkg_resources
 
+from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.git import set_git_home
 from renku.core.commands.init import create_from_template, fetch_template, \
@@ -130,6 +131,19 @@ def create_printable_descriptions(templates):
     return '\n'.join(template_descriptions)
 
 
+def is_path_empty(path):
+    """Check if path contains files.
+
+    :ref path: target path
+    """
+    gen = path.glob('**/*')
+    try:
+        next(gen)
+        return False
+    except StopIteration:
+        return True
+
+
 @click.command()
 @click.argument(
     'path',
@@ -173,14 +187,15 @@ def init(
     )
 
     # verify path status
-    if list(client.path.glob('**/*')):
+    # TODO: move this to client
+    if not is_path_empty(client.path):
+        from git import GitCommandError
         if not force:
-            error = FileExistsError(
-                'Folder "{0}" is not empty. Please '
-                'add --force flag to transform it into a Renku repository.'.
+            raise errors.InvalidFileOperation(
+                'Folder "{0}" is not empty. Please add --force '
+                'flag to transform it into a Renku repository.'.
                 format(str(path))
             )
-            raise click.UsageError(error)
         try:
             commit = client.find_previous_commit('*')
             branch_name = 'pre_renku_init_{0}'.format(commit.hexsha[:7])
@@ -198,6 +213,8 @@ def init(
                 )
         except AttributeError:
             click.echo('Warning! Overwriting non-empty folder.')
+        except GitCommandError as e:
+            click.UsageError(e)
 
     # select template source
     if template_source:
