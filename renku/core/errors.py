@@ -198,6 +198,14 @@ class NothingToCommit(RenkuException):
         super(NothingToCommit, self).__init__('There is nothing to commit.')
 
 
+class CommitMessageEmpty(RenkuException):
+    """Raise invalid commit message."""
+
+    def __init__(self):
+        """Build a custom message."""
+        super(CommitMessageEmpty, self).__init__('Invalid commit message.')
+
+
 class FailedMerge(RenkuException):
     """Raise when automatic merge failed."""
 
