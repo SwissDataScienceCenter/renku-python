@@ -306,7 +306,10 @@ class GitCore:
                 raise errors.NothingToCommit()
             return
 
-        if commit_message is None or not isinstance(commit_message, str):
+        if commit_message and not isinstance(commit_message, str):
+            raise errors.CommitMessageEmpty()
+
+        elif not commit_message:
             argv = [os.path.basename(sys.argv[0])
                     ] + [remove_credentials(arg) for arg in sys.argv[1:]]
 

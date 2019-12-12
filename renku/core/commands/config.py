@@ -36,7 +36,15 @@ def _split_section_and_key(key):
     commit_only=CONFIG_LOCAL_PATH,
     commit_empty=False
 )
-def update_config(client, key, *, value=None, remove=False, global_only=False):
+def update_config(
+    client,
+    key,
+    *,
+    value=None,
+    remove=False,
+    global_only=False,
+    commit_message=None,
+):
     """Add, update, or remove configuration values."""
     section, section_key = _split_section_and_key(key)
     if remove:
