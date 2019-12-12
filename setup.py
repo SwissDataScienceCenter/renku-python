@@ -77,7 +77,7 @@ install_requires = [
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
-    'cwltool==1.0.20181012180214',
+    'cwltool==1.0.20191206125148',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'gitpython==3.0.3',
@@ -172,6 +172,7 @@ setup(
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
@@ -180,6 +181,8 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Development Status :: 1 - Planning',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Development Status :: 4 - Beta',
     ],
 )
