@@ -97,6 +97,7 @@ after_success:
 jobs:
   include:
     - stage: docs
+      python: "3.6"
       os: linux
       dist: xenial
       language: python
