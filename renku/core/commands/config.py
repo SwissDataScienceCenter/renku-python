@@ -43,7 +43,7 @@ def update_config(
     value=None,
     remove=False,
     global_only=False,
-    commit_message=None,
+    commit_message=None
 ):
     """Add, update, or remove configuration values."""
     section, section_key = _split_section_and_key(key)
