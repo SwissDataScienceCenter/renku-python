@@ -26,6 +26,8 @@ import yaml
 
 from renku.core.management import LocalClient
 
+from ..management.config import RENKU_HOME
+from ..management.repository import default_path
 from .git import get_git_isolation
 
 
@@ -63,8 +65,17 @@ def pass_local_client(
         )
 
     def new_func(*args, **kwargs):
-        ctx = click.get_current_context()
-        client = ctx.ensure_object(LocalClient)
+        ctx = click.get_current_context(silent=True)
+        if ctx is None:
+            client = LocalClient(
+                path=default_path(),
+                renku_home=RENKU_HOME,
+                use_external_storage=True,
+            )
+            ctx = click.Context(click.Command(method))
+        else:
+            client = ctx.ensure_object(LocalClient)
+
         stack = contextlib.ExitStack()
 
         # Handle --isolation option:
@@ -73,20 +84,24 @@ def pass_local_client(
 
         transaction = client.transaction(
             clean=clean,
-            up_to_date=up_to_date,
             commit=commit,
+            commit_empty=commit_empty,
+            commit_message=kwargs.get('commit_message', None),
             commit_only=commit_only,
             ignore_std_streams=ignore_std_streams,
-            commit_empty=commit_empty,
             raise_if_empty=raise_if_empty,
+            up_to_date=up_to_date,
         )
         stack.enter_context(transaction)
 
         if lock or (lock is None and commit):
             stack.enter_context(client.lock)
 
-        with stack:
-            result = ctx.invoke(method, client, *args, **kwargs)
+        result = None
+        if ctx:
+            with stack:
+                result = ctx.invoke(method, client, *args, **kwargs)
+
         return result
 
     return functools.update_wrapper(new_func, method)
