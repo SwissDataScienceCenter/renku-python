@@ -90,6 +90,7 @@ install_requires = [
     'pyshacl>=0.11.3.post1',
     'python-dateutil>=2.6.1',
     'python-editor>=1.0.4',
+    'rdflib==4.2.2',
     'rdflib-jsonld>=0.4.0',
     'requests>=2.21.0',
     'ndg-httpsclient>=0.5.1',

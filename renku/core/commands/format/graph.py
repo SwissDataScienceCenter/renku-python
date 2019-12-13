@@ -97,6 +97,7 @@ def dot(graph, simple=True, debug=False, landscape=False, strict=False):
 dot_full = functools.partial(dot, simple=False, landscape=False)
 dot_landscape = functools.partial(dot, simple=True, landscape=True)
 dot_full_landscape = functools.partial(dot, simple=False, landscape=True)
+dot_debug = functools.partial(dot, debug=True)
 
 
 def _rdf2dot_simple(g, stream):
@@ -200,7 +201,6 @@ def _rdf2dot_reduced(g, stream):
     """
     import html
     import collections
-
     import rdflib
 
     from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
@@ -388,6 +388,7 @@ FORMATS = {
     'dot-full': dot_full,
     'dot-landscape': dot_landscape,
     'dot-full-landscape': dot_full_landscape,
+    'dot-debug': dot_debug,
     'json-ld': jsonld,
     'json-ld-graph': jsonld_graph,
     'Makefile': makefile,
