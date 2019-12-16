@@ -42,7 +42,7 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.datasets import Dataset, generate_default_internal_name
+from renku.core.models.datasets import Dataset, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
@@ -101,7 +101,9 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def create_dataset(client, name, description, creators, commit_message=None):
+def create_dataset(
+    client, name, short_name, description, creators, commit_message=None
+):
     """Create an empty dataset in the current repo.
 
     :raises: ``renku.core.errors.ParameterError``
@@ -112,7 +114,10 @@ def create_dataset(client, name, description, creators, commit_message=None):
         creators = [Person.from_string(c) for c in creators]
 
     dataset, _, __ = client.create_dataset(
-        name=name, description=description, creators=creators
+        name=name,
+        short_name=short_name,
+        description=description,
+        creators=creators
     )
 
     return dataset
@@ -428,7 +433,7 @@ def export_dataset(
 def import_dataset(
     client,
     uri,
-    internal_name='',
+    short_name='',
     extract=False,
     with_prompt=False,
     pool_init_fn=None,
@@ -480,14 +485,14 @@ def import_dataset(
         )
 
     if files:
-        if not internal_name:
-            internal_name = generate_default_internal_name(
+        if not short_name:
+            short_name = generate_default_short_name(
                 dataset.name, dataset.version
             )
 
-        dataset.internal_name = internal_name
+        dataset.short_name = short_name
 
-        client.create_dataset(name=dataset.name, internal_name=internal_name)
+        client.create_dataset(name=dataset.name, short_name=short_name)
 
         data_folder = tempfile.mkdtemp()
 
@@ -530,14 +535,14 @@ def import_dataset(
         add_to_dataset(
             client,
             urls=[str(p) for p in Path(data_folder).glob('*')],
-            name=internal_name,
+            name=short_name,
             with_metadata=dataset
         )
 
         if dataset.version:
             tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
             tag_dataset(
-                client, internal_name, tag_name,
+                client, short_name, tag_name,
                 'Tag {} created by renku import'.format(dataset.version)
             )
 
@@ -646,7 +651,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
 
     records = []
     for path_, dataset in client.datasets.items():
-        if not names or dataset.internal_name in names:
+        if not names or dataset.short_name in names:
             for file_ in dataset.files:
                 file_.dataset = dataset.name
                 path_ = file_.full_path.relative_to(client.path)

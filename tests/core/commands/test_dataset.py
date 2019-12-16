@@ -182,6 +182,7 @@ def test_create_dataset_custom_message(project):
     """Test create dataset custom message."""
     create_dataset(
         'ds1',
+        short_name='',
         description='',
         creators=[],
         commit_message='my awesome dataset'

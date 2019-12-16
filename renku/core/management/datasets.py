@@ -37,7 +37,7 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
-    generate_default_internal_name, is_dataset_name_valid
+    generate_default_short_name, is_dataset_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -133,7 +133,7 @@ class DatasetsApiMixin(object):
                 'Dataset exists: "{}".'.format(name)
             )
 
-        dataset_path = self.path / self.datadir / dataset.internal_name
+        dataset_path = self.path / self.datadir / dataset.short_name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -155,23 +155,23 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, name, internal_name='', description='', creators=()
+        self, name, short_name=None, description='', creators=()
     ):
         """Create a dataset."""
         if not name:
             raise errors.ParameterError('Dataset name must be provided.')
 
-        if not internal_name:
-            internal_name = generate_default_internal_name(name, None)
+        if not short_name:
+            short_name = generate_default_short_name(name, None)
 
-        if not is_dataset_name_valid(internal_name):
+        if not is_dataset_name_valid(short_name):
             raise errors.ParameterError(
-                'Dataset name "{}" is not valid.'.format(internal_name)
+                'Dataset name "{}" is not valid.'.format(short_name)
             )
 
-        if self.load_dataset(name=internal_name):
+        if self.load_dataset(name=short_name):
             raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(internal_name)
+                'Dataset exists: "{}".'.format(short_name)
             )
 
         identifier = str(uuid.uuid4())
@@ -188,13 +188,13 @@ class DatasetsApiMixin(object):
                 client=self,
                 identifier=identifier,
                 name=name,
-                internal_name=internal_name,
+                short_name=short_name,
                 description=description,
                 creator=creators
             )
 
         dataset_ref = LinkReference.create(
-            client=self, name='datasets/' + internal_name
+            client=self, name='datasets/' + short_name
         )
         dataset_ref.set_reference(path)
 
@@ -214,7 +214,7 @@ class DatasetsApiMixin(object):
     ):
         """Import the data into the data directory."""
         warning_message = ''
-        dataset_path = self.path / self.datadir / dataset.internal_name
+        dataset_path = self.path / self.datadir / dataset.short_name
 
         destination = destination or Path('.')
         destination = self._resolve_path(dataset_path, destination)

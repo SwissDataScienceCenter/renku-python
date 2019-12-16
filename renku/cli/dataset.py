@@ -386,6 +386,9 @@ def dataset(ctx, revision, datadir, format):
 @dataset.command()
 @click.argument('name')
 @click.option(
+    '--short-name', default='', help='A convenient name for dataset.'
+)
+@click.option(
     '-d', '--description', default='', help='Dataset\'s description.'
 )
 @click.option(
@@ -395,16 +398,19 @@ def dataset(ctx, revision, datadir, format):
     multiple=True,
     help='Creator\'s name and email ("Name <email>").'
 )
-def create(name, description, creator):
+def create(name, short_name, description, creator):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
     dataset = create_dataset(
-        name=name, description=description, creators=creators
+        name=name,
+        short_name=short_name,
+        description=description,
+        creators=creators
     )
     click.echo(
         'Use the name "{}" to refer to this dataset.'.format(
-            dataset.internal_name
+            dataset.short_name
         )
     )
     click.secho('OK', fg='green')
@@ -625,14 +631,16 @@ def export_(id, provider, publish, tag):
 
 @dataset.command('import')
 @click.argument('uri')
-@click.option('--name', default='', help='Renku-compatible name for dataset.')
+@click.option(
+    '--short-name', default='', help='A convenient name for dataset.'
+)
 @click.option(
     '-x',
     '--extract',
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-def import_(uri, name, extract):
+def import_(uri, short_name, extract):
     """Import data from a 3rd party provider.
 
     Supported providers: [Zenodo, Dataverse]
@@ -658,7 +666,7 @@ def import_(uri, name, extract):
 
     import_dataset(
         uri=uri,
-        internal_name=name,
+        short_name=short_name,
         extract=extract,
         with_prompt=True,
         pool_init_fn=_init,
