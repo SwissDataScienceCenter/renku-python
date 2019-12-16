@@ -37,7 +37,7 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
-    is_dataset_name_valid
+    generate_default_internal_name, is_dataset_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -162,11 +162,11 @@ class DatasetsApiMixin(object):
             raise errors.ParameterError('Dataset name must be provided.')
 
         if not internal_name:
-            internal_name = name
+            internal_name = generate_default_internal_name(name, None)
 
         if not is_dataset_name_valid(internal_name):
             raise errors.ParameterError(
-                'Dataset name {} is not valid.'.format(internal_name)
+                'Dataset name "{}" is not valid.'.format(internal_name)
             )
 
         if self.load_dataset(name=internal_name):

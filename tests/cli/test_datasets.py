@@ -89,6 +89,26 @@ def test_datasets_create_with_same_name(runner, client):
     assert 'Dataset exists: "dataset"' in result.output
 
 
+@pytest.mark.parametrize(
+    'name,internal_name',
+    [('v.a.l.i.d_internal-name', 'v.a.l.i.d_internal-name'),
+     ('any name /@#$!', 'any_name'),
+     ('name longer than 24 characters', 'name_longer_than_24_char'),
+     ('semi valid-name', 'semi_validname'), ('dataset/new', 'datasetnew'),
+     ('/dataset', 'dataset'), ('dataset/', 'dataset')]
+)
+def test_datasets_valid_name(runner, client, name, internal_name):
+    """Test creating datasets with valid name."""
+    result = runner.invoke(cli, ['dataset', 'create', name])
+    assert 0 == result.exit_code
+    assert 'Use the name "{}"'.format(internal_name) in result.output
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name=internal_name)
+    assert dataset.name == name
+    assert dataset.internal_name == internal_name
+
+
 def test_datasets_create_dirty(runner, project, client):
     """Test creating a dataset in dirty repository."""
     # Create a file in root of the repository.
@@ -212,14 +232,6 @@ def test_dataset_create_exception_refs(runner, project, client):
     result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
     assert 1 == result.exit_code
     assert 'a' in result.output
-
-
-@pytest.mark.parametrize('name', ['dataset/new', '/dataset', 'dataset/'])
-def test_dataset_name_is_valid(client, runner, project, name):
-    """Test dataset name has no '/' character to avoid nested datasets."""
-    result = runner.invoke(cli, ['dataset', 'create', name])
-    assert 2 == result.exit_code
-    assert 'is not valid' in result.output
 
 
 @pytest.mark.parametrize(

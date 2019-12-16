@@ -111,12 +111,11 @@ def create_dataset(client, name, description, creators, commit_message=None):
     else:
         creators = [Person.from_string(c) for c in creators]
 
-    client.create_dataset(
-        name=name,
-        internal_name=name,
-        description=description,
-        creators=creators
+    dataset, _, __ = client.create_dataset(
+        name=name, description=description, creators=creators
     )
+
+    return dataset
 
 
 @pass_local_client(
@@ -482,7 +481,9 @@ def import_dataset(
 
     if files:
         if not internal_name:
-            internal_name = generate_default_internal_name(dataset)
+            internal_name = generate_default_internal_name(
+                dataset.name, dataset.version
+            )
 
         dataset.internal_name = internal_name
 

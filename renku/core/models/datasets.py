@@ -522,12 +522,9 @@ class Dataset(Entity, CreatorMixin):
             pass
 
         if not self.internal_name:
-            # For compatibility with older versions use name as internal_name
-            # if it is valid; otherwise, use encoded name
-            if is_dataset_name_valid(self.name):
-                self.internal_name = self.name
-            else:
-                self.internal_name = generate_default_internal_name(self)
+            self.internal_name = generate_default_internal_name(
+                self.name, self.version
+            )
 
 
 def is_dataset_name_valid(name, safe=''):
@@ -539,9 +536,15 @@ def is_dataset_name_valid(name, safe=''):
     )
 
 
-def generate_default_internal_name(dataset):
+def generate_default_internal_name(dataset_name, dataset_version):
     """Get dataset internal_name."""
-    name = re.sub(r'\s+', ' ', dataset.name.lower()[:24])
+    # For compatibility with older versions use name as internal_name
+    # if it is valid; otherwise, use encoded name
+    if is_dataset_name_valid(dataset_name):
+        return dataset_name
+
+    name = re.sub(r'\s+', ' ', dataset_name)
+    name = name.lower()[:24]
 
     def to_unix(el):
         """Parse string to unix friendly name."""
@@ -550,10 +553,11 @@ def generate_default_internal_name(dataset):
         return parsed_
 
     short_name = [to_unix(el) for el in name.split()]
+    short_name = [el for el in short_name if el]
 
-    if dataset.version:
-        version = to_unix(dataset.version)
+    if dataset_version:
+        version = to_unix(dataset_version)
         name = '{0}_{1}'.format('_'.join(short_name), version)
         return name
 
-    return '.'.join(short_name)
+    return '_'.join(short_name)
