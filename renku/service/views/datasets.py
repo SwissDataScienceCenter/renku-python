@@ -145,12 +145,18 @@ def add_file_to_dataset_view(user, cache):
     ctx = DatasetAddRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
     project_path = make_project_path(user, project)
+
     if not project_path:
         return jsonify(
             error={
                 'code': INVALID_PARAMS_ERROR_CODE,
                 'message': 'invalid project_id: {0}'.format(ctx['project_id']),
             }
+        )
+
+    if not ctx['commit_message']:
+        ctx['commit_message'] = 'service: dataset add {0}'.format(
+            ctx['dataset_name']
         )
 
     local_paths = []
@@ -164,11 +170,16 @@ def add_file_to_dataset_view(user, cache):
                     'message': 'invalid file_id: {0}'.format(file_['file_id'])
                 }
             )
+
+        ctx['commit_message'] += ' {0}'.format(local_path.name)
         local_paths.append(str(local_path))
 
     with chdir(project_path):
         add_file(
-            local_paths, ctx['dataset_name'], create=ctx['create_dataset']
+            local_paths,
+            ctx['dataset_name'],
+            create=ctx['create_dataset'],
+            commit_message=ctx['commit_message']
         )
 
         if not repo_sync(project_path):
@@ -218,7 +229,9 @@ def create_dataset_view(user, cache):
         )
 
     with chdir(project_path):
-        create_dataset(ctx['dataset_name'])
+        create_dataset(
+            ctx['dataset_name'], commit_message=ctx['commit_message']
+        )
 
     if not repo_sync(project_path):
         return jsonify(

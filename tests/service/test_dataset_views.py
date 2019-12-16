@@ -52,6 +52,31 @@ def test_create_dataset_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+def test_create_dataset_commit_msg(svc_client_with_repo):
+    """Create new dataset successfully with custom commit message."""
+    svc_client, headers, project_id = svc_client_with_repo
+
+    payload = {
+        'project_id': project_id,
+        'dataset_name': '{0}'.format(uuid.uuid4().hex),
+        'commit_message': 'my awesome dataset'
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+
+    assert {'result'} == set(response.json.keys())
+    assert {'dataset_name'} == set(response.json['result'].keys())
+    assert payload['dataset_name'] == response.json['result']['dataset_name']
+
+
+@pytest.mark.service
+@pytest.mark.integration
 def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     """Create new dataset which already exists."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -193,6 +218,48 @@ def test_add_file_view(svc_client_with_repo):
 
     assert response
 
+    assert {'result'} == set(response.json.keys())
+    assert {'dataset_name', 'project_id',
+            'files'} == set(response.json['result'].keys())
+
+    assert 1 == len(response.json['result']['files'])
+    assert file_id == response.json['result']['files'][0]['file_id']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_add_file_commit_msg(svc_client_with_repo):
+    """Check adding of uploaded file to dataset with custom commit message."""
+    svc_client, headers, project_id = svc_client_with_repo
+    content_type = headers.pop('Content-Type')
+
+    response = svc_client.post(
+        '/cache.files_upload',
+        data=dict(file=(io.BytesIO(b'this is a test'), 'datafile1.txt'), ),
+        query_string={'override_existing': True},
+        headers=headers
+    )
+
+    file_id = response.json['result']['files'][0]['file_id']
+    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+
+    payload = {
+        'commit_message': 'my awesome data file',
+        'project_id': project_id,
+        'dataset_name': '{0}'.format(uuid.uuid4().hex),
+        'create_dataset': True,
+        'files': [{
+            'file_id': file_id,
+        }, ]
+    }
+    headers['Content-Type'] = content_type
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
     assert {'result'} == set(response.json.keys())
     assert {'dataset_name', 'project_id',
             'files'} == set(response.json['result'].keys())

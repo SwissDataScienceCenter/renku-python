@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets serializers."""
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, pre_load, post_load
 
 from renku.service.serializers.rpc import JsonRPCResponse
 
@@ -31,10 +31,21 @@ class DatasetAuthors(Schema):
 class DatasetCreateRequest(Schema):
     """Request schema for dataset create view."""
 
+    authors = fields.List(fields.Nested(DatasetAuthors))
+    commit_message = fields.String()
     dataset_name = fields.String(required=True)
     description = fields.String()
-    authors = fields.List(fields.Nested(DatasetAuthors))
     project_id = fields.String(required=True)
+
+    @pre_load()
+    def default_commit_message(self, data, **kwargs):
+        """Set default commit message."""
+        if not data.get('commit_message'):
+            data['commit_message'] = 'service: dataset create {0}'.format(
+                data['dataset_name']
+            )
+
+        return data
 
 
 class DatasetCreateResponse(Schema):
@@ -58,10 +69,21 @@ class DatasetAddFile(Schema):
 class DatasetAddRequest(Schema):
     """Request schema for dataset add file view."""
 
+    commit_message = fields.String()
     dataset_name = fields.String(required=True)
     create_dataset = fields.Boolean(missing=False)
     project_id = fields.String(required=True)
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
+
+    @post_load()
+    def default_commit_message(self, data, **kwargs):
+        """Set default commit message."""
+        if not data.get('commit_message'):
+            data['commit_message'] = 'service: dataset add {0}'.format(
+                data['dataset_name']
+            )
+
+        return data
 
 
 class DatasetAddResponse(Schema):
