@@ -101,9 +101,7 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def create_dataset(
-    client, name, display_name, description, creators, commit_message=None
-):
+def create_dataset(client, name, description, creators, commit_message=None):
     """Create an empty dataset in the current repo.
 
     :raises: ``renku.core.errors.ParameterError``

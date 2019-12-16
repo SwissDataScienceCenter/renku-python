@@ -180,6 +180,11 @@ def test_dataset_serialization(dataset):
 
 def test_create_dataset_custom_message(project):
     """Test create dataset custom message."""
-    create_dataset('ds1', commit_message='my awesome dataset')
+    create_dataset(
+        'ds1',
+        description='',
+        creators=[],
+        commit_message='my awesome dataset'
+    )
     last_commit = Repo('.').head.commit
     assert 'my awesome dataset' == last_commit.message
