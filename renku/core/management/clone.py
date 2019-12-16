@@ -68,11 +68,7 @@ def clone(
 
         for key, value in config.items():
             key_path = key.split('.')
-            if len(key_path) != 2:
-                raise errors.GitError(
-                    'Cannot write to config path: {0}'.format(key)
-                )
-            config_writer.set_value(key_path[0], key_path[1], value)
+            config_writer.set_value(key_path[0], '.'.join(key_path[1:]), value)
 
         config_writer.release()
 
