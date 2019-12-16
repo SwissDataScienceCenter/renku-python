@@ -25,9 +25,9 @@ import click
 import yaml
 
 from renku.core.management import LocalClient
-from renku.core.management.config import RENKU_HOME
-from renku.core.management.repository import default_path
 
+from ..management.config import RENKU_HOME
+from ..management.repository import default_path
 from .git import get_git_isolation
 
 
@@ -66,7 +66,7 @@ def pass_local_client(
 
     def new_func(*args, **kwargs):
         ctx = click.get_current_context(silent=True)
-        if not ctx:
+        if ctx is None:
             client = LocalClient(
                 path=default_path(),
                 renku_home=RENKU_HOME,
@@ -84,12 +84,13 @@ def pass_local_client(
 
         transaction = client.transaction(
             clean=clean,
-            up_to_date=up_to_date,
             commit=commit,
+            commit_empty=commit_empty,
+            commit_message=kwargs.get('commit_message', None),
             commit_only=commit_only,
             ignore_std_streams=ignore_std_streams,
-            commit_empty=commit_empty,
             raise_if_empty=raise_if_empty,
+            up_to_date=up_to_date,
         )
         stack.enter_context(transaction)
 
