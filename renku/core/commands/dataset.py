@@ -101,7 +101,7 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def create_dataset(client, name):
+def create_dataset(client, name, commit_message=None):
     """Create an empty dataset in the current repo.
 
     :raises: ``renku.core.errors.ParameterError``
@@ -115,7 +115,7 @@ def create_dataset(client, name):
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def edit_dataset(client, dataset_id, transform_fn):
+def edit_dataset(client, dataset_id, transform_fn, commit_message=None):
     """Edit dataset metadata."""
     dataset = client.load_dataset(dataset_id)
 
@@ -146,7 +146,8 @@ def add_file(
     destination='',
     ref=None,
     with_metadata=None,
-    urlscontext=contextlib.nullcontext
+    urlscontext=contextlib.nullcontext,
+    commit_message=None,
 ):
     """Add data file to a dataset."""
     add_to_dataset(
@@ -166,7 +167,8 @@ def add_to_dataset(
     destination='',
     ref=None,
     with_metadata=None,
-    urlscontext=contextlib.nullcontext
+    urlscontext=contextlib.nullcontext,
+    commit_message=None,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -247,7 +249,7 @@ def list_files(client, names, creators, include, exclude, format):
     commit_only=COMMIT_DIFF_STRATEGY,
 )
 @contextmanager
-def file_unlink(client, name, include, exclude):
+def file_unlink(client, name, include, exclude, commit_message=None):
     """Remove matching files from a dataset."""
     dataset = client.load_dataset(name=name)
 
@@ -278,7 +280,8 @@ def dataset_remove(
     names,
     with_output=False,
     datasetscontext=contextlib.nullcontext,
-    referencescontext=contextlib.nullcontext
+    referencescontext=contextlib.nullcontext,
+    commit_message=None
 ):
     """Delete a dataset."""
     datasets = {name: client.dataset_path(name) for name in names}
@@ -338,7 +341,8 @@ def export_dataset(
     publish,
     tag,
     handle_access_token_fn=None,
-    handle_tag_selection_fn=None
+    handle_tag_selection_fn=None,
+    commit_message=None,
 ):
     """Export data to 3rd party provider.
 
@@ -423,7 +427,8 @@ def import_dataset(
     with_prompt=False,
     pool_init_fn=None,
     pool_init_args=None,
-    download_file_fn=default_download_file
+    download_file_fn=default_download_file,
+    commit_message=None,
 ):
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -538,7 +543,8 @@ def update_datasets(
     exclude,
     ref,
     delete,
-    progress_context=contextlib.nullcontext
+    progress_context=contextlib.nullcontext,
+    commit_message=None,
 ):
     """Update files from a remote Git repo."""
     records = _filter(
@@ -650,7 +656,9 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def tag_dataset_with_client(client, name, tag, description, force=False):
+def tag_dataset_with_client(
+    client, name, tag, description, force=False, commit_message=None
+):
     """Creates a new tag for a dataset and injects a LocalClient."""
     tag_dataset(client, name, tag, description, force)
 
@@ -674,7 +682,7 @@ def tag_dataset(client, name, tag, description, force=False):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def remove_dataset_tags(client, name, tags):
+def remove_dataset_tags(client, name, tags, commit_message=True):
     """Removes tags from a dataset."""
     dataset = client.load_dataset(name)
     if not dataset:
