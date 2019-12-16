@@ -52,7 +52,7 @@ def test_list_upload_files_all(svc_client):
         'accept': 'application/json',
         'Renku-User-Id': 'user'
     }
-    response = svc_client.get('/cache/files-list', headers=headers_user)
+    response = svc_client.get('/cache.files_list', headers=headers_user)
 
     assert {'result'} == set(response.json.keys())
 
@@ -68,7 +68,7 @@ def test_list_upload_files_all_no_auth(svc_client):
         'accept': 'application/json',
     }
     response = svc_client.get(
-        '/cache/files-list',
+        '/cache.files_list',
         headers=headers,
     )
 
@@ -84,7 +84,7 @@ def test_file_upload(svc_client):
     headers_user = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile.txt'), ),
         headers=headers_user,
     )
@@ -104,7 +104,7 @@ def test_file_upload_override(svc_client):
     headers_user = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile.txt'), ),
         headers=headers_user,
     )
@@ -119,7 +119,7 @@ def test_file_upload_override(svc_client):
     old_file_id = response.json['result']['files'][0]['file_id']
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile.txt'), ),
         headers=headers_user,
     )
@@ -132,7 +132,7 @@ def test_file_upload_override(svc_client):
     assert 'file exists' == response.json['error']['reason']
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile.txt'), ),
         query_string={'override_existing': True},
         headers=headers_user,
@@ -153,7 +153,7 @@ def test_file_upload_same_file(svc_client):
     """Check successful file upload with same file uploaded twice."""
     headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile.txt'), ),
         headers=headers_user1,
     )
@@ -168,7 +168,7 @@ def test_file_upload_same_file(svc_client):
     )
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile.txt'), ),
         headers=headers_user1,
     )
@@ -184,7 +184,7 @@ def test_file_upload_same_file(svc_client):
 def test_file_upload_no_auth(svc_client):
     """Check failed file upload."""
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile.txt'), ),
     )
 
@@ -202,7 +202,7 @@ def test_file_upload_with_users(svc_client):
     headers_user2 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile1.txt'), ),
         headers=headers_user1
     )
@@ -214,7 +214,7 @@ def test_file_upload_with_users(svc_client):
     assert 200 == response.status_code
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile1.txt'), ),
         headers=headers_user2
     )
@@ -222,7 +222,7 @@ def test_file_upload_with_users(svc_client):
     assert response
     assert {'result'} == set(response.json.keys())
 
-    response = svc_client.get('/cache/files-list', headers=headers_user1)
+    response = svc_client.get('/cache.files_list', headers=headers_user1)
 
     assert response
 
@@ -243,7 +243,7 @@ def test_clone_projects_no_auth(svc_client):
     }
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload)
+        '/cache.project_clone', data=json.dumps(payload)
     )
 
     assert {'error'} == set(response.json.keys())
@@ -262,7 +262,7 @@ def test_clone_projects_no_auth(svc_client):
     }
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload), headers=headers
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
 
     assert response
@@ -287,7 +287,7 @@ def test_clone_projects_with_auth(svc_client):
     }
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload), headers=headers
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
 
     assert response
@@ -313,7 +313,7 @@ def test_clone_projects_multiple(svc_client):
     }
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload), headers=headers
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
 
     assert response
@@ -322,7 +322,7 @@ def test_clone_projects_multiple(svc_client):
     project_ids.append(response.json['result'])
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload), headers=headers
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
 
     assert response
@@ -330,7 +330,7 @@ def test_clone_projects_multiple(svc_client):
     project_ids.append(response.json['result'])
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload), headers=headers
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
 
     assert response
@@ -338,14 +338,14 @@ def test_clone_projects_multiple(svc_client):
     project_ids.append(response.json['result'])
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload), headers=headers
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
 
     assert response
     assert {'result'} == set(response.json.keys())
     last_pid = response.json['result']['project_id']
 
-    response = svc_client.get('/cache/project-list', headers=headers)
+    response = svc_client.get('/cache.project_list', headers=headers)
 
     assert response
     assert {'result'} == set(response.json.keys())
@@ -374,7 +374,7 @@ def test_clone_projects_list_view_errors(svc_client):
     }
 
     response = svc_client.post(
-        '/cache/project-clone', data=json.dumps(payload), headers=headers
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
     assert response
     assert {'result'} == set(response.json.keys())
@@ -384,7 +384,7 @@ def test_clone_projects_list_view_errors(svc_client):
     )
 
     response = svc_client.get(
-        '/cache/project-list',
+        '/cache.project_list',
         # no auth headers, expected error
     )
     assert response
@@ -392,7 +392,7 @@ def test_clone_projects_list_view_errors(svc_client):
     assert {'error'} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json['error']['code']
 
-    response = svc_client.get('/cache/project-list', headers=headers)
+    response = svc_client.get('/cache.project_list', headers=headers)
     assert response
     assert {'result'} == set(response.json.keys())
     assert 1 == len(response.json['result']['projects'])
@@ -420,7 +420,7 @@ def test_clone_projects_invalid_headers(svc_client):
     }
 
     response = svc_client.post(
-        '/cache/project-clone',
+        '/cache.project_clone',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -428,7 +428,7 @@ def test_clone_projects_invalid_headers(svc_client):
     assert {'result'} == set(response.json.keys())
 
     response = svc_client.get(
-        '/cache/project-list',
+        '/cache.project_list',
         # no auth headers, expected error
     )
 
@@ -436,7 +436,7 @@ def test_clone_projects_invalid_headers(svc_client):
     assert {'error'} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json['error']['code']
 
-    response = svc_client.get('/cache/project-list', headers=headers)
+    response = svc_client.get('/cache.project_list', headers=headers)
     assert response
     assert {'result'} == set(response.json.keys())
     assert 1 == len(response.json['result']['projects'])
@@ -449,7 +449,7 @@ def test_upload_zip_unpack_archive(datapack_zip, svc_client_with_repo):
     headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(
             file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
         ),
@@ -478,7 +478,7 @@ def test_upload_zip_archive(datapack_zip, svc_client_with_repo):
     headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(
             file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
         ),
@@ -507,7 +507,7 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
     headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(
             file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),
         ),
@@ -536,7 +536,7 @@ def test_upload_tar_archive(datapack_tar, svc_client_with_repo):
     headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(
             file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),
         ),
@@ -565,7 +565,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
     headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(
             file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),
         ),

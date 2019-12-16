@@ -46,7 +46,7 @@ cache_blueprint = Blueprint('cache', __name__)
 @marshal_with(FileListResponseRPC)
 @header_doc(description='List uploaded files.', tags=(CACHE_BLUEPRINT_TAG, ))
 @cache_blueprint.route(
-    '/cache/files-list',
+    '/cache.files_list',
     methods=['GET'],
     provide_automatic_options=False,
 )
@@ -75,7 +75,7 @@ def list_uploaded_files_view(user, cache):
     tags=(CACHE_BLUEPRINT_TAG, ),
 )
 @cache_blueprint.route(
-    '/cache/files-upload',
+    '/cache.files_upload',
     methods=['POST'],
     provide_automatic_options=False,
 )
@@ -171,7 +171,7 @@ def upload_file_view(user, cache):
     tags=(CACHE_BLUEPRINT_TAG, )
 )
 @cache_blueprint.route(
-    '/cache/project-clone',
+    '/cache.project_clone',
     methods=['POST'],
     provide_automatic_options=False,
 )
@@ -223,7 +223,7 @@ def project_clone(user, cache):
     tags=(CACHE_BLUEPRINT_TAG, ),
 )
 @cache_blueprint.route(
-    '/cache/project-list',
+    '/cache.project_list',
     methods=['GET'],
     provide_automatic_options=False,
 )

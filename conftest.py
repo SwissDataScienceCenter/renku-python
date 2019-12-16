@@ -578,7 +578,7 @@ def svc_client_with_repo(svc_client, mock_redis):
     payload = {'git_url': remote_url}
 
     response = svc_client.post(
-        '/cache/project-clone',
+        '/cache.project_clone',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -595,7 +595,7 @@ def svc_client_with_repo(svc_client, mock_redis):
 @pytest.fixture(
     params=[
         {
-            'url': '/cache/files-list',
+            'url': '/cache.files_list',
             'allowed_method': 'GET',
             'headers': {
                 'Content-Type': 'application/json',
@@ -603,12 +603,12 @@ def svc_client_with_repo(svc_client, mock_redis):
             }
         },
         {
-            'url': '/cache/files-upload',
+            'url': '/cache.files_upload',
             'allowed_method': 'POST',
             'headers': {}
         },
         {
-            'url': '/cache/project-clone',
+            'url': '/cache.project_clone',
             'allowed_method': 'POST',
             'headers': {
                 'Content-Type': 'application/json',
@@ -616,7 +616,7 @@ def svc_client_with_repo(svc_client, mock_redis):
             }
         },
         {
-            'url': '/cache/project-list',
+            'url': '/cache.project_list',
             'allowed_method': 'GET',
             'headers': {
                 'Content-Type': 'application/json',
@@ -624,7 +624,7 @@ def svc_client_with_repo(svc_client, mock_redis):
             }
         },
         {
-            'url': '/datasets/add',
+            'url': '/datasets.add',
             'allowed_method': 'POST',
             'headers': {
                 'Content-Type': 'application/json',
@@ -632,7 +632,7 @@ def svc_client_with_repo(svc_client, mock_redis):
             }
         },
         {
-            'url': '/datasets/create',
+            'url': '/datasets.create',
             'allowed_method': 'POST',
             'headers': {
                 'Content-Type': 'application/json',
@@ -640,7 +640,7 @@ def svc_client_with_repo(svc_client, mock_redis):
             }
         },
         {
-            'url': '/datasets/files-list',
+            'url': '/datasets.files_list',
             'allowed_method': 'GET',
             'headers': {
                 'Content-Type': 'application/json',
@@ -648,7 +648,7 @@ def svc_client_with_repo(svc_client, mock_redis):
             }
         },
         {
-            'url': '/datasets/list',
+            'url': '/datasets.list',
             'allowed_method': 'GET',
             'headers': {
                 'Content-Type': 'application/json',

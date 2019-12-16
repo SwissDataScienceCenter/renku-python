@@ -46,7 +46,7 @@ dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__)
 @marshal_with(DatasetListResponseRPC)
 @header_doc('List all datasets in project.', tags=(DATASET_BLUEPRINT_TAG, ))
 @dataset_blueprint.route(
-    '/datasets/list',
+    '/datasets.list',
     methods=['GET'],
     provide_automatic_options=False,
 )
@@ -85,7 +85,7 @@ def list_datasets_view(user, cache):
 @marshal_with(DatasetFilesListResponseRPC)
 @header_doc('List files in a dataset.', tags=(DATASET_BLUEPRINT_TAG, ))
 @dataset_blueprint.route(
-    '/datasets/files-list',
+    '/datasets.files_list',
     methods=['GET'],
     provide_automatic_options=False,
 )
@@ -129,7 +129,7 @@ def list_dataset_files_view(user, cache):
     'Add uploaded file to cloned repository.', tags=(DATASET_BLUEPRINT_TAG, )
 )
 @dataset_blueprint.route(
-    '/datasets/add',
+    '/datasets.add',
     methods=['POST'],
     provide_automatic_options=False,
 )
@@ -192,7 +192,7 @@ def add_file_to_dataset_view(user, cache):
     'Create a new dataset in a project.', tags=(DATASET_BLUEPRINT_TAG, )
 )
 @dataset_blueprint.route(
-    '/datasets/create',
+    '/datasets.create',
     methods=['POST'],
     provide_automatic_options=False,
 )

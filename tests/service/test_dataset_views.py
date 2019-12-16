@@ -38,7 +38,7 @@ def test_create_dataset_view(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/create',
+        '/datasets.create',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -62,7 +62,7 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/create',
+        '/datasets.create',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -87,7 +87,7 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/create',
+        '/datasets.create',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -112,7 +112,7 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/create',
+        '/datasets.create',
         data=json.dumps(payload),
         headers={'Content-Type': headers['Content-Type']}
         # no user identity, expect error
@@ -139,7 +139,7 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/add',
+        '/datasets.add',
         data=json.dumps(payload),
         headers={'Content-Type': headers['Content-Type']}
         # no user identity, expect error
@@ -161,7 +161,7 @@ def test_add_file_view(svc_client_with_repo):
     content_type = headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), 'datafile1.txt'), ),
         query_string={'override_existing': True},
         headers=headers
@@ -186,7 +186,7 @@ def test_add_file_view(svc_client_with_repo):
     headers['Content-Type'] = content_type
 
     response = svc_client.post(
-        '/datasets/add',
+        '/datasets.add',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -212,7 +212,7 @@ def test_list_datasets_view(svc_client_with_repo):
     }
 
     response = svc_client.get(
-        '/datasets/list',
+        '/datasets.list',
         query_string=params,
         headers=headers,
     )
@@ -237,7 +237,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
     }
 
     response = svc_client.get(
-        '/datasets/list',
+        '/datasets.list',
         query_string=params,
     )
 
@@ -257,7 +257,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/create',
+        '/datasets.create',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -273,7 +273,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     }
 
     response = svc_client.get(
-        '/datasets/list',
+        '/datasets.list',
         query_string=params_list,
         headers=headers,
     )
@@ -300,7 +300,7 @@ def test_list_dataset_files(svc_client_with_repo):
 
     file_name = '{0}'.format(uuid.uuid4().hex)
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(file=(io.BytesIO(b'this is a test'), file_name), ),
         query_string={'override_existing': True},
         headers=headers
@@ -324,7 +324,7 @@ def test_list_dataset_files(svc_client_with_repo):
     headers['Content-Type'] = content_type
 
     response = svc_client.post(
-        '/datasets/add',
+        '/datasets.add',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -342,7 +342,7 @@ def test_list_dataset_files(svc_client_with_repo):
     }
 
     response = svc_client.get(
-        '/datasets/files-list',
+        '/datasets.files_list',
         query_string=params,
         headers=headers,
     )
@@ -366,7 +366,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     content_type = headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(
             file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
         ),
@@ -398,7 +398,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 
     headers['Content-Type'] = content_type
     response = svc_client.post(
-        '/datasets/create',
+        '/datasets.create',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -418,7 +418,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/add',
+        '/datasets.add',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -436,7 +436,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     }
 
     response = svc_client.get(
-        '/datasets/files-list',
+        '/datasets.files_list',
         query_string=params,
         headers=headers,
     )
@@ -460,7 +460,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     content_type = headers.pop('Content-Type')
 
     response = svc_client.post(
-        '/cache/files-upload',
+        '/cache.files_upload',
         data=dict(
             file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
         ),
@@ -495,7 +495,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
     headers['Content-Type'] = content_type
     response = svc_client.post(
-        '/datasets/create',
+        '/datasets.create',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -513,7 +513,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     }
 
     response = svc_client.post(
-        '/datasets/add',
+        '/datasets.add',
         data=json.dumps(payload),
         headers=headers,
     )
@@ -531,7 +531,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     }
 
     response = svc_client.get(
-        '/datasets/files-list',
+        '/datasets.files_list',
         query_string=params,
         headers=headers,
     )
