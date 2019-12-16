@@ -927,3 +927,20 @@ def test_renku_clone(runner, monkeypatch):
             result = runner.invoke(cli, ['run', 'touch', 'output'])
             assert 'is not configured' in result.output
             assert 1 == result.exit_code
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'path,expected_path', [('', 'datasets-test'), ('.', '.'),
+                           ('new-name', 'new-name')]
+)
+def test_renku_clone_uses_project_name(
+    runner, monkeypatch, path, expected_path
+):
+    """Test renku clone uses project name as target-path by default."""
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with runner.isolated_filesystem() as project_path:
+        result = runner.invoke(cli, ['clone', REMOTE, path])
+        assert 0 == result.exit_code
+        assert (Path(project_path) / expected_path / 'Dockerfile').exists()
