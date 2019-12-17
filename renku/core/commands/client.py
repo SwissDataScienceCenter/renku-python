@@ -68,9 +68,7 @@ def pass_local_client(
         ctx = click.get_current_context(silent=True)
         if ctx is None:
             client = LocalClient(
-                path=default_path(),
-                renku_home=RENKU_HOME,
-                use_external_storage=True,
+                path=default_path(), renku_home=RENKU_HOME, use_external_storage=True
             )
             ctx = click.Context(click.Command(method))
         else:
@@ -86,7 +84,7 @@ def pass_local_client(
             clean=clean,
             commit=commit,
             commit_empty=commit_empty,
-            commit_message=kwargs.get('commit_message', None),
+            commit_message=kwargs.get("commit_message", None),
             commit_only=commit_only,
             ignore_std_streams=ignore_std_streams,
             raise_if_empty=raise_if_empty,

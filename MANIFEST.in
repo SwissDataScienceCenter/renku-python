@@ -30,7 +30,6 @@ include *.rst
 include *.sh
 include *.txt
 include .coveragerc
-include .style.yapf
 include Dockerfile*
 include LICENSE
 include Makefile

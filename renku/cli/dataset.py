@@ -252,10 +252,21 @@ import requests
 import yaml
 from tqdm import tqdm
 
-from renku.core.commands.dataset import add_file, create_dataset, \
-    dataset_parent, dataset_remove, edit_dataset, export_dataset, \
-    file_unlink, import_dataset, list_files, list_tags, remove_dataset_tags, \
-    tag_dataset_with_client, update_datasets
+from renku.core.commands.dataset import (
+    add_file,
+    create_dataset,
+    dataset_parent,
+    dataset_remove,
+    edit_dataset,
+    export_dataset,
+    file_unlink,
+    import_dataset,
+    list_files,
+    list_tags,
+    remove_dataset_tags,
+    tag_dataset_with_client,
+    update_datasets,
+)
 from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -268,9 +279,9 @@ def prompt_access_token(exporter):
 
     :return: The new access token
     """
-    text_prompt = ('You must configure an access token\n')
-    text_prompt += 'Create one at: {0}\n'.format(exporter.access_token_url())
-    text_prompt += 'Access token'
+    text_prompt = "You must configure an access token\n"
+    text_prompt += "Create one at: {0}\n".format(exporter.access_token_url())
+    text_prompt += "Access token"
 
     return click.prompt(text_prompt, type=str)
 
@@ -280,16 +291,15 @@ def prompt_tag_selection(tags):
     # Prompt user to select a tag to export
     tags = sorted(tags, key=lambda t: t.created)
 
-    text_prompt = 'Tag to export: \n\n<HEAD>\t[1]\n'
+    text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
 
-    text_prompt += '\n'.join(
-        '{}\t[{}]'.format(t.name, i) for i, t in enumerate(tags, start=2)
+    text_prompt += "\n".join(
+        "{}\t[{}]".format(t.name, i) for i, t in enumerate(tags, start=2)
     )
 
-    text_prompt += '\n\nTag'
+    text_prompt += "\n\nTag"
     selection = click.prompt(
-        text_prompt, type=click.IntRange(1,
-                                         len(tags) + 1), default=1
+        text_prompt, type=click.IntRange(1, len(tags) + 1), default=1
     )
 
     if selection > 1:
@@ -307,21 +317,22 @@ def download_file_with_progress(extract, data_folder, file, chunk_size=16384):
     def extract_dataset(data_folder_, filename):
         """Extract downloaded dataset."""
         import patoolib
+
         filepath = Path(data_folder_) / Path(filename)
         patoolib.extract_archive(filepath, outdir=data_folder_)
         filepath.unlink()
 
     def stream_to_file(request):
         """Stream bytes to file."""
-        with open(str(download_to), 'wb') as f_:
+        with open(str(download_to), "wb") as f_:
             scaling_factor = 1e-6
-            unit = 'MB'
+            unit = "MB"
 
             # We round sizes to 0.1, files smaller than 1e5 would
             # get rounded to 0, so we display bytes instead
             if file.filesize < 1e5:
                 scaling_factor = 1.0
-                unit = 'B'
+                unit = "B"
 
             total = round(file.filesize * scaling_factor, 1)
             progressbar_ = tqdm(
@@ -329,9 +340,9 @@ def download_file_with_progress(extract, data_folder, file, chunk_size=16384):
                 position=current_process_position,
                 desc=file.filename[:32],
                 bar_format=(
-                    '{{percentage:3.0f}}% '
-                    '{{n_fmt}}{unit}/{{total_fmt}}{unit}| '
-                    '{{bar}} | {{desc}}'.format(unit=unit)
+                    "{{percentage:3.0f}}% "
+                    "{{n_fmt}}{unit}/{{total_fmt}}{unit}| "
+                    "{{bar}} | {{desc}}".format(unit=unit)
                 ),
                 leave=False,
             )
@@ -343,11 +354,8 @@ def download_file_with_progress(extract, data_folder, file, chunk_size=16384):
                         f_.write(chunk)
                         bytes_downloaded += chunk_size
                         progressbar_.n = min(
-                            float(
-                                '{0:.1f}'.format(
-                                    bytes_downloaded * scaling_factor
-                                )
-                            ), total
+                            float("{0:.1f}".format(bytes_downloaded * scaling_factor)),
+                            total,
                         )
                         progressbar_.update(0)
             finally:
@@ -363,19 +371,19 @@ def download_file_with_progress(extract, data_folder, file, chunk_size=16384):
 
 
 @click.group(invoke_without_command=True)
-@click.option('--revision', default=None)
-@click.option('--datadir', default='data', type=click.Path(dir_okay=True))
+@click.option("--revision", default=None)
+@click.option("--datadir", default="data", type=click.Path(dir_okay=True))
 @click.option(
-    '--format',
+    "--format",
     type=click.Choice(DATASETS_FORMATS),
-    default='tabular',
-    help='Choose an output format.'
+    default="tabular",
+    help="Choose an output format.",
 )
 @click.pass_context
 def dataset(ctx, revision, datadir, format):
     """Handle datasets."""
     if isinstance(ctx, click.Context):
-        ctx.meta['renku.datasets.datadir'] = datadir
+        ctx.meta["renku.datasets.datadir"] = datadir
 
     if ctx.invoked_subcommand is not None:
         return
@@ -384,85 +392,70 @@ def dataset(ctx, revision, datadir, format):
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument("name")
+@click.option("--short-name", default="", help="A convenient name for dataset.")
+@click.option("-d", "--description", default="", help="Dataset's description.")
 @click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
-)
-@click.option(
-    '-d', '--description', default='', help='Dataset\'s description.'
-)
-@click.option(
-    '-c',
-    '--creator',
+    "-c",
+    "--creator",
     default=None,
     multiple=True,
-    help='Creator\'s name and email ("Name <email>").'
+    help='Creator\'s name and email ("Name <email>").',
 )
 def create(name, short_name, description, creator):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
     dataset = create_dataset(
-        name=name,
-        short_name=short_name,
-        description=description,
-        creators=creators
+        name=name, short_name=short_name, description=description, creators=creators
     )
-    click.echo(
-        'Use the name "{}" to refer to this dataset.'.format(
-            dataset.short_name
-        )
-    )
-    click.secho('OK', fg='green')
+    click.echo('Use the name "{}" to refer to this dataset.'.format(dataset.short_name))
+    click.secho("OK", fg="green")
 
 
 @dataset.command()
-@click.argument('dataset_id')
+@click.argument("dataset_id")
 def edit(dataset_id):
     """Edit dataset metadata."""
     edit_dataset(
-        dataset_id, lambda dataset: editor.edit(
-            contents=bytes(yaml.safe_dump(dataset.editable), encoding='utf-8')
-        )
+        dataset_id,
+        lambda dataset: editor.edit(
+            contents=bytes(yaml.safe_dump(dataset.editable), encoding="utf-8")
+        ),
     )
 
 
 @dataset.command()
-@click.argument('name')
-@click.argument('urls', nargs=-1)
-@click.option('--link', is_flag=True, help='Creates a hard link.')
+@click.argument("name")
+@click.argument("urls", nargs=-1)
+@click.option("--link", is_flag=True, help="Creates a hard link.")
+@click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
 @click.option(
-    '--force', is_flag=True, help='Allow adding otherwise ignored files.'
+    "-c", "--create", is_flag=True, help="Create dataset if it does not exist."
 )
 @click.option(
-    '-c',
-    '--create',
-    is_flag=True,
-    help='Create dataset if it does not exist.'
-)
-@click.option(
-    '-s',
-    '--src',
-    '--source',
-    'sources',
+    "-s",
+    "--src",
+    "--source",
+    "sources",
     default=None,
     multiple=True,
-    help='Path(s) within remote git repo to be added'
+    help="Path(s) within remote git repo to be added",
 )
 @click.option(
-    '-d',
-    '--dst',
-    '--destination',
-    'destination',
-    default='',
-    help='Destination file or directory within the dataset path'
+    "-d",
+    "--dst",
+    "--destination",
+    "destination",
+    default="",
+    help="Destination file or directory within the dataset path",
 )
 @click.option(
-    '--ref', default=None, help='Add files from a specific commit/tag/branch.'
+    "--ref", default=None, help="Add files from a specific commit/tag/branch."
 )
 def add(name, urls, link, force, create, sources, destination, ref):
     """Add data to a dataset."""
-    progress = partial(progressbar, label='Adding data to dataset')
+    progress = partial(progressbar, label="Adding data to dataset")
     add_file(
         urls=urls,
         name=name,
@@ -472,36 +465,36 @@ def add(name, urls, link, force, create, sources, destination, ref):
         sources=sources,
         destination=destination,
         ref=ref,
-        urlscontext=progress
+        urlscontext=progress,
     )
 
 
-@dataset.command('ls-files')
-@click.argument('names', nargs=-1)
+@dataset.command("ls-files")
+@click.argument("names", nargs=-1)
 @click.option(
-    '--creators',
-    help='Filter files which where authored by specific creators. '
-    'Multiple creators are specified by comma.'
+    "--creators",
+    help="Filter files which where authored by specific creators. "
+    "Multiple creators are specified by comma.",
 )
 @click.option(
-    '-I',
-    '--include',
+    "-I",
+    "--include",
     default=None,
     multiple=True,
-    help='Include files matching given pattern.'
+    help="Include files matching given pattern.",
 )
 @click.option(
-    '-X',
-    '--exclude',
+    "-X",
+    "--exclude",
     default=None,
     multiple=True,
-    help='Exclude files matching given pattern.'
+    help="Exclude files matching given pattern.",
 )
 @click.option(
-    '--format',
+    "--format",
     type=click.Choice(DATASET_FILES_FORMATS),
-    default='tabular',
-    help='Choose an output format.'
+    default="tabular",
+    help="Choose an output format.",
 )
 def ls_files(names, creators, include, exclude, format):
     """List files in dataset."""
@@ -509,89 +502,79 @@ def ls_files(names, creators, include, exclude, format):
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument("name")
 @click.option(
-    '-I',
-    '--include',
-    multiple=True,
-    help='Include files matching given pattern.'
+    "-I", "--include", multiple=True, help="Include files matching given pattern."
 )
 @click.option(
-    '-X',
-    '--exclude',
-    multiple=True,
-    help='Exclude files matching given pattern.'
+    "-X", "--exclude", multiple=True, help="Exclude files matching given pattern."
 )
-@click.option(
-    '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
-)
+@click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
 def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
     with file_unlink(name, include, exclude) as records:
         if not yes and records:
             prompt_text = (
-                'You are about to remove '
-                'following from "{0}" dataset.\n'.format(dataset.name) +
-                '\n'.join([str(record.full_path) for record in records]) +
-                '\nDo you wish to continue?'
+                "You are about to remove "
+                'following from "{0}" dataset.\n'.format(dataset.name)
+                + "\n".join([str(record.full_path) for record in records])
+                + "\nDo you wish to continue?"
             )
             click.confirm(WARNING + prompt_text, abort=True)
 
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('rm')
-@click.argument('names', nargs=-1)
+@dataset.command("rm")
+@click.argument("names", nargs=-1)
 def remove(names):
     """Delete a dataset."""
     datasetscontext = partial(
         progressbar,
-        label='Removing metadata files'.ljust(30),
-        item_show_func=lambda item: str(item) if item else ''
+        label="Removing metadata files".ljust(30),
+        item_show_func=lambda item: str(item) if item else "",
     )
     referencescontext = partial(
         progressbar,
-        label='Removing aliases'.ljust(30),
-        item_show_func=lambda item: item.name if item else '',
+        label="Removing aliases".ljust(30),
+        item_show_func=lambda item: item.name if item else "",
     )
     dataset_remove(
         names,
         with_output=True,
         datasetscontext=datasetscontext,
-        referencescontext=referencescontext
+        referencescontext=referencescontext,
     )
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('tag')
-@click.argument('name')
-@click.argument('tag')
-@click.option(
-    '-d', '--description', default='', help='A description for this tag'
-)
-@click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
+@dataset.command("tag")
+@click.argument("name")
+@click.argument("tag")
+@click.option("-d", "--description", default="", help="A description for this tag")
+@click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
     tag_dataset_with_client(name, tag, description, force)
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('rm-tags')
-@click.argument('name')
-@click.argument('tags', nargs=-1)
+@dataset.command("rm-tags")
+@click.argument("name")
+@click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
     remove_dataset_tags(name, tags)
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('ls-tags')
-@click.argument('name')
+@dataset.command("ls-tags")
+@click.argument("name")
 @click.option(
-    '--format',
+    "--format",
     type=click.Choice(DATASET_TAGS_FORMATS),
-    default='tabular',
-    help='Choose an output format.'
+    default="tabular",
+    help="Choose an output format.",
 )
 def ls_tags(name, format):
     """List all tags of a dataset."""
@@ -599,16 +582,13 @@ def ls_tags(name, format):
     click.echo(tags_output)
 
 
-@dataset.command('export')
-@click.argument('id')
-@click.argument('provider')
+@dataset.command("export")
+@click.argument("id")
+@click.argument("provider")
 @click.option(
-    '-p',
-    '--publish',
-    is_flag=True,
-    help='Automatically publish exported dataset.'
+    "-p", "--publish", is_flag=True, help="Automatically publish exported dataset."
 )
-@click.option('-t', '--tag', help='Dataset tag to export')
+@click.option("-t", "--tag", help="Dataset tag to export")
 def export_(id, provider, publish, tag):
     """Export data to 3rd party provider."""
     try:
@@ -618,27 +598,20 @@ def export_(id, provider, publish, tag):
             publish,
             tag,
             handle_access_token_fn=prompt_access_token,
-            handle_tag_selection_fn=prompt_tag_selection
+            handle_tag_selection_fn=prompt_tag_selection,
         )
-    except (
-        ValueError, InvalidAccessToken, DatasetNotFound, requests.HTTPError
-    ) as e:
+    except (ValueError, InvalidAccessToken, DatasetNotFound, requests.HTTPError) as e:
         raise click.BadParameter(e)
 
     click.echo(output)
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('import')
-@click.argument('uri')
+@dataset.command("import")
+@click.argument("uri")
+@click.option("--short-name", default="", help="A convenient name for dataset.")
 @click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
-)
-@click.option(
-    '-x',
-    '--extract',
-    is_flag=True,
-    help='Extract files before importing to dataset.'
+    "-x", "--extract", is_flag=True, help="Extract files before importing to dataset."
 )
 def import_(uri, short_name, extract):
     """Import data from a 3rd party provider.
@@ -648,7 +621,7 @@ def import_(uri, short_name, extract):
     manager = mp.Manager()
     id_queue = manager.Queue()
 
-    pool_size = min(int(os.getenv('RENKU_POOL_SIZE', mp.cpu_count() // 2)), 4)
+    pool_size = min(int(os.getenv("RENKU_POOL_SIZE", mp.cpu_count() // 2)), 4)
 
     for i in range(pool_size):
         id_queue.put(i)
@@ -671,43 +644,39 @@ def import_(uri, short_name, extract):
         with_prompt=True,
         pool_init_fn=_init,
         pool_init_args=(mp.RLock(), id_queue),
-        download_file_fn=download_file_with_progress
+        download_file_fn=download_file_with_progress,
     )
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('update')
-@click.argument('names', nargs=-1)
+@dataset.command("update")
+@click.argument("names", nargs=-1)
 @click.option(
-    '--creators',
-    help='Filter files which where authored by specific creators. '
-    'Multiple creators are specified by comma.'
+    "--creators",
+    help="Filter files which where authored by specific creators. "
+    "Multiple creators are specified by comma.",
 )
 @click.option(
-    '-I',
-    '--include',
+    "-I",
+    "--include",
     default=None,
     multiple=True,
-    help='Include files matching given pattern.'
+    help="Include files matching given pattern.",
 )
 @click.option(
-    '-X',
-    '--exclude',
+    "-X",
+    "--exclude",
     default=None,
     multiple=True,
-    help='Exclude files matching given pattern.'
+    help="Exclude files matching given pattern.",
 )
+@click.option("--ref", default=None, help="Update to a specific commit/tag/branch.")
 @click.option(
-    '--ref', default=None, help='Update to a specific commit/tag/branch.'
-)
-@click.option(
-    '--delete',
-    is_flag=True,
-    help='Delete local files that are deleted from remote.'
+    "--delete", is_flag=True, help="Delete local files that are deleted from remote."
 )
 def update(names, creators, include, exclude, ref, delete):
     """Updates files in dataset from a remote Git repo."""
-    progress_context = partial(progressbar, label='Updating files')
+    progress_context = partial(progressbar, label="Updating files")
     update_datasets(
         names=names,
         creators=creators,
@@ -715,6 +684,6 @@ def update(names, creators, include, exclude, ref, delete):
         exclude=exclude,
         ref=ref,
         delete=delete,
-        progress_context=progress_context
+        progress_context=progress_context,
     )
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")

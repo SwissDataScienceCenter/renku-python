@@ -32,8 +32,10 @@ def check_git_hooks_installed(client):
     for hook in HOOKS:
         hook_path = Path(get_hook_path(hook, client.repo.git_dir))
         if not hook_path.exists():
-            message = WARNING + 'Git hooks are not installed. ' \
+            message = (
+                WARNING + "Git hooks are not installed. "
                 'Use "renku githooks install" to install them. \n'
+            )
             return False, message
 
         with hook_path.open() as file_:
@@ -42,12 +44,14 @@ def check_git_hooks_installed(client):
             expected_hook = _extract_renku_hook(file_)
 
         if not expected_hook:
-            message = WARNING + 'Cannot check for existence of Git hooks.\n'
+            message = WARNING + "Cannot check for existence of Git hooks.\n"
             return False, message
 
         if actual_hook != expected_hook:
-            message = WARNING + 'Git hooks are outdated or not installed. ' \
+            message = (
+                WARNING + "Git hooks are outdated or not installed. "
                 'Use "renku githooks install --force" to update them. \n'
+            )
             return False, message
 
     return True, None
@@ -57,9 +61,9 @@ def _extract_renku_hook(file_):
     lines = [line.strip() for line in file_ if line.strip()]
     start = end = -1
     for index, line in enumerate(lines):
-        if line.startswith('# RENKU HOOK.'):
+        if line.startswith("# RENKU HOOK."):
             start = index
-        elif line.endswith('# END RENKU HOOK.'):
+        elif line.endswith("# END RENKU HOOK."):
             end = index
             break
 
@@ -68,5 +72,5 @@ def _extract_renku_hook(file_):
 
 def _read_resource(hook):
     return pkg_resources.resource_string(
-        'renku.data', '{hook}.sh'.format(hook=hook)
-    ).decode('utf-8')
+        "renku.data", "{hook}.sh".format(hook=hook)
+    ).decode("utf-8")

@@ -41,10 +41,11 @@ def default_path():
     """Return default repository path."""
     from git import InvalidGitRepositoryError
     from renku.core.commands.git import get_git_home
+
     try:
         return get_git_home()
     except InvalidGitRepositoryError:
-        return '.'
+        return "."
 
 
 @attr.s
@@ -52,15 +53,14 @@ class PathMixin:
     """Define a default path attribute."""
 
     path = attr.ib(
-        default=default_path,
-        converter=lambda arg: Path(arg).resolve().absolute(),
+        default=default_path, converter=lambda arg: Path(arg).resolve().absolute()
     )
 
     @path.validator
     def _check_path(self, _, value):
         """Check the path exists and it is a directory."""
         if not (value.exists() and value.is_dir()):
-            raise ValueError('Define an existing directory.')
+            raise ValueError("Define an existing directory.")
 
 
 @attr.s
@@ -76,13 +76,13 @@ class RepositoryApiMixin(GitCore):
     parent = attr.ib(default=None)
     """Store a pointer to the parent repository."""
 
-    METADATA = 'metadata.yml'
+    METADATA = "metadata.yml"
     """Default name of Renku config file."""
 
-    LOCK_SUFFIX = '.lock'
+    LOCK_SUFFIX = ".lock"
     """Default suffix for Renku lock file."""
 
-    WORKFLOW = 'workflow'
+    WORKFLOW = "workflow"
     """Directory for storing workflow in Renku."""
 
     def __attrs_post_init__(self):
@@ -102,10 +102,10 @@ class RepositoryApiMixin(GitCore):
         # initialize submodules
         if self.repo:
             try:
-                check_output([
-                    'git', 'submodule', 'update', '--init', '--recursive'
-                ],
-                             cwd=str(self.path))
+                check_output(
+                    ["git", "submodule", "update", "--init", "--recursive"],
+                    cwd=str(self.path),
+                )
             except subprocess.CalledProcessError:
                 pass
 
@@ -113,8 +113,7 @@ class RepositoryApiMixin(GitCore):
     def lock(self):
         """Create a Renku config lock."""
         return filelock.FileLock(
-            str(self.renku_path.with_suffix(self.LOCK_SUFFIX)),
-            timeout=0,
+            str(self.renku_path.with_suffix(self.LOCK_SUFFIX)), timeout=0
         )
 
     @property
@@ -140,14 +139,13 @@ class RepositoryApiMixin(GitCore):
             return Project.from_yaml(self.renku_metadata_path, client=self)
 
     @property
-    def remote(self, remote_name='origin'):
+    def remote(self, remote_name="origin"):
         """Return host, owner and name of the remote if it exists."""
         from renku.core.models.git import GitURL
 
         host = owner = name = None
         try:
-            remote_branch = \
-                self.repo.head.reference.tracking_branch()
+            remote_branch = self.repo.head.reference.tracking_branch()
             if remote_branch is not None:
                 remote_name = remote_branch.remote_name
         except TypeError:
@@ -157,10 +155,10 @@ class RepositoryApiMixin(GitCore):
             url = GitURL.parse(self.repo.remotes[remote_name].url)
 
             # Remove gitlab. unless running on gitlab.com.
-            hostname_parts = url.hostname.split('.')
-            if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
+            hostname_parts = url.hostname.split(".")
+            if len(hostname_parts) > 2 and hostname_parts[0] == "gitlab":
                 hostname_parts = hostname_parts[1:]
-            url = attr.evolve(url, hostname='.'.join(hostname_parts))
+            url = attr.evolve(url, hostname=".".join(hostname_parts))
         except IndexError:
             url = None
 
@@ -168,7 +166,7 @@ class RepositoryApiMixin(GitCore):
             host = url.hostname
             owner = url.owner
             name = url.name
-        return {'host': host, 'owner': owner, 'name': name}
+        return {"host": host, "owner": owner, "name": name}
 
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.core.models.provenance.activities.Activity`.
@@ -195,24 +193,19 @@ class RepositoryApiMixin(GitCore):
 
         if path:
             data = (commit.tree / path).data_stream.read()
-            process = CWLClass.from_cwl(
-                yaml.safe_load(data), __reference__=Path(path)
-            )
+            process = CWLClass.from_cwl(yaml.safe_load(data), __reference__=Path(path))
 
             return process.create_run(
-                commit=commit,
-                client=self,
-                process=process,
-                path=path,
+                commit=commit, client=self, process=process, path=path
             )
 
         return Activity(commit=commit, client=self)
 
     def is_cwl(self, path):
         """Check if the path is a valid CWL file."""
-        return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
+        return path.startswith(self.cwl_prefix) and path.endswith(".cwl")
 
-    def find_previous_commit(self, paths, revision='HEAD', return_first=False):
+    def find_previous_commit(self, paths, revision="HEAD", return_first=False):
         """Return a previous commit for a given path starting from ``revision``.
 
         :param revision: revision to start from, defaults to ``HEAD``
@@ -223,9 +216,7 @@ class RepositoryApiMixin(GitCore):
 
         if not file_commits:
             raise KeyError(
-                'Could not find a file {0} in range {1}'.format(
-                    paths, revision
-                )
+                "Could not find a file {0} in range {1}".format(paths, revision)
             )
 
         return file_commits[-1 if return_first else 0]
@@ -234,7 +225,7 @@ class RepositoryApiMixin(GitCore):
     def workflow_names(self):
         """Return index of workflow names."""
         names = defaultdict(list)
-        for ref in LinkReference.iter_items(self, common_path='workflows'):
+        for ref in LinkReference.iter_items(self, common_path="workflows"):
             names[str(ref.reference.relative_to(self.path))].append(ref.name)
         return names
 
@@ -255,8 +246,10 @@ class RepositoryApiMixin(GitCore):
             from git import Submodule
 
             submodules = [
-                submodule for submodule in
-                Submodule.iter_items(self.repo, parent_commit=parent_commit)
+                submodule
+                for submodule in Submodule.iter_items(
+                    self.repo, parent_commit=parent_commit
+                )
             ]
         except (RuntimeError, ValueError):
             # There are no submodules associated with the given commit.
@@ -269,8 +262,7 @@ class RepositoryApiMixin(GitCore):
 
             if subpath.exists() and is_renku.exists():
                 subclients[submodule] = self.__class__(
-                    path=subpath,
-                    parent=(self, submodule),
+                    path=subpath, parent=(self, submodule)
                 )
 
         return subclients
@@ -278,15 +270,13 @@ class RepositoryApiMixin(GitCore):
     def resolve_in_submodules(self, commit, path):
         """Resolve filename in submodules."""
         original_path = self.path / path
-        in_vendor = str(path).startswith('.renku/vendors')
+        in_vendor = str(path).startswith(".renku/vendors")
 
         if original_path.is_symlink() or in_vendor:
-            original_path = Path(
-                os.path.realpath(os.path.abspath(str(original_path)))
-            )
+            original_path = Path(os.path.realpath(os.path.abspath(str(original_path))))
 
             for submodule, subclient in self.subclients(commit).items():
-                if (Path(submodule.path) / Path('.git')).exists():
+                if (Path(submodule.path) / Path(".git")).exists():
 
                     try:
                         subpath = original_path.relative_to(subclient.path)
@@ -312,10 +302,10 @@ class RepositoryApiMixin(GitCore):
             current_branch = self.repo.active_branch
         except TypeError as e:
             # not on a branch, detached head
-            if 'HEAD is a detached' in str(e):
+            if "HEAD is a detached" in str(e):
                 current_commit = self.repo.head.commit
             else:
-                raise ValueError('Couldn\'t get active branch or commit', e)
+                raise ValueError("Couldn't get active branch or commit", e)
 
         self.repo.git.checkout(commit)
 
@@ -353,9 +343,8 @@ class RepositoryApiMixin(GitCore):
         yield workflow
 
         for step in workflow.steps:
-            step_name = '{0}_{1}.cwl'.format(
-                uuid.uuid4().hex,
-                secure_filename('_'.join(step.run.baseCommand)),
+            step_name = "{0}_{1}.cwl".format(
+                uuid.uuid4().hex, secure_filename("_".join(step.run.baseCommand))
             )
 
             workflow_path = self.workflow_path
@@ -363,7 +352,7 @@ class RepositoryApiMixin(GitCore):
                 workflow_path.mkdir()
 
             step_path = workflow_path / step_name
-            with step_path.open('w') as step_file:
+            with step_path.open("w") as step_file:
                 yaml.dump(
                     ascwl(
                         # filter=lambda _, x: not (x is False or bool(x)
@@ -372,7 +361,7 @@ class RepositoryApiMixin(GitCore):
                         basedir=workflow_path,
                     ),
                     stream=step_file,
-                    default_flow_style=False
+                    default_flow_style=False,
                 )
 
     def init_repository(self, name=None, force=False):
@@ -395,22 +384,25 @@ class RepositoryApiMixin(GitCore):
 
         # Check that an creator can be determined from Git.
         from renku.core.models.provenance.agents import Person
+
         Person.from_git(self.repo)
 
         # TODO read existing gitignore and create a unique set of rules
         import pkg_resources
+
         gitignore_default = pkg_resources.resource_stream(
-            'renku.data', 'gitignore.default'
+            "renku.data", "gitignore.default"
         )
-        gitignore_path = path / '.gitignore'
-        with gitignore_path.open('w') as gitignore:
+        gitignore_path = path / ".gitignore"
+        with gitignore_path.open("w") as gitignore:
             gitignore.write(gitignore_default.read().decode())
 
             gitignore.write(
-                '\n' + str(
-                    self.renku_path.relative_to(self.path).
-                    with_suffix(self.LOCK_SUFFIX)
-                ) + '\n'
+                "\n"
+                + str(
+                    self.renku_path.relative_to(self.path).with_suffix(self.LOCK_SUFFIX)
+                )
+                + "\n"
             )
 
         with self.with_metadata(name=name) as metadata:

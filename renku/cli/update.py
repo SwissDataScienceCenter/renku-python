@@ -130,19 +130,16 @@ from renku.core.models.cwl.ascwl import ascwl
 
 
 @click.command()
-@click.option('--revision', default='HEAD')
+@click.option("--revision", default="HEAD")
 @click.option(
-    '--no-output',
+    "--no-output",
     is_flag=True,
     default=False,
-    help='Display commands without output files.'
+    help="Display commands without output files.",
 )
 @option_siblings
-@click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
-@pass_local_client(
-    clean=True,
-    commit=True,
-)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
+@pass_local_client(clean=True, commit=True)
 def update(client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     graph = Graph(client)
@@ -150,9 +147,7 @@ def update(client, revision, no_output, siblings, paths):
     outputs = {node for node in outputs if graph.need_update(node)}
 
     if not outputs:
-        click.secho(
-            'All files were generated from the latest inputs.', fg='green'
-        )
+        click.secho("All files were generated from the latest inputs.", fg="green")
         sys.exit(0)
 
     # Check or extend siblings of outputs.
@@ -165,23 +160,18 @@ def update(client, revision, no_output, siblings, paths):
     # Store the generated workflow used for updating paths.
     import yaml
 
-    output_file = client.workflow_path / '{0}.cwl'.format(uuid.uuid4().hex)
+    output_file = client.workflow_path / "{0}.cwl".format(uuid.uuid4().hex)
     workflow = graph.ascwl(
-        input_paths=input_paths,
-        output_paths=output_paths,
-        outputs=outputs,
+        input_paths=input_paths, output_paths=output_paths, outputs=outputs
     )
 
     # Don't compute paths if storage is disabled.
     if client.has_external_storage:
         # Make sure all inputs are pulled from a storage.
-        paths_ = (
-            path
-            for _, path in workflow.iter_input_files(client.workflow_path)
-        )
+        paths_ = (path for _, path in workflow.iter_input_files(client.workflow_path))
         client.pull_paths_from_storage(*paths_)
 
-    with output_file.open('w') as f:
+    with output_file.open("w") as f:
         f.write(
             yaml.dump(
                 ascwl(
@@ -189,7 +179,7 @@ def update(client, revision, no_output, siblings, paths):
                     filter=lambda _, x: x is not None,
                     basedir=client.workflow_path,
                 ),
-                default_flow_style=False
+                default_flow_style=False,
             )
         )
 

@@ -92,62 +92,55 @@ version: '1'
 
 def test_project_context():
     """Test project context definition."""
-    keys = ['schema', 'created', 'creator', 'name', 'updated']
+    keys = ["schema", "created", "creator", "name", "updated"]
     assert all(k in Project._jsonld_context for k in keys)
 
 
 def test_project_serialization():
     """Test project serialization with JSON-LD context."""
-    with freeze_time('2017-03-01T08:00:00.000000+00:00') as frozen_time:
-        project = Project(name='demo')
-        assert project.name == 'demo'
+    with freeze_time("2017-03-01T08:00:00.000000+00:00") as frozen_time:
+        project = Project(name="demo")
+        assert project.name == "demo"
         assert project.created == frozen_time().replace(tzinfo=timezone.utc)
         assert project.updated == frozen_time().replace(tzinfo=timezone.utc)
 
     data = asjsonld(project)
-    assert 'schema:Project' in data['@type']
-    assert 'prov:Location' in data['@type']
+    assert "schema:Project" in data["@type"]
+    assert "prov:Location" in data["@type"]
 
-    context = data['@context']
-    assert 'schema:name' == context['name']
-    assert Person._jsonld_context == context['creator']['@context']
-    assert 'schema:dateUpdated' == context['updated']
-    assert 'schema:dateCreated' == context['created']
-    assert 'schema:schemaVersion' == context['version']
+    context = data["@context"]
+    assert "schema:name" == context["name"]
+    assert Person._jsonld_context == context["creator"]["@context"]
+    assert "schema:dateUpdated" == context["updated"]
+    assert "schema:dateCreated" == context["created"]
+    assert "schema:schemaVersion" == context["version"]
 
 
 @pytest.mark.parametrize(
-    'project_meta,version,is_broken', [
-        (PROJECT_V1, 1, False),
-        (PROJECT_V1_BROKEN, 1, True),
-        (PROJECT_V2, 2, False),
-    ]
+    "project_meta,version,is_broken",
+    [(PROJECT_V1, 1, False), (PROJECT_V1_BROKEN, 1, True), (PROJECT_V2, 2, False)],
 )
 def test_project_metadata_compatibility(project_meta, version, is_broken):
     """Test loading of the initial version."""
-    project = Project.from_jsonld(
-        yaml.load(project_meta, Loader=NoDatesSafeLoader)
-    )
+    project = Project.from_jsonld(yaml.load(project_meta, Loader=NoDatesSafeLoader))
 
     assert str(version) == project.version
 
     if not is_broken:
-        assert 'demo' == project.name
+        assert "demo" == project.name
 
-    assert 'schema:name' == project._jsonld_context['name']
-    main_context_creator = project._jsonld_context['creator']
-    assert Person._jsonld_context == main_context_creator['@context']
-    assert 'schema:dateUpdated' == project._jsonld_context['updated']
-    assert 'schema:dateCreated' == project._jsonld_context['created']
-    assert 'schema:schemaVersion' == project._jsonld_context['version']
+    assert "schema:name" == project._jsonld_context["name"]
+    main_context_creator = project._jsonld_context["creator"]
+    assert Person._jsonld_context == main_context_creator["@context"]
+    assert "schema:dateUpdated" == project._jsonld_context["updated"]
+    assert "schema:dateCreated" == project._jsonld_context["created"]
+    assert "schema:schemaVersion" == project._jsonld_context["version"]
 
 
-@pytest.mark.parametrize('project_meta', [PROJECT_V1, PROJECT_V2])
+@pytest.mark.parametrize("project_meta", [PROJECT_V1, PROJECT_V2])
 def test_project_datetime_loading(project_meta):
     """Check that datetime is correctly loaded."""
-    project = Project.from_jsonld(
-        yaml.load(project_meta, Loader=NoDatesSafeLoader)
-    )
+    project = Project.from_jsonld(yaml.load(project_meta, Loader=NoDatesSafeLoader))
 
     assert isinstance(project.updated, datetime)
     assert isinstance(project.created, datetime)
@@ -162,15 +155,20 @@ def test_project_creator_deserialization(client, project):
 
     # modify the project metadata to change the creator
     project = client.project
-    project.creator = Person(email='johndoe@example.com', name='Johnny Doe')
+    project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
     project.to_yaml()
     client.repo.git.commit(
-        '-a', '--amend', '-C', 'HEAD', '--author',
-        'Johnny Doe <johndoe@example.com>', '--no-verify'
+        "-a",
+        "--amend",
+        "-C",
+        "HEAD",
+        "--author",
+        "Johnny Doe <johndoe@example.com>",
+        "--no-verify",
     )
     # the project creator should always be the one in the metadata
-    assert client.project.creator.email == 'johndoe@example.com'
-    assert client.project.creator.name == 'Johnny Doe'
+    assert client.project.creator.email == "johndoe@example.com"
+    assert client.project.creator.name == "Johnny Doe"
     assert client.project.creator.label == client.project.creator.name
 
     # Remove the creator from metadata
@@ -178,11 +176,16 @@ def test_project_creator_deserialization(client, project):
     project.creator = None
     project.to_yaml()
     client.repo.git.commit(
-        '-a', '--amend', '-C', 'HEAD', '--author',
-        'Jane Doe <janedoe@example.com>', '--no-verify'
+        "-a",
+        "--amend",
+        "-C",
+        "HEAD",
+        "--author",
+        "Jane Doe <janedoe@example.com>",
+        "--no-verify",
     )
     # now the creator should be the one from the commit
     project = Project.from_yaml(client.renku_metadata_path, client=client)
-    assert project.creator.email == 'janedoe@example.com'
-    assert project.creator.name == 'Jane Doe'
+    assert project.creator.email == "janedoe@example.com"
+    assert project.creator.name == "Jane Doe"
     assert project.creator.label == project.creator.name

@@ -24,14 +24,10 @@ from renku.core.models.entities import CommitMixin
 
 
 @jsonld.s(
-    type=[
-        'wfdesc:Process',
-        'prov:Entity',
-        'prov:Plan',
-    ],
+    type=["wfdesc:Process", "prov:Entity", "prov:Plan"],
     context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
+        "wfdesc": "http://purl.org/wf4ever/wfdesc#",
+        "prov": "http://www.w3.org/ns/prov#",
     },
     cmp=False,
 )
@@ -39,10 +35,10 @@ class Process(CommitMixin):
     """Represent a process."""
 
     _activity = jsonld.ib(
-        context='prov:activity',
+        context="prov:activity",
         kw_only=True,
         converter=weakref.ref,
-        type='renku.core.models.provenance.activities.Activity'
+        type="renku.core.models.provenance.activities.Activity",
     )
 
     @property
@@ -52,21 +48,17 @@ class Process(CommitMixin):
 
 
 @jsonld.s(
-    type=[
-        'wfdesc:Workflow',
-        'prov:Entity',
-        'prov:Plan',
-    ],
+    type=["wfdesc:Workflow", "prov:Entity", "prov:Plan"],
     context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
+        "wfdesc": "http://purl.org/wf4ever/wfdesc#",
+        "prov": "http://www.w3.org/ns/prov#",
     },
     cmp=False,
 )
 class Workflow(Process):
     """Represent workflow with subprocesses."""
 
-    subprocesses = jsonld.ib(context='wfdesc:hasSubProcess', kw_only=True)
+    subprocesses = jsonld.ib(context="wfdesc:hasSubProcess", kw_only=True)
 
     @subprocesses.default
     def default_subprocesses(self):

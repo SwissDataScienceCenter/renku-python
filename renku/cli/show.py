@@ -82,10 +82,8 @@ def show():
 
 
 @show.command()
-@click.option('--revision', default='HEAD')
-@click.argument(
-    'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
-)
+@click.option("--revision", default="HEAD")
+@click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client
 def siblings(client, revision, paths):
     """Show siblings for given paths."""
@@ -101,12 +99,8 @@ def siblings(client, revision, paths):
 
 
 @show.command()
-@click.option('--revision', default='HEAD')
-@click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=False),
-    nargs=-1,
-)
+@click.option("--revision", default="HEAD")
+@click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client
 @click.pass_context
 def inputs(ctx, client, revision, paths):
@@ -121,8 +115,9 @@ def inputs(ctx, client, revision, paths):
     nodes = graph.build(revision=revision)
 
     commits = {node.commit for node in nodes}
-    candidates = {(node.commit, node.path)
-                  for node in nodes if not paths or node.path in paths}
+    candidates = {
+        (node.commit, node.path) for node in nodes if not paths or node.path in paths
+    }
 
     input_paths = set()
 
@@ -132,25 +127,21 @@ def inputs(ctx, client, revision, paths):
         if isinstance(activity, ProcessRun):
             for usage in activity.qualified_usage:
                 for entity in usage.entity.entities:
-                    path = str((usage.client.path / entity.path).relative_to(
-                        client.path
-                    ))
+                    path = str(
+                        (usage.client.path / entity.path).relative_to(client.path)
+                    )
                     usage_key = (entity.commit, entity.path)
 
                     if path not in input_paths and usage_key in candidates:
                         input_paths.add(path)
 
-    click.echo('\n'.join(graph._format_path(path) for path in input_paths))
+    click.echo("\n".join(graph._format_path(path) for path in input_paths))
     ctx.exit(0 if not paths or len(input_paths) == len(paths) else 1)
 
 
 @show.command()
-@click.option('--revision', default='HEAD')
-@click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=True),
-    nargs=-1,
-)
+@click.option("--revision", default="HEAD")
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client
 @click.pass_context
 def outputs(ctx, client, revision, paths):
@@ -162,13 +153,14 @@ def outputs(ctx, client, revision, paths):
     filter = graph.build(paths=paths, revision=revision)
     output_paths = graph.output_paths
 
-    click.echo('\n'.join(graph._format_path(path) for path in output_paths))
+    click.echo("\n".join(graph._format_path(path) for path in output_paths))
 
     if paths:
         if not output_paths:
             ctx.exit(1)
 
         from renku.core.models.datastructures import DirectoryTree
+
         tree = DirectoryTree.from_list(item.path for item in filter)
 
         for output in output_paths:
@@ -189,7 +181,7 @@ def print_context_names(ctx, param, value):
     """Print all possible types."""
     if not value or ctx.resilient_parsing:
         return
-    click.echo('\n'.join(_context_names()))
+    click.echo("\n".join(_context_names()))
     ctx.exit()
 
 
@@ -199,20 +191,13 @@ def _context_json(name):
 
     for cls in JSONLDMixin.__type_registry__.values():
         if cls.__name__ == name:
-            return {
-                '@context': cls._jsonld_context,
-                '@type': cls._jsonld_type,
-            }
+            return {"@context": cls._jsonld_context, "@type": cls._jsonld_type}
 
 
 @show.command()
-@click.argument(
-    'names',
-    type=click.Choice(_context_names()),
-    nargs=-1,
-)
+@click.argument("names", type=click.Choice(_context_names()), nargs=-1)
 @click.option(
-    '--list',
+    "--list",
     is_flag=True,
     is_eager=True,
     expose_value=False,
@@ -226,8 +211,5 @@ def context(names):
     contexts = [_context_json(name) for name in set(names)]
     if contexts:
         click.echo(
-            json.dumps(
-                contexts[0] if len(contexts) == 1 else contexts,
-                indent=2,
-            )
+            json.dumps(contexts[0] if len(contexts) == 1 else contexts, indent=2)
         )

@@ -40,4 +40,4 @@ def doctor_check(client):
         if problems_:
             problems.append(problems_)
 
-    return is_ok, '\n'.join(problems)
+    return is_ok, "\n".join(problems)

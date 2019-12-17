@@ -35,7 +35,7 @@ def dataset_pre_0_3(client):
     """Return paths of dataset metadata for pre 0.3.4."""
     project_is_pre_0_3 = int(client.project.version) < 2
     if project_is_pre_0_3:
-        return (client.path / 'data').rglob(client.METADATA)
+        return (client.path / "data").rglob(client.METADATA)
     return []
 
 
@@ -48,11 +48,13 @@ def check_dataset_metadata(client):
         return True, None
 
     problems = (
-        WARNING + 'There are metadata files in the old location.'
-        '\n  (use "renku migrate datasets" to move them)\n\n\t' + '\n\t'.join(
-            click.style(str(path.relative_to(client.path)), fg='yellow')
+        WARNING + "There are metadata files in the old location."
+        '\n  (use "renku migrate datasets" to move them)\n\n\t'
+        + "\n\t".join(
+            click.style(str(path.relative_to(client.path)), fg="yellow")
             for path in old_metadata
-        ) + '\n'
+        )
+        + "\n"
     )
 
     return False, problems
@@ -66,19 +68,21 @@ def check_missing_files(client):
         for file_ in dataset.files:
             filepath = Path(file_.path)
             if not filepath.exists():
-                missing[str(
-                    path.parent.relative_to(client.renku_datasets_path)
-                )].append(str(filepath))
+                missing[
+                    str(path.parent.relative_to(client.renku_datasets_path))
+                ].append(str(filepath))
 
     if not missing:
         return True, None
 
-    problems = (WARNING + 'There are missing files in datasets.')
+    problems = WARNING + "There are missing files in datasets."
 
     for dataset, files in missing.items():
         problems += (
-            '\n\t' + click.style(dataset, fg='yellow') + ':\n\t  ' +
-            '\n\t  '.join(click.style(path, fg='red') for path in files)
+            "\n\t"
+            + click.style(dataset, fg="yellow")
+            + ":\n\t  "
+            + "\n\t  ".join(click.style(path, fg="red") for path in files)
         )
 
     return False, problems
@@ -105,23 +109,23 @@ def check_dataset_resources(client):
 
 def ensure_clean_lock(client):
     """Make sure Renku lock file is not part of repository."""
-    lock_file = client.path / '.renku.lock'
+    lock_file = client.path / ".renku.lock"
     if lock_file.exists():
         lock_file.unlink()
 
     # Add lock file to .gitignore.
-    gitignore = client.path / '.gitignore'
+    gitignore = client.path / ".gitignore"
     if str(lock_file.name) not in gitignore.read_text():
-        gitignore.open('a').write('\n{0}\n'.format(lock_file.name))
+        gitignore.open("a").write("\n{0}\n".format(lock_file.name))
 
 
 def migrate_datasets_pre_v0_3(client):
     """Migrate datasets from Renku 0.3.x."""
     for old_path in dataset_pre_0_3(client):
-        name = str(old_path.parent.relative_to(client.path / 'data'))
+        name = str(old_path.parent.relative_to(client.path / "data"))
 
         dataset = Dataset.from_yaml(old_path, client=client)
-        new_path = (client.renku_datasets_path / dataset.uid / client.METADATA)
+        new_path = client.renku_datasets_path / dataset.uid / client.METADATA
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
         with client.with_metadata(read_only=True) as meta:
@@ -131,9 +135,7 @@ def migrate_datasets_pre_v0_3(client):
 
         for file_ in dataset.files:
             if not Path(file_.path).exists():
-                expected_path = (
-                    client.path / 'data' / dataset.name / file_.path
-                )
+                expected_path = client.path / "data" / dataset.name / file_.path
                 if expected_path.exists():
                     file_.path = expected_path.relative_to(client.path)
 
@@ -142,9 +144,7 @@ def migrate_datasets_pre_v0_3(client):
 
         Path(old_path).unlink()
         ref = LinkReference.create(
-            client=client,
-            name='datasets/{0}'.format(name),
-            force=True,
+            client=client, name="datasets/{0}".format(name), force=True
         )
         ref.set_reference(new_path)
 
@@ -154,16 +154,13 @@ def migrate_broken_dataset_paths(client):
     for dataset in client.datasets.values():
         dataset_path = Path(dataset.path)
 
-        expected_path = (
-            client.renku_datasets_path /
-            Path(quote(dataset.identifier, safe=''))
+        expected_path = client.renku_datasets_path / Path(
+            quote(dataset.identifier, safe="")
         )
 
         # migrate the refs
         ref = LinkReference.create(
-            client=client,
-            name='datasets/{0}'.format(dataset.short_name),
-            force=True,
+            client=client, name="datasets/{0}".format(dataset.short_name), force=True
         )
         ref.set_reference(expected_path / client.METADATA)
 
@@ -179,22 +176,21 @@ def migrate_broken_dataset_paths(client):
 
         for file_ in dataset.files:
             file_path = Path(file_.path)
-            if not file_path.exists() and file_.path.startswith('..'):
+            if not file_path.exists() and file_.path.startswith(".."):
                 new_path = (
-                    client.renku_datasets_path / dataset.uid / file_path
-                ).resolve().relative_to(client.path)
+                    (client.renku_datasets_path / dataset.uid / file_path)
+                    .resolve()
+                    .relative_to(client.path)
+                )
 
                 file_.path = new_path
                 file_._label = new_path
 
                 _, commit, _ = client.resolve_in_submodules(
-                    client.find_previous_commit(file_.path, revision='HEAD'),
-                    file_.path,
+                    client.find_previous_commit(file_.path, revision="HEAD"), file_.path
                 )
-                id_format = 'blob/{commit}/{path}'
-                file_._id = id_format.format(
-                    commit=commit.hexsha, path=new_path
-                )
+                id_format = "blob/{commit}/{path}"
+                file_._id = id_format.format(commit=commit.hexsha, path=new_path)
 
         dataset.to_yaml()
 
@@ -204,18 +200,20 @@ def dataset_file_path_migration(client, dataset, file_):
     file_path = Path(file_.path)
     if not file_path.exists():
         # old-style migrated paths relative to dataset root
-        if file_.path.startswith('..'):
-            new_path = (client.renku_datasets_path / dataset.uid /
-                        file_path).resolve().relative_to(client.path)
+        if file_.path.startswith(".."):
+            new_path = (
+                (client.renku_datasets_path / dataset.uid / file_path)
+                .resolve()
+                .relative_to(client.path)
+            )
         else:
-            new_path = ((
+            new_path = (
                 client.path / client.datadir / dataset.name / file_path
-            ).relative_to(client.path))
+            ).relative_to(client.path)
         file_.path = new_path
 
         _, commit, _ = client.resolve_in_submodules(
-            client.find_previous_commit(file_.path, revision='HEAD'),
-            file_.path,
+            client.find_previous_commit(file_.path, revision="HEAD"), file_.path
         )
     file_._id = file_.default_id()
     file_._label = file_.default_label()
@@ -226,11 +224,10 @@ def fix_uncommitted_labels(client):
     for dataset in client.datasets.values():
         for file_ in dataset.files:
             _, commit, _ = client.resolve_in_submodules(
-                client.find_previous_commit(file_.path, revision='HEAD'),
-                file_.path,
+                client.find_previous_commit(file_.path, revision="HEAD"), file_.path
             )
             file_.commit = commit
-            if 'UNCOMMITTED' in file_._label:
+            if "UNCOMMITTED" in file_._label:
                 file_._label = file_.default_label()
                 file_._id = file_.default_id()
         dataset.to_yaml()

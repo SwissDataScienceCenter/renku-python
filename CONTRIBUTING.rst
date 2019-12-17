@@ -90,21 +90,16 @@ Ready to contribute? Here's how to set up `renku` for local development.
    (code style), PEP257 (documentation), flake8 as well as build the Sphinx
    documentation and run doctests.
 
-   Before you submit a pull request, please reformat the code using yapf_.
+   Before you submit a pull request, please reformat the code using black_.
 
    .. code-block:: console
 
-      $ yapf -irp .
+      $ black .
 
-   You may want to set up yapf_ styling as a pre-commit hook to do this
-   automatically:
+   You may want to set up black_ styling as a `pre-commit hook to do this
+   automatically <https://github.com/psf/black#version-control-integration>`_
 
-   .. code-block:: console
-
-      $ curl https://raw.githubusercontent.com/google/yapf/master/plugins/pre-commit.sh -o .git/hooks/pre-commit
-      $ chmod u+x .git/hooks/pre-commit
-
-   .. _yapf: https://github.com/google/yapf/
+   .. _black: https://github.com/psf/black/
 
 6. Commit your changes and push your branch to GitHub:
 

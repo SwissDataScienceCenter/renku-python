@@ -21,24 +21,24 @@ from pkg_resources import resource_string
 from pyshacl import validate
 
 
-def validate_graph(graph, shacl_path=None, format='nquads'):
+def validate_graph(graph, shacl_path=None, format="nquads"):
     """Validate the current graph with a SHACL schema.
 
     Uses default schema if not supplied.
     """
     if shacl_path:
-        with open(shacl_path, 'r', encoding='utf-8') as f:
+        with open(shacl_path, "r", encoding="utf-8") as f:
             shacl = f.read()
     else:
-        shacl = resource_string('renku', 'data/shacl_shape.json')
+        shacl = resource_string("renku", "data/shacl_shape.json")
 
     return validate(
         graph,
         shacl_graph=shacl,
-        inference='rdfs',
+        inference="rdfs",
         meta_shacl=True,
         debug=False,
         data_graph_format=format,
-        shacl_graph_format='json-ld',
-        advanced=True
+        shacl_graph_format="json-ld",
+        advanced=True,
     )

@@ -19,4 +19,4 @@
 
 from renku.core.management.client import LocalClient
 
-__all__ = ('LocalClient', )
+__all__ = ("LocalClient",)

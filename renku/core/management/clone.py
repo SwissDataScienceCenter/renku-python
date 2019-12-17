@@ -34,7 +34,7 @@ def clone(
     skip_smudge=True,
     recursive=True,
     depth=None,
-    progress=None
+    progress=None,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
     from renku.core.management.client import LocalClient
@@ -42,14 +42,14 @@ def clone(
     path = path or GitURL.parse(url).name
     # Clone the project
     if skip_smudge:
-        os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
+        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
     try:
         repo = Repo.clone_from(
             url, path, recursive=recursive, depth=depth, progress=progress
         )
     except GitCommandError as e:
         raise errors.GitError(
-            'Cannot clone remote Renku project: {}'.format(url)
+            "Cannot clone remote Renku project: {}".format(url)
         ) from e
 
     client = LocalClient(path)
@@ -58,12 +58,12 @@ def clone(
         install(client=client, force=True)
 
     if install_lfs:
-        command = ['git', 'lfs', 'install', '--local', '--force']
+        command = ["git", "lfs", "install", "--local", "--force"]
         if skip_smudge:
-            command += ['--skip-smudge']
+            command += ["--skip-smudge"]
         try:
             repo.git.execute(command=command, with_exceptions=True)
         except GitCommandError as e:
-            raise errors.GitError('Cannot install Git LFS') from e
+            raise errors.GitError("Cannot install Git LFS") from e
 
     return repo

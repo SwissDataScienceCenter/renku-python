@@ -39,4 +39,4 @@ def migrate():
 def datasets():
     """Migrate dataset metadata."""
     if migrate_datasets():
-        click.secho('OK', fg='green')
+        click.secho("OK", fg="green")

@@ -37,18 +37,16 @@ class Process(object):
     hints = attr.ib(default=attr.Factory(list))  # list Any
     label = attr.ib(default=None)  # str
     doc = attr.ib(default=None)  # str
-    cwlVersion = attr.ib(default='v1.0')  # derive from a parent
+    cwlVersion = attr.ib(default="v1.0")  # derive from a parent
 
     def iter_input_files(self, basedir):
         """Yield tuples with input id and path."""
-        stdin = getattr(self, 'stdin', None)
-        if stdin and stdin[0] != '$':  # pragma: no cover
+        stdin = getattr(self, "stdin", None)
+        if stdin and stdin[0] != "$":  # pragma: no cover
             raise NotImplementedError(self.stdin)
         for input_ in self.inputs:
             if input_.type in PATH_OBJECTS and input_.default:
                 yield (
                     input_.id,
-                    os.path.normpath(
-                        os.path.join(basedir, str(input_.default.path))
-                    )
+                    os.path.normpath(os.path.join(basedir, str(input_.default.path))),
                 )

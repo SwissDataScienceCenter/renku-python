@@ -27,7 +27,6 @@ from renku.core.management.storage import StorageApiMixin
 
 @attr.s
 class LocalClient(
-    PathMixin, StorageApiMixin, RepositoryApiMixin, DatasetsApiMixin,
-    ConfigManagerMixin
+    PathMixin, StorageApiMixin, RepositoryApiMixin, DatasetsApiMixin, ConfigManagerMixin
 ):
     """A low-level client for communicating with a local Renku repository."""

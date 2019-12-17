@@ -47,7 +47,7 @@ class Parameter(object):
 class InputParameter(_IdMixin, Parameter):
     """An input parameter."""
 
-    type = attr.ib(default='string')
+    type = attr.ib(default="string")
     description = attr.ib(default=None)
     default = attr.ib(default=None, converter=convert_default)
     inputBinding = attr.ib(default=None)
@@ -67,7 +67,7 @@ class CommandLineBinding(object):
     def to_argv(self, default=None):
         """Format command line binding as shell argument."""
         if self.valueFrom is not None:
-            if self.valueFrom.startswith('$('):
+            if self.valueFrom.startswith("$("):
                 raise NotImplementedError()
             value = self.valueFrom
         else:
@@ -84,7 +84,7 @@ class CommandLineBinding(object):
                 return [str(value)]
 
         if self.prefix is None and not self.separate:
-            raise ValueError('Can not separate an empty prefix.')
+            raise ValueError("Can not separate an empty prefix.")
 
         if isinstance(value, list):
             if self.itemSeparator and value:
@@ -93,9 +93,7 @@ class CommandLineBinding(object):
                 return [a for v in value for a in _convert(v)]
         elif (value is True or value is None) and self.prefix:
             return [self.prefix]
-        elif value is False or value is None or (
-            value is True and not self.prefix
-        ):
+        elif value is False or value is None or (value is True and not self.prefix):
             return []
 
         return _convert(value)
@@ -107,29 +105,32 @@ class CommandInputParameter(InputParameter):
 
     inputBinding = attr.ib(
         default=None,
-        converter=lambda data: CommandLineBinding(**data) if not isinstance(
-            data, CommandLineBinding
-        ) and data is not None else data,
+        converter=lambda data: CommandLineBinding(**data)
+        if not isinstance(data, CommandLineBinding) and data is not None
+        else data,
     )
 
     @classmethod
     def from_cwl(cls, data):
         """Create instance from type definition."""
         if not isinstance(data, dict):
-            data = {'type': data}
+            data = {"type": data}
         return cls(**data)
 
     def to_argv(self, **kwargs):
         """Format command input parameter as shell argument."""
-        return self.inputBinding.to_argv(default=self.default, **
-                                         kwargs) if self.inputBinding else []
+        return (
+            self.inputBinding.to_argv(default=self.default, **kwargs)
+            if self.inputBinding
+            else []
+        )
 
 
 @attr.s
 class OutputParameter(_IdMixin, Parameter):
     """An output parameter."""
 
-    type = attr.ib(default='string')
+    type = attr.ib(default="string")
     description = attr.ib(default=None)
     format = attr.ib(default=None)
     outputBinding = attr.ib(default=None)
@@ -149,9 +150,9 @@ class CommandOutputParameter(OutputParameter):
 
     outputBinding = attr.ib(
         default=None,
-        converter=lambda data: CommandOutputBinding(**data) if not isinstance(
-            data, CommandOutputBinding
-        ) and data is not None else data,
+        converter=lambda data: CommandOutputBinding(**data)
+        if not isinstance(data, CommandOutputBinding) and data is not None
+        else data,
     )
 
 

@@ -33,13 +33,20 @@ import requests
 import yaml
 from requests import HTTPError
 
-from renku.core.commands.checks.migration import check_dataset_resources, \
-    dataset_pre_0_3
+from renku.core.commands.checks.migration import (
+    check_dataset_resources,
+    dataset_pre_0_3,
+)
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
-from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired, ParameterError, UsageError
+from renku.core.errors import (
+    DatasetNotFound,
+    InvalidAccessToken,
+    MigrationRequired,
+    ParameterError,
+    UsageError,
+)
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Dataset, generate_default_short_name
@@ -63,13 +70,14 @@ def default_download_file(extract, data_folder, file, chunk_size=16384):
     def extract_dataset(data_folder_, filename):
         """Extract downloaded dataset."""
         import patoolib
+
         filepath = Path(data_folder_) / Path(filename)
         patoolib.extract_archive(filepath, outdir=data_folder_)
         filepath.unlink()
 
     def stream_to_file(request):
         """Stream bytes to file."""
-        with open(str(download_to), 'wb') as f_:
+        with open(str(download_to), "wb") as f_:
             for chunk in request.iter_content(chunk_size=chunk_size):
                 if chunk:  # remove keep-alive chunks
                     f_.write(chunk)
@@ -88,7 +96,7 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
     old_datasets = [ds for ds in dataset_pre_0_3(client)]
 
     if missing_dataset or missing_files or old_datasets:
-        raise MigrationRequired('datasets')
+        raise MigrationRequired("datasets")
 
     if revision is None:
         datasets = client.datasets.values()
@@ -98,9 +106,7 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
     return DATASETS_FORMATS[format](client, datasets)
 
 
-@pass_local_client(
-    clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
-)
+@pass_local_client(clean=False, commit=True, commit_only=DATASET_METADATA_PATHS)
 def create_dataset(
     client, name, short_name, description, creators, commit_message=None
 ):
@@ -114,18 +120,13 @@ def create_dataset(
         creators = [Person.from_string(c) for c in creators]
 
     dataset, _, __ = client.create_dataset(
-        name=name,
-        short_name=short_name,
-        description=description,
-        creators=creators
+        name=name, short_name=short_name, description=description, creators=creators
     )
 
     return dataset
 
 
-@pass_local_client(
-    clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
-)
+@pass_local_client(clean=False, commit=True, commit_only=DATASET_METADATA_PATHS)
 def edit_dataset(client, dataset_id, transform_fn, commit_message=None):
     """Edit dataset metadata."""
     dataset = client.load_dataset(dataset_id)
@@ -144,7 +145,7 @@ def edit_dataset(client, dataset_id, transform_fn, commit_message=None):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
     commit_empty=False,
-    raise_if_empty=True
+    raise_if_empty=True,
 )
 def add_file(
     client,
@@ -154,7 +155,7 @@ def add_file(
     force=False,
     create=False,
     sources=(),
-    destination='',
+    destination="",
     ref=None,
     with_metadata=None,
     urlscontext=contextlib.nullcontext,
@@ -162,8 +163,17 @@ def add_file(
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, create, sources, destination, ref,
-        with_metadata, urlscontext
+        client,
+        urls,
+        name,
+        link,
+        force,
+        create,
+        sources,
+        destination,
+        ref,
+        with_metadata,
+        urlscontext,
     )
 
 
@@ -175,7 +185,7 @@ def add_to_dataset(
     force=False,
     create=False,
     sources=(),
-    destination='',
+    destination="",
     ref=None,
     with_metadata=None,
     urlscontext=contextlib.nullcontext,
@@ -183,16 +193,12 @@ def add_to_dataset(
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
-        raise UsageError('No URL is specified')
+        raise UsageError("No URL is specified")
     if (sources or destination) and len(urls) > 1:
-        raise UsageError(
-            'Cannot add multiple URLs with --source or --destination'
-        )
+        raise UsageError("Cannot add multiple URLs with --source or --destination")
 
     # check for identifier before creating the dataset
-    identifier = extract_doi(
-        with_metadata.identifier
-    ) if with_metadata else None
+    identifier = extract_doi(with_metadata.identifier) if with_metadata else None
     try:
         with client.with_dataset(
             name=name, identifier=identifier, create=create
@@ -205,7 +211,7 @@ def add_to_dataset(
                     force=force,
                     sources=sources,
                     destination=destination,
-                    ref=ref
+                    ref=ref,
                 )
 
             if warning_message:
@@ -232,11 +238,11 @@ def add_to_dataset(
             'Dataset "{0}" does not exist.\n'
             'Use "renku dataset create {0}" to create the dataset or retry '
             '"renku dataset add {0}" command with "--create" option for '
-            'automatic dataset creation.'.format(name)
+            "automatic dataset creation.".format(name)
         )
     except (FileNotFoundError, git.exc.NoSuchPathError) as e:
         raise ParameterError(
-            'Could not find paths/URLs: \n{0}'.format('\n'.join(urls))
+            "Could not find paths/URLs: \n{0}".format("\n".join(urls))
         ) from e
 
 
@@ -244,34 +250,24 @@ def add_to_dataset(
 def list_files(client, names, creators, include, exclude, format):
     """List files in dataset."""
     records = _filter(
-        client,
-        names=names,
-        creators=creators,
-        include=include,
-        exclude=exclude
+        client, names=names, creators=creators, include=include, exclude=exclude
     )
 
     return DATASET_FILES_FORMATS[format](client, records)
 
 
-@pass_local_client(
-    clean=False,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=False, commit=True, commit_only=COMMIT_DIFF_STRATEGY)
 @contextmanager
 def file_unlink(client, name, include, exclude, commit_message=None):
     """Remove matching files from a dataset."""
     dataset = client.load_dataset(name=name)
 
     if not dataset:
-        raise ParameterError('Dataset does not exist.')
+        raise ParameterError("Dataset does not exist.")
 
-    records = _filter(
-        client, names=[dataset.name], include=include, exclude=exclude
-    )
+    records = _filter(client, names=[dataset.name], include=include, exclude=exclude)
     if not records:
-        raise ParameterError('No records found.')
+        raise ParameterError("No records found.")
 
     yield records
 
@@ -281,38 +277,29 @@ def file_unlink(client, name, include, exclude, commit_message=None):
     dataset.to_yaml()
 
 
-@pass_local_client(
-    clean=False,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=False, commit=True, commit_only=COMMIT_DIFF_STRATEGY)
 def dataset_remove(
     client,
     names,
     with_output=False,
     datasetscontext=contextlib.nullcontext,
     referencescontext=contextlib.nullcontext,
-    commit_message=None
+    commit_message=None,
 ):
     """Delete a dataset."""
     datasets = {name: client.get_dataset_path(name) for name in names}
 
     if not datasets:
-        raise ParameterError(
-            'use dataset name or identifier', param_hint='names'
-        )
+        raise ParameterError("use dataset name or identifier", param_hint="names")
 
-    unknown = [
-        name
-        for name, path in datasets.items() if not path or not path.exists()
-    ]
+    unknown = [name for name, path in datasets.items() if not path or not path.exists()]
     if unknown:
         raise ParameterError(
-            'unknown datasets ' + ', '.join(unknown), param_hint='names'
+            "unknown datasets " + ", ".join(unknown), param_hint="names"
         )
 
     datasets = set(datasets.values())
-    references = list(LinkReference.iter_items(client, common_path='datasets'))
+    references = list(LinkReference.iter_items(client, common_path="datasets"))
 
     if not with_output:
         for dataset in datasets:
@@ -340,11 +327,7 @@ def dataset_remove(
                 ref.delete()
 
 
-@pass_local_client(
-    clean=True,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=True, commit=True, commit_only=COMMIT_DIFF_STRATEGY)
 def export_dataset(
     client,
     id,
@@ -361,7 +344,7 @@ def export_dataset(
              ``DatasetNotFound``
     """
     # TODO: all these callbacks are ugly, improve in #737
-    config_key_secret = 'access_token'
+    config_key_secret = "access_token"
     provider_id = provider
 
     dataset_ = client.load_dataset(id)
@@ -371,7 +354,7 @@ def export_dataset(
     try:
         provider = ProviderFactory.from_id(provider_id)
     except KeyError:
-        raise ValueError('Unknown provider.')
+        raise ValueError("Unknown provider.")
 
     selected_tag = None
     selected_commit = client.repo.head.commit
@@ -380,7 +363,7 @@ def export_dataset(
         selected_tag = next((t for t in dataset_.tags if t.name == tag), None)
 
         if not selected_tag:
-            raise ValueError('Tag {} not found'.format(tag))
+            raise ValueError("Tag {} not found".format(tag))
 
         selected_commit = selected_tag.commit
     elif dataset_.tags and len(dataset_.tags) > 0 and handle_tag_selection_fn:
@@ -414,26 +397,20 @@ def export_dataset(
         try:
             destination = exporter.export(publish, selected_tag)
         except HTTPError as e:
-            if 'unauthorized' in str(e):
-                client.remove_value(
-                    provider_id, config_key_secret, global_only=True
-                )
+            if "unauthorized" in str(e):
+                client.remove_value(provider_id, config_key_secret, global_only=True)
 
             raise
 
-    result = 'Exported to: {0}'.format(destination)
+    result = "Exported to: {0}".format(destination)
     return result
 
 
-@pass_local_client(
-    clean=False,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=False, commit=True, commit_only=COMMIT_DIFF_STRATEGY)
 def import_dataset(
     client,
     uri,
-    short_name='',
+    short_name="",
     extract=False,
     with_prompt=False,
     pool_init_fn=None,
@@ -444,7 +421,7 @@ def import_dataset(
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
-        raise ParameterError('Could not process {0}.\n{1}'.format(uri, err))
+        raise ParameterError("Could not process {0}.\n{1}".format(uri, err))
 
     try:
         record = provider.find_record(uri)
@@ -455,40 +432,43 @@ def import_dataset(
             click.echo(
                 tabulate(
                     files,
-                    headers=OrderedDict((
-                        ('checksum', None),
-                        ('filename', 'name'),
-                        ('size_in_mb', 'size (mb)'),
-                        ('filetype', 'type'),
-                    ))
+                    headers=OrderedDict(
+                        (
+                            ("checksum", None),
+                            ("filename", "name"),
+                            ("size_in_mb", "size (mb)"),
+                            ("filetype", "type"),
+                        )
+                    ),
                 )
             )
 
-            text_prompt = 'Do you wish to download this version?'
+            text_prompt = "Do you wish to download this version?"
             if record.is_last_version(uri) is False:
-                text_prompt = WARNING + 'Newer version found at {}\n'.format(
-                    record.links.get('latest_html')
-                ) + text_prompt
+                text_prompt = (
+                    WARNING
+                    + "Newer version found at {}\n".format(
+                        record.links.get("latest_html")
+                    )
+                    + text_prompt
+                )
 
             click.confirm(text_prompt, abort=True)
 
     except KeyError as e:
-        raise ParameterError((
-            'Could not process {0}.\n'
-            'Unable to fetch metadata due to {1}'.format(uri, e)
-        ))
+        raise ParameterError(
+            (
+                "Could not process {0}.\n"
+                "Unable to fetch metadata due to {1}".format(uri, e)
+            )
+        )
 
     except LookupError:
-        raise ParameterError(
-            ('Could not process {0}.\n'
-             'URI not found.'.format(uri))
-        )
+        raise ParameterError(("Could not process {0}.\n" "URI not found.".format(uri)))
 
     if files:
         if not short_name:
-            short_name = generate_default_short_name(
-                dataset.name, dataset.version
-            )
+            short_name = generate_default_short_name(dataset.name, dataset.version)
 
         dataset.short_name = short_name
 
@@ -496,10 +476,7 @@ def import_dataset(
 
         data_folder = tempfile.mkdtemp()
 
-        pool_size = min(
-            int(os.getenv('RENKU_POOL_SIZE',
-                          mp.cpu_count() // 2)), 4
-        )
+        pool_size = min(int(os.getenv("RENKU_POOL_SIZE", mp.cpu_count() // 2)), 4)
 
         freeze_support()  # Windows support
 
@@ -507,17 +484,12 @@ def import_dataset(
             pool_size,
             # Windows support
             initializer=pool_init_fn,
-            initargs=pool_init_args
+            initargs=pool_init_args,
         )
 
         processing = [
-            pool.apply_async(
-                download_file_fn, args=(
-                    extract,
-                    data_folder,
-                    file_,
-                )
-            ) for file_ in files
+            pool.apply_async(download_file_fn, args=(extract, data_folder, file_))
+            for file_ in files
         ]
 
         try:
@@ -525,33 +497,31 @@ def import_dataset(
                 p.get()  # Will internally do the wait() as well.
 
         except HTTPError as e:
-            raise ParameterError((
-                'Could not process {0}.\n'
-                'URI not found.'.format(e.request.url)
-            ))
+            raise ParameterError(
+                ("Could not process {0}.\n" "URI not found.".format(e.request.url))
+            )
         pool.close()
 
         dataset.url = remove_credentials(dataset.url)
         add_to_dataset(
             client,
-            urls=[str(p) for p in Path(data_folder).glob('*')],
+            urls=[str(p) for p in Path(data_folder).glob("*")],
             name=short_name,
-            with_metadata=dataset
+            with_metadata=dataset,
         )
 
         if dataset.version:
-            tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
+            tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
             tag_dataset(
-                client, short_name, tag_name,
-                'Tag {} created by renku import'.format(dataset.version)
+                client,
+                short_name,
+                tag_name,
+                "Tag {} created by renku import".format(dataset.version),
             )
 
 
 @pass_local_client(
-    clean=True,
-    commit=True,
-    commit_only=DATASET_METADATA_PATHS,
-    commit_empty=False
+    clean=True, commit=True, commit_only=DATASET_METADATA_PATHS, commit_empty=False
 )
 def update_datasets(
     client,
@@ -566,15 +536,11 @@ def update_datasets(
 ):
     """Update files from a remote Git repo."""
     records = _filter(
-        client,
-        names=names,
-        creators=creators,
-        include=include,
-        exclude=exclude
+        client, names=names, creators=creators, include=include, exclude=exclude
     )
 
     if not records:
-        raise ParameterError('No files matched the criteria.')
+        raise ParameterError("No files matched the criteria.")
 
     datasets = {}
     possible_updates = []
@@ -596,7 +562,7 @@ def update_datasets(
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
             'Cannot use "--ref" with more than one Git repository.\n'
-            'Limit list of files to be updated to one repository. See'
+            "Limit list of files to be updated to one repository. See"
             '"renku dataset update -h" for more information.'
         )
 
@@ -609,8 +575,8 @@ def update_datasets(
 
     if deleted_files and not delete:
         click.echo(
-            'Some files are deleted from remote. To also delete them locally '
-            'run update command with `--delete` flag.'
+            "Some files are deleted from remote. To also delete them locally "
+            "run update command with `--delete` flag."
         )
 
 
@@ -644,7 +610,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
     :param exclude: Exclude files matching file pattern.
     """
     if isinstance(creators, str):
-        creators = set(creators.split(','))
+        creators = set(creators.split(","))
 
     if isinstance(creators, list) or isinstance(creators, tuple):
         creators = set(creators)
@@ -658,10 +624,9 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
                 match = _include_exclude(path_, include, exclude)
 
                 if creators:
-                    match = match and creators.issubset({
-                        creator.name
-                        for creator in file_.creator
-                    })
+                    match = match and creators.issubset(
+                        {creator.name for creator in file_.creator}
+                    )
 
                 if match:
                     records.append(file_)
@@ -669,11 +634,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
     return sorted(records, key=lambda file_: file_.added)
 
 
-@pass_local_client(
-    clean=False,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=False, commit=True, commit_only=COMMIT_DIFF_STRATEGY)
 def tag_dataset_with_client(
     client, name, tag, description, force=False, commit_message=None
 ):
@@ -685,7 +646,7 @@ def tag_dataset(client, name, tag, description, force=False):
     """Creates a new tag for a dataset."""
     dataset_ = client.load_dataset(name)
     if not dataset_:
-        raise ParameterError('Dataset not found.')
+        raise ParameterError("Dataset not found.")
 
     try:
         dataset = client.add_dataset_tag(dataset_, tag, description, force)
@@ -695,16 +656,12 @@ def tag_dataset(client, name, tag, description, force=False):
     dataset.to_yaml()
 
 
-@pass_local_client(
-    clean=False,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=False, commit=True, commit_only=COMMIT_DIFF_STRATEGY)
 def remove_dataset_tags(client, name, tags, commit_message=True):
     """Removes tags from a dataset."""
     dataset = client.load_dataset(name)
     if not dataset:
-        raise ParameterError('Dataset not found.')
+        raise ParameterError("Dataset not found.")
 
     try:
         dataset = client.remove_dataset_tags(dataset, tags)
@@ -720,7 +677,7 @@ def list_tags(client, name, format):
     dataset_ = client.load_dataset(name)
 
     if not dataset_:
-        raise ParameterError('Dataset not found.')
+        raise ParameterError("Dataset not found.")
 
     tags = sorted(dataset_.tags, key=lambda t: t.created)
 

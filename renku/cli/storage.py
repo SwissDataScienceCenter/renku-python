@@ -29,10 +29,7 @@ def storage():
 
 @storage.command()
 @click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=True),
-    nargs=-1,
-    required=True,
+    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True
 )
 @pass_local_client
 def pull(client, paths):

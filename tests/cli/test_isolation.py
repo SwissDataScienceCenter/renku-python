@@ -29,80 +29,67 @@ def test_run_in_isolation(runner, project, client, run):
 
     cwd = Path(project)
     with client.commit():
-        with (cwd / '.gitignore').open('a') as f:
-            f.write('lock')
+        with (cwd / ".gitignore").open("a") as f:
+            f.write("lock")
 
-    prefix = [
-        'run',
-        '--no-output',
-    ]
+    prefix = ["run", "--no-output"]
     cmd = [
-        'python', '-S', '-c',
-        'import os, sys; sys.exit(1 if os.path.exists("lock") else 0)'
+        "python",
+        "-S",
+        "-c",
+        'import os, sys; sys.exit(1 if os.path.exists("lock") else 0)',
     ]
 
     head = client.repo.head.commit.hexsha
 
-    with filelock.FileLock('lock'):
+    with filelock.FileLock("lock"):
         assert 1 == run(args=prefix + cmd)
         assert client.repo.head.commit.hexsha == head
 
-        assert 0 == run(prefix + ['--isolation'] + cmd)
+        assert 0 == run(prefix + ["--isolation"] + cmd)
         assert client.repo.head.commit.hexsha != head
 
 
 def test_file_modification_during_run(tmpdir, runner, project, client, run):
     """Test run in isolation."""
-    script = client.path / 'script.py'
-    output = client.path / 'output'
-    lock = Path(str(tmpdir.join('lock')))
+    script = client.path / "script.py"
+    output = client.path / "output"
+    lock = Path(str(tmpdir.join("lock")))
 
     with client.commit():
-        with script.open('w') as fp:
+        with script.open("w") as fp:
             fp.write(
-                'import os, time, sys\n'
+                "import os, time, sys\n"
                 'open("{lock}", "a")\n'
                 'while os.path.exists("{lock}"):\n'
-                '    time.sleep(1)\n'
-                'sys.stdout.write(sys.stdin.read())\n'
-                'sys.stdout.flush()\n'.format(lock=str(lock))
+                "    time.sleep(1)\n"
+                "sys.stdout.write(sys.stdin.read())\n"
+                "sys.stdout.flush()\n".format(lock=str(lock))
             )
 
-    prefix = [
-        sys.executable,
-        '-m',
-        'renku.cli',
-        'run',
-        '--isolation',
-    ]
-    cmd = [
-        'python',
-        script.name,
-    ]
+    prefix = [sys.executable, "-m", "renku.cli", "run", "--isolation"]
+    cmd = ["python", script.name]
 
     previous = client.repo.head.commit
 
-    with output.open('wb') as stdout:
-        process = subprocess.Popen(
-            prefix + cmd, stdin=subprocess.PIPE, stdout=stdout
-        )
+    with output.open("wb") as stdout:
+        process = subprocess.Popen(prefix + cmd, stdin=subprocess.PIPE, stdout=stdout)
         while not lock.exists():
             time.sleep(1)
 
-        with script.open('w') as fp:
+        with script.open("w") as fp:
             fp.write('print("edited")')
 
         lock.unlink()
 
-        process.communicate(input=b'test')
+        process.communicate(input=b"test")
         assert 0 == process.wait()
 
-    with output.open('r') as fp:
-        assert 'test' == fp.read().strip()
+    with output.open("r") as fp:
+        assert "test" == fp.read().strip()
 
     diff = previous.diff(client.repo.head.commit)
     modifications = [
-        modification
-        for modification in diff if modification.change_type == 'M'
+        modification for modification in diff if modification.change_type == "M"
     ]
     assert 0 == len(modifications)

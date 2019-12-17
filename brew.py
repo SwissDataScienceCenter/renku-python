@@ -27,11 +27,9 @@ from pkg_resources import get_distribution
 if len(sys.argv) > 1:
     NAME = sys.argv[1]
 else:
-    NAME = 'renku'
+    NAME = "renku"
 
-BLACKLIST = {
-    'ruamel.ordereddict',
-}
+BLACKLIST = {"ruamel.ordereddict"}
 
 RESOURCE = """  resource "{package}" do
     url "{url}"
@@ -41,13 +39,7 @@ RESOURCE = """  resource "{package}" do
 
 DEPENDENCY = '  depends_on "{package}"'
 
-DEPENDENCIES = (
-    'git-lfs',
-    'libxml2',
-    'libxslt',
-    'node',
-    'python',
-)
+DEPENDENCIES = ("git-lfs", "libxml2", "libxslt", "node", "python")
 
 FORMULA = """class {formula} < Formula
   include Language::Python::Virtualenv
@@ -75,8 +67,8 @@ end"""
 
 SUFFIXES = {
     #    'py2.py3-none-any.whl': 10,
-    '.tar.gz': 5,
-    '.zip': 1,
+    ".tar.gz": 5,
+    ".zip": 1,
 }
 
 
@@ -84,47 +76,47 @@ def find_release(package, releases, dependencies=None):
     """Return the best release."""
     dependencies = dependencies if dependencies is not None else {}
     for release in releases:
-        url = release['url']
-        old_priority = dependencies.get(package, {}).get('priority', 0)
+        url = release["url"]
+        old_priority = dependencies.get(package, {}).get("priority", 0)
 
         for suffix, priority in SUFFIXES.items():
             if url.endswith(suffix):
                 if old_priority < priority:
-                    sha256 = release['digests']['sha256']
+                    sha256 = release["digests"]["sha256"]
                     dependencies[package] = {
-                        'package': package,
-                        'url': url,
-                        'sha256': sha256,
-                        'priority': priority,
+                        "package": package,
+                        "url": url,
+                        "sha256": sha256,
+                        "priority": priority,
                     }
 
     return dependencies[package]
 
 
-response = requests.get('https://pypi.org/pypi/{NAME}/json'.format(NAME=NAME))
+response = requests.get("https://pypi.org/pypi/{NAME}/json".format(NAME=NAME))
 
 if response.status_code != 200:
     print(FORMULA, response)
     sys.exit(1)
 
 description = response.json()
-version = os.environ.get('PY_BREW_VERSION')
+version = os.environ.get("PY_BREW_VERSION")
 if version is None:
     version = get_distribution(NAME).version
 
-release = find_release(NAME, description['releases'][version])
+release = find_release(NAME, description["releases"][version])
 
-with open('Pipfile.lock') as f:
+with open("Pipfile.lock") as f:
     lock = json.load(f)
 
 dependencies = {}
 
-for package, settings in lock['default'].items():
+for package, settings in lock["default"].items():
     if package in BLACKLIST:
         continue
 
     pypi_response = requests.get(
-        'https://pypi.org/pypi/{package}/json'.format(package=package)
+        "https://pypi.org/pypi/{package}/json".format(package=package)
     )
 
     if pypi_response.status_code != 200:
@@ -132,25 +124,26 @@ for package, settings in lock['default'].items():
 
     pypi = pypi_response.json()
 
-    if settings.get('editable', False):
+    if settings.get("editable", False):
         continue
 
-    releases = pypi['releases'][settings['version'].lstrip('=')]
+    releases = pypi["releases"][settings["version"].lstrip("=")]
     find_release(package, releases, dependencies=dependencies)
 
 print(
     FORMULA.format(
-        dependencies='\n'.join(
+        dependencies="\n".join(
             DEPENDENCY.format(package=package) for package in DEPENDENCIES
         ),
-        resources='\n'.join(
+        resources="\n".join(
             RESOURCE.format(**package)
-            for name, package in dependencies.items() if name != NAME
+            for name, package in dependencies.items()
+            if name != NAME
         ),
-        desc=description['info']['summary'].rstrip('.'),
-        formula=description['info']['name'].capitalize(),
-        homepage=description['info']['home_page'],
-        url=release['url'],
-        sha256=release['sha256'],
+        desc=description["info"]["summary"].rstrip("."),
+        formula=description["info"]["name"].capitalize(),
+        homepage=description["info"]["home_page"],
+        url=release["url"],
+        sha256=release["sha256"],
     )
 )

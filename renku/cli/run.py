@@ -168,44 +168,37 @@ from renku.core.management.git import _mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 
 
-@click.command(context_settings=dict(ignore_unknown_options=True, ))
+@click.command(context_settings=dict(ignore_unknown_options=True))
 @click.option(
-    'inputs',
-    '--input',
+    "inputs",
+    "--input",
     multiple=True,
-    help='Force a path to be considered as an input.',
+    help="Force a path to be considered as an input.",
 )
 @click.option(
-    'outputs',
-    '--output',
+    "outputs",
+    "--output",
     multiple=True,
-    help='Force a path to be considered an output.',
+    help="Force a path to be considered an output.",
 )
 @click.option(
-    '--no-output',
+    "--no-output",
     is_flag=True,
     default=False,
-    help='Allow command without output files.',
+    help="Allow command without output files.",
 )
 @click.option(
-    '--success-code',
-    'success_codes',
+    "--success-code",
+    "success_codes",
     type=int,
     multiple=True,
     callback=lambda _, __, values: [int(value) % 256 for value in values],
-    help='Allowed command exit-code.',
+    help="Allowed command exit-code.",
 )
 @option_isolation
-@click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
-@pass_local_client(
-    clean=True,
-    up_to_date=True,
-    commit=True,
-    ignore_std_streams=True,
-)
-def run(
-    client, inputs, outputs, no_output, success_codes, isolation, command_line
-):
+@click.argument("command_line", nargs=-1, type=click.UNPROCESSED)
+@pass_local_client(clean=True, up_to_date=True, commit=True, ignore_std_streams=True)
+def run(client, inputs, outputs, no_output, success_codes, isolation, command_line):
     """Tracking work on a specific problem."""
     working_dir = client.repo.working_dir
     mapped_std = _mapped_std_streams(client.candidate_paths)
@@ -219,7 +212,7 @@ def run(
         **{
             name: os.path.relpath(path, working_dir)
             for name, path in mapped_std.items()
-        }
+        },
     )
     with client.with_workflow_storage() as wf:
         with factory.watch(client, no_output=no_output) as tool:
@@ -227,16 +220,14 @@ def run(
             if client.has_external_storage:
                 # Make sure all inputs are pulled from a storage.
                 paths_ = (
-                    path
-                    for _, path in tool.iter_input_files(client.workflow_path)
+                    path for _, path in tool.iter_input_files(client.workflow_path)
                 )
                 client.pull_paths_from_storage(*paths_)
 
             return_code = call(
                 factory.command_line,
                 cwd=os.getcwd(),
-                **{key: getattr(sys, key)
-                   for key in mapped_std.keys()},
+                **{key: getattr(sys, key) for key in mapped_std.keys()},
             )
 
             if return_code not in (success_codes or {0}):

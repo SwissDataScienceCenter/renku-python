@@ -32,7 +32,7 @@ def topological(nodes):
         for parent in nodes.get(node, ()):
             color = state.get(parent, None)
             if color == GRAY:
-                raise ValueError('cycle')
+                raise ValueError("cycle")
             if color == BLACK:
                 continue
             enter.discard(parent)

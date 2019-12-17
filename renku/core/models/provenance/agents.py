@@ -28,52 +28,46 @@ from renku.version import __version__, version_url
 
 
 @jsonld.s(
-    type=[
-        'prov:Person',
-        'schema:Person',
-    ],
+    type=["prov:Person", "schema:Person"],
     context={
-        'schema': 'http://schema.org/',
-        'prov': 'http://www.w3.org/ns/prov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#'
+        "schema": "http://schema.org/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     },
     slots=True,
 )
 class Person:
     """Represent a person."""
 
-    name = jsonld.ib(
-        context='schema:name', kw_only=True, validator=instance_of(str)
-    )
-    email = jsonld.ib(context='schema:email', default=None, kw_only=True)
-    label = jsonld.ib(context='rdfs:label', kw_only=True)
-    affiliation = jsonld.ib(
-        default=None, kw_only=True, context='schema:affiliation'
-    )
+    name = jsonld.ib(context="schema:name", kw_only=True, validator=instance_of(str))
+    email = jsonld.ib(context="schema:email", default=None, kw_only=True)
+    label = jsonld.ib(context="rdfs:label", kw_only=True)
+    affiliation = jsonld.ib(default=None, kw_only=True, context="schema:affiliation")
     alternate_name = jsonld.ib(
-        default=None, kw_only=True, context='schema:alternateName'
+        default=None, kw_only=True, context="schema:alternateName"
     )
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = jsonld.ib(context="@id", kw_only=True)
 
     @_id.default
     def default_id(self):
         """Set the default id."""
         import string
+
         if self.email:
-            return 'mailto:{email}'.format(email=self.email)
+            return "mailto:{email}".format(email=self.email)
 
         # prep name to be a valid ntuple string
-        name = self.name.translate(str.maketrans('', '', string.punctuation))
-        name = ''.join(filter(lambda x: x in string.printable, name))
-        return '_:{}'.format(''.join(name.lower().split()))
+        name = self.name.translate(str.maketrans("", "", string.punctuation))
+        name = "".join(filter(lambda x: x in string.printable, name))
+        return "_:{}".format("".join(name.lower().split()))
 
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
         if self.email and not (
-            isinstance(value, str) and re.match(r'[^@]+@[^@]+\.[^@]+', value)
+            isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)
         ):
-            raise ValueError('Email address is invalid.')
+            raise ValueError("Email address is invalid.")
 
     @label.default
     def default_label(self):
@@ -83,10 +77,7 @@ class Person:
     @classmethod
     def from_commit(cls, commit):
         """Create an instance from a Git commit."""
-        return cls(
-            name=commit.author.name,
-            email=commit.author.email,
-        )
+        return cls(name=commit.author.name, email=commit.author.email)
 
     @property
     def short_name(self):
@@ -99,23 +90,24 @@ class Person:
         initials = [name[0] for name in names]
         initials.pop()
 
-        return '{0}.{1}'.format('.'.join(initials), last_name)
+        return "{0}.{1}".format(".".join(initials), last_name)
 
     @classmethod
     def from_git(cls, git):
         """Create an instance from a Git repo."""
         git_config = git.config_reader()
         try:
-            name = git_config.get_value('user', 'name', None)
-            email = git_config.get_value('user', 'email', None)
+            name = git_config.get_value("user", "name", None)
+            email = git_config.get_value("user", "email", None)
         except (
-            configparser.NoOptionError, configparser.NoSectionError
+            configparser.NoOptionError,
+            configparser.NoSectionError,
         ):  # pragma: no cover
             raise errors.ConfigurationError(
-                'The user name and email are not configured. '
+                "The user name and email are not configured. "
                 'Please use the "git config" command to configure them.\n\n'
                 '\tgit config --global --add user.name "John Doe"\n'
-                '\tgit config --global --add user.email '
+                "\tgit config --global --add user.email "
                 '"john.doe@example.com"\n'
             )
 
@@ -130,7 +122,7 @@ class Person:
     @classmethod
     def from_string(cls, string):
         """Create an instance from a 'Name <email>' string."""
-        REGEX = r'([^<]*)<{0,1}([^@<>]+@[^@<>]+\.[^@<>]+)*>{0,1}'
+        REGEX = r"([^<]*)<{0,1}([^@<>]+@[^@<>]+\.[^@<>]+)*>{0,1}"
         name, email = re.search(REGEX, string).groups()
         name = name.rstrip()
         # Check the git configuration.
@@ -148,19 +140,16 @@ class Person:
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
-        if self._id == 'mailto:None':
+        if self._id == "mailto:None":
             self._id = self.default_id()
 
 
 @jsonld.s(
-    type=[
-        'prov:SoftwareAgent',
-        'wfprov:WorkflowEngine',
-    ],
+    type=["prov:SoftwareAgent", "wfprov:WorkflowEngine"],
     context={
-        'prov': 'http://www.w3.org/ns/prov#',
-        'wfprov': 'http://purl.org/wf4ever/wfprov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        "prov": "http://www.w3.org/ns/prov#",
+        "wfprov": "http://purl.org/wf4ever/wfprov#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     },
     frozen=True,
     slots=True,
@@ -168,14 +157,10 @@ class Person:
 class SoftwareAgent:
     """Represent executed software."""
 
-    label = jsonld.ib(context='rdfs:label', kw_only=True)
-    was_started_by = jsonld.ib(
-        context='prov:wasStartedBy',
-        default=None,
-        kw_only=True,
-    )
+    label = jsonld.ib(context="rdfs:label", kw_only=True)
+    was_started_by = jsonld.ib(context="prov:wasStartedBy", default=None, kw_only=True)
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = jsonld.ib(context="@id", kw_only=True)
 
     @classmethod
     def from_commit(cls, commit):
@@ -192,6 +177,4 @@ class SoftwareAgent:
 
 # set up the default agent
 
-renku_agent = SoftwareAgent(
-    label='renku {0}'.format(__version__), id=version_url
-)
+renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)

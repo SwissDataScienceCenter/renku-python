@@ -32,25 +32,24 @@ from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.models.datasets import Dataset, DatasetFile
 
-ZENODO_BASE_URL = 'https://zenodo.org'
-ZENODO_SANDBOX_URL = 'https://sandbox.zenodo.org/'
+ZENODO_BASE_URL = "https://zenodo.org"
+ZENODO_SANDBOX_URL = "https://sandbox.zenodo.org/"
 
-ZENODO_API_PATH = 'api'
+ZENODO_API_PATH = "api"
 
-ZENODO_DEPOSIT_PATH = 'deposit'
-ZENODO_PUBLISH_PATH = 'record'
+ZENODO_DEPOSIT_PATH = "deposit"
+ZENODO_PUBLISH_PATH = "record"
 
-ZENODO_PUBLISH_ACTION_PATH = 'depositions/{0}/actions/publish'
-ZENODO_METADATA_URL = 'depositions/{0}'
-ZENODO_FILES_URL = 'depositions/{0}/files'
-ZENODO_NEW_DEPOSIT_URL = 'depositions'
+ZENODO_PUBLISH_ACTION_PATH = "depositions/{0}/actions/publish"
+ZENODO_METADATA_URL = "depositions/{0}"
+ZENODO_FILES_URL = "depositions/{0}/files"
+ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
 def make_records_url(record_id):
     """Create URL to access record by ID."""
     return urllib.parse.urljoin(
-        ZENODO_BASE_URL,
-        pathlib.posixpath.join(ZENODO_API_PATH, 'records', record_id)
+        ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id)
     )
 
 
@@ -58,19 +57,20 @@ def check_or_raise(response):
     """Check for expected response status code."""
     if response.status_code not in [200, 201, 202]:
         if response.status_code == 401:
-            raise HTTPError('Access unauthorized - update access token.')
+            raise HTTPError("Access unauthorized - update access token.")
 
         if response.status_code == 400:
             err_response = response.json()
             errors = [
-                '"{0}" failed with "{1}"'.format(err['field'], err['message'])
-                for err in err_response['errors']
+                '"{0}" failed with "{1}"'.format(err["field"], err["message"])
+                for err in err_response["errors"]
             ]
 
             raise HTTPError(
-                '\n' + '\n'.join(errors) +
-                '\nSee `renku dataset edit -h` for details on how to edit'
-                ' metadata'
+                "\n"
+                + "\n".join(errors)
+                + "\nSee `renku dataset edit -h` for details on how to edit"
+                " metadata"
             )
 
         else:
@@ -94,12 +94,12 @@ class ZenodoFileSerializer:
     @property
     def remote_url(self):
         """Get remote URL as ``urllib.ParseResult``."""
-        return urllib.parse.urlparse(self.links['download'])
+        return urllib.parse.urlparse(self.links["download"])
 
     @property
     def type(self):
         """Get file type."""
-        return self.filename.split('.')[-1]
+        return self.filename.split(".")[-1]
 
 
 @attr.s
@@ -182,7 +182,7 @@ class ZenodoRecordSerializer:
         default=None,
         kw_only=True,
         type=ZenodoMetadataSerializer,
-        converter=_metadata_converter
+        converter=_metadata_converter,
     )
 
     modified = attr.ib(default=None, kw_only=True)
@@ -212,9 +212,7 @@ class ZenodoRecordSerializer:
 
     def is_last_version(self, uri):
         """Check if this record is the latest version."""
-        return ZenodoProvider.record_id(
-            self.links.get('latest_html')
-        ) == self.record_id
+        return ZenodoProvider.record_id(self.links.get("latest_html")) == self.record_id
 
     def get_jsonld(self):
         """Get record metadata as jsonld."""
@@ -225,7 +223,7 @@ class ZenodoRecordSerializer:
     def get_files(self):
         """Get Zenodo files metadata as ``ZenodoFile``."""
         if len(self.files) == 0:
-            raise LookupError('no files have been found')
+            raise LookupError("no files have been found")
 
         return [ZenodoFileSerializer(**file_) for file_ in self.files]
 
@@ -245,14 +243,14 @@ class ZenodoRecordSerializer:
                 filename=file_.filename,
                 filesize=file_.filesize,
                 filetype=file_.type,
-                path='',
+                path="",
             )
             serialized_files.append(dataset_file)
 
         dataset.files = serialized_files
 
-        if isinstance(dataset.url, dict) and '_id' in dataset.url:
-            dataset.url = urllib.parse.urlparse(dataset.url.pop('_id'))
+        if isinstance(dataset.url, dict) and "_id" in dataset.url:
+            dataset.url = urllib.parse.urlparse(dataset.url.pop("_id"))
             dataset.url = dataset.url.geturl()
 
         return dataset
@@ -271,9 +269,10 @@ class ZenodoDeposition:
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
             pathlib.posixpath.join(
-                ZENODO_API_PATH, ZENODO_DEPOSIT_PATH,
-                ZENODO_PUBLISH_ACTION_PATH.format(self.id)
-            )
+                ZENODO_API_PATH,
+                ZENODO_DEPOSIT_PATH,
+                ZENODO_PUBLISH_ACTION_PATH.format(self.id),
+            ),
         )
 
         return url
@@ -284,9 +283,10 @@ class ZenodoDeposition:
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
             pathlib.posixpath.join(
-                ZENODO_API_PATH, ZENODO_DEPOSIT_PATH,
-                ZENODO_METADATA_URL.format(self.id)
-            )
+                ZENODO_API_PATH,
+                ZENODO_DEPOSIT_PATH,
+                ZENODO_METADATA_URL.format(self.id),
+            ),
         )
         return url
 
@@ -296,9 +296,8 @@ class ZenodoDeposition:
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
             pathlib.posixpath.join(
-                ZENODO_API_PATH, ZENODO_DEPOSIT_PATH,
-                ZENODO_FILES_URL.format(self.id)
-            )
+                ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_FILES_URL.format(self.id)
+            ),
         )
         return url
 
@@ -309,7 +308,7 @@ class ZenodoDeposition:
             self.exporter.zenodo_url,
             pathlib.posixpath.join(
                 ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_NEW_DEPOSIT_URL
-            )
+            ),
         )
         return url
 
@@ -318,7 +317,7 @@ class ZenodoDeposition:
         """Return published at URL."""
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
-            pathlib.posixpath.join(ZENODO_PUBLISH_PATH, str(self.id))
+            pathlib.posixpath.join(ZENODO_PUBLISH_PATH, str(self.id)),
         )
         return url
 
@@ -327,7 +326,7 @@ class ZenodoDeposition:
         """Return deposit at URL."""
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
-            pathlib.posixpath.join(ZENODO_DEPOSIT_PATH, str(self.id))
+            pathlib.posixpath.join(ZENODO_DEPOSIT_PATH, str(self.id)),
         )
         return url
 
@@ -337,7 +336,7 @@ class ZenodoDeposition:
             url=self.new_deposit_url,
             params=self.exporter.default_params,
             json={},
-            headers=self.exporter.HEADERS
+            headers=self.exporter.HEADERS,
         )
         check_or_raise(response)
 
@@ -345,8 +344,8 @@ class ZenodoDeposition:
 
     def upload_file(self, filepath):
         """Upload and attach a file to existing deposition on Zenodo."""
-        request_payload = {'filename': Path(filepath).name}
-        file = {'file': open(str(filepath), 'rb')}
+        request_payload = {"filename": Path(filepath).name}
+        file = {"file": open(str(filepath), "rb")}
 
         response = requests.post(
             url=self.upload_file_url,
@@ -361,27 +360,27 @@ class ZenodoDeposition:
     def attach_metadata(self, dataset, tag):
         """Attach metadata to deposition on Zenodo."""
         request_payload = {
-            'metadata': {
-                'title': dataset.name,
-                'upload_type': 'dataset',
-                'description': dataset.description,
-                'creators': [{
-                    'name': creator.name,
-                    'affiliation': creator.affiliation
-                } for creator in dataset.creator]
+            "metadata": {
+                "title": dataset.name,
+                "upload_type": "dataset",
+                "description": dataset.description,
+                "creators": [
+                    {"name": creator.name, "affiliation": creator.affiliation}
+                    for creator in dataset.creator
+                ],
             }
         }
 
         version = tag.name if tag else dataset.version
 
         if version:
-            request_payload['metadata']['version'] = version
+            request_payload["metadata"]["version"] = version
 
         response = requests.put(
             url=self.attach_metadata_url,
             params=self.exporter.default_params,
             data=json.dumps(request_payload),
-            headers=self.exporter.HEADERS
+            headers=self.exporter.HEADERS,
         )
         check_or_raise(response)
 
@@ -399,14 +398,14 @@ class ZenodoDeposition:
     def __attrs_post_init__(self):
         """Post-Init hook to set _id field."""
         response = self.new_deposition()
-        self.id = response.json()['id']
+        self.id = response.json()["id"]
 
 
 @attr.s
 class ZenodoExporter(ExporterApi):
     """Zenodo export manager."""
 
-    HEADERS = {'Content-Type': 'application/json'}
+    HEADERS = {"Content-Type": "application/json"}
 
     dataset = attr.ib()
     access_token = attr.ib()
@@ -414,7 +413,7 @@ class ZenodoExporter(ExporterApi):
     @property
     def zenodo_url(self):
         """Returns correct Zenodo URL based on environment."""
-        if 'ZENODO_USE_SANDBOX' in os.environ:
+        if "ZENODO_USE_SANDBOX" in os.environ:
             return ZENODO_SANDBOX_URL
 
         return ZENODO_BASE_URL
@@ -426,18 +425,18 @@ class ZenodoExporter(ExporterApi):
     def access_token_url(self):
         """Return endpoint for creation of access token."""
         return urllib.parse.urlparse(
-            'https://zenodo.org/account/settings/applications/tokens/new/'
+            "https://zenodo.org/account/settings/applications/tokens/new/"
         ).geturl()
 
     @property
     def default_params(self):
         """Create request default params."""
-        return {'access_token': self.access_token}
+        return {"access_token": self.access_token}
 
     def dataset_to_request(self):
         """Prepare dataset metadata for request."""
         jsonld = self.dataset.asjsonld()
-        jsonld['upload_type'] = 'dataset'
+        jsonld["upload_type"] = "dataset"
         return jsonld
 
     def export(self, publish, tag=None):
@@ -451,7 +450,7 @@ class ZenodoExporter(ExporterApi):
         # Step 3. Upload all files to created deposition
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file_ in self.dataset.files:
-                deposition.upload_file(file_.full_path, )
+                deposition.upload_file(file_.full_path)
                 progressbar.update(1)
 
         # Step 4. Publish newly created deposition
@@ -467,12 +466,12 @@ class ZenodoProvider(ProviderApi):
     """zenodo.org registry API provider."""
 
     is_doi = attr.ib(default=False)
-    _accept = attr.ib(default='application/json')
+    _accept = attr.ib(default="application/json")
 
     @staticmethod
     def supports(uri):
         """Whether or not this provider supports a given uri."""
-        if 'zenodo' in uri.lower():
+        if "zenodo" in uri.lower():
             return True
 
         return False
@@ -480,26 +479,26 @@ class ZenodoProvider(ProviderApi):
     @staticmethod
     def record_id(uri):
         """Extract record id from uri."""
-        return urlparse(uri).path.split('/')[-1]
+        return urlparse(uri).path.split("/")[-1]
 
     def accept_json(self):
         """Receive response as json."""
-        self._accept = 'application/json'
+        self._accept = "application/json"
         return self
 
     def accept_jsonld(self):
         """Receive response as jsonld."""
-        self._accept = 'application/ld+json'
+        self._accept = "application/ld+json"
         return self
 
     def make_request(self, uri):
         """Execute network request."""
         record_id = ZenodoProvider.record_id(uri)
         response = requests.get(
-            make_records_url(record_id), headers={'Accept': self._accept}
+            make_records_url(record_id), headers={"Accept": self._accept}
         )
         if response.status_code != 200:
-            raise LookupError('record not found')
+            raise LookupError("record not found")
         return response
 
     def find_record(self, uri):

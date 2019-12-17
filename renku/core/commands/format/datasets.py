@@ -29,16 +29,18 @@ def tabular(client, datasets):
     """Format datasets with a tabular output."""
     return tabulate(
         datasets,
-        headers=OrderedDict((
-            ('uid', 'id'),
-            ('short_name', None),
-            ('version', None),
-            ('created', None),
-            ('creators_csv', 'creators'),
-        )),
+        headers=OrderedDict(
+            (
+                ("uid", "id"),
+                ("short_name", None),
+                ("version", None),
+                ("created", None),
+                ("creators_csv", "creators"),
+            )
+        ),
         # workaround for tabulate issue 181
         # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
-        disable_numparse=[0, 2] if any(datasets) else False
+        disable_numparse=[0, 2] if any(datasets) else False,
     )
 
 
@@ -47,16 +49,12 @@ def jsonld(client, datasets):
     data = [
         asjsonld(
             dataset,
-            basedir=os.path.relpath(
-                '.', start=str(dataset.__reference__.parent)
-            )
-        ) for dataset in datasets
+            basedir=os.path.relpath(".", start=str(dataset.__reference__.parent)),
+        )
+        for dataset in datasets
     ]
     return dumps(data, indent=2)
 
 
-DATASETS_FORMATS = {
-    'tabular': tabular,
-    'json-ld': jsonld,
-}
+DATASETS_FORMATS = {"tabular": tabular, "json-ld": jsonld}
 """Valid formatting options."""

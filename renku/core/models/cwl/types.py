@@ -55,10 +55,10 @@ class Directory(CWLClass, PathFormatterMixin):
     listing = attr.ib(default=attr.Factory(list))
 
 
-DIRECTORY_EXPRESSION = '$({0})'.format(
+DIRECTORY_EXPRESSION = "$({0})".format(
     json.dumps(ascwl(Directory(), filter=lambda _, x: x is not None))
 )
-PATH_OBJECTS = {'File', 'Directory'}
+PATH_OBJECTS = {"File", "Directory"}
 PATH_TYPES = (File, Directory)
 
 

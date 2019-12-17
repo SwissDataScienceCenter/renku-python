@@ -42,14 +42,14 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
     listing = attr.ib(default=attr.Factory(list))  # File, Directory
 
     @classmethod
-    def from_tool(cls, tool, existing_directories=None, working_dir=''):
+    def from_tool(cls, tool, existing_directories=None, working_dir=""):
         """Create a directory structure based on tool inputs and outputs."""
         directories = DirectoryTree()
         inputs = {input_.id: input_ for input_ in tool.inputs}
 
         converters = {
-            'File': lambda value: Path(value).parent,
-            'Directory': lambda value: Path(value),
+            "File": lambda value: Path(value).parent,
+            "Directory": lambda value: Path(value),
         }
 
         # TODO enable for extra tool inputs when there is no inputBinding
@@ -71,8 +71,8 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
                 glob = output.outputBinding.glob
                 convert = converters[output.type]
                 # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
+                if glob.startswith("$(inputs."):
+                    input_id = glob[len("$(inputs.") : -1]
                     input_ = inputs.get(input_id)
                     if input_ is not None:
                         directories.add(convert(input_.default))
@@ -88,11 +88,7 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
                 continue
 
             requirement.listing.append(
-                Dirent(
-                    entryname=directory,
-                    entry=DIRECTORY_EXPRESSION,
-                    writable=True,
-                )
+                Dirent(entryname=directory, entry=DIRECTORY_EXPRESSION, writable=True)
             )
 
         for input in tool.inputs:
@@ -100,8 +96,7 @@ class InitialWorkDirRequirement(ProcessRequirement, CWLClass):
                 entryname = input.default.path.relative_to(working_dir)
                 requirement.listing.append(
                     Dirent(
-                        entry='$(inputs.{})'.format(input.id),
-                        entryname=str(entryname),
+                        entry="$(inputs.{})".format(input.id), entryname=str(entryname)
                     )
                 )
 

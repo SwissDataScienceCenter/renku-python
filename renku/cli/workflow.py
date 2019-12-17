@@ -45,13 +45,13 @@ from renku.core.models.cwl.ascwl import ascwl
 
 def _ref(name):
     """Return workflow reference name."""
-    return 'workflows/{0}'.format(name)
+    return "workflows/{0}".format(name)
 
 
 def _deref(ref):
     """Remove workflows prefix."""
-    assert ref.startswith('workflows/')
-    return ref[len('workflows/'):]
+    assert ref.startswith("workflows/")
+    return ref[len("workflows/") :]
 
 
 @click.group(invoke_without_command=True)
@@ -63,15 +63,15 @@ def workflow(ctx, client):
         from renku.core.models.refs import LinkReference
 
         names = defaultdict(list)
-        for ref in LinkReference.iter_items(client, common_path='workflows'):
+        for ref in LinkReference.iter_items(client, common_path="workflows"):
             names[ref.reference.name].append(ref.name)
 
-        for path in client.workflow_path.glob('*.cwl'):
+        for path in client.workflow_path.glob("*.cwl"):
             click.echo(
-                '{path}: {names}'.format(
+                "{path}: {names}".format(
                     path=path.name,
-                    names=', '.join(
-                        click.style(_deref(name), fg='green')
+                    names=", ".join(
+                        click.style(_deref(name), fg="green")
                         for name in names[path.name]
                     ),
                 )
@@ -84,66 +84,71 @@ def validate_path(ctx, param, value):
 
     if value is None:
         from renku.core.models.provenance.activities import ProcessRun
+
         activity = client.process_commit()
 
         if not isinstance(activity, ProcessRun):
-            raise click.BadParameter('No tool was found.')
+            raise click.BadParameter("No tool was found.")
 
         return activity.path
 
     return value
 
 
-@workflow.command('set-name')
-@click.argument('name', metavar='<name>')
+@workflow.command("set-name")
+@click.argument("name", metavar="<name>")
 @click.argument(
-    'path',
-    metavar='<path>',
+    "path",
+    metavar="<path>",
     type=click.Path(exists=True, dir_okay=False),
     callback=validate_path,
     default=None,
     required=False,
 )
-@click.option('--force', is_flag=True, help='Override the existence check.')
+@click.option("--force", is_flag=True, help="Override the existence check.")
 @pass_local_client(clean=True, commit=True)
 def set_name(client, name, path, force):
     """Sets the <name> for remote <path>."""
     from renku.core.models.refs import LinkReference
-    LinkReference.create(client=client, name=_ref(name),
-                         force=force).set_reference(path)
+
+    LinkReference.create(client=client, name=_ref(name), force=force).set_reference(
+        path
+    )
 
 
 @workflow.command()
-@click.argument('old', metavar='<old>')
-@click.argument('new', metavar='<new>')
-@click.option('--force', is_flag=True, help='Override the existence check.')
+@click.argument("old", metavar="<old>")
+@click.argument("new", metavar="<new>")
+@click.option("--force", is_flag=True, help="Override the existence check.")
 @pass_local_client(clean=True, commit=True)
 def rename(client, old, new, force):
     """Rename the workflow named <old> to <new>."""
     from renku.core.models.refs import LinkReference
+
     LinkReference(client=client, name=_ref(old)).rename(_ref(new), force=force)
 
 
 @workflow.command()
-@click.argument('name', metavar='<name>')
+@click.argument("name", metavar="<name>")
 @pass_local_client(clean=True, commit=True)
 def remove(client, name):
     """Remove the remote named <name>."""
     from renku.core.models.refs import LinkReference
+
     LinkReference(client=client, name=_ref(name)).delete()
 
 
 @workflow.command()
-@click.option('--revision', default='HEAD')
+@click.option("--revision", default="HEAD")
 @click.option(
-    '-o',
-    '--output-file',
-    metavar='FILE',
-    type=click.File('w'),
-    default='-',
-    help='Write workflow to the FILE.',
+    "-o",
+    "--output-file",
+    metavar="FILE",
+    type=click.File("w"),
+    default="-",
+    help="Write workflow to the FILE.",
 )
-@click.argument('paths', type=click.Path(dir_okay=True), nargs=-1)
+@click.argument("paths", type=click.Path(dir_okay=True), nargs=-1)
 @pass_local_client
 def create(client, output_file, revision, paths):
     """Create a workflow description for a file."""
@@ -155,9 +160,8 @@ def create(client, output_file, revision, paths):
             ascwl(
                 graph.ascwl(outputs=outputs),
                 filter=lambda _, x: x is not None and x != [],
-                basedir=os.path.dirname(getattr(output_file, 'name', '.')) or
-                '.',
+                basedir=os.path.dirname(getattr(output_file, "name", ".")) or ".",
             ),
-            default_flow_style=False
+            default_flow_style=False,
         )
     )

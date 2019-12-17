@@ -59,8 +59,7 @@ class Workflow(Process, CWLClass):
         step_map = {step.id: step for step in self.steps}
         steps = {
             step.id: [
-                source.split('/')[0]
-                for source in step.in_.values() if '/' in source
+                source.split("/")[0] for source in step.in_.values() if "/" in source
             ]
             for step in self.steps
         }
@@ -69,6 +68,7 @@ class Workflow(Process, CWLClass):
     def create_run(self, **kwargs):
         """Return an instance of process run."""
         from renku.core.models.provenance.activities import WorkflowRun
+
         return WorkflowRun(**kwargs)
 
     def add_step(self, **kwargs):
@@ -78,10 +78,10 @@ class Workflow(Process, CWLClass):
     def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""
         for output in self.outputs:
-            if output.type != 'File':
+            if output.type != "File":
                 continue
             if output.outputSource:
-                step_id, _, source = output.outputSource.partition('/')
+                step_id, _, source = output.outputSource.partition("/")
                 for workflow_step in self.steps:
                     if workflow_step.id == step_id:
                         break
@@ -95,8 +95,8 @@ class Workflow(Process, CWLClass):
             elif output.outputBinding:
                 glob = output.outputBinding.glob
                 # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
+                if glob.startswith("$(inputs."):
+                    input_id = glob[len("$(inputs.") : -1]
                     for input_ in self.inputs:
                         if input_.id == input_id and input_.default == path:
                             return output.id

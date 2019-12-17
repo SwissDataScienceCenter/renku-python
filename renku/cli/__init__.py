@@ -87,8 +87,7 @@ from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
 from renku.cli.workflow import workflow
-from renku.core.commands.options import install_completion, \
-    option_use_external_storage
+from renku.core.commands.options import install_completion, option_use_external_storage
 from renku.core.commands.version import check_version, print_version
 from renku.core.management.client import LocalClient
 from renku.core.management.config import RENKU_HOME, ConfigManagerMixin
@@ -117,28 +116,28 @@ def print_global_config_path(ctx, param, value):
 @click.group(
     cls=IssueFromTraceback,
     context_settings={
-        'auto_envvar_prefix': 'RENKU',
-        'help_option_names': ['-h', '--help'],
-    }
+        "auto_envvar_prefix": "RENKU",
+        "help_option_names": ["-h", "--help"],
+    },
 )
 @click.option(
-    '--version',
+    "--version",
     is_flag=True,
     callback=print_version,
     expose_value=False,
     is_eager=True,
-    help=print_version.__doc__
+    help=print_version.__doc__,
 )
 @click.option(
-    '--global-config-path',
+    "--global-config-path",
     is_flag=True,
     callback=print_global_config_path,
     expose_value=False,
     is_eager=True,
-    help=print_global_config_path.__doc__
+    help=print_global_config_path.__doc__,
 )
 @click.option(
-    '--install-completion',
+    "--install-completion",
     is_flag=True,
     callback=install_completion,
     expose_value=False,
@@ -146,37 +145,35 @@ def print_global_config_path(ctx, param, value):
     help=install_completion.__doc__,
 )
 @click.option(
-    '--path',
+    "--path",
     show_default=True,
-    metavar='<path>',
+    metavar="<path>",
     default=default_path,
-    help='Location of a Renku repository.'
+    help="Location of a Renku repository.",
 )
 @click.option(
-    '--renku-home',
-    envvar='RENKU_HOME',
+    "--renku-home",
+    envvar="RENKU_HOME",
     show_default=True,
-    metavar='<path>',
+    metavar="<path>",
     default=RENKU_HOME,
-    help='Location of the Renku directory.'
+    help="Location of the Renku directory.",
 )
 @option_use_external_storage
 @click.option(
-    '--disable-version-check',
-    envvar='RENKU_DISABLE_VERSION_CHECK',
+    "--disable-version-check",
+    envvar="RENKU_DISABLE_VERSION_CHECK",
     is_flag=True,
     default=False,
     callback=check_version,
     expose_value=False,
-    help='Do not periodically check PyPI for a new version of renku.',
+    help="Do not periodically check PyPI for a new version of renku.",
 )
 @click.pass_context
 def cli(ctx, path, renku_home, use_external_storage):
     """Check common Renku commands used in various situations."""
     ctx.obj = LocalClient(
-        path=path,
-        renku_home=renku_home,
-        use_external_storage=use_external_storage,
+        path=path, renku_home=renku_home, use_external_storage=use_external_storage
     )
 
 

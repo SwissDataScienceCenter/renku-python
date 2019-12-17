@@ -29,21 +29,19 @@ from renku.core.commands.providers.doi import DOIProvider
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.utils.doi import extract_doi, is_doi
 
-DATAVERSE_API_PATH = 'api'
+DATAVERSE_API_PATH = "api"
 
-DATAVERSE_VERSION_API = 'info/version'
-DATAVERSE_METADATA_API = 'datasets/export'
-DATAVERSE_FILE_API = 'access/datafile/:persistentId/'
-DATAVERSE_EXPORTER = 'schema.org'
+DATAVERSE_VERSION_API = "info/version"
+DATAVERSE_METADATA_API = "datasets/export"
+DATAVERSE_FILE_API = "access/datafile/:persistentId/"
+DATAVERSE_EXPORTER = "schema.org"
 
 
 def check_dataverse_uri(url):
     """Check if an URL points to a dataverse instance."""
     url_parts = list(urlparse.urlparse(url))
-    url_parts[2] = pathlib.posixpath.join(
-        DATAVERSE_API_PATH, DATAVERSE_VERSION_API
-    )
-    url_parts[3:6] = [''] * 3
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
+    url_parts[3:6] = [""] * 3
     version_url = urlparse.urlunparse(url_parts)
 
     response = requests.get(version_url)
@@ -52,12 +50,12 @@ def check_dataverse_uri(url):
 
     version_data = response.json()
 
-    if 'status' not in version_data or 'data' not in version_data:
+    if "status" not in version_data or "data" not in version_data:
         return False
 
-    version_info = version_data['data']
+    version_info = version_data["data"]
 
-    if 'version' not in version_info or 'build' not in version_info:
+    if "version" not in version_info or "build" not in version_info:
         return False
 
     return True
@@ -76,10 +74,8 @@ def check_dataverse_doi(doi):
 def make_records_url(record_id, base_url):
     """Create URL to access record by ID."""
     url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(
-        DATAVERSE_API_PATH, DATAVERSE_METADATA_API
-    )
-    args_dict = {'exporter': DATAVERSE_EXPORTER, 'persistentId': record_id}
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
+    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
 
@@ -87,10 +83,8 @@ def make_records_url(record_id, base_url):
 def make_file_url(file_id, base_url):
     """Create URL to access record by ID."""
     url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(
-        DATAVERSE_API_PATH, DATAVERSE_FILE_API
-    )
-    args_dict = {'persistentId': file_id}
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_FILE_API)
+    args_dict = {"persistentId": file_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
 
@@ -100,7 +94,7 @@ class DataverseProvider(ProviderApi):
     """Dataverse API provider."""
 
     is_doi = attr.ib(default=False)
-    _accept = attr.ib(default='application/json')
+    _accept = attr.ib(default="application/json")
 
     @staticmethod
     def supports(uri):
@@ -116,13 +110,13 @@ class DataverseProvider(ProviderApi):
     def record_id(uri):
         """Extract record id from uri."""
         parsed = urlparse.urlparse(uri)
-        return urlparse.parse_qs(parsed.query)['persistentId'][0]
+        return urlparse.parse_qs(parsed.query)["persistentId"][0]
 
     def make_request(self, uri):
         """Execute network request."""
-        response = requests.get(uri, headers={'Accept': self._accept})
+        response = requests.get(uri, headers={"Accept": self._accept})
         if response.status_code != 200:
-            raise LookupError('record not found')
+            raise LookupError("record not found")
         return response
 
     def find_record(self, uri):
@@ -150,9 +144,7 @@ class DataverseProvider(ProviderApi):
         """Retrieve metadata and return ``DataverseRecordSerializer``."""
         response = self.make_request(uri)
 
-        return DataverseRecordSerializer(
-            json=response.json(), dataverse=self, uri=uri
-        )
+        return DataverseRecordSerializer(json=response.json(), dataverse=self, uri=uri)
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
@@ -175,21 +167,18 @@ class DataverseRecordSerializer:
 
     def _convert_json_property_name(self, property_name):
         """Removes '@' and converts names to snake_case."""
-        property_name = property_name.strip('@')
-        property_name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', property_name)
-        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', property_name).lower()
+        property_name = property_name.strip("@")
+        property_name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", property_name)
+        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", property_name).lower()
 
     @property
     def files(self):
         """Get all file metadata entries."""
         file_list = []
 
-        for f in self._json['distribution']:
-            mapped_file = {
-                self._convert_json_property_name(k): v
-                for k, v in f.items()
-            }
-            mapped_file['parent_url'] = self._uri
+        for f in self._json["distribution"]:
+            mapped_file = {self._convert_json_property_name(k): v for k, v in f.items()}
+            mapped_file["parent_url"] = self._uri
             file_list.append(mapped_file)
         return file_list
 
@@ -202,7 +191,7 @@ class DataverseRecordSerializer:
     def get_files(self):
         """Get Dataverse files metadata as ``DataverseFileSerializer``."""
         if len(self.files) == 0:
-            raise LookupError('no files have been found')
+            raise LookupError("no files have been found")
 
         return [DataverseFileSerializer(**file_) for file_ in self.files]
 
@@ -220,7 +209,7 @@ class DataverseRecordSerializer:
                 filename=file_.name,
                 filesize=file_.content_size,
                 filetype=file_.file_format,
-                path='',
+                path="",
             )
             serialized_files.append(dataset_file)
 
@@ -265,7 +254,7 @@ class DataverseFileSerializer:
         if doi is None:
             return None
 
-        file_url = make_file_url('doi:' + doi, self.parent_url)
+        file_url = make_file_url("doi:" + doi, self.parent_url)
 
         return urllib.parse.urlparse(file_url)
 

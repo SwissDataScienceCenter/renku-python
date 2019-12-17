@@ -34,10 +34,10 @@ class CWLType(type):
     def __init__(cls, name, bases, namespace):
         """Register CWL types."""
         super(CWLType, cls).__init__(name, bases, namespace)
-        if not hasattr(cls, 'registry'):
+        if not hasattr(cls, "registry"):
             cls.registry = dict()
         if name in cls.registry:
-            raise ValueError('Duplicate CWL class {0} definition'.format(name))
+            raise ValueError("Duplicate CWL class {0} definition".format(name))
         cls.registry[name] = cls
 
 
@@ -47,17 +47,14 @@ class CWLClass(ReferenceMixin, metaclass=CWLType):
     @classmethod
     def from_cwl(cls, data, __reference__=None):
         """Return an instance from CWL data."""
-        class_name = data.get('class', None)
+        class_name = data.get("class", None)
         cls = cls.registry.get(class_name, cls)
 
         if __reference__:
             with with_reference(__reference__):
-                self = cls(
-                    **{k: v
-                       for k, v in iteritems(data) if k != 'class'}
-                )
+                self = cls(**{k: v for k, v in iteritems(data) if k != "class"})
         else:
-            self = cls(**{k: v for k, v in iteritems(data) if k != 'class'})
+            self = cls(**{k: v for k, v in iteritems(data) if k != "class"})
         return self
 
     @classmethod
@@ -65,24 +62,24 @@ class CWLClass(ReferenceMixin, metaclass=CWLType):
         """Return an instance from a YAML file."""
         import yaml
 
-        with path.open(mode='r') as fp:
+        with path.open(mode="r") as fp:
             self = cls.from_cwl(yaml.safe_load(fp), __reference__=path)
 
         return self
 
 
-def mapped(cls, key='id', **kwargs):
+def mapped(cls, key="id", **kwargs):
     """Create list of instances from a mapping."""
-    kwargs.setdefault('metadata', {})
-    kwargs['metadata']['jsonldPredicate'] = {'mapSubject': key}
-    kwargs.setdefault('default', attr.Factory(list))
+    kwargs.setdefault("metadata", {})
+    kwargs["metadata"]["jsonldPredicate"] = {"mapSubject": key}
+    kwargs.setdefault("default", attr.Factory(list))
 
     def converter(value):
         """Convert mapping to a list of instances."""
         if isinstance(value, dict):
             result = []
             for k, v in iteritems(value):
-                if not hasattr(cls, 'from_cwl'):
+                if not hasattr(cls, "from_cwl"):
                     vv = dict(v)
                     vv[key] = k
                 else:
@@ -94,17 +91,16 @@ def mapped(cls, key='id', **kwargs):
         def fix_keys(data):
             """Fix names of keys."""
             for a in fields(cls):
-                a_name = a.name.rstrip('_')
+                a_name = a.name.rstrip("_")
                 if a_name in data:
                     yield a.name, data[a_name]
 
         return [
-            cls(**{kk: vv
-                   for kk, vv in fix_keys(v)}) if not isinstance(v, cls) else v
+            cls(**{kk: vv for kk, vv in fix_keys(v)}) if not isinstance(v, cls) else v
             for v in result
         ]
 
-    kwargs['converter'] = converter
+    kwargs["converter"] = converter
     return attr.ib(**kwargs)
 
 
@@ -134,10 +130,10 @@ def ascwl(
         return v
 
     for a in attrs:
-        if a.name.startswith('__'):
+        if a.name.startswith("__"):
             continue
 
-        a_name = a.name.rstrip('_')
+        a_name = a.name.rstrip("_")
         v = getattr(inst, a.name)
         if filter is not None and not filter(a, v):
             continue
@@ -153,18 +149,23 @@ def ascwl(
 
             elif isinstance(v, (tuple, list, set)):
                 cf = v.__class__ if retain_collection_types is True else list
-                rv[a_name] = cf([
-                    ascwl(
-                        i,
-                        recurse=True,
-                        filter=filter,
-                        dict_factory=dict_factory,
-                        basedir=basedir,
-                    ) if has(i.__class__) else i for i in v
-                ])
+                rv[a_name] = cf(
+                    [
+                        ascwl(
+                            i,
+                            recurse=True,
+                            filter=filter,
+                            dict_factory=dict_factory,
+                            basedir=basedir,
+                        )
+                        if has(i.__class__)
+                        else i
+                        for i in v
+                    ]
+                )
 
-                if 'jsonldPredicate' in a.metadata:
-                    k = a.metadata['jsonldPredicate'].get('mapSubject')
+                if "jsonldPredicate" in a.metadata:
+                    k = a.metadata["jsonldPredicate"].get("mapSubject")
                     if k:
                         vv = dict_factory()
                         for i in rv[a_name]:
@@ -174,24 +175,23 @@ def ascwl(
 
             elif isinstance(v, dict):
                 df = dict_factory
-                rv[a_name] = df((
-                    ascwl(
-                        kk,
-                        dict_factory=df,
-                        basedir=basedir,
-                    ) if has(kk.__class__) else convert_value(kk),
-                    ascwl(
-                        vv,
-                        dict_factory=df,
-                        basedir=basedir,
-                    ) if has(vv.__class__) else vv
-                ) for kk, vv in iteritems(v))
+                rv[a_name] = df(
+                    (
+                        ascwl(kk, dict_factory=df, basedir=basedir)
+                        if has(kk.__class__)
+                        else convert_value(kk),
+                        ascwl(vv, dict_factory=df, basedir=basedir)
+                        if has(vv.__class__)
+                        else vv,
+                    )
+                    for kk, vv in iteritems(v)
+                )
             else:
                 rv[a_name] = convert_value(v)
         else:
             rv[a_name] = convert_value(v)
 
     if isinstance(inst, CWLClass):
-        rv['class'] = inst.__class__.__name__
+        rv["class"] = inst.__class__.__name__
 
     return rv

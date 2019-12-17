@@ -75,16 +75,16 @@ from renku.core.commands.client import pass_local_client
 from renku.core.commands.git import set_git_home
 from renku.core.commands.options import option_use_external_storage
 
-_GITLAB_CI = '.gitlab-ci.yml'
-_DOCKERFILE = 'Dockerfile'
-_REQUIREMENTS = 'requirements.txt'
+_GITLAB_CI = ".gitlab-ci.yml"
+_DOCKERFILE = "Dockerfile"
+_REQUIREMENTS = "requirements.txt"
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
 def validate_name(ctx, param, value):
     """Validate a project name."""
     if not value:
-        value = os.path.basename(ctx.params['directory'].rstrip(os.path.sep))
+        value = os.path.basename(ctx.params["directory"].rstrip(os.path.sep))
     return value
 
 
@@ -107,25 +107,23 @@ def template(client, force):
 
             if not force and tpl_path.exists():
                 click.confirm(
-                    'Do you want to override "{tpl_file}"'.format(
-                        tpl_file=tpl_file
-                    ),
+                    'Do you want to override "{tpl_file}"'.format(tpl_file=tpl_file),
                     abort=True,
                 )
 
-            with tpl_path.open('wb') as dest:
+            with tpl_path.open("wb") as dest:
                 dest.write(content)
 
 
 @click.command()
 @click.argument(
-    'directory',
-    default='.',
+    "directory",
+    default=".",
     callback=store_directory,
-    type=click.Path(writable=True, file_okay=False, resolve_path=True)
+    type=click.Path(writable=True, file_okay=False, resolve_path=True),
 )
-@click.option('--name', callback=validate_name)
-@click.option('--force', is_flag=True, help='Override project templates.')
+@click.option("--name", callback=validate_name)
+@click.option("--force", is_flag=True, help="Override project templates.")
 @option_use_external_storage
 @pass_local_client
 @click.pass_context
@@ -135,36 +133,31 @@ def init(ctx, client, directory, name, force, use_external_storage):
         use_external_storage = False
 
     ctx.obj = client = attr.evolve(
-        client,
-        path=directory,
-        use_external_storage=use_external_storage,
+        client, path=directory, use_external_storage=use_external_storage
     )
 
-    msg = 'Initialized empty project in {path}'
+    msg = "Initialized empty project in {path}"
     branch_name = None
 
     stack = contextlib.ExitStack()
 
     if force and client.repo:
-        msg = 'Initialized project in {path} (branch {branch_name})'
-        merge_args = ['--no-ff', '-s', 'recursive', '-X', 'ours']
+        msg = "Initialized project in {path} (branch {branch_name})"
+        merge_args = ["--no-ff", "-s", "recursive", "-X", "ours"]
 
         try:
-            commit = client.find_previous_commit(
-                str(client.renku_metadata_path),
-            )
-            branch_name = 'renku/init/' + str(commit)
+            commit = client.find_previous_commit(str(client.renku_metadata_path))
+            branch_name = "renku/init/" + str(commit)
         except KeyError:
             from git import NULL_TREE
+
             commit = NULL_TREE
-            branch_name = 'renku/init/root'
-            merge_args.append('--allow-unrelated-histories')
+            branch_name = "renku/init/root"
+            merge_args.append("--allow-unrelated-histories")
 
         ctx.obj = client = stack.enter_context(
             client.worktree(
-                branch_name=branch_name,
-                commit=commit,
-                merge_args=merge_args,
+                branch_name=branch_name, commit=commit, merge_args=merge_args
             )
         )
 
@@ -173,9 +166,9 @@ def init(ctx, client, directory, name, force, use_external_storage):
             path = client.init_repository(name=name, force=force)
     except FileExistsError:
         raise click.UsageError(
-            'Renku repository is not empty. '
-            'Please use --force flag to use the directory as Renku '
-            'repository.'
+            "Renku repository is not empty. "
+            "Please use --force flag to use the directory as Renku "
+            "repository."
         )
 
     stack.enter_context(client.commit())
@@ -183,6 +176,7 @@ def init(ctx, client, directory, name, force, use_external_storage):
     with stack:
         # Install Git hooks.
         from .githooks import install
+
         ctx.invoke(install, force=force)
 
         # Create all necessary template files.

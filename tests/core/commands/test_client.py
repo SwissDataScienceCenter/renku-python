@@ -23,18 +23,20 @@ import pytest
 def test_local_client(tmpdir):
     """Test a local client."""
     from renku.core.management.client import LocalClient
-    client = LocalClient(str(tmpdir.mkdir('project')))
+
+    client = LocalClient(str(tmpdir.mkdir("project")))
 
     assert client.path
     assert client.repo is None
 
 
 @pytest.mark.parametrize(
-    'paths, ignored', (
-        (['.renku.lock'], ['.renku.lock']),
-        (['not ignored', 'lib/foo', 'build/html'], ['lib/foo', 'build/html']),
-        (['not ignored'], None),
-    )
+    "paths, ignored",
+    (
+        ([".renku.lock"], [".renku.lock"]),
+        (["not ignored", "lib/foo", "build/html"], ["lib/foo", "build/html"]),
+        (["not ignored"], None),
+    ),
 )
 def test_ignored_paths(paths, ignored, client):
     """Test resolution of ignored paths."""

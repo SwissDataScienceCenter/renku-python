@@ -31,12 +31,9 @@ from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import WARNING, progressbar
 
 
-@click.command(name='rm')
-@click.argument('sources', type=click.Path(exists=True), nargs=-1)
-@pass_local_client(
-    clean=True,
-    commit=True,
-)
+@click.command(name="rm")
+@click.argument("sources", type=click.Path(exists=True), nargs=-1)
+@pass_local_client(clean=True, commit=True)
 @click.pass_context
 def remove(ctx, client, sources):
     """Remove files and check repository for potential problems."""
@@ -49,14 +46,14 @@ def remove(ctx, client, sources):
     files = {
         fmt_path(source): fmt_path(file_or_dir)
         for file_or_dir in sources
-        for source in _expand_directories((file_or_dir, ))
+        for source in _expand_directories((file_or_dir,))
     }
 
     # 1. Update dataset metadata files.
     with progressbar(
         client.datasets.values(),
-        item_show_func=lambda item: str(item.short_id) if item else '',
-        label='Updating dataset metadata',
+        item_show_func=lambda item: str(item.short_id) if item else "",
+        label="Updating dataset metadata",
         width=0,
     ) as bar:
         for dataset in bar:
@@ -76,19 +73,20 @@ def remove(ctx, client, sources):
     # 2. Manage .gitattributes for external storage.
     if client.has_external_storage:
         tracked = tuple(
-            path for path, attr in client.find_attr(*files).items()
-            if attr.get('filter') == 'lfs'
+            path
+            for path, attr in client.find_attr(*files).items()
+            if attr.get("filter") == "lfs"
         )
         client.untrack_paths_from_storage(*tracked)
         existing = client.find_attr(*tracked)
         if existing:
-            click.echo(WARNING + 'There are custom .gitattributes.\n')
+            click.echo(WARNING + "There are custom .gitattributes.\n")
             if click.confirm(
                 'Do you want to edit ".gitattributes" now?', default=False
             ):
-                click.edit(filename=str(client.path / '.gitattributes'))
+                click.edit(filename=str(client.path / ".gitattributes"))
 
     # Finally remove the files.
     final_sources = list(set(files.values()))
     if final_sources:
-        run(['git', 'rm', '-rf'] + final_sources, check=True)
+        run(["git", "rm", "-rf"] + final_sources, check=True)

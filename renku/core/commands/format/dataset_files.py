@@ -30,12 +30,14 @@ def tabular(client, records):
     """
     return tabulate(
         records,
-        headers=OrderedDict((
-            ('added', None),
-            ('creators_csv', 'creators'),
-            ('dataset', None),
-            ('full_path', 'path'),
-        )),
+        headers=OrderedDict(
+            (
+                ("added", None),
+                ("creators_csv", "creators"),
+                ("dataset", None),
+                ("full_path", "path"),
+            )
+        ),
     )
 
 
@@ -52,8 +54,5 @@ def jsonld(client, records):
     return dumps(data, indent=2)
 
 
-DATASET_FILES_FORMATS = {
-    'tabular': tabular,
-    'json-ld': jsonld,
-}
+DATASET_FILES_FORMATS = {"tabular": tabular, "json-ld": jsonld}
 """Valid formatting options."""

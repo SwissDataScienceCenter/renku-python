@@ -33,7 +33,7 @@ class LinkReference:
     client = attr.ib()
     name = attr.ib()
 
-    REFS = 'refs'
+    REFS = "refs"
     """Define a name of the folder with references in the Renku folder."""
 
     @classmethod
@@ -51,9 +51,8 @@ class LinkReference:
         - it ends with ".lock", or
         - it contains a "@{" portion
         """
-        params = ('--allow-onelevel', name) if no_slashes else (name, )
-        return subprocess.run(('git', 'check-ref-format') +
-                              params).returncode == 0
+        params = ("--allow-onelevel", name) if no_slashes else (name,)
+        return subprocess.run(("git", "check-ref-format") + params).returncode == 0
 
     @name.validator
     def name_validator(self, attribute, value):
@@ -84,7 +83,7 @@ class LinkReference:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(
             os.path.relpath(str(reference_path), start=str(self.path.parent)),
-            str(self.path)
+            str(self.path),
         )
 
     @classmethod
@@ -94,7 +93,7 @@ class LinkReference:
         if common_path:
             path = path / common_path
 
-        for name in path.rglob('*'):
+        for name in path.rglob("*"):
             if name.is_dir():
                 continue
             yield cls(client=client, name=str(name.relative_to(refs_path)))

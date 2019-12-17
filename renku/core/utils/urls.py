@@ -39,12 +39,12 @@ def url_to_string(url):
     if isinstance(url, str):
         return url
 
-    raise ValueError('url value not recognized')
+    raise ValueError("url value not recognized")
 
 
 def remove_credentials(url):
     """Remove username and password from a URL."""
     if url is None:
-        return ''
+        return ""
     parsed = urllib.parse.urlparse(url)
     return parsed._replace(netloc=parsed.hostname).geturl()

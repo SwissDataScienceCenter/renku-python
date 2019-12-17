@@ -60,20 +60,20 @@ class StorageApiMixin(RepositoryApiMixin):
     use_external_storage = attr.ib(default=True)
     """Use external storage (e.g. LFS)."""
 
-    _CMD_STORAGE_INSTALL = ['git', 'lfs', 'install', '--local']
+    _CMD_STORAGE_INSTALL = ["git", "lfs", "install", "--local"]
 
-    _CMD_STORAGE_TRACK = ['git', 'lfs', 'track', '--']
+    _CMD_STORAGE_TRACK = ["git", "lfs", "track", "--"]
 
-    _CMD_STORAGE_UNTRACK = ['git', 'lfs', 'untrack', '--']
+    _CMD_STORAGE_UNTRACK = ["git", "lfs", "untrack", "--"]
 
-    _CMD_STORAGE_CHECKOUT = ['git', 'lfs', 'checkout']
+    _CMD_STORAGE_CHECKOUT = ["git", "lfs", "checkout"]
 
-    _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', '-I']
+    _CMD_STORAGE_PULL = ["git", "lfs", "pull", "-I"]
 
     @cached_property
     def storage_installed(self):
         """Verify that git-lfs is installed and on system PATH."""
-        return bool(which('git-lfs'))
+        return bool(which("git-lfs"))
 
     @cached_property
     def has_external_storage(self):
@@ -82,7 +82,7 @@ class StorageApiMixin(RepositoryApiMixin):
         :raises: ``errors.ExternalStorageNotInstalled``
         :raises: ``errors.ExternalStorageDisabled``
         """
-        repo_config = self.repo.config_reader(config_level='repository')
+        repo_config = self.repo.config_reader(config_level="repository")
         lfs_enabled = repo_config.has_section('filter "lfs"')
 
         storage_enabled = lfs_enabled and self.storage_installed
@@ -98,15 +98,13 @@ class StorageApiMixin(RepositoryApiMixin):
         """Initialize the external storage for data."""
         try:
             call(
-                self._CMD_STORAGE_INSTALL + (['--force'] if force else []),
+                self._CMD_STORAGE_INSTALL + (["--force"] if force else []),
                 stdout=PIPE,
                 stderr=STDOUT,
                 cwd=str(self.path.absolute()),
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError(
-                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-            )
+            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
 
     def init_repository(self, name=None, force=False):
         """Initialize a local Renku repository."""
@@ -127,13 +125,13 @@ class StorageApiMixin(RepositoryApiMixin):
 
         for path in paths:
             # Do not add files with filter=lfs in .gitattributes
-            if attrs.get(path, {}).get('filter') == 'lfs':
+            if attrs.get(path, {}).get("filter") == "lfs":
                 continue
 
             path = Path(path)
             if path.is_dir():
-                track_paths.append(str(path / '**'))
-            elif path.suffix != '.ipynb':
+                track_paths.append(str(path / "**"))
+            elif path.suffix != ".ipynb":
                 # TODO create configurable filter and follow .gitattributes
                 track_paths.append(str(path))
 
@@ -146,9 +144,7 @@ class StorageApiMixin(RepositoryApiMixin):
                     cwd=str(self.path),
                 )
             except (KeyboardInterrupt, OSError) as e:
-                raise errors.ParameterError(
-                    'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-                )
+                raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
 
     @ensure_external_storage
     def untrack_paths_from_storage(self, *paths):
@@ -161,31 +157,32 @@ class StorageApiMixin(RepositoryApiMixin):
                 cwd=str(self.path),
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError(
-                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-            )
+            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
 
     @ensure_external_storage
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
         import math
+
         client_dict = defaultdict(list)
 
         for path in _expand_directories(paths):
-            client, commit, path = self.resolve_in_submodules(
-                self.repo.commit(), path
-            )
+            client, commit, path = self.resolve_in_submodules(self.repo.commit(), path)
             client_dict[client.path].append(str(path))
 
         for client_path, paths in client_dict.items():
             batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
             for index in range(batch_size):
                 run(
-                    self._CMD_STORAGE_PULL + [
+                    self._CMD_STORAGE_PULL
+                    + [
                         shlex.quote(
-                            ','.join(
-                                paths[index * ARGUMENT_BATCH_SIZE:(index + 1) *
-                                      ARGUMENT_BATCH_SIZE]
+                            ",".join(
+                                paths[
+                                    index
+                                    * ARGUMENT_BATCH_SIZE : (index + 1)
+                                    * ARGUMENT_BATCH_SIZE
+                                ]
                             )
                         )
                     ],

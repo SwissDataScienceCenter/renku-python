@@ -22,4 +22,4 @@ from .workflow import Workflow
 
 WORKFLOW_STEP_RUN_TYPES = (CommandLineTool, Workflow)
 
-__all__ = ('CommandLineTool', 'CWLClass', 'Workflow', 'ascwl')
+__all__ = ("CommandLineTool", "CWLClass", "Workflow", "ascwl")

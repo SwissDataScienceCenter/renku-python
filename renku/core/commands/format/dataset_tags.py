@@ -30,16 +30,18 @@ def tabular(client, tags):
     """
     return tabulate(
         tags,
-        headers=OrderedDict((
-            ('created', None),
-            ('name', None),
-            ('description', None),
-            ('dataset', None),
-            ('commit', None),
-        )),
+        headers=OrderedDict(
+            (
+                ("created", None),
+                ("name", None),
+                ("description", None),
+                ("dataset", None),
+                ("commit", None),
+            )
+        ),
         # workaround for tabulate issue 181
         # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
-        disable_numparse=[1, 2, 4] if len(tags) > 0 else False
+        disable_numparse=[1, 2, 4] if len(tags) > 0 else False,
     )
 
 
@@ -56,8 +58,5 @@ def jsonld(client, tags):
     return dumps(data, indent=2)
 
 
-DATASET_TAGS_FORMATS = {
-    'tabular': tabular,
-    'json-ld': jsonld,
-}
+DATASET_TAGS_FORMATS = {"tabular": tabular, "json-ld": jsonld}
 """Valid formatting options."""

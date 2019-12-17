@@ -24,14 +24,14 @@ import requests
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.utils.doi import is_doi
 
-DOI_BASE_URL = 'https://dx.doi.org'
+DOI_BASE_URL = "https://dx.doi.org"
 
 
 def make_doi_url(doi):
     """Create URL to access DOI metadata."""
     urlparts = urllib.parse.urlparse(doi)
-    if urlparts.scheme == 'doi':
-        urlparts = urlparts._replace(scheme='')
+    if urlparts.scheme == "doi":
+        urlparts = urlparts._replace(scheme="")
         doi = urlparts.geturl()
     return urllib.parse.urljoin(DOI_BASE_URL, doi)
 
@@ -73,9 +73,7 @@ class DOIMetadataSerializer:
 class DOIProvider(ProviderApi):
     """doi.org registry API provider."""
 
-    headers = attr.ib(
-        default={'accept': 'application/vnd.citationstyles.csl+json'}
-    )
+    headers = attr.ib(default={"accept": "application/vnd.citationstyles.csl+json"})
     timeout = attr.ib(default=3)
 
     @staticmethod
@@ -90,21 +88,18 @@ class DOIProvider(ProviderApi):
     def _serialize(response):
         """Serialize HTTP response for DOI."""
         return DOIMetadataSerializer(
-            **{
-                key.replace('-', '_').lower(): value
-                for key, value in response.items()
-            }
+            **{key.replace("-", "_").lower(): value for key, value in response.items()}
         )
 
     def _query(self, doi):
         """Retrieve metadata for given doi."""
         url = doi
-        if doi.startswith('http') is False:
+        if doi.startswith("http") is False:
             url = make_doi_url(doi)
 
         response = requests.get(url, headers=self.headers)
         if response.status_code != 200:
-            raise LookupError('record not found')
+            raise LookupError("record not found")
 
         return response
 

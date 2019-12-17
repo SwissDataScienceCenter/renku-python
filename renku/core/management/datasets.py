@@ -36,8 +36,13 @@ from git import GitCommandError, GitError, Repo
 from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
-    generate_default_short_name, is_dataset_name_valid
+from renku.core.models.datasets import (
+    Dataset,
+    DatasetFile,
+    DatasetTag,
+    generate_default_short_name,
+    is_dataset_name_valid,
+)
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -49,10 +54,10 @@ from renku.core.utils.urls import remove_credentials
 class DatasetsApiMixin(object):
     """Client for handling datasets."""
 
-    datadir = attr.ib(default='data', converter=str)
+    datadir = attr.ib(default="data", converter=str)
     """Define a name of the folder for storing datasets."""
 
-    DATASETS = 'datasets'
+    DATASETS = "datasets"
     """Directory for storing dataset metadata in Renku."""
 
     @property
@@ -74,9 +79,7 @@ class DatasetsApiMixin(object):
                 blob = tree / self.METADATA
             except KeyError:
                 continue
-            dataset = Dataset.from_yaml(
-                self.path / Path(blob.path), client=self
-            )
+            dataset = Dataset.from_yaml(self.path / Path(blob.path), client=self)
             dataset.commit = commit
             yield dataset
 
@@ -101,9 +104,7 @@ class DatasetsApiMixin(object):
         path = self.renku_datasets_path / name / self.METADATA
         if not path.exists():
             try:
-                path = LinkReference(
-                    client=self, name='datasets/' + name
-                ).reference
+                path = LinkReference(client=self, name="datasets/" + name).reference
             except errors.ParameterError:
                 return None
 
@@ -129,9 +130,7 @@ class DatasetsApiMixin(object):
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(name)
         elif create:
-            raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(name)
-            )
+            raise errors.DatasetExistsError('Dataset exists: "{}".'.format(name))
 
         dataset_path = self.path / self.datadir / dataset.short_name
         dataset_path.mkdir(parents=True, exist_ok=True)
@@ -154,12 +153,10 @@ class DatasetsApiMixin(object):
 
         dataset.to_yaml()
 
-    def create_dataset(
-        self, name, short_name=None, description='', creators=()
-    ):
+    def create_dataset(self, name, short_name=None, description="", creators=()):
         """Create a dataset."""
         if not name:
-            raise errors.ParameterError('Dataset name must be provided.')
+            raise errors.ParameterError("Dataset name must be provided.")
 
         if not short_name:
             short_name = generate_default_short_name(name, None)
@@ -170,17 +167,15 @@ class DatasetsApiMixin(object):
             )
 
         if self.load_dataset(name=short_name):
-            raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(short_name)
-            )
+            raise errors.DatasetExistsError('Dataset exists: "{}".'.format(short_name))
 
         identifier = str(uuid.uuid4())
-        path = (self.renku_datasets_path / identifier / self.METADATA)
+        path = self.renku_datasets_path / identifier / self.METADATA
         try:
             path.parent.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             raise errors.DatasetExistsError(
-                'Dataset with reference {} exists'.format(path.parent)
+                "Dataset with reference {} exists".format(path.parent)
             )
 
         with with_reference(path):
@@ -190,12 +185,10 @@ class DatasetsApiMixin(object):
                 name=name,
                 short_name=short_name,
                 description=description,
-                creator=creators
+                creator=creators,
             )
 
-        dataset_ref = LinkReference.create(
-            client=self, name='datasets/' + short_name
-        )
+        dataset_ref = LinkReference.create(client=self, name="datasets/" + short_name)
         dataset_ref.set_reference(path)
 
         dataset.to_yaml()
@@ -208,15 +201,15 @@ class DatasetsApiMixin(object):
         urls,
         force=False,
         sources=(),
-        destination='',
+        destination="",
         ref=None,
-        link=False
+        link=False,
     ):
         """Import the data into the data directory."""
-        warning_message = ''
+        warning_message = ""
         dataset_path = self.path / self.datadir / dataset.short_name
 
-        destination = destination or Path('.')
+        destination = destination or Path(".")
         destination = self._resolve_path(dataset_path, destination)
         destination = self.path / dataset_path / destination
 
@@ -227,9 +220,7 @@ class DatasetsApiMixin(object):
 
             if is_git and is_remote:  # Remote git repo
                 sources = sources or ()
-                data = self._add_from_git(
-                    dataset, url, sources, destination, ref
-                )
+                data = self._add_from_git(dataset, url, sources, destination, ref)
             else:
                 if sources:
                     raise errors.UsageError(
@@ -238,21 +229,20 @@ class DatasetsApiMixin(object):
 
                 if not is_remote:  # Local path, might be git
                     if is_git:
-                        warning_message = 'Adding data from local Git ' \
-                            'repository. Use remote\'s Git URL instead to ' \
-                            'enable lineage information and updates.'
+                        warning_message = (
+                            "Adding data from local Git "
+                            "repository. Use remote's Git URL instead to "
+                            "enable lineage information and updates."
+                        )
                     u = parse.urlparse(url)
-                    data = self._add_from_local(
-                        dataset, u.path, link, destination
-                    )
+                    data = self._add_from_local(dataset, u.path, link, destination)
                 else:  # Remote URL
                     data = self._add_from_url(dataset, url, destination)
 
             files.extend(data)
-            self.track_paths_in_storage(*(f['path'] for f in files))
+            self.track_paths_in_storage(*(f["path"] for f in files))
 
-        ignored = self.find_ignored_paths(*(data['path']
-                                            for data in files)) or []
+        ignored = self.find_ignored_paths(*(data["path"] for data in files)) or []
 
         if ignored:
             if force:
@@ -261,28 +251,29 @@ class DatasetsApiMixin(object):
                 raise errors.IgnoredFiles(ignored)
 
         # commit all new data
-        file_paths = {str(data['path']) for data in files if str(data['path'])}
+        file_paths = {str(data["path"]) for data in files if str(data["path"])}
         self.repo.git.add(*(file_paths - set(ignored)))
 
         if not self.repo.is_dirty():
             return warning_message
 
         self.repo.index.commit(
-            'renku dataset: commiting {} newly added files'.
-            format(len(file_paths) + len(ignored))
+            "renku dataset: commiting {} newly added files".format(
+                len(file_paths) + len(ignored)
+            )
         )
 
         # Generate the DatasetFiles
         dataset_files = []
         for data in files:
-            if os.path.basename(str(data['path'])) == '.git':
+            if os.path.basename(str(data["path"])) == ".git":
                 continue
 
             datasetfile = DatasetFile.from_revision(self, **data)
 
             # Set dataset file path relative to projects root for submodules
             if datasetfile.client != self:
-                datasetfile.path = str(data['path'])
+                datasetfile.path = str(data["path"])
             dataset_files.append(datasetfile)
         dataset.update_files(dataset_files)
 
@@ -293,9 +284,7 @@ class DatasetsApiMixin(object):
         src = Path(path).resolve()
 
         if not src.exists():
-            raise errors.ParameterError(
-                'Cannot find file/directory: {}'.format(path)
-            )
+            raise errors.ParameterError("Cannot find file/directory: {}".format(path))
 
         if destination.exists() and destination.is_dir():
             destination = destination / src.name
@@ -303,9 +292,9 @@ class DatasetsApiMixin(object):
         # if we have a directory, recurse
         if src.is_dir():
             if destination.exists() and not destination.is_dir():
-                raise errors.ParameterError('Cannot copy directory to a file')
+                raise errors.ParameterError("Cannot copy directory to a file")
 
-            if src.name == '.git':
+            if src.name == ".git":
                 # Cannot have a '.git' directory inside a Git repo
                 return []
 
@@ -317,7 +306,7 @@ class DatasetsApiMixin(object):
                         dataset,
                         f.absolute().as_posix(),
                         link=link,
-                        destination=destination
+                        destination=destination,
                     )
                 )
             return files
@@ -328,12 +317,14 @@ class DatasetsApiMixin(object):
             except ValueError:
                 pass
             else:
-                return [{
-                    'path': path_in_repo,
-                    'url': path_in_repo,
-                    'creator': dataset.creator,
-                    'parent': self
-                }]
+                return [
+                    {
+                        "path": path_in_repo,
+                        "url": path_in_repo,
+                        "creator": dataset.creator,
+                        "parent": self,
+                    }
+                ]
 
         # Make sure the parent directory exists.
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -343,18 +334,19 @@ class DatasetsApiMixin(object):
                 os.link(str(src), str(destination))
             except Exception as e:
                 raise errors.OperationError(
-                    'Could not create hard link '
-                    '- retry without --link.'
+                    "Could not create hard link " "- retry without --link."
                 ) from e
         else:
             shutil.copy(str(src), str(destination))
 
-        return [{
-            'path': destination.relative_to(self.path),
-            'url': 'file://' + os.path.relpath(str(src), str(self.path)),
-            'creator': dataset.creator,
-            'parent': self
-        }]
+        return [
+            {
+                "path": destination.relative_to(self.path),
+                "url": "file://" + os.path.relpath(str(src), str(self.path)),
+                "creator": dataset.creator,
+                "parent": self,
+            }
+        ]
 
     def _add_from_url(self, dataset, url, destination):
         """Process an add from url and return the location on disk."""
@@ -366,20 +358,20 @@ class DatasetsApiMixin(object):
             response = requests.get(url)
             destination.write_bytes(response.content)
         except error.HTTPError as e:  # pragma nocover
-            raise errors.OperationError(
-                'Cannot download from {}'.format(url)
-            ) from e
+            raise errors.OperationError("Cannot download from {}".format(url)) from e
 
         # make the added file read-only
         mode = destination.stat().st_mode & 0o777
         destination.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
-        return [{
-            'path': destination.relative_to(self.path),
-            'url': remove_credentials(url),
-            'creator': dataset.creator,
-            'parent': self
-        }]
+        return [
+            {
+                "path": destination.relative_to(self.path),
+                "url": remove_credentials(url),
+                "creator": dataset.creator,
+                "parent": self,
+            }
+        ]
 
     def _add_from_git(self, dataset, url, sources, destination, ref):
         """Process adding resources from another git repository."""
@@ -395,9 +387,7 @@ class DatasetsApiMixin(object):
         files = set()
         for file in repo.head.commit.tree.traverse():
             path = file.path
-            result = self._get_src_and_dst(
-                path, repo_path, sources, destination
-            )
+            result = self._get_src_and_dst(path, repo_path, sources, destination)
 
             if result:
                 files.add(result)
@@ -408,7 +398,7 @@ class DatasetsApiMixin(object):
         if uncopied_sources:
             uncopied_sources = {str(s) for s in uncopied_sources}
             raise errors.ParameterError(
-                'No such file or directory', param_hint=uncopied_sources
+                "No such file or directory", param_hint=uncopied_sources
             )
 
         # Create metadata and move files to dataset
@@ -451,13 +441,15 @@ class DatasetsApiMixin(object):
 
                 path_in_dst_repo = dst.relative_to(self.path)
 
-                results.append({
-                    'path': path_in_dst_repo,
-                    'url': remove_credentials(url),
-                    'creator': creators,
-                    'parent': self,
-                    'based_on': based_on
-                })
+                results.append(
+                    {
+                        "path": path_in_dst_repo,
+                        "url": remove_credentials(url),
+                        "creator": creators,
+                        "parent": self,
+                        "based_on": based_on,
+                    }
+                )
 
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(str(src), str(dst))
@@ -475,12 +467,12 @@ class DatasetsApiMixin(object):
             return (root_path / path).resolve().relative_to(root_path)
         except ValueError:
             raise errors.ParameterError(
-                'File {} is not within path {}'.format(path, root_path)
+                "File {} is not within path {}".format(path, root_path)
             )
 
     def _get_src_and_dst(self, path, repo_path, sources, dst_root):
         if not sources:
-            source = Path('.')
+            source = Path(".")
         else:
             source = None
             for s in sources:
@@ -510,10 +502,10 @@ class DatasetsApiMixin(object):
             if len(sources) == 1 and not src.is_dir():
                 dst = dst_root
             elif not sources:
-                raise errors.ParameterError('Cannot copy repo to file')
+                raise errors.ParameterError("Cannot copy repo to file")
             else:
                 raise errors.ParameterError(
-                    'Cannot copy multiple files or directories to a file'
+                    "Cannot copy multiple files or directories to a file"
                 )
 
         return (path, src, dst, source)
@@ -522,21 +514,23 @@ class DatasetsApiMixin(object):
         """Fetch and checkout paths that are tracked by Git LFS."""
         repo_path = str(repo_path)
         try:
-            output = run(('git', 'lfs', 'ls-files', '--name-only'),
-                         stdout=PIPE,
-                         cwd=repo_path,
-                         universal_newlines=True)
+            output = run(
+                ("git", "lfs", "ls-files", "--name-only"),
+                stdout=PIPE,
+                cwd=repo_path,
+                universal_newlines=True,
+            )
         except SubprocessError:
             return
 
-        lfs_files = set(output.stdout.split('\n'))
+        lfs_files = set(output.stdout.split("\n"))
         files = lfs_files & paths
         if not files:
             return
 
         try:
             for path in files:
-                run(['git', 'lfs', 'pull', '--include', path], cwd=repo_path)
+                run(["git", "lfs", "pull", "--include", path], cwd=repo_path)
         except KeyboardInterrupt:
             raise
         except SubprocessError:
@@ -560,17 +554,18 @@ class DatasetsApiMixin(object):
         # instead of an absolute URL.
         try:
             branch_remote = self.repo.config_reader().get(
-                'branch "{}"'.format(self.repo.active_branch.name), 'remote'
+                'branch "{}"'.format(self.repo.active_branch.name), "remote"
             )
         except NoSectionError:
-            branch_remote = 'origin'
+            branch_remote = "origin"
 
         try:
             remote = self.repo.remote(branch_remote)
         except ValueError:
             warnings.warn(
-                'Remote {} not found, cannot check for relative URL.'.
-                format(branch_remote)
+                "Remote {} not found, cannot check for relative URL.".format(
+                    branch_remote
+                )
             )
             return url
 
@@ -580,8 +575,9 @@ class DatasetsApiMixin(object):
         if remote_url.hostname == submodule_url.hostname:
             # construct the relative path
             url = Path(
-                '../../{}'.format(submodule_url.owner) if remote_url.owner ==
-                submodule_url.owner else '..'
+                "../../{}".format(submodule_url.owner)
+                if remote_url.owner == submodule_url.owner
+                else ".."
             )
             url = str(url / submodule_url.name)
         return url
@@ -599,7 +595,7 @@ class DatasetsApiMixin(object):
 
         return commits
 
-    def add_dataset_tag(self, dataset, tag, description='', force=False):
+    def add_dataset_tag(self, dataset, tag, description="", force=False):
         """Adds a new tag to a dataset.
 
         Validates if the tag already exists and that the tag follows
@@ -610,21 +606,23 @@ class DatasetsApiMixin(object):
         :raises: ValueError
         """
         if len(tag) > 128:
-            raise ValueError('Tags can be at most 128 characters long.')
+            raise ValueError("Tags can be at most 128 characters long.")
 
-        if not re.match('^(?![.-])[a-zA-Z0-9_.-]{1,128}$', tag):
-            raise ValueError((
-                'Tag {} is invalid. \n'
-                'Only characters a-z, A-Z, 0-9, ., - and _ '
-                'are allowed. \nTag can\'t start with a . or -'
-            ).format(tag))
+        if not re.match("^(?![.-])[a-zA-Z0-9_.-]{1,128}$", tag):
+            raise ValueError(
+                (
+                    "Tag {} is invalid. \n"
+                    "Only characters a-z, A-Z, 0-9, ., - and _ "
+                    "are allowed. \nTag can't start with a . or -"
+                ).format(tag)
+            )
 
         if any(t for t in dataset.tags if t.name == tag):
             if force:
                 # remove duplicate tag
                 dataset.tags = [t for t in dataset.tags if t.name != tag]
             else:
-                raise ValueError('Tag {} already exists'.format(tag))
+                raise ValueError("Tag {} already exists".format(tag))
 
         latest_commit = list(self.dataset_commits(dataset, max_results=1))[0]
 
@@ -632,7 +630,7 @@ class DatasetsApiMixin(object):
             name=tag,
             description=description,
             commit=latest_commit.hexsha,
-            dataset=dataset.name
+            dataset=dataset.name,
         )
 
         dataset.tags.append(tag)
@@ -645,7 +643,7 @@ class DatasetsApiMixin(object):
         not_found = set(tags).difference(tag_names)
 
         if len(not_found) > 0:
-            raise ValueError('Tags {} not found'.format(', '.join(not_found)))
+            raise ValueError("Tags {} not found".format(", ".join(not_found)))
         dataset.tags = [t for t in dataset.tags if t.name not in tags]
 
         return dataset
@@ -675,23 +673,16 @@ class DatasetsApiMixin(object):
                 remote_client = LocalClient(repo_path)
                 visited_repos[url] = repo, repo_path, remote_client
 
-            remote_file = self._fetch_file_metadata(
-                remote_client, based_on.path
-            )
+            remote_file = self._fetch_file_metadata(remote_client, based_on.path)
 
             if not remote_file:
                 try:
                     remote_file = DatasetFile.from_revision(
-                        remote_client,
-                        path=based_on.path,
-                        url=url,
-                        added=based_on.added
+                        remote_client, path=based_on.path, url=url, added=based_on.added
                     )
                 except KeyError:
                     raise errors.ParameterError(
-                        'Cannot find file {} in the repo {}'.format(
-                            based_on.url, url
-                        )
+                        "Cannot find file {} in the repo {}".format(based_on.url, url)
                     )
 
             commit_sha = self._get_commit_sha_from_label(based_on)
@@ -723,7 +714,7 @@ class DatasetsApiMixin(object):
         # Force-add to include possible ignored files that are in datasets
         self.repo.git.add(*(file_paths), force=True)
         self.repo.index.commit(
-            'renku dataset: updated {} files and deleted {} files'.format(
+            "renku dataset: updated {} files and deleted {} files".format(
                 len(updated_files), len(deleted_files)
             )
         )
@@ -742,10 +733,7 @@ class DatasetsApiMixin(object):
                     creators.append(creator)
 
             new_file = DatasetFile.from_revision(
-                self,
-                path=file_.path,
-                based_on=file_.based_on,
-                creator=creators
+                self, path=file_.path, based_on=file_.based_on, creator=creators
             )
             file_.dataset.update_files([new_file])
             modified_datasets[file_.dataset.name] = file_.dataset
@@ -766,21 +754,19 @@ class DatasetsApiMixin(object):
                 repo.git.checkout(ref)
             except GitCommandError:
                 raise errors.ParameterError(
-                    'Cannot find reference "{}" in Git repository: {}'.format(
-                        ref, url
-                    )
+                    'Cannot find reference "{}" in Git repository: {}'.format(ref, url)
                 )
 
-        RENKU_BRANCH = 'renku-default-branch'
+        RENKU_BRANCH = "renku-default-branch"
         ref = ref or RENKU_BRANCH
         u = GitURL.parse(url)
         path = u.pathname
-        if u.hostname == 'localhost':
+        if u.hostname == "localhost":
             path = str(Path(path).resolve())
             url = path
         repo_name = os.path.splitext(os.path.basename(path))[0]
-        path = os.path.dirname(path).lstrip('/')
-        repo_path = self.renku_path / 'cache' / u.hostname / path / repo_name
+        path = os.path.dirname(path).lstrip("/")
+        repo_path = self.renku_path / "cache" / u.hostname / path / repo_name
 
         if repo_path.exists():
             repo = Repo(str(repo_path))
@@ -803,8 +789,7 @@ class DatasetsApiMixin(object):
                 shutil.rmtree(str(repo_path))
             except PermissionError:
                 raise errors.InvalidFileOperation(
-                    'Cannot delete files in {}: Permission denied'.
-                    format(repo_path)
+                    "Cannot delete files in {}: Permission denied".format(repo_path)
                 )
 
         repo = clone(url, path=str(repo_path), install_githooks=False)
@@ -812,16 +797,14 @@ class DatasetsApiMixin(object):
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It
         # is used to refer to the default branch later.
-        renku_ref = 'refs/heads/' + RENKU_BRANCH
+        renku_ref = "refs/heads/" + RENKU_BRANCH
         try:
-            repo.git.execute([
-                'git', 'symbolic-ref', renku_ref, repo.head.reference.path
-            ])
+            repo.git.execute(
+                ["git", "symbolic-ref", renku_ref, repo.head.reference.path]
+            )
             checkout(repo, ref)
         except GitCommandError as e:
-            raise errors.GitError(
-                'Cannot clone remote Git repo: {}'.format(url)
-            ) from e
+            raise errors.GitError("Cannot clone remote Git repo: {}".format(url)) from e
         else:
             return repo, repo_path
 
@@ -836,8 +819,8 @@ class DatasetsApiMixin(object):
     @staticmethod
     def _get_commit_sha_from_label(dataset_file):
         label = dataset_file._label
-        if '@' in label:
-            return label.split('@')[1]
+        if "@" in label:
+            return label.split("@")[1]
         return label
 
 
@@ -846,15 +829,13 @@ def _check_url(url):
     u = parse.urlparse(url)
 
     if u.scheme not in Dataset.SUPPORTED_SCHEMES:
-        raise errors.UrlSchemeNotSupported(
-            'Scheme "{}" not supported'.format(u.scheme)
-        )
+        raise errors.UrlSchemeNotSupported('Scheme "{}" not supported'.format(u.scheme))
 
-    is_remote = u.scheme not in ('', 'file') or url.startswith('git@')
+    is_remote = u.scheme not in ("", "file") or url.startswith("git@")
     is_git = False
 
     if is_remote:
-        is_git = u.path.endswith('.git')
+        is_git = u.path.endswith(".git")
     else:
         try:
             Repo(u.path, search_parent_directories=True)

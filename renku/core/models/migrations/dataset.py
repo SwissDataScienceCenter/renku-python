@@ -22,48 +22,48 @@ from pathlib import Path
 
 def migrate_dataset_schema(data):
     """Migrate from old dataset formats."""
-    if 'authors' not in data:
+    if "authors" not in data:
         return
 
-    data['@context']['creator'] = data['@context'].pop(
-        'authors', {'@container': 'list'}
+    data["@context"]["creator"] = data["@context"].pop(
+        "authors", {"@container": "list"}
     )
 
-    data['creator'] = data.pop('authors', {})
+    data["creator"] = data.pop("authors", {})
 
-    files = data.get('files', [])
+    files = data.get("files", [])
 
     if isinstance(files, dict):
         files = files.values()
     for file_ in files:
-        file_['creator'] = file_.pop('authors', {})
+        file_["creator"] = file_.pop("authors", {})
 
     return data
 
 
 def migrate_absolute_paths(data):
     """Migrate dataset paths to use relative path."""
-    raw_path = data.get('path', '.')
+    raw_path = data.get("path", ".")
     path = Path(raw_path)
 
     if path.is_absolute():
         try:
-            data['path'] = path.relative_to(os.getcwd())
+            data["path"] = path.relative_to(os.getcwd())
         except ValueError:
-            elements = raw_path.split('/')
-            index = elements.index('.renku')
-            data['path'] = Path('/'.join(elements[index:]))
+            elements = raw_path.split("/")
+            index = elements.index(".renku")
+            data["path"] = Path("/".join(elements[index:]))
 
-    files = data.get('files', [])
+    files = data.get("files", [])
 
     if isinstance(files, dict):
         files = list(files.values())
 
     for file_ in files:
-        path = Path(file_.get('path'), '.')
+        path = Path(file_.get("path"), ".")
         if path.is_absolute():
-            file_['path'] = path.relative_to((os.getcwd()))
-    data['files'] = files
+            file_["path"] = path.relative_to((os.getcwd()))
+    data["files"] = files
     return data
 
 
@@ -71,15 +71,12 @@ def migrate_doi_identifier(data):
     """If the dataset has a doi, make identifier be based on it."""
     from renku.core.utils.doi import is_doi, extract_doi
 
-    if is_doi(data.get('_id', '')):
-        data['identifier'] = extract_doi(data.get('_id'))
-        data['same_as'] = data['_id']
-        if data.get('@context'):
-            data['@context'].setdefault('same_as', 'schema:sameAs')
+    if is_doi(data.get("_id", "")):
+        data["identifier"] = extract_doi(data.get("_id"))
+        data["same_as"] = data["_id"]
+        if data.get("@context"):
+            data["@context"].setdefault("same_as", "schema:sameAs")
     return data
 
 
-DATASET_MIGRATIONS = [
-    migrate_absolute_paths,
-    migrate_dataset_schema,
-]
+DATASET_MIGRATIONS = [migrate_absolute_paths, migrate_dataset_schema]
