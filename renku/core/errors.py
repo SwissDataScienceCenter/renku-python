@@ -128,7 +128,7 @@ class MissingEmail(ConfigurationError):
             'Please use the "git config" command to configure it.\n\n'
             '\tgit config --set user.email "john.doe@example.com"\n'
         )
-        super(MissingUsername, self).__init__(message)
+        super().__init__(message)
 
 
 class AuthenticationError(RenkuException):
