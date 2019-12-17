@@ -24,8 +24,7 @@ from tests.core.commands.test_init import TEMPLATE_NAME, TEMPLATE_REF, \
     TEMPLATE_URL
 
 from renku.cli import cli
-from renku.cli.init import create_printable_descriptions, \
-    create_template_sentence
+from renku.cli.init import create_template_sentence
 
 INIT = ['init', 'test-new-project', '--template', TEMPLATE_NAME]
 INIT_REMOTE = [
@@ -35,39 +34,22 @@ INIT_FORCE = ['--force']
 INIT_VARIABLES = ['--template-variables']
 
 
-def test_create_printable_descriptions():
-    templates = [{
-        'folder': 'folder_p',
-        'name': 'Template Python',
-        'description': 'Description Python'
-    }, {
-        'folder': 'folder_r',
-        'name': 'Template R',
-        'description': 'Description R'
-    }]
-    sentence = create_printable_descriptions(templates)
-    assert sentence == (
-        '[1] Template Python: Description Python\n'
-        '[2] Template R: Description R'
-    )
-
-
 def test_template_selection_helpers():
     templates = [{
-        'folder': 'folder_p',
         'name': 'Template Python',
         'description': 'Description Python'
     }, {
-        'folder': 'folder_r',
         'name': 'Template R',
         'description': 'Description R'
     }]
+    instructions = 'Please choose a template by typing the number'
     sentence = create_template_sentence(templates)
-    assert sentence == (
-        'Please choose a template by typing the number '
-        '([1] Template Python, [2] Template R) '
-        'or [0] to print the description'
-    )
+    stripped_sentence = ' '.join(sentence.split())
+    assert '1 Template Python Description Python' in stripped_sentence
+    assert '2 Template R Description R' in stripped_sentence
+    assert instructions not in stripped_sentence
+    full_sentence = create_template_sentence(templates, True)
+    assert instructions in full_sentence
 
 
 @pytest.mark.integration

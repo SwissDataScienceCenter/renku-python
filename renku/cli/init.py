@@ -66,12 +66,14 @@ was not installed previously.
 
 import ast
 import os
+from collections import OrderedDict
 from pathlib import Path
 from tempfile import mkdtemp
 
 import attr
 import click
 import pkg_resources
+from tabulate import tabulate
 
 from renku.core import errors
 from renku.core.commands.client import pass_local_client
@@ -125,36 +127,32 @@ def store_directory(ctx, param, value):
     return value
 
 
-def create_template_sentence(templates):
+def create_template_sentence(templates, instructions=False):
     """Create templates choice sentence.
 
     :ref templates: list of templates coming from manifest file
+    :ref instructions: print instructions on how to proceed
     """
-    template_sentences = []
+    templates_friendly = []
     for index, template_elem in enumerate(templates):
-        template_sentences.append(
-            '[{0}] {1}'.format(index + 1, template_elem['name'])
-        )
-    template_sentence = ', '.join(template_sentences)
-    return (
-        'Please choose a template by typing the number '
-        '({0}) or [0] to print the description'.format(template_sentence)
+        templates_friendly.append({
+            'index': index + 1,
+            'name': template_elem['name'],
+            'description': template_elem['description'],
+        })
+
+    text = tabulate(
+        templates_friendly,
+        headers=OrderedDict((
+            ('index', 'Number'),
+            ('name', 'Name'),
+            ('description', 'Description'),
+        ))
     )
 
-
-def create_printable_descriptions(templates):
-    """Create description string of the templates.
-
-    :ref templates: list of templates coming from manifest file
-    """
-    template_descriptions = []
-    for index, template in enumerate(templates):
-        template_descriptions.append(
-            '[{0}] {1}: {2}'.format(
-                index + 1, template['name'], template['description']
-            )
-        )
-    return '\n'.join(template_descriptions)
+    if not instructions:
+        return text
+    return '{0}\nPlease choose a template by typing the number'.format(text)
 
 
 def is_path_empty(path):
@@ -288,9 +286,9 @@ def init(
 
     if print_manifest:
         if template_data:
-            click.echo(create_printable_descriptions([template_data]))
+            click.echo(create_template_sentence([template_data]))
         else:
-            click.echo(create_printable_descriptions(template_manifest))
+            click.echo(create_template_sentence(template_manifest))
         return
 
     if not template or repeat:
@@ -298,17 +296,12 @@ def init(
         if len(templates) == 1:
             template_data = templates[0]
         else:
-            template_num = 0
-            while template_num == 0:
-                template_num = click.prompt(
-                    text=create_template_sentence(templates),
-                    type=click.IntRange(0, len(templates)),
-                    default=0,
-                    show_default=False,
-                    show_choices=False
-                )
-                if template_num == 0:
-                    click.echo(create_printable_descriptions(templates))
+            template_num = click.prompt(
+                text=create_template_sentence(templates, True),
+                type=click.IntRange(1, len(templates)),
+                show_default=False,
+                show_choices=False
+            )
             template_data = templates[template_num - 1]
 
     # clone the repo
