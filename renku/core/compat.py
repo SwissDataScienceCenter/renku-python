@@ -17,7 +17,9 @@
 # limitations under the License.
 """Compatibility layer for different Python versions."""
 
+import cgi
 import contextlib
+import html
 import json
 import os
 import sys
@@ -87,4 +89,12 @@ class PatchedActiveContextCache(pyld.jsonld.ActiveContextCache):
 
 pyld.jsonld._cache = {'activeCtx': PatchedActiveContextCache()}
 
-__all__ = ('FileNotFoundError', 'Path', 'contextlib', 'pyld')
+cgi.escape = html.escape
+
+__all__ = (
+    'FileNotFoundError',
+    'Path',
+    'contextlib',
+    'pyld',
+    'cgi',
+)
