@@ -62,15 +62,13 @@ Ready to contribute? Here's how to set up `renku` for local development.
 
       $ git clone git@github.com:your_name_here/renku.git
 
-3. Install your local copy into a virtualenv. Assuming you have
-   virtualenvwrapper installed, this is how you set up your fork for local
-   development:
+3. Install your local copy into using ``pipenv```:
 
    .. code-block:: console
 
-      $ mkvirtualenv renku
-      $ cd renku/
-      $ pip install -e .[all]
+      $ cd renku-python
+      $ pip install pipenv
+      $ pipenv install .[all]
 
 4. Create a branch for local development:
 
@@ -84,7 +82,7 @@ Ready to contribute? Here's how to set up `renku` for local development.
 
    .. code-block:: console
 
-      $ ./run-tests.sh
+      $ pipenv run ./run-tests.sh
 
    The tests will provide you with test coverage and also check PEP8
    (code style), PEP257 (documentation), flake8 as well as build the Sphinx
@@ -94,12 +92,18 @@ Ready to contribute? Here's how to set up `renku` for local development.
 
    .. code-block:: console
 
-      $ black .
+      $ pipenv run black .
 
-   You may want to set up black_ styling as a `pre-commit hook to do this
-   automatically <https://github.com/psf/black#version-control-integration>`_
+   You may want to set up black_ styling as a pre-commit_ hook by running
+
+   .. code-block:: console
+
+      $ pipenv run pre-commit install
 
    .. _black: https://github.com/psf/black/
+
+   .. _pre-commit: https://pre-commit.com/
+
 
 6. Commit your changes and push your branch to GitHub:
 
