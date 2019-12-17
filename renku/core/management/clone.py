@@ -23,6 +23,7 @@ from git import GitCommandError, Repo
 
 from renku.core import errors
 from renku.core.management.githooks import install
+from renku.core.models.git import GitURL
 
 
 def clone(
@@ -38,7 +39,7 @@ def clone(
     """Clone Renku project repo, install Git hooks and LFS."""
     from renku.core.management.client import LocalClient
 
-    path = path or '.'
+    path = path or GitURL.parse(url).name
     # Clone the project
     if skip_smudge:
         os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
