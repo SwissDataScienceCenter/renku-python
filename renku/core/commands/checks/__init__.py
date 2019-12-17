@@ -20,7 +20,7 @@
 from .githooks import check_git_hooks_installed
 from .migration import check_dataset_metadata, check_missing_files
 from .references import check_missing_references
-from .validate_shacl import check_project_structure, check_datasets_structure
+from .validate_shacl import check_datasets_structure, check_project_structure
 
 # Checks will be executed in the order as they are listed in __all__.
 # They are mostly used in ``doctor`` command to inspect broken things.

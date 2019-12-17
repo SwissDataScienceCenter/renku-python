@@ -91,7 +91,7 @@ from renku.core.commands.options import install_completion, \
     option_use_external_storage
 from renku.core.commands.version import check_version, print_version
 from renku.core.management.client import LocalClient
-from renku.core.management.config import ConfigManagerMixin, RENKU_HOME
+from renku.core.management.config import RENKU_HOME, ConfigManagerMixin
 from renku.core.management.repository import default_path
 
 #: Monkeypatch Click application.
