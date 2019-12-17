@@ -79,7 +79,7 @@ def test_init(isolated_runner):
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
-    assert (new_project / '.renku' / 'metadata.yml').exists()
+    assert (new_project / '.renku' / 'renku.ini').exists()
 
     # try to re-create in the same folder
     result_re = isolated_runner.invoke(cli, INIT)
@@ -90,7 +90,7 @@ def test_init(isolated_runner):
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
-    assert (new_project / '.renku' / 'metadata.yml').exists()
+    assert (new_project / '.renku' / 'renku.ini').exists()
 
 
 @pytest.mark.integration
@@ -136,7 +136,7 @@ def test_init_on_cloned_repo(isolated_runner, data_repository):
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
-    assert (new_project / '.renku' / 'metadata.yml').exists()
+    assert (new_project / '.renku' / 'renku.ini').exists()
 
 
 @pytest.mark.integration
@@ -149,4 +149,4 @@ def test_init_remote(isolated_runner):
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
-    assert (new_project / '.renku' / 'metadata.yml').exists()
+    assert (new_project / '.renku' / 'renku.ini').exists()

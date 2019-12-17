@@ -187,7 +187,9 @@ def test_create_from_template(local_client):
             METADATA['description']
         )
         template_files = [
-            f for f in local_client.path.glob('**/*') if '.git' not in str(f)
+            f
+            for f in local_client.path.glob('**/*') if '.git' not in str(f) and
+            not str(f).endswith('.renku/metadata.yml')
         ]
         for template_file in template_files:
             expected_file = template_path / template_file.relative_to(

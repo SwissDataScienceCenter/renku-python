@@ -81,7 +81,7 @@ def validate_template(template_path):
     """
     # TODO: implement a better check
     required_folders = [RENKU_HOME]
-    required_files = ['{0}/metadata.yml'.format(RENKU_HOME), 'Dockerfile']
+    required_files = ['{0}/renku.ini'.format(RENKU_HOME), 'Dockerfile']
     for folder in required_folders:
         if not Path(template_path, folder).is_dir():
             raise errors.InvalidTemplateError(
