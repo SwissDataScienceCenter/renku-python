@@ -142,6 +142,7 @@ class Person:
     context={
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#'
     },
     frozen=True,
     slots=True,

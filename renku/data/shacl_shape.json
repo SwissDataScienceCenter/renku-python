@@ -724,7 +724,9 @@
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "minCount": 1,
+               "maxCount": 1
             },
             {
                "path": "prov:wasStartedBy",
