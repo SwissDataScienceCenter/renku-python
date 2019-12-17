@@ -74,7 +74,7 @@ def clone(
                 raise errors.GitError(
                     'Cannot write to config. Section path or key is invalid.'
                 )
-            
+
             config_writer.set_value('.'.join(key_path), key, value)
 
         config_writer.release()

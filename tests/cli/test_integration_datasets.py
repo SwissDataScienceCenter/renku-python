@@ -24,6 +24,8 @@ import git
 import pytest
 
 from renku.cli import cli
+from renku.core.commands.clone import renku_clone
+from renku.core.utils.contexts import chdir
 
 
 @pytest.mark.parametrize(
@@ -927,6 +929,29 @@ def test_renku_clone(runner, monkeypatch):
             result = runner.invoke(cli, ['run', 'touch', 'output'])
             assert 'is not configured' in result.output
             assert 1 == result.exit_code
+
+
+@pytest.mark.integration
+def test_renku_clone_with_config(tmpdir):
+    """Test cloning of a Renku repo and existence of required settings."""
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with chdir(tmpdir):
+        renku_clone(
+            REMOTE,
+            config={
+                'user.name': 'sam',
+                'user.email': 's@m.i',
+                'filter.lfs.custom': '0'
+            }
+        )
+
+        repo = git.Repo('datasets-test')
+        reader = repo.config_reader()
+        reader.values()
+
+        lfs_config = dict(reader.items('filter.lfs'))
+        assert '0' == lfs_config.get('custom')
 
 
 @pytest.mark.integration
