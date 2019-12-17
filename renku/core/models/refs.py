@@ -37,7 +37,7 @@ class LinkReference:
     """Define a name of the folder with references in the Renku folder."""
 
     @classmethod
-    def check_ref_format(cls, name):
+    def check_ref_format(cls, name, no_slashes=False):
         r"""Ensures that a reference name is well formed.
 
         It follows Git naming convention:
@@ -51,14 +51,15 @@ class LinkReference:
         - it ends with ".lock", or
         - it contains a "@{" portion
         """
-        return subprocess.run(('git', 'check-ref-format', name)
-                              ).returncode == 0
+        params = ('--allow-onelevel', name) if no_slashes else (name, )
+        return subprocess.run(('git', 'check-ref-format') +
+                              params).returncode == 0
 
     @name.validator
     def name_validator(self, attribute, value):
         """Validate reference name."""
         if not self.check_ref_format(value):
-            raise errors.UsageError(
+            raise errors.ParameterError(
                 'The reference name "{0}" is not valid.'.format(value)
             )
 

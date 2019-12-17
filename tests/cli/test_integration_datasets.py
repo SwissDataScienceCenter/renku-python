@@ -545,8 +545,7 @@ def test_add_from_git_copies_metadata(runner, client):
     )
     assert 0 == result.exit_code
 
-    path = client.dataset_path('remote')
-    dataset = client.get_dataset(path)
+    dataset = client.load_dataset('remote')
     assert dataset.files[0].name == 'README.rst'
     assert 'mailto:jiri.kuncar@gmail.com' in str(dataset.files[0].creator)
     assert 'mailto:rokroskar@gmail.co' in str(dataset.files[0].creator)
@@ -596,7 +595,7 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
 def read_dataset_file_metadata(client, dataset_name, filename):
     """Return metadata from dataset's YAML file."""
     with client.with_dataset(dataset_name) as dataset:
-        assert client.dataset_path(dataset.name).exists()
+        assert client.get_dataset_path(dataset.name).exists()
 
         for file_ in dataset.files:
             if file_.path.endswith(filename):
@@ -927,3 +926,20 @@ def test_renku_clone(runner, monkeypatch):
             result = runner.invoke(cli, ['run', 'touch', 'output'])
             assert 'is not configured' in result.output
             assert 1 == result.exit_code
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'path,expected_path', [('', 'datasets-test'), ('.', '.'),
+                           ('new-name', 'new-name')]
+)
+def test_renku_clone_uses_project_name(
+    runner, monkeypatch, path, expected_path
+):
+    """Test renku clone uses project name as target-path by default."""
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with runner.isolated_filesystem() as project_path:
+        result = runner.invoke(cli, ['clone', REMOTE, path])
+        assert 0 == result.exit_code
+        assert (Path(project_path) / expected_path / 'Dockerfile').exists()

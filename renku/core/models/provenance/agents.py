@@ -127,6 +127,24 @@ class Person:
 
         return cls(name=name, email=email)
 
+    @classmethod
+    def from_string(cls, string):
+        """Create an instance from a 'Name <email>' string."""
+        REGEX = r'([^<]*)<{0,1}([^@<>]+@[^@<>]+\.[^@<>]+)*>{0,1}'
+        name, email = re.search(REGEX, string).groups()
+        name = name.rstrip()
+        # Check the git configuration.
+        if not name:  # pragma: no cover
+            raise errors.ParameterError(
+                'Name is not valid: Valid format is "Name <email>"'
+            )
+        if not email:  # pragma: no cover
+            raise errors.ParameterError(
+                'Email is not valid: Valid format is "Name <email>"'
+            )
+
+        return cls(name=name, email=email)
+
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
