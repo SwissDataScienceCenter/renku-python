@@ -47,13 +47,18 @@ def default_path():
         return '.'
 
 
+def path_converter(path):
+    """Converter for path in PathMixin."""
+    return Path(path).resolve()
+
+
 @attr.s
 class PathMixin:
     """Define a default path attribute."""
 
     path = attr.ib(
         default=default_path,
-        converter=lambda arg: Path(arg).resolve().absolute(),
+        converter=path_converter,
     )
 
     @path.validator

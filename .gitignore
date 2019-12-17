@@ -73,3 +73,5 @@ target/
 renku-*.bottle.json
 renku-*.bottle.tar.gz
 renku.rb
+
+.env
