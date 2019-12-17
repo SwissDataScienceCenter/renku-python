@@ -18,6 +18,7 @@
 """Clone a Renku repo along with all Renku-specific initializations."""
 
 import os
+from pathlib import Path
 
 from git import GitCommandError, Repo
 
@@ -34,23 +35,49 @@ def clone(
     skip_smudge=True,
     recursive=True,
     depth=None,
-    progress=None
+    progress=None,
+    config=None,
+    raise_git_except=False,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
     from renku.core.management.client import LocalClient
 
     path = path or GitURL.parse(url).name
+
+    if isinstance(path, Path):
+        path = str(path)
+
     # Clone the project
     if skip_smudge:
         os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
+
     try:
         repo = Repo.clone_from(
             url, path, recursive=recursive, depth=depth, progress=progress
         )
     except GitCommandError as e:
-        raise errors.GitError(
-            'Cannot clone remote Renku project: {}'.format(url)
-        ) from e
+        if not raise_git_except:
+            raise errors.GitError(
+                'Cannot clone remote Renku project: {}'.format(url)
+            ) from e
+
+        raise e
+
+    if config:
+        config_writer = repo.config_writer()
+
+        for key, value in config.items():
+            key_path = key.split('.')
+            key = key_path.pop()
+
+            if not key_path or not key:
+                raise errors.GitError(
+                    'Cannot write to config. Section path or key is invalid.'
+                )
+
+            config_writer.set_value('.'.join(key_path), key, value)
+
+        config_writer.release()
 
     client = LocalClient(path)
 

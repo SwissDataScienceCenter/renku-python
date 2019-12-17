@@ -29,8 +29,11 @@ def renku_clone(
     path=None,
     install_githooks=True,
     skip_smudge=True,
+    recursive=True,
+    depth=None,
     progress=None,
-    commit_message=None
+    config=None,
+    raise_git_except=False,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
     install_lfs = client.use_external_storage
@@ -40,5 +43,9 @@ def renku_clone(
         install_githooks=install_githooks,
         install_lfs=install_lfs,
         skip_smudge=skip_smudge,
-        progress=progress
+        recursive=recursive,
+        depth=depth,
+        progress=progress,
+        config=config,
+        raise_git_except=raise_git_except,
     )
