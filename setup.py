@@ -117,18 +117,19 @@ version_template = """\
 # limitations under the License.
 \"\"\"Version information for Renku.\"\"\"
 
-__version__ = {version!r}
+__version__ = "{version}"
 
 
 def _get_disribution_url():
     import pkg_resources
-    d = pkg_resources.get_distribution('renku')
+
+    d = pkg_resources.get_distribution("renku")
     metadata = d._get_metadata(d.PKG_INFO)
-    home_page = [m for m in metadata if m.startswith('Home-page:')]
-    return home_page[0].split(':', 1)[1].strip()
+    home_page = [m for m in metadata if m.startswith("Home-page:")]
+    return home_page[0].split(":", 1)[1].strip()
 
 
-version_url = '{{}}/tree/{{}}'.format(_get_disribution_url(), 'v' + __version__)
+version_url = "{{}}/tree/{{}}".format(_get_disribution_url(), "v" + __version__)
 """
 
 setup(
