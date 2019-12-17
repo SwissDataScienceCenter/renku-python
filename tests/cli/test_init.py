@@ -32,6 +32,7 @@ INIT_REMOTE = [
     '--template-source', TEMPLATE_URL, '--template-ref', TEMPLATE_REF
 ]
 INIT_FORCE = ['--force']
+INIT_VARIABLES = ['--template-variables']
 
 
 def test_create_printable_descriptions():
@@ -154,3 +155,17 @@ def test_init_remote(isolated_runner):
     assert (new_project / '.renku').exists()
     assert (new_project / '.renku' / 'renku.ini').exists()
     assert (new_project / '.renku' / 'metadata.yml').exists()
+
+
+@pytest.mark.integration
+def test_init_with_variables(isolated_runner):
+    """Test project initialization using custom metadata."""
+    # create the project
+    new_project = Path('test-new-project')
+    assert not new_project.exists()
+    metadata = 'not_dictionary'
+    result = isolated_runner.invoke(cli, INIT + INIT_VARIABLES + [metadata])
+    assert 0 != result.exit_code
+    metadata = '{"correct": "dictionary"}'
+    result = isolated_runner.invoke(cli, INIT + INIT_VARIABLES + [metadata])
+    assert 0 == result.exit_code

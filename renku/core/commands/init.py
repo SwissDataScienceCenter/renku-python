@@ -169,6 +169,8 @@ def create_from_template(
     """Initialize a new project from a template."""
     with client.commit():
         client.init_repository(force)
-        with client.with_metadata(name=name) as metadata:
+        metadata['name'] = name
+        metadata['description'] = description
+        with client.with_metadata(name=name) as project_metadata:
             client.import_from_template(template_path, metadata, force)
-            metadata.updated = datetime.now(timezone.utc)
+            project_metadata.updated = datetime.now(timezone.utc)

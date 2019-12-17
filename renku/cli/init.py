@@ -64,6 +64,7 @@ was not installed previously.
 
 """
 
+import ast
 import os
 from pathlib import Path
 from tempfile import mkdtemp
@@ -83,6 +84,31 @@ _GITLAB_CI = '.gitlab-ci.yml'
 _DOCKERFILE = 'Dockerfile'
 _REQUIREMENTS = 'requirements.txt'
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
+
+
+def parse_variables(ctx, param, value):
+    """Parse template variables to dictionary."""
+    try:
+        variables = ast.literal_eval(value)
+    except ValueError:
+        raise_template_error(value)
+    if type(variables) is not dict:
+        raise_template_error(value)
+    return variables
+
+
+def raise_template_error(value):
+    """Raise template error with short explanation."""
+    error_info = [
+        '{0}'.format(value), 'Tip: a dictionary is expected',
+        (
+            'Example: --template-variables '
+            '\'{ "variable_1": "string", "variable_2": 2 }\''
+        )
+    ]
+    raise errors.ParameterError(
+        '\n'.join(error_info), '"--template-variables"'
+    )
 
 
 def validate_name(ctx, param, value):
@@ -165,6 +191,15 @@ def is_path_empty(path):
     default='master',
     help='Specify the reference to checkout on remote template repository.',
 )
+@click.option(
+    '--template-variables',
+    default='{}',
+    callback=parse_variables,
+    help=(
+        'Provide custom values for template variables. It must be a python '
+        'dictionary.\nExample: \'{ "variable_1": "string", "variable_2": 2 }\''
+    )
+)
 @click.option('--description', help='Describe your project.')
 @click.option(
     '--print-manifest', is_flag=True, help='Print templates manifest only.'
@@ -175,7 +210,7 @@ def is_path_empty(path):
 @click.pass_context
 def init(
     ctx, client, use_external_storage, path, name, template, template_source,
-    template_ref, description, print_manifest, force
+    template_ref, template_variables, description, print_manifest, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # preparation
@@ -277,14 +312,13 @@ def init(
             template_data = templates[template_num - 1]
 
     # clone the repo
-    # TODO: manage metadata for jinja templates
-    metadata = {}
     template_path = template_folder / template_data['folder']
     click.echo('Initializing new Renku repository... ', nl=False)
     with client.lock:
         try:
             create_from_template(
-                template_path, client, name, description, metadata, force
+                template_path, client, name, description, template_variables,
+                force
             )
         except FileExistsError as e:
             raise click.UsageError(e)
