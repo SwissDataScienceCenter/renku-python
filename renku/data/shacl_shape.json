@@ -734,7 +734,9 @@
                   "@id": "xsd:string"
                },
                "minCount": 1,
-               "maxCount": 1
+               "maxCount": 1,
+               "sh:pattern": "renku \\d+\\.\\d+\\.\\d+(?:\\.dev\\d+)?",
+               "sh:flags": "i"
             },
             {
                "path": "prov:wasStartedBy",
