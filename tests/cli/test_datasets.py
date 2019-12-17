@@ -690,7 +690,7 @@ def test_datasets_ls_files_tabular_creators(tmpdir, runner, project, client):
     assert 0 == result.exit_code
 
     creator = None
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         creator = dataset.creator[0].name
 
     assert creator is not None
@@ -827,7 +827,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename in {
             Path(file_.path).name
             for file_ in dataset.files
@@ -841,7 +841,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename not in [
             file_.path.name for file_ in dataset.files
         ]

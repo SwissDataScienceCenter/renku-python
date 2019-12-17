@@ -21,6 +21,7 @@ import os
 import re
 import shutil
 import stat
+import tempfile
 import uuid
 import warnings
 from configparser import NoSectionError
@@ -30,6 +31,7 @@ from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
 
 import attr
+import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
 
@@ -117,9 +119,9 @@ class DatasetsApiMixin(object):
                 return self.load_dataset_from_path(path)
 
     @contextmanager
-    def with_dataset(self, name=None, identifier=None, create=False):
+    def with_dataset(self, short_name=None, identifier=None, create=False):
         """Yield an editable metadata object for a dataset."""
-        dataset = self.load_dataset(name=name)
+        dataset = self.load_dataset(name=short_name)
         clean_up_required = False
 
         if dataset is None:
@@ -127,10 +129,12 @@ class DatasetsApiMixin(object):
                 raise errors.DatasetNotFound
 
             clean_up_required = True
-            dataset, path, dataset_ref = self.create_dataset(name)
+            dataset, path, dataset_ref = self.create_dataset(
+                name=short_name, short_name=short_name, identifier=identifier
+            )
         elif create:
             raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(name)
+                'Dataset exists: "{}".'.format(short_name)
             )
 
         dataset_path = self.path / self.datadir / dataset.short_name
@@ -155,7 +159,12 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, name, short_name=None, description='', creators=()
+        self,
+        name,
+        short_name=None,
+        identifier=None,
+        description='',
+        creators=()
     ):
         """Create a dataset."""
         if not name:
@@ -174,8 +183,14 @@ class DatasetsApiMixin(object):
                 'Dataset exists: "{}".'.format(short_name)
             )
 
-        identifier = str(uuid.uuid4())
-        path = (self.renku_datasets_path / identifier / self.METADATA)
+        if identifier:
+            dataset_metadata_path = parse.quote(identifier, safe='')
+        else:
+            identifier = str(uuid.uuid4())
+            dataset_metadata_path = identifier
+        path = (
+            self.renku_datasets_path / dataset_metadata_path / self.METADATA
+        )
         try:
             path.parent.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
@@ -210,7 +225,8 @@ class DatasetsApiMixin(object):
         sources=(),
         destination='',
         ref=None,
-        link=False
+        link=False,
+        extract=False
     ):
         """Import the data into the data directory."""
         warning_message = ''
@@ -246,7 +262,9 @@ class DatasetsApiMixin(object):
                         dataset, u.path, link, destination
                     )
                 else:  # Remote URL
-                    data = self._add_from_url(dataset, url, destination)
+                    data = self._add_from_url(
+                        dataset, url, destination, extract
+                    )
 
             files.extend(data)
             self.track_paths_in_storage(*(f['path'] for f in files))
@@ -356,30 +374,30 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_url(self, dataset, url, destination):
+    def _add_from_url(self, dataset, url, destination, extract):
         """Process an add from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
 
         try:
-            response = requests.get(url)
-            destination.write_bytes(response.content)
+            paths = Downloader().download(url, destination, extract)
         except error.HTTPError as e:  # pragma nocover
             raise errors.OperationError(
                 'Cannot download from {}'.format(url)
             ) from e
 
         # make the added file read-only
-        mode = destination.stat().st_mode & 0o777
-        destination.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+        for path in paths:
+            mode = path.stat().st_mode & 0o777
+            path.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
         return [{
-            'path': destination.relative_to(self.path),
+            'path': path.relative_to(self.path),
             'url': remove_credentials(url),
             'creator': dataset.creator,
             'parent': self
-        }]
+        } for path in paths]
 
     def _add_from_git(self, dataset, url, sources, destination, ref):
         """Process adding resources from another git repository."""
@@ -839,6 +857,46 @@ class DatasetsApiMixin(object):
         if '@' in label:
             return label.split('@')[1]
         return label
+
+
+class Downloader:
+    """Download from a specific URL."""
+
+    @staticmethod
+    def download(url, download_to, extract, chunk_size=16384):
+        """Download a file."""
+        with requests.get(url, stream=True) as request:
+            request.raise_for_status()
+            with open(str(download_to), 'wb') as f_:
+                for chunk in request.iter_content(chunk_size=chunk_size):
+                    if chunk:  # ignore keep-alive chunks
+                        f_.write(chunk)
+        if extract:
+            return Downloader.extract_dataset(download_to)
+
+        return [download_to]
+
+    @staticmethod
+    def extract_dataset(filepath):
+        """Extract downloaded file."""
+        try:
+            tmp = tempfile.mkdtemp()
+            patoolib.extract_archive(str(filepath), outdir=tmp, verbosity=-1)
+        except patoolib.util.PatoolError:
+            return [filepath]
+        else:
+            filepath.unlink()
+            parent = filepath.parent
+            paths = [
+                parent / p.relative_to(tmp)
+                for p in Path(tmp).rglob('*') if not p.is_dir()
+            ]
+
+            for path in Path(tmp).glob('*'):
+                dst = parent / path.relative_to(tmp)
+                shutil.move(path, dst)
+
+            return paths
 
 
 def _check_url(url):

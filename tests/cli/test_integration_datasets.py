@@ -18,6 +18,7 @@
 """Integration tests for dataset command."""
 import os
 import subprocess
+import urllib
 from pathlib import Path
 
 import git
@@ -44,7 +45,7 @@ from renku.core.utils.contexts import chdir
     }]
 )
 @pytest.mark.integration
-def test_dataset_import_real_doi(runner, project, doi, sleep_after):
+def test_dataset_import_real_doi(runner, client, doi, sleep_after):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
         cli, ['dataset', 'import', doi['doi']], input=doi['input']
@@ -57,6 +58,10 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     assert 0 == result.exit_code
     assert doi['file'] in result.output
     assert doi['creator'] in result.output
+
+    doi_path = urllib.parse.quote(doi['doi'], safe='')
+    metadata_path = client.renku_path / 'datasets' / doi_path / 'metadata.yml'
+    assert metadata_path.exists()
 
     result = runner.invoke(cli, ['dataset', 'ls-tags', doi['file']])
     assert 0 == result.exit_code
@@ -204,6 +209,52 @@ def test_dataset_import_fake_http(runner, project, url):
 
 
 @pytest.mark.integration
+def test_dataset_import_and_extract(runner, project, client, sleep_after):
+    """Test dataset import and extract files."""
+    URL = 'https://zenodo.org/record/2658634'
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--extract', '--short-name', 'remote', URL],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset('remote') as dataset:
+        AN_EXTRACTED_FILE = 'data/remote/quantling-pyndl-c34259c/doc/make.bat'
+        assert dataset.find_file(AN_EXTRACTED_FILE)
+
+
+@pytest.mark.integration
+def test_dataset_import_different_names(runner, client, sleep_after):
+    """Test cannot import same DOI under different names."""
+    DOI = '10.5281/zenodo.2658634'
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--short-name', 'name-1', DOI], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--short-name', 'name-2', DOI], input='y'
+    )
+    assert 1 == result.exit_code
+    assert 'Error' in result.output
+    assert '10.5281%2Fzenodo.2658634 exists' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_import_ignore_uncompressed_files(
+    runner, project, sleep_after
+):
+    """Test dataset import ignores uncompressed files."""
+    URL = 'https://zenodo.org/record/3251128'
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--extract', URL], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'Gorne_Diaz_database_2019.csv' in result.output
+
+
+@pytest.mark.integration
 def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
@@ -224,7 +275,7 @@ def test_dataset_export_upload_file(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 
@@ -259,7 +310,7 @@ def test_dataset_export_upload_tag(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 
@@ -339,7 +390,7 @@ def test_dataset_export_upload_multiple(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 
@@ -401,7 +452,7 @@ def test_dataset_export_published_url(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 

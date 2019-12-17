@@ -277,7 +277,7 @@ class Dataset(Entity, CreatorMixin):
 
     EDITABLE_FIELDS = [
         'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files', 'short_name'
+        'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
