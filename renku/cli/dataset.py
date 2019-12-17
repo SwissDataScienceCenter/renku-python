@@ -357,7 +357,7 @@ def download_file_with_progress(extract, data_folder, file, chunk_size=16384):
         if extract:
             extract_dataset(data_folder, local_filename)
 
-    with requests.get(file.url.geturl(), stream=True) as r:
+    with requests.get(file.url, stream=True) as r:
         r.raise_for_status()
         stream_to_file(r)
 
