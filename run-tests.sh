@@ -38,7 +38,6 @@ END
 check_styles(){
     pydocstyle renku tests conftest.py docs
     isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88
-    unify -c -r renku tests conftest.py docs
     check-manifest --ignore ".travis-*,renku/version.py"
     find . -iname \*.sh -print0 | xargs -0 shellcheck
 }
