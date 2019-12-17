@@ -35,12 +35,16 @@
    :target: http://renku-python.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
+
 .. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renku-python.svg
    :target: https://github.com/SwissDataScienceCenter/renku-python/blob/master/LICENSE
 
 .. image:: https://pullreminders.com/badge.svg
    :target: https://pullreminders.com?ref=badge
    :alt: Pull reminders
+
 
 A Python library for the `Renku collaborative data science platform
 <https://github.com/SwissDataScienceCenter/renku>`_. It allows the user to
