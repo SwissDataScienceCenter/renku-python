@@ -49,12 +49,11 @@ def test_import_from_template(local_client):
             }
         local_client.import_from_template(template_path, metadata)
         compiled_file = local_client.path / OUTPUT_FILE
-        with open(compiled_file) as fr:
-            compiled_content = fr.read()
-            expected_content = (
-                'name: name'
-                'description: description'
-                'created: now'
-                'updated: now'
-            )
-            assert compiled_content == expected_content
+        compiled_content = compiled_file.read_text()
+        expected_content = (
+            'name: name'
+            'description: description'
+            'created: now'
+            'updated: now'
+        )
+        assert compiled_content == expected_content

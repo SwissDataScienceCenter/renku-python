@@ -156,15 +156,15 @@ def test_validate_template():
             validate_template(temppath)
 
         # folder error
-        shutil.rmtree(tempdir)
+        shutil.rmtree(str(tempdir))
         renku_dir = temppath / RENKU_HOME
         renku_dir.mkdir(parents=True)
         with raises(errors.InvalidTemplateError):
             validate_template(temppath)
 
         # valid template
-        shutil.rmtree(tempdir)
-        shutil.copytree(template_local, tempdir)
+        shutil.rmtree(str(tempdir))
+        shutil.copytree(str(template_local), str(tempdir))
         manifest = read_template_manifest(Path(tempdir))
         for template in manifest:
             template_folder = temppath / template['folder']
@@ -179,7 +179,7 @@ def test_create_from_template(local_client):
     """
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir) / 'local'
-        shutil.copytree(template_local, temppath)
+        shutil.copytree(str(template_local), str(temppath))
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]['folder']
         create_from_template(

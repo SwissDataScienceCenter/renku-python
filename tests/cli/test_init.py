@@ -109,7 +109,7 @@ def test_init_on_cloned_repo(isolated_runner, data_repository):
     """Run init --force in directory containing another repo."""
     new_project = Path('test-new-project')
     import shutil
-    shutil.copytree(data_repository.working_dir, new_project)
+    shutil.copytree(str(data_repository.working_dir), str(new_project))
     assert new_project.exists()
 
     # try to create in a dirty folder
