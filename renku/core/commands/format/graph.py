@@ -199,9 +199,8 @@ def _rdf2dot_reduced(g, stream):
     Adapted from original source:
     https://rdflib.readthedocs.io/en/stable/_modules/rdflib/tools/rdf2dot.html
     """
-    import cgi
+    import html
     import collections
-
     import rdflib
 
     from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
@@ -228,7 +227,7 @@ def _rdf2dot_reduced(g, stream):
 
     def formatliteral(l, g):
         """Format and escape literal."""
-        v = cgi.escape(l)
+        v = html.escape(l)
         if l.datatype:
             return '&quot;%s&quot;^^%s' % (v, qname(l.datatype, g))
         elif l.language:
@@ -268,11 +267,11 @@ def _rdf2dot_reduced(g, stream):
             continue
         # inject the type predicate into the node itself
         if p == rdflib.RDF.type:
-            types[sn].add((qname(p, g), cgi.escape(o)))
+            types[sn].add((qname(p, g), html.escape(o)))
             continue
         # add the project membership to the node
         if p == rdflib.term.URIRef('schema:isPartOf'):
-            fields[sn].add((qname(p, g), cgi.escape(o)))
+            fields[sn].add((qname(p, g), html.escape(o)))
             continue
 
         if isinstance(o, (rdflib.URIRef, rdflib.BNode)):
