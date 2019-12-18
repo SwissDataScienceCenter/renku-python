@@ -60,7 +60,9 @@ class DownloadTemplates(Command):
             if template_path.exists():
                 shutil.rmtree(str(template_path))
             shutil.copytree(
-                temppath, template_path, ignore=shutil.ignore_patterns('.git')
+                str(temppath),
+                str(template_path),
+                ignore=shutil.ignore_patterns('.git')
             )
 
 

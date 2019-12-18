@@ -57,7 +57,7 @@ def fetch_template(source, ref='master', tempdir=None):
         except git.exc.BadName:
             ref = 'origin/{0}'.format(ref)
             template_repo.head.reset(template_repo.commit(ref))
-        git_repo = git.Git(tempdir)
+        git_repo = git.Git(str(tempdir))
     except git.exc.GitCommandError as e:
         raise errors.GitError(
             'Cannot fetch and checkout reference {0}'.format(ref)
@@ -139,7 +139,7 @@ def read_template_manifest(folder, checkout=False):
     validate_template_manifest(manifest)
 
     if checkout:
-        git_repo = git.Git(folder)
+        git_repo = git.Git(str(folder))
         template_folders = [template['folder'] for template in manifest]
         if len(template_folders) < 1:
             raise errors.InvalidTemplateError(
@@ -148,7 +148,7 @@ def read_template_manifest(folder, checkout=False):
         for template_folder in template_folders:
             template_path = folder / template_folder
             try:
-                git_repo.checkout(template_path)
+                git_repo.checkout(template_folder)
             except git.exc.GitCommandError as e:
                 raise errors.InvalidTemplateError(
                     'Cannot checkout the folder "{0}"'.format(template_folder)

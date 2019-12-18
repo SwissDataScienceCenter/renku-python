@@ -66,14 +66,13 @@ was not installed previously.
 
 import ast
 import os
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from pathlib import Path
 from tempfile import mkdtemp
 
 import attr
 import click
 import pkg_resources
-from tabulate import tabulate
 
 from renku.core import errors
 from renku.core.commands.client import pass_local_client
@@ -81,6 +80,7 @@ from renku.core.commands.git import set_git_home
 from renku.core.commands.init import create_from_template, fetch_template, \
     read_template_manifest
 from renku.core.commands.options import option_use_external_storage
+from renku.core.models.tabulate import tabulate
 
 _GITLAB_CI = '.gitlab-ci.yml'
 _DOCKERFILE = 'Dockerfile'
@@ -131,15 +131,16 @@ def create_template_sentence(templates, instructions=False):
     """Create templates choice sentence.
 
     :ref templates: list of templates coming from manifest file
-    :ref instructions: print instructions on how to proceed
+    :ref instructions: add instructions
     """
-    templates_friendly = []
-    for index, template_elem in enumerate(templates):
-        templates_friendly.append({
-            'index': index + 1,
-            'name': template_elem['name'],
-            'description': template_elem['description'],
-        })
+    Template = namedtuple('Template', ['index', 'name', 'description'])
+    templates_friendly = [
+        Template(
+            index=index + 1,
+            name=template_elem['name'],
+            description=template_elem['description'],
+        ) for index, template_elem in enumerate(templates)
+    ]
 
     text = tabulate(
         templates_friendly,
