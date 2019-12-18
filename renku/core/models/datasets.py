@@ -389,6 +389,11 @@ class Dataset(Entity, CreatorMixin):
         return ','.join(creator.short_name for creator in self.creator)
 
     @property
+    def tags_csv(self):
+        """Comma-separated list of tags associated with dataset."""
+        return ','.join(tag.name for tag in self.tags)
+
+    @property
     def editable(self):
         """Subset of attributes which user can edit."""
         obj = self.asjsonld()
