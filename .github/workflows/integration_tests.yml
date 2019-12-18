@@ -13,7 +13,10 @@ jobs:
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
@@ -34,7 +37,10 @@ jobs:
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
