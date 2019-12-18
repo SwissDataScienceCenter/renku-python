@@ -17,6 +17,7 @@
 # limitations under the License.
 """Client for handling datasets."""
 
+import concurrent.futures
 import os
 import re
 import shutil
@@ -34,6 +35,7 @@ import attr
 import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
+from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.management.clone import clone
@@ -226,7 +228,9 @@ class DatasetsApiMixin(object):
         destination='',
         ref=None,
         link=False,
-        extract=False
+        extract=False,
+        all_at_once=False,
+        interactive=False
     ):
         """Import the data into the data directory."""
         warning_message = ''
@@ -238,36 +242,46 @@ class DatasetsApiMixin(object):
 
         files = []
 
-        for url in urls:
-            is_remote, is_git = _check_url(url)
+        if all_at_once:  # only for URLs
+            files = self._add_from_urls(
+                dataset=dataset,
+                urls=urls,
+                destination=destination,
+                extract=extract,
+                interactive=interactive
+            )
+        else:
+            for url in urls:
+                is_remote, is_git = _check_url(url)
 
-            if is_git and is_remote:  # Remote git repo
-                sources = sources or ()
-                data = self._add_from_git(
-                    dataset, url, sources, destination, ref
-                )
-            else:
-                if sources:
-                    raise errors.UsageError(
-                        'Cannot use "--source" with URLs or local files.'
+                if is_git and is_remote:  # Remote git repo
+                    sources = sources or ()
+                    new_files = self._add_from_git(
+                        dataset, url, sources, destination, ref
                     )
+                else:
+                    if sources:
+                        raise errors.UsageError(
+                            'Cannot use "--source" with URLs or local files.'
+                        )
 
-                if not is_remote:  # Local path, might be git
-                    if is_git:
-                        warning_message = 'Adding data from local Git ' \
-                            'repository. Use remote\'s Git URL instead to ' \
-                            'enable lineage information and updates.'
-                    u = parse.urlparse(url)
-                    data = self._add_from_local(
-                        dataset, u.path, link, destination
-                    )
-                else:  # Remote URL
-                    data = self._add_from_url(
-                        dataset, url, destination, extract
-                    )
+                    if not is_remote:  # Local path, might be git
+                        if is_git:
+                            warning_message = 'Adding data from local Git ' \
+                                'repository. Use remote\'s Git URL instead ' \
+                                'to enable lineage information and updates.'
+                        u = parse.urlparse(url)
+                        new_files = self._add_from_local(
+                            dataset, u.path, link, destination
+                        )
+                    else:  # Remote URL
+                        new_files = self._add_from_url(
+                            dataset, url, destination, extract
+                        )
 
-            files.extend(data)
-            self.track_paths_in_storage(*(f['path'] for f in files))
+                files.extend(new_files)
+
+        self.track_paths_in_storage(*(f['path'] for f in files))
 
         ignored = self.find_ignored_paths(*(data['path']
                                             for data in files)) or []
@@ -374,14 +388,40 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_url(self, dataset, url, destination, extract):
+    def _add_from_urls(self, dataset, urls, destination, extract, interactive):
+        destination.mkdir(parents=True, exist_ok=True)
+
+        files = []
+        max_workers = min(os.cpu_count() + 4, 8)
+        with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._add_from_url, dataset, url, destination, extract,
+                    interactive
+                )
+                for url in urls
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                files.extend(future.result())
+
+        return files
+
+    def _add_from_url(
+        self, dataset, url, destination, extract, interactive=False
+    ):
         """Process an add from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
 
         try:
-            paths = Downloader().download(url, destination, extract)
+            paths = _download(
+                url=url,
+                download_to=destination,
+                extract=extract,
+                interactive=interactive
+            )
         except error.HTTPError as e:  # pragma nocover
             raise errors.OperationError(
                 'Cannot download from {}'.format(url)
@@ -859,24 +899,7 @@ class DatasetsApiMixin(object):
         return label
 
 
-class Downloader:
-    """Download from a specific URL."""
-
-    @staticmethod
-    def download(url, download_to, extract, chunk_size=16384):
-        """Download a file."""
-        with requests.get(url, stream=True) as request:
-            request.raise_for_status()
-            with open(str(download_to), 'wb') as f_:
-                for chunk in request.iter_content(chunk_size=chunk_size):
-                    if chunk:  # ignore keep-alive chunks
-                        f_.write(chunk)
-        if extract:
-            return Downloader.extract_dataset(download_to)
-
-        return [download_to]
-
-    @staticmethod
+def _download(url, download_to, extract, interactive, chunk_size=16384):
     def extract_dataset(filepath):
         """Extract downloaded file."""
         try:
@@ -894,9 +917,34 @@ class Downloader:
 
             for path in Path(tmp).glob('*'):
                 dst = parent / path.relative_to(tmp)
-                shutil.move(path, dst)
+                shutil.move(str(path), str(dst))
 
             return paths
+
+    with requests.get(url, stream=True) as request:
+        request.raise_for_status()
+        with open(str(download_to), 'wb') as file_:
+            total_size = int(request.headers.get('content-length', 0))
+            try:
+                progressbar = tqdm(
+                    disable=not interactive,
+                    total=total_size,
+                    unit='iB',
+                    unit_scale=True,
+                    desc=download_to.name,
+                    leave=False,
+                    bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
+                )
+                for chunk in request.iter_content(chunk_size=chunk_size):
+                    if chunk:  # ignore keep-alive chunks
+                        file_.write(chunk)
+                        progressbar.update(len(chunk))
+            finally:
+                progressbar.close()
+    if extract:
+        return extract_dataset(download_to)
+
+    return [download_to]
 
 
 def _check_url(url):

@@ -186,6 +186,8 @@ def add_to_dataset(
     commit_message=None,
     identifier=None,
     extract=False,
+    all_at_once=False,
+    interactive=False,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -208,7 +210,9 @@ def add_to_dataset(
                     sources=sources,
                     destination=destination,
                     ref=ref,
-                    extract=extract
+                    extract=extract,
+                    all_at_once=all_at_once,
+                    interactive=interactive,
                 )
 
             if warning_message:
@@ -430,7 +434,7 @@ def import_dataset(
     uri,
     short_name='',
     extract=False,
-    with_prompt=False,
+    interactive=False,
     pool_init_fn=None,
     pool_init_args=None,
     download_file_fn=default_download_file,
@@ -446,7 +450,7 @@ def import_dataset(
         dataset = record.as_dataset(client)
         files = dataset.files
 
-        if with_prompt:
+        if interactive:
             click.echo(
                 tabulate(
                     files,
@@ -534,7 +538,9 @@ def import_dataset(
             with_metadata=dataset,
             force=True,
             identifier=identifier,
-            extract=extract
+            extract=extract,
+            all_at_once=True,
+            interactive=interactive,
         )
 
         if dataset.version:

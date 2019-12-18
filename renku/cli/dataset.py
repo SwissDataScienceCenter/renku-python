@@ -668,10 +668,10 @@ def import_(uri, short_name, extract):
         uri=uri,
         short_name=short_name,
         extract=extract,
-        with_prompt=True,
+        interactive=True,
         pool_init_fn=_init,
         pool_init_args=(mp.RLock(), id_queue),
-        download_file_fn=download_file_with_progress
+        download_file_fn=download_file_with_progress,
     )
     click.secho('OK', fg='green')
 
