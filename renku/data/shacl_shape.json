@@ -380,6 +380,14 @@
                "sh:class": {
                   "@id": "prov:Generation"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:alternateName",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
             }
          ]
       },
@@ -724,7 +732,11 @@
                "path": "rdfs:label",
                "datatype": {
                   "@id": "xsd:string"
-               }
+               },
+               "minCount": 1,
+               "maxCount": 1,
+               "sh:pattern": "renku \\d+\\.\\d+\\.\\d+(?:\\.dev\\d+)?",
+               "sh:flags": "i"
             },
             {
                "path": "prov:wasStartedBy",

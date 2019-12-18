@@ -1,4 +1,4 @@
-FROM python:3.6-alpine as base
+FROM python:3.7-alpine as base
 
 RUN apk add --no-cache git && \
     pip install --no-cache --upgrade pip

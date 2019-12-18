@@ -24,7 +24,10 @@ from .client import pass_local_client
 @pass_local_client(
     clean=True, commit=True, commit_empty=False, raise_if_empty=True
 )
-def migrate_datasets(client):
+def migrate_datasets(
+    client,
+    commit_message=None,
+):
     """Migrate dataset metadata."""
     results = [
         migration(client) is not False for migration in STRUCTURE_MIGRATIONS

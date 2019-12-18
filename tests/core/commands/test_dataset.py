@@ -23,8 +23,10 @@ import stat
 from contextlib import contextmanager
 
 import pytest
+from git import Repo
 
 from renku.core import errors
+from renku.core.commands.dataset import create_dataset
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.models.provenance.agents import Person
 
@@ -174,3 +176,16 @@ def test_dataset_serialization(dataset):
     assert dataset.identifier == dataset_metadata.get('identifier')
     assert dataset.name == dataset_metadata.get('name')
     assert dataset.path == dataset_metadata.get('path')
+
+
+def test_create_dataset_custom_message(project):
+    """Test create dataset custom message."""
+    create_dataset(
+        'ds1',
+        short_name='',
+        description='',
+        creators=[],
+        commit_message='my awesome dataset'
+    )
+    last_commit = Repo('.').head.commit
+    assert 'my awesome dataset' == last_commit.message

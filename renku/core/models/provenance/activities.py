@@ -156,7 +156,7 @@ class Activity(CommitMixin):
             if str(path).startswith(
                 os.path.join(client.renku_home, client.DATASETS)
             ):
-                entity = client.get_dataset(Path(path), commit=commit)
+                entity = client.load_dataset_from_path(path, commit=commit)
             else:
                 entity = entity_cls(
                     commit=commit,
