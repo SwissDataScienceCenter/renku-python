@@ -259,7 +259,7 @@ def test_dataset_creator_is_invalid(client, runner, creator, field):
     """Test create dataset with invalid creator format."""
     result = runner.invoke(cli, ['dataset', 'create', 'ds', '-c', creator])
     assert 2 == result.exit_code
-    assert field + ' is not valid' in result.output
+    assert field + ' is invalid' in result.output
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())

@@ -230,7 +230,10 @@ def create_dataset_view(user, cache):
 
     with chdir(project_path):
         create_dataset(
-            ctx['dataset_name'], commit_message=ctx['commit_message']
+            ctx['dataset_name'],
+            commit_message=ctx['commit_message'],
+            creators=ctx.get('creators'),
+            description=ctx.get('description'),
         )
 
     if not repo_sync(project_path):
