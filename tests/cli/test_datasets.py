@@ -1294,8 +1294,9 @@ def test_avoid_empty_commits(runner, client, directory_tree):
     assert 'Error: There is nothing to commit.' in result.output
 
 
+@pytest.mark.integration
 def test_add_removes_credentials(runner, client):
-    """Test credentials are removed when adding to a dataset."""
+    """Check removed credentials when adding to a dataset."""
     url = 'https://username:password@example.com/index.html'
     result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', url])
     assert 0 == result.exit_code
