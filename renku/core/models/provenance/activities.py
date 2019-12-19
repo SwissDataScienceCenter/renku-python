@@ -54,6 +54,28 @@ def _nodes(output, parent=None):
 
 
 @jsonld.s(
+    type='oa:Annotation',
+    context={
+        'oa': 'http://www.w3.org/ns/oa#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'dcterms': 'http://purl.org/dc/terms/',
+    },
+    cmp=False,
+)
+class Annotation():
+    """Represents a custom annotation for a research object.
+
+    Should be subclassed to be used with correct context on the ``body``
+    property.
+    """
+    _id = jsonld.ib(context='@id', kw_only=True)
+
+    body = jsonld.ib(default=None, context='oa:hasBody', kw_only=True)
+
+    source = jsonld.ib(default=None, context='dcterms:creator', kw_only=True)
+
+
+@jsonld.s(
     type='prov:Activity',
     context={
         'prov': 'http://www.w3.org/ns/prov#',
@@ -296,6 +318,7 @@ class Activity(CommitMixin):
     type='wfprov:ProcessRun',
     context={
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
+        'oa': 'http://www.w3.org/ns/oa#',
     },
     cmp=False,
 )
@@ -318,6 +341,12 @@ class ProcessRun(Activity):
         default=None,
         kw_only=True,
         type=Association
+    )
+
+    annotations = jsonld.container.list(
+        Annotation, context={
+            '@reverse': 'oa:hasTarget',
+        }, kw_only=True
     )
 
     qualified_usage = jsonld.ib(

@@ -69,7 +69,11 @@ class Workflow(Process, CWLClass):
     def create_run(self, **kwargs):
         """Return an instance of process run."""
         from renku.core.models.provenance.activities import WorkflowRun
-        return WorkflowRun(**kwargs)
+        wfrun = WorkflowRun(**kwargs)
+
+        self.add_plugin_annotations(wfrun, **kwargs)
+
+        return wfrun
 
     def add_step(self, **kwargs):
         """Add a workflow step."""

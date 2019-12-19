@@ -119,7 +119,11 @@ class CommandLineTool(Process, CWLClass):
     def create_run(self, **kwargs):
         """Return an instance of process run."""
         from renku.core.models.provenance.activities import ProcessRun
-        return ProcessRun(**kwargs)
+        run = ProcessRun(**kwargs)
+
+        self.add_plugin_annotations(run, **kwargs)
+
+        return run
 
     def get_output_id(self, path):  # pragma: no cover
         """Return an id of the matching path from default values."""

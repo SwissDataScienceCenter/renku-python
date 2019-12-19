@@ -88,6 +88,7 @@ install_requires = [
     'flask-swagger-ui==3.20.9',
     'gitpython==3.0.3',
     'patool>=1.12',
+    'pluggy>=0.13.1',
     'psutil>=5.4.7',
     'pyasn1>=0.4.5',
     'PyYAML>=3.12',
