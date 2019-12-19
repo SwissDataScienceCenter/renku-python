@@ -20,11 +20,9 @@
 import re
 from collections import OrderedDict
 from contextlib import contextmanager
-from pathlib import Path
 
 import click
 import git
-import requests
 import yaml
 from requests import HTTPError
 
@@ -48,32 +46,6 @@ from .client import pass_local_client
 from .echo import WARNING
 from .format.dataset_files import DATASET_FILES_FORMATS
 from .format.datasets import DATASETS_FORMATS
-
-
-def default_download_file(extract, data_folder, file, chunk_size=16384):
-    """Download a file."""
-    local_filename = Path(file.filename).name
-    download_to = Path(data_folder) / Path(local_filename)
-
-    def extract_dataset(data_folder_, filename):
-        """Extract downloaded dataset."""
-        import patoolib
-        filepath = Path(data_folder_) / Path(filename)
-        patoolib.extract_archive(filepath, outdir=data_folder_)
-        filepath.unlink()
-
-    def stream_to_file(request):
-        """Stream bytes to file."""
-        with open(str(download_to), 'wb') as f_:
-            for chunk in request.iter_content(chunk_size=chunk_size):
-                if chunk:  # remove keep-alive chunks
-                    f_.write(chunk)
-        if extract:
-            extract_dataset(data_folder, local_filename)
-
-    with requests.get(file.url, stream=True) as r:
-        r.raise_for_status()
-        stream_to_file(r)
 
 
 @pass_local_client(clean=False, commit=False)
@@ -435,9 +407,6 @@ def import_dataset(
     short_name='',
     extract=False,
     interactive=False,
-    pool_init_fn=None,
-    pool_init_args=None,
-    download_file_fn=default_download_file,
     commit_message=None,
 ):
     """Import data from a 3rd party provider."""
@@ -488,43 +457,6 @@ def import_dataset(
             short_name = generate_default_short_name(
                 dataset.name, dataset.version
             )
-
-        # data_folder = tempfile.mkdtemp()
-
-        # pool_size = min(
-        #     int(os.getenv('RENKU_POOL_SIZE',
-        #                   mp.cpu_count() // 2)), 4
-        # )
-
-        # freeze_support()  # Windows support
-
-        # pool = mp.Pool(
-        #     pool_size,
-        #     # Windows support
-        #     initializer=pool_init_fn,
-        #     initargs=pool_init_args
-        # )
-
-        # processing = [
-        #     pool.apply_async(
-        #         download_file_fn, args=(
-        #             extract,
-        #             data_folder,
-        #             file_,
-        #         )
-        #     ) for file_ in files
-        # ]
-
-        # try:
-        #     for p in processing:
-        #         p.get()  # Will internally do the wait() as well.
-
-        # except HTTPError as e:
-        #     raise ParameterError((
-        #         'Could not process {0}.\n'
-        #         'URI not found.'.format(e.request.url)
-        #     ))
-        # pool.close()
 
         dataset.url = remove_credentials(dataset.url)
         # check for identifier before creating the dataset
