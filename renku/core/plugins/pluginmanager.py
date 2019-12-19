@@ -15,16 +15,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""pluggy Plugin setup."""
 import pluggy
 
 import renku.core.plugins.process_run as process_run_hook_specs
 
-hookimpl = pluggy.HookimplMarker("renku")
+hookimpl = pluggy.HookimplMarker('renku')
 
 
 def get_plugin_manager():
     """The ``pluggy`` plugin manager."""
-    pm = pluggy.PluginManager("renku")
+    pm = pluggy.PluginManager('renku')
     pm.add_hookspecs(process_run_hook_specs)
-    pm.load_setuptools_entrypoints("renku")
+    pm.load_setuptools_entrypoints('renku')
     return pm

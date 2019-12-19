@@ -62,12 +62,13 @@ def _nodes(output, parent=None):
     },
     cmp=False,
 )
-class Annotation():
+class Annotation:
     """Represents a custom annotation for a research object.
 
     Should be subclassed to be used with correct context on the ``body``
     property.
     """
+
     _id = jsonld.ib(context='@id', kw_only=True)
 
     body = jsonld.ib(default=None, context='oa:hasBody', kw_only=True)
@@ -344,9 +345,9 @@ class ProcessRun(Activity):
     )
 
     annotations = jsonld.container.list(
-        Annotation, context={
+        context={
             '@reverse': 'oa:hasTarget',
-        }, kw_only=True
+        }, kw_only=True, type=Annotation
     )
 
     qualified_usage = jsonld.ib(
@@ -360,6 +361,9 @@ class ProcessRun(Activity):
         if self.association is None:
             self.association = Association.from_activity(self)
 
+        if not self.annotations:
+            self.annotations = self.default_annotations()
+
         if self.path is None:
             # FIXME only works for linking directory to file
             existing_outputs = set(self.outputs.values())
@@ -372,6 +376,14 @@ class ProcessRun(Activity):
                         ), output_path
                     )] = output_id
                     break
+
+    def default_annotations(self):
+        """Adds ``Annotation``s from plugins to a ``ProcessRun``."""
+        from renku.core.plugins.pluginmanager import get_plugin_manager
+        pm = get_plugin_manager()
+
+        results = pm.hook.process_run_annotations(run=self)
+        return [a for r in results for a in r]
 
     @inputs.default
     def default_inputs(self):

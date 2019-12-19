@@ -39,16 +39,6 @@ class Process(object):
     doc = attr.ib(default=None)  # str
     cwlVersion = attr.ib(default='v1.0')  # derive from a parent
 
-    def add_plugin_annotations(self, run, **kwargs):
-        """Adds ``Annotation``s from plugins to a ``ProcessRun``."""
-        from renku.core.plugins.pluginmanager import get_plugin_manager
-        pm = get_plugin_manager()
-
-        results = pm.hook.process_run_annotations(**kwargs)
-        annotations = [a for r in results for a in r]
-
-        run.annotations = annotations
-
     def iter_input_files(self, basedir):
         """Yield tuples with input id and path."""
         stdin = getattr(self, 'stdin', None)

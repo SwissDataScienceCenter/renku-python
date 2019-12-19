@@ -15,19 +15,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Plugin hooks for ``ProcessRun`` customization."""
 import pluggy
 
-hookspec = pluggy.HookspecMarker("renku")
+hookspec = pluggy.HookspecMarker('renku')
 
 
 @hookspec
-def process_run_annotations(commit, client, process, path, **kwargs):
+def process_run_annotations(run):
     """Plugin Hook to add ``Annotation`` entry list to a ``ProcessRun``.
 
-    :param commit: Commit the run was created in.
-    :param client: ``RepositoryApiMixin`` client.
-    :param process: ``Process`` associated with this run.
-    :param path: CWL file path.
+    :param run: A ``ProcessRun`` object to get annotations for.
     :returns: A list of ``renku.core.models.provenance.activities.Annotation``
               objects.
     """
