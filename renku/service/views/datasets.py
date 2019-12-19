@@ -142,7 +142,7 @@ def list_dataset_files_view(user, cache):
 @requires_cache
 @requires_identity
 def add_file_to_dataset_view(user, cache):
-    """Add uploaded file to cloned repository."""
+    """Add the uploaded file to cloned repository."""
     ctx = DatasetAddRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
     project_path = make_project_path(user, project)

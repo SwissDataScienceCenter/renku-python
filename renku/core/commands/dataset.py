@@ -202,6 +202,7 @@ def add_to_dataset(
     identifier = extract_doi(
         with_metadata.identifier
     ) if with_metadata else None
+
     try:
         with client.with_dataset(
             name=name, identifier=identifier, create=create

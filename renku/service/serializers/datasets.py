@@ -98,6 +98,8 @@ class DatasetAddRequest(Schema):
                     'use either `file_id` or `file_path`'
                 ))
 
+        return data
+
 
 class DatasetAddResponse(Schema):
     """Response schema for dataset add file view."""

@@ -612,3 +612,46 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     assert file_['file_name'] in [
         file['name'] for file in response.json['result']['files']
     ]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_add_existing_file(svc_client_with_repo):
+    """Upload archive and add it to a dataset."""
+    svc_client, headers, project_id = svc_client_with_repo
+    payload = {
+        'project_id': project_id,
+        'dataset_name': '{0}'.format(uuid.uuid4().hex),
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+
+    assert {'result'} == set(response.json.keys())
+    assert {'dataset_name'} == set(response.json['result'].keys())
+    assert payload['dataset_name'] == response.json['result']['dataset_name']
+
+    files = [{'file_path': 'environment.yml'}]
+    payload = {
+        'project_id': project_id,
+        'dataset_name': payload['dataset_name'],
+        'files': files,
+    }
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+
+    assert {'result'} == set(response.json.keys())
+    assert {'dataset_name', 'files',
+            'project_id'} == set(response.json['result'].keys())
+
+    assert files == response.json['result']['files']
