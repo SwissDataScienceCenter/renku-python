@@ -89,6 +89,18 @@ class CommandLineTool(Process, CWLClass):
     temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
     permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
+    annotations = attr.ib(
+        metadata={
+            'cwl_metadata': {
+                'namespace': 'http://www.w3.org/ns/oa#',
+                'prefix': 'oa',
+                'property': 'oa:hasTarget',
+                'reverse': True
+            }
+        },
+        default=None
+    )
+
     def _std_streams(self, basedir=None):
         """Return mapped standard streams."""
         streams = {}
@@ -356,6 +368,12 @@ class CommandLineToolFactory(object):
                 InlineJavascriptRequirement(),
                 initial_work_dir_requirement,
             ])
+        breakpoint()
+        from renku.core.plugins.pluginmanager import get_plugin_manager
+        pm = get_plugin_manager()
+
+        results = pm.hook.cmdline_tool_annotations(tool=tool)
+        tool.annotations = [a for r in results for a in r]
 
     @command_line.validator
     def validate_command_line(self, attribute, value):

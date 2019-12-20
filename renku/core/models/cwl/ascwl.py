@@ -24,8 +24,10 @@ import attr
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import fields
+from pyld import jsonld
 
 from renku.core.models.locals import ReferenceMixin, with_reference
+from renku.core.models.jsonld import asjsonld
 
 
 class CWLType(type):
@@ -49,6 +51,7 @@ class CWLClass(ReferenceMixin, metaclass=CWLType):
         """Return an instance from CWL data."""
         class_name = data.get('class', None)
         cls = cls.registry.get(class_name, cls)
+        breakpoint()
 
         if __reference__:
             with with_reference(__reference__):
@@ -133,6 +136,28 @@ def ascwl(
             return os.path.relpath(v, str(basedir)) if basedir else v
         return v
 
+    def convert_cwl_metadata(rv, v, meta):
+        """Convert custom metadata to cwl."""
+        if not v:
+            return
+        breakpoint()
+        if isinstance(v, (list, tuple)):
+            result = [jsonld.expand(asjsonld(vv))[0] for vv in v]
+        else:
+            result = jsonld.expand(asjsonld(v))[0]
+
+        if 'reverse' in meta and meta['reverse']:
+            if '@reverse' not in rv:
+                rv['@reverse'] = {}
+            rv['@reverse'][meta['property']] = result
+        else:
+            rv[meta['property']] = result
+
+        if '$namespaces' not in rv:
+            rv['$namespaces'] = {}
+
+        rv['$namespaces'][meta['prefix']] = meta['namespace']
+
     for a in attrs:
         if a.name.startswith('__'):
             continue
@@ -140,6 +165,9 @@ def ascwl(
         a_name = a.name.rstrip('_')
         v = getattr(inst, a.name)
         if filter is not None and not filter(a, v):
+            continue
+        if 'cwl_metadata' in a.metadata:
+            convert_cwl_metadata(rv, v, a.metadata['cwl_metadata'])
             continue
         if recurse is True:
             if has(v.__class__):

@@ -19,8 +19,7 @@
 import pluggy
 
 import renku.core.plugins.process_run as process_run_hook_specs
-
-hookimpl = pluggy.HookimplMarker('renku')
+from renku.core.plugins.implementations.cmdline_tool_annotations import CmdlineToolAnnotations
 
 
 def get_plugin_manager():
@@ -28,4 +27,5 @@ def get_plugin_manager():
     pm = pluggy.PluginManager('renku')
     pm.add_hookspecs(process_run_hook_specs)
     pm.load_setuptools_entrypoints('renku')
+    pm.register(CmdlineToolAnnotations())
     return pm

@@ -30,3 +30,14 @@ def process_run_annotations(run):
               objects.
     """
     pass
+
+
+@hookspec
+def cmdline_tool_annotations(tool):
+    """Plugin Hook to add ``Annotation`` entry list to a ``WorkflowTool``.
+
+    :param run: A ``WorkflowTool`` object to get annotations for.
+    :returns: A list of ``renku.core.models.provenance.activities.Annotation``
+              objects.
+    """
+    pass

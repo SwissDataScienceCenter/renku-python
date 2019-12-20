@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019- Swiss Data Science Center (SDSC)
+# Copyright 2018-2019- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,7 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku plugins module."""
-import pluggy
+"""Dummy Plugin to add workflow annotations."""
 
-hookimpl = pluggy.HookimplMarker('renku')
+from renku.core.models.provenance.activities import Annotation
+from renku.core.plugins import hookimpl
+
+
+class CmdlineToolAnnotations(object):
+    """CmdlineTool Hook implementation namespace."""
+
+    @hookimpl
+    def cmdline_tool_annotations(self, tool):
+        """``cmdline_tool_annotations`` hook implementation."""
+        breakpoint()
+        return [
+            Annotation(
+                id='_:annotation', source="Dummy Hook", body='dummy hook body'
+            )
+        ]
