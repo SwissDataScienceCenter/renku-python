@@ -201,7 +201,7 @@ class DatasetFile(Entity, CreatorMixin):
 
     name = jsonld.ib(context='schema:name', kw_only=True, default=None)
 
-    filesize = attr.ib(default=None, kw_only=True)
+    filesize = attr.ib(default=0, kw_only=True)
 
     filetype = attr.ib(default=None, kw_only=True)
 
@@ -301,7 +301,7 @@ class Dataset(Entity, CreatorMixin):
 
     EDITABLE_FIELDS = [
         'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files'
+        'license', 'name', 'url', 'version', 'created', 'files', 'same_as'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)

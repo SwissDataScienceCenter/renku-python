@@ -19,6 +19,7 @@
 from urllib.parse import urlparse
 
 from renku.core.commands.providers.dataverse import DataverseProvider
+from renku.core.commands.providers.renku import RenkuProvider
 from renku.core.commands.providers.zenodo import ZenodoProvider
 from renku.core.utils.doi import is_doi
 
@@ -26,7 +27,11 @@ from renku.core.utils.doi import is_doi
 class ProviderFactory:
     """Create a provider type from URI."""
 
-    PROVIDERS = {'dataverse': DataverseProvider, 'zenodo': ZenodoProvider}
+    PROVIDERS = {
+        'dataverse': DataverseProvider,
+        'renku': RenkuProvider,
+        'zenodo': ZenodoProvider
+    }
 
     @staticmethod
     def from_uri(uri):

@@ -142,7 +142,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     )
     assert 0 == result.exit_code
     assert 'Warning: Newer version found' in result.output
-    assert 'OK'
+    assert 'OK' in result.output
 
     result = runner.invoke(
         cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y'
@@ -304,6 +304,57 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
     [('zenodo', [], 'zenodo.org/deposit'),
      ('dataverse', ['--dataverse-name', 'SDSC-Test'], 'doi:')]
 )
+def test_dataset_import_renku(runner, project, client):
+    """Test dataset import from Renku projects."""
+    URL = 'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/' \
+        'datasets/10.5281%2Fzenodo.3351812'
+
+    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    assert 'OK' in result.output
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', 'ls-files'])
+    assert 0 == result.exit_code
+    assert 'Courty, Laurent G.,Wilby, Robert L.,Hillier' in result.output
+    assert 'parametrized_extreme_rai_210/pxr_changelog.txt' in result.output
+
+    dataset = [d for d in client.datasets.values()][0]
+    assert dataset.same_as == URL
+
+
+@pytest.mark.parametrize(
+    'url', [
+        'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/',
+        'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
+        'datasets/10.5281%2Fzenodo.666'
+    ]
+)
+@pytest.mark.integration
+def test_dataset_import_renku_errors(url, runner, project):
+    """Test usage errors in Renku dataset import."""
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
+    assert 2 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset'])
+    assert 0 == result.exit_code
+
+
+@pytest.mark.integration
+def test_dataset_reimport_renku_dataset(runner, project):
+    """Test dataset import for existing dataset"""
+    URL = 'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/' \
+        'datasets/10.5281%2Fzenodo.3351812'
+
+    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    assert 'OK' in result.output
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    assert 1 == result.exit_code
+    assert 'Dataset exists: "parametrized_extreme_rai_210"' in result.output
+
+
+@pytest.mark.integration
 def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output

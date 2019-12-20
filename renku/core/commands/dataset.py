@@ -493,7 +493,7 @@ def import_dataset(
         raise ParameterError('Could not process {0}.\n{1}'.format(uri, err))
 
     try:
-        record = provider.find_record(uri)
+        record = provider.find_record(uri, client)
         dataset = record.as_dataset(client)
         files = dataset.files
         total_size = 0
@@ -537,7 +537,10 @@ def import_dataset(
              'URI not found.'.format(uri))
         )
 
-    if files:
+    if not files:
+        raise ParameterError('Dataset {} has no files.'.format(uri))
+
+    if not provider.is_git_based:
         if not short_name:
             short_name = generate_default_short_name(
                 dataset.name, dataset.version
@@ -568,6 +571,19 @@ def import_dataset(
                 client, short_name, tag_name,
                 'Tag {} created by renku import'.format(dataset.version)
             )
+    else:
+        dataset.url = remove_credentials(uri)
+        dataset.same_as = remove_credentials(uri)
+        short_name = short_name or dataset.short_name
+
+        add_to_dataset(
+            client,
+            urls=[record.project_url],
+            short_name=short_name,
+            sources=[f.path for f in files],
+            with_metadata=dataset,
+            create=True
+        )
 
 
 @pass_local_client(

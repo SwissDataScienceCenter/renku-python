@@ -649,7 +649,7 @@ def export_(
 def import_(uri, short_name, extract):
     """Import data from a 3rd party provider.
 
-    Supported providers: [Zenodo, Dataverse]
+    Supported providers: [Dataverse, Renku, Zenodo]
     """
     import_dataset(
         uri=uri,
