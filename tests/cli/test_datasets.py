@@ -1293,7 +1293,7 @@ def test_avoid_empty_commits(runner, client, directory_tree):
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before == commit_sha_after
-    assert 'Error: There is nothing to commit.' in result.output
+    assert 'Error: File already exists in dataset.' in result.output
 
 
 def test_multiple_dataset_commits(runner, client, directory_tree):
@@ -1316,6 +1316,36 @@ def test_multiple_dataset_commits(runner, client, directory_tree):
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before != commit_sha_after
+
+
+def test_add_same_filename_multiple(runner, client, directory_tree):
+    """Check adding same filename multiple times."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', directory_tree.strpath]
+    )
+
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset1', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'Error: File already exists in dataset.' in result.output
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'Error: There is nothing to commit.' in result.output
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath,
+            'Dockerfile'
+        ]
+    )
+    assert 0 == result.exit_code
 
 
 def test_add_removes_local_path_information(runner, client, directory_tree):

@@ -258,33 +258,36 @@ class DatasetsApiMixin(object):
             else:
                 raise errors.IgnoredFiles(ignored)
 
+        if dataset.contains_any(files) and force is False:
+            raise errors.DatasetFileExists()
+
         # commit all new data
         file_paths = {str(data['path']) for data in files if str(data['path'])}
-        new_files_count = len(file_paths) - len(ignored)
-        new_files = (file_paths - set(ignored))
+        files_to_add = (file_paths - set(ignored))
 
-        if dataset.contains(new_files) is False and (new_files_count or force):
-            self.repo.git.add(*new_files)
+        self.repo.git.add(*files_to_add)
 
+        if self.repo.is_dirty():
             commit_msg = ('renku dataset: '
                           'committing {} newly added files'
-                          ).format(new_files_count)
+                          ).format(len(file_paths) + len(ignored))
 
             self.repo.index.commit(commit_msg)
 
-            # Generate the DatasetFiles
-            dataset_files = []
-            for data in files:
-                dataset_file = DatasetFile.from_revision(self, **data)
+        # Generate the DatasetFiles
+        dataset_files = []
+        for data in files:
+            if os.path.basename(str(data['path'])) == '.git':
+                continue
 
-                # Set dataset file path relative to root for submodules.
-                if dataset_file.client != self:
-                    dataset_file.path = str(data['path'])
+            dataset_file = DatasetFile.from_revision(self, **data)
 
-                dataset_files.append(dataset_file)
+            # Set dataset file path relative to root for submodules.
+            if dataset_file.client != self:
+                dataset_file.path = str(data['path'])
+            dataset_files.append(dataset_file)
 
-            dataset.update_files(dataset_files)
-
+        dataset.update_files(dataset_files)
         return warning_message
 
     def _add_from_local(self, dataset, path, link, destination):

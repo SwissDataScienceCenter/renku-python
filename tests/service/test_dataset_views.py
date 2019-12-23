@@ -478,7 +478,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 
     payload = {
         'project_id': project_id,
-        'dataset_name': 'mydata',
+        'dataset_name': payload['dataset_name'],
         'files': [{
             'file_id': file_['file_id']
         }, ]
@@ -647,7 +647,6 @@ def test_add_existing_file(svc_client_with_repo):
         data=json.dumps(payload),
         headers=headers,
     )
-
     assert response
 
     assert {'result'} == set(response.json.keys())

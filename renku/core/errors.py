@@ -198,6 +198,16 @@ class NothingToCommit(RenkuException):
         super(NothingToCommit, self).__init__('There is nothing to commit.')
 
 
+class DatasetFileExists(RenkuException):
+    """Raise when file is already in dataset."""
+
+    def __init__(self):
+        """Build a custom message."""
+        super(
+            DatasetFileExists, self
+        ).__init__('File already exists in dataset. Use --force to add.')
+
+
 class CommitMessageEmpty(RenkuException):
     """Raise invalid commit message."""
 
