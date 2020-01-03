@@ -595,7 +595,6 @@
             {
                "nodeKind": "sh:IRI",
                "path": "prov:wasInformedBy",
-               "minCount": 1,
                "maxCount": 1
             },
             {

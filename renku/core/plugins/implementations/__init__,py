@@ -1,3 +1,0 @@
-from .cmdline_tool_annotations import CmdlineToolAnnotations
-
-__all__ = ['CmdlineToolAnnotations']

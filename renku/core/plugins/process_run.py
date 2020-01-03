@@ -26,7 +26,7 @@ def process_run_annotations(run):
     """Plugin Hook to add ``Annotation`` entry list to a ``ProcessRun``.
 
     :param run: A ``ProcessRun`` object to get annotations for.
-    :returns: A list of ``renku.core.models.provenance.activities.Annotation``
+    :returns: A list of ``renku.core.models.cwl.annotation.Annotation``
               objects.
     """
     pass
@@ -37,7 +37,7 @@ def cmdline_tool_annotations(tool):
     """Plugin Hook to add ``Annotation`` entry list to a ``WorkflowTool``.
 
     :param run: A ``WorkflowTool`` object to get annotations for.
-    :returns: A list of ``renku.core.models.provenance.activities.Annotation``
+    :returns: A list of ``renku.core.models.cwl.annotation.Annotation``
               objects.
     """
     pass

@@ -32,6 +32,7 @@ from renku.core import errors
 
 from ...management.config import RENKU_HOME
 from ..datastructures import DirectoryTree
+from .annotation import Annotation
 from .ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
@@ -95,7 +96,8 @@ class CommandLineTool(Process, CWLClass):
                 'namespace': 'http://www.w3.org/ns/oa#',
                 'prefix': 'oa',
                 'property': 'oa:hasTarget',
-                'reverse': True
+                'reverse': True,
+                'type': Annotation
             }
         },
         default=None
@@ -368,7 +370,7 @@ class CommandLineToolFactory(object):
                 InlineJavascriptRequirement(),
                 initial_work_dir_requirement,
             ])
-        breakpoint()
+
         from renku.core.plugins.pluginmanager import get_plugin_manager
         pm = get_plugin_manager()
 

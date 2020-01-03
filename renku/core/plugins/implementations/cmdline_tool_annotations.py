@@ -17,7 +17,6 @@
 # limitations under the License.
 """Dummy Plugin to add workflow annotations."""
 
-from renku.core.models.provenance.activities import Annotation
 from renku.core.plugins import hookimpl
 
 
@@ -27,9 +26,10 @@ class CmdlineToolAnnotations(object):
     @hookimpl
     def cmdline_tool_annotations(self, tool):
         """``cmdline_tool_annotations`` hook implementation."""
-        breakpoint()
+        from renku.core.models.cwl.annotation import Annotation
+
         return [
             Annotation(
-                id='_:annotation', source="Dummy Hook", body='dummy hook body'
+                id='_:annotation', source='Dummy Hook', body='dummy hook body'
             )
         ]

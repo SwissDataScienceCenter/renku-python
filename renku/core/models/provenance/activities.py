@@ -28,6 +28,7 @@ from git import NULL_TREE
 
 from renku.core.models import jsonld
 from renku.core.models.cwl import WORKFLOW_STEP_RUN_TYPES
+from renku.core.models.cwl.annotation import Annotation
 from renku.core.models.cwl.ascwl import CWLClass
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, Entity
@@ -51,29 +52,6 @@ def _nodes(output, parent=None):
         yield output
     else:
         yield output
-
-
-@jsonld.s(
-    type='oa:Annotation',
-    context={
-        'oa': 'http://www.w3.org/ns/oa#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        'dcterms': 'http://purl.org/dc/terms/',
-    },
-    cmp=False,
-)
-class Annotation:
-    """Represents a custom annotation for a research object.
-
-    Should be subclassed to be used with correct context on the ``body``
-    property.
-    """
-
-    _id = jsonld.ib(context='@id', kw_only=True)
-
-    body = jsonld.ib(default=None, context='oa:hasBody', kw_only=True)
-
-    source = jsonld.ib(default=None, context='dcterms:creator', kw_only=True)
 
 
 @jsonld.s(
@@ -362,7 +340,13 @@ class ProcessRun(Activity):
             self.association = Association.from_activity(self)
 
         if not self.annotations:
-            self.annotations = self.default_annotations()
+            if (
+                hasattr(self.process, 'annotations') and
+                self.process.annotations
+            ):
+                self.annotations = self.process.annotations
+            else:
+                self.annotations = self.default_annotations()
 
         if self.path is None:
             # FIXME only works for linking directory to file

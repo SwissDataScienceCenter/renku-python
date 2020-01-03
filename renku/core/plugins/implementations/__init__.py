@@ -15,18 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""pluggy Plugin setup."""
-import pluggy
+"""Renku plugin implementations."""
+from .cmdline_tool_annotations import CmdlineToolAnnotations
 
-import renku.core.plugins.process_run as process_run_hook_specs
-from renku.core.plugins.implementations.cmdline_tool_annotations import \
-    CmdlineToolAnnotations
-
-
-def get_plugin_manager():
-    """The ``pluggy`` plugin manager."""
-    pm = pluggy.PluginManager('renku')
-    pm.add_hookspecs(process_run_hook_specs)
-    pm.load_setuptools_entrypoints('renku')
-    pm.register(CmdlineToolAnnotations())
-    return pm
+__all__ = ['CmdlineToolAnnotations']

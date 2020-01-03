@@ -24,10 +24,9 @@ import attr
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import fields
-from pyld import jsonld
 
-from renku.core.models.locals import ReferenceMixin, with_reference
 from renku.core.models.jsonld import asjsonld
+from renku.core.models.locals import ReferenceMixin, with_reference
 
 
 class CWLType(type):
@@ -49,18 +48,67 @@ class CWLClass(ReferenceMixin, metaclass=CWLType):
     @classmethod
     def from_cwl(cls, data, __reference__=None):
         """Return an instance from CWL data."""
+        exclude_properties = ['class', '$namespaces', '@reverse']
         class_name = data.get('class', None)
         cls = cls.registry.get(class_name, cls)
-        breakpoint()
+
+        if '$namespaces' in data:
+            # handle custom metadata
+            keys = data.keys()
+
+            metadata_keys = [(k, False) for k in keys if ':' in k]
+
+            if '@reverse' in keys:
+                metadata_keys.extend((k, True) for k in data['@reverse'].keys()
+                                     if ':' in k)
+
+            attrs = fields(cls)
+
+            for a in attrs:
+                # map custom metadata
+                if 'cwl_metadata' not in a.metadata:
+                    continue
+
+                metadata = a.metadata['cwl_metadata']
+
+                k = (metadata.get('property'), metadata.get('reverse'))
+
+                if k not in metadata_keys:
+                    continue
+
+                metadata_type = metadata.get('type')
+
+                if not metadata_type:
+                    raise ValueError('CWL metadata type not specified')
+
+                if metadata.get('reverse', False):
+                    metadata_value = data['@reverse'][metadata['property']]
+                else:
+                    metadata_value = data[metadata['property']]
+                    exclude_properties.append(metadata['property'])
+                if isinstance(metadata_value, list):
+                    data[a.name] = [
+                        metadata_type.from_jsonld(v) for v in metadata_value
+                    ]
+                else:
+                    data[a.name] = metadata_type.from_jsonld(metadata_value)
 
         if __reference__:
             with with_reference(__reference__):
                 self = cls(
-                    **{k: v
-                       for k, v in iteritems(data) if k != 'class'}
+                    **{
+                        k: v
+                        for k, v in iteritems(data)
+                        if k not in exclude_properties
+                    }
                 )
         else:
-            self = cls(**{k: v for k, v in iteritems(data) if k != 'class'})
+            self = cls(
+                **{
+                    k: v
+                    for k, v in iteritems(data) if k not in exclude_properties
+                }
+            )
         return self
 
     @classmethod
@@ -140,11 +188,11 @@ def ascwl(
         """Convert custom metadata to cwl."""
         if not v:
             return
-        breakpoint()
+
         if isinstance(v, (list, tuple)):
-            result = [jsonld.expand(asjsonld(vv))[0] for vv in v]
+            result = [asjsonld(vv) for vv in v]
         else:
-            result = jsonld.expand(asjsonld(v))[0]
+            result = asjsonld(v)
 
         if 'reverse' in meta and meta['reverse']:
             if '@reverse' not in rv:

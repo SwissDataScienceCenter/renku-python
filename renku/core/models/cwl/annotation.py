@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019- Swiss Data Science Center (SDSC)
+# Copyright 2018-2019- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,18 +15,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""pluggy Plugin setup."""
-import pluggy
+"""Represent an annotation for a workflow."""
 
-import renku.core.plugins.process_run as process_run_hook_specs
-from renku.core.plugins.implementations.cmdline_tool_annotations import \
-    CmdlineToolAnnotations
+from renku.core.models import jsonld
 
 
-def get_plugin_manager():
-    """The ``pluggy`` plugin manager."""
-    pm = pluggy.PluginManager('renku')
-    pm.add_hookspecs(process_run_hook_specs)
-    pm.load_setuptools_entrypoints('renku')
-    pm.register(CmdlineToolAnnotations())
-    return pm
+@jsonld.s(
+    type='oa:Annotation',
+    context={
+        'oa': 'http://www.w3.org/ns/oa#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'dcterms': 'http://purl.org/dc/terms/',
+    },
+    cmp=False,
+)
+class Annotation:
+    """Represents a custom annotation for a research object."""
+
+    _id = jsonld.ib(context='@id', kw_only=True)
+
+    body = jsonld.ib(default=None, context='oa:hasBody', kw_only=True)
+
+    source = jsonld.ib(default=None, context='dcterms:creator', kw_only=True)
