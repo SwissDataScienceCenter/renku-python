@@ -69,11 +69,11 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 )
 def create_dataset(
     client,
-    name,
-    short_name=None,
+    short_name,
+    title=None,
     description=None,
     creators=None,
-    commit_message=None,
+    commit_message=None
 ):
     """Create an empty dataset in the current repo.
 
@@ -89,8 +89,8 @@ def create_dataset(
         creators = [Person.from_dict(creator) for creator in creators]
 
     dataset, _, __ = client.create_dataset(
-        name=name,
         short_name=short_name,
+        title=title,
         description=description,
         creators=creators
     )

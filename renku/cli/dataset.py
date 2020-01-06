@@ -317,9 +317,7 @@ def dataset(ctx, revision, datadir, format):
 
 @dataset.command()
 @click.argument('name')
-@click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
-)
+@click.option('--title', default='', help='Title of the dataset.')
 @click.option(
     '-d', '--description', default='', help='Dataset\'s description.'
 )
@@ -330,13 +328,13 @@ def dataset(ctx, revision, datadir, format):
     multiple=True,
     help='Creator\'s name and email ("Name <email>").'
 )
-def create(name, short_name, description, creator):
+def create(name, title, description, creator):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
     new_dataset = create_dataset(
-        name=name,
-        short_name=short_name,
+        short_name=name,
+        title=title,
         description=description,
         creators=creators
     )
@@ -565,7 +563,7 @@ def export_(id, provider, publish, tag):
 @dataset.command('import')
 @click.argument('uri')
 @click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
+    '--short-name', default=None, help='A convenient name for dataset.'
 )
 @click.option(
     '-x',

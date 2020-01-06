@@ -40,7 +40,7 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
-    generate_default_short_name, is_dataset_name_valid
+    is_dataset_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -131,7 +131,7 @@ class DatasetsApiMixin(object):
 
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(
-                name=short_name, short_name=short_name
+                short_name=short_name
             )
         elif create:
             raise errors.DatasetExistsError(
@@ -154,14 +154,11 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, name, short_name=None, description='', creators=None
+        self, short_name=None, title=None, description=None, creators=None
     ):
         """Create a dataset."""
-        if not name:
-            raise errors.ParameterError('Dataset name must be provided.')
-
         if not short_name:
-            short_name = generate_default_short_name(name, None)
+            raise errors.ParameterError('Dataset name must be provided.')
 
         if not is_dataset_name_valid(short_name):
             raise errors.ParameterError(
@@ -172,6 +169,9 @@ class DatasetsApiMixin(object):
             raise errors.DatasetExistsError(
                 'Dataset exists: "{}".'.format(short_name)
             )
+
+        if not title:
+            title = short_name
 
         identifier = str(uuid.uuid4())
 
@@ -191,8 +191,8 @@ class DatasetsApiMixin(object):
             dataset = Dataset(
                 client=self,
                 identifier=identifier,
-                name=name,
                 short_name=short_name,
+                name=title,
                 description=description,
                 creator=creators
             )
