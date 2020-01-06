@@ -130,20 +130,27 @@ class Person:
     @classmethod
     def from_string(cls, string):
         """Create an instance from a 'Name <email>' string."""
-        REGEX = r'([^<]*)<{0,1}([^@<>]+@[^@<>]+\.[^@<>]+)*>{0,1}'
-        name, email = re.search(REGEX, string).groups()
+        regex_pattern = r'([^<]*)<{0,1}([^@<>]+@[^@<>]+\.[^@<>]+)*>{0,1}'
+        name, email = re.search(regex_pattern, string).groups()
         name = name.rstrip()
+
         # Check the git configuration.
         if not name:  # pragma: no cover
             raise errors.ParameterError(
-                'Name is not valid: Valid format is "Name <email>"'
+                'Name is invalid: A valid format is "Name <email>"'
             )
+
         if not email:  # pragma: no cover
             raise errors.ParameterError(
-                'Email is not valid: Valid format is "Name <email>"'
+                'Email is invalid: A valid format is "Name <email>"'
             )
 
         return cls(name=name, email=email)
+
+    @classmethod
+    def from_dict(cls, obj):
+        """Create and instance from a dictionary."""
+        return cls(**obj)
 
     def __attrs_post_init__(self):
         """Finish object initialization."""
