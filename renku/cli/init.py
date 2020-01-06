@@ -120,7 +120,7 @@ def validate_name(ctx, param, value):
     return value
 
 
-def store_directory(ctx, param, value):
+def store_directory(value):
     """Store directory as a new Git home."""
     Path(value).mkdir(parents=True, exist_ok=True)
     set_git_home(value)
@@ -161,7 +161,7 @@ def is_path_empty(path):
 
     :ref path: target path
     """
-    gen = path.glob('**/*')
+    gen = Path(path).glob('**/*')
     try:
         next(gen)
         return False
@@ -173,7 +173,6 @@ def is_path_empty(path):
 @click.argument(
     'path',
     default='.',
-    callback=store_directory,
     type=click.Path(writable=True, file_okay=False, resolve_path=True),
 )
 @click.option(
@@ -212,44 +211,12 @@ def init(
     template_ref, template_variables, description, print_manifest, force
 ):
     """Initialize a project in PATH. Default is current path."""
-    # preparation
-    if not client.use_external_storage:
-        use_external_storage = False
-
-    ctx.obj = client = attr.evolve(
-        client, path=path, use_external_storage=use_external_storage
-    )
-
-    # verify path status
-    # TODO: move this to client
-    if not is_path_empty(client.path):
-        from git import GitCommandError
-        if not force:
-            raise errors.InvalidFileOperation(
-                'Folder "{0}" is not empty. Please add --force '
-                'flag to transform it into a Renku repository.'.format(
-                    str(path)
-                )
-            )
-        try:
-            commit = client.find_previous_commit('*')
-            branch_name = 'pre_renku_init_{0}'.format(commit.hexsha[:7])
-            with client.worktree(
-                path=path,
-                branch_name=branch_name,
-                commit=commit,
-                merge_args=[
-                    '--no-ff', '-s', 'recursive', '-X', 'ours',
-                    '--allow-unrelated-histories'
-                ]
-            ):
-                click.echo(
-                    'Saving current data in branch {0}'.format(branch_name)
-                )
-        except AttributeError:
-            click.echo('Warning! Overwriting non-empty folder.')
-        except GitCommandError as e:
-            click.UsageError(e)
+    # verify dirty path
+    if not is_path_empty(path) and not force and not print_manifest:
+        raise errors.InvalidFileOperation(
+            'Folder "{0}" is not empty. Please add --force '
+            'flag to transform it into a Renku repository.'.format(str(path))
+        )
 
     # select template source
     if template_source:
@@ -304,6 +271,35 @@ def init(
                 show_choices=False
             )
             template_data = templates[template_num - 1]
+
+    # set local path and storage
+    store_directory(path)
+    if not client.use_external_storage:
+        use_external_storage = False
+    ctx.obj = client = attr.evolve(
+        client, path=path, use_external_storage=use_external_storage
+    )
+    if not is_path_empty(path):
+        from git import GitCommandError
+        try:
+            commit = client.find_previous_commit('*')
+            branch_name = 'pre_renku_init_{0}'.format(commit.hexsha[:7])
+            with client.worktree(
+                path=path,
+                branch_name=branch_name,
+                commit=commit,
+                merge_args=[
+                    '--no-ff', '-s', 'recursive', '-X', 'ours',
+                    '--allow-unrelated-histories'
+                ]
+            ):
+                click.echo(
+                    'Saving current data in branch {0}'.format(branch_name)
+                )
+        except AttributeError:
+            click.echo('Warning! Overwriting non-empty folder.')
+        except GitCommandError as e:
+            click.UsageError(e)
 
     # clone the repo
     template_path = template_folder / template_data['folder']
