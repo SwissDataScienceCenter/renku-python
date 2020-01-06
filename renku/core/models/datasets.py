@@ -400,6 +400,13 @@ class Dataset(Entity, CreatorMixin):
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
 
+    def contains_any(self, files):
+        """Check if files are already within a dataset."""
+        for file_ in files:
+            if self.find_file(file_['path']):
+                return True
+        return False
+
     def find_file(self, filename, return_index=False):
         """Find a file in files container."""
         for index, file_ in enumerate(self.files):

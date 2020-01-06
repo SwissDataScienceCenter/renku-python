@@ -26,7 +26,7 @@ def test_dataset_add(tmpdir, runner, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    # Using an extension from gitignore.default
+    # Using an extension from gitignore.default defined as *.spec
     ignored_file = tmpdir.join('my.spec')
     ignored_file.write('My Specification')
 
@@ -36,6 +36,7 @@ def test_dataset_add(tmpdir, runner, client):
         ['dataset', 'add', 'testing', ignored_file.strpath],
         catch_exceptions=False,
     )
+
     assert 1 == result.exit_code
 
     client.repo.git.clean('-dff')
