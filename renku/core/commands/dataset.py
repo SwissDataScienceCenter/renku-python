@@ -159,7 +159,7 @@ def add_to_dataset(
     identifier=None,
     extract=False,
     all_at_once=False,
-    interactive=False,
+    progress=None,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -184,7 +184,7 @@ def add_to_dataset(
                     ref=ref,
                     extract=extract,
                     all_at_once=all_at_once,
-                    interactive=interactive,
+                    progress=progress,
                 )
 
             if warning_message:
@@ -406,8 +406,9 @@ def import_dataset(
     uri,
     short_name='',
     extract=False,
-    interactive=False,
+    with_prompt=False,
     commit_message=None,
+    progress=None,
 ):
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -419,7 +420,7 @@ def import_dataset(
         dataset = record.as_dataset(client)
         files = dataset.files
 
-        if interactive:
+        if with_prompt:
             click.echo(
                 tabulate(
                     files,
@@ -472,7 +473,7 @@ def import_dataset(
             identifier=identifier,
             extract=extract,
             all_at_once=True,
-            interactive=interactive,
+            progress=progress,
         )
 
         if dataset.version:

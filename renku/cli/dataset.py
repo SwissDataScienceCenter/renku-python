@@ -246,6 +246,7 @@ import click
 import editor
 import requests
 import yaml
+from tqdm import tqdm
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_parent, dataset_remove, edit_dataset, export_dataset, \
@@ -256,6 +257,7 @@ from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
+from renku.core.management.datasets import DownloadProgressCallback
 
 
 def prompt_access_token(exporter):
@@ -579,9 +581,33 @@ def import_(uri, short_name, extract):
         uri=uri,
         short_name=short_name,
         extract=extract,
-        interactive=True,
+        with_prompt=True,
+        progress=_DownloadProgressbar
     )
     click.secho('OK', fg='green')
+
+
+class _DownloadProgressbar(DownloadProgressCallback):
+    def __init__(self, description, total_size):
+        """Default initializer."""
+        self._progressbar = tqdm(
+            total=total_size,
+            unit='iB',
+            unit_scale=True,
+            desc=description,
+            leave=False,
+            bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
+        )
+
+    def update(self, size):
+        """Update the status."""
+        if self._progressbar:
+            self._progressbar.update(size)
+
+    def finalize(self):
+        """Called once when the download is finished."""
+        if self._progressbar:
+            self._progressbar.close()
 
 
 @dataset.command('update')

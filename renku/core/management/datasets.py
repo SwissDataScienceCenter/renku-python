@@ -35,7 +35,6 @@ import attr
 import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
-from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.management.clone import clone
@@ -230,7 +229,7 @@ class DatasetsApiMixin(object):
         link=False,
         extract=False,
         all_at_once=False,
-        interactive=False
+        progress=None
     ):
         """Import the data into the data directory."""
         warning_message = ''
@@ -248,7 +247,7 @@ class DatasetsApiMixin(object):
                 urls=urls,
                 destination=destination,
                 extract=extract,
-                interactive=interactive
+                progress=progress
             )
         else:
             for url in urls:
@@ -388,7 +387,7 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_urls(self, dataset, urls, destination, extract, interactive):
+    def _add_from_urls(self, dataset, urls, destination, extract, progress):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
@@ -397,7 +396,7 @@ class DatasetsApiMixin(object):
             futures = {
                 executor.submit(
                     self._add_from_url, dataset, url, destination, extract,
-                    interactive
+                    progress
                 )
                 for url in urls
             }
@@ -407,9 +406,7 @@ class DatasetsApiMixin(object):
 
         return files
 
-    def _add_from_url(
-        self, dataset, url, destination, extract, interactive=False
-    ):
+    def _add_from_url(self, dataset, url, destination, extract, progress=None):
         """Process an add from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
@@ -420,7 +417,7 @@ class DatasetsApiMixin(object):
                 url=url,
                 download_to=destination,
                 extract=extract,
-                interactive=interactive
+                progress_class=progress
             )
         except error.HTTPError as e:  # pragma nocover
             raise errors.OperationError(
@@ -899,7 +896,22 @@ class DatasetsApiMixin(object):
         return label
 
 
-def _download(url, download_to, extract, interactive, chunk_size=16384):
+class DownloadProgressCallback:
+    """Interface to report various stages of a download."""
+
+    def __init__(self, description, total_size):
+        """Default initializer."""
+
+    def update(self, size):
+        """Update the status."""
+
+    def finalize(self):
+        """Called once when the download is finished."""
+
+
+def _download(
+    url, download_to, extract, progress_class=None, chunk_size=16384
+):
     def extract_dataset(filepath):
         """Extract downloaded file."""
         try:
@@ -925,22 +937,17 @@ def _download(url, download_to, extract, interactive, chunk_size=16384):
         request.raise_for_status()
         with open(str(download_to), 'wb') as file_:
             total_size = int(request.headers.get('content-length', 0))
+            progress_class = progress_class or DownloadProgressCallback
+            progress = progress_class(
+                description=download_to.name, total_size=total_size
+            )
             try:
-                progressbar = tqdm(
-                    disable=not interactive,
-                    total=total_size,
-                    unit='iB',
-                    unit_scale=True,
-                    desc=download_to.name,
-                    leave=False,
-                    bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
-                )
                 for chunk in request.iter_content(chunk_size=chunk_size):
                     if chunk:  # ignore keep-alive chunks
                         file_.write(chunk)
-                        progressbar.update(len(chunk))
+                        progress.update(size=len(chunk))
             finally:
-                progressbar.close()
+                progress.finalize()
     if extract:
         return extract_dataset(download_to)
 
