@@ -21,17 +21,18 @@ from marshmallow import Schema, fields, post_load, pre_load
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class DatasetAuthors(Schema):
-    """Schema for the dataset authors."""
+class DatasetCreators(Schema):
+    """Schema for the dataset creators."""
 
     name = fields.String(required=True)
+    email = fields.String()
     affiliation = fields.String()
 
 
 class DatasetCreateRequest(Schema):
     """Request schema for dataset create view."""
 
-    authors = fields.List(fields.Nested(DatasetAuthors))
+    creators = fields.List(fields.Nested(DatasetCreators))
     commit_message = fields.String()
     dataset_name = fields.String(required=True)
     description = fields.String()
