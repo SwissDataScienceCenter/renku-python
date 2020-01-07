@@ -40,6 +40,8 @@ spec:
               value: {{ .Values.projectCloneDepth | quote }}
             - name: CORE_SERVICE_PREFIX
               value: /renku
+            - name: RENKU_SVC_SWAGGER_URL
+              value: /renku/openapi.json
           ports:
             - name: http
               containerPort: 8080
