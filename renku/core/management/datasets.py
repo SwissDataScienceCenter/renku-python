@@ -187,12 +187,12 @@ class DatasetsApiMixin(object):
             self.renku_datasets_path / dataset_metadata_path / self.METADATA
         )
 
-        try:
-            path.parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError:
+        if path.exists():
             raise errors.DatasetExistsError(
-                'Dataset with reference {} exists'.format(path.parent)
+                'Dataset with reference {} exists'.format(path)
             )
+
+        path.parent.mkdir(parents=True, exist_ok=True)
 
         if creators is None:
             creators = [Person.from_git(self.repo)]

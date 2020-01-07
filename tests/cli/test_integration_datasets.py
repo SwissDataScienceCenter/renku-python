@@ -238,7 +238,7 @@ def test_dataset_import_different_names(runner, client, sleep_after):
     )
     assert 1 == result.exit_code
     assert 'Error' in result.output
-    assert '10.5281%2Fzenodo.2658634 exists' in result.output
+    assert '10.5281%2Fzenodo.2658634/metadata.yml exists' in result.output
 
 
 @pytest.mark.integration
@@ -252,6 +252,26 @@ def test_dataset_import_ignore_uncompressed_files(
     )
     assert 0 == result.exit_code
     assert 'Gorne_Diaz_database_2019.csv' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
+    """Test re-importing of deleted datasets works."""
+    DOI = '10.5281/zenodo.2658634'
+    result = runner.invoke(
+        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', 'rm', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        input='y'
+    )
+    assert 0 == result.exit_code
 
 
 @pytest.mark.integration
