@@ -19,8 +19,7 @@
 import pluggy
 
 import renku.core.plugins.process_run as process_run_hook_specs
-from renku.core.plugins.implementations.cmdline_tool_annotations import \
-    CmdlineToolAnnotations
+import renku.core.plugins.implementations as default_implementations
 
 
 def get_plugin_manager():
@@ -28,5 +27,9 @@ def get_plugin_manager():
     pm = pluggy.PluginManager('renku')
     pm.add_hookspecs(process_run_hook_specs)
     pm.load_setuptools_entrypoints('renku')
-    pm.register(CmdlineToolAnnotations())
+
+    for cls in default_implementations.__dict__.values():
+        if not isinstance(cls, type):
+            continue
+        pm.register(cls())
     return pm

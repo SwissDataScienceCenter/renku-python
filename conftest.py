@@ -671,3 +671,27 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
     }
 
     yield methods, request.param, svc_client
+
+
+@pytest.fixture
+def dummy_run_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _CmdlineToolAnnotations(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        @hookimpl
+        def cmdline_tool_annotations(self, tool):
+            """``cmdline_tool_annotations`` hook implementation."""
+            from renku.core.models.cwl.annotation import Annotation
+
+            return [
+                Annotation(
+                    id='_:annotation',
+                    source='Dummy Hook',
+                    body='dummy hook body'
+                )
+            ]
+
+    return _CmdlineToolAnnotations()
