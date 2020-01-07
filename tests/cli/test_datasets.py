@@ -1365,10 +1365,12 @@ def test_add_remove_credentials(runner, client, monkeypatch):
     """Check removal of credentials during adding of remote data files."""
     url = 'https://username:password@example.com/index.html'
 
-    def get(u):
+    def get(u, *args, **kwargs):
         """Mocked response."""
         response = requests.Response()
         response._content = b'{}'
+        response._content_consumed = True
+        response.status_code = 200
         return response
 
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
@@ -1376,6 +1378,6 @@ def test_add_remove_credentials(runner, client, monkeypatch):
 
     monkeypatch.setattr(requests, 'get', get)
     dataset = client.load_dataset('my-dataset')
-    o = client._add_from_url(dataset, url, client.path)
+    o = client._add_from_url(dataset, url, client.path, extract=False)
 
     assert 'https://example.com/index.html' == o[0]['url']
