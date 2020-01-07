@@ -298,18 +298,17 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    'provider,params,output',
-    [('zenodo', [], 'zenodo.org/deposit'),
-     ('dataverse', ['--dataverse-name', 'SDSC-Test'], 'doi:')]
-)
-def test_dataset_import_renku(runner, project, client):
-    """Test dataset import from Renku projects."""
-    URL = 'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/' \
+    'url', [
+        'https://dev.renku.ch/datasets/10.5281%2Fzenodo.3351812',
+        'https://dev.renku.ch/datasets/10.5281%2Fzenodo.3351812/',
+        'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
         'datasets/10.5281%2Fzenodo.3351812'
-
-    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    ]
+)
+def test_dataset_import_renku(runner, project, client, url):
+    """Test dataset import from Renku projects."""
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
     assert 'OK' in result.output
     assert 0 == result.exit_code
 
@@ -319,21 +318,22 @@ def test_dataset_import_renku(runner, project, client):
     assert 'parametrized_extreme_rai_210/pxr_changelog.txt' in result.output
 
     dataset = [d for d in client.datasets.values()][0]
-    assert dataset.same_as == URL
+    assert dataset.same_as == url
 
 
 @pytest.mark.parametrize(
-    'url', [
-        'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/',
-        'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
-        'datasets/10.5281%2Fzenodo.666'
-    ]
+    'url,exit_code',
+    [('https://dev.renku.ch/projects/virginiafriedrich/datasets-test/', 2),
+     (
+         'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
+         'datasets/10.5281%2Fzenodo.666', 2
+     ), ('https://dev.renku.ch/datasets/10.5281%2Fzenodo.666', 1)]
 )
 @pytest.mark.integration
-def test_dataset_import_renku_errors(url, runner, project):
+def test_dataset_import_renku_errors(runner, project, url, exit_code):
     """Test usage errors in Renku dataset import."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
-    assert 2 == result.exit_code
+    assert exit_code == result.exit_code
 
     result = runner.invoke(cli, ['dataset'])
     assert 0 == result.exit_code
@@ -355,6 +355,12 @@ def test_dataset_reimport_renku_dataset(runner, project):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
+    'provider,params,output',
+    [('zenodo', [], 'zenodo.org/deposit'),
+     ('dataverse', ['--dataverse-name', 'SDSC-Test'], 'doi:')]
+)
 def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output

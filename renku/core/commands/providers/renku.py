@@ -37,9 +37,10 @@ class RenkuProvider(ProviderApi):
     def supports(uri):
         """Whether or not this provider supports a given uri."""
         u = urllib.parse.urlparse(uri)
-        return 'renku' in u.netloc and 'datasets' in u.path.split(
-            '/'
-        ) and u.path.startswith('/projects')
+        return 'renku' in u.netloc and (
+            RenkuProvider._is_project_dataset(u) or
+            RenkuProvider._is_standalone_dataset(u)
+        )
 
     def find_record(self, uri, client=None):
         """Retrieves a dataset from Renku.
@@ -50,13 +51,31 @@ class RenkuProvider(ProviderApi):
         """
         from renku.core.management import LocalClient
 
-        ssh_url, https_url = self._get_project_urls(uri)
-        try:
-            repo, repo_path = client.prepare_git_repo(ssh_url)
-            project_url = ssh_url
-        except errors.GitError:
-            repo, repo_path = client.prepare_git_repo(https_url)
-            project_url = https_url
+        kg_urls = self._get_project_kg_urls(uri)
+        project_url = None
+
+        for url in kg_urls:
+            ssh_url, https_url = self._get_project_urls(url)
+            try:
+                repo, repo_path = client.prepare_git_repo(ssh_url)
+            except errors.GitError:
+                pass
+            else:
+                project_url = ssh_url
+                break
+
+            try:
+                repo, repo_path = client.prepare_git_repo(https_url)
+            except errors.GitError:
+                pass
+            else:
+                project_url = https_url
+                break
+
+        if not project_url:
+            raise errors.ParameterError(
+                'Cannot find any project for the dataset.'
+            )
 
         dataset_id = self._record_id(uri)
 
@@ -87,41 +106,72 @@ class RenkuProvider(ProviderApi):
         return True
 
     @staticmethod
+    def _is_project_dataset(parsed_url):
+        path = parsed_url.path
+        return path.startswith('/projects/') and '/datasets/' in path
+
+    @staticmethod
+    def _is_standalone_dataset(parsed_url):
+        return parsed_url.path.startswith('/datasets/')
+
+    @staticmethod
     def _record_id(uri):
         """Extract dataset id from uri."""
         u = urllib.parse.urlparse(uri)
         return Path(u.path).name
 
     @staticmethod
-    def _get_project_urls(uri):
+    def _get_project_kg_urls(uri):
         """Extract project url from uri."""
         u = urllib.parse.urlparse(uri)
-        try:
-            ds_start = u.path.rindex('/datasets/')
-        except ValueError:
-            raise errors.ParameterError('Invalid dataset URL: {}'.format(uri))
-        path = u.path[:ds_start]
-        path = '/knowledge-graph' + path
-        u = u._replace(path=path)
-        kg_url = urllib.parse.urlunparse(u)
 
+        if RenkuProvider._is_project_dataset(u):
+            ds_start = u.path.rindex('/datasets/')
+            path = u.path[:ds_start]
+            path = '/knowledge-graph' + path
+            u = u._replace(path=path)
+            return [urllib.parse.urlunparse(u)]
+        else:
+
+            def get_project_link(project):
+                links = project.get('_links', {})
+                for l in links:
+                    if l.get('rel') == 'project-details':
+                        return l.get('href', '')
+
+            path = '/knowledge-graph' + u.path.rstrip('/')
+            u = u._replace(path=path)
+            kg_url = urllib.parse.urlunparse(u)
+            r = RenkuProvider._access_knowledge_graph(kg_url)
+            projects = r.get('isPartOf', {})
+            projects_kg_urls = []
+            for p in projects:
+                project_kg_url = get_project_link(p)
+                if project_kg_url:
+                    projects_kg_urls.append(project_kg_url)
+            return projects_kg_urls
+
+    @staticmethod
+    def _access_knowledge_graph(url):
         try:
-            response = requests.get(kg_url)
+            response = requests.get(url)
         except urllib.error.HTTPError as e:
             raise errors.OperationError(
-                'Cannot access knowledge graph: {}'.format(kg_url)
+                'Cannot access knowledge graph: {}'.format(url)
             ) from e
         if response.status_code != 200:
             raise errors.OperationError(
                 'Cannot access knowledge graph: {}\nResponse code: {}'.format(
-                    kg_url, response.status_code
+                    url, response.status_code
                 )
             )
 
-        urls = response.json().get('url')
+        return response.json()
 
-        if not urls:
-            raise errors.OperationError('No URLs provided by knowledge graph.')
+    @staticmethod
+    def _get_project_urls(project_kg_url):
+        json = RenkuProvider._access_knowledge_graph(project_kg_url)
+        urls = json.get('url', {})
 
         return urls.get('ssh'), urls.get('http')
 
