@@ -18,7 +18,7 @@ In the `helm-chart` directory:
 
 .. code-block:: console
 
-    helm upgrade --install renku-core-service renku-core-service
+    helm upgrade --install renku-core renku-core
 
 
 To rebuild the images and update the chart you can run

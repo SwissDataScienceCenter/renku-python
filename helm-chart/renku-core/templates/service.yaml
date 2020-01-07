@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "renku-core-service.fullname" . }}
+  name: {{ include "renku-core.fullname" . }}
   labels:
-{{ include "renku-core-service.labels" . | indent 4 }}
+{{ include "renku-core.labels" . | indent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,5 +12,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: {{ include "renku-core-service.name" . }}
+    app.kubernetes.io/name: {{ include "renku-core.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}

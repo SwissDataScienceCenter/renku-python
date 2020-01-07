@@ -1,4 +1,4 @@
-# Default values for renku-core-service.
+# Default values for renku-core.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -9,7 +9,7 @@ cacheDirectory: /svc/cache
 projectCloneDepth: 1
 
 image:
-  repository: renku/renku-core-service
+  repository: renku/renku-core
   tag: 'latest'
   pullPolicy: IfNotPresent
 

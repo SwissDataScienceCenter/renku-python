@@ -76,4 +76,4 @@ renku.rb
 
 .env
 
-renku-core-service-*
+renku-core-*

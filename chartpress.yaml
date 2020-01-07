@@ -1,5 +1,5 @@
 charts:
-  - name: helm-chart/renku-core-service
+  - name: helm-chart/renku-core
     resetTag: latest
     imagePrefix: renku/
     repo:
@@ -8,7 +8,7 @@ charts:
     paths:
       - .
     images:
-      renku-core-service:
+      renku-core:
         contextPath: .
         dockerfilePath: Dockerfile.svc
         valuesPath: image
