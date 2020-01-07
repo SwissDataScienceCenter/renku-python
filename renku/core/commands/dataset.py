@@ -102,7 +102,12 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
 def create_dataset(
-    client, name, short_name, description, creators, commit_message=None
+    client,
+    name,
+    short_name=None,
+    description=None,
+    creators=None,
+    commit_message=None,
 ):
     """Create an empty dataset in the current repo.
 
@@ -110,8 +115,12 @@ def create_dataset(
     """
     if not creators:
         creators = [Person.from_git(client.repo)]
-    else:
+
+    elif hasattr(creators, '__iter__') and isinstance(creators[0], str):
         creators = [Person.from_string(c) for c in creators]
+
+    elif hasattr(creators, '__iter__') and isinstance(creators[0], dict):
+        creators = [Person.from_dict(creator) for creator in creators]
 
     dataset, _, __ = client.create_dataset(
         name=name,
@@ -193,6 +202,7 @@ def add_to_dataset(
     identifier = extract_doi(
         with_metadata.identifier
     ) if with_metadata else None
+
     try:
         with client.with_dataset(
             name=name, identifier=identifier, create=create
