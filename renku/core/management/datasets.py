@@ -146,16 +146,10 @@ class DatasetsApiMixin(object):
                 shutil.rmtree(path.parent, ignore_errors=True)
             raise
 
-        # TODO
-        # if path is None:
-        #     path = dataset_path / self.METADATA
-        #     if path.exists():
-        #         raise ValueError('Dataset already exists')
-
         dataset.to_yaml()
 
     def create_dataset(
-        self, name, short_name=None, description='', creators=()
+        self, name, short_name=None, description='', creators=None
     ):
         """Create a dataset."""
         if not name:
@@ -176,12 +170,16 @@ class DatasetsApiMixin(object):
 
         identifier = str(uuid.uuid4())
         path = (self.renku_datasets_path / identifier / self.METADATA)
+
         try:
             path.parent.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             raise errors.DatasetExistsError(
                 'Dataset with reference {} exists'.format(path.parent)
             )
+
+        if creators is None:
+            creators = [Person.from_git(self.repo)]
 
         with with_reference(path):
             dataset = Dataset(
@@ -196,8 +194,8 @@ class DatasetsApiMixin(object):
         dataset_ref = LinkReference.create(
             client=self, name='datasets/' + short_name
         )
-        dataset_ref.set_reference(path)
 
+        dataset_ref.set_reference(path)
         dataset.to_yaml()
 
         return dataset, path, dataset_ref
@@ -260,17 +258,21 @@ class DatasetsApiMixin(object):
             else:
                 raise errors.IgnoredFiles(ignored)
 
+        if dataset.contains_any(files) and force is False:
+            raise errors.DatasetFileExists()
+
         # commit all new data
         file_paths = {str(data['path']) for data in files if str(data['path'])}
-        self.repo.git.add(*(file_paths - set(ignored)))
+        files_to_add = (file_paths - set(ignored))
 
-        if not self.repo.is_dirty():
-            return warning_message
+        self.repo.git.add(*files_to_add)
 
-        self.repo.index.commit(
-            'renku dataset: commiting {} newly added files'.
-            format(len(file_paths) + len(ignored))
-        )
+        if self.repo.is_dirty():
+            commit_msg = ('renku dataset: '
+                          'committing {} newly added files'
+                          ).format(len(file_paths) + len(ignored))
+
+            self.repo.index.commit(commit_msg)
 
         # Generate the DatasetFiles
         dataset_files = []
@@ -278,14 +280,14 @@ class DatasetsApiMixin(object):
             if os.path.basename(str(data['path'])) == '.git':
                 continue
 
-            datasetfile = DatasetFile.from_revision(self, **data)
+            dataset_file = DatasetFile.from_revision(self, **data)
 
-            # Set dataset file path relative to projects root for submodules
-            if datasetfile.client != self:
-                datasetfile.path = str(data['path'])
-            dataset_files.append(datasetfile)
+            # Set dataset file path relative to root for submodules.
+            if dataset_file.client != self:
+                dataset_file.path = str(data['path'])
+            dataset_files.append(dataset_file)
+
         dataset.update_files(dataset_files)
-
         return warning_message
 
     def _add_from_local(self, dataset, path, link, destination):

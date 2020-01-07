@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets serializers."""
+import marshmallow
 from marshmallow import Schema, fields, post_load, pre_load
 
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -64,7 +65,8 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
 class DatasetAddFile(Schema):
     """Schema for dataset add file view."""
 
-    file_id = fields.String(required=True)
+    file_id = fields.String()
+    file_path = fields.String()
 
 
 class DatasetAddRequest(Schema):
@@ -83,6 +85,18 @@ class DatasetAddRequest(Schema):
             data['commit_message'] = 'service: dataset add {0}'.format(
                 data['dataset_name']
             )
+
+        return data
+
+    @post_load()
+    def check_files(self, data, **kwargs):
+        """Check serialized file list."""
+        for _file in data['files']:
+            if 'file_id' in _file and 'file_path' in _file:
+                raise marshmallow.ValidationError((
+                    'invalid reference found:'
+                    'use either `file_id` or `file_path`'
+                ))
 
         return data
 
