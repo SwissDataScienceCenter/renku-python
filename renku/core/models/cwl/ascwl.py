@@ -24,6 +24,7 @@ import attr
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import fields
+from pyld import jsonld
 
 from renku.core.models.jsonld import asjsonld
 from renku.core.models.locals import ReferenceMixin, with_reference
@@ -40,6 +41,20 @@ class CWLType(type):
         if name in cls.registry:
             raise ValueError('Duplicate CWL class {0} definition'.format(name))
         cls.registry[name] = cls
+
+
+def type_from_metadata(metadata_type, value):
+    """Instantiates a metadata class from cwl metadata."""
+    context = None
+
+    if '@context' in value:
+        context = {'@context': value['@context']}
+    elif hasattr(metadata_type, '_jsonld_context'):
+        context = {'@context': metadata_type._jsonld_context}
+
+    if context:
+        value = jsonld.compact(value, context)
+    return metadata_type.from_jsonld(value)
 
 
 class CWLClass(ReferenceMixin, metaclass=CWLType):
@@ -86,12 +101,15 @@ class CWLClass(ReferenceMixin, metaclass=CWLType):
                 else:
                     metadata_value = data[metadata['property']]
                     exclude_properties.append(metadata['property'])
+
                 if isinstance(metadata_value, list):
                     data[a.name] = [
-                        metadata_type.from_jsonld(v) for v in metadata_value
+                        type_from_metadata(metadata_type, v)
+                        for v in metadata_value
                     ]
                 else:
-                    data[a.name] = metadata_type.from_jsonld(metadata_value)
+                    data[a.name
+                         ] = type_from_metadata(metadata_type, metadata_value)
 
         if __reference__:
             with with_reference(__reference__):
