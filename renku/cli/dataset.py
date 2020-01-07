@@ -334,15 +334,16 @@ def create(name, short_name, description, creator):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
-    dataset = create_dataset(
+    new_dataset = create_dataset(
         name=name,
         short_name=short_name,
         description=description,
         creators=creators
     )
+
     click.echo(
-        'Use the name "{}" to refer to this dataset.'.format(
-            dataset.short_name
+        'Use the name "{0}" to refer to this dataset.'.format(
+            new_dataset.short_name
         )
     )
     click.secho('OK', fg='green')

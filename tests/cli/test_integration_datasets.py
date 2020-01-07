@@ -1019,3 +1019,15 @@ def test_renku_clone_uses_project_name(
         result = runner.invoke(cli, ['clone', REMOTE, path])
         assert 0 == result.exit_code
         assert (Path(project_path) / expected_path / 'Dockerfile').exists()
+
+
+@pytest.mark.integration
+def test_add_removes_credentials(runner, client):
+    """Check removal of credentials during adding of remote data files."""
+    url = 'https://username:password@example.com/index.html'
+    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', url])
+    assert 0 == result.exit_code
+
+    with client.with_dataset('my-dataset') as dataset:
+        file_ = dataset.files[0]
+        assert file_.url == 'https://example.com/index.html'

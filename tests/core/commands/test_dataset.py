@@ -57,14 +57,16 @@ def raises(error):
 
 
 @pytest.mark.parametrize(
-    'scheme, path, error', [('', 'temp', None), ('file://', 'temp', None),
-                            ('', 'tempp', errors.ParameterError),
-                            ('http://', 'example.com/file', None),
-                            ('https://', 'example.com/file', None),
-                            ('bla://', 'file', errors.UrlSchemeNotSupported)]
+    'scheme, path, force, error',
+    [('', 'temp', False, None), ('file://', 'temp', True, None),
+     ('', 'tempp', False, errors.ParameterError),
+     ('http://', 'example.com/file', False, None),
+     ('https://', 'example.com/file', True, None),
+     ('bla://', 'file', False, errors.UrlSchemeNotSupported)]
 )
 def test_data_add(
-    scheme, path, error, client, data_file, directory_tree, dataset_responses
+    scheme, path, force, error, client, data_file, directory_tree,
+    dataset_responses
 ):
     """Test data import."""
     with raises(error):
@@ -79,7 +81,10 @@ def test_data_add(
                 'email': 'me@example.com',
                 'identifier': 'me_id'
             }]
-            client.add_data_to_dataset(d, ['{}{}'.format(scheme, path)])
+
+            client.add_data_to_dataset(
+                d, ['{}{}'.format(scheme, path)], force=force
+            )
 
         with open('data/dataset/file') as f:
             assert f.read() == '1234'
@@ -100,7 +105,9 @@ def test_data_add(
                     'email': 'me@example.com',
                     'identifier': 'me_id'
                 }]
-                client.add_data_to_dataset(d, ['{}{}'.format(scheme, path)])
+                client.add_data_to_dataset(
+                    d, ['{}{}'.format(scheme, path)], force=True
+                )
             assert os.path.exists('data/dataset/file')
 
 
@@ -180,12 +187,7 @@ def test_dataset_serialization(dataset):
 
 def test_create_dataset_custom_message(project):
     """Test create dataset custom message."""
-    create_dataset(
-        'ds1',
-        short_name='',
-        description='',
-        creators=[],
-        commit_message='my awesome dataset'
-    )
+    create_dataset('ds1', commit_message='my awesome dataset')
+
     last_commit = Repo('.').head.commit
     assert 'my awesome dataset' == last_commit.message

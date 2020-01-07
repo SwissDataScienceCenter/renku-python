@@ -31,10 +31,11 @@ def tabular(client, datasets):
         datasets,
         headers=OrderedDict((
             ('uid', 'id'),
-            ('short_name', None),
-            ('version', None),
             ('created', None),
+            ('short_name', None),
             ('creators_csv', 'creators'),
+            ('tags_csv', 'tags'),
+            ('version', None),
         )),
         # workaround for tabulate issue 181
         # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
