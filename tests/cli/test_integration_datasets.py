@@ -225,7 +225,7 @@ def test_dataset_import_and_extract(runner, project, client, sleep_after):
 
 @pytest.mark.integration
 def test_dataset_import_different_names(runner, client, sleep_after):
-    """Test cannot import same DOI under different names."""
+    """Test can import same DOI under different names."""
     DOI = '10.5281/zenodo.2658634'
     result = runner.invoke(
         cli, ['dataset', 'import', '--short-name', 'name-1', DOI], input='y'
@@ -236,9 +236,8 @@ def test_dataset_import_different_names(runner, client, sleep_after):
     result = runner.invoke(
         cli, ['dataset', 'import', '--short-name', 'name-2', DOI], input='y'
     )
-    assert 1 == result.exit_code
-    assert 'Error' in result.output
-    assert '10.5281%2Fzenodo.2658634/metadata.yml exists' in result.output
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
 
 
 @pytest.mark.integration

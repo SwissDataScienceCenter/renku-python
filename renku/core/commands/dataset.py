@@ -39,7 +39,6 @@ from renku.core.models.datasets import Dataset, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
-from renku.core.utils.doi import extract_doi
 from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
@@ -165,7 +164,6 @@ def add_to_dataset(
     with_metadata=None,
     urlscontext=contextlib.nullcontext,
     commit_message=None,
-    identifier=None,
     extract=False,
     all_at_once=False,
     progress=None,
@@ -180,7 +178,7 @@ def add_to_dataset(
 
     try:
         with client.with_dataset(
-            short_name=short_name, identifier=identifier, create=create
+            short_name=short_name, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
                 warning_message = client.add_data_to_dataset(
@@ -469,8 +467,6 @@ def import_dataset(
             )
 
         dataset.url = remove_credentials(dataset.url)
-        # check for identifier before creating the dataset
-        identifier = extract_doi(dataset.identifier)
 
         add_to_dataset(
             client,
@@ -479,7 +475,6 @@ def import_dataset(
             create=True,
             with_metadata=dataset,
             force=True,
-            identifier=identifier,
             extract=extract,
             all_at_once=True,
             progress=progress,

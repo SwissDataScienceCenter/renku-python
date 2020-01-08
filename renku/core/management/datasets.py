@@ -120,7 +120,7 @@ class DatasetsApiMixin(object):
                 return self.load_dataset_from_path(path)
 
     @contextmanager
-    def with_dataset(self, short_name=None, identifier=None, create=False):
+    def with_dataset(self, short_name=None, create=False):
         """Yield an editable metadata object for a dataset."""
         dataset = self.load_dataset(name=short_name)
         clean_up_required = False
@@ -131,7 +131,7 @@ class DatasetsApiMixin(object):
 
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(
-                name=short_name, short_name=short_name, identifier=identifier
+                name=short_name, short_name=short_name
             )
         elif create:
             raise errors.DatasetExistsError(
@@ -154,12 +154,7 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self,
-        name,
-        short_name=None,
-        identifier=None,
-        description='',
-        creators=None
+        self, name, short_name=None, description='', creators=None
     ):
         """Create a dataset."""
         if not name:
@@ -178,14 +173,9 @@ class DatasetsApiMixin(object):
                 'Dataset exists: "{}".'.format(short_name)
             )
 
-        if identifier:
-            dataset_metadata_path = parse.quote(identifier, safe='')
-        else:
-            identifier = str(uuid.uuid4())
-            dataset_metadata_path = identifier
-        path = (
-            self.renku_datasets_path / dataset_metadata_path / self.METADATA
-        )
+        identifier = str(uuid.uuid4())
+
+        path = self.renku_datasets_path / identifier / self.METADATA
 
         if path.exists():
             raise errors.DatasetExistsError(
