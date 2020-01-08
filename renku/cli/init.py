@@ -162,11 +162,7 @@ def is_path_empty(path):
     :ref path: target path
     """
     gen = Path(path).glob('**/*')
-    try:
-        next(gen)
-        return False
-    except StopIteration:
-        return True
+    return not any(gen)
 
 
 @click.command()
