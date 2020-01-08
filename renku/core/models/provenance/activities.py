@@ -345,8 +345,8 @@ class ProcessRun(Activity):
                 self.process.annotations
             ):
                 self.annotations = self.process.annotations
-            else:
-                self.annotations = self.default_annotations()
+
+            self.annotations.extend(self.plugin_annotations())
 
         if self.path is None:
             # FIXME only works for linking directory to file
@@ -361,7 +361,7 @@ class ProcessRun(Activity):
                     )] = output_id
                     break
 
-    def default_annotations(self):
+    def plugin_annotations(self):
         """Adds ``Annotation``s from plugins to a ``ProcessRun``."""
         from renku.core.plugins.pluginmanager import get_plugin_manager
         pm = get_plugin_manager()

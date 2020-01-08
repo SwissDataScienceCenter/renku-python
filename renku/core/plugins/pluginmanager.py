@@ -18,14 +18,14 @@
 """pluggy Plugin setup."""
 import pluggy
 
-import renku.core.plugins.process_run as process_run_hook_specs
 import renku.core.plugins.implementations as default_implementations
+import renku.core.plugins.run as run_hook_specs
 
 
 def get_plugin_manager():
     """The ``pluggy`` plugin manager."""
     pm = pluggy.PluginManager('renku')
-    pm.add_hookspecs(process_run_hook_specs)
+    pm.add_hookspecs(run_hook_specs)
     pm.load_setuptools_entrypoints('renku')
 
     for cls in default_implementations.__dict__.values():

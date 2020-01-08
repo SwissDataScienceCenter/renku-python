@@ -36,5 +36,24 @@ def test_renku_run_cwl_hook(
 
         # check for dummy plugin
         result = runner.invoke(cli, ['log', '--format', 'json-ld'])
-        assert 'Dummy Hook' in result.output
-        assert 'dummy hook body' in result.output
+        assert 'Dummy Cmdline Hook' in result.output
+        assert 'dummy cmdline hook body' in result.output
+
+
+def test_renku_processrun_cwl_hook(
+    monkeypatch, dummy_processrun_plugin_hook, runner, project
+):
+    """Tests that the renku run plugin hook on ``ProcessRun`` is called."""
+    pm = pluginmanager.get_plugin_manager()
+    pm.register(dummy_processrun_plugin_hook)
+
+    with monkeypatch.context() as m:
+        m.setattr(pluginmanager, 'get_plugin_manager', lambda: pm)
+        cmd = ['echo', 'test']
+        result = runner.invoke(cli, ['run', '--no-output'] + cmd)
+        assert 0 == result.exit_code
+
+        # check for dummy plugin
+        result = runner.invoke(cli, ['log', '--format', 'json-ld'])
+        assert 'Dummy ProcessRun Hook' in result.output
+        assert 'dummy ProcessRun hook body' in result.output

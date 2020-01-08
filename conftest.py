@@ -689,9 +689,33 @@ def dummy_run_plugin_hook():
             return [
                 Annotation(
                     id='_:annotation',
-                    source='Dummy Hook',
-                    body='dummy hook body'
+                    source='Dummy Cmdline Hook',
+                    body='dummy cmdline hook body'
                 )
             ]
 
     return _CmdlineToolAnnotations()
+
+
+@pytest.fixture
+def dummy_processrun_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _ProcessRunAnnotations(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        @hookimpl
+        def process_run_annotations(self, run):
+            """``process_run_annotations`` hook implementation."""
+            from renku.core.models.cwl.annotation import Annotation
+
+            return [
+                Annotation(
+                    id='_:annotation',
+                    source='Dummy ProcessRun Hook',
+                    body='dummy ProcessRun hook body'
+                )
+            ]
+
+    return _ProcessRunAnnotations()
