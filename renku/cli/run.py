@@ -34,6 +34,9 @@ Tracking execution of your command line script is done by simply adding the
 .. warning:: Input and output paths can only be detected if they are passed as
    arguments to ``renku run``.
 
+.. warning:: Circular dependencies are not supported for ``renku run``. See
+   :ref:`circular-dependencies` for more details.
+
 Detecting input paths
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -153,6 +156,24 @@ with ``--success-code=<INT>`` parameter.
 
    $ renku run --success-code=1 --no-output fail
 
+.. _circular-dependencies:
+
+Circular Dependencies
+~~~~~~~~~~~~~~~~~~~~~
+
+Circular dependencies are not supported in ``renku run``. This means you cannot
+use the same file or directory as both an input and an output in the same step,
+for instance reading from a file as input and then appending to it is not
+allowed. Since renku records all steps of an analysis workflow in a dependency
+graph and it allows you to update outputs when an input changes, this would
+lead to problems with circular dependencies. An update command would change the
+input again, leading to renku seeing it as a changed input, which would run
+update again, and so on, without ever stopping.
+
+Due to this, the renku depedency graph has to be *acyclic*. So instead of
+appending to an input file or writing an output file to the same directory
+that was used as an input directory, create new files or write to other
+directories, respectively.
 """
 
 import os
