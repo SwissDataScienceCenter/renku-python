@@ -395,3 +395,7 @@ class OperationError(RenkuException):
 
 class SHACLValidationError(RenkuException):
     """Raises when SHACL validation of the graph fails."""
+
+
+class WorkflowRunError(RenkuException):
+    """Raises when a workflow execution fails."""
