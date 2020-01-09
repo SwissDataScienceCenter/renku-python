@@ -395,3 +395,7 @@ class OperationError(RenkuException):
 
 class SHACLValidationError(RenkuException):
     """Raises when SHACL validation of the graph fails."""
+
+
+class InvalidTemplateError(RenkuException):
+    """Raised when using a non-valid template."""
