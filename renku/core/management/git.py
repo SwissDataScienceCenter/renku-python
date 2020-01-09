@@ -19,7 +19,6 @@
 
 import itertools
 import os
-import shutil
 import sys
 import tempfile
 import time
@@ -373,6 +372,8 @@ class GitCore:
 
         # TODO sys.argv
 
+        new_branch = False
+
         if commit is NULL_TREE:
             args = ['add', '--detach', path]
             self.repo.git.worktree(*args)
@@ -385,6 +386,7 @@ class GitCore:
                 args.append(commit)
             self.repo.git.worktree(*args)
             client = attr.evolve(self, path=path)
+            new_branch = True
 
         client.repo.config_reader = self.repo.config_reader
 
@@ -418,7 +420,10 @@ class GitCore:
             raise errors.FailedMerge(self.repo, branch_name, merge_args)
 
         if delete:
-            shutil.rmtree(path)
-            self.repo.git.worktree('prune')
+            self.repo.git.worktree('remove', path)
+
+            if new_branch:
+                # delete the created temporary branch
+                self.repo.git.branch('-d', branch_name)
 
         self.checkout_paths_from_storage()
