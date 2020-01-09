@@ -62,7 +62,13 @@ def status(ctx, client, revision, no_output, path):
     # TODO filter only paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision, can_be_cwl=no_output)
 
-    click.echo('On branch {0}'.format(client.repo.active_branch))
+    try:
+        click.echo('On branch {0}'.format(client.repo.active_branch))
+    except TypeError:
+        click.echo(
+            'Git HEAD is detached!\n'
+            ' Please move back to your working branch to use renku\n'
+        )
     if status['outdated']:
         click.echo(
             'Files generated from newer inputs:\n'
