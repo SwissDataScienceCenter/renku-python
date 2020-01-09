@@ -17,18 +17,20 @@
 # limitations under the License.
 """Client for handling a local repository."""
 import os
+import shutil
 import subprocess
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
-from datetime import datetime, timezone
 from subprocess import check_output
 
 import attr
 import filelock
 import yaml
+from jinja2 import Template
 from werkzeug.utils import cached_property, secure_filename
 
+from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.projects import Project
@@ -380,45 +382,43 @@ class RepositoryApiMixin(GitCore):
                     default_flow_style=False
                 )
 
-    def init_repository(self, name=None, force=False):
-        """Initialize a local Renku repository."""
+    def init_repository(self, force=False):
+        """Initialize an empty Renku repository."""
         from git import Repo
-
-        path = self.path.absolute()
-        if force:
-            self.renku_path.mkdir(parents=True, exist_ok=force)
-            if self.repo is None:
-                self.repo = Repo.init(str(path))
-        else:
-            if self.repo is not None:
-                raise FileExistsError(self.repo.git_dir)
-
-            self.renku_path.mkdir(parents=True, exist_ok=force)
-            self.repo = Repo.init(str(path))
-
-        self.repo.description = name or path.name
-
-        # Check that an creator can be determined from Git.
         from renku.core.models.provenance.agents import Person
-        Person.from_git(self.repo)
 
-        # TODO read existing gitignore and create a unique set of rules
-        import pkg_resources
-        gitignore_default = pkg_resources.resource_stream(
-            'renku.data', 'gitignore.default'
-        )
-        gitignore_path = path / '.gitignore'
-        with gitignore_path.open('w') as gitignore:
-            gitignore.write(gitignore_default.read().decode())
-
-            gitignore.write(
-                '\n' + str(
-                    self.renku_path.relative_to(self.path).
-                    with_suffix(self.LOCK_SUFFIX)
-                ) + '\n'
+        # verify if folder is empty
+        if self.repo is not None and not force:
+            raise errors.InvalidFileOperation(
+                'Folder {0} already contains file. Use --force to overwrite'.
+                format(self.repo.git_dir)
             )
 
-        with self.with_metadata(name=name) as metadata:
-            metadata.updated = datetime.now(timezone.utc)
+        # initialize repo
+        path = self.path.absolute()
+        self.repo = Repo.init(str(path))
 
-        return str(path)
+        # verify if author information is available
+        Person.from_git(self.repo)
+
+    def import_from_template(self, template_path, metadata, force=False):
+        """Render template files from a template directory."""
+        for file in template_path.glob('**/*'):
+            destination = self.path / file.relative_to(template_path)
+            try:
+                # TODO: notify about the expected variables - code stub:
+                # with file.open() as fr:
+                #     file_content = fr.read()
+                #     # look for the required keys
+                #     env = Environment()
+                #     parsed = env.parse(file_content)
+                #     variables = meta.find_undeclared_variables(parsed)
+
+                # parse file and process it
+                template = Template(file.read_text())
+                rendered_content = template.render(metadata)
+                destination.write_text(rendered_content)
+            except IsADirectoryError:
+                destination.mkdir(parents=True, exist_ok=True)
+            except TypeError:
+                shutil.copy(file, destination)
