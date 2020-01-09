@@ -19,14 +19,12 @@
 
 import itertools
 import os
-import shutil
 import sys
 import tempfile
 import time
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
-from email.utils import formatdate
 from itertools import zip_longest
 from pathlib import Path
 
@@ -34,6 +32,7 @@ import attr
 import gitdb
 
 from renku.core import errors
+from renku.core.utils.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = 'DIFF'
 STARTED_AT = int(time.time() * 1e3)
@@ -231,17 +230,16 @@ class GitCore:
     @contextmanager
     def commit(
         self,
-        author_date=None,
         commit_only=None,
         commit_empty=True,
-        raise_if_empty=False
+        raise_if_empty=False,
+        commit_message=None
     ):
         """Automatic commit."""
         from git import Actor
         from renku.version import __version__, version_url
 
         diff_before = set()
-        author_date = author_date or formatdate(localtime=True)
 
         if commit_only == COMMIT_DIFF_STRATEGY:
             staged = {item.a_path for item in self.repo.index.diff(None)}
@@ -307,12 +305,18 @@ class GitCore:
                 raise errors.NothingToCommit()
             return
 
-        argv = [os.path.basename(sys.argv[0])] + sys.argv[1:]
+        if commit_message and not isinstance(commit_message, str):
+            raise errors.CommitMessageEmpty()
+
+        elif not commit_message:
+            argv = [os.path.basename(sys.argv[0])
+                    ] + [remove_credentials(arg) for arg in sys.argv[1:]]
+
+            commit_message = ' '.join(argv)
 
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(
-            ' '.join(argv),
-            author_date=author_date,
+            commit_message,
             committer=committer,
             skip_hooks=True,
         )
@@ -321,12 +325,13 @@ class GitCore:
     def transaction(
         self,
         clean=True,
-        up_to_date=False,
         commit=True,
+        commit_empty=True,
+        commit_message=None,
         commit_only=None,
         ignore_std_streams=False,
-        commit_empty=True,
-        raise_if_empty=False
+        raise_if_empty=False,
+        up_to_date=False,
     ):
         """Perform Git checks and operations."""
         if clean:
@@ -340,8 +345,9 @@ class GitCore:
 
         if commit:
             with self.commit(
-                commit_only=commit_only,
                 commit_empty=commit_empty,
+                commit_message=commit_message,
+                commit_only=commit_only,
                 raise_if_empty=raise_if_empty
             ):
                 yield self
@@ -366,6 +372,8 @@ class GitCore:
 
         # TODO sys.argv
 
+        new_branch = False
+
         if commit is NULL_TREE:
             args = ['add', '--detach', path]
             self.repo.git.worktree(*args)
@@ -378,6 +386,7 @@ class GitCore:
                 args.append(commit)
             self.repo.git.worktree(*args)
             client = attr.evolve(self, path=path)
+            new_branch = True
 
         client.repo.config_reader = self.repo.config_reader
 
@@ -411,7 +420,10 @@ class GitCore:
             raise errors.FailedMerge(self.repo, branch_name, merge_args)
 
         if delete:
-            shutil.rmtree(path)
-            self.repo.git.worktree('prune')
+            self.repo.git.worktree('remove', path)
+
+            if new_branch:
+                # delete the created temporary branch
+                self.repo.git.branch('-d', branch_name)
 
         self.checkout_paths_from_storage()

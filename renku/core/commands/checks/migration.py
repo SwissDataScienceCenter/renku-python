@@ -162,7 +162,7 @@ def migrate_broken_dataset_paths(client):
         # migrate the refs
         ref = LinkReference.create(
             client=client,
-            name='datasets/{0}'.format(dataset.display_name),
+            name='datasets/{0}'.format(dataset.short_name),
             force=True,
         )
         ref.set_reference(expected_path / client.METADATA)
@@ -240,7 +240,8 @@ def fix_dataset_files_urls(client):
     """Ensure dataset files have correct url format."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
-            file_.url = url_to_string(file_.url)
+            if file_.url:
+                file_.url = url_to_string(file_.url)
 
         dataset.to_yaml()
 

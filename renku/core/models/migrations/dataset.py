@@ -30,7 +30,12 @@ def migrate_dataset_schema(data):
     )
 
     data['creator'] = data.pop('authors', {})
-    for file_name, file_ in data.get('files', {}).items():
+
+    files = data.get('files', [])
+
+    if isinstance(files, dict):
+        files = files.values()
+    for file_ in files:
         file_['creator'] = file_.pop('authors', {})
 
     return data
@@ -52,13 +57,13 @@ def migrate_absolute_paths(data):
     files = data.get('files', [])
 
     if isinstance(files, dict):
-        files = files.values()
+        files = list(files.values())
 
     for file_ in files:
         path = Path(file_.get('path'), '.')
         if path.is_absolute():
             file_['path'] = path.relative_to((os.getcwd()))
-
+    data['files'] = files
     return data
 
 

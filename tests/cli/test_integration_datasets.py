@@ -22,9 +22,10 @@ from pathlib import Path
 
 import git
 import pytest
-import yaml
 
 from renku.cli import cli
+from renku.core.commands.clone import renku_clone
+from renku.core.utils.contexts import chdir
 
 
 @pytest.mark.parametrize(
@@ -546,8 +547,7 @@ def test_add_from_git_copies_metadata(runner, client):
     )
     assert 0 == result.exit_code
 
-    path = client.dataset_path('remote')
-    dataset = client.get_dataset(path)
+    dataset = client.load_dataset('remote')
     assert dataset.files[0].name == 'README.rst'
     assert 'mailto:jiri.kuncar@gmail.com' in str(dataset.files[0].creator)
     assert 'mailto:rokroskar@gmail.co' in str(dataset.files[0].creator)
@@ -596,13 +596,11 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
 
 def read_dataset_file_metadata(client, dataset_name, filename):
     """Return metadata from dataset's YAML file."""
-    path = client.dataset_path(dataset_name)
-    assert path.exists()
+    with client.with_dataset(dataset_name) as dataset:
+        assert client.get_dataset_path(dataset.name).exists()
 
-    with path.open(mode='r') as fp:
-        metadata = yaml.safe_load(fp)
-        for file_ in metadata['files']:
-            if file_['path'].endswith(filename):
+        for file_ in dataset.files:
+            if file_.path.endswith(filename):
                 return file_
 
 
@@ -631,14 +629,14 @@ def test_dataset_update(client, runner, params):
     assert 0 == result.exit_code
 
     after = read_dataset_file_metadata(client, 'remote', 'CHANGES.rst')
-    assert after['_id'] == before['_id']
-    assert after['_label'] != before['_label']
-    assert after['added'] == before['added']
-    assert after['url'] == before['url']
-    assert after['based_on']['_id'] == before['based_on']['_id']
-    assert after['based_on']['_label'] != before['based_on']['_label']
-    assert after['based_on']['path'] == before['based_on']['path']
-    assert after['based_on']['based_on'] is None
+    assert after._id == before._id
+    assert after._label != before._label
+    assert after.added == before.added
+    assert after.url == before.url
+    assert after.based_on._id == before.based_on._id
+    assert after.based_on._label != before.based_on._label
+    assert after.based_on.path == before.based_on.path
+    assert after.based_on.based_on is None
 
 
 @pytest.mark.integration
@@ -792,12 +790,12 @@ def test_import_from_renku_project(tmpdir, client, runner):
     assert 0 == result.exit_code
 
     metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
-    assert metadata['creator'][0]['name'] == remote['creator'][0]['name']
-    assert metadata['based_on']['_id'] == remote['_id']
-    assert metadata['based_on']['_label'] == remote['_label']
-    assert metadata['based_on']['path'] == remote['path']
-    assert metadata['based_on']['based_on'] is None
-    assert metadata['based_on']['url'] == REMOTE
+    assert metadata.creator[0].name == remote.creator[0].name
+    assert metadata.based_on._id == remote._id
+    assert metadata.based_on._label == remote._label
+    assert metadata.based_on.path == remote.path
+    assert metadata.based_on.based_on is None
+    assert metadata.based_on.url == REMOTE
 
 
 @pytest.mark.integration
@@ -930,3 +928,55 @@ def test_renku_clone(runner, monkeypatch):
             result = runner.invoke(cli, ['run', 'touch', 'output'])
             assert 'is not configured' in result.output
             assert 1 == result.exit_code
+
+
+@pytest.mark.integration
+def test_renku_clone_with_config(tmpdir):
+    """Test cloning of a Renku repo and existence of required settings."""
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with chdir(tmpdir):
+        renku_clone(
+            REMOTE,
+            config={
+                'user.name': 'sam',
+                'user.email': 's@m.i',
+                'filter.lfs.custom': '0'
+            }
+        )
+
+        repo = git.Repo('datasets-test')
+        reader = repo.config_reader()
+        reader.values()
+
+        lfs_config = dict(reader.items('filter.lfs'))
+        assert '0' == lfs_config.get('custom')
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'path,expected_path', [('', 'datasets-test'), ('.', '.'),
+                           ('new-name', 'new-name')]
+)
+def test_renku_clone_uses_project_name(
+    runner, monkeypatch, path, expected_path
+):
+    """Test renku clone uses project name as target-path by default."""
+    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with runner.isolated_filesystem() as project_path:
+        result = runner.invoke(cli, ['clone', REMOTE, path])
+        assert 0 == result.exit_code
+        assert (Path(project_path) / expected_path / 'Dockerfile').exists()
+
+
+@pytest.mark.integration
+def test_add_removes_credentials(runner, client):
+    """Check removal of credentials during adding of remote data files."""
+    url = 'https://username:password@example.com/index.html'
+    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', url])
+    assert 0 == result.exit_code
+
+    with client.with_dataset('my-dataset') as dataset:
+        file_ = dataset.files[0]
+        assert file_.url == 'https://example.com/index.html'

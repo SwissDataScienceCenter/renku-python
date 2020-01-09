@@ -36,11 +36,13 @@ from git import GitCommandError, GitError, Repo
 from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag
+from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
+    generate_default_short_name, is_dataset_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
+from renku.core.utils.urls import remove_credentials
 
 
 @attr.s
@@ -84,31 +86,35 @@ class DatasetsApiMixin(object):
         result = {}
         paths = (self.path / self.renku_datasets_path).rglob(self.METADATA)
         for path in paths:
-            result[path] = self.get_dataset(path)
+            result[path] = self.load_dataset_from_path(path)
         return result
 
-    def get_dataset(self, path, commit=None):
+    def load_dataset_from_path(self, path, commit=None):
         """Return a dataset from a given path."""
+        path = Path(path)
         if not path.is_absolute():
             path = self.path / path
         return Dataset.from_yaml(path, client=self, commit=commit)
 
-    def dataset_path(self, name):
+    def get_dataset_path(self, name):
         """Get dataset path from name."""
         path = self.renku_datasets_path / name / self.METADATA
         if not path.exists():
-            path = LinkReference(
-                client=self, name='datasets/' + name
-            ).reference
+            try:
+                path = LinkReference(
+                    client=self, name='datasets/' + name
+                ).reference
+            except errors.ParameterError:
+                return None
 
         return path
 
     def load_dataset(self, name=None):
         """Load dataset reference file."""
         if name:
-            path = self.dataset_path(name)
-            if path.exists():
-                return self.get_dataset(path)
+            path = self.get_dataset_path(name)
+            if path and path.exists():
+                return self.load_dataset_from_path(path)
 
     @contextmanager
     def with_dataset(self, name=None, identifier=None, create=False):
@@ -117,42 +123,17 @@ class DatasetsApiMixin(object):
         clean_up_required = False
 
         if dataset is None:
-            # Avoid nested datasets: name mustn't have '/' in it
-            if len(Path(name).parts) > 1:
-                raise errors.ParameterError(
-                    'Dataset name {} is not valid.'.format(name)
-                )
-
             if not create:
                 raise errors.DatasetNotFound
+
             clean_up_required = True
-            dataset_ref = None
-            identifier = str(uuid.uuid4())
-            path = (self.renku_datasets_path / identifier / self.METADATA)
-            try:
-                path.parent.mkdir(parents=True, exist_ok=False)
-            except FileExistsError:
-                raise errors.DatasetExistsError(
-                    'Dataset with reference {} exists'.format(path.parent)
-                )
-
-            with with_reference(path):
-                dataset = Dataset(
-                    identifier=identifier, name=name, client=self
-                )
-
-            if name:
-                dataset_ref = LinkReference.create(
-                    client=self, name='datasets/' + name
-                )
-                dataset_ref.set_reference(path)
-
+            dataset, path, dataset_ref = self.create_dataset(name)
         elif create:
             raise errors.DatasetExistsError(
                 'Dataset exists: "{}".'.format(name)
             )
 
-        dataset_path = self.path / self.datadir / dataset.name
+        dataset_path = self.path / self.datadir / dataset.short_name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -160,18 +141,64 @@ class DatasetsApiMixin(object):
         except Exception:
             # TODO use a general clean-up strategy
             # https://github.com/SwissDataScienceCenter/renku-python/issues/736
-            if clean_up_required and dataset_ref:
+            if clean_up_required:
                 dataset_ref.delete()
                 shutil.rmtree(path.parent, ignore_errors=True)
             raise
 
-        # TODO
-        # if path is None:
-        #     path = dataset_path / self.METADATA
-        #     if path.exists():
-        #         raise ValueError('Dataset already exists')
-
         dataset.to_yaml()
+
+    def create_dataset(
+        self, name, short_name=None, description='', creators=None
+    ):
+        """Create a dataset."""
+        if not name:
+            raise errors.ParameterError('Dataset name must be provided.')
+
+        if not short_name:
+            short_name = generate_default_short_name(name, None)
+
+        if not is_dataset_name_valid(short_name):
+            raise errors.ParameterError(
+                'Dataset name "{}" is not valid.'.format(short_name)
+            )
+
+        if self.load_dataset(name=short_name):
+            raise errors.DatasetExistsError(
+                'Dataset exists: "{}".'.format(short_name)
+            )
+
+        identifier = str(uuid.uuid4())
+        path = (self.renku_datasets_path / identifier / self.METADATA)
+
+        try:
+            path.parent.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise errors.DatasetExistsError(
+                'Dataset with reference {} exists'.format(path.parent)
+            )
+
+        if creators is None:
+            creators = [Person.from_git(self.repo)]
+
+        with with_reference(path):
+            dataset = Dataset(
+                client=self,
+                identifier=identifier,
+                name=name,
+                short_name=short_name,
+                description=description,
+                creator=creators
+            )
+
+        dataset_ref = LinkReference.create(
+            client=self, name='datasets/' + short_name
+        )
+
+        dataset_ref.set_reference(path)
+        dataset.to_yaml()
+
+        return dataset, path, dataset_ref
 
     def add_data_to_dataset(
         self,
@@ -185,7 +212,7 @@ class DatasetsApiMixin(object):
     ):
         """Import the data into the data directory."""
         warning_message = ''
-        dataset_path = self.path / self.datadir / dataset.name
+        dataset_path = self.path / self.datadir / dataset.short_name
 
         destination = destination or Path('.')
         destination = self._resolve_path(dataset_path, destination)
@@ -231,13 +258,21 @@ class DatasetsApiMixin(object):
             else:
                 raise errors.IgnoredFiles(ignored)
 
+        if dataset.contains_any(files) and force is False:
+            raise errors.DatasetFileExists()
+
         # commit all new data
         file_paths = {str(data['path']) for data in files if str(data['path'])}
-        self.repo.git.add(*(file_paths - set(ignored)))
-        self.repo.index.commit(
-            'renku dataset: commiting {} newly added files'.
-            format(len(file_paths) + len(ignored))
-        )
+        files_to_add = (file_paths - set(ignored))
+
+        self.repo.git.add(*files_to_add)
+
+        if self.repo.is_dirty():
+            commit_msg = ('renku dataset: '
+                          'committing {} newly added files'
+                          ).format(len(file_paths) + len(ignored))
+
+            self.repo.index.commit(commit_msg)
 
         # Generate the DatasetFiles
         dataset_files = []
@@ -245,14 +280,14 @@ class DatasetsApiMixin(object):
             if os.path.basename(str(data['path'])) == '.git':
                 continue
 
-            datasetfile = DatasetFile.from_revision(self, **data)
+            dataset_file = DatasetFile.from_revision(self, **data)
 
-            # Set dataset file path relative to projects root for submodules
-            if datasetfile.client != self:
-                datasetfile.path = str(data['path'])
-            dataset_files.append(datasetfile)
+            # Set dataset file path relative to root for submodules.
+            if dataset_file.client != self:
+                dataset_file.path = str(data['path'])
+            dataset_files.append(dataset_file)
+
         dataset.update_files(dataset_files)
-
         return warning_message
 
     def _add_from_local(self, dataset, path, link, destination):
@@ -297,9 +332,8 @@ class DatasetsApiMixin(object):
             else:
                 return [{
                     'path': path_in_repo,
-                    'url': src.as_uri(),
+                    'url': path_in_repo,
                     'creator': dataset.creator,
-                    'dataset': dataset.name,
                     'parent': self
                 }]
 
@@ -319,9 +353,8 @@ class DatasetsApiMixin(object):
 
         return [{
             'path': destination.relative_to(self.path),
-            'url': src.as_uri(),
+            'url': 'file://' + os.path.relpath(str(src), str(self.path)),
             'creator': dataset.creator,
-            'dataset': dataset.name,
             'parent': self
         }]
 
@@ -345,9 +378,8 @@ class DatasetsApiMixin(object):
 
         return [{
             'path': destination.relative_to(self.path),
-            'url': url,
+            'url': remove_credentials(url),
             'creator': dataset.creator,
-            'dataset': dataset.name,
             'parent': self
         }]
 
@@ -356,6 +388,7 @@ class DatasetsApiMixin(object):
         from renku import LocalClient
 
         u = parse.urlparse(url)
+
         sources = self._resolve_paths(u.path, sources)
 
         # Get all files from repo that match sources
@@ -422,9 +455,8 @@ class DatasetsApiMixin(object):
 
                 results.append({
                     'path': path_in_dst_repo,
-                    'url': url,
+                    'url': remove_credentials(url),
                     'creator': creators,
-                    'dataset': dataset.name,
                     'parent': self,
                     'based_on': based_on
                 })

@@ -24,6 +24,7 @@ import os
 from pathlib import Path
 
 import pytest
+import requests
 import yaml
 
 from renku.cli import cli
@@ -54,6 +55,75 @@ def test_datasets_create_clean(runner, project, client):
     untracked = client.repo.untracked_files
     for file_path in untracked:
         assert 'datasets' not in file_path
+
+
+def test_datasets_create_with_metadata(runner, client):
+    """Test creating a dataset with metadata."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'create', 'my-dataset', '--short-name', 'short-name',
+            '--description', 'some description here', '-c',
+            'John Doe <john.doe@mail.ch>', '-c',
+            'John Smiths<john.smiths@mail.ch>'
+        ]
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name='short-name')
+    assert dataset.name == 'my-dataset'
+    assert dataset.short_name == 'short-name'
+    assert dataset.description == 'some description here'
+    assert 'John Doe' in [c.name for c in dataset.creator]
+    assert 'john.doe@mail.ch' in [c.email for c in dataset.creator]
+    assert 'John Smiths' in [c.name for c in dataset.creator]
+    assert 'john.smiths@mail.ch' in [c.email for c in dataset.creator]
+
+
+def test_datasets_create_different_short_names(runner, client):
+    """Test creating datasets with same name but different short_name."""
+    result = runner.invoke(
+        cli, ['dataset', 'create', 'dataset', '--short-name', 'dataset-1']
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = runner.invoke(
+        cli, ['dataset', 'create', 'dataset', '--short-name', 'dataset-2']
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+
+def test_datasets_create_with_same_name(runner, client):
+    """Test creating datasets with same name."""
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    assert 1 == result.exit_code
+    assert 'Dataset exists: "dataset"' in result.output
+
+
+@pytest.mark.parametrize(
+    'name,short_name',
+    [('v.a.l.i.d_internal-name', 'v.a.l.i.d_internal-name'),
+     ('any name /@#$!', 'any_name'),
+     ('name longer than 24 characters', 'name_longer_than_24_char'),
+     ('semi valid-name', 'semi_validname'), ('dataset/new', 'datasetnew'),
+     ('/dataset', 'dataset'), ('dataset/', 'dataset')]
+)
+def test_datasets_valid_name(runner, client, name, short_name):
+    """Test creating datasets with valid name."""
+    result = runner.invoke(cli, ['dataset', 'create', name])
+    assert 0 == result.exit_code
+    assert 'Use the name "{}"'.format(short_name) in result.output
+    assert 'OK' in result.output
+
+    dataset = client.load_dataset(name=short_name)
+    assert dataset.name == name
+    assert dataset.short_name == short_name
 
 
 def test_datasets_create_dirty(runner, project, client):
@@ -181,12 +251,16 @@ def test_dataset_create_exception_refs(runner, project, client):
     assert 'a' in result.output
 
 
-@pytest.mark.parametrize('name', ['dataset/new', '/dataset', 'dataset/'])
-def test_dataset_name_is_valid(client, runner, project, name):
-    """Test dataset name has no '/' character to avoid nested datasets."""
-    result = runner.invoke(cli, ['dataset', 'create', name])
+@pytest.mark.parametrize(
+    'creator,field', [('John Doe', 'Email'), ('John Doe<>', 'Email'),
+                      ('<john.doe@mail.ch>', 'Name'),
+                      ('John Doe<john.doe@mail>', 'Email')]
+)
+def test_dataset_creator_is_invalid(client, runner, creator, field):
+    """Test create dataset with invalid creator format."""
+    result = runner.invoke(cli, ['dataset', 'create', 'ds', '-c', creator])
     assert 2 == result.exit_code
-    assert 'is not valid' in result.output
+    assert field + ' is invalid' in result.output
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
@@ -665,6 +739,33 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
         assert Path(record['path']).exists()
 
 
+def test_datasets_ls_files_with_display_name(directory_tree, runner, project):
+    """Test listing of data within dataset with include/exclude filters."""
+    # create a dataset
+    result = runner.invoke(
+        cli, ['dataset', 'create', 'my-dataset', '--short-name', 'short-name']
+    )
+    assert 0 == result.exit_code
+
+    # add data to dataset
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'short-name', directory_tree.strpath],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    # list files with dataset name
+    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    assert 0 == result.exit_code
+    assert 'dir2/file2' not in result.output
+
+    # list files with short_name
+    result = runner.invoke(cli, ['dataset', 'ls-files', 'short-name'])
+    assert 0 == result.exit_code
+    assert 'dir2/file2' in result.output
+
+
 def test_dataset_unlink_file_not_found(runner, project):
     """Test unlinking of file from dataset with no files found."""
     # create a dataset
@@ -861,7 +962,7 @@ def test_dataset_date_created_format(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    path = client.dataset_path('dataset')
+    path = client.get_dataset_path('dataset')
     assert path.exists()
 
     with path.open(mode='r') as fp:
@@ -880,7 +981,7 @@ def test_dataset_file_date_created_format(tmpdir, runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    path = client.dataset_path('dataset')
+    path = client.get_dataset_path('dataset')
     assert path.exists()
 
     # Create data file.
@@ -1168,3 +1269,113 @@ def test_dataset_clean_up_when_add_fails(runner, client):
     assert result.exit_code == 2
     ref = client.renku_path / 'refs' / 'datasets' / 'new-dataset'
     assert not ref.is_symlink() and not ref.exists()
+
+
+def test_avoid_empty_commits(runner, client, directory_tree):
+    """Test no empty commit is created when adding existing data."""
+    runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+
+    commit_sha_before = client.repo.head.object.hexsha
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset', directory_tree.strpath]
+    )
+
+    assert 0 == result.exit_code
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
+
+    commit_sha_before = commit_sha_after
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before == commit_sha_after
+    assert 'Error: File already exists in dataset.' in result.output
+
+
+def test_multiple_dataset_commits(runner, client, directory_tree):
+    """Check adding existing data to multiple datasets."""
+    commit_sha_before = client.repo.head.object.hexsha
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', directory_tree.strpath]
+    )
+
+    assert 0 == result.exit_code
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
+
+    commit_sha_before = commit_sha_after
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset2', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
+
+
+def test_add_same_filename_multiple(runner, client, directory_tree):
+    """Check adding same filename multiple times."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', directory_tree.strpath]
+    )
+
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset1', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'Error: File already exists in dataset.' in result.output
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'Error: There is nothing to commit.' in result.output
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath,
+            'Dockerfile'
+        ]
+    )
+    assert 0 == result.exit_code
+
+
+def test_add_removes_local_path_information(runner, client, directory_tree):
+    """Test local paths are removed when adding to a dataset."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset('my-dataset') as dataset:
+        for file_ in dataset.files:
+            assert file_.url.startswith('file://../')
+            assert file_.url.endswith(file_.name)
+
+
+def test_add_remove_credentials(runner, client, monkeypatch):
+    """Check removal of credentials during adding of remote data files."""
+    url = 'https://username:password@example.com/index.html'
+
+    def get(u):
+        """Mocked response."""
+        response = requests.Response()
+        response._content = b'{}'
+        return response
+
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    monkeypatch.setattr(requests, 'get', get)
+    dataset = client.load_dataset('my-dataset')
+    o = client._add_from_url(dataset, url, client.path)
+
+    assert 'https://example.com/index.html' == o[0]['url']

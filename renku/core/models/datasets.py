@@ -29,9 +29,10 @@ from pathlib import Path
 import attr
 from attr.validators import instance_of
 
-# from renku.core.models.creators import CreatorsMixin
+from renku.core import errors
 from renku.core.models.entities import Entity
 from renku.core.models.provenance.agents import Person
+from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
 
@@ -127,7 +128,7 @@ class DatasetTag(object):
     @_id.default
     def default_id(self):
         """Define default value for id field."""
-        return '{0}@{1}'.format(self.name, self.commit)
+        return '_:{0}@{1}'.format(self.name, self.commit)
 
 
 @jsonld.s(
@@ -150,6 +151,12 @@ def convert_filename_path(p):
         return Path(p).name
 
 
+def convert_based_on(v):
+    """Convert based_on to DatasetFile."""
+    if v:
+        return DatasetFile.from_jsonld(v)
+
+
 @jsonld.s(
     type='schema:DigitalDocument',
     slots=True,
@@ -166,8 +173,6 @@ class DatasetFile(Entity, CreatorMixin):
 
     checksum = attr.ib(default=None, kw_only=True)
 
-    dataset = jsonld.ib(context='schema:isPartOf', default=None, kw_only=True)
-
     filename = attr.ib(kw_only=True, converter=convert_filename_path)
 
     name = jsonld.ib(context='schema:name', kw_only=True, default=None)
@@ -179,7 +184,10 @@ class DatasetFile(Entity, CreatorMixin):
     url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
     based_on = jsonld.ib(
-        default=None, context='schema:isBasedOn', kw_only=True
+        default=None,
+        context='schema:isBasedOn',
+        kw_only=True,
+        converter=convert_based_on
     )
 
     @added.default
@@ -212,6 +220,11 @@ class DatasetFile(Entity, CreatorMixin):
 
         if not self.name:
             self.name = self.filename
+
+        parsed_id = urllib.parse.urlparse(self._id)
+
+        if not parsed_id.scheme:
+            self._id = 'file://{}'.format(self._id)
 
 
 def _convert_dataset_files(value):
@@ -264,7 +277,7 @@ class Dataset(Entity, CreatorMixin):
 
     EDITABLE_FIELDS = [
         'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files'
+        'license', 'name', 'url', 'version', 'created', 'files', 'short_name'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
@@ -338,30 +351,23 @@ class Dataset(Entity, CreatorMixin):
 
     same_as = jsonld.ib(context='schema:sameAs', default=None, kw_only=True)
 
+    short_name = jsonld.ib(
+        default=None, context='schema:alternateName', kw_only=True
+    )
+
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
 
-    @property
-    def display_name(self):
-        """Get dataset display name."""
-        name = re.sub(' +', ' ', self.name.lower()[:24])
-
-        def to_unix(el):
-            """Parse string to unix friendly name."""
-            parsed_ = re.sub('[^a-zA-Z0-9]', '', re.sub(' +', ' ', el))
-            parsed_ = re.sub(' .+', '.', parsed_.lower())
-            return parsed_
-
-        short_name = [to_unix(el) for el in name.split()]
-
-        if self.version:
-            version = to_unix(self.version)
-            name = '{0}_{1}'.format('_'.join(short_name), version)
-            return name
-
-        return '.'.join(short_name)
+    @short_name.validator
+    def short_name_validator(self, attribute, value):
+        """Validate short_name."""
+        # short_name might have been scaped and have '%' in it
+        if value and not is_dataset_name_valid(value, safe='%'):
+            raise errors.ParameterError(
+                'Invalid "short_name": {}'.format(value)
+            )
 
     @property
     def uid(self):
@@ -383,11 +389,23 @@ class Dataset(Entity, CreatorMixin):
         return ','.join(creator.short_name for creator in self.creator)
 
     @property
+    def tags_csv(self):
+        """Comma-separated list of tags associated with dataset."""
+        return ','.join(tag.name for tag in self.tags)
+
+    @property
     def editable(self):
         """Subset of attributes which user can edit."""
         obj = self.asjsonld()
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
+
+    def contains_any(self, files):
+        """Check if files are already within a dataset."""
+        for file_ in files:
+            if self.find_file(file_['path']):
+                return True
+        return False
 
     def find_file(self, filename, return_index=False):
         """Find a file in files container."""
@@ -515,3 +533,44 @@ class Dataset(Entity, CreatorMixin):
         except KeyError:
             # if with_dataset is used, the dataset is not committed yet
             pass
+
+        if not self.short_name:
+            self.short_name = generate_default_short_name(
+                self.name, self.version
+            )
+
+
+def is_dataset_name_valid(name, safe=''):
+    """A valid name is a valid Git reference name with no /."""
+    # TODO make name an RFC 3986 compatible name and migrate old projects
+    return (
+        name and LinkReference.check_ref_format(name, no_slashes=True) and
+        '/' not in name
+    )
+
+
+def generate_default_short_name(dataset_name, dataset_version):
+    """Get dataset short_name."""
+    # For compatibility with older versions use name as short_name
+    # if it is valid; otherwise, use encoded name
+    if is_dataset_name_valid(dataset_name):
+        return dataset_name
+
+    name = re.sub(r'\s+', ' ', dataset_name)
+    name = name.lower()[:24]
+
+    def to_unix(el):
+        """Parse string to unix friendly name."""
+        parsed_ = re.sub('[^a-zA-Z0-9]', '', re.sub(r'\s+', ' ', el))
+        parsed_ = re.sub(' .+', '.', parsed_.lower())
+        return parsed_
+
+    short_name = [to_unix(el) for el in name.split()]
+    short_name = [el for el in short_name if el]
+
+    if dataset_version:
+        version = to_unix(dataset_version)
+        name = '{0}_{1}'.format('_'.join(short_name), version)
+        return name
+
+    return '_'.join(short_name)

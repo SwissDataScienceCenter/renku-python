@@ -128,7 +128,7 @@ class MissingEmail(ConfigurationError):
             'Please use the "git config" command to configure it.\n\n'
             '\tgit config --set user.email "john.doe@example.com"\n'
         )
-        super(MissingUsername, self).__init__(message)
+        super().__init__(message)
 
 
 class AuthenticationError(RenkuException):
@@ -196,6 +196,24 @@ class NothingToCommit(RenkuException):
     def __init__(self):
         """Build a custom message."""
         super(NothingToCommit, self).__init__('There is nothing to commit.')
+
+
+class DatasetFileExists(RenkuException):
+    """Raise when file is already in dataset."""
+
+    def __init__(self):
+        """Build a custom message."""
+        super(
+            DatasetFileExists, self
+        ).__init__('File already exists in dataset. Use --force to add.')
+
+
+class CommitMessageEmpty(RenkuException):
+    """Raise invalid commit message."""
+
+    def __init__(self):
+        """Build a custom message."""
+        super(CommitMessageEmpty, self).__init__('Invalid commit message.')
 
 
 class FailedMerge(RenkuException):
@@ -373,3 +391,7 @@ class UrlSchemeNotSupported(RenkuException):
 
 class OperationError(RenkuException):
     """Raised when an operation at runtime raises an error."""
+
+
+class SHACLValidationError(RenkuException):
+    """Raises when SHACL validation of the graph fails."""

@@ -42,11 +42,12 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.datasets import Dataset
+from renku.core.models.datasets import Dataset, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
 from renku.core.utils.doi import extract_doi
+from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
 from .echo import WARNING
@@ -100,21 +101,41 @@ def dataset_parent(client, revision, datadir, format, ctx=None):
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def create_dataset(client, name):
+def create_dataset(
+    client,
+    name,
+    short_name=None,
+    description=None,
+    creators=None,
+    commit_message=None,
+):
     """Create an empty dataset in the current repo.
 
     :raises: ``renku.core.errors.ParameterError``
     """
-    with client.with_dataset(name=name, create=True) as dataset:
-        creator = Person.from_git(client.repo)
-        if creator not in dataset.creator:
-            dataset.creator.append(creator)
+    if not creators:
+        creators = [Person.from_git(client.repo)]
+
+    elif hasattr(creators, '__iter__') and isinstance(creators[0], str):
+        creators = [Person.from_string(c) for c in creators]
+
+    elif hasattr(creators, '__iter__') and isinstance(creators[0], dict):
+        creators = [Person.from_dict(creator) for creator in creators]
+
+    dataset, _, __ = client.create_dataset(
+        name=name,
+        short_name=short_name,
+        description=description,
+        creators=creators
+    )
+
+    return dataset
 
 
 @pass_local_client(
     clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
 )
-def edit_dataset(client, dataset_id, transform_fn):
+def edit_dataset(client, dataset_id, transform_fn, commit_message=None):
     """Edit dataset metadata."""
     dataset = client.load_dataset(dataset_id)
 
@@ -131,6 +152,8 @@ def edit_dataset(client, dataset_id, transform_fn):
     clean=False,
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
+    commit_empty=False,
+    raise_if_empty=True
 )
 def add_file(
     client,
@@ -143,7 +166,8 @@ def add_file(
     destination='',
     ref=None,
     with_metadata=None,
-    urlscontext=contextlib.nullcontext
+    urlscontext=contextlib.nullcontext,
+    commit_message=None,
 ):
     """Add data file to a dataset."""
     add_to_dataset(
@@ -163,7 +187,8 @@ def add_to_dataset(
     destination='',
     ref=None,
     with_metadata=None,
-    urlscontext=contextlib.nullcontext
+    urlscontext=contextlib.nullcontext,
+    commit_message=None,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -177,6 +202,7 @@ def add_to_dataset(
     identifier = extract_doi(
         with_metadata.identifier
     ) if with_metadata else None
+
     try:
         with client.with_dataset(
             name=name, identifier=identifier, create=create
@@ -204,6 +230,7 @@ def add_to_dataset(
                                 file_.url = file_.url.geturl()
 
                             file_.path = added_.path
+                            file_.url = remove_credentials(file_.url)
                             file_.creator = with_metadata.creator
                             file_._label = added_._label
                             file_.commit = added_.commit
@@ -243,7 +270,7 @@ def list_files(client, names, creators, include, exclude, format):
     commit_only=COMMIT_DIFF_STRATEGY,
 )
 @contextmanager
-def file_unlink(client, name, include, exclude):
+def file_unlink(client, name, include, exclude, commit_message=None):
     """Remove matching files from a dataset."""
     dataset = client.load_dataset(name=name)
 
@@ -274,10 +301,11 @@ def dataset_remove(
     names,
     with_output=False,
     datasetscontext=contextlib.nullcontext,
-    referencescontext=contextlib.nullcontext
+    referencescontext=contextlib.nullcontext,
+    commit_message=None
 ):
     """Delete a dataset."""
-    datasets = {name: client.dataset_path(name) for name in names}
+    datasets = {name: client.get_dataset_path(name) for name in names}
 
     if not datasets:
         raise ParameterError(
@@ -334,7 +362,8 @@ def export_dataset(
     publish,
     tag,
     handle_access_token_fn=None,
-    handle_tag_selection_fn=None
+    handle_tag_selection_fn=None,
+    commit_message=None,
 ):
     """Export data to 3rd party provider.
 
@@ -414,12 +443,13 @@ def export_dataset(
 def import_dataset(
     client,
     uri,
-    name,
-    extract,
+    short_name='',
+    extract=False,
     with_prompt=False,
     pool_init_fn=None,
     pool_init_args=None,
-    download_file_fn=default_download_file
+    download_file_fn=default_download_file,
+    commit_message=None,
 ):
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -465,6 +495,15 @@ def import_dataset(
         )
 
     if files:
+        if not short_name:
+            short_name = generate_default_short_name(
+                dataset.name, dataset.version
+            )
+
+        dataset.short_name = short_name
+
+        client.create_dataset(name=dataset.name, short_name=short_name)
+
         data_folder = tempfile.mkdtemp()
 
         pool_size = min(
@@ -502,19 +541,18 @@ def import_dataset(
             ))
         pool.close()
 
-        dataset_name = name or dataset.display_name
+        dataset.url = remove_credentials(dataset.url)
         add_to_dataset(
             client,
             urls=[str(p) for p in Path(data_folder).glob('*')],
-            name=dataset_name,
-            with_metadata=dataset,
-            create=True
+            name=short_name,
+            with_metadata=dataset
         )
 
         if dataset.version:
             tag_name = re.sub('[^a-zA-Z0-9.-_]', '_', dataset.version)
             tag_dataset(
-                client, dataset_name, tag_name,
+                client, short_name, tag_name,
                 'Tag {} created by renku import'.format(dataset.version)
             )
 
@@ -533,7 +571,8 @@ def update_datasets(
     exclude,
     ref,
     delete,
-    progress_context=contextlib.nullcontext
+    progress_context=contextlib.nullcontext,
+    commit_message=None,
 ):
     """Update files from a remote Git repo."""
     records = _filter(
@@ -562,7 +601,7 @@ def update_datasets(
 
             file_.dataset = dataset
             possible_updates.append(file_)
-            unique_remotes.add(file_.based_on['url'])
+            unique_remotes.add(file_.based_on.url)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
@@ -622,7 +661,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
 
     records = []
     for path_, dataset in client.datasets.items():
-        if not names or dataset.name in names:
+        if not names or dataset.short_name in names:
             for file_ in dataset.files:
                 file_.dataset = dataset.name
                 path_ = file_.full_path.relative_to(client.path)
@@ -645,7 +684,9 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def tag_dataset_with_client(client, name, tag, description, force=False):
+def tag_dataset_with_client(
+    client, name, tag, description, force=False, commit_message=None
+):
     """Creates a new tag for a dataset and injects a LocalClient."""
     tag_dataset(client, name, tag, description, force)
 
@@ -669,7 +710,7 @@ def tag_dataset(client, name, tag, description, force=False):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def remove_dataset_tags(client, name, tags):
+def remove_dataset_tags(client, name, tags, commit_message=True):
     """Removes tags from a dataset."""
     dataset = client.load_dataset(name)
     if not dataset:

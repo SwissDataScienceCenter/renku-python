@@ -17,6 +17,7 @@
 # limitations under the License.
 """Helpers utils for handling URLs."""
 
+import urllib
 from urllib.parse import ParseResult
 
 
@@ -39,3 +40,11 @@ def url_to_string(url):
         return url
 
     raise ValueError('url value not recognized')
+
+
+def remove_credentials(url):
+    """Remove username and password from a URL."""
+    if url is None:
+        return ''
+    parsed = urllib.parse.urlparse(url)
+    return parsed._replace(netloc=parsed.hostname).geturl()

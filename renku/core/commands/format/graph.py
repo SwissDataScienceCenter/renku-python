@@ -21,11 +21,17 @@ import functools
 
 import click
 
+from renku.core.errors import SHACLValidationError
+from renku.core.utils.shacl import validate_graph
 
-def ascii(graph):
+
+def ascii(graph, strict=False):
     """Format graph as an ASCII art."""
     from ..ascii import DAG
     from ..echo import echo_via_pager
+
+    if strict:
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
 
     echo_via_pager(str(DAG(graph)))
 
@@ -34,29 +40,38 @@ def _jsonld(graph, format, *args, **kwargs):
     """Return formatted graph in JSON-LD ``format`` function."""
     import json
 
-    from pyld import jsonld
+    from renku.core.compat import pyld
     from renku.core.models.jsonld import asjsonld
 
-    output = getattr(jsonld, format)([
+    output = getattr(pyld.jsonld, format)([
         asjsonld(action) for action in graph.activities.values()
     ])
     return json.dumps(output, indent=2)
 
 
-def dot(graph, simple=True, debug=False, landscape=False):
-    """Format graph as a dot file."""
-    import sys
-
+def _conjunctive_graph(graph):
+    """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``."""
     from rdflib import ConjunctiveGraph
     from rdflib.plugin import register, Parser
-    from rdflib.tools.rdf2dot import rdf2dot
 
     register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
-    g = ConjunctiveGraph().parse(
+    return ConjunctiveGraph().parse(
         data=_jsonld(graph, 'expand'),
         format='json-ld',
     )
+
+
+def dot(graph, simple=True, debug=False, landscape=False, strict=False):
+    """Format graph as a dot file."""
+    import sys
+
+    from rdflib.tools.rdf2dot import rdf2dot
+
+    if strict:
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
+
+    g = _conjunctive_graph(graph)
 
     g.bind('prov', 'http://www.w3.org/ns/prov#')
     g.bind('foaf', 'http://xmlns.com/foaf/0.1/')
@@ -92,7 +107,7 @@ def _rdf2dot_simple(g, stream):
     import re
 
     path_re = re.compile(
-        r'file:///(?P<type>[a-zA-Z]+)/'
+        r'(?P<prefix>file://|https://\w+/\w+/){0,1}(?P<type>[a-zA-Z]+)/'
         r'(?P<commit>\w+)'
         r'(?P<path>.+)?'
     )
@@ -184,9 +199,8 @@ def _rdf2dot_reduced(g, stream):
     Adapted from original source:
     https://rdflib.readthedocs.io/en/stable/_modules/rdflib/tools/rdf2dot.html
     """
-    import cgi
+    import html
     import collections
-
     import rdflib
 
     from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
@@ -213,7 +227,7 @@ def _rdf2dot_reduced(g, stream):
 
     def formatliteral(l, g):
         """Format and escape literal."""
-        v = cgi.escape(l)
+        v = html.escape(l)
         if l.datatype:
             return '&quot;%s&quot;^^%s' % (v, qname(l.datatype, g))
         elif l.language:
@@ -253,11 +267,11 @@ def _rdf2dot_reduced(g, stream):
             continue
         # inject the type predicate into the node itself
         if p == rdflib.RDF.type:
-            types[sn].add((qname(p, g), cgi.escape(o)))
+            types[sn].add((qname(p, g), html.escape(o)))
             continue
         # add the project membership to the node
         if p == rdflib.term.URIRef('schema:isPartOf'):
-            fields[sn].add((qname(p, g), cgi.escape(o)))
+            fields[sn].add((qname(p, g), html.escape(o)))
             continue
 
         if isinstance(o, (rdflib.URIRef, rdflib.BNode)):
@@ -293,9 +307,12 @@ def _rdf2dot_reduced(g, stream):
     stream.write('}\n')
 
 
-def makefile(graph):
+def makefile(graph, strict=False):
     """Format graph as Makefile."""
     from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
+
+    if strict:
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
 
     for activity in graph.activities.values():
         if not isinstance(activity, ProcessRun):
@@ -316,44 +333,53 @@ def makefile(graph):
             )
 
 
-def jsonld(graph):
+def jsonld(graph, strict=False):
     """Format graph as JSON-LD file."""
-    click.echo(_jsonld(graph, 'expand'))
+    ld = _jsonld(graph, 'expand')
+
+    if strict:
+        r, _, t = validate_graph(ld, format='json-ld')
+
+        if not r:
+            raise SHACLValidationError(
+                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
+            )
+    click.echo(ld)
 
 
-def jsonld_graph(graph):
+def jsonld_graph(graph, strict=False):
     """Format graph as JSON-LD graph file."""
+    if strict:
+        raise SHACLValidationError('--strict not supported for json-ld-graph')
     click.echo(_jsonld(graph, 'flatten'))
 
 
-def nt(graph):
+def nt(graph, strict=False):
     """Format graph as n-tuples."""
-    from rdflib import ConjunctiveGraph
-    from rdflib.plugin import register, Parser
+    nt = _conjunctive_graph(graph).serialize(format='nt')
+    if strict:
+        r, _, t = validate_graph(nt, format='nt')
 
-    register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
+        if not r:
+            raise SHACLValidationError(
+                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
+            )
 
-    click.echo(
-        ConjunctiveGraph().parse(
-            data=_jsonld(graph, 'expand'),
-            format='json-ld',
-        ).serialize(format='nt')
-    )
+    click.echo(nt)
 
 
-def rdf(graph):
+def rdf(graph, strict=False):
     """Output the graph as RDF."""
-    from rdflib import ConjunctiveGraph
-    from rdflib.plugin import register, Parser
+    xml = _conjunctive_graph(graph).serialize(format='application/rdf+xml')
+    if strict:
+        r, _, t = validate_graph(xml, format='xml')
 
-    register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
+        if not r:
+            raise SHACLValidationError(
+                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
+            )
 
-    click.echo(
-        ConjunctiveGraph().parse(
-            data=_jsonld(graph, 'expand'),
-            format='json-ld',
-        ).serialize(format='application/rdf+xml')
-    )
+    click.echo(xml)
 
 
 FORMATS = {

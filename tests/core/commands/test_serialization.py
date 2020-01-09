@@ -31,7 +31,7 @@ def test_dataset_serialization(client, dataset, data_file):
     """Test Dataset serialization."""
 
     def load_dataset(name):
-        with open(str(client.dataset_path(name))) as f:
+        with open(str(client.get_dataset_path(name))) as f:
             return yaml.safe_load(f)
 
     d_dict = load_dataset('dataset')
@@ -54,7 +54,9 @@ def test_dataset_serialization(client, dataset, data_file):
 def test_dataset_deserialization(client, dataset):
     """Test Dataset deserialization."""
     from renku.core.models.datasets import Dataset
-    dataset_ = Dataset.from_yaml(client.dataset_path('dataset'), client=client)
+    dataset_ = Dataset.from_yaml(
+        client.get_dataset_path('dataset'), client=client
+    )
 
     dataset_types = {
         'created': datetime.datetime,

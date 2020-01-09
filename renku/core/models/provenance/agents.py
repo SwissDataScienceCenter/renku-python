@@ -58,9 +58,14 @@ class Person:
     @_id.default
     def default_id(self):
         """Set the default id."""
+        import string
         if self.email:
             return 'mailto:{email}'.format(email=self.email)
-        return '_:{}'.format(''.join(self.name.lower().split()))
+
+        # prep name to be a valid ntuple string
+        name = self.name.translate(str.maketrans('', '', string.punctuation))
+        name = ''.join(filter(lambda x: x in string.printable, name))
+        return '_:{}'.format(''.join(name.lower().split()))
 
     @email.validator
     def check_email(self, attribute, value):
@@ -122,6 +127,31 @@ class Person:
 
         return cls(name=name, email=email)
 
+    @classmethod
+    def from_string(cls, string):
+        """Create an instance from a 'Name <email>' string."""
+        regex_pattern = r'([^<]*)<{0,1}([^@<>]+@[^@<>]+\.[^@<>]+)*>{0,1}'
+        name, email = re.search(regex_pattern, string).groups()
+        name = name.rstrip()
+
+        # Check the git configuration.
+        if not name:  # pragma: no cover
+            raise errors.ParameterError(
+                'Name is invalid: A valid format is "Name <email>"'
+            )
+
+        if not email:  # pragma: no cover
+            raise errors.ParameterError(
+                'Email is invalid: A valid format is "Name <email>"'
+            )
+
+        return cls(name=name, email=email)
+
+    @classmethod
+    def from_dict(cls, obj):
+        """Create and instance from a dictionary."""
+        return cls(**obj)
+
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
@@ -137,6 +167,7 @@ class Person:
     context={
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
     },
     frozen=True,
     slots=True,
