@@ -17,19 +17,12 @@
 # limitations under the License.
 """Repository datasets management."""
 
-import multiprocessing as mp
-import os
 import re
-import tempfile
 from collections import OrderedDict
 from contextlib import contextmanager
-from multiprocessing import freeze_support
-from pathlib import Path
-from urllib.parse import ParseResult
 
 import click
 import git
-import requests
 import yaml
 from requests import HTTPError
 
@@ -46,39 +39,12 @@ from renku.core.models.datasets import Dataset, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
-from renku.core.utils.doi import extract_doi
 from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
 from .echo import WARNING
 from .format.dataset_files import DATASET_FILES_FORMATS
 from .format.datasets import DATASETS_FORMATS
-
-
-def default_download_file(extract, data_folder, file, chunk_size=16384):
-    """Download a file."""
-    local_filename = Path(file.filename).name
-    download_to = Path(data_folder) / Path(local_filename)
-
-    def extract_dataset(data_folder_, filename):
-        """Extract downloaded dataset."""
-        import patoolib
-        filepath = Path(data_folder_) / Path(filename)
-        patoolib.extract_archive(filepath, outdir=data_folder_)
-        filepath.unlink()
-
-    def stream_to_file(request):
-        """Stream bytes to file."""
-        with open(str(download_to), 'wb') as f_:
-            for chunk in request.iter_content(chunk_size=chunk_size):
-                if chunk:  # remove keep-alive chunks
-                    f_.write(chunk)
-        if extract:
-            extract_dataset(data_folder, local_filename)
-
-    with requests.get(file.url.geturl(), stream=True) as r:
-        r.raise_for_status()
-        stream_to_file(r)
 
 
 @pass_local_client(clean=False, commit=False)
@@ -171,15 +137,24 @@ def add_file(
 ):
     """Add data file to a dataset."""
     add_to_dataset(
-        client, urls, name, link, force, create, sources, destination, ref,
-        with_metadata, urlscontext
+        client=client,
+        urls=urls,
+        short_name=name,
+        link=link,
+        force=force,
+        create=create,
+        sources=sources,
+        destination=destination,
+        ref=ref,
+        with_metadata=with_metadata,
+        urlscontext=urlscontext
     )
 
 
 def add_to_dataset(
     client,
     urls,
-    name,
+    short_name,
     link=False,
     force=False,
     create=False,
@@ -189,6 +164,9 @@ def add_to_dataset(
     with_metadata=None,
     urlscontext=contextlib.nullcontext,
     commit_message=None,
+    extract=False,
+    all_at_once=False,
+    progress=None,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -198,14 +176,9 @@ def add_to_dataset(
             'Cannot add multiple URLs with --source or --destination'
         )
 
-    # check for identifier before creating the dataset
-    identifier = extract_doi(
-        with_metadata.identifier
-    ) if with_metadata else None
-
     try:
         with client.with_dataset(
-            name=name, identifier=identifier, create=create
+            short_name=short_name, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
                 warning_message = client.add_data_to_dataset(
@@ -215,25 +188,20 @@ def add_to_dataset(
                     force=force,
                     sources=sources,
                     destination=destination,
-                    ref=ref
+                    ref=ref,
+                    extract=extract,
+                    all_at_once=all_at_once,
+                    progress=progress,
                 )
 
             if warning_message:
                 click.echo(WARNING + warning_message)
 
             if with_metadata:
-                for file_ in with_metadata.files:
-                    for added_ in dataset.files:
-
-                        if added_.path.endswith(file_.filename):
-                            if isinstance(file_.url, ParseResult):
-                                file_.url = file_.url.geturl()
-
-                            file_.path = added_.path
-                            file_.url = remove_credentials(file_.url)
-                            file_.creator = with_metadata.creator
-                            file_._label = added_._label
-                            file_.commit = added_.commit
+                for file_ in dataset.files:
+                    file_.creator = with_metadata.creator
+                # dataset has the correct list of files
+                with_metadata.files = dataset.files
 
                 dataset.update_metadata(with_metadata)
 
@@ -242,7 +210,7 @@ def add_to_dataset(
             'Dataset "{0}" does not exist.\n'
             'Use "renku dataset create {0}" to create the dataset or retry '
             '"renku dataset add {0}" command with "--create" option for '
-            'automatic dataset creation.'.format(name)
+            'automatic dataset creation.'.format(short_name)
         )
     except (FileNotFoundError, git.exc.NoSuchPathError) as e:
         raise ParameterError(
@@ -446,10 +414,8 @@ def import_dataset(
     short_name='',
     extract=False,
     with_prompt=False,
-    pool_init_fn=None,
-    pool_init_args=None,
-    download_file_fn=default_download_file,
     commit_message=None,
+    progress=None,
 ):
     """Import data from a 3rd party provider."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -500,53 +466,18 @@ def import_dataset(
                 dataset.name, dataset.version
             )
 
-        dataset.short_name = short_name
-
-        client.create_dataset(name=dataset.name, short_name=short_name)
-
-        data_folder = tempfile.mkdtemp()
-
-        pool_size = min(
-            int(os.getenv('RENKU_POOL_SIZE',
-                          mp.cpu_count() // 2)), 4
-        )
-
-        freeze_support()  # Windows support
-
-        pool = mp.Pool(
-            pool_size,
-            # Windows support
-            initializer=pool_init_fn,
-            initargs=pool_init_args
-        )
-
-        processing = [
-            pool.apply_async(
-                download_file_fn, args=(
-                    extract,
-                    data_folder,
-                    file_,
-                )
-            ) for file_ in files
-        ]
-
-        try:
-            for p in processing:
-                p.get()  # Will internally do the wait() as well.
-
-        except HTTPError as e:
-            raise ParameterError((
-                'Could not process {0}.\n'
-                'URI not found.'.format(e.request.url)
-            ))
-        pool.close()
-
         dataset.url = remove_credentials(dataset.url)
+
         add_to_dataset(
             client,
-            urls=[str(p) for p in Path(data_folder).glob('*')],
-            name=short_name,
-            with_metadata=dataset
+            urls=[f.url for f in files],
+            short_name=short_name,
+            create=True,
+            with_metadata=dataset,
+            force=True,
+            extract=extract,
+            all_at_once=True,
+            progress=progress,
         )
 
         if dataset.version:
