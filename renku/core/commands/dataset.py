@@ -48,14 +48,18 @@ from .format.datasets import DATASETS_FORMATS
 
 
 @pass_local_client(clean=False, commit=False)
-def dataset_parent(client, revision, datadir, format, ctx=None):
-    """Handle datasets subcommands."""
+def check_for_migration(client):
+    """Checks if dataset migration is required."""
     missing_dataset, missing_files = check_dataset_resources(client)
     old_datasets = [ds for ds in dataset_pre_0_3(client)]
 
     if missing_dataset or missing_files or old_datasets:
         raise MigrationRequired('datasets')
 
+
+@pass_local_client(clean=False, commit=False)
+def dataset_parent(client, revision, datadir, format, ctx=None):
+    """Handle datasets subcommands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
