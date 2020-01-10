@@ -33,7 +33,7 @@ from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
 from renku.core.models.provenance.activities import Activity, ProcessRun, Usage
 from renku.core.models.provenance.processes import Process
-from renku.core.models.provenance.qualified import Generation
+from renku.core.models.provenance.qualified import Generation, Invalidation
 
 LINK_CWL = CommandLineTool(
     baseCommand=['true'],
@@ -179,6 +179,11 @@ class Graph(object):
                 return []
 
         if isinstance(node, Generation):
+            result = [node.parent] if node.parent is not None else []
+            if node.activity and isinstance(node.activity, ProcessRun):
+                return result + [node.activity.association.plan]
+            return result
+        elif isinstance(node, Invalidation):
             result = [node.parent] if node.parent is not None else []
             if node.activity and isinstance(node.activity, ProcessRun):
                 return result + [node.activity.association.plan]

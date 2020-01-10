@@ -111,6 +111,47 @@ class Usage(EntityProxyMixin):
 
 
 @jsonld.s(
+    type='prov:Invalidation',
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+    },
+    cmp=False,
+)
+class Invalidation(EntityProxyMixin):
+    """Represent an act of deleting a file."""
+
+    entity = jsonld.ib(
+        context={
+            '@reverse': 'prov:qualifiedInvalidation',
+        },
+        type=[
+            'renku.core.models.entities.Entity',
+            'renku.core.models.entities.Collection', Dataset, DatasetFile
+        ]
+    )
+
+    _activity = attr.ib(
+        default=None,
+        kw_only=True,
+        converter=lambda value: weakref.ref(value)
+        if value is not None else None,
+    )
+    _id = jsonld.ib(context='@id', kw_only=True)
+
+    @property
+    def activity(self):
+        """Return the activity object."""
+        return self._activity() if self._activity is not None else None
+
+    @_id.default
+    def default_id(self):
+        """Configure calculated ID."""
+        return '{self.activity._id}/tree/{self.entity.path}'.format(
+            self=self,
+        )
+
+
+@jsonld.s(
     type='prov:Generation',
     context={
         'prov': 'http://www.w3.org/ns/prov#',
