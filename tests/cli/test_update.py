@@ -39,7 +39,7 @@ def test_update(runner, project, run):
 
     cwd = Path(project)
     data = cwd / 'data'
-    data.mkdir()
+    data.mkdir(exist_ok=True, parents=True)
     source = cwd / 'source.txt'
     output = data / 'result.txt'
 

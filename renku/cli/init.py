@@ -64,16 +64,23 @@ was not installed previously.
 
 """
 
-import contextlib
+import ast
 import os
+from collections import OrderedDict, namedtuple
 from pathlib import Path
+from tempfile import mkdtemp
 
 import attr
 import click
+import pkg_resources
 
+from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.git import set_git_home
+from renku.core.commands.init import create_from_template, fetch_template, \
+    read_template_manifest
 from renku.core.commands.options import option_use_external_storage
+from renku.core.models.tabulate import tabulate
 
 _GITLAB_CI = '.gitlab-ci.yml'
 _DOCKERFILE = 'Dockerfile'
@@ -81,111 +88,227 @@ _REQUIREMENTS = 'requirements.txt'
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
+def parse_variables(ctx, param, value):
+    """Parse template variables to dictionary."""
+    try:
+        variables = ast.literal_eval(value)
+    except ValueError:
+        raise_template_error(value)
+    if type(variables) is not dict:
+        raise_template_error(value)
+    return variables
+
+
+def raise_template_error(value):
+    """Raise template error with short explanation."""
+    error_info = [
+        '{0}'.format(value), 'Tip: a dictionary is expected',
+        (
+            'Example: --template-variables '
+            '\'{ "variable_1": "string", "variable_2": 2 }\''
+        )
+    ]
+    raise errors.ParameterError(
+        '\n'.join(error_info), '"--template-variables"'
+    )
+
+
 def validate_name(ctx, param, value):
     """Validate a project name."""
     if not value:
-        value = os.path.basename(ctx.params['directory'].rstrip(os.path.sep))
+        value = os.path.basename(ctx.params['path'].rstrip(os.path.sep))
     return value
 
 
-def store_directory(ctx, param, value):
+def store_directory(value):
     """Store directory as a new Git home."""
     Path(value).mkdir(parents=True, exist_ok=True)
     set_git_home(value)
     return value
 
 
-def template(client, force):
-    """Render templated configuration files."""
-    import pkg_resources
+def create_template_sentence(templates, instructions=False):
+    """Create templates choice sentence.
 
-    # create the templated files
-    for tpl_file in CI_TEMPLATES:
-        tpl_path = client.path / tpl_file
-        with pkg_resources.resource_stream(__name__, tpl_file) as tpl:
-            content = tpl.read()
+    :ref templates: list of templates coming from manifest file
+    :ref instructions: add instructions
+    """
+    Template = namedtuple('Template', ['index', 'name', 'description'])
+    templates_friendly = [
+        Template(
+            index=index + 1,
+            name=template_elem['name'],
+            description=template_elem['description'],
+        ) for index, template_elem in enumerate(templates)
+    ]
 
-            if not force and tpl_path.exists():
-                click.confirm(
-                    'Do you want to override "{tpl_file}"'.format(
-                        tpl_file=tpl_file
-                    ),
-                    abort=True,
-                )
+    text = tabulate(
+        templates_friendly,
+        headers=OrderedDict((
+            ('index', 'Number'),
+            ('name', 'Name'),
+            ('description', 'Description'),
+        ))
+    )
 
-            with tpl_path.open('wb') as dest:
-                dest.write(content)
+    if not instructions:
+        return text
+    return '{0}\nPlease choose a template by typing the number'.format(text)
+
+
+def is_path_empty(path):
+    """Check if path contains files.
+
+    :ref path: target path
+    """
+    gen = Path(path).glob('**/*')
+    return not any(gen)
 
 
 @click.command()
 @click.argument(
-    'directory',
+    'path',
     default='.',
-    callback=store_directory,
-    type=click.Path(writable=True, file_okay=False, resolve_path=True)
+    type=click.Path(writable=True, file_okay=False, resolve_path=True),
 )
-@click.option('--name', callback=validate_name)
-@click.option('--force', is_flag=True, help='Override project templates.')
+@click.option(
+    '--name',
+    callback=validate_name,
+    help='Provide a custom project name.',
+)
+@click.option('--template', help='Provide the name of the template to use.')
+@click.option(
+    '--template-source', help='Provide the templates repository url or path.'
+)
+@click.option(
+    '--template-ref',
+    default='master',
+    help='Specify the reference to checkout on remote template repository.',
+)
+@click.option(
+    '--template-variables',
+    default='{}',
+    callback=parse_variables,
+    help=(
+        'Provide custom values for template variables. It must be a python '
+        'dictionary.\nExample: \'{ "variable_1": "string", "variable_2": 2 }\''
+    )
+)
+@click.option('--description', help='Describe your project.')
+@click.option(
+    '--print-manifest', is_flag=True, help='Print templates manifest only.'
+)
+@click.option('--force', is_flag=True, help='Override target path.')
 @option_use_external_storage
 @pass_local_client
 @click.pass_context
-def init(ctx, client, directory, name, force, use_external_storage):
-    """Initialize a project."""
+def init(
+    ctx, client, use_external_storage, path, name, template, template_source,
+    template_ref, template_variables, description, print_manifest, force
+):
+    """Initialize a project in PATH. Default is current path."""
+    # verify dirty path
+    if not is_path_empty(path) and not force and not print_manifest:
+        raise errors.InvalidFileOperation(
+            'Folder "{0}" is not empty. Please add --force '
+            'flag to transform it into a Renku repository.'.format(str(path))
+        )
+
+    # select template source
+    if template_source:
+        click.echo(
+            'Fetching template from {0}@{1}... '.format(
+                template_source, template_ref
+            ),
+            nl=False
+        )
+        template_folder = Path(mkdtemp())
+        fetch_template(template_source, template_ref, template_folder)
+        template_manifest = read_template_manifest(
+            template_folder, checkout=True
+        )
+        click.secho('OK', fg='green')
+    else:
+        template_folder = Path(
+            pkg_resources.resource_filename('renku', 'templates')
+        )
+        template_manifest = read_template_manifest(template_folder)
+
+    # select specific template
+    repeat = False
+    template_data = None
+    if template:
+        template_filtered = [
+            template_elem for template_elem in template_manifest
+            if template_elem['name'] == template
+        ]
+        if len(template_filtered) == 1:
+            template_data = template_filtered[0]
+        else:
+            click.echo('The template "{0}" is not available.'.format(template))
+            repeat = True
+
+    if print_manifest:
+        if template_data:
+            click.echo(create_template_sentence([template_data]))
+        else:
+            click.echo(create_template_sentence(template_manifest))
+        return
+
+    if not template or repeat:
+        templates = [template_elem for template_elem in template_manifest]
+        if len(templates) == 1:
+            template_data = templates[0]
+        else:
+            template_num = click.prompt(
+                text=create_template_sentence(templates, True),
+                type=click.IntRange(1, len(templates)),
+                show_default=False,
+                show_choices=False
+            )
+            template_data = templates[template_num - 1]
+
+    # set local path and storage
+    store_directory(path)
     if not client.use_external_storage:
         use_external_storage = False
-
     ctx.obj = client = attr.evolve(
-        client,
-        path=directory,
-        use_external_storage=use_external_storage,
+        client, path=path, use_external_storage=use_external_storage
     )
-
-    msg = 'Initialized empty project in {path}'
-    branch_name = None
-
-    stack = contextlib.ExitStack()
-
-    if force and client.repo:
-        msg = 'Initialized project in {path} (branch {branch_name})'
-        merge_args = ['--no-ff', '-s', 'recursive', '-X', 'ours']
-
+    if not is_path_empty(path):
+        from git import GitCommandError
         try:
-            commit = client.find_previous_commit(
-                str(client.renku_metadata_path),
-            )
-            branch_name = 'renku/init/' + str(commit)
-        except KeyError:
-            from git import NULL_TREE
-            commit = NULL_TREE
-            branch_name = 'renku/init/root'
-            merge_args.append('--allow-unrelated-histories')
-
-        ctx.obj = client = stack.enter_context(
-            client.worktree(
+            commit = client.find_previous_commit('*')
+            branch_name = 'pre_renku_init_{0}'.format(commit.hexsha[:7])
+            with client.worktree(
+                path=path,
                 branch_name=branch_name,
                 commit=commit,
-                merge_args=merge_args,
+                merge_args=[
+                    '--no-ff', '-s', 'recursive', '-X', 'ours',
+                    '--allow-unrelated-histories'
+                ]
+            ):
+                click.echo(
+                    'Saving current data in branch {0}'.format(branch_name)
+                )
+        except AttributeError:
+            click.echo('Warning! Overwriting non-empty folder.')
+        except GitCommandError as e:
+            click.UsageError(e)
+
+    # clone the repo
+    template_path = template_folder / template_data['folder']
+    click.echo('Initializing new Renku repository... ', nl=False)
+    with client.lock:
+        try:
+            create_from_template(
+                template_path, client, name, description, template_variables,
+                force
             )
-        )
+        except FileExistsError as e:
+            raise click.UsageError(e)
 
-    try:
-        with client.lock:
-            path = client.init_repository(name=name, force=force)
-    except FileExistsError:
-        raise click.UsageError(
-            'Renku repository is not empty. '
-            'Please use --force flag to use the directory as Renku '
-            'repository.'
-        )
-
-    stack.enter_context(client.commit())
-
-    with stack:
-        # Install Git hooks.
-        from .githooks import install
-        ctx.invoke(install, force=force)
-
-        # Create all necessary template files.
-        template(client, force=force)
-
-    click.echo(msg.format(path=path, branch_name=branch_name))
+    # Install git hooks
+    from .githooks import install
+    ctx.invoke(install, force=force)
