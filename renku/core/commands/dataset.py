@@ -18,6 +18,7 @@
 """Repository datasets management."""
 
 import re
+import urllib
 from collections import OrderedDict
 from contextlib import contextmanager
 
@@ -39,6 +40,7 @@ from renku.core.models.datasets import Dataset, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
+from renku.core.utils.doi import is_doi
 from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
@@ -206,6 +208,11 @@ def add_to_dataset(
                     file_.creator = with_metadata.creator
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
+
+                if is_doi(with_metadata.identifier):
+                    dataset.same_as = urllib.parse.urljoin(
+                        'https://doi.org', with_metadata.identifier
+                    )
 
                 dataset.update_metadata(with_metadata)
 
