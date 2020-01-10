@@ -110,7 +110,7 @@ from renku.core.commands.graph import Graph
     default=False,
     help='Validate triples before output.'
 )
-@click.argument('paths', type=click.Path(exists=True), nargs=-1)
+@click.argument('paths', type=click.Path(exists=False), nargs=-1)
 @pass_local_client
 def log(client, revision, format, no_output, strict, paths):
     """Show logs for a file."""

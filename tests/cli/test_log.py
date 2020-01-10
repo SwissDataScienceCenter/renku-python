@@ -19,6 +19,10 @@
 
 from __future__ import absolute_import, print_function
 
+import os
+from pathlib import Path
+
+import git
 import pytest
 
 from renku.cli import cli
@@ -67,3 +71,29 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format):
 
     assert 0 == result.exit_code, result.output
     assert all(p in result.output for p in test_paths)
+
+
+@pytest.mark.shelled
+@pytest.mark.parametrize('format', ['json-ld', 'nt', 'rdf'])
+def test_dataset_log_invalidation_strict(
+    tmpdir, runner, project, client, format
+):
+    """Test output of log for dataset add."""
+    repo = git.Repo(project)
+    cwd = Path(project)
+    input_ = cwd / 'input.txt'
+    with input_.open('w') as f:
+        f.write('first')
+
+    repo.git.add('--all')
+    repo.index.commit('Created input.txt')
+
+    os.remove(input_)
+    repo.git.add('--all')
+    repo.index.commit('Removed input.txt')
+
+    result = runner.invoke(
+        cli, ['log', '--strict', '--format={}'.format(format)]
+    )
+
+    assert 0 == result.exit_code, result.output
