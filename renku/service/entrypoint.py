@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service entry point."""
+import logging
 import os
 import uuid
 
@@ -35,6 +36,8 @@ from renku.service.views.cache import CACHE_BLUEPRINT_TAG, cache_blueprint, \
 from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
     add_file_to_dataset_view, create_dataset_view, dataset_blueprint, \
     list_dataset_files_view, list_datasets_view
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def make_cache():
@@ -60,6 +63,14 @@ def create_app():
     app.config['cache'] = cache
 
     build_routes(app)
+
+    @app.route('/health')
+    def health():
+        import renku
+        return 'renku repository service version {}\n'.format(
+            renku.__version__
+        )
+
     return app
 
 
