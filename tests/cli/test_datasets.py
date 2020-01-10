@@ -691,7 +691,7 @@ def test_datasets_ls_files_tabular_creators(tmpdir, runner, project, client):
     assert 0 == result.exit_code
 
     creator = None
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         creator = dataset.creator[0].name
 
     assert creator is not None
@@ -828,7 +828,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename in {
             Path(file_.path).name
             for file_ in dataset.files
@@ -842,7 +842,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename not in [
             file_.path.name for file_ in dataset.files
         ]
@@ -1365,10 +1365,12 @@ def test_add_remove_credentials(runner, client, monkeypatch):
     """Check removal of credentials during adding of remote data files."""
     url = 'https://username:password@example.com/index.html'
 
-    def get(u):
+    def get(u, *args, **kwargs):
         """Mocked response."""
         response = requests.Response()
         response._content = b'{}'
+        response._content_consumed = True
+        response.status_code = 200
         return response
 
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
@@ -1376,6 +1378,6 @@ def test_add_remove_credentials(runner, client, monkeypatch):
 
     monkeypatch.setattr(requests, 'get', get)
     dataset = client.load_dataset('my-dataset')
-    o = client._add_from_url(dataset, url, client.path)
+    o = client._add_from_url(dataset, url, client.path, extract=False)
 
     assert 'https://example.com/index.html' == o[0]['url']
