@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "renku-core.fullname" . }}
+  labels:
+{{ include "renku-core.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "renku-core.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "renku-core.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{ include "call-nested" (list . "redis" "redis.fullname") }}-client: "true"
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: REDIS_HOST
+              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DATABASE
+              value: "0"
+            - name: REDIS_PASSWORD
+              value:
+            - name: CACHE_DIR
+              value: {{ .Values.cacheDirectory }}
+            - name: PROJECT_CLONE_DEPTH_DEFAULT
+              value: {{ .Values.projectCloneDepth | quote }}
+            - name: CORE_SERVICE_PREFIX
+              value: /renku
+            - name: RENKU_SVC_SWAGGER_URL
+              value: /renku/openapi.json
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

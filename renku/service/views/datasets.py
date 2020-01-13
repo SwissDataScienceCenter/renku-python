@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets view."""
 import json
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 from flask_apispec import marshal_with, use_kwargs
@@ -26,7 +27,7 @@ from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_parent, list_files
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
-    INVALID_PARAMS_ERROR_CODE
+    INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
 from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetAddResponse, DatasetAddResponseRPC, DatasetCreateRequest, \
     DatasetCreateResponse, DatasetCreateResponseRPC, DatasetDetails, \
@@ -39,7 +40,9 @@ from renku.service.views.decorators import accepts_json, handle_base_except, \
     header_doc, requires_cache, requires_identity
 
 DATASET_BLUEPRINT_TAG = 'datasets'
-dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__)
+dataset_blueprint = Blueprint(
+    DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX
+)
 
 
 @use_kwargs(DatasetListRequest, locations=['query'])
@@ -141,7 +144,7 @@ def list_dataset_files_view(user, cache):
 @requires_cache
 @requires_identity
 def add_file_to_dataset_view(user, cache):
-    """Add uploaded file to cloned repository."""
+    """Add the uploaded file to cloned repository."""
     ctx = DatasetAddRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
     project_path = make_project_path(user, project)
@@ -160,14 +163,23 @@ def add_file_to_dataset_view(user, cache):
         )
 
     local_paths = []
-    for file_ in ctx['files']:
-        file = cache.get_file(user, file_['file_id'])
-        local_path = make_file_path(user, file)
+    for _file in ctx['files']:
+        local_path = None
+
+        if 'file_id' in _file:
+            file = cache.get_file(user, _file['file_id'])
+            local_path = make_file_path(user, file)
+
+        elif 'file_path' in _file:
+            local_path = project_path / Path(_file['file_path'])
+
         if not local_path or not local_path.exists():
             return jsonify(
                 error={
                     'code': INVALID_PARAMS_ERROR_CODE,
-                    'message': 'invalid file_id: {0}'.format(file_['file_id'])
+                    'message':
+                        'invalid file reference: {0}'.
+                        format(local_path.relative_to(project_path))
                 }
             )
 
@@ -230,7 +242,10 @@ def create_dataset_view(user, cache):
 
     with chdir(project_path):
         create_dataset(
-            ctx['dataset_name'], commit_message=ctx['commit_message']
+            ctx['dataset_name'],
+            commit_message=ctx['commit_message'],
+            creators=ctx.get('creators'),
+            description=ctx.get('description'),
         )
 
     if not repo_sync(project_path):

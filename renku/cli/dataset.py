@@ -240,11 +240,7 @@ Unlink all files from a dataset:
 .. note:: The ``unlink`` command does not delete files,
     only the dataset record.
 """
-import multiprocessing as mp
-import os
 from functools import partial
-from pathlib import Path
-from time import sleep
 
 import click
 import editor
@@ -261,6 +257,7 @@ from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
+from renku.core.management.datasets import DownloadProgressCallback
 
 
 def prompt_access_token(exporter):
@@ -295,71 +292,6 @@ def prompt_tag_selection(tags):
     if selection > 1:
         return tags[selection - 2]
     return None
-
-
-def download_file_with_progress(extract, data_folder, file, chunk_size=16384):
-    """Download a file with progress tracking."""
-    global current_process_position
-
-    local_filename = Path(file.filename).name
-    download_to = Path(data_folder) / Path(local_filename)
-
-    def extract_dataset(data_folder_, filename):
-        """Extract downloaded dataset."""
-        import patoolib
-        filepath = Path(data_folder_) / Path(filename)
-        patoolib.extract_archive(filepath, outdir=data_folder_)
-        filepath.unlink()
-
-    def stream_to_file(request):
-        """Stream bytes to file."""
-        with open(str(download_to), 'wb') as f_:
-            scaling_factor = 1e-6
-            unit = 'MB'
-
-            # We round sizes to 0.1, files smaller than 1e5 would
-            # get rounded to 0, so we display bytes instead
-            if file.filesize < 1e5:
-                scaling_factor = 1.0
-                unit = 'B'
-
-            total = round(file.filesize * scaling_factor, 1)
-            progressbar_ = tqdm(
-                total=total,
-                position=current_process_position,
-                desc=file.filename[:32],
-                bar_format=(
-                    '{{percentage:3.0f}}% '
-                    '{{n_fmt}}{unit}/{{total_fmt}}{unit}| '
-                    '{{bar}} | {{desc}}'.format(unit=unit)
-                ),
-                leave=False,
-            )
-
-            try:
-                bytes_downloaded = 0
-                for chunk in request.iter_content(chunk_size=chunk_size):
-                    if chunk:  # remove keep-alive chunks
-                        f_.write(chunk)
-                        bytes_downloaded += chunk_size
-                        progressbar_.n = min(
-                            float(
-                                '{0:.1f}'.format(
-                                    bytes_downloaded * scaling_factor
-                                )
-                            ), total
-                        )
-                        progressbar_.update(0)
-            finally:
-                sleep(0.1)
-                progressbar_.close()
-
-        if extract:
-            extract_dataset(data_folder, local_filename)
-
-    with requests.get(file.url.geturl(), stream=True) as r:
-        r.raise_for_status()
-        stream_to_file(r)
 
 
 @click.group(invoke_without_command=True)
@@ -402,15 +334,16 @@ def create(name, short_name, description, creator):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
-    dataset = create_dataset(
+    new_dataset = create_dataset(
         name=name,
         short_name=short_name,
         description=description,
         creators=creators
     )
+
     click.echo(
-        'Use the name "{}" to refer to this dataset.'.format(
-            dataset.short_name
+        'Use the name "{0}" to refer to this dataset.'.format(
+            new_dataset.short_name
         )
     )
     click.secho('OK', fg='green')
@@ -645,35 +578,37 @@ def import_(uri, short_name, extract):
 
     Supported providers: [Zenodo, Dataverse]
     """
-    manager = mp.Manager()
-    id_queue = manager.Queue()
-
-    pool_size = min(int(os.getenv('RENKU_POOL_SIZE', mp.cpu_count() // 2)), 4)
-
-    for i in range(pool_size):
-        id_queue.put(i)
-
-    def _init(lock, id_queue):
-        """Set up tqdm lock and worker process index.
-
-        See https://stackoverflow.com/a/42817946
-        Fixes tqdm line position when |files| > terminal-height
-        so only |workers| progressbars are shown at a time
-        """
-        global current_process_position
-        current_process_position = id_queue.get()
-        tqdm.set_lock(lock)
-
     import_dataset(
         uri=uri,
         short_name=short_name,
         extract=extract,
         with_prompt=True,
-        pool_init_fn=_init,
-        pool_init_args=(mp.RLock(), id_queue),
-        download_file_fn=download_file_with_progress
+        progress=_DownloadProgressbar
     )
     click.secho('OK', fg='green')
+
+
+class _DownloadProgressbar(DownloadProgressCallback):
+    def __init__(self, description, total_size):
+        """Default initializer."""
+        self._progressbar = tqdm(
+            total=total_size,
+            unit='iB',
+            unit_scale=True,
+            desc=description,
+            leave=False,
+            bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
+        )
+
+    def update(self, size):
+        """Update the status."""
+        if self._progressbar:
+            self._progressbar.update(size)
+
+    def finalize(self):
+        """Called once when the download is finished."""
+        if self._progressbar:
+            self._progressbar.close()
 
 
 @dataset.command('update')

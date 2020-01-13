@@ -17,10 +17,12 @@
 # limitations under the License.
 """Client for handling datasets."""
 
+import concurrent.futures
 import os
 import re
 import shutil
 import stat
+import tempfile
 import uuid
 import warnings
 from configparser import NoSectionError
@@ -30,6 +32,7 @@ from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
 
 import attr
+import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
 
@@ -117,9 +120,9 @@ class DatasetsApiMixin(object):
                 return self.load_dataset_from_path(path)
 
     @contextmanager
-    def with_dataset(self, name=None, identifier=None, create=False):
+    def with_dataset(self, short_name=None, create=False):
         """Yield an editable metadata object for a dataset."""
-        dataset = self.load_dataset(name=name)
+        dataset = self.load_dataset(name=short_name)
         clean_up_required = False
 
         if dataset is None:
@@ -127,10 +130,12 @@ class DatasetsApiMixin(object):
                 raise errors.DatasetNotFound
 
             clean_up_required = True
-            dataset, path, dataset_ref = self.create_dataset(name)
+            dataset, path, dataset_ref = self.create_dataset(
+                name=short_name, short_name=short_name
+            )
         elif create:
             raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(name)
+                'Dataset exists: "{}".'.format(short_name)
             )
 
         dataset_path = self.path / self.datadir / dataset.short_name
@@ -146,16 +151,10 @@ class DatasetsApiMixin(object):
                 shutil.rmtree(path.parent, ignore_errors=True)
             raise
 
-        # TODO
-        # if path is None:
-        #     path = dataset_path / self.METADATA
-        #     if path.exists():
-        #         raise ValueError('Dataset already exists')
-
         dataset.to_yaml()
 
     def create_dataset(
-        self, name, short_name=None, description='', creators=()
+        self, name, short_name=None, description='', creators=None
     ):
         """Create a dataset."""
         if not name:
@@ -175,13 +174,18 @@ class DatasetsApiMixin(object):
             )
 
         identifier = str(uuid.uuid4())
-        path = (self.renku_datasets_path / identifier / self.METADATA)
-        try:
-            path.parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError:
+
+        path = self.renku_datasets_path / identifier / self.METADATA
+
+        if path.exists():
             raise errors.DatasetExistsError(
-                'Dataset with reference {} exists'.format(path.parent)
+                'Dataset with reference {} exists'.format(path)
             )
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if creators is None:
+            creators = [Person.from_git(self.repo)]
 
         with with_reference(path):
             dataset = Dataset(
@@ -196,8 +200,8 @@ class DatasetsApiMixin(object):
         dataset_ref = LinkReference.create(
             client=self, name='datasets/' + short_name
         )
-        dataset_ref.set_reference(path)
 
+        dataset_ref.set_reference(path)
         dataset.to_yaml()
 
         return dataset, path, dataset_ref
@@ -210,7 +214,10 @@ class DatasetsApiMixin(object):
         sources=(),
         destination='',
         ref=None,
-        link=False
+        link=False,
+        extract=False,
+        all_at_once=False,
+        progress=None
     ):
         """Import the data into the data directory."""
         warning_message = ''
@@ -222,34 +229,46 @@ class DatasetsApiMixin(object):
 
         files = []
 
-        for url in urls:
-            is_remote, is_git = _check_url(url)
+        if all_at_once:  # only for URLs
+            files = self._add_from_urls(
+                dataset=dataset,
+                urls=urls,
+                destination=destination,
+                extract=extract,
+                progress=progress
+            )
+        else:
+            for url in urls:
+                is_remote, is_git = _check_url(url)
 
-            if is_git and is_remote:  # Remote git repo
-                sources = sources or ()
-                data = self._add_from_git(
-                    dataset, url, sources, destination, ref
-                )
-            else:
-                if sources:
-                    raise errors.UsageError(
-                        'Cannot use "--source" with URLs or local files.'
+                if is_git and is_remote:  # Remote git repo
+                    sources = sources or ()
+                    new_files = self._add_from_git(
+                        dataset, url, sources, destination, ref
                     )
+                else:
+                    if sources:
+                        raise errors.UsageError(
+                            'Cannot use "--source" with URLs or local files.'
+                        )
 
-                if not is_remote:  # Local path, might be git
-                    if is_git:
-                        warning_message = 'Adding data from local Git ' \
-                            'repository. Use remote\'s Git URL instead to ' \
-                            'enable lineage information and updates.'
-                    u = parse.urlparse(url)
-                    data = self._add_from_local(
-                        dataset, u.path, link, destination
-                    )
-                else:  # Remote URL
-                    data = self._add_from_url(dataset, url, destination)
+                    if not is_remote:  # Local path, might be git
+                        if is_git:
+                            warning_message = 'Adding data from local Git ' \
+                                'repository. Use remote\'s Git URL instead ' \
+                                'to enable lineage information and updates.'
+                        u = parse.urlparse(url)
+                        new_files = self._add_from_local(
+                            dataset, u.path, link, destination
+                        )
+                    else:  # Remote URL
+                        new_files = self._add_from_url(
+                            dataset, url, destination, extract
+                        )
 
-            files.extend(data)
-            self.track_paths_in_storage(*(f['path'] for f in files))
+                files.extend(new_files)
+
+        self.track_paths_in_storage(*(f['path'] for f in files))
 
         ignored = self.find_ignored_paths(*(data['path']
                                             for data in files)) or []
@@ -260,17 +279,21 @@ class DatasetsApiMixin(object):
             else:
                 raise errors.IgnoredFiles(ignored)
 
+        if dataset.contains_any(files) and force is False:
+            raise errors.DatasetFileExists()
+
         # commit all new data
         file_paths = {str(data['path']) for data in files if str(data['path'])}
-        self.repo.git.add(*(file_paths - set(ignored)))
+        files_to_add = (file_paths - set(ignored))
 
-        if not self.repo.is_dirty():
-            return warning_message
+        self.repo.git.add(*files_to_add)
 
-        self.repo.index.commit(
-            'renku dataset: commiting {} newly added files'.
-            format(len(file_paths) + len(ignored))
-        )
+        if self.repo.is_dirty():
+            commit_msg = ('renku dataset: '
+                          'committing {} newly added files'
+                          ).format(len(file_paths) + len(ignored))
+
+            self.repo.index.commit(commit_msg)
 
         # Generate the DatasetFiles
         dataset_files = []
@@ -278,14 +301,14 @@ class DatasetsApiMixin(object):
             if os.path.basename(str(data['path'])) == '.git':
                 continue
 
-            datasetfile = DatasetFile.from_revision(self, **data)
+            dataset_file = DatasetFile.from_revision(self, **data)
 
-            # Set dataset file path relative to projects root for submodules
-            if datasetfile.client != self:
-                datasetfile.path = str(data['path'])
-            dataset_files.append(datasetfile)
+            # Set dataset file path relative to root for submodules.
+            if dataset_file.client != self:
+                dataset_file.path = str(data['path'])
+            dataset_files.append(dataset_file)
+
         dataset.update_files(dataset_files)
-
         return warning_message
 
     def _add_from_local(self, dataset, path, link, destination):
@@ -356,30 +379,54 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_url(self, dataset, url, destination):
+    def _add_from_urls(self, dataset, urls, destination, extract, progress):
+        destination.mkdir(parents=True, exist_ok=True)
+
+        files = []
+        max_workers = min(os.cpu_count() + 4, 8)
+        with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._add_from_url, dataset, url, destination, extract,
+                    progress
+                )
+                for url in urls
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                files.extend(future.result())
+
+        return files
+
+    def _add_from_url(self, dataset, url, destination, extract, progress=None):
         """Process an add from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
 
         try:
-            response = requests.get(url)
-            destination.write_bytes(response.content)
+            paths = _download(
+                url=url,
+                download_to=destination,
+                extract=extract,
+                progress_class=progress
+            )
         except error.HTTPError as e:  # pragma nocover
             raise errors.OperationError(
                 'Cannot download from {}'.format(url)
             ) from e
 
         # make the added file read-only
-        mode = destination.stat().st_mode & 0o777
-        destination.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+        for path in paths:
+            mode = path.stat().st_mode & 0o777
+            path.chmod(mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
         return [{
-            'path': destination.relative_to(self.path),
+            'path': path.relative_to(self.path),
             'url': remove_credentials(url),
             'creator': dataset.creator,
             'parent': self
-        }]
+        } for path in paths]
 
     def _add_from_git(self, dataset, url, sources, destination, ref):
         """Process adding resources from another git repository."""
@@ -839,6 +886,64 @@ class DatasetsApiMixin(object):
         if '@' in label:
             return label.split('@')[1]
         return label
+
+
+class DownloadProgressCallback:
+    """Interface to report various stages of a download."""
+
+    def __init__(self, description, total_size):
+        """Default initializer."""
+
+    def update(self, size):
+        """Update the status."""
+
+    def finalize(self):
+        """Called once when the download is finished."""
+
+
+def _download(
+    url, download_to, extract, progress_class=None, chunk_size=16384
+):
+    def extract_dataset(filepath):
+        """Extract downloaded file."""
+        try:
+            tmp = tempfile.mkdtemp()
+            patoolib.extract_archive(str(filepath), outdir=tmp, verbosity=-1)
+        except patoolib.util.PatoolError:
+            return [filepath]
+        else:
+            filepath.unlink()
+            parent = filepath.parent
+            paths = [
+                parent / p.relative_to(tmp)
+                for p in Path(tmp).rglob('*') if not p.is_dir()
+            ]
+
+            for path in Path(tmp).glob('*'):
+                dst = parent / path.relative_to(tmp)
+                shutil.move(str(path), str(dst))
+
+            return paths
+
+    with requests.get(url, stream=True) as request:
+        request.raise_for_status()
+        with open(str(download_to), 'wb') as file_:
+            total_size = int(request.headers.get('content-length', 0))
+            progress_class = progress_class or DownloadProgressCallback
+            progress = progress_class(
+                description=download_to.name, total_size=total_size
+            )
+            try:
+                for chunk in request.iter_content(chunk_size=chunk_size):
+                    if chunk:  # ignore keep-alive chunks
+                        file_.write(chunk)
+                        progress.update(size=len(chunk))
+            finally:
+                progress.finalize()
+    if extract:
+        return extract_dataset(download_to)
+
+    return [download_to]
 
 
 def _check_url(url):

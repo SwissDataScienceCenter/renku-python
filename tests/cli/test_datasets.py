@@ -24,6 +24,7 @@ import os
 from pathlib import Path
 
 import pytest
+import requests
 import yaml
 
 from renku.cli import cli
@@ -259,7 +260,7 @@ def test_dataset_creator_is_invalid(client, runner, creator, field):
     """Test create dataset with invalid creator format."""
     result = runner.invoke(cli, ['dataset', 'create', 'ds', '-c', creator])
     assert 2 == result.exit_code
-    assert field + ' is not valid' in result.output
+    assert field + ' is invalid' in result.output
 
 
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
@@ -690,7 +691,7 @@ def test_datasets_ls_files_tabular_creators(tmpdir, runner, project, client):
     assert 0 == result.exit_code
 
     creator = None
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         creator = dataset.creator[0].name
 
     assert creator is not None
@@ -827,7 +828,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename in {
             Path(file_.path).name
             for file_ in dataset.files
@@ -841,7 +842,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename not in [
             file_.path.name for file_ in dataset.files
         ]
@@ -1278,6 +1279,7 @@ def test_avoid_empty_commits(runner, client, directory_tree):
     result = runner.invoke(
         cli, ['dataset', 'add', 'my-dataset', directory_tree.strpath]
     )
+
     assert 0 == result.exit_code
 
     commit_sha_after = client.repo.head.object.hexsha
@@ -1291,18 +1293,59 @@ def test_avoid_empty_commits(runner, client, directory_tree):
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_before == commit_sha_after
-    assert 'Error: There is nothing to commit.' in result.output
+    assert 'Error: File already exists in dataset.' in result.output
 
 
-def test_add_removes_credentials(runner, client):
-    """Test credentials are removed when adding to a dataset."""
-    url = 'https://username:password@example.com/index.html'
-    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', url])
+def test_multiple_dataset_commits(runner, client, directory_tree):
+    """Check adding existing data to multiple datasets."""
+    commit_sha_before = client.repo.head.object.hexsha
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', directory_tree.strpath]
+    )
+
     assert 0 == result.exit_code
 
-    with client.with_dataset('my-dataset') as dataset:
-        file_ = dataset.files[0]
-        assert file_.url == 'https://example.com/index.html'
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
+
+    commit_sha_before = commit_sha_after
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset2', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
+
+
+def test_add_same_filename_multiple(runner, client, directory_tree):
+    """Check adding same filename multiple times."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', directory_tree.strpath]
+    )
+
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset1', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'Error: File already exists in dataset.' in result.output
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'Error: There is nothing to commit.' in result.output
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath,
+            'Dockerfile'
+        ]
+    )
+    assert 0 == result.exit_code
 
 
 def test_add_removes_local_path_information(runner, client, directory_tree):
@@ -1316,3 +1359,25 @@ def test_add_removes_local_path_information(runner, client, directory_tree):
         for file_ in dataset.files:
             assert file_.url.startswith('file://../')
             assert file_.url.endswith(file_.name)
+
+
+def test_add_remove_credentials(runner, client, monkeypatch):
+    """Check removal of credentials during adding of remote data files."""
+    url = 'https://username:password@example.com/index.html'
+
+    def get(u, *args, **kwargs):
+        """Mocked response."""
+        response = requests.Response()
+        response._content = b'{}'
+        response._content_consumed = True
+        response.status_code = 200
+        return response
+
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    monkeypatch.setattr(requests, 'get', get)
+    dataset = client.load_dataset('my-dataset')
+    o = client._add_from_url(dataset, url, client.path, extract=False)
+
+    assert 'https://example.com/index.html' == o[0]['url']

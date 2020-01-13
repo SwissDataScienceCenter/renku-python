@@ -215,7 +215,7 @@ class DataverseRecordSerializer:
         for file_ in files:
             remote_ = file_.remote_url
             dataset_file = DatasetFile(
-                url=remote_,
+                url=remote_.geturl(),
                 id=file_._id if file_._id else file_.name,
                 filename=file_.name,
                 filesize=file_.content_size,

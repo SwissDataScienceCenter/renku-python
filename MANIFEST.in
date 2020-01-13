@@ -26,21 +26,26 @@ prune docs/_build
 recursive-include renku *.po *.pot *.mo
 recursive-include renku *.py
 # added by check_manifest.py
+chartpress.yaml
+include .coveragerc
+include .style.yapf
 include *.py
-include *.yml
 include *.rst
 include *.sh
 include *.txt
-include .coveragerc
-include .style.yapf
+include *.yaml
+include *.yml
+include babel.ini
+include brew.py
 include Dockerfile*
 include LICENSE
 include Makefile
 include Pipfile Pipfile.lock
-include babel.ini
-include brew.py
 include pytest.ini
 include snap/snapcraft.yaml
+prune .env
+prune .github
+recursive-include helm-chart .helmignore *.yaml *.lock *.tpl *.rst *.tgz
 recursive-include .github CODEOWNERS
 recursive-include .travis *.sh
 recursive-include docs *.bat
@@ -55,11 +60,10 @@ recursive-include examples *.py
 recursive-include examples *.sh
 recursive-include renku *.default
 recursive-include renku *.html
+recursive-include renku *.json
 recursive-include renku *.sh
 recursive-include renku *.txt
 recursive-include renku *.yml
-recursive-include renku *.json
 recursive-include renku Dockerfile
 recursive-include tests *.py *.gz *.yml *.json
-prune .github
-prune .env
+recursive-include renku/templates *

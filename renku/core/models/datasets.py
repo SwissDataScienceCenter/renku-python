@@ -277,7 +277,7 @@ class Dataset(Entity, CreatorMixin):
 
     EDITABLE_FIELDS = [
         'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files', 'short_name'
+        'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
@@ -389,11 +389,23 @@ class Dataset(Entity, CreatorMixin):
         return ','.join(creator.short_name for creator in self.creator)
 
     @property
+    def tags_csv(self):
+        """Comma-separated list of tags associated with dataset."""
+        return ','.join(tag.name for tag in self.tags)
+
+    @property
     def editable(self):
         """Subset of attributes which user can edit."""
         obj = self.asjsonld()
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
+
+    def contains_any(self, files):
+        """Check if files are already within a dataset."""
+        for file_ in files:
+            if self.find_file(file_['path']):
+                return True
+        return False
 
     def find_file(self, filename, return_index=False):
         """Find a file in files container."""
