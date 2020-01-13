@@ -172,6 +172,7 @@ def add_to_dataset(
     commit_message=None,
     extract=False,
     all_at_once=False,
+    destination_names=None,
     progress=None,
 ):
     """Add data to a dataset."""
@@ -197,6 +198,7 @@ def add_to_dataset(
                     ref=ref,
                     extract=extract,
                     all_at_once=all_at_once,
+                    destination_names=destination_names,
                     progress=progress,
                 )
 
@@ -484,15 +486,18 @@ def import_dataset(
 
         dataset.url = remove_credentials(dataset.url)
 
+        urls, names = zip(*[(f.url, f.filename) for f in files])
+
         add_to_dataset(
             client,
-            urls=[f.url for f in files],
+            urls=urls,
             short_name=short_name,
             create=True,
             with_metadata=dataset,
             force=True,
             extract=extract,
             all_at_once=True,
+            destination_names=names,
             progress=progress,
         )
 

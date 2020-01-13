@@ -284,6 +284,19 @@ def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
+def test_dataset_import_preserve_names(runner, project, sleep_after):
+    """Test import keeps original file names."""
+    DOI = '10.7910/DVN/F4NUMR'
+    result = runner.invoke(cli, ['dataset', 'import', DOI], input='y')
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', 'ls-files'])
+    assert 0 == result.exit_code
+    assert 'Data Key 2002-2006' in result.output
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
