@@ -45,7 +45,7 @@ def test_datasets_create_clean(runner, project, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
     assert dataset
 
     staged = client.repo.index.diff('HEAD')
@@ -70,7 +70,7 @@ def test_datasets_create_with_metadata(runner, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='my-dataset')
+    dataset = client.load_dataset('my-dataset')
     assert dataset.name == 'Long Title'
     assert dataset.short_name == 'my-dataset'
     assert dataset.description == 'some description here'
@@ -116,7 +116,7 @@ def test_datasets_invalid_name(runner, client, name):
     """Test creating datasets with invalid name."""
     result = runner.invoke(cli, ['dataset', 'create', name])
     assert 2 == result.exit_code
-    assert 'Dataset name "{}" is not valid.'.format(name) in result.output
+    assert 'short_name "{}" is not valid.'.format(name) in result.output
 
 
 def test_datasets_create_dirty(runner, project, client):
@@ -129,7 +129,7 @@ def test_datasets_create_dirty(runner, project, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
     assert dataset
 
     staged = client.repo.index.diff('HEAD')
@@ -871,7 +871,7 @@ def test_dataset_rm(tmpdir, runner, project, client):
 
     # check output
     assert 'OK' in result.output
-    assert not client.load_dataset(name='my-dataset')
+    assert not client.load_dataset('my-dataset')
 
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -890,7 +890,7 @@ def test_dataset_rm_commit(tmpdir, runner, project, client):
 
     # check output
     assert 'OK' in result.output
-    assert not client.load_dataset(name='my-dataset')
+    assert not client.load_dataset('my-dataset')
 
     # Dirty repository check.
     result = runner.invoke(cli, ['status'])
@@ -914,7 +914,7 @@ def test_dataset_edit(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
 
     result = runner.invoke(
         cli, ['dataset', 'edit', dataset.identifier],
@@ -935,7 +935,7 @@ def test_dataset_edit_dirty(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
 
     result = runner.invoke(
         cli, ['dataset', 'edit', dataset.identifier], input='wq'

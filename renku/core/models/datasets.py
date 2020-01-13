@@ -364,7 +364,7 @@ class Dataset(Entity, CreatorMixin):
     def short_name_validator(self, attribute, value):
         """Validate short_name."""
         # short_name might have been scaped and have '%' in it
-        if value and not is_dataset_name_valid(value, safe='%'):
+        if value and not is_dataset_short_name_valid(value, safe='%'):
             raise errors.ParameterError(
                 'Invalid "short_name": {}'.format(value)
             )
@@ -540,12 +540,13 @@ class Dataset(Entity, CreatorMixin):
             )
 
 
-def is_dataset_name_valid(name, safe=''):
-    """A valid name is a valid Git reference name with no /."""
-    # TODO make name an RFC 3986 compatible name and migrate old projects
+def is_dataset_short_name_valid(short_name, safe=''):
+    """A valid short_name is a valid Git reference name with no /."""
+    # TODO make short_name an RFC 3986 compatible and migrate old projects
     return (
-        name and LinkReference.check_ref_format(name, no_slashes=True) and
-        '/' not in name
+        short_name and
+        LinkReference.check_ref_format(short_name, no_slashes=True) and
+        '/' not in short_name
     )
 
 
@@ -553,7 +554,7 @@ def generate_default_short_name(dataset_name, dataset_version):
     """Get dataset short_name."""
     # For compatibility with older versions use name as short_name
     # if it is valid; otherwise, use encoded name
-    if is_dataset_name_valid(dataset_name):
+    if is_dataset_short_name_valid(dataset_name):
         return dataset_name
 
     name = re.sub(r'\s+', ' ', dataset_name)

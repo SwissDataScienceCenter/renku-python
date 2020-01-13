@@ -71,7 +71,7 @@ def create_dataset(
     client,
     short_name,
     title=None,
-    description=None,
+    description='',
     creators=None,
     commit_message=None
 ):
@@ -124,7 +124,7 @@ def edit_dataset(client, dataset_id, transform_fn, commit_message=None):
 def add_file(
     client,
     urls,
-    name,
+    short_name,
     link=False,
     force=False,
     create=False,
@@ -139,7 +139,7 @@ def add_file(
     add_to_dataset(
         client=client,
         urls=urls,
-        short_name=name,
+        short_name=short_name,
         link=link,
         force=force,
         create=create,
@@ -219,11 +219,11 @@ def add_to_dataset(
 
 
 @pass_local_client(clean=False, commit=False)
-def list_files(client, names, creators, include, exclude, format):
+def list_files(client, short_names, creators, include, exclude, format):
     """List files in dataset."""
     records = _filter(
         client,
-        names=names,
+        short_names=short_names,
         creators=creators,
         include=include,
         exclude=exclude
@@ -238,15 +238,15 @@ def list_files(client, names, creators, include, exclude, format):
     commit_only=COMMIT_DIFF_STRATEGY,
 )
 @contextmanager
-def file_unlink(client, name, include, exclude, commit_message=None):
+def file_unlink(client, short_name, include, exclude, commit_message=None):
     """Remove matching files from a dataset."""
-    dataset = client.load_dataset(name=name)
+    dataset = client.load_dataset(short_name=short_name)
 
     if not dataset:
         raise ParameterError('Dataset does not exist.')
 
     records = _filter(
-        client, names=[dataset.name], include=include, exclude=exclude
+        client, short_names=[short_name], include=include, exclude=exclude
     )
     if not records:
         raise ParameterError('No records found.')
@@ -266,18 +266,18 @@ def file_unlink(client, name, include, exclude, commit_message=None):
 )
 def dataset_remove(
     client,
-    names,
+    short_names,
     with_output=False,
     datasetscontext=contextlib.nullcontext,
     referencescontext=contextlib.nullcontext,
     commit_message=None
 ):
     """Delete a dataset."""
-    datasets = {name: client.get_dataset_path(name) for name in names}
+    datasets = {name: client.get_dataset_path(name) for name in short_names}
 
     if not datasets:
         raise ParameterError(
-            'use dataset name or identifier', param_hint='names'
+            'use dataset short_name or identifier', param_hint='short_names'
         )
 
     unknown = [
@@ -286,7 +286,7 @@ def dataset_remove(
     ]
     if unknown:
         raise ParameterError(
-            'unknown datasets ' + ', '.join(unknown), param_hint='names'
+            'unknown datasets ' + ', '.join(unknown), param_hint='short_names'
         )
 
     datasets = set(datasets.values())
@@ -496,7 +496,7 @@ def import_dataset(
 )
 def update_datasets(
     client,
-    names,
+    short_names,
     creators,
     include,
     exclude,
@@ -508,7 +508,7 @@ def update_datasets(
     """Update files from a remote Git repo."""
     records = _filter(
         client,
-        names=names,
+        short_names=short_names,
         creators=creators,
         include=include,
         exclude=exclude
@@ -527,7 +527,7 @@ def update_datasets(
             dataset = datasets.get(dataset_name)
 
             if not dataset:
-                dataset = client.load_dataset(name=dataset_name)
+                dataset = client.load_dataset(short_name=dataset_name)
                 datasets[dataset_name] = dataset
 
             file_.dataset = dataset
@@ -576,10 +576,12 @@ def _include_exclude(file_path, include=None, exclude=None):
     return True
 
 
-def _filter(client, names=None, creators=None, include=None, exclude=None):
+def _filter(
+    client, short_names=None, creators=None, include=None, exclude=None
+):
     """Filter dataset files by specified filters.
 
-    :param names: Filter by specified dataset names.
+    :param short_names: Filter by specified dataset short_names.
     :param creators: Filter by creators.
     :param include: Include files matching file pattern.
     :param exclude: Exclude files matching file pattern.
@@ -592,7 +594,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
 
     records = []
     for path_, dataset in client.datasets.items():
-        if not names or dataset.short_name in names:
+        if not short_names or dataset.short_name in short_names:
             for file_ in dataset.files:
                 file_.dataset = dataset.name
                 path_ = file_.full_path.relative_to(client.path)
@@ -616,15 +618,15 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
     commit_only=COMMIT_DIFF_STRATEGY,
 )
 def tag_dataset_with_client(
-    client, name, tag, description, force=False, commit_message=None
+    client, short_name, tag, description, force=False, commit_message=None
 ):
     """Creates a new tag for a dataset and injects a LocalClient."""
-    tag_dataset(client, name, tag, description, force)
+    tag_dataset(client, short_name, tag, description, force)
 
 
-def tag_dataset(client, name, tag, description, force=False):
+def tag_dataset(client, short_name, tag, description, force=False):
     """Creates a new tag for a dataset."""
-    dataset_ = client.load_dataset(name)
+    dataset_ = client.load_dataset(short_name)
     if not dataset_:
         raise ParameterError('Dataset not found.')
 
@@ -641,9 +643,9 @@ def tag_dataset(client, name, tag, description, force=False):
     commit=True,
     commit_only=COMMIT_DIFF_STRATEGY,
 )
-def remove_dataset_tags(client, name, tags, commit_message=True):
+def remove_dataset_tags(client, short_name, tags, commit_message=True):
     """Removes tags from a dataset."""
-    dataset = client.load_dataset(name)
+    dataset = client.load_dataset(short_name)
     if not dataset:
         raise ParameterError('Dataset not found.')
 
@@ -656,9 +658,9 @@ def remove_dataset_tags(client, name, tags, commit_message=True):
 
 
 @pass_local_client(clean=False, commit=False)
-def list_tags(client, name, format):
+def list_tags(client, short_name, format):
     """List all tags for a dataset."""
-    dataset_ = client.load_dataset(name)
+    dataset_ = client.load_dataset(short_name)
 
     if not dataset_:
         raise ParameterError('Dataset not found.')
