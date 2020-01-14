@@ -88,7 +88,7 @@ def test_dataset_log_invalidation_strict(
     repo.git.add('--all')
     repo.index.commit('Created input.txt')
 
-    os.remove(input_)
+    os.remove(str(input_))
     repo.git.add('--all')
     repo.index.commit('Removed input.txt')
 
