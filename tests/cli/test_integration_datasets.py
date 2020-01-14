@@ -36,10 +36,10 @@ from renku.core.utils.contexts import chdir
         'creator': 'K.Sering,M.Weitz,D.Künstle,L.Schneider',
         'version': 'v0.6.4'
     }, {
-        'doi': '10.7910/DVN/S8MSVF',
+        'doi': '10.7910/DVN/E2AQGU',
         'input': 'y',
-        'file': 'hydrogen_mapping_laws_a_1',
-        'creator': 'M.Trevor',
+        'file': 'stroke_2_betweenarms_da_1',
+        'creator': 'G.Netta',
         'version': '1'
     }]
 )
@@ -68,7 +68,7 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
         ('10.5281/zenodo.3239980', 'n'),
         ('10.5281/zenodo.3188334', 'y'),
         ('10.7910/DVN/TJCLKP', 'n'),
-        ('10.7910/DVN/S8MSVF', 'y'),
+        ('10.7910/DVN/E2AQGU', 'y'),
         ('10.5281/zenodo.597964', 'y'),
         ('10.5281/zenodo.3236928', 'n'),
         ('10.5281/zenodo.2671633', 'n'),
@@ -151,7 +151,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     result = runner.invoke(cli, ['dataset'])
 
     assert 0 == result.exit_code
-    assert 'pyndl_naive_discriminat_v064' in result.output
+    assert 'pyndl_naive_discriminat' in result.output
     assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
 
 
@@ -174,7 +174,7 @@ def test_dataset_import_fake_doi(runner, project, doi):
         'https://zenodo.org/record/2621208',
         (
             'https://dataverse.harvard.edu/dataset.xhtml'
-            '?persistentId=doi:10.7910/DVN/S8MSVF'
+            '?persistentId=doi:10.7910/DVN/E2AQGU'
         )
     ]
 )
@@ -191,7 +191,7 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
     'url', [
         'https://zenodo.org/record/2621201248',
         'https://dataverse.harvard.edu/dataset.xhtml' +
-        '?persistentId=doi:10.7910/DVN/S8MSVFXXXX'
+        '?persistentId=doi:10.7910/DVN/E2AQGUXXXX'
     ]
 )
 @pytest.mark.integration
@@ -206,30 +206,30 @@ def test_dataset_import_fake_http(runner, project, url):
 @pytest.mark.integration
 def test_dataset_import_and_extract(runner, project, client, sleep_after):
     """Test dataset import and extract files."""
-    URL = 'https://zenodo.org/record/2658634'
+    url = 'https://zenodo.org/record/2658634'
     result = runner.invoke(
-        cli, ['dataset', 'import', '--extract', '--short-name', 'remote', URL],
+        cli, ['dataset', 'import', '--extract', '--short-name', 'remote', url],
         input='y'
     )
     assert 0 == result.exit_code
 
     with client.with_dataset('remote') as dataset:
-        AN_EXTRACTED_FILE = 'data/remote/quantling-pyndl-c34259c/doc/make.bat'
-        assert dataset.find_file(AN_EXTRACTED_FILE)
+        extracted_file = 'data/remote/quantling-pyndl-c34259c/doc/make.bat'
+        assert dataset.find_file(extracted_file)
 
 
 @pytest.mark.integration
 def test_dataset_import_different_names(runner, client, sleep_after):
     """Test can import same DOI under different names."""
-    DOI = '10.5281/zenodo.2658634'
+    doi = '10.5281/zenodo.2658634'
     result = runner.invoke(
-        cli, ['dataset', 'import', '--short-name', 'name-1', DOI], input='y'
+        cli, ['dataset', 'import', '--short-name', 'name-1', doi], input='y'
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(
-        cli, ['dataset', 'import', '--short-name', 'name-2', DOI], input='y'
+        cli, ['dataset', 'import', '--short-name', 'name-2', doi], input='y'
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
@@ -240,9 +240,9 @@ def test_dataset_import_ignore_uncompressed_files(
     runner, project, sleep_after
 ):
     """Test dataset import ignores uncompressed files."""
-    URL = 'https://zenodo.org/record/3251128'
+    url = 'https://zenodo.org/record/3251128'
     result = runner.invoke(
-        cli, ['dataset', 'import', '--extract', URL], input='y'
+        cli, ['dataset', 'import', '--extract', url], input='y'
     )
     assert 0 == result.exit_code
     assert 'Gorne_Diaz_database_2019.csv' in result.output
@@ -251,9 +251,9 @@ def test_dataset_import_ignore_uncompressed_files(
 @pytest.mark.integration
 def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
     """Test re-importing of deleted datasets works."""
-    DOI = '10.5281/zenodo.2658634'
+    doi = '10.5281/zenodo.2658634'
     result = runner.invoke(
-        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        cli, ['dataset', 'import', doi, '--short-name', 'my-dataset'],
         input='y'
     )
     assert 0 == result.exit_code
@@ -262,7 +262,7 @@ def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
     assert 0 == result.exit_code
 
     result = runner.invoke(
-        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        cli, ['dataset', 'import', doi, '--short-name', 'my-dataset'],
         input='y'
     )
     assert 0 == result.exit_code
