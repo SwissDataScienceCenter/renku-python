@@ -18,7 +18,6 @@
 """Integration tests for dataset command."""
 import os
 import subprocess
-import urllib
 from pathlib import Path
 
 import git
@@ -45,7 +44,7 @@ from renku.core.utils.contexts import chdir
     }]
 )
 @pytest.mark.integration
-def test_dataset_import_real_doi(runner, client, doi, sleep_after):
+def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
         cli, ['dataset', 'import', doi['doi']], input=doi['input']
@@ -58,10 +57,6 @@ def test_dataset_import_real_doi(runner, client, doi, sleep_after):
     assert 0 == result.exit_code
     assert doi['file'] in result.output
     assert doi['creator'] in result.output
-
-    doi_path = urllib.parse.quote(doi['doi'], safe='')
-    metadata_path = client.renku_path / 'datasets' / doi_path / 'metadata.yml'
-    assert metadata_path.exists()
 
     result = runner.invoke(cli, ['dataset', 'ls-tags', doi['file']])
     assert 0 == result.exit_code
