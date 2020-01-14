@@ -40,7 +40,6 @@ stages:
 - name: docs
 - name: test
 - name: integration
-  if: branch = master AND (type == pull_request)
 - name: test OSX
   if: branch = master AND (type != pull_request)
 - name: "publish \U0001F40D"
