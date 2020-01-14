@@ -814,6 +814,26 @@
                "minCount": 1
             }
          ]
+      },
+      {
+         "@id": "_:entityShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": false,
+         "targetClass": "prov:Entity",
+         "property": [
+            {
+               "sh:class": {
+                  "@id": "prov:Activity"
+               },
+               "path": "prov:wasInvalidatedBy",
+               "maxCount": 1
+            }
+         ]
       }
    ]
 }
