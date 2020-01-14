@@ -399,3 +399,7 @@ class SHACLValidationError(RenkuException):
 
 class WorkflowRunError(RenkuException):
     """Raises when a workflow execution fails."""
+
+    
+class InvalidTemplateError(RenkuException):
+    """Raised when using a non-valid template."""
