@@ -35,7 +35,7 @@ from renku.core.models.provenance.processes import Process, Workflow
 from renku.core.models.refs import LinkReference
 
 from .agents import Person, renku_agent
-from .qualified import Association, Generation, Invalidation, Usage
+from .qualified import Association, Generation, Usage
 
 
 def _nodes(output, parent=None):
@@ -87,8 +87,8 @@ class Activity(CommitMixin):
     )
 
     invalidated = jsonld.container.list(
-        Invalidation, context={
-            '@reverse': 'prov:activity',
+        Entity, context={
+            '@reverse': 'prov:wasInvalidatedBy',
         }, kw_only=True
     )
 
@@ -180,7 +180,7 @@ class Activity(CommitMixin):
         for path in self.removed_paths:
             entity = self._get_activity_entity(path, deleted=True)
 
-            results.append(Invalidation(activity=self, entity=entity))
+            results.append(entity)
         return results
 
     def default_generated(self):
@@ -320,7 +320,7 @@ class Activity(CommitMixin):
             yield from _nodes(output)
 
         for removed in self.invalidated:
-            for parent in _parents(removed.entity):
+            for parent in _parents(removed):
                 collections[parent.path] = parent
 
             yield from _nodes(removed)
