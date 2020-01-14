@@ -321,7 +321,7 @@ def dataset(ctx, revision, datadir, format):
     '--short-name', default='', help='A convenient name for dataset.'
 )
 @click.option(
-    '-d', '--description', default='', help='Dataset\'s description.'
+    '-d', '--description', default=None, help='Dataset\'s description.'
 )
 @click.option(
     '-c',
