@@ -25,14 +25,14 @@ from urllib3.util.retry import Retry
 
 @contextmanager
 def retry(
-    total_requests=5, backoff_factory=1, statuses=(500, 502, 503, 504, 429)
+    total_requests=5, backoff_factor=1, statuses=(500, 502, 503, 504, 429)
 ):
     """Default HTTP session for requests."""
     _session = requests.Session()
 
     retries = Retry(
         total=total_requests,
-        backoff_factor=backoff_factory,
+        backoff_factor=backoff_factor,
         status_forcelist=list(statuses)
     )
 
