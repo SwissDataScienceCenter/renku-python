@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service entry point."""
+import logging
 import os
 import uuid
 
@@ -36,6 +37,8 @@ from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
     add_file_to_dataset_view, create_dataset_view, dataset_blueprint, \
     list_dataset_files_view, list_datasets_view
 
+logging.basicConfig(level=logging.DEBUG)
+
 
 def make_cache():
     """Create cache structure."""
@@ -54,12 +57,23 @@ def create_app():
     app.secret_key = os.getenv('RENKU_SVC_SERVICE_KEY', uuid.uuid4().hex)
 
     app.config['UPLOAD_FOLDER'] = CACHE_DIR
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+    max_content_size = os.getenv('MAX_CONTENT_LENGTH')
+    if max_content_size:
+        app.config['MAX_CONTENT_LENGTH'] = max_content_size
 
     cache = make_cache()
     app.config['cache'] = cache
 
     build_routes(app)
+
+    @app.route('/health')
+    def health():
+        import renku
+        return 'renku repository service version {}\n'.format(
+            renku.__version__
+        )
+
     return app
 
 

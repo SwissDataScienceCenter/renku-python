@@ -204,6 +204,71 @@ def test_dataset_import_fake_http(runner, project, url):
 
 
 @pytest.mark.integration
+def test_dataset_import_and_extract(runner, project, client, sleep_after):
+    """Test dataset import and extract files."""
+    URL = 'https://zenodo.org/record/2658634'
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--extract', '--short-name', 'remote', URL],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+    with client.with_dataset('remote') as dataset:
+        AN_EXTRACTED_FILE = 'data/remote/quantling-pyndl-c34259c/doc/make.bat'
+        assert dataset.find_file(AN_EXTRACTED_FILE)
+
+
+@pytest.mark.integration
+def test_dataset_import_different_names(runner, client, sleep_after):
+    """Test can import same DOI under different names."""
+    DOI = '10.5281/zenodo.2658634'
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--short-name', 'name-1', DOI], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--short-name', 'name-2', DOI], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_import_ignore_uncompressed_files(
+    runner, project, sleep_after
+):
+    """Test dataset import ignores uncompressed files."""
+    URL = 'https://zenodo.org/record/3251128'
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--extract', URL], input='y'
+    )
+    assert 0 == result.exit_code
+    assert 'Gorne_Diaz_database_2019.csv' in result.output
+
+
+@pytest.mark.integration
+def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
+    """Test re-importing of deleted datasets works."""
+    DOI = '10.5281/zenodo.2658634'
+    result = runner.invoke(
+        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', 'rm', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+
+@pytest.mark.integration
 def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
@@ -224,7 +289,7 @@ def test_dataset_export_upload_file(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 
@@ -259,7 +324,7 @@ def test_dataset_export_upload_tag(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 
@@ -339,7 +404,7 @@ def test_dataset_export_upload_multiple(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 
@@ -401,7 +466,7 @@ def test_dataset_export_published_url(
     )
     assert 0 == result.exit_code
 
-    with client.with_dataset(name='my-dataset') as dataset:
+    with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
         dataset.creator[0].affiliation = 'eth'
 
