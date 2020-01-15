@@ -998,11 +998,11 @@ def test_renku_clone(runner, monkeypatch):
 @pytest.mark.integration
 def test_renku_clone_with_config(tmpdir):
     """Test cloning of a Renku repo and existence of required settings."""
-    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
-    with chdir(tmpdir):
+    with chdir(str(tmpdir)):
         renku_clone(
-            REMOTE,
+            remote,
             config={
                 'user.name': 'sam',
                 'user.email': 's@m.i',
