@@ -31,7 +31,6 @@ class ProviderFactory:
     @staticmethod
     def from_uri(uri):
         """Get provider type based on uri."""
-
         is_doi_ = is_doi(uri)
         if is_doi_ is None:
             url = urlparse(uri)
