@@ -37,7 +37,7 @@ from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
     add_file_to_dataset_view, create_dataset_view, dataset_blueprint, \
     list_dataset_files_view, list_datasets_view
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=os.getenv('SERVICE_LOGGING_LEVEL', 'WARNING'))
 
 
 def make_cache():
