@@ -28,6 +28,7 @@ from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.utils.doi import extract_doi, is_doi
+from renku.core.utils.requests import retry
 
 DATAVERSE_API_PATH = 'api'
 
@@ -43,24 +44,27 @@ def check_dataverse_uri(url):
     url_parts[2] = pathlib.posixpath.join(
         DATAVERSE_API_PATH, DATAVERSE_VERSION_API
     )
+
     url_parts[3:6] = [''] * 3
     version_url = urlparse.urlunparse(url_parts)
 
-    response = requests.get(version_url)
-    if response.status_code != 200:
-        return False
+    with retry() as session:
+        response = session.get(version_url)
 
-    version_data = response.json()
+        if response.status_code != 200:
+            return False
 
-    if 'status' not in version_data or 'data' not in version_data:
-        return False
+        version_data = response.json()
 
-    version_info = version_data['data']
+        if 'status' not in version_data or 'data' not in version_data:
+            return False
 
-    if 'version' not in version_info or 'build' not in version_info:
-        return False
+        version_info = version_data['data']
 
-    return True
+        if 'version' not in version_info or 'build' not in version_info:
+            return False
+
+        return True
 
 
 def check_dataverse_doi(doi):
@@ -104,7 +108,7 @@ class DataverseProvider(ProviderApi):
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given uri."""
+        """Check if provider supports a given uri."""
         is_doi_ = is_doi(uri)
 
         is_dataverse_uri = is_doi_ is None and check_dataverse_uri(uri)
@@ -120,10 +124,11 @@ class DataverseProvider(ProviderApi):
 
     def make_request(self, uri):
         """Execute network request."""
-        response = requests.get(uri, headers={'Accept': self._accept})
-        if response.status_code != 200:
-            raise LookupError('record not found')
-        return response
+        with retry() as session:
+            response = session.get(uri, headers={'Accept': self._accept})
+            if response.status_code != 200:
+                raise LookupError('record not found')
+            return response
 
     def find_record(self, uri):
         """Retrieves a record from Dataverse.
