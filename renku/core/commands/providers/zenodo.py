@@ -364,10 +364,12 @@ class ZenodoDeposition:
             'metadata': {
                 'title': dataset.name,
                 'upload_type': 'dataset',
-                'description': dataset.description,
+                'description':
+                    dataset.description if dataset.description else None,
                 'creators': [{
                     'name': creator.name,
-                    'affiliation': creator.affiliation
+                    'affiliation':
+                        creator.affiliation if creator.affiliation else None
                 } for creator in dataset.creator]
             }
         }

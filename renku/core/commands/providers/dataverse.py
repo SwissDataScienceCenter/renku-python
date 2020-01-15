@@ -211,6 +211,13 @@ class DataverseRecordSerializer:
         files = self.get_files()
         dataset = Dataset.from_jsonld(self._json, client=client)
 
+        if dataset.description == '':
+            dataset.description = None
+
+        for creator in dataset.creator:
+            if creator.affiliation == '':
+                creator.affiliation = None
+
         serialized_files = []
         for file_ in files:
             remote_ = file_.remote_url
