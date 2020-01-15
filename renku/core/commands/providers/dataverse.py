@@ -22,7 +22,6 @@ import urllib
 import urllib.parse as urlparse
 
 import attr
-import requests
 
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
