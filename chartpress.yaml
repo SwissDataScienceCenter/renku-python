@@ -1,0 +1,14 @@
+charts:
+  - name: helm-chart/renku-core
+    resetTag: latest
+    imagePrefix: renku/
+    repo:
+      git: SwissDataScienceCenter/helm-charts
+      published: https://swissdatasciencecenter.github.io/helm-charts
+    paths:
+      - .
+    images:
+      renku-core:
+        contextPath: .
+        dockerfilePath: Dockerfile.svc
+        valuesPath: image

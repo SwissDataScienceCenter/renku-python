@@ -28,7 +28,7 @@ from patoolib.util import PatoolError
 
 from renku.core.commands.clone import renku_clone
 from renku.service.config import CACHE_UPLOADS_PATH, \
-    INVALID_PARAMS_ERROR_CODE, SUPPORTED_ARCHIVES
+    INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponse, \
     FileListResponseRPC, FileUploadContext, FileUploadRequest, \
     FileUploadResponse, FileUploadResponseRPC, ProjectCloneContext, \
@@ -40,7 +40,7 @@ from renku.service.views.decorators import accepts_json, handle_base_except, \
     header_doc, requires_cache, requires_identity
 
 CACHE_BLUEPRINT_TAG = 'cache'
-cache_blueprint = Blueprint('cache', __name__)
+cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
 
 
 @marshal_with(FileListResponseRPC)

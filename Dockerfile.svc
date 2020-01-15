@@ -10,9 +10,12 @@ RUN apk add --no-cache --allow-untrusted \
     git-lfs && \
     git lfs install
 
-COPY . /code/renku
+COPY setup.py README.rst CHANGES.rst /code/renku/
 WORKDIR /code/renku
-RUN requirements-builder -e all --level=pypi setup.py > requirements.txt && pip install -r requirements.txt && pip install -e . && pip install gunicorn
+RUN requirements-builder -e all --level=pypi setup.py > requirements.txt && \
+    pip install -r requirements.txt && pip install gunicorn
 
+COPY . /code/renku
+RUN pip install -e .
 
 ENTRYPOINT ["gunicorn", "renku.service.entrypoint:app", "-b", "0.0.0.0:8080"]
