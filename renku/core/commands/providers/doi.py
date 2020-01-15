@@ -19,7 +19,6 @@
 import urllib
 
 import attr
-import requests
 
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.utils.doi import is_doi
