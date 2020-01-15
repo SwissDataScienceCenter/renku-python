@@ -37,7 +37,7 @@ class RenkuProvider(ProviderApi):
     def supports(uri):
         """Whether or not this provider supports a given uri."""
         u = urllib.parse.urlparse(uri)
-        return 'renku' in u.netloc and (
+        return (
             RenkuProvider._is_project_dataset(u) or
             RenkuProvider._is_standalone_dataset(u)
         )
