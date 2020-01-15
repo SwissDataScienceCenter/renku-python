@@ -25,9 +25,9 @@ from urllib.parse import urlparse
 
 import attr
 import requests
-from requests import HTTPError
 from tqdm import tqdm
 
+from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.models.datasets import Dataset, DatasetFile
@@ -59,23 +59,25 @@ def check_or_raise(response):
     """Check for expected response status code."""
     if response.status_code not in [200, 201, 202]:
         if response.status_code == 401:
-            raise HTTPError('Access unauthorized - update access token.')
+            raise errors.AuthenticationError(
+                'Access unauthorized - update access token.'
+            )
 
         if response.status_code == 400:
             err_response = response.json()
-            errors = [
+            messages = [
                 '"{0}" failed with "{1}"'.format(err['field'], err['message'])
                 for err in err_response['errors']
             ]
 
-            raise HTTPError(
-                '\n' + '\n'.join(errors) +
+            raise errors.ExportError(
+                '\n' + '\n'.join(messages) +
                 '\nSee `renku dataset edit -h` for details on how to edit'
                 ' metadata'
             )
 
         else:
-            raise HTTPError(response.content)
+            raise errors.ExportError(response.content)
 
 
 @attr.s

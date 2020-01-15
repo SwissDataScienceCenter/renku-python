@@ -471,7 +471,7 @@ def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
 
     result = runner.invoke(cli, ['dataset', 'export', 'my-dataset', 'zenodo'])
 
-    assert 2 == result.exit_code
+    assert 1 == result.exit_code
     assert 'metadata.creators.0.affiliation' in result.output
     assert 'metadata.description' in result.output
 
@@ -580,7 +580,7 @@ def test_export_dataset_unauthorized(
 
     result = runner.invoke(cli, ['dataset', 'export', 'my-dataset', 'zenodo'])
 
-    assert 2 == result.exit_code
+    assert 1 == result.exit_code
     assert 'Access unauthorized - update access token.' in result.output
 
     secret = client.get_value('zenodo', 'secret')

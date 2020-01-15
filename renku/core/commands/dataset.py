@@ -25,7 +25,6 @@ from contextlib import contextmanager
 import click
 import git
 import yaml
-from requests import HTTPError
 
 from renku.core import errors
 from renku.core.commands.checks.migration import check_dataset_resources, \
@@ -435,12 +434,10 @@ def export_dataset(
                 server_url=dataverse_server_url,
                 dataverse_name=dataverse_name
             )
-        except HTTPError as e:
-            if 'unauthorized' in str(e):
-                client.remove_value(
-                    provider_id, config_key_secret, global_only=True
-                )
-
+        except errors.AuthenticationError:
+            client.remove_value(
+                provider_id, config_key_secret, global_only=True
+            )
             raise
 
     result = 'Exported to: {0}'.format(destination)
