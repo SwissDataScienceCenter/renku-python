@@ -2,4 +2,5 @@ version: '1'
 invalidStatus: "pending"
 labelRule:
   values:
-    - "documentation:pending"
+    - "documentation:added"
+    - "documentation:not_required"
