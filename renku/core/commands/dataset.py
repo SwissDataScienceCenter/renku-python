@@ -438,7 +438,8 @@ def import_dataset(
                         ('filename', 'name'),
                         ('size_in_mb', 'size (mb)'),
                         ('filetype', 'type'),
-                    ))
+                    )),
+                    floatfmt='.2f'
                 )
             )
 
