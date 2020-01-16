@@ -22,6 +22,7 @@ from pathlib import Path
 
 import git
 import pytest
+from flaky import flaky
 
 from renku.cli import cli
 from renku.core.commands.clone import renku_clone
@@ -92,6 +93,7 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     ]
 )
 @pytest.mark.integration
+@flaky(max_runs=5, min_passes=1)
 def test_dataset_import_real_param(doi, runner, project, sleep_after):
     """Test dataset import and check metadata parsing."""
     result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
@@ -1027,10 +1029,10 @@ def test_renku_clone_uses_project_name(
     runner, monkeypatch, path, expected_path
 ):
     """Test renku clone uses project name as target-path by default."""
-    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ['clone', REMOTE, path])
+        result = runner.invoke(cli, ['clone', remote, path])
         assert 0 == result.exit_code
         assert (Path(project_path) / expected_path / 'Dockerfile').exists()
 
