@@ -6,5 +6,7 @@ name = "pypi"
 [packages]
 renku = {editable = true,extras = ["all"],path = "."}
 
+[dev-packages]
+
 [requires]
 python_version = "3.7"
