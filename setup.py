@@ -98,7 +98,7 @@ tests_require = [
     'coverage>=4.5.3',
     'fakeredis==1.1.0',
     'flake8>=3.5',
-    'flaky>=3.6.1',
+    'flaky==3.6.1',
     'freezegun>=0.3.12',
     'isort==4.3.4',
     'six>=1.13.0',
