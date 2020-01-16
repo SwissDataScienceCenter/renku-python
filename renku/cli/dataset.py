@@ -407,6 +407,7 @@ def add(name, urls, link, force, create, sources, destination, ref):
         ref=ref,
         urlscontext=progress,
         progress=_DownloadProgressbar,
+        interactive=True,
     )
 
 

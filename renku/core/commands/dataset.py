@@ -18,11 +18,13 @@
 """Repository datasets management."""
 
 import re
+import shutil
 from collections import OrderedDict
 from contextlib import contextmanager
 
 import click
 import git
+import requests
 import yaml
 from requests import HTTPError
 
@@ -135,6 +137,7 @@ def add_file(
     urlscontext=contextlib.nullcontext,
     commit_message=None,
     progress=None,
+    interactive=False,
 ):
     """Add data file to a dataset."""
     add_to_dataset(
@@ -150,6 +153,7 @@ def add_file(
         with_metadata=with_metadata,
         urlscontext=urlscontext,
         progress=progress,
+        interactive=interactive,
     )
 
 
@@ -169,6 +173,8 @@ def add_to_dataset(
     extract=False,
     all_at_once=False,
     progress=None,
+    interactive=False,
+    total_size=None,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -177,6 +183,24 @@ def add_to_dataset(
         raise UsageError(
             'Cannot add multiple URLs with --source or --destination'
         )
+
+    if interactive:
+        if total_size is None:
+            total_size = 0
+            for url in urls:
+                try:
+                    with requests.get(url, stream=True) as r:
+                        total_size += int(r.headers.get('content-length', 0))
+                except requests.exceptions.RequestException:
+                    pass
+        usage = shutil.disk_usage(client.path)
+
+        if total_size > usage.free:
+            GB = 2**30
+            message = 'There isn\'t enough disk space ' \
+                      '(required: {:.2f} GB/available: {:.2f} GB). ' \
+                      'Continue anyway?'.format(total_size/GB, usage.free/GB)
+            click.confirm(message, abort=True)
 
     try:
         with client.with_dataset(
@@ -428,6 +452,7 @@ def import_dataset(
         record = provider.find_record(uri)
         dataset = record.as_dataset(client)
         files = dataset.files
+        total_size = 0
 
         if with_prompt:
             click.echo(
@@ -450,6 +475,11 @@ def import_dataset(
                 ) + text_prompt
 
             click.confirm(text_prompt, abort=True)
+
+            for file_ in files:
+                total_size += file_.size_in_mb
+
+            total_size *= 2**20
 
     except KeyError as e:
         raise ParameterError((
@@ -481,6 +511,8 @@ def import_dataset(
             extract=extract,
             all_at_once=True,
             progress=progress,
+            interactive=with_prompt,
+            total_size=total_size,
         )
 
         if dataset.version:
