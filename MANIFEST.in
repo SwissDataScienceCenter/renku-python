@@ -29,6 +29,7 @@ recursive-include renku *.py
 chartpress.yaml
 include .coveragerc
 include .style.yapf
+include *.enc
 include *.py
 include *.rst
 include *.sh
