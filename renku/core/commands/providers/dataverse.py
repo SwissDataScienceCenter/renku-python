@@ -294,9 +294,9 @@ class DataverseFileSerializer:
 class DataverseExporter(ExporterApi):
     """Dataverse export manager."""
 
+    server_url = attr.ib(default=None)
     dataset = attr.ib(kw_only=True)
     access_token = attr.ib(kw_only=True)
-    server_url = attr.ib(default=None)
 
     def set_access_token(self, access_token):
         """Set access token."""
