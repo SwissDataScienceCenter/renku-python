@@ -45,6 +45,7 @@ from renku.core.utils.contexts import chdir
     }]
 )
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
@@ -93,7 +94,7 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     ]
 )
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_param(doi, runner, project, sleep_after):
     """Test dataset import and check metadata parsing."""
     result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
