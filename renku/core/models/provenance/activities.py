@@ -328,7 +328,7 @@ class Activity(CommitMixin):
         yield from reversed(collections.values())
 
     def __attrs_post_init__(self):
-        """Sets ``generated`` default value if it's not set already."""
+        """Sets ``generated`` and ``invalidated`` default values if needed."""
         super().__attrs_post_init__()
         if not self.generated:
             self.generated = self.default_generated()
