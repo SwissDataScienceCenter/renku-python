@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -34,8 +34,8 @@ Listing all datasets:
     $ renku dataset
     ID        NAME           CREATED              CREATORS
     --------  -------------  -------------------  ---------
-    0ad1cb9a  some-dataset   2019-03-19 16:39:46  sam
-    9436e36c  my-dataset     2019-02-28 16:48:09  sam
+    0ad1cb9a  some-dataset   2020-03-19 16:39:46  sam
+    9436e36c  my-dataset     2020-02-28 16:48:09  sam
 
 Deleting a dataset:
 
@@ -152,7 +152,7 @@ A list of all tags can be seen by running:
     $ renku dataset ls-tags my-dataset
     CREATED              NAME    DESCRIPTION      DATASET     COMMIT
     -------------------  ------  ---------------  ----------  ----------------
-    2019-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
+    2020-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
 
 
 A tag can be removed with:
@@ -196,10 +196,10 @@ Listing all files in the project associated with a dataset.
     $ renku dataset ls-files
     ADDED                CREATORS    DATASET        PATH
     -------------------  ---------  -------------  ---------------------------
-    2019-02-28 16:48:09  sam        my-dataset     ...my-dataset/addme
-    2019-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file1
-    2019-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file2
-    2019-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file3
+    2020-02-28 16:48:09  sam        my-dataset     ...my-dataset/addme
+    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file1
+    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file2
+    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file3
 
 Sometimes you want to filter the files. For this we use ``--dataset``,
 ``--include`` and ``--exclude`` flags:
@@ -209,8 +209,8 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
     $ renku dataset ls-files --include "file*" --exclude "file3"
     ADDED                CREATORS    DATASET     PATH
     -------------------  ---------  ----------  ----------------------------
-    2019-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file1
-    2019-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file2
+    2020-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file1
+    2020-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file2
 
 Unlink a file from a dataset:
 
