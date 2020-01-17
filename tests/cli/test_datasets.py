@@ -268,19 +268,47 @@ def test_datasets_list_empty(output_format, runner, project):
 def test_datasets_list_non_empty(output_format, runner, project):
     """Test listing with datasets."""
     format_option = '--format={0}'.format(output_format)
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(cli, ['dataset', format_option])
     assert 0 == result.exit_code
-    assert 'dataset' in result.output
+    assert 'my-dataset' in result.output
 
     result = runner.invoke(
         cli, ['dataset', '--revision=HEAD~1', format_option]
     )
     assert result.exit_code == 0
-    assert 'dataset' not in result.output
+    assert 'my-dataset' not in result.output
+
+
+@pytest.mark.parametrize(
+    'columns,values', [('title,short_name', ['my-dataset', 'Long Title']),
+                       ('creators', ['John Doe'])]
+)
+def test_datasets_list_with_columns(runner, project, columns, values):
+    """Test listing datasets with custom column name."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'create', 'my-dataset', '--title', 'Long Title', '-c',
+            'John Doe <john.doe@mail.ch>'
+        ]
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', '--columns', columns])
+    assert 0 == result.exit_code
+    for value in values:
+        assert value in result.output
+
+
+@pytest.mark.parametrize('columns', ['invalid', 'id,invalid'])
+def test_datasets_list_invalid_column(runner, project, columns):
+    """Test dataset listing invalid column name."""
+    result = runner.invoke(cli, ['dataset', '--columns', columns])
+    assert 2 == result.exit_code
+    assert 'Invlid column name: "invalid".' in result.output
 
 
 def test_add_and_create_dataset(directory_tree, runner, project, client):

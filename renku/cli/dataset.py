@@ -32,10 +32,23 @@ Listing all datasets:
 .. code-block:: console
 
     $ renku dataset
-    ID        NAME           CREATED              CREATORS
+    ID        SHORT_NAME     TITLE          VERSION
+    --------  -------------  -------------  ---------
+    0ad1cb9a  some-dataset   Some Dataset
+    9436e36c  my-dataset     My Dataset
+
+You can select which columns to display by using ``--columns`` to pass a
+comma-separated list of column names:
+
+.. code-block:: console
+
+    $ renku dataset --columns id,short_name,created,creators
+    ID        SHORT_NAME     CREATED              CREATORS
     --------  -------------  -------------------  ---------
     0ad1cb9a  some-dataset   2020-03-19 16:39:46  sam
     9436e36c  my-dataset     2020-02-28 16:48:09  sam
+
+Displayed results are sorted based on the value of the first column.
 
 Deleting a dataset:
 
@@ -249,13 +262,14 @@ import yaml
 from tqdm import tqdm
 
 from renku.core.commands.dataset import add_file, check_for_migration, \
-    create_dataset, dataset_parent, dataset_remove, edit_dataset, \
-    export_dataset, file_unlink, import_dataset, list_files, list_tags, \
+    create_dataset, dataset_remove, edit_dataset, export_dataset, \
+    file_unlink, import_dataset, list_datasets, list_files, list_tags, \
     remove_dataset_tags, tag_dataset_with_client, update_datasets
 from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
-from renku.core.commands.format.datasets import DATASETS_FORMATS
+from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
+    DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 from renku.core.management.datasets import DownloadProgressCallback
 
@@ -303,8 +317,19 @@ def prompt_tag_selection(tags):
     default='tabular',
     help='Choose an output format.'
 )
+@click.option(
+    '-c',
+    '--columns',
+    type=click.STRING,
+    default='id,short_name,title,version',
+    metavar='<columns>',
+    help='Comma-separated list of column to display: {}.'.format(
+        ', '.join(DATASETS_COLUMNS.keys())
+    ),
+    show_default=True
+)
 @click.pass_context
-def dataset(ctx, revision, datadir, format):
+def dataset(ctx, revision, datadir, format, columns):
     """Handle datasets."""
     if isinstance(ctx, click.Context):
         ctx.meta['renku.datasets.datadir'] = datadir
@@ -314,7 +339,11 @@ def dataset(ctx, revision, datadir, format):
     if ctx.invoked_subcommand is not None:
         return
 
-    click.echo(dataset_parent(revision, datadir, format, ctx=ctx))
+    click.echo(
+        list_datasets(
+            revision=revision, datadir=datadir, format=format, columns=columns
+        )
+    )
 
 
 @dataset.command()

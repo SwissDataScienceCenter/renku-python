@@ -60,14 +60,14 @@ def check_for_migration(client):
 
 
 @pass_local_client(clean=False, commit=False)
-def dataset_parent(client, revision, datadir, format, ctx=None):
+def list_datasets(client, revision, datadir, format, columns=None):
     """Handle datasets subcommands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
         datasets = client.datasets_from_commit(client.repo.commit(revision))
 
-    return DATASETS_FORMATS[format](client, datasets)
+    return DATASETS_FORMATS[format](client, datasets, columns=columns)
 
 
 @pass_local_client(
