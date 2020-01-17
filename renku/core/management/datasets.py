@@ -839,6 +839,9 @@ class DatasetsApiMixin(object):
 
     def prepare_git_repo(self, url, ref=None):
         """Clone and cache a Git repo."""
+        if not url:
+            raise errors.GitError('Invalid URL.')
+
         RENKU_BRANCH = 'renku-default-branch'
 
         def checkout(repo, ref):

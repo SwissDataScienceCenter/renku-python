@@ -27,6 +27,7 @@ import pytest
 from flaky import flaky
 
 from renku.cli import cli
+from renku.core import errors
 from renku.core.commands.clone import renku_clone
 from renku.core.utils.contexts import chdir
 
@@ -319,6 +320,23 @@ def test_dataset_import_renku(runner, project, client, url):
 
     dataset = [d for d in client.datasets.values()][0]
     assert dataset.same_as == url
+
+
+@pytest.mark.integration
+def test_dataset_import_renku_fail(runner, client, monkeypatch):
+    """Test dataset import fails if cannot clone repo."""
+    from renku.core.management import LocalClient
+    url = 'https://dev.renku.ch/datasets/10.5281%2Fzenodo.3351812'
+
+    def prepare_git_repo(*_):
+        raise errors.GitError
+
+    with monkeypatch.context() as monkey:
+        monkey.setattr(LocalClient, 'prepare_git_repo', prepare_git_repo)
+
+        result = runner.invoke(cli, ['dataset', 'import', url], input='y')
+        assert 2 == result.exit_code
+        assert 'Cannot find any project for the dataset.' in result.output
 
 
 @pytest.mark.parametrize(
