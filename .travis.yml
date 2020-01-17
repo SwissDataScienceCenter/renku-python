@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -43,6 +43,7 @@ stages:
   if: branch = master AND (type != pull_request)
 - name: test OSX
   if: branch = master AND (type != pull_request)
+- name: publish chart
 - name: "publish \U0001F40D"
   if: type = push AND (branch = master OR tag IS present)
 - name: "brew \U0001F37A"
@@ -190,3 +191,28 @@ jobs:
       local-dir: "/usr/local/Homebrew/Library/Taps/swissdatasciencecenter/homebrew-renku/"
       on:
         all_branches: true
+  - stage: publish chart
+    python: '3.7'
+    env:
+    - HELM_URL=https://storage.googleapis.com/kubernetes-helm
+    - HELM_TGZ=helm-v2.14.3-linux-amd64.tar.gz
+    - REQUIREMENTS=lowest
+    before_deploy:
+    - mkdir -p /tmp/helm
+    - wget -q ${HELM_URL}/${HELM_TGZ} -O /tmp/helm/${HELM_TGZ}
+    - tar -C /tmp/helm -xzv -f /tmp/helm/${HELM_TGZ}
+    - PATH=/tmp/helm/linux-amd64/:$PATH
+    - helm init --client-only
+    - pip install chartpress==0.3.2
+    deploy:
+    - &script
+      provider: script
+      skip_cleanup: true
+      script: bash travis-deploy.sh
+      on: &script_on
+        branch: master
+        repo: SwissDataScienceCenter/renku-python
+    - <<: *script
+      on:
+        <<: *script_on
+        tags: true
