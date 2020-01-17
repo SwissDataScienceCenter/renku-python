@@ -31,6 +31,7 @@ from tqdm import tqdm
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.utils.requests import retry
 
 ZENODO_BASE_URL = 'https://zenodo.org'
 ZENODO_SANDBOX_URL = 'https://sandbox.zenodo.org/'
@@ -497,12 +498,14 @@ class ZenodoProvider(ProviderApi):
     def make_request(self, uri):
         """Execute network request."""
         record_id = ZenodoProvider.record_id(uri)
-        response = requests.get(
-            make_records_url(record_id), headers={'Accept': self._accept}
-        )
-        if response.status_code != 200:
-            raise LookupError('record not found')
-        return response
+
+        with retry() as session:
+            response = session.get(
+                make_records_url(record_id), headers={'Accept': self._accept}
+            )
+            if response.status_code != 200:
+                raise LookupError('record not found')
+            return response
 
     def find_record(self, uri):
         """Retrieves a record from Zenodo.
