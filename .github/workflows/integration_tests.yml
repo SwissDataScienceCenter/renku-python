@@ -1,9 +1,8 @@
 name: CI-integration-tests
 
 on:
-  push:
-    branches:
-      - master
+  repository_dispatch:
+    types: integration-tests
 
 jobs:
   test-linux-integration:
@@ -55,3 +54,16 @@ jobs:
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
       run: pytest -m integration -v
+
+  trigger-deployment:
+    runs-on: ubuntu-latest
+    needs: [test-linux-integration, test-macos-integration]
+    steps:
+        - name: 'Repository dispatch integration tests'
+          uses: defold/repository-dispatch@1.1.4
+          if: github.ref == 'refs/heads/master'
+          with:
+            repo: 'SwissDataScienceCenter/renku-python'
+            token: '${{ secrets.REPO_DISPATCH_ACCESS_TOKEN }}'
+            user: 'RenkuBot'
+            action: 'deploy_renku_python'
