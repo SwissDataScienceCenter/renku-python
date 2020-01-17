@@ -789,34 +789,6 @@
          ]
       },
       {
-         "@id": "_:invalidationShape",
-         "@type": "sh:NodeShape",
-         "ignoredProperties": [
-            {
-               "@id": "rdf:type"
-            }
-         ],
-         "closed": true,
-         "targetClass": "prov:Invalidation",
-         "property": [
-            {
-               "path": {
-                  "sh:inversePath": {
-                     "@id": "prov:qualifiedInvalidation"
-                  }
-               },
-               "nodeKind": "sh:BlankNodeOrIRI"
-            },
-            {
-               "sh:class": {
-                  "@id": "prov:Activity"
-               },
-               "path": "prov:activity",
-               "minCount": 1
-            }
-         ]
-      },
-      {
          "@id": "_:entityShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [

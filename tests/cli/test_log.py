@@ -97,3 +97,4 @@ def test_dataset_log_invalidation_strict(
     )
 
     assert 0 == result.exit_code, result.output
+    assert 'wasInvalidatedBy' in result.output
