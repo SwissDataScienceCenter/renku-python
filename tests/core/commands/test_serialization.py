@@ -59,16 +59,16 @@ def test_dataset_deserialization(client, dataset):
     )
 
     dataset_types = {
-        'created': datetime.datetime,
-        'creator': list,
-        'description': str,
-        'files': list,
-        'identifier': str,
-        'keywords': list,
+        'created': [datetime.datetime],
+        'creator': [list],
+        'description': [str, type(None)],
+        'files': [list],
+        'identifier': [str],
+        'keywords': [list],
     }
 
     for attribute, type_ in dataset_types.items():
-        assert type(dataset_.__getattribute__(attribute)) is type_
+        assert type(dataset_.__getattribute__(attribute)) in type_
 
     creator_types = {'email': str, '_id': str, 'name': str, 'affiliation': str}
 
