@@ -447,9 +447,14 @@ class _DataverseDeposition:
     def _post(self, url, json=None, data=None, files=None):
         headers = {'X-Dataverse-key': self.access_token}
         try:
-            return requests.post(
-                url=url, json=json, data=data, files=files, headers=headers
-            )
+            with retry() as session:
+                return session.post(
+                    url=url,
+                    json=json,
+                    data=data,
+                    files=files,
+                    headers=headers
+                )
         except requests.exceptions.RequestException as e:
             raise errors.ExportError('Cannot POST to remote server.') from e
 

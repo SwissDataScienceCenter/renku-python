@@ -286,8 +286,8 @@ def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
 @flaky(max_runs=10, min_passes=1)
 def test_dataset_import_preserve_names(runner, project, sleep_after):
     """Test import keeps original file names."""
-    DOI = '10.7910/DVN/F4NUMR'
-    result = runner.invoke(cli, ['dataset', 'import', DOI], input='y')
+    doi = '10.7910/DVN/F4NUMR'
+    result = runner.invoke(cli, ['dataset', 'import', doi], input='y')
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
