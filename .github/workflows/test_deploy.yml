@@ -222,8 +222,8 @@ jobs:
         echo ::set-output name=release_url::$(cat release-url.txt)
         echo ::set-output name=bottle_json::$(find . -type f -printf "%f\n" -iname "*.bottle.json"|head -n 1)
         echo ::set-output name=bottle_tar::$(find . -type f -printf "%f\n" -iname "*.bottle.tar.gz"|head -n 1)
-    - name: Upload Release Asset
-      id: upload-release-asset-pypi
+    - name: Upload Release Asset bottle.json
+      id: upload-release-asset-json-pypi
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -232,8 +232,8 @@ jobs:
         asset_path: ./${{ steps.get_release_url.outputs.bottle_json}}
         asset_name: ${{ steps.get_release_url.outputs.bottle_json}}
         asset_content_type: application/json
-    - name: Upload Release Asset
-      id: upload-release-asset-pypi
+    - name: Upload Release Asset bottle.tar
+      id: upload-release-asset-tar-pypi
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
