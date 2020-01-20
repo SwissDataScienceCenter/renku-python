@@ -1,22 +1,150 @@
-name: CI-deploy
+name: Test, Integration Tests and Deploy
 
 on:
-  repository_dispatch:
-    types: deploy_renku_python
-    branches:
-      - master
   push:
+    branches:
+    - '*'
     tags:
     - 'v*.*.*'
 
 jobs:
+  docs-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+    - uses: actions/checkout@v2
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install .[all]
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test docs
+      run: ./run-tests.sh -d
+  test-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e .[nodocs]
+        python -m pip install coveralls
+        python setup.py --version
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test with pytest
+      run: ./run-tests.sh -s -t
+    - name: Coveralls
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      run: coveralls
+
+  test-macos:
+    runs-on: macos-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install git-lfs shellcheck node || brew link --overwrite node
+        python -m pip install --upgrade pip
+        python -m pip install -e .[all]
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test with pytest
+      run: ./run-tests.sh
+
+  test-linux-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    needs: [test-linux]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e .[nodocs]
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test with pytest
+      run: pytest -m integration -v
+
+  test-macos-integration:
+    runs-on: macos-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    needs: [test-macos]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install git-lfs shellcheck node || brew link --overwrite node
+        python -m pip install --upgrade pip
+        python -m pip install -e .[all]
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test with pytest
+      run: pytest -m integration -v
+
   publish-pypi:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
         python-version: [3.6]
-    needs: [create-release]
+    needs: [docs-linux, test-linux, test-macos, test-linux-integration, test-macos-integration]
+    if: "startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'"
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -63,7 +191,7 @@ jobs:
   publish-brew:
     runs-on: macos-latest
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [create-release]
+    needs: [publish-pypi]
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -127,7 +255,8 @@ jobs:
 
   publish-chart:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')||github.ref == 'refs/heads/master'
+    needs: [docs-linux, test-linux, test-macos, test-linux-integration, test-macos-integration]
+    if: "startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'"
     strategy:
       max-parallel: 1
       matrix:
