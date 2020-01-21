@@ -318,10 +318,8 @@ def dataset(ctx, revision, datadir, format):
 
 
 @dataset.command()
-@click.argument('name')
-@click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
-)
+@click.argument('short_name')
+@click.option('--title', default='', help='Title of the dataset.')
 @click.option(
     '-d', '--description', default='', help='Dataset\'s description.'
 )
@@ -332,13 +330,13 @@ def dataset(ctx, revision, datadir, format):
     multiple=True,
     help='Creator\'s name and email ("Name <email>").'
 )
-def create(name, short_name, description, creator):
+def create(short_name, title, description, creator):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
     new_dataset = create_dataset(
-        name=name,
         short_name=short_name,
+        title=title,
         description=description,
         creators=creators
     )
@@ -363,7 +361,7 @@ def edit(dataset_id):
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument('short_name')
 @click.argument('urls', nargs=-1)
 @click.option('--link', is_flag=True, help='Creates a hard link.')
 @click.option(
@@ -395,12 +393,12 @@ def edit(dataset_id):
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
-def add(name, urls, link, force, create, sources, destination, ref):
+def add(short_name, urls, link, force, create, sources, destination, ref):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
         urls=urls,
-        name=name,
+        short_name=short_name,
         link=link,
         force=force,
         create=create,
@@ -412,7 +410,7 @@ def add(name, urls, link, force, create, sources, destination, ref):
 
 
 @dataset.command('ls-files')
-@click.argument('names', nargs=-1)
+@click.argument('short_names', nargs=-1)
 @click.option(
     '--creators',
     help='Filter files which where authored by specific creators. '
@@ -438,13 +436,13 @@ def add(name, urls, link, force, create, sources, destination, ref):
     default='tabular',
     help='Choose an output format.'
 )
-def ls_files(names, creators, include, exclude, format):
+def ls_files(short_names, creators, include, exclude, format):
     """List files in dataset."""
-    echo_via_pager(list_files(names, creators, include, exclude, format))
+    echo_via_pager(list_files(short_names, creators, include, exclude, format))
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument('short_name')
 @click.option(
     '-I',
     '--include',
@@ -460,13 +458,13 @@ def ls_files(names, creators, include, exclude, format):
 @click.option(
     '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
 )
-def unlink(name, include, exclude, yes):
+def unlink(short_name, include, exclude, yes):
     """Remove matching files from a dataset."""
-    with file_unlink(name, include, exclude) as records:
+    with file_unlink(short_name, include, exclude) as records:
         if not yes and records:
             prompt_text = (
                 'You are about to remove '
-                'following from "{0}" dataset.\n'.format(dataset.name) +
+                'following from "{0}" dataset.\n'.format(short_name) +
                 '\n'.join([str(record.full_path) for record in records]) +
                 '\nDo you wish to continue?'
             )
@@ -476,8 +474,8 @@ def unlink(name, include, exclude, yes):
 
 
 @dataset.command('rm')
-@click.argument('names', nargs=-1)
-def remove(names):
+@click.argument('short_names', nargs=-1)
+def remove(short_names):
     """Delete a dataset."""
     datasetscontext = partial(
         progressbar,
@@ -490,7 +488,7 @@ def remove(names):
         item_show_func=lambda item: item.name if item else '',
     )
     dataset_remove(
-        names,
+        short_names,
         with_output=True,
         datasetscontext=datasetscontext,
         referencescontext=referencescontext
@@ -499,38 +497,38 @@ def remove(names):
 
 
 @dataset.command('tag')
-@click.argument('name')
+@click.argument('short_name')
 @click.argument('tag')
 @click.option(
     '-d', '--description', default='', help='A description for this tag'
 )
 @click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
-def tag(name, tag, description, force):
+def tag(short_name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset_with_client(name, tag, description, force)
+    tag_dataset_with_client(short_name, tag, description, force)
     click.secho('OK', fg='green')
 
 
 @dataset.command('rm-tags')
-@click.argument('name')
+@click.argument('short_name')
 @click.argument('tags', nargs=-1)
-def remove_tags(name, tags):
+def remove_tags(short_name, tags):
     """Remove tags from a dataset."""
-    remove_dataset_tags(name, tags)
+    remove_dataset_tags(short_name, tags)
     click.secho('OK', fg='green')
 
 
 @dataset.command('ls-tags')
-@click.argument('name')
+@click.argument('short_name')
 @click.option(
     '--format',
     type=click.Choice(DATASET_TAGS_FORMATS),
     default='tabular',
     help='Choose an output format.'
 )
-def ls_tags(name, format):
+def ls_tags(short_name, format):
     """List all tags of a dataset."""
-    tags_output = list_tags(name, format)
+    tags_output = list_tags(short_name, format)
     click.echo(tags_output)
 
 
@@ -567,7 +565,7 @@ def export_(id, provider, publish, tag):
 @dataset.command('import')
 @click.argument('uri')
 @click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
+    '--short-name', default=None, help='A convenient name for dataset.'
 )
 @click.option(
     '-x',
@@ -614,7 +612,7 @@ class _DownloadProgressbar(DownloadProgressCallback):
 
 
 @dataset.command('update')
-@click.argument('names', nargs=-1)
+@click.argument('short_names', nargs=-1)
 @click.option(
     '--creators',
     help='Filter files which where authored by specific creators. '
@@ -642,11 +640,11 @@ class _DownloadProgressbar(DownloadProgressCallback):
     is_flag=True,
     help='Delete local files that are deleted from remote.'
 )
-def update(names, creators, include, exclude, ref, delete):
+def update(short_names, creators, include, exclude, ref, delete):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')
     update_datasets(
-        names=names,
+        short_names=short_names,
         creators=creators,
         include=include,
         exclude=exclude,
