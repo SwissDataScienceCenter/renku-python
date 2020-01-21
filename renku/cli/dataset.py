@@ -248,10 +248,10 @@ import requests
 import yaml
 from tqdm import tqdm
 
-from renku.core.commands.dataset import add_file, create_dataset, \
-    dataset_parent, dataset_remove, edit_dataset, export_dataset, \
-    file_unlink, import_dataset, list_files, list_tags, remove_dataset_tags, \
-    tag_dataset_with_client, update_datasets
+from renku.core.commands.dataset import add_file, check_for_migration, \
+    create_dataset, dataset_parent, dataset_remove, edit_dataset, \
+    export_dataset, file_unlink, import_dataset, list_files, list_tags, \
+    remove_dataset_tags, tag_dataset_with_client, update_datasets
 from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -308,6 +308,8 @@ def dataset(ctx, revision, datadir, format):
     """Handle datasets."""
     if isinstance(ctx, click.Context):
         ctx.meta['renku.datasets.datadir'] = datadir
+
+    check_for_migration()
 
     if ctx.invoked_subcommand is not None:
         return

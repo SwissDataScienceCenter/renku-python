@@ -17,6 +17,7 @@
 # limitations under the License.
 """Migrations for dataset."""
 import os
+import uuid
 from pathlib import Path
 
 
@@ -68,18 +69,19 @@ def migrate_absolute_paths(data):
 
 
 def migrate_doi_identifier(data):
-    """If the dataset has a doi, make identifier be based on it."""
-    from renku.core.utils.doi import is_doi, extract_doi
+    """If the dataset _id is doi, make it a UUID."""
+    from renku.core.utils.doi import is_doi
+    from renku.core.utils.uuid import is_uuid
 
-    if is_doi(data.get('_id', '')):
-        data['identifier'] = extract_doi(data.get('_id'))
-        data['same_as'] = data['_id']
-        if data.get('@context'):
-            data['@context'].setdefault('same_as', 'schema:sameAs')
+    _id = data.get('_id', '')
+    identifier = data.get('identifier', '')
+
+    if not is_uuid(_id):
+        if not is_uuid(identifier):
+            data['identifier'] = str(uuid.uuid4())
+        if is_doi(data.get('_id', '')):
+            data['same_as'] = data['_id']
+            if data.get('@context'):
+                data['@context'].setdefault('same_as', 'schema:sameAs')
+        data['_id'] = data['identifier']
     return data
-
-
-DATASET_MIGRATIONS = [
-    migrate_absolute_paths,
-    migrate_dataset_schema,
-]

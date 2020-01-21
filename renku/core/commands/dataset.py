@@ -18,6 +18,7 @@
 """Repository datasets management."""
 
 import re
+import urllib
 from collections import OrderedDict
 from contextlib import contextmanager
 
@@ -39,6 +40,7 @@ from renku.core.models.datasets import Dataset, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
+from renku.core.utils.doi import is_doi
 from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
@@ -48,14 +50,18 @@ from .format.datasets import DATASETS_FORMATS
 
 
 @pass_local_client(clean=False, commit=False)
-def dataset_parent(client, revision, datadir, format, ctx=None):
-    """Handle datasets subcommands."""
+def check_for_migration(client):
+    """Checks if dataset migration is required."""
     missing_dataset, missing_files = check_dataset_resources(client)
     old_datasets = [ds for ds in dataset_pre_0_3(client)]
 
     if missing_dataset or missing_files or old_datasets:
         raise MigrationRequired('datasets')
 
+
+@pass_local_client(clean=False, commit=False)
+def dataset_parent(client, revision, datadir, format, ctx=None):
+    """Handle datasets subcommands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
@@ -202,6 +208,11 @@ def add_to_dataset(
                     file_.creator = with_metadata.creator
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
+
+                if is_doi(with_metadata.identifier):
+                    dataset.same_as = urllib.parse.urljoin(
+                        'https://doi.org', with_metadata.identifier
+                    )
 
                 dataset.update_metadata(with_metadata)
 

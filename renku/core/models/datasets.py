@@ -421,11 +421,6 @@ class Dataset(Entity, CreatorMixin):
         :param other_dataset: `Dataset`
         :return: self
         """
-        if is_doi(other_dataset.identifier):
-            self.same_as = urllib.parse.urljoin(
-                'https://doi.org', other_dataset.identifier
-            )
-
         for field_ in self.EDITABLE_FIELDS:
             val = getattr(other_dataset, field_)
             if val:
