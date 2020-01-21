@@ -528,20 +528,11 @@ def update_datasets(
     if not records:
         raise ParameterError('No files matched the criteria.')
 
-    datasets = {}
     possible_updates = []
     unique_remotes = set()
 
     for file_ in records:
         if file_.based_on:
-            dataset_name = file_.dataset
-            dataset = datasets.get(dataset_name)
-
-            if not dataset:
-                dataset = client.load_dataset(short_name=dataset_name)
-                datasets[dataset_name] = dataset
-
-            file_.dataset = dataset
             possible_updates.append(file_)
             unique_remotes.add(file_.based_on.url)
 
@@ -607,7 +598,7 @@ def _filter(
     for path_, dataset in client.datasets.items():
         if not short_names or dataset.short_name in short_names:
             for file_ in dataset.files:
-                file_.dataset = dataset.name
+                file_.dataset = dataset
                 path_ = file_.full_path.relative_to(client.path)
                 match = _include_exclude(path_, include, exclude)
 
