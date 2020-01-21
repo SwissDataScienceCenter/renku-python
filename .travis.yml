@@ -67,7 +67,7 @@ before_install:
   requirements-builder -e nodocs --level=dev --req requirements-devel.txt setup.py
   > .travis-devel-requirements-nodocs.txt; elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
   ulimit -n 1024; brew update; brew upgrade -v python; brew unlink python; brew link
-  python; brew install -v git-lfs jq node pipenv shellcheck; travis_wait brew upgrade
+  --overwrite python; brew install -v git-lfs jq node pipenv shellcheck; travis_wait brew upgrade
   node; fi
 install:
 - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then travis_retry python -m pip install -r
