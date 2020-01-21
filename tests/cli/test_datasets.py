@@ -45,7 +45,7 @@ def test_datasets_create_clean(runner, project, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
     assert dataset
 
     staged = client.repo.index.diff('HEAD')
@@ -61,7 +61,7 @@ def test_datasets_create_with_metadata(runner, client):
     """Test creating a dataset with metadata."""
     result = runner.invoke(
         cli, [
-            'dataset', 'create', 'my-dataset', '--short-name', 'short-name',
+            'dataset', 'create', 'my-dataset', '--title', 'Long Title',
             '--description', 'some description here', '-c',
             'John Doe <john.doe@mail.ch>', '-c',
             'John Smiths<john.smiths@mail.ch>'
@@ -70,9 +70,9 @@ def test_datasets_create_with_metadata(runner, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='short-name')
-    assert dataset.name == 'my-dataset'
-    assert dataset.short_name == 'short-name'
+    dataset = client.load_dataset('my-dataset')
+    assert dataset.name == 'Long Title'
+    assert dataset.short_name == 'my-dataset'
     assert dataset.description == 'some description here'
     assert 'John Doe' in [c.name for c in dataset.creator]
     assert 'john.doe@mail.ch' in [c.email for c in dataset.creator]
@@ -80,16 +80,16 @@ def test_datasets_create_with_metadata(runner, client):
     assert 'john.smiths@mail.ch' in [c.email for c in dataset.creator]
 
 
-def test_datasets_create_different_short_names(runner, client):
-    """Test creating datasets with same name but different short_name."""
+def test_datasets_create_different_names(runner, client):
+    """Test creating datasets with same title but different short_name."""
     result = runner.invoke(
-        cli, ['dataset', 'create', 'dataset', '--short-name', 'dataset-1']
+        cli, ['dataset', 'create', 'dataset-1', '--title', 'title']
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(
-        cli, ['dataset', 'create', 'dataset', '--short-name', 'dataset-2']
+        cli, ['dataset', 'create', 'dataset-2', '--title', 'title']
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
@@ -107,23 +107,16 @@ def test_datasets_create_with_same_name(runner, client):
 
 
 @pytest.mark.parametrize(
-    'name,short_name',
-    [('v.a.l.i.d_internal-name', 'v.a.l.i.d_internal-name'),
-     ('any name /@#$!', 'any_name'),
-     ('name longer than 24 characters', 'name_longer_than_24_char'),
-     ('semi valid-name', 'semi_validname'), ('dataset/new', 'datasetnew'),
-     ('/dataset', 'dataset'), ('dataset/', 'dataset')]
+    'name', [
+        'any name /@#$!', 'name longer than 24 characters', 'semi valid-name',
+        'dataset/new', '/dataset', 'dataset/'
+    ]
 )
-def test_datasets_valid_name(runner, client, name, short_name):
-    """Test creating datasets with valid name."""
+def test_datasets_invalid_name(runner, client, name):
+    """Test creating datasets with invalid name."""
     result = runner.invoke(cli, ['dataset', 'create', name])
-    assert 0 == result.exit_code
-    assert 'Use the name "{}"'.format(short_name) in result.output
-    assert 'OK' in result.output
-
-    dataset = client.load_dataset(name=short_name)
-    assert dataset.name == name
-    assert dataset.short_name == short_name
+    assert 2 == result.exit_code
+    assert 'short_name "{}" is not valid.'.format(name) in result.output
 
 
 def test_datasets_create_dirty(runner, project, client):
@@ -136,7 +129,7 @@ def test_datasets_create_dirty(runner, project, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
     assert dataset
 
     staged = client.repo.index.diff('HEAD')
@@ -739,29 +732,24 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
         assert Path(record['path']).exists()
 
 
-def test_datasets_ls_files_with_display_name(directory_tree, runner, project):
+def test_datasets_ls_files_with_name(directory_tree, runner, project):
     """Test listing of data within dataset with include/exclude filters."""
     # create a dataset
     result = runner.invoke(
-        cli, ['dataset', 'create', 'my-dataset', '--short-name', 'short-name']
+        cli, ['dataset', 'create', 'my-dataset', '--title', 'Long Title']
     )
     assert 0 == result.exit_code
 
     # add data to dataset
     result = runner.invoke(
         cli,
-        ['dataset', 'add', 'short-name', directory_tree.strpath],
+        ['dataset', 'add', 'my-dataset', directory_tree.strpath],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
-    # list files with dataset name
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
-    assert 0 == result.exit_code
-    assert 'dir2/file2' not in result.output
-
     # list files with short_name
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'short-name'])
+    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'dir2/file2' in result.output
 
@@ -883,7 +871,7 @@ def test_dataset_rm(tmpdir, runner, project, client):
 
     # check output
     assert 'OK' in result.output
-    assert not client.load_dataset(name='my-dataset')
+    assert not client.load_dataset('my-dataset')
 
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -902,7 +890,7 @@ def test_dataset_rm_commit(tmpdir, runner, project, client):
 
     # check output
     assert 'OK' in result.output
-    assert not client.load_dataset(name='my-dataset')
+    assert not client.load_dataset('my-dataset')
 
     # Dirty repository check.
     result = runner.invoke(cli, ['status'])
@@ -926,7 +914,7 @@ def test_dataset_edit(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
 
     result = runner.invoke(
         cli, ['dataset', 'edit', dataset.identifier],
@@ -947,7 +935,7 @@ def test_dataset_edit_dirty(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
 
     result = runner.invoke(
         cli, ['dataset', 'edit', dataset.identifier], input='wq'
