@@ -578,7 +578,12 @@ def test_datasets_ls_files_tabular_empty(runner, project):
     assert 'OK' in result.output
 
     # list all files in dataset
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    result = runner.invoke(
+        cli, [
+            'dataset', 'ls-files', '-c', 'added,creators,dataset,path',
+            'my-dataset'
+        ]
+    )
     assert 0 == result.exit_code
 
     # check output
@@ -595,6 +600,14 @@ def test_datasets_ls_files_check_exit_code(output_format, runner, project):
     format_option = '--format={0}'.format(output_format)
     result = runner.invoke(cli, ['dataset', 'ls-files', format_option])
     assert 0 == result.exit_code
+
+
+@pytest.mark.parametrize('columns', ['invalid', 'path,invalid'])
+def test_datasets_ls_files_invalid_column(runner, project, columns):
+    """Test file listing with invalid column name."""
+    result = runner.invoke(cli, ['dataset', 'ls-files', '--columns', columns])
+    assert 2 == result.exit_code
+    assert 'Invlid column name: "invalid".' in result.output
 
 
 def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
@@ -622,12 +635,14 @@ def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
     assert 0 == result.exit_code
 
     # list all files in non empty dataset
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    result = runner.invoke(
+        cli, ['dataset', 'ls-files', '-c', 'added,path', 'my-dataset']
+    )
     assert 0 == result.exit_code
 
     # check output from ls-files command
     output = result.output.split('\n')
-    assert output.pop(0).split() == ['ADDED', 'CREATORS', 'DATASET', 'PATH']
+    assert output.pop(0).split() == ['ADDED', 'PATH']
     assert set(output.pop(0)) == {' ', '-'}
 
     # check listing

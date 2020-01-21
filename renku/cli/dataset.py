@@ -207,12 +207,27 @@ Listing all files in the project associated with a dataset.
 .. code-block:: console
 
     $ renku dataset ls-files
-    ADDED                CREATORS    DATASET        PATH
-    -------------------  ---------  -------------  ---------------------------
-    2020-02-28 16:48:09  sam        my-dataset     ...my-dataset/addme
-    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file1
-    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file2
-    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file3
+    DATASET SHORT_NAME   ADDED                PATH
+    -------------------  -------------------  -----------------------------
+    my-dataset           2020-02-28 16:48:09  data/my-dataset/addme
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file2
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3
+
+You can select which columns to display by using ``--columns`` to pass a
+comma-separated list of column names:
+
+.. code-block:: console
+
+    $ renku dataset ls-files --columns short_name,creators, path
+    DATASET SHORT_NAME   CREATORS   PATH
+    -------------------  ---------  -----------------------------
+    my-dataset           sam        data/my-dataset/addme
+    my-dataset           sam        data/my-dataset/weather/file1
+    my-dataset           sam        data/my-dataset/weather/file2
+    my-dataset           sam        data/my-dataset/weather/file3
+
+Displayed results are sorted based on the value of the first column.
 
 Sometimes you want to filter the files. For this we use ``--dataset``,
 ``--include`` and ``--exclude`` flags:
@@ -220,10 +235,10 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
 .. code-block:: console
 
     $ renku dataset ls-files --include "file*" --exclude "file3"
-    ADDED                CREATORS    DATASET     PATH
-    -------------------  ---------  ----------  ----------------------------
-    2020-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file1
-    2020-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file2
+    DATASET SHORT_NAME  ADDED                PATH
+    ------------------- -------------------  -----------------------------
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2
 
 Unlink a file from a dataset:
 
@@ -266,7 +281,8 @@ from renku.core.commands.dataset import add_file, check_for_migration, \
     file_unlink, import_dataset, list_datasets, list_files, list_tags, \
     remove_dataset_tags, tag_dataset_with_client, update_datasets
 from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
-from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
+from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
+    DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
     DATASETS_FORMATS
@@ -465,9 +481,22 @@ def add(short_name, urls, link, force, create, sources, destination, ref):
     default='tabular',
     help='Choose an output format.'
 )
-def ls_files(short_names, creators, include, exclude, format):
+@click.option(
+    '-c',
+    '--columns',
+    type=click.STRING,
+    default='short_name,added,path',
+    metavar='<columns>',
+    help='Comma-separated list of column to display: {}.'.format(
+        ', '.join(DATASET_FILES_COLUMNS.keys())
+    ),
+    show_default=True
+)
+def ls_files(short_names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    echo_via_pager(list_files(short_names, creators, include, exclude, format))
+    echo_via_pager(
+        list_files(short_names, creators, include, exclude, format, columns)
+    )
 
 
 @dataset.command()

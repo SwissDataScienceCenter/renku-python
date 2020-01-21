@@ -230,7 +230,9 @@ def add_to_dataset(
 
 
 @pass_local_client(clean=False, commit=False)
-def list_files(client, short_names, creators, include, exclude, format):
+def list_files(
+    client, short_names, creators, include, exclude, format, columns=None
+):
     """List files in dataset."""
     records = _filter(
         client,
@@ -239,8 +241,11 @@ def list_files(client, short_names, creators, include, exclude, format):
         include=include,
         exclude=exclude
     )
+    for record in records:
+        record.title = record.dataset.name
+        record.short_name = record.dataset.short_name
 
-    return DATASET_FILES_FORMATS[format](client, records)
+    return DATASET_FILES_FORMATS[format](client, records, columns=columns)
 
 
 @pass_local_client(
