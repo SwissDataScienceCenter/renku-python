@@ -21,6 +21,7 @@ import json
 import uuid
 
 import pytest
+from flaky import flaky
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
@@ -28,6 +29,7 @@ from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_view(svc_client_with_repo):
     """Create new dataset successfully."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -52,6 +54,7 @@ def test_create_dataset_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_commit_msg(svc_client_with_repo):
     """Create new dataset successfully with custom commit message."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -77,6 +80,7 @@ def test_create_dataset_commit_msg(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     """Create new dataset which already exists."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -101,6 +105,7 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_view_unknown_param(svc_client_with_repo):
     """Create new dataset by specifying unknown parameters."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -126,6 +131,7 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_with_no_identity(svc_client_with_repo):
     """Create new dataset with no identification provided."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -154,6 +160,7 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_file_view_with_no_identity(svc_client_with_repo):
     """Check identity error raise in dataset add."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -180,6 +187,7 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_file_view(svc_client_with_repo):
     """Check adding of uploaded file to dataset."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -228,6 +236,7 @@ def test_add_file_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_file_commit_msg(svc_client_with_repo):
     """Check adding of uploaded file to dataset with custom commit message."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -270,6 +279,7 @@ def test_add_file_commit_msg(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_list_datasets_view(svc_client_with_repo):
     """Check listing of existing datasets."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -295,6 +305,7 @@ def test_list_datasets_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_list_datasets_view_no_auth(svc_client_with_repo):
     """Check listing of existing datasets with no auth."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -314,6 +325,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_and_list_datasets_view(svc_client_with_repo):
     """Create and list created dataset."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -360,6 +372,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_list_dataset_files(svc_client_with_repo):
     """Check listing of dataset files"""
     svc_client, headers, project_id = svc_client_with_repo
@@ -427,6 +440,7 @@ def test_list_dataset_files(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     """Upload archive and add it to a dataset."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -521,6 +535,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     """Upload archive and add its contents to a dataset."""
     svc_client, headers, project_id = svc_client_with_repo
@@ -616,6 +631,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_existing_file(svc_client_with_repo):
     """Upload archive and add it to a dataset."""
     svc_client, headers, project_id = svc_client_with_repo

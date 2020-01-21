@@ -24,6 +24,7 @@ from pathlib import Path
 
 import git
 import pytest
+from flaky import flaky
 
 from renku.cli import cli
 from renku.core.commands.clone import renku_clone
@@ -38,14 +39,15 @@ from renku.core.utils.contexts import chdir
         'creator': 'K.Sering,M.Weitz,D.Künstle,L.Schneider',
         'version': 'v0.6.4'
     }, {
-        'doi': '10.7910/DVN/S8MSVF',
+        'doi': '10.7910/DVN/E2AQGU',
         'input': 'y',
-        'file': 'hydrogen_mapping_laws_a_1',
-        'creator': 'M.Trevor',
+        'file': 'stroke_2_betweenarms_da_1',
+        'creator': 'G.Netta',
         'version': '1'
     }]
 )
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
@@ -70,7 +72,7 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
         ('10.5281/zenodo.3239980', 'n'),
         ('10.5281/zenodo.3188334', 'y'),
         ('10.7910/DVN/TJCLKP', 'n'),
-        ('10.7910/DVN/S8MSVF', 'y'),
+        ('10.7910/DVN/E2AQGU', 'y'),
         ('10.5281/zenodo.597964', 'y'),
         ('10.5281/zenodo.3236928', 'n'),
         ('10.5281/zenodo.2671633', 'n'),
@@ -94,6 +96,7 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     ]
 )
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_param(doi, runner, project, sleep_after):
     """Test dataset import and check metadata parsing."""
     result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
@@ -116,6 +119,7 @@ def test_dataset_import_real_param(doi, runner, project, sleep_after):
     ]
 )
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_uri_404(doi, runner, project, sleep_after):
     """Test dataset import and check that correct exception is raised."""
     result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
@@ -126,6 +130,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     """Test dataset import for existing DOI and dataset"""
     result = runner.invoke(
@@ -153,7 +158,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     result = runner.invoke(cli, ['dataset'])
 
     assert 0 == result.exit_code
-    assert 'pyndl_naive_discriminat_v064' in result.output
+    assert 'pyndl_naive_discriminat' in result.output
     assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
 
 
@@ -162,6 +167,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
             ('10.7910/DVN/S8MSVFXXXX', 'DVN')]
 )
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_fake_doi(runner, project, doi):
     """Test error raising for non-existing DOI."""
     result = runner.invoke(cli, ['dataset', 'import', doi[0]], input='y')
@@ -176,11 +182,12 @@ def test_dataset_import_fake_doi(runner, project, doi):
         'https://zenodo.org/record/2621208',
         (
             'https://dataverse.harvard.edu/dataset.xhtml'
-            '?persistentId=doi:10.7910/DVN/S8MSVF'
+            '?persistentId=doi:10.7910/DVN/E2AQGU'
         )
     ]
 )
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_http(runner, project, url, sleep_after):
     """Test dataset import through HTTPS."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
@@ -193,10 +200,11 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
     'url', [
         'https://zenodo.org/record/2621201248',
         'https://dataverse.harvard.edu/dataset.xhtml' +
-        '?persistentId=doi:10.7910/DVN/S8MSVFXXXX'
+        '?persistentId=doi:10.7910/DVN/E2AQGUXXXX'
     ]
 )
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_fake_http(runner, project, url):
     """Test dataset import through HTTPS."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
@@ -206,56 +214,60 @@ def test_dataset_import_fake_http(runner, project, url):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_and_extract(runner, project, client, sleep_after):
     """Test dataset import and extract files."""
-    URL = 'https://zenodo.org/record/2658634'
+    url = 'https://zenodo.org/record/2658634'
     result = runner.invoke(
-        cli, ['dataset', 'import', '--extract', '--short-name', 'remote', URL],
+        cli, ['dataset', 'import', '--extract', '--short-name', 'remote', url],
         input='y'
     )
     assert 0 == result.exit_code
 
     with client.with_dataset('remote') as dataset:
-        AN_EXTRACTED_FILE = 'data/remote/quantling-pyndl-c34259c/doc/make.bat'
-        assert dataset.find_file(AN_EXTRACTED_FILE)
+        extracted_file = 'data/remote/quantling-pyndl-c34259c/doc/make.bat'
+        assert dataset.find_file(extracted_file)
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_different_names(runner, client, sleep_after):
     """Test can import same DOI under different names."""
-    DOI = '10.5281/zenodo.2658634'
+    doi = '10.5281/zenodo.2658634'
     result = runner.invoke(
-        cli, ['dataset', 'import', '--short-name', 'name-1', DOI], input='y'
+        cli, ['dataset', 'import', '--short-name', 'name-1', doi], input='y'
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(
-        cli, ['dataset', 'import', '--short-name', 'name-2', DOI], input='y'
+        cli, ['dataset', 'import', '--short-name', 'name-2', doi], input='y'
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_ignore_uncompressed_files(
     runner, project, sleep_after
 ):
     """Test dataset import ignores uncompressed files."""
-    URL = 'https://zenodo.org/record/3251128'
+    url = 'https://zenodo.org/record/3251128'
     result = runner.invoke(
-        cli, ['dataset', 'import', '--extract', URL], input='y'
+        cli, ['dataset', 'import', '--extract', url], input='y'
     )
     assert 0 == result.exit_code
     assert 'Gorne_Diaz_database_2019.csv' in result.output
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
     """Test re-importing of deleted datasets works."""
-    DOI = '10.5281/zenodo.2658634'
+    doi = '10.5281/zenodo.2658634'
     result = runner.invoke(
-        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        cli, ['dataset', 'import', doi, '--short-name', 'my-dataset'],
         input='y'
     )
     assert 0 == result.exit_code
@@ -264,13 +276,14 @@ def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
     assert 0 == result.exit_code
 
     result = runner.invoke(
-        cli, ['dataset', 'import', DOI, '--short-name', 'my-dataset'],
+        cli, ['dataset', 'import', doi, '--short-name', 'my-dataset'],
         input='y'
     )
     assert 0 == result.exit_code
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
@@ -307,6 +320,7 @@ def test_dataset_export_upload_file(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_export_upload_tag(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
@@ -382,6 +396,7 @@ def test_dataset_export_upload_tag(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_export_upload_multiple(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
@@ -422,6 +437,7 @@ def test_dataset_export_upload_multiple(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
     """Test failed uploading of a file to Zenodo deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
@@ -448,6 +464,7 @@ def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_export_published_url(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
@@ -486,6 +503,7 @@ def test_dataset_export_published_url(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_dataset_wrong_provider(
     runner, project, tmpdir, client, zenodo_sandbox
 ):
@@ -514,6 +532,7 @@ def test_export_dataset_wrong_provider(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_export(runner, client, project):
     """Check dataset not found exception raised."""
     result = runner.invoke(
@@ -525,6 +544,7 @@ def test_dataset_export(runner, client, project):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_dataset_unauthorized(
     runner, project, client, tmpdir, zenodo_sandbox
 ):
@@ -574,6 +594,7 @@ def test_export_dataset_unauthorized(
           ], 'data/remote/existing/Dockerfile'),
     ]
 )
+@flaky(max_runs=10, min_passes=1)
 def test_add_data_from_git(runner, client, params, path):
     """Test add data to datasets from a git repository."""
     REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
@@ -600,6 +621,7 @@ def test_add_data_from_git(runner, client, params, path):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_from_git_copies_metadata(runner, client):
     """Test an import from a git repository keeps creators name."""
     # create a dataset and add a file to it
@@ -635,6 +657,7 @@ def test_add_from_git_copies_metadata(runner, client):
         (['-d', 'LICENSE'], 1, 'Cannot copy repo to file'),
     ]
 )
+@flaky(max_runs=10, min_passes=1)
 def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
     """Test user's errors when adding to a dataset from a git repository."""
     REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
@@ -675,6 +698,7 @@ def read_dataset_file_metadata(client, dataset_name, filename):
 @pytest.mark.parametrize(
     'params', [[], ['-I', 'CHANGES.rst'], ['-I', 'C*'], ['remote']]
 )
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_update(client, runner, params):
     """Test local copy is updated when remote file is updates."""
     # Add dataset to project
@@ -707,6 +731,7 @@ def test_dataset_update(client, runner, params):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_update_remove_file(client, runner):
     """Test local copy is removed when remote file is removed."""
     # Add dataset to project
@@ -743,6 +768,7 @@ def test_dataset_update_remove_file(client, runner):
 @pytest.mark.parametrize(
     'params', [['-I', 'non-existing'], ['non-existing-dataset']]
 )
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_invalid_update(client, runner, params):
     """Test updating a non-existing path."""
     # Add dataset to project
@@ -767,6 +793,7 @@ def test_dataset_invalid_update(client, runner, params):
     'params',
     [[], ['-I', 'CHANGES.rst'], ['-I', 'CH*'], ['dataset-1', 'dataset-2']]
 )
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_update_multiple_datasets(
     client, runner, data_repository, directory_tree, params
 ):
@@ -806,6 +833,7 @@ def test_dataset_update_multiple_datasets(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_empty_update(client, runner, data_repository, directory_tree):
     """Test update when nothing changed does not create a commit."""
     # Add dataset to project
@@ -829,6 +857,7 @@ def test_empty_update(client, runner, data_repository, directory_tree):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_import_from_renku_project(tmpdir, client, runner):
     """Test an imported dataset from other renku repos will have metadata."""
     from renku.core.management import LocalClient
@@ -869,6 +898,7 @@ def test_import_from_renku_project(tmpdir, client, runner):
 @pytest.mark.parametrize(
     'ref', ['v0.3.0', 'fe6ec65cc84bcf01e879ef38c0793208f7fab4bb']
 )
+@flaky(max_runs=10, min_passes=1)
 def test_add_specific_refs(ref, runner, client):
     """Test adding a specific version of files."""
     FILENAME = 'CHANGES.rst'
@@ -893,6 +923,7 @@ def test_add_specific_refs(ref, runner, client):
 @pytest.mark.parametrize(
     'ref', ['v0.3.1', '27e29abd409c83129a3fdb8b8b0b898b23bcb229']
 )
+@flaky(max_runs=10, min_passes=1)
 def test_update_specific_refs(ref, runner, client):
     """Test updating to a specific version of files."""
     FILENAME = 'CHANGES.rst'
@@ -920,6 +951,7 @@ def test_update_specific_refs(ref, runner, client):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_update_with_multiple_remotes_and_ref(runner, client):
     """Test updating fails when ref is ambiguous."""
     # create a dataset
@@ -951,9 +983,10 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_files_are_tracked_in_lfs(runner, client):
     """Test files added from a Git repo are tacked in Git LFS."""
-    FILENAME = 'CHANGES.rst'
+    filename = 'CHANGES.rst'
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
     assert 0 == result.exit_code
@@ -961,16 +994,17 @@ def test_files_are_tracked_in_lfs(runner, client):
     # add data from a git repo
     result = runner.invoke(
         cli, [
-            'dataset', 'add', 'dataset', '-s', FILENAME,
+            'dataset', 'add', 'dataset', '-s', filename,
             'https://github.com/SwissDataScienceCenter/renku-python.git'
         ]
     )
     assert 0 == result.exit_code
-    path = 'data/dataset/{}'.format(FILENAME)
+    path = 'data/dataset/{}'.format(filename)
     assert path in subprocess.check_output(['git', 'lfs', 'ls-files']).decode()
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_renku_clone(runner, monkeypatch):
     """Test cloning of a Renku repo and existence of required settings."""
     from renku.core.management.storage import StorageApiMixin
@@ -998,13 +1032,14 @@ def test_renku_clone(runner, monkeypatch):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_renku_clone_with_config(tmpdir):
     """Test cloning of a Renku repo and existence of required settings."""
-    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
-    with chdir(tmpdir):
+    with chdir(str(tmpdir)):
         renku_clone(
-            REMOTE,
+            remote,
             config={
                 'user.name': 'sam',
                 'user.email': 's@m.i',
@@ -1025,19 +1060,21 @@ def test_renku_clone_with_config(tmpdir):
     'path,expected_path', [('', 'datasets-test'), ('.', '.'),
                            ('new-name', 'new-name')]
 )
+@flaky(max_runs=10, min_passes=1)
 def test_renku_clone_uses_project_name(
     runner, monkeypatch, path, expected_path
 ):
     """Test renku clone uses project name as target-path by default."""
-    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ['clone', REMOTE, path])
+        result = runner.invoke(cli, ['clone', remote, path])
         assert 0 == result.exit_code
         assert (Path(project_path) / expected_path / 'Dockerfile').exists()
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_add_removes_credentials(runner, client):
     """Check removal of credentials during adding of remote data files."""
     url = 'https://username:password@example.com/index.html'
