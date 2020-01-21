@@ -498,6 +498,10 @@ class Dataset(Entity, CreatorMixin):
             )
         )
 
+        if not self.url:
+            # set the url for non-imported datasets
+            self.url = self._id
+
         # if `date_published` is set, we are probably dealing with
         # an imported dataset so `created` is not needed
         if self.date_published:
