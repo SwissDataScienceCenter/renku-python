@@ -94,7 +94,7 @@ def test_create_dataset_commit_msg(svc_client_with_repo):
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_create_dataset_view_dataset_exists(svc_client_with_repo):
-    """Create new dataset which already exists."""
+    """Create a new dataset which already exists."""
     svc_client, headers, project_id = svc_client_with_repo
 
     payload = {
@@ -145,7 +145,7 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_create_dataset_with_no_identity(svc_client_with_repo):
-    """Create new dataset with no identification provided."""
+    """Create a new dataset with no identification provided."""
     svc_client, headers, project_id = svc_client_with_repo
 
     payload = {
