@@ -24,7 +24,7 @@ from flask_apispec import marshal_with, use_kwargs
 from marshmallow import EXCLUDE
 
 from renku.core.commands.dataset import add_file, create_dataset, \
-    dataset_parent, list_files
+    list_datasets, list_files
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
@@ -77,7 +77,7 @@ def list_datasets_view(user, cache):
         datasets = [
             DatasetDetails().load(ds, unknown=EXCLUDE)
             # TODO: fix core interface to address this issue (add ticket ref)
-            for ds in json.loads(dataset_parent(None, 'data', 'json-ld'))
+            for ds in json.loads(list_datasets(None, 'data', 'json-ld'))
         ]
 
     response = DatasetListResponse().load({'datasets': datasets})
