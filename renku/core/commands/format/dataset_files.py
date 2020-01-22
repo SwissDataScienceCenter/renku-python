@@ -16,11 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
-
-from collections import OrderedDict
-
-from renku.core import errors
-from renku.core.models.tabulate import tabulate
+from .tabulate import tabulate
 
 
 def tabular(client, records, *, columns=None):
@@ -31,17 +27,13 @@ def tabular(client, records, *, columns=None):
     :param columns: List of columns to display
     """
     if not columns:
-        columns = ('added', 'creators', 'dataset', 'full_path')
-    else:
-        columns = [c.lower().strip() for c in columns.split(',') if c]
+        columns = 'added,creators,dataset,full_path'
 
-    headers = _make_headers(columns)
-
-    # Sort based on the first requested field
-    attr = list(headers.keys())[0]
-    records = sorted(records, key=lambda d: getattr(d, attr))
-
-    return tabulate(records, headers=headers, disable_numparse=True)
+    return tabulate(
+        collection=records,
+        columns=columns,
+        columns_mapping=DATASET_FILES_COLUMNS
+    )
 
 
 def jsonld(client, records, **kwargs):
@@ -55,22 +47,6 @@ def jsonld(client, records, **kwargs):
 
     data = [asjsonld(record) for record in records]
     return dumps(data, indent=2)
-
-
-def _make_headers(columns):
-    headers = OrderedDict()
-    for column in columns:
-        column = column.strip().lower()
-        if column not in DATASET_FILES_COLUMNS:
-            raise errors.ParameterError(
-                'Invlid column name: "{}".\nPossible values: {}'.format(
-                    column, ', '.join(DATASET_FILES_COLUMNS)
-                )
-            )
-        name, display_name = DATASET_FILES_COLUMNS.get(column)
-        headers[name] = display_name
-
-    return headers
 
 
 DATASET_FILES_FORMATS = {
