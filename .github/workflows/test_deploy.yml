@@ -108,6 +108,8 @@ jobs:
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
+      env:
+        IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
       run: pytest -m integration -v
 
   test-macos-integration:
@@ -135,6 +137,8 @@ jobs:
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
+      env:
+        IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
       run: pytest -m integration -v
 
   publish-pypi:

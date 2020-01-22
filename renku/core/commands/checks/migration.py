@@ -90,8 +90,10 @@ def check_dataset_resources(client):
     missing_files = defaultdict(list)
 
     for path, dataset in client.datasets.items():
+        metadata_path = Path(dataset.path) / client.METADATA
+        expected_path = str(client.renku_datasets_path / dataset.identifier)
 
-        if not (Path(dataset.path) / Path(client.METADATA)).exists():
+        if not metadata_path.exists() or expected_path != dataset.path:
             missing_datasets[path] = dataset
 
         for file_ in dataset.files:
