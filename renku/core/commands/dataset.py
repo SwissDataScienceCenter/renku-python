@@ -60,14 +60,14 @@ def check_for_migration(client):
 
 
 @pass_local_client(clean=False, commit=False)
-def dataset_parent(client, revision, datadir, format, ctx=None):
+def list_datasets(client, revision, datadir, format, columns=None):
     """Handle datasets subcommands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
         datasets = client.datasets_from_commit(client.repo.commit(revision))
 
-    return DATASETS_FORMATS[format](client, datasets)
+    return DATASETS_FORMATS[format](client, datasets, columns=columns)
 
 
 @pass_local_client(
@@ -230,7 +230,9 @@ def add_to_dataset(
 
 
 @pass_local_client(clean=False, commit=False)
-def list_files(client, short_names, creators, include, exclude, format):
+def list_files(
+    client, short_names, creators, include, exclude, format, columns=None
+):
     """List files in dataset."""
     records = _filter(
         client,
@@ -239,8 +241,11 @@ def list_files(client, short_names, creators, include, exclude, format):
         include=include,
         exclude=exclude
     )
+    for record in records:
+        record.title = record.dataset.name
+        record.short_name = record.dataset.short_name
 
-    return DATASET_FILES_FORMATS[format](client, records)
+    return DATASET_FILES_FORMATS[format](client, records, columns=columns)
 
 
 @pass_local_client(
@@ -528,20 +533,11 @@ def update_datasets(
     if not records:
         raise ParameterError('No files matched the criteria.')
 
-    datasets = {}
     possible_updates = []
     unique_remotes = set()
 
     for file_ in records:
         if file_.based_on:
-            dataset_name = file_.dataset
-            dataset = datasets.get(dataset_name)
-
-            if not dataset:
-                dataset = client.load_dataset(short_name=dataset_name)
-                datasets[dataset_name] = dataset
-
-            file_.dataset = dataset
             possible_updates.append(file_)
             unique_remotes.add(file_.based_on.url)
 
@@ -607,7 +603,7 @@ def _filter(
     for path_, dataset in client.datasets.items():
         if not short_names or dataset.short_name in short_names:
             for file_ in dataset.files:
-                file_.dataset = dataset.name
+                file_.dataset = dataset
                 path_ = file_.full_path.relative_to(client.path)
                 match = _include_exclude(path_, include, exclude)
 
