@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -32,6 +32,10 @@ env:
   global:
     secure: qLF8toEnN3JECO8sZlpE7Q5zPZhVt0y+kZtB8Vd/9kICdQkWh+/NKD6Mw0W+BW9hf+BkaCK2LEvCbeuSNg5lFr1aGZDvveMf8t3KkI1Aem+L4ewSSEbxekVtPiXsRf+Am6WOxZftntCo415aPxUYD8Ny+kZsb0DoJ4sxodAGmitUeFEo9f8bYGurDMAH7OC7AukYnRA33x8OVImU4G5uUML9z8q1pGUXZIldEucyDb0207zxn7UBwQCfhQm+HHTovOmZO3gvZvT5AJU3IQaiu7ePoBiK+M3Vb4cyHl4FlWE+5NZMpk/c9aoFBpkO5aC9QrCDCfiq7lSULL7Gkte+uWnjBm7jJH74fLe4Ryclfodb8vKHpC7fYCwfOJHXjHRr5KDPSG/1KMCTv7r4sQ6GJCnN01bDuW64IV7VK+QJwoZZOJx4J3dFMeCJdB/tOtevmDE5bAFGoV0Ycr03g9N0aHbdr0me6vWPksqR7RVEfRsX5rXPARUZ+7kWkt2MFqgG/L8orPCzyxZtqrRPtbsltK1ZmJUR69v9Tb9y+EJxB2MGUkUs9DUOr99pAlJvdx29AOzHEK45IySTdYfxjeCMCw6J/1UlZRaYjW4mj5ag0R5cnS0907w864dp7FLV9wJ2Cg4iG8WLrt5GKUMMSpac9Y/Gwaf0vExciwK60cUewMU=
 dist: xenial
+branches:
+  only:
+    - master
+    - "(^v\\d+\\.\\d+\\.\\d+$)/"
 python:
 - '3.5'
 - '3.6'
@@ -40,8 +44,9 @@ stages:
 - name: docs
 - name: test
 - name: integration
-  if: branch = master AND (type != pull_request)
 - name: test OSX
+  if: branch = master AND (type != pull_request)
+- name: publish chart
   if: branch = master AND (type != pull_request)
 - name: "publish \U0001F40D"
   if: type = push AND (branch = master OR tag IS present)
@@ -62,7 +67,7 @@ before_install:
   requirements-builder -e nodocs --level=dev --req requirements-devel.txt setup.py
   > .travis-devel-requirements-nodocs.txt; elif [[ $TRAVIS_OS_NAME == 'osx' ]]; then
   ulimit -n 1024; brew update; brew upgrade -v python; brew unlink python; brew link
-  python; brew install -v git-lfs jq node pipenv shellcheck; travis_wait brew upgrade
+  --overwrite python; brew install -v git-lfs jq node pipenv shellcheck; travis_wait brew upgrade
   node; fi
 install:
 - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then travis_retry python -m pip install -r
@@ -190,3 +195,28 @@ jobs:
       local-dir: "/usr/local/Homebrew/Library/Taps/swissdatasciencecenter/homebrew-renku/"
       on:
         all_branches: true
+  - stage: publish chart
+    python: '3.7'
+    env:
+    - HELM_URL=https://storage.googleapis.com/kubernetes-helm
+    - HELM_TGZ=helm-v2.14.3-linux-amd64.tar.gz
+    - REQUIREMENTS=lowest
+    before_deploy:
+    - mkdir -p /tmp/helm
+    - wget -q ${HELM_URL}/${HELM_TGZ} -O /tmp/helm/${HELM_TGZ}
+    - tar -C /tmp/helm -xzv -f /tmp/helm/${HELM_TGZ}
+    - PATH=/tmp/helm/linux-amd64/:$PATH
+    - helm init --client-only
+    - pip install chartpress==0.3.2
+    deploy:
+    - &script
+      provider: script
+      skip_cleanup: true
+      script: bash travis-deploy.sh
+      on: &script_on
+        branch: master
+        repo: SwissDataScienceCenter/renku-python
+    - <<: *script
+      on:
+        <<: *script_on
+        tags: true

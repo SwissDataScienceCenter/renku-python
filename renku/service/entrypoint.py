@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -57,7 +57,10 @@ def create_app():
     app.secret_key = os.getenv('RENKU_SVC_SERVICE_KEY', uuid.uuid4().hex)
 
     app.config['UPLOAD_FOLDER'] = CACHE_DIR
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+    max_content_size = os.getenv('MAX_CONTENT_LENGTH')
+    if max_content_size:
+        app.config['MAX_CONTENT_LENGTH'] = max_content_size
 
     cache = make_cache()
     app.config['cache'] = cache

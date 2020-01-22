@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,10 +19,10 @@
 import urllib
 
 import attr
-import requests
 
 from renku.core.commands.providers.api import ProviderApi
 from renku.core.utils.doi import is_doi
+from renku.core.utils.requests import retry
 
 DOI_BASE_URL = 'https://dx.doi.org'
 
@@ -102,11 +102,12 @@ class DOIProvider(ProviderApi):
         if doi.startswith('http') is False:
             url = make_doi_url(doi)
 
-        response = requests.get(url, headers=self.headers)
-        if response.status_code != 200:
-            raise LookupError('record not found')
+        with retry() as session:
+            response = session.get(url, headers=self.headers)
+            if response.status_code != 200:
+                raise LookupError('record not found')
 
-        return response
+            return response
 
     def find_record(self, uri):
         """Finds DOI record."""

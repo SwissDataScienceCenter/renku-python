@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2019 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,20 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define repository checks for :program:`renku doctor`."""
+"""Helper utils for handling UUIDs."""
+import uuid
 
-from .githooks import check_git_hooks_installed
-from .migration import check_dataset_metadata, check_missing_files
-from .references import check_missing_references
-from .validate_shacl import check_datasets_structure, check_project_structure
 
-# Checks will be executed in the order as they are listed in __all__.
-# They are mostly used in ``doctor`` command to inspect broken things.
-__all__ = (
-    'check_git_hooks_installed',
-    'check_dataset_metadata',
-    'check_missing_files',
-    'check_missing_references',
-    'check_project_structure',
-    'check_datasets_structure',
-)
+def is_uuid(value):
+    """Check if value is UUID4.
+
+    Copied from https://stackoverflow.com/questions/19989481/
+    """
+    try:
+        uuid_obj = uuid.UUID(value, version=4)
+    except ValueError:
+        return False
+
+    return str(uuid_obj) == value

@@ -65,6 +65,7 @@ was not installed previously.
 """
 
 import ast
+import configparser
 import os
 from collections import OrderedDict, namedtuple
 from pathlib import Path
@@ -73,6 +74,7 @@ from tempfile import mkdtemp
 import attr
 import click
 import pkg_resources
+from git import Repo
 
 from renku.core import errors
 from renku.core.commands.client import pass_local_client
@@ -165,6 +167,19 @@ def is_path_empty(path):
     return not any(gen)
 
 
+def check_git_user_config():
+    """Check that git user information is configured."""
+    dummy_git_folder = mkdtemp()
+    repo = Repo.init(dummy_git_folder)
+    git_config = repo.config_reader()
+    try:
+        git_config.get_value('user', 'name', None)
+        git_config.get_value('user', 'email', None)
+        return True
+    except (configparser.NoOptionError, configparser.NoSectionError):
+        return False
+
+
 @click.command()
 @click.argument(
     'path',
@@ -212,6 +227,15 @@ def init(
         raise errors.InvalidFileOperation(
             'Folder "{0}" is not empty. Please add --force '
             'flag to transform it into a Renku repository.'.format(str(path))
+        )
+
+    if not check_git_user_config():
+        raise errors.ConfigurationError(
+            'The user name and email are not configured. '
+            'Please use the "git config" command to configure them.\n\n'
+            '\tgit config --global --add user.name "John Doe"\n'
+            '\tgit config --global --add user.email '
+            '"john.doe@example.com"\n'
         )
 
     # select template source

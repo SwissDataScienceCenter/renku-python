@@ -15,30 +15,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Check missing references."""
+"""Utility for working with HTTP session."""
+from contextlib import contextmanager
 
-import click
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-from ..echo import WARNING
 
+@contextmanager
+def retry(
+    total_requests=10, backoff_factor=1, statuses=(500, 502, 503, 504, 429)
+):
+    """Default HTTP session for requests."""
+    _session = requests.Session()
 
-def check_missing_references(client):
-    """Find missing references."""
-    from renku.core.models.refs import LinkReference
-
-    missing = [
-        ref for ref in LinkReference.iter_items(client)
-        if not ref.reference.exists()
-    ]
-
-    if not missing:
-        return True, None
-
-    problems = (
-        WARNING + 'There are missing references.'
-        '\n  (use "git rm <name>" to clean them)\n\n\t' + '\n\t  '.join(
-            click.style(str(ref.path), fg='yellow') + ' -> ' +
-            click.style(str(ref.reference), fg='red') for ref in missing
-        ) + '\n'
+    retries = Retry(
+        total=total_requests,
+        backoff_factor=backoff_factor,
+        status_forcelist=list(statuses)
     )
-    return False, problems
+
+    _session.mount('http://', HTTPAdapter(max_retries=retries))
+    _session.mount('https://', HTTPAdapter(max_retries=retries))
+
+    yield _session

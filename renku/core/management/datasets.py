@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -40,7 +40,7 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
-    generate_default_short_name, is_dataset_name_valid
+    is_dataset_short_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -99,30 +99,30 @@ class DatasetsApiMixin(object):
             path = self.path / path
         return Dataset.from_yaml(path, client=self, commit=commit)
 
-    def get_dataset_path(self, name):
-        """Get dataset path from name."""
-        path = self.renku_datasets_path / name / self.METADATA
+    def get_dataset_path(self, short_name):
+        """Get dataset path from short_name."""
+        path = self.renku_datasets_path / short_name / self.METADATA
         if not path.exists():
             try:
                 path = LinkReference(
-                    client=self, name='datasets/' + name
+                    client=self, name='datasets/' + short_name
                 ).reference
             except errors.ParameterError:
                 return None
 
         return path
 
-    def load_dataset(self, name=None):
+    def load_dataset(self, short_name=None):
         """Load dataset reference file."""
-        if name:
-            path = self.get_dataset_path(name)
+        if short_name:
+            path = self.get_dataset_path(short_name)
             if path and path.exists():
                 return self.load_dataset_from_path(path)
 
     @contextmanager
     def with_dataset(self, short_name=None, create=False):
         """Yield an editable metadata object for a dataset."""
-        dataset = self.load_dataset(name=short_name)
+        dataset = self.load_dataset(short_name=short_name)
         clean_up_required = False
 
         if dataset is None:
@@ -131,7 +131,7 @@ class DatasetsApiMixin(object):
 
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(
-                name=short_name, short_name=short_name
+                short_name=short_name
             )
         elif create:
             raise errors.DatasetExistsError(
@@ -154,24 +154,24 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, name, short_name=None, description='', creators=None
+        self, short_name=None, title=None, description='', creators=None
     ):
         """Create a dataset."""
-        if not name:
-            raise errors.ParameterError('Dataset name must be provided.')
-
         if not short_name:
-            short_name = generate_default_short_name(name, None)
+            raise errors.ParameterError('Dataset short_name must be provided.')
 
-        if not is_dataset_name_valid(short_name):
+        if not is_dataset_short_name_valid(short_name):
             raise errors.ParameterError(
-                'Dataset name "{}" is not valid.'.format(short_name)
+                'Dataset short_name "{}" is not valid.'.format(short_name)
             )
 
-        if self.load_dataset(name=short_name):
+        if self.load_dataset(short_name=short_name):
             raise errors.DatasetExistsError(
                 'Dataset exists: "{}".'.format(short_name)
             )
+
+        if not title:
+            title = short_name
 
         identifier = str(uuid.uuid4())
 
@@ -191,8 +191,8 @@ class DatasetsApiMixin(object):
             dataset = Dataset(
                 client=self,
                 identifier=identifier,
-                name=name,
                 short_name=short_name,
+                name=title,
                 description=description,
                 creator=creators
             )
