@@ -478,14 +478,16 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     assert 200 == response.status_code
     assert 3 == len(response.json['result']['files'])
 
+    mm = {}
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
         assert not file_['unpack_archive']
 
         file_id = file_['file_id']
         assert file_id
+        mm[file_['file_name']] = file_
 
-    file_ = response.json['result']['files'][0]
+    file_ = mm['file2']
     payload = {
         'project_id': project_id,
         'dataset_name': '{0}'.format(uuid.uuid4().hex),
@@ -573,12 +575,16 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     assert 200 == response.status_code
     assert 3 == len(response.json['result']['files'])
 
+    mm = {}
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
         assert not file_['unpack_archive']
 
         file_id = file_['file_id']
         assert file_id
+        mm[file_['file_name']] = file_
+
+    file_ = mm['file2']
 
     files = [{
         'file_id': file_['file_id']
