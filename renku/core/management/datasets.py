@@ -313,7 +313,10 @@ class DatasetsApiMixin(object):
 
     def _check_protected_path(self, path):
         """Checks if a path is protected by renku."""
-        path_in_repo = path.relative_to(self.path)
+        try:
+            path_in_repo = path.relative_to(self.path)
+        except ValueError:
+            return False
 
         for protected_path in self.RENKU_PROTECTED_PATHS:
             str_path = str(path_in_repo)
@@ -338,6 +341,10 @@ class DatasetsApiMixin(object):
         if src.is_dir():
             if destination.exists() and not destination.is_dir():
                 raise errors.ParameterError('Cannot copy directory to a file')
+
+            if src.name == '.git':
+                # Cannot have a '.git' directory inside a Git repo
+                return []
 
             if self._check_protected_path(src):
                 raise errors.ProtectedFiles([src])

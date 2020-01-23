@@ -1429,19 +1429,20 @@ def test_add_protected_file(runner, client, tmpdir):
     assert 1 == result.exit_code
     assert 'Error: The following paths are protected' in result.output
 
-    result = runner.invoke(
-        cli, ['dataset', 'add', '-c', 'my-dataset1', '.git']
-    )
-
-    assert 1 == result.exit_code
-    assert 'Error: The following paths are protected' in result.output
-
-    # create some data
-    new_file = tmpdir.join('.gitnotactuallygit')
+    new_file = tmpdir.join('.renkunotactuallyrenku')
     new_file.write(str('test'))
 
     result = runner.invoke(
         cli, ['dataset', 'add', '-c', 'my-dataset1',
+              str(new_file)]
+    )
+
+    assert 0 == result.exit_code
+    new_file = tmpdir.join('thisisnot.renku')
+    new_file.write(str('test'))
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset2',
               str(new_file)]
     )
 

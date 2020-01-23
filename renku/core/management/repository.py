@@ -95,7 +95,7 @@ class RepositoryApiMixin(GitCore):
     RENKU_PROTECTED_PATHS = [
         '\\.renku/.*', 'Dockerfile', '\\.dockerignore', '\\.gitignore',
         '\\.gitattributes', '\\.gitlab-ci\\.yml', 'environment\\.yml',
-        'requirements\\.txt', '\\.git/.*'
+        'requirements\\.txt'
     ]
 
     def __attrs_post_init__(self):
