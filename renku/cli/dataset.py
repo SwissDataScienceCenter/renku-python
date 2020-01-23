@@ -32,10 +32,23 @@ Listing all datasets:
 .. code-block:: console
 
     $ renku dataset
-    ID        NAME           CREATED              CREATORS
+    ID        SHORT_NAME     TITLE          VERSION
+    --------  -------------  -------------  ---------
+    0ad1cb9a  some-dataset   Some Dataset
+    9436e36c  my-dataset     My Dataset
+
+You can select which columns to display by using ``--columns`` to pass a
+comma-separated list of column names:
+
+.. code-block:: console
+
+    $ renku dataset --columns id,short_name,created,creators
+    ID        SHORT_NAME     CREATED              CREATORS
     --------  -------------  -------------------  ---------
     0ad1cb9a  some-dataset   2020-03-19 16:39:46  sam
     9436e36c  my-dataset     2020-02-28 16:48:09  sam
+
+Displayed results are sorted based on the value of the first column.
 
 Deleting a dataset:
 
@@ -194,12 +207,27 @@ Listing all files in the project associated with a dataset.
 .. code-block:: console
 
     $ renku dataset ls-files
-    ADDED                CREATORS    DATASET        PATH
-    -------------------  ---------  -------------  ---------------------------
-    2020-02-28 16:48:09  sam        my-dataset     ...my-dataset/addme
-    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file1
-    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file2
-    2020-02-28 16:49:02  sam        my-dataset     ...my-dataset/weather/file3
+    DATASET SHORT_NAME   ADDED                PATH
+    -------------------  -------------------  -----------------------------
+    my-dataset           2020-02-28 16:48:09  data/my-dataset/addme
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file2
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3
+
+You can select which columns to display by using ``--columns`` to pass a
+comma-separated list of column names:
+
+.. code-block:: console
+
+    $ renku dataset ls-files --columns short_name,creators, path
+    DATASET SHORT_NAME   CREATORS   PATH
+    -------------------  ---------  -----------------------------
+    my-dataset           sam        data/my-dataset/addme
+    my-dataset           sam        data/my-dataset/weather/file1
+    my-dataset           sam        data/my-dataset/weather/file2
+    my-dataset           sam        data/my-dataset/weather/file3
+
+Displayed results are sorted based on the value of the first column.
 
 Sometimes you want to filter the files. For this we use ``--dataset``,
 ``--include`` and ``--exclude`` flags:
@@ -207,10 +235,10 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
 .. code-block:: console
 
     $ renku dataset ls-files --include "file*" --exclude "file3"
-    ADDED                CREATORS    DATASET     PATH
-    -------------------  ---------  ----------  ----------------------------
-    2020-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file1
-    2020-02-28 16:49:02  sam        my-dataset  .../my-dataset/weather/file2
+    DATASET SHORT_NAME  ADDED                PATH
+    ------------------- -------------------  -----------------------------
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2
 
 Unlink a file from a dataset:
 
@@ -248,14 +276,16 @@ import requests
 import yaml
 from tqdm import tqdm
 
-from renku.core.commands.dataset import add_file, create_dataset, \
-    dataset_parent, dataset_remove, edit_dataset, export_dataset, \
-    file_unlink, import_dataset, list_files, list_tags, remove_dataset_tags, \
-    tag_dataset_with_client, update_datasets
+from renku.core.commands.dataset import add_file, check_for_migration, \
+    create_dataset, dataset_remove, edit_dataset, export_dataset, \
+    file_unlink, import_dataset, list_datasets, list_files, list_tags, \
+    remove_dataset_tags, tag_dataset_with_client, update_datasets
 from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
-from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
+from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
+    DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
-from renku.core.commands.format.datasets import DATASETS_FORMATS
+from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
+    DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 from renku.core.management.datasets import DownloadProgressCallback
 
@@ -303,23 +333,38 @@ def prompt_tag_selection(tags):
     default='tabular',
     help='Choose an output format.'
 )
+@click.option(
+    '-c',
+    '--columns',
+    type=click.STRING,
+    default='id,short_name,title,version',
+    metavar='<columns>',
+    help='Comma-separated list of column to display: {}.'.format(
+        ', '.join(DATASETS_COLUMNS.keys())
+    ),
+    show_default=True
+)
 @click.pass_context
-def dataset(ctx, revision, datadir, format):
+def dataset(ctx, revision, datadir, format, columns):
     """Handle datasets."""
     if isinstance(ctx, click.Context):
         ctx.meta['renku.datasets.datadir'] = datadir
 
+    check_for_migration()
+
     if ctx.invoked_subcommand is not None:
         return
 
-    click.echo(dataset_parent(revision, datadir, format, ctx=ctx))
+    click.echo(
+        list_datasets(
+            revision=revision, datadir=datadir, format=format, columns=columns
+        )
+    )
 
 
 @dataset.command()
-@click.argument('name')
-@click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
-)
+@click.argument('short_name')
+@click.option('--title', default='', help='Title of the dataset.')
 @click.option(
     '-d', '--description', default='', help='Dataset\'s description.'
 )
@@ -330,13 +375,13 @@ def dataset(ctx, revision, datadir, format):
     multiple=True,
     help='Creator\'s name and email ("Name <email>").'
 )
-def create(name, short_name, description, creator):
+def create(short_name, title, description, creator):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
     new_dataset = create_dataset(
-        name=name,
         short_name=short_name,
+        title=title,
         description=description,
         creators=creators
     )
@@ -361,7 +406,7 @@ def edit(dataset_id):
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument('short_name')
 @click.argument('urls', nargs=-1)
 @click.option('--link', is_flag=True, help='Creates a hard link.')
 @click.option(
@@ -393,12 +438,12 @@ def edit(dataset_id):
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
-def add(name, urls, link, force, create, sources, destination, ref):
+def add(short_name, urls, link, force, create, sources, destination, ref):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
         urls=urls,
-        name=name,
+        short_name=short_name,
         link=link,
         force=force,
         create=create,
@@ -410,7 +455,7 @@ def add(name, urls, link, force, create, sources, destination, ref):
 
 
 @dataset.command('ls-files')
-@click.argument('names', nargs=-1)
+@click.argument('short_names', nargs=-1)
 @click.option(
     '--creators',
     help='Filter files which where authored by specific creators. '
@@ -436,13 +481,26 @@ def add(name, urls, link, force, create, sources, destination, ref):
     default='tabular',
     help='Choose an output format.'
 )
-def ls_files(names, creators, include, exclude, format):
+@click.option(
+    '-c',
+    '--columns',
+    type=click.STRING,
+    default='short_name,added,path',
+    metavar='<columns>',
+    help='Comma-separated list of column to display: {}.'.format(
+        ', '.join(DATASET_FILES_COLUMNS.keys())
+    ),
+    show_default=True
+)
+def ls_files(short_names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    echo_via_pager(list_files(names, creators, include, exclude, format))
+    echo_via_pager(
+        list_files(short_names, creators, include, exclude, format, columns)
+    )
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument('short_name')
 @click.option(
     '-I',
     '--include',
@@ -458,13 +516,13 @@ def ls_files(names, creators, include, exclude, format):
 @click.option(
     '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
 )
-def unlink(name, include, exclude, yes):
+def unlink(short_name, include, exclude, yes):
     """Remove matching files from a dataset."""
-    with file_unlink(name, include, exclude) as records:
+    with file_unlink(short_name, include, exclude) as records:
         if not yes and records:
             prompt_text = (
                 'You are about to remove '
-                'following from "{0}" dataset.\n'.format(dataset.name) +
+                'following from "{0}" dataset.\n'.format(short_name) +
                 '\n'.join([str(record.full_path) for record in records]) +
                 '\nDo you wish to continue?'
             )
@@ -474,8 +532,8 @@ def unlink(name, include, exclude, yes):
 
 
 @dataset.command('rm')
-@click.argument('names', nargs=-1)
-def remove(names):
+@click.argument('short_names', nargs=-1)
+def remove(short_names):
     """Delete a dataset."""
     datasetscontext = partial(
         progressbar,
@@ -488,7 +546,7 @@ def remove(names):
         item_show_func=lambda item: item.name if item else '',
     )
     dataset_remove(
-        names,
+        short_names,
         with_output=True,
         datasetscontext=datasetscontext,
         referencescontext=referencescontext
@@ -497,38 +555,38 @@ def remove(names):
 
 
 @dataset.command('tag')
-@click.argument('name')
+@click.argument('short_name')
 @click.argument('tag')
 @click.option(
     '-d', '--description', default='', help='A description for this tag'
 )
 @click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
-def tag(name, tag, description, force):
+def tag(short_name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset_with_client(name, tag, description, force)
+    tag_dataset_with_client(short_name, tag, description, force)
     click.secho('OK', fg='green')
 
 
 @dataset.command('rm-tags')
-@click.argument('name')
+@click.argument('short_name')
 @click.argument('tags', nargs=-1)
-def remove_tags(name, tags):
+def remove_tags(short_name, tags):
     """Remove tags from a dataset."""
-    remove_dataset_tags(name, tags)
+    remove_dataset_tags(short_name, tags)
     click.secho('OK', fg='green')
 
 
 @dataset.command('ls-tags')
-@click.argument('name')
+@click.argument('short_name')
 @click.option(
     '--format',
     type=click.Choice(DATASET_TAGS_FORMATS),
     default='tabular',
     help='Choose an output format.'
 )
-def ls_tags(name, format):
+def ls_tags(short_name, format):
     """List all tags of a dataset."""
-    tags_output = list_tags(name, format)
+    tags_output = list_tags(short_name, format)
     click.echo(tags_output)
 
 
@@ -565,7 +623,7 @@ def export_(id, provider, publish, tag):
 @dataset.command('import')
 @click.argument('uri')
 @click.option(
-    '--short-name', default='', help='A convenient name for dataset.'
+    '--short-name', default=None, help='A convenient name for dataset.'
 )
 @click.option(
     '-x',
@@ -612,7 +670,7 @@ class _DownloadProgressbar(DownloadProgressCallback):
 
 
 @dataset.command('update')
-@click.argument('names', nargs=-1)
+@click.argument('short_names', nargs=-1)
 @click.option(
     '--creators',
     help='Filter files which where authored by specific creators. '
@@ -640,11 +698,11 @@ class _DownloadProgressbar(DownloadProgressCallback):
     is_flag=True,
     help='Delete local files that are deleted from remote.'
 )
-def update(names, creators, include, exclude, ref, delete):
+def update(short_names, creators, include, exclude, ref, delete):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')
     update_datasets(
-        names=names,
+        short_names=short_names,
         creators=creators,
         include=include,
         exclude=exclude,
