@@ -572,7 +572,7 @@ def mock_redis():
     monkeypatch = MonkeyPatch()
 
     with monkeypatch.context() as m:
-        m.setattr(ServiceCache, 'cache', fakeredis.FakeRedis())
+        m.setattr(BaseCache, 'cache', fakeredis.FakeRedis())
         yield
 
     monkeypatch.undo()
@@ -748,3 +748,23 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
     }
 
     yield methods, request.param, svc_client
+
+
+@pytest.fixture
+def service_job(svc_client, mock_redis):
+    """Ensure correct environment during testing of service jobs."""
+    old_environ = dict(os.environ)
+
+    svc_upload_dir = Path('/tmp/renku-svc-upload')
+    shutil.rmtree(str(svc_upload_dir))
+    svc_upload_dir.mkdir()
+
+    os.environ['CACHE_DIR'] = str(svc_upload_dir)
+    os.environ['RENKU_SVC_CLEANUP_TTL_FILES'] = '0'
+    os.environ['RENKU_SVC_CLEANUP_TTL_PROJECTS'] = '0'
+
+    try:
+        yield svc_client, mock_redis
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)

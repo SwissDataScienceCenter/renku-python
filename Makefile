@@ -70,5 +70,15 @@ brew-commit-bottle: *.bottle.json
 brew-release:
 	open "https://github.com/SwissDataScienceCenter/renku-python/releases/new?tag=v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
 
-service-container:
+service-base:
+	docker build -f Dockerfile.base -t renku-base:latest .
+
+service-container: service-base
 	docker build -f Dockerfile.svc -t renku-svc:`git rev-parse --short HEAD` .
+
+service-scheduler: service-base
+	docker build -f Dockerfile.scheduler -t renku-scheduler:`git rev-parse --short HEAD` .
+
+service-worker: service-base
+	docker build -f Dockerfile.worker -t renku-worker:`git rev-parse --short HEAD` .
+

@@ -44,3 +44,9 @@ class ProjectManagementCache(BaseCache):
     def invalidate_project(self, user, project_id):
         """Remove project record from hash set."""
         self.invalidate_key(self.projects_cache_key(user), project_id)
+
+    def all_projects_iter(self):
+        """Iterate over cached projects."""
+        return self.scan_iter(
+            '*_{0}'.format(ProjectManagementCache.PROJECTS_SUFFIX)
+        )
