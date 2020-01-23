@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 #
 # Copyright 2018 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -18,8 +18,7 @@
 
 set -ex
 
-# generate ssh key to use for docker hub login
-openssl aes-256-cbc -K "${encrypted_eaf93de9dad6_key:?}" -iv "${encrypted_eaf93de9dad6_iv:?}" -in deploy_rsa.enc -out deploy_rsa -d
+# get ssh key to use for docker hub login
 chmod 600 deploy_rsa
 eval "$(ssh-agent -s)"
 ssh-add deploy_rsa
@@ -36,7 +35,7 @@ git diff
 chartpress --tag latest --push
 
 # if it's a tag, push the tagged chart
-if [[ -n $TRAVIS_TAG ]]; then
+if [[ -n $TAG ]]; then
     git clean -dff
-    chartpress --tag "$TRAVIS_TAG" --push --publish-chart
+    chartpress --tag "$TAG" --push --publish-chart
 fi

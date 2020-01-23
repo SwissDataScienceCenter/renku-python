@@ -22,12 +22,13 @@ import os
 import uuid
 
 import pytest
+from flaky import flaky
 
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
 
-REMOTE_URL = 'https://dev.renku.ch/gitlab/contact/integration-tests'
+REMOTE_URL = 'https://dev.renku.ch/gitlab/contact/integration-test'
 IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
 
@@ -236,6 +237,7 @@ def test_file_upload_with_users(svc_client):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_clone_projects_no_auth(svc_client):
     """Check error on cloning of remote repository."""
     payload = {
@@ -271,6 +273,7 @@ def test_clone_projects_no_auth(svc_client):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_clone_projects_with_auth(svc_client):
     """Check cloning of remote repository."""
     headers = {
@@ -296,6 +299,7 @@ def test_clone_projects_with_auth(svc_client):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_clone_projects_multiple(svc_client):
     """Check multiple cloning of remote repository."""
     project_ids = []
@@ -359,6 +363,7 @@ def test_clone_projects_multiple(svc_client):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_clone_projects_list_view_errors(svc_client):
     """Check cache state of cloned projects with no headers."""
     headers = {
@@ -404,6 +409,7 @@ def test_clone_projects_list_view_errors(svc_client):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_clone_projects_invalid_headers(svc_client):
     """Check cache state of cloned projects with invalid headers."""
     headers = {

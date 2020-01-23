@@ -44,6 +44,12 @@ def tabulate(collection, headers, datetime_fmt='%Y-%m-%d %H:%M:%S', **kwargs):
         attrs = names = headers
     table = [(
         format_cell(cell, datetime_fmt=datetime_fmt)
-        for cell in attrgetter(*attrs)(c)
+        for cell in _to_list(attrgetter(*attrs)(c))
     ) for c in collection]
     return tblte(table, headers=[h.upper() for h in names], **kwargs)
+
+
+def _to_list(value):
+    if isinstance(value, (list, tuple)):
+        return value
+    return [value]
