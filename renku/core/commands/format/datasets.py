@@ -18,32 +18,24 @@
 """Serializers for datasets."""
 
 import os
-from collections import OrderedDict
 
 from renku.core.models.json import dumps
 from renku.core.models.jsonld import asjsonld
-from renku.core.models.tabulate import tabulate
+
+from .tabulate import tabulate
 
 
-def tabular(client, datasets):
+def tabular(client, datasets, *, columns=None):
     """Format datasets with a tabular output."""
+    if not columns:
+        columns = 'id,created,short_name,creators,tags,version'
+
     return tabulate(
-        datasets,
-        headers=OrderedDict((
-            ('uid', 'id'),
-            ('created', None),
-            ('short_name', None),
-            ('creators_csv', 'creators'),
-            ('tags_csv', 'tags'),
-            ('version', None),
-        )),
-        # workaround for tabulate issue 181
-        # https://bitbucket.org/astanin/python-tabulate/issues/181/disable_numparse-fails-on-empty-input
-        disable_numparse=[0, 2] if any(datasets) else False
+        collection=datasets, columns=columns, columns_mapping=DATASETS_COLUMNS
     )
 
 
-def jsonld(client, datasets):
+def jsonld(client, datasets, **kwargs):
     """Format datasets as JSON-LD."""
     data = [
         asjsonld(
@@ -61,3 +53,13 @@ DATASETS_FORMATS = {
     'json-ld': jsonld,
 }
 """Valid formatting options."""
+
+DATASETS_COLUMNS = {
+    'id': ('uid', 'id'),
+    'created': ('created', None),
+    'short_name': ('short_name', None),
+    'creators': ('creators_csv', 'creators'),
+    'tags': ('tags_csv', 'tags'),
+    'version': ('version', None),
+    'title': ('name', 'title'),
+}
