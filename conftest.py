@@ -580,7 +580,7 @@ def svc_client(mock_redis):
 @pytest.fixture(scope='function')
 def svc_client_with_repo(svc_client, mock_redis):
     """Renku service remote repository."""
-    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-tests'
+    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
     headers = {
         'Content-Type': 'application/json',
         'Renku-User-Id': 'b4b4de0eda0f471ab82702bd5c367fa7',

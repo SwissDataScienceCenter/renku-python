@@ -35,15 +35,17 @@ from renku.core.utils.contexts import chdir
     'doi', [{
         'doi': '10.5281/zenodo.2658634',
         'input': 'y',
-        'file': 'pyndl_naive_discriminat_v064',
-        'creator': 'K.Sering,M.Weitz,D.Künstle,L.Schneider',
+        'short_name': 'pyndl_naive_discriminat_v064',
+        'creator':
+            'Konstantin Sering, Marc Weitz, David-Elias Künstle, '
+            'Lennart Schneider',
         'version': 'v0.6.4'
     }, {
-        'doi': '10.7910/DVN/E2AQGU',
+        'doi': '10.7910/DVN/F4NUMR',
         'input': 'y',
-        'file': 'stroke_2_betweenarms_da_1',
-        'creator': 'G.Netta',
-        'version': '1'
+        'short_name': 'replication_data_for_ca_2',
+        'creator': 'James Druckman, Martin Kifer, Michael Parkin',
+        'version': '2'
     }]
 )
 @pytest.mark.integration
@@ -56,13 +58,13 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    result = runner.invoke(cli, ['dataset'])
+    result = runner.invoke(cli, ['dataset', '-c', 'short_name,creators'])
 
     assert 0 == result.exit_code
-    assert doi['file'] in result.output
+    assert doi['short_name'] in result.output
     assert doi['creator'] in result.output
 
-    result = runner.invoke(cli, ['dataset', 'ls-tags', doi['file']])
+    result = runner.invoke(cli, ['dataset', 'ls-tags', doi['short_name']])
     assert 0 == result.exit_code
     assert doi['version'] in result.output
 
@@ -72,7 +74,7 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
         ('10.5281/zenodo.3239980', 'n'),
         ('10.5281/zenodo.3188334', 'y'),
         ('10.7910/DVN/TJCLKP', 'n'),
-        ('10.7910/DVN/E2AQGU', 'y'),
+        ('10.7910/DVN/F4NUMR', 'y'),
         ('10.5281/zenodo.597964', 'y'),
         ('10.5281/zenodo.3236928', 'n'),
         ('10.5281/zenodo.2671633', 'n'),
@@ -156,10 +158,8 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     assert 'OK' in result.output
 
     result = runner.invoke(cli, ['dataset'])
-
     assert 0 == result.exit_code
     assert 'pyndl_naive_discriminat' in result.output
-    assert 'K.Sering,M.Weitz,D.Künstle,L.Schneider' in result.output
 
 
 @pytest.mark.parametrize(
@@ -182,7 +182,7 @@ def test_dataset_import_fake_doi(runner, project, doi):
         'https://zenodo.org/record/2621208',
         (
             'https://dataverse.harvard.edu/dataset.xhtml'
-            '?persistentId=doi:10.7910/DVN/E2AQGU'
+            '?persistentId=doi:10.7910/DVN/F4NUMR'
         )
     ]
 )
@@ -200,7 +200,7 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
     'url', [
         'https://zenodo.org/record/2621201248',
         'https://dataverse.harvard.edu/dataset.xhtml' +
-        '?persistentId=doi:10.7910/DVN/E2AQGUXXXX'
+        '?persistentId=doi:10.7910/DVN/F4NUMRXXXX'
     ]
 )
 @pytest.mark.integration
