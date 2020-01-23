@@ -16,30 +16,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
-
-from collections import OrderedDict
-
-from renku.core.models.tabulate import tabulate
+from .tabulate import tabulate
 
 
-def tabular(client, records):
+def tabular(client, records, *, columns=None):
     """Format dataset files with a tabular output.
 
     :param client: LocalClient instance.
     :param records: Filtered collection.
+    :param columns: List of columns to display
     """
+    if not columns:
+        columns = 'added,creators,dataset,full_path'
+
     return tabulate(
-        records,
-        headers=OrderedDict((
-            ('added', None),
-            ('creators_csv', 'creators'),
-            ('dataset', None),
-            ('full_path', 'path'),
-        )),
+        collection=records,
+        columns=columns,
+        columns_mapping=DATASET_FILES_COLUMNS
     )
 
 
-def jsonld(client, records):
+def jsonld(client, records, **kwargs):
     """Format dataset files as JSON-LD.
 
     :param client: LocalClient instance.
@@ -57,3 +54,12 @@ DATASET_FILES_FORMATS = {
     'json-ld': jsonld,
 }
 """Valid formatting options."""
+
+DATASET_FILES_COLUMNS = {
+    'added': ('added', None),
+    'creators': ('creators_csv', 'creators'),
+    'dataset': ('title', 'dataset'),
+    'full_path': ('full_path', None),
+    'path': ('path', None),
+    'short_name': ('short_name', 'dataset short_name'),
+}

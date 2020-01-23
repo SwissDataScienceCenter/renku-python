@@ -28,7 +28,7 @@ from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
 
-REMOTE_URL = 'https://dev.renku.ch/gitlab/contact/integration-tests'
+REMOTE_URL = 'https://dev.renku.ch/gitlab/contact/integration-test'
 IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
 

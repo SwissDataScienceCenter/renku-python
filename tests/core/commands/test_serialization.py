@@ -18,13 +18,13 @@
 """Serialization tests for renku models."""
 
 import datetime
-from urllib.parse import quote, urljoin
+from urllib.parse import urljoin
 
 import yaml
 
 from renku.core.management.client import LocalClient
 from renku.core.models.datasets import Dataset
-from renku.core.utils.doi import is_doi
+from renku.core.utils.uuid import is_uuid
 
 
 def test_dataset_serialization(client, dataset, data_file):
@@ -78,24 +78,6 @@ def test_dataset_deserialization(client, dataset):
         assert type(creator.get(attribute)) is type_
 
 
-def test_dataset_doi_metadata(dataset_metadata):
-    """Check dataset metadata for correct DOI."""
-    from renku.core.utils.doi import is_doi
-    dataset = Dataset.from_jsonld(
-        dataset_metadata,
-        client=LocalClient('.'),
-    )
-
-    if is_doi(dataset.identifier):
-        assert urljoin(
-            'https://doi.org', dataset.identifier
-        ) == dataset.same_as
-
-    assert dataset._id.endswith(
-        'datasets/{}'.format(quote(dataset.identifier, safe=''))
-    )
-
-
 def test_dataset_files_empty_metadata(dataset_metadata):
     """Check parsing metadata of dataset files with empty filename."""
     dataset = Dataset.from_jsonld(
@@ -108,17 +90,15 @@ def test_dataset_files_empty_metadata(dataset_metadata):
         assert None in files
 
 
-def test_doi_migration(dataset_metadata):
-    """Test migration of id with doi."""
-    dataset = Dataset.from_jsonld(
-        dataset_metadata,
-        client=LocalClient('.'),
-    )
-    assert is_doi(dataset.identifier)
+def test_uuid_migration(dataset_metadata, client):
+    """Test migration of id with UUID."""
+    dataset = Dataset.from_jsonld(dataset_metadata, client=client)
+
+    assert is_uuid(dataset.identifier)
     assert urljoin(
-        'https://localhost', 'datasets/' + quote(dataset.identifier, safe='')
+        'https://localhost/datasets/', dataset.identifier
     ) == dataset._id
-    assert dataset.same_as == urljoin('https://doi.org', dataset.identifier)
+    assert dataset.same_as.startswith('https://doi.org')
 
 
 def test_dataset_creator_email(dataset_metadata):

@@ -28,8 +28,10 @@ import requests
 import yaml
 
 from renku.cli import cli
-from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
-from renku.core.commands.format.datasets import DATASETS_FORMATS
+from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
+    DATASET_FILES_FORMATS
+from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
+    DATASETS_FORMATS
 from renku.core.commands.providers import DataverseProvider, ProviderFactory, \
     ZenodoProvider
 from renku.core.management.config import RENKU_HOME
@@ -45,7 +47,7 @@ def test_datasets_create_clean(runner, project, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
     assert dataset
 
     staged = client.repo.index.diff('HEAD')
@@ -61,7 +63,7 @@ def test_datasets_create_with_metadata(runner, client):
     """Test creating a dataset with metadata."""
     result = runner.invoke(
         cli, [
-            'dataset', 'create', 'my-dataset', '--short-name', 'short-name',
+            'dataset', 'create', 'my-dataset', '--title', 'Long Title',
             '--description', 'some description here', '-c',
             'John Doe <john.doe@mail.ch>', '-c',
             'John Smiths<john.smiths@mail.ch>'
@@ -70,9 +72,9 @@ def test_datasets_create_with_metadata(runner, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='short-name')
-    assert dataset.name == 'my-dataset'
-    assert dataset.short_name == 'short-name'
+    dataset = client.load_dataset('my-dataset')
+    assert dataset.name == 'Long Title'
+    assert dataset.short_name == 'my-dataset'
     assert dataset.description == 'some description here'
     assert 'John Doe' in [c.name for c in dataset.creator]
     assert 'john.doe@mail.ch' in [c.email for c in dataset.creator]
@@ -80,16 +82,16 @@ def test_datasets_create_with_metadata(runner, client):
     assert 'john.smiths@mail.ch' in [c.email for c in dataset.creator]
 
 
-def test_datasets_create_different_short_names(runner, client):
-    """Test creating datasets with same name but different short_name."""
+def test_datasets_create_different_names(runner, client):
+    """Test creating datasets with same title but different short_name."""
     result = runner.invoke(
-        cli, ['dataset', 'create', 'dataset', '--short-name', 'dataset-1']
+        cli, ['dataset', 'create', 'dataset-1', '--title', 'title']
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(
-        cli, ['dataset', 'create', 'dataset', '--short-name', 'dataset-2']
+        cli, ['dataset', 'create', 'dataset-2', '--title', 'title']
     )
     assert 0 == result.exit_code
     assert 'OK' in result.output
@@ -107,23 +109,16 @@ def test_datasets_create_with_same_name(runner, client):
 
 
 @pytest.mark.parametrize(
-    'name,short_name',
-    [('v.a.l.i.d_internal-name', 'v.a.l.i.d_internal-name'),
-     ('any name /@#$!', 'any_name'),
-     ('name longer than 24 characters', 'name_longer_than_24_char'),
-     ('semi valid-name', 'semi_validname'), ('dataset/new', 'datasetnew'),
-     ('/dataset', 'dataset'), ('dataset/', 'dataset')]
+    'name', [
+        'any name /@#$!', 'name longer than 24 characters', 'semi valid-name',
+        'dataset/new', '/dataset', 'dataset/'
+    ]
 )
-def test_datasets_valid_name(runner, client, name, short_name):
-    """Test creating datasets with valid name."""
+def test_datasets_invalid_name(runner, client, name):
+    """Test creating datasets with invalid name."""
     result = runner.invoke(cli, ['dataset', 'create', name])
-    assert 0 == result.exit_code
-    assert 'Use the name "{}"'.format(short_name) in result.output
-    assert 'OK' in result.output
-
-    dataset = client.load_dataset(name=short_name)
-    assert dataset.name == name
-    assert dataset.short_name == short_name
+    assert 2 == result.exit_code
+    assert 'short_name "{}" is not valid.'.format(name) in result.output
 
 
 def test_datasets_create_dirty(runner, project, client):
@@ -136,7 +131,7 @@ def test_datasets_create_dirty(runner, project, client):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
     assert dataset
 
     staged = client.repo.index.diff('HEAD')
@@ -275,19 +270,61 @@ def test_datasets_list_empty(output_format, runner, project):
 def test_datasets_list_non_empty(output_format, runner, project):
     """Test listing with datasets."""
     format_option = '--format={0}'.format(output_format)
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(cli, ['dataset', format_option])
     assert 0 == result.exit_code
-    assert 'dataset' in result.output
+    assert 'my-dataset' in result.output
 
     result = runner.invoke(
         cli, ['dataset', '--revision=HEAD~1', format_option]
     )
     assert result.exit_code == 0
-    assert 'dataset' not in result.output
+    assert 'my-dataset' not in result.output
+
+
+@pytest.mark.parametrize(
+    'columns,headers,values', [(
+        'title,short_name', ['TITLE', 'SHORT_NAME'
+                             ], ['my-dataset', 'Long Title']
+    ), ('creators', ['CREATORS'], ['John Doe'])]
+)
+def test_datasets_list_with_columns(runner, project, columns, headers, values):
+    """Test listing datasets with custom column name."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'create', 'my-dataset', '--title', 'Long Title', '-c',
+            'John Doe <john.doe@mail.ch>'
+        ]
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', '--columns', columns])
+    assert 0 == result.exit_code
+    assert headers == result.output.split('\n').pop(0).split()
+    for value in values:
+        assert value in result.output
+
+
+@pytest.mark.parametrize('column', DATASETS_COLUMNS.keys())
+def test_datasets_list_columns_correctly(runner, project, column):
+    """Test dataset listing only shows requested columns."""
+    result = runner.invoke(cli, ['dataset', '--columns', column])
+    assert 0 == result.exit_code
+    header = result.output.split('\n').pop(0)
+    name, display_name = DATASETS_COLUMNS[column]
+    display_name = display_name or name
+    assert display_name.upper() == header
+
+
+@pytest.mark.parametrize('columns', ['invalid', 'id,invalid'])
+def test_datasets_list_invalid_column(runner, project, columns):
+    """Test dataset listing invalid column name."""
+    result = runner.invoke(cli, ['dataset', '--columns', columns])
+    assert 2 == result.exit_code
+    assert 'Invlid column name: "invalid".' in result.output
 
 
 def test_add_and_create_dataset(directory_tree, runner, project, client):
@@ -557,7 +594,12 @@ def test_datasets_ls_files_tabular_empty(runner, project):
     assert 'OK' in result.output
 
     # list all files in dataset
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    result = runner.invoke(
+        cli, [
+            'dataset', 'ls-files', '--columns', 'added,creators,dataset,path',
+            'my-dataset'
+        ]
+    )
     assert 0 == result.exit_code
 
     # check output
@@ -574,6 +616,25 @@ def test_datasets_ls_files_check_exit_code(output_format, runner, project):
     format_option = '--format={0}'.format(output_format)
     result = runner.invoke(cli, ['dataset', 'ls-files', format_option])
     assert 0 == result.exit_code
+
+
+@pytest.mark.parametrize('column', DATASET_FILES_COLUMNS.keys())
+def test_datasets_ls_files_columns_correctly(runner, project, column):
+    """Test file listing only shows requested columns."""
+    result = runner.invoke(cli, ['dataset', 'ls-files', '--columns', column])
+    assert 0 == result.exit_code
+    header = result.output.split('\n').pop(0)
+    name, display_name = DATASET_FILES_COLUMNS[column]
+    display_name = display_name or name
+    assert display_name.upper() == header
+
+
+@pytest.mark.parametrize('columns', ['invalid', 'path,invalid'])
+def test_datasets_ls_files_invalid_column(runner, project, columns):
+    """Test file listing with invalid column name."""
+    result = runner.invoke(cli, ['dataset', 'ls-files', '--columns', columns])
+    assert 2 == result.exit_code
+    assert 'Invlid column name: "invalid".' in result.output
 
 
 def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
@@ -601,12 +662,14 @@ def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
     assert 0 == result.exit_code
 
     # list all files in non empty dataset
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    result = runner.invoke(
+        cli, ['dataset', 'ls-files', '--columns', 'added,path', 'my-dataset']
+    )
     assert 0 == result.exit_code
 
     # check output from ls-files command
     output = result.output.split('\n')
-    assert output.pop(0).split() == ['ADDED', 'CREATORS', 'DATASET', 'PATH']
+    assert output.pop(0).split() == ['ADDED', 'PATH']
     assert set(output.pop(0)) == {' ', '-'}
 
     # check listing
@@ -739,29 +802,24 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, project):
         assert Path(record['path']).exists()
 
 
-def test_datasets_ls_files_with_display_name(directory_tree, runner, project):
+def test_datasets_ls_files_with_name(directory_tree, runner, project):
     """Test listing of data within dataset with include/exclude filters."""
     # create a dataset
     result = runner.invoke(
-        cli, ['dataset', 'create', 'my-dataset', '--short-name', 'short-name']
+        cli, ['dataset', 'create', 'my-dataset', '--title', 'Long Title']
     )
     assert 0 == result.exit_code
 
     # add data to dataset
     result = runner.invoke(
         cli,
-        ['dataset', 'add', 'short-name', directory_tree.strpath],
+        ['dataset', 'add', 'my-dataset', directory_tree.strpath],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
-    # list files with dataset name
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
-    assert 0 == result.exit_code
-    assert 'dir2/file2' not in result.output
-
     # list files with short_name
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'short-name'])
+    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'dir2/file2' in result.output
 
@@ -883,7 +941,7 @@ def test_dataset_rm(tmpdir, runner, project, client):
 
     # check output
     assert 'OK' in result.output
-    assert not client.load_dataset(name='my-dataset')
+    assert not client.load_dataset('my-dataset')
 
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -902,7 +960,7 @@ def test_dataset_rm_commit(tmpdir, runner, project, client):
 
     # check output
     assert 'OK' in result.output
-    assert not client.load_dataset(name='my-dataset')
+    assert not client.load_dataset('my-dataset')
 
     # Dirty repository check.
     result = runner.invoke(cli, ['status'])
@@ -926,7 +984,7 @@ def test_dataset_edit(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
 
     result = runner.invoke(
         cli, ['dataset', 'edit', dataset.identifier],
@@ -947,7 +1005,7 @@ def test_dataset_edit_dirty(runner, client, project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    dataset = client.load_dataset(name='dataset')
+    dataset = client.load_dataset('dataset')
 
     result = runner.invoke(
         cli, ['dataset', 'edit', dataset.identifier], input='wq'
