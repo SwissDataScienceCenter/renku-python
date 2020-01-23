@@ -1400,9 +1400,51 @@ def test_add_same_filename_multiple(runner, client, directory_tree):
     result = runner.invoke(
         cli, [
             'dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath,
-            'Dockerfile'
+            'README.md'
         ]
     )
+    assert 0 == result.exit_code
+
+
+def test_add_protected_file(runner, client, tmpdir):
+    """Check adding same filename multiple times."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', '.renku']
+    )
+
+    assert 1 == result.exit_code
+    assert 'Error: The following paths are protected' in result.output
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', '.renku/']
+    )
+
+    assert 1 == result.exit_code
+    assert 'Error: The following paths are protected' in result.output
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', 'Dockerfile']
+    )
+
+    assert 1 == result.exit_code
+    assert 'Error: The following paths are protected' in result.output
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', '.git']
+    )
+
+    assert 1 == result.exit_code
+    assert 'Error: The following paths are protected' in result.output
+
+    # create some data
+    new_file = tmpdir.join('.gitnotactuallygit')
+    new_file.write(str('test'))
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1',
+              str(new_file)]
+    )
+
     assert 0 == result.exit_code
 
 

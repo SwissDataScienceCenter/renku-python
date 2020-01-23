@@ -92,6 +92,12 @@ class RepositoryApiMixin(GitCore):
     WORKFLOW = 'workflow'
     """Directory for storing workflow in Renku."""
 
+    RENKU_PROTECTED_PATHS = [
+        '\\.renku/.*', 'Dockerfile', '\\.dockerignore', '\\.gitignore',
+        '\\.gitattributes', '\\.gitlab-ci\\.yml', 'environment\\.yml',
+        'requirements\\.txt', '\\.git/.*'
+    ]
+
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         #: Configure Renku path.
