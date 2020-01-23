@@ -1,11 +1,46 @@
 version: '3'
 
+networks:
+  net:
+
 services:
   redis:
     image: redis:5.0.3-alpine
+    networks:
+      - net
+
+  rq-dashboard:
+    image: eoranged/rq-dashboard:v0.6.1
+    container_name: rq-dashboard
+    environment:
+      RQ_DASHBOARD_REDIS_URL: redis://redis:6379
+    networks:
+      - net
+    ports:
+      - "9181:9181"
 
   renku-svc:
-    image: renku-svc:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.svc
+    networks:
+      - net
     env_file: .env
     ports:
       - "8080:8080"
+
+  renku-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.scheduler
+    networks:
+      - net
+    env_file: .env
+
+  renku-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    networks:
+      - net
+    env_file: .env

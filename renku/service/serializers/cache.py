@@ -110,6 +110,10 @@ class ProjectCloneContext(ProjectCloneRequest):
     """Context schema for project clone."""
 
     project_id = fields.String(missing=lambda: uuid.uuid4().hex)
+
+    # measured in ms
+    timestamp = fields.Integer(missing=time.time() * 1e+3)
+
     name = fields.String(required=True)
     fullname = fields.String(required=True)
     email = fields.String(required=True)

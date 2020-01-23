@@ -1,0 +1,3 @@
+FROM renku-base
+
+ENTRYPOINT ["python", "renku/service/scheduler.py"]
