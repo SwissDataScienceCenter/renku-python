@@ -119,6 +119,8 @@ class ZenodoMetadataSerializer:
 
     doi = attr.ib(default=None, kw_only=True)
 
+    embargo_date = attr.ib(default=None, kw_only=True)
+
     grants = attr.ib(default=None, kw_only=True)
 
     image_type = attr.ib(default=None, kw_only=True)

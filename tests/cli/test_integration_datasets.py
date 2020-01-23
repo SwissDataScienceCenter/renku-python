@@ -93,6 +93,7 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
         ('10.5281/zenodo.3239256', 'n'),
         ('10.5281/zenodo.3237813', 'n'),
         ('10.5281/zenodo.3239988', 'y'),
+        ('10.5281/zenodo.1175627', 'y'),
     ]
 )
 @pytest.mark.integration
@@ -658,20 +659,20 @@ def test_add_from_git_copies_metadata(runner, client):
 @flaky(max_runs=10, min_passes=1)
 def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
     """Test user's errors when adding to a dataset from a git repository."""
-    REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
+    remote = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
 
     # create a dataset and add a file to it
     result = runner.invoke(
         cli,
         [
             'dataset', 'add', 'remote', '--create', '--ref', '0.3.0', '-s',
-            'LICENSE', REMOTE
+            'LICENSE', remote
         ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
-    urls = n_urls * [REMOTE]
+    urls = n_urls * [remote]
 
     result = runner.invoke(
         cli,
@@ -860,11 +861,11 @@ def test_import_from_renku_project(tmpdir, client, runner):
     """Test an imported dataset from other renku repos will have metadata."""
     from renku.core.management import LocalClient
 
-    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     path = tmpdir.strpath
     os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
-    git.Repo.clone_from(REMOTE, path, recursive=True)
+    git.Repo.clone_from(remote, path, recursive=True)
 
     remote_client = LocalClient(path)
     remote = read_dataset_file_metadata(
@@ -877,7 +878,7 @@ def test_import_from_renku_project(tmpdir, client, runner):
         [
             'dataset', 'add', '--create', 'remote-dataset', '-s',
             'data/zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv',
-            '-d', 'file', '--ref', 'b973db5', REMOTE
+            '-d', 'file', '--ref', 'b973db5', remote
         ],
         catch_exceptions=False,
     )
@@ -889,7 +890,7 @@ def test_import_from_renku_project(tmpdir, client, runner):
     assert metadata.based_on._label == remote._label
     assert metadata.based_on.path == remote.path
     assert metadata.based_on.based_on is None
-    assert metadata.based_on.url == REMOTE
+    assert metadata.based_on.url == remote
 
 
 @pytest.mark.integration
@@ -924,7 +925,7 @@ def test_add_specific_refs(ref, runner, client):
 @flaky(max_runs=10, min_passes=1)
 def test_update_specific_refs(ref, runner, client):
     """Test updating to a specific version of files."""
-    FILENAME = 'CHANGES.rst'
+    filename = 'CHANGES.rst'
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
     assert 0 == result.exit_code
@@ -932,18 +933,18 @@ def test_update_specific_refs(ref, runner, client):
     # add data from a git repo
     result = runner.invoke(
         cli, [
-            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', 'v0.3.0',
+            'dataset', 'add', 'dataset', '-s', filename, '--ref', 'v0.3.0',
             'https://github.com/SwissDataScienceCenter/renku-python.git'
         ]
     )
     assert 0 == result.exit_code
-    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    content = (client.path / 'data' / 'dataset' / filename).read_text()
     assert 'v0.3.1' not in content
 
     # update data to a later version
     result = runner.invoke(cli, ['dataset', 'update', '--ref', ref])
     assert 0 == result.exit_code
-    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    content = (client.path / 'data' / 'dataset' / filename).read_text()
     assert 'v0.3.1' in content
     assert 'v0.3.2' not in content
 
@@ -1007,10 +1008,10 @@ def test_renku_clone(runner, monkeypatch):
     """Test cloning of a Renku repo and existence of required settings."""
     from renku.core.management.storage import StorageApiMixin
 
-    REMOTE = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ['clone', REMOTE, project_path])
+        result = runner.invoke(cli, ['clone', remote, project_path])
         assert 0 == result.exit_code
         assert (Path(project_path) / 'Dockerfile').exists()
 
