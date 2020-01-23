@@ -69,7 +69,7 @@ class CreatorMixin:
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ','.join(creator.name for creator in self.creator)
+        return ', '.join(creator.name for creator in self.creator)
 
 
 def _extract_doi(value):
@@ -386,7 +386,7 @@ class Dataset(Entity, CreatorMixin):
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ','.join(creator.short_name for creator in self.creator)
+        return ', '.join(creator.name for creator in self.creator)
 
     @property
     def tags_csv(self):
