@@ -23,7 +23,7 @@ import sys
 
 import click
 
-from renku.core.errors import WorkflowRunError
+from renku.core.errors import WorkflowRerunError
 
 from .echo import progressbar
 
@@ -73,7 +73,7 @@ def execute(client, output_file, output_paths=None):
     try:
         outputs = process()
     except cwltool.factory.WorkflowStatus:
-        raise WorkflowRunError()
+        raise WorkflowRerunError(output_file)
 
     sys.argv = argv
 

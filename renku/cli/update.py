@@ -126,7 +126,6 @@ from renku.core.commands.client import pass_local_client
 from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph, _safe_path
 from renku.core.commands.options import option_siblings
-from renku.core.errors import WorkflowRunError
 from renku.core.models.cwl.ascwl import ascwl
 
 
@@ -194,12 +193,4 @@ def update(client, revision, no_output, siblings, paths):
             )
         )
 
-    try:
-        execute(client, output_file, output_paths=output_paths)
-    except WorkflowRunError:
-        raise click.ClickException(
-            'Unable to finish re-executing workflow; check the workflow'
-            ' execution outline above and the generated {0} file for'
-            ' potential issues, then remove the {0} file and try again'.
-            format(output_file)
-        )
+    execute(client, output_file, output_paths=output_paths)
