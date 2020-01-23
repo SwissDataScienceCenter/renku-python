@@ -868,7 +868,7 @@ def test_import_from_renku_project(tmpdir, client, runner):
     git.Repo.clone_from(remote, path, recursive=True)
 
     remote_client = LocalClient(path)
-    remote = read_dataset_file_metadata(
+    file_ = read_dataset_file_metadata(
         remote_client, 'zhbikes',
         '2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
     )
@@ -885,10 +885,10 @@ def test_import_from_renku_project(tmpdir, client, runner):
     assert 0 == result.exit_code
 
     metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
-    assert metadata.creator[0].name == remote.creator[0].name
-    assert metadata.based_on._id == remote._id
-    assert metadata.based_on._label == remote._label
-    assert metadata.based_on.path == remote.path
+    assert metadata.creator[0].name == file_.creator[0].name
+    assert metadata.based_on._id == file_._id
+    assert metadata.based_on._label == file_._label
+    assert metadata.based_on.path == file_.path
     assert metadata.based_on.based_on is None
     assert metadata.based_on.url == remote
 
