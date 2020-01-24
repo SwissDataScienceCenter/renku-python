@@ -288,7 +288,7 @@ class Dataset(Entity, CreatorMixin):
     )
 
     description = jsonld.ib(
-        default='', context='schema:description', kw_only=True
+        default=None, context='schema:description', kw_only=True
     )
 
     identifier = jsonld.ib(
