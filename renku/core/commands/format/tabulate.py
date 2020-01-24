@@ -44,7 +44,7 @@ def _make_headers(columns, columns_mapping):
     for column in columns:
         if column not in columns_mapping:
             raise errors.ParameterError(
-                'Invlid column name: "{}".\nPossible values: {}'.format(
+                'Invalid column name: "{}".\nPossible values: {}'.format(
                     column, ', '.join(columns_mapping)
                 )
             )
