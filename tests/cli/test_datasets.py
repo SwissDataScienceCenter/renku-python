@@ -1406,43 +1406,28 @@ def test_add_same_filename_multiple(runner, client, directory_tree):
     assert 0 == result.exit_code
 
 
-def test_add_protected_file(runner, client, tmpdir):
-    """Check adding same filename multiple times."""
+@pytest.mark.parametrize('filename', ['.renku', '.renku/', 'Dockerfile'])
+def test_add_protected_file(runner, client, filename):
+    """Check adding a protected file."""
     result = runner.invoke(
-        cli, ['dataset', 'add', '-c', 'my-dataset1', '.renku']
+        cli, ['dataset', 'add', '-c', 'my-dataset1', filename]
     )
 
     assert 1 == result.exit_code
     assert 'Error: The following paths are protected' in result.output
 
-    result = runner.invoke(
-        cli, ['dataset', 'add', '-c', 'my-dataset1', '.renku/']
-    )
 
-    assert 1 == result.exit_code
-    assert 'Error: The following paths are protected' in result.output
+@pytest.mark.parametrize(
+    'filename', ['.renkunotactuallyrenku', 'thisisnot.renku']
+)
+def test_add_nonprotected_file(runner, client, tmpdir, filename):
+    """Check adding an 'almost' protected file."""
 
-    result = runner.invoke(
-        cli, ['dataset', 'add', '-c', 'my-dataset1', 'Dockerfile']
-    )
-
-    assert 1 == result.exit_code
-    assert 'Error: The following paths are protected' in result.output
-
-    new_file = tmpdir.join('.renkunotactuallyrenku')
+    new_file = tmpdir.join('filename')
     new_file.write(str('test'))
 
     result = runner.invoke(
         cli, ['dataset', 'add', '-c', 'my-dataset1',
-              str(new_file)]
-    )
-
-    assert 0 == result.exit_code
-    new_file = tmpdir.join('thisisnot.renku')
-    new_file.write(str('test'))
-
-    result = runner.invoke(
-        cli, ['dataset', 'add', '-c', 'my-dataset2',
               str(new_file)]
     )
 
