@@ -88,7 +88,7 @@ class ParameterError(RenkuException):
                 param_hint, message
             )
         else:
-            message = 'Invalid parameter value: {}'.format(message)
+            message = 'Invalid parameter value - {}'.format(message)
 
         super().__init__(message)
 

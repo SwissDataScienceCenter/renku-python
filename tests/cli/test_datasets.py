@@ -324,7 +324,7 @@ def test_datasets_list_invalid_column(runner, project, columns):
     """Test dataset listing invalid column name."""
     result = runner.invoke(cli, ['dataset', '--columns', columns])
     assert 2 == result.exit_code
-    assert 'Invlid column name: "invalid".' in result.output
+    assert 'Invalid column name: "invalid".' in result.output
 
 
 def test_add_and_create_dataset(directory_tree, runner, project, client):
@@ -346,7 +346,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
     )
     assert result.exit_code == 0
 
-    # Further add with --create fails
+    # Further, add with --create fails
     result = runner.invoke(
         cli,
         ['dataset', 'add', '--create', 'new-dataset',
@@ -634,7 +634,7 @@ def test_datasets_ls_files_invalid_column(runner, project, columns):
     """Test file listing with invalid column name."""
     result = runner.invoke(cli, ['dataset', 'ls-files', '--columns', columns])
     assert 2 == result.exit_code
-    assert 'Invlid column name: "invalid".' in result.output
+    assert 'Invalid column name: "invalid".' in result.output
 
 
 def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
