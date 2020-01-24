@@ -154,7 +154,7 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, short_name=None, title=None, description='', creators=None
+        self, short_name=None, title=None, description=None, creators=None
     ):
         """Create a dataset."""
         if not short_name:
