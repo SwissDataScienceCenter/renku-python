@@ -28,8 +28,10 @@ import requests
 import yaml
 
 from renku.cli import cli
-from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
-from renku.core.commands.format.datasets import DATASETS_FORMATS
+from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
+    DATASET_FILES_FORMATS
+from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
+    DATASETS_FORMATS
 from renku.core.commands.providers import DataverseProvider, ProviderFactory, \
     ZenodoProvider
 from renku.core.management.config import RENKU_HOME
@@ -268,19 +270,61 @@ def test_datasets_list_empty(output_format, runner, project):
 def test_datasets_list_non_empty(output_format, runner, project):
     """Test listing with datasets."""
     format_option = '--format={0}'.format(output_format)
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
     result = runner.invoke(cli, ['dataset', format_option])
     assert 0 == result.exit_code
-    assert 'dataset' in result.output
+    assert 'my-dataset' in result.output
 
     result = runner.invoke(
         cli, ['dataset', '--revision=HEAD~1', format_option]
     )
     assert result.exit_code == 0
-    assert 'dataset' not in result.output
+    assert 'my-dataset' not in result.output
+
+
+@pytest.mark.parametrize(
+    'columns,headers,values', [(
+        'title,short_name', ['TITLE', 'SHORT_NAME'
+                             ], ['my-dataset', 'Long Title']
+    ), ('creators', ['CREATORS'], ['John Doe'])]
+)
+def test_datasets_list_with_columns(runner, project, columns, headers, values):
+    """Test listing datasets with custom column name."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'create', 'my-dataset', '--title', 'Long Title', '-c',
+            'John Doe <john.doe@mail.ch>'
+        ]
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', '--columns', columns])
+    assert 0 == result.exit_code
+    assert headers == result.output.split('\n').pop(0).split()
+    for value in values:
+        assert value in result.output
+
+
+@pytest.mark.parametrize('column', DATASETS_COLUMNS.keys())
+def test_datasets_list_columns_correctly(runner, project, column):
+    """Test dataset listing only shows requested columns."""
+    result = runner.invoke(cli, ['dataset', '--columns', column])
+    assert 0 == result.exit_code
+    header = result.output.split('\n').pop(0)
+    name, display_name = DATASETS_COLUMNS[column]
+    display_name = display_name or name
+    assert display_name.upper() == header
+
+
+@pytest.mark.parametrize('columns', ['invalid', 'id,invalid'])
+def test_datasets_list_invalid_column(runner, project, columns):
+    """Test dataset listing invalid column name."""
+    result = runner.invoke(cli, ['dataset', '--columns', columns])
+    assert 2 == result.exit_code
+    assert 'Invalid column name: "invalid".' in result.output
 
 
 def test_add_and_create_dataset(directory_tree, runner, project, client):
@@ -302,7 +346,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
     )
     assert result.exit_code == 0
 
-    # Further add with --create fails
+    # Further, add with --create fails
     result = runner.invoke(
         cli,
         ['dataset', 'add', '--create', 'new-dataset',
@@ -550,7 +594,12 @@ def test_datasets_ls_files_tabular_empty(runner, project):
     assert 'OK' in result.output
 
     # list all files in dataset
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    result = runner.invoke(
+        cli, [
+            'dataset', 'ls-files', '--columns', 'added,creators,dataset,path',
+            'my-dataset'
+        ]
+    )
     assert 0 == result.exit_code
 
     # check output
@@ -567,6 +616,25 @@ def test_datasets_ls_files_check_exit_code(output_format, runner, project):
     format_option = '--format={0}'.format(output_format)
     result = runner.invoke(cli, ['dataset', 'ls-files', format_option])
     assert 0 == result.exit_code
+
+
+@pytest.mark.parametrize('column', DATASET_FILES_COLUMNS.keys())
+def test_datasets_ls_files_columns_correctly(runner, project, column):
+    """Test file listing only shows requested columns."""
+    result = runner.invoke(cli, ['dataset', 'ls-files', '--columns', column])
+    assert 0 == result.exit_code
+    header = result.output.split('\n').pop(0)
+    name, display_name = DATASET_FILES_COLUMNS[column]
+    display_name = display_name or name
+    assert display_name.upper() == header
+
+
+@pytest.mark.parametrize('columns', ['invalid', 'path,invalid'])
+def test_datasets_ls_files_invalid_column(runner, project, columns):
+    """Test file listing with invalid column name."""
+    result = runner.invoke(cli, ['dataset', 'ls-files', '--columns', columns])
+    assert 2 == result.exit_code
+    assert 'Invalid column name: "invalid".' in result.output
 
 
 def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
@@ -594,12 +662,14 @@ def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
     assert 0 == result.exit_code
 
     # list all files in non empty dataset
-    result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
+    result = runner.invoke(
+        cli, ['dataset', 'ls-files', '--columns', 'added,path', 'my-dataset']
+    )
     assert 0 == result.exit_code
 
     # check output from ls-files command
     output = result.output.split('\n')
-    assert output.pop(0).split() == ['ADDED', 'CREATORS', 'DATASET', 'PATH']
+    assert output.pop(0).split() == ['ADDED', 'PATH']
     assert set(output.pop(0)) == {' ', '-'}
 
     # check listing
