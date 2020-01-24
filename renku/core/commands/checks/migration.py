@@ -223,6 +223,16 @@ def dataset_file_path_migration(client, dataset, file_):
     file_._label = file_.default_label()
 
 
+def fix_broken_dataset_file_project(client):
+    """Ensure project is correctly set on ``DatasetFile``."""
+    for dataset in client.datasets.values():
+        for file_ in dataset.files:
+            if not file_._project or 'NULL/NULL' in file_._project._id:
+                file_._project = client.project
+
+        dataset.to_yaml()
+
+
 def fix_uncommitted_labels(client):
     """Ensure files have correct label instantiation."""
     for dataset in client.datasets.values():
@@ -254,4 +264,5 @@ STRUCTURE_MIGRATIONS = [
     migrate_broken_dataset_paths,
     fix_uncommitted_labels,
     fix_dataset_files_urls,
+    fix_broken_dataset_file_project,
 ]

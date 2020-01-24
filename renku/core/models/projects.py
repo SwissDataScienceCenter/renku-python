@@ -98,7 +98,12 @@ class Project(object):
                 # this assumes the project is being newly created
                 self.creator = Person.from_git(self.client.repo)
 
-        self._id = self.project_id
+        try:
+            self._id = self.project_id
+        except ValueError:
+            """Fallback to old behaviour."""
+            if not self._id and self.client and self.client.project:
+                self._id = self.client.project._id
 
     @property
     def project_id(self):
@@ -110,7 +115,11 @@ class Project(object):
         # If RENKU_DOMAIN is set, it overrides the host from remote.
         # Default is localhost.
         host = 'localhost'
-        owner = self.creator.email.split('@')[0] if self.creator else 'NULL'
+
+        if not self.creator:
+            raise ValueError('Project Creator not set')
+
+        owner = self.creator.email.split('@')[0]
         name = self.name
 
         if self.client:
@@ -121,6 +130,9 @@ class Project(object):
         host = os.environ.get('RENKU_DOMAIN') or host
         if name:
             name = urllib.parse.quote(name, safe='')
+        else:
+            raise ValueError('Project name not set')
+
         project_url = urllib.parse.urljoin(
             'https://{host}'.format(host=host),
             pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or 'NULL')
