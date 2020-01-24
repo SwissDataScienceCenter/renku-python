@@ -86,7 +86,7 @@ class CWLClass(ReferenceMixin, metaclass=CWLType):
 
                 metadata = a.metadata['cwl_metadata']
 
-                k = (metadata.get('property'), metadata.get('reverse'))
+                k = (metadata.get('property'), metadata.get('reverse', False))
 
                 if k not in metadata_keys:
                     continue

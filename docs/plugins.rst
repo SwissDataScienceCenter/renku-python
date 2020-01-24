@@ -34,7 +34,7 @@ Plugins can be created as python packages that contain the respective entrypoint
     )
 
 
-where `myproject.pluginmodule` points to a renku `hookimpl` e.g.:
+where `myproject.pluginmodule` points to a Renku `hookimpl` e.g.:
 
 .. code-block:: python
 
