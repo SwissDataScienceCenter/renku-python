@@ -36,7 +36,8 @@ from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     MigrationRequired, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
-from renku.core.models.datasets import Dataset, generate_default_short_name
+from renku.core.models.datasets import Dataset, Url, \
+    generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
@@ -210,8 +211,9 @@ def add_to_dataset(
                 with_metadata.files = dataset.files
 
                 if is_doi(with_metadata.identifier):
-                    dataset.same_as = urllib.parse.urljoin(
-                        'https://doi.org', with_metadata.identifier
+                    dataset.same_as = Url(
+                        url=urllib.parse.
+                        urljoin('https://doi.org', with_metadata.identifier)
                     )
 
                 dataset.update_metadata(with_metadata)

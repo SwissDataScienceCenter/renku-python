@@ -80,8 +80,18 @@ def migrate_doi_identifier(data):
         if not is_uuid(identifier):
             data['identifier'] = str(uuid.uuid4())
         if is_doi(data.get('_id', '')):
-            data['same_as'] = data['_id']
+            data['same_as'] = {'@type': ['schema:URL'], 'url': data['_id']}
             if data.get('@context'):
-                data['@context'].setdefault('same_as', 'schema:sameAs')
+                data['@context'].setdefault(
+                    'same_as', {
+                        '@id': 'schema:sameAs',
+                        '@type': 'schema:URL',
+                        '@context': {
+                            '@version': '1.1',
+                            'url': 'schema:url',
+                            'schema': 'http://schema.org/'
+                        }
+                    }
+                )
         data['_id'] = data['identifier']
     return data
