@@ -366,7 +366,7 @@ def dataset(ctx, revision, datadir, format, columns):
 @click.argument('short_name')
 @click.option('--title', default='', help='Title of the dataset.')
 @click.option(
-    '-d', '--description', default='', help='Dataset\'s description.'
+    '-d', '--description', default=None, help='Dataset\'s description.'
 )
 @click.option(
     '-c',
