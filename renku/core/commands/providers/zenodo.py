@@ -119,6 +119,8 @@ class ZenodoMetadataSerializer:
 
     doi = attr.ib(default=None, kw_only=True)
 
+    extras = attr.ib(default=None, kw_only=True)
+
     grants = attr.ib(default=None, kw_only=True)
 
     image_type = attr.ib(default=None, kw_only=True)
@@ -158,7 +160,14 @@ class ZenodoMetadataSerializer:
 
 def _metadata_converter(data):
     """Convert dict to ZenodoMetadata instance."""
-    return ZenodoMetadataSerializer(**data)
+    all_keys = set(vars(ZenodoMetadataSerializer()).keys())
+
+    _data = {key: data.get(key) for key in all_keys}
+
+    _data['extras'] = {key: data.get(key) for key in (data.keys()) - all_keys}
+
+    serialized = ZenodoMetadataSerializer(**_data)
+    return serialized
 
 
 @attr.s
