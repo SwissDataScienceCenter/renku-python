@@ -755,11 +755,6 @@ def service_job(svc_client, mock_redis):
     """Ensure correct environment during testing of service jobs."""
     old_environ = dict(os.environ)
 
-    svc_upload_dir = Path('/tmp/renku-svc-upload')
-    shutil.rmtree(str(svc_upload_dir))
-    svc_upload_dir.mkdir()
-
-    os.environ['CACHE_DIR'] = str(svc_upload_dir)
     os.environ['RENKU_SVC_CLEANUP_TTL_FILES'] = '0'
     os.environ['RENKU_SVC_CLEANUP_TTL_PROJECTS'] = '0'
 
