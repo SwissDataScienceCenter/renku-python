@@ -1089,12 +1089,7 @@ def test_add_removes_credentials(runner, client):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    'input,exit_code,added', [('y', 0, True), ('n', 1, False)]
-)
-def test_check_disk_space(
-    runner, client, monkeypatch, input, exit_code, added
-):
+def test_check_disk_space(runner, client, monkeypatch):
     """Check adding to dataset prompts if disk space is not enough."""
     url = 'https://example.com/index.html'
 
@@ -1108,11 +1103,10 @@ def test_check_disk_space(
     result = runner.invoke(
         cli,
         ['dataset', 'add', '-c', 'my-data', url],
-        input=input,
         catch_exceptions=False,
     )
-    assert exit_code == result.exit_code
-    assert 'There isn\'t enough disk space' in result.output
+    assert 1 == result.exit_code
+    assert 'Insufficient disk space' in result.output
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
-    assert ('index.html' in result.output) == added
+    assert 'index.html' not in result.output

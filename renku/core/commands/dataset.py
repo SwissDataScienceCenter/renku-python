@@ -35,7 +35,7 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired, ParameterError, UsageError
+    MigrationRequired, OperationError, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Dataset, generate_default_short_name
@@ -202,11 +202,12 @@ def add_to_dataset(
         usage = shutil.disk_usage(client.path)
 
         if total_size > usage.free:
-            GB = 2**30
-            message = 'There isn\'t enough disk space ' \
-                      '(required: {:.2f} GB/available: {:.2f} GB). ' \
-                      'Continue anyway?'.format(total_size/GB, usage.free/GB)
-            click.confirm(message, abort=True)
+            mb = 2**20
+            message = 'Insufficient disk space (required: {:.2f} MB' \
+                      '/available: {:.2f} MB). '.format(
+                          total_size/mb, usage.free/mb
+                      )
+            raise OperationError(message)
 
     try:
         with client.with_dataset(
