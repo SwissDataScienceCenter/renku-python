@@ -176,6 +176,20 @@ class IgnoredFiles(RenkuException):
         )
 
 
+class ProtectedFiles(RenkuException):
+    """Raise when trying to work with protected files."""
+
+    def __init__(self, ignored):
+        """Build a custom message."""
+        super(ProtectedFiles, self).__init__(
+            'The following paths are protected as part of renku:'
+            '\n\n' + '\n'.join(
+                '\t' + click.style(str(path), fg='yellow') for path in ignored
+            ) + '\n'
+            'They cannot be used in renku commands.'
+        )
+
+
 class MigrationRequired(RenkuException):
     """Raise when migration is required."""
 
