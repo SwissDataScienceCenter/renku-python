@@ -609,6 +609,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
         'is_archive',
         'timestamp',
         'is_archive',
+        'is_dir',
         'unpack_archive',
         'relative_path',
     } == set(response.json['result']['files'][0].keys())
