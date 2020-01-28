@@ -534,6 +534,19 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
         assert not file_['is_archive']
         assert not file_['unpack_archive']
 
+    response = svc_client.get(
+        '/cache.files_list',
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {'result'} == set(response.json.keys())
+    assert 3 == len(response.json['result']['files'])
+
+    uploaded_dir = response.json['result']['files'].pop()
+    assert uploaded_dir['is_dir']
+
 
 @pytest.mark.service
 def test_upload_tar_archive(datapack_tar, svc_client_with_repo):

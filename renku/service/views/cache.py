@@ -34,7 +34,7 @@ from renku.service.serializers.cache import FileListResponse, \
     FileUploadResponse, FileUploadResponseRPC, ProjectCloneContext, \
     ProjectCloneRequest, ProjectCloneResponse, ProjectCloneResponseRPC, \
     ProjectListResponse, ProjectListResponseRPC, extract_file
-from renku.service.utils import make_file_path, make_project_path
+from renku.service.utils import make_file_path, make_project_path, valid_file
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
     header_doc, requires_cache, requires_identity
@@ -58,12 +58,17 @@ cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
 @requires_identity
 def list_uploaded_files_view(user, cache):
     """List uploaded files ready to be added to projects."""
-    files = [
-        f for f in cache.get_files(user) if make_file_path(user, f).exists()
-    ]
+    files = filter(None, [valid_file(user, f) for f in cache.get_files(user)])
+
+    response_payload = {
+        'files':
+            sorted(
+                files, key=lambda rec: (rec['is_dir'], rec['relative_path'])
+            )
+    }
 
     response = FileListResponseRPC().load({
-        'result': FileListResponse().load({'files': files})
+        'result': FileListResponse().load(response_payload)
     })
     return jsonify(response)
 
@@ -132,24 +137,26 @@ def upload_file_view(user, cache):
             )
 
         for file_ in temp_dir.glob('**/*'):
+            relative_path = file_.relative_to(
+                CACHE_UPLOADS_PATH / user['user_id']
+            )
+
             file_obj = {
                 'file_name': file_.name,
                 'file_size': os.stat(str(file_path)).st_size,
-                'relative_path':
-                    str(
-                        file_.relative_to(
-                            CACHE_UPLOADS_PATH / user['user_id']
-                        )
-                    )
+                'relative_path': str(relative_path),
+                'is_dir': relative_path.is_dir(),
             }
 
             files.append(FileUploadContext().load(file_obj, unknown=EXCLUDE))
 
     else:
-        response_builder['file_size'] = os.stat(str(file_path)).st_size
-        response_builder['relative_path'] = str(
-            file_path.relative_to(CACHE_UPLOADS_PATH / user['user_id'])
+        relative_path = file_path.relative_to(
+            CACHE_UPLOADS_PATH / user['user_id']
         )
+        response_builder['file_size'] = os.stat(str(file_path)).st_size
+        response_builder['relative_path'] = str(relative_path)
+        response_builder['is_dir'] = relative_path.is_dir()
 
         files.append(
             FileUploadContext().load(response_builder, unknown=EXCLUDE)
