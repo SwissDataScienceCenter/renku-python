@@ -34,7 +34,7 @@ from renku.service.serializers.cache import FileListResponse, \
     FileUploadResponse, FileUploadResponseRPC, ProjectCloneContext, \
     ProjectCloneRequest, ProjectCloneResponse, ProjectCloneResponseRPC, \
     ProjectListResponse, ProjectListResponseRPC, extract_file
-from renku.service.utils import make_file_path, make_project_path, valid_file
+from renku.service.utils import make_project_path, valid_file
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
     header_doc, requires_cache, requires_identity
