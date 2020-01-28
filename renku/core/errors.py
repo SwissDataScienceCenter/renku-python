@@ -411,6 +411,21 @@ class SHACLValidationError(RenkuException):
     """Raises when SHACL validation of the graph fails."""
 
 
+class WorkflowRerunError(RenkuException):
+    """Raises when a workflow execution fails."""
+
+    def __init__(self, workflow_file):
+        """Build a custom message."""
+        msg = (
+            'Unable to finish re-executing workflow; check the workflow'
+            ' execution outline above and the generated {0} file for'
+            ' potential issues, then remove the {0} file and try again'.format(
+                str(workflow_file)
+            )
+        )
+        super(WorkflowRerunError, self).__init__(msg)
+
+
 class InvalidTemplateError(RenkuException):
     """Raised when using a non-valid template."""
 
