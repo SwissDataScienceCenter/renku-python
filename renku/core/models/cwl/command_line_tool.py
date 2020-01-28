@@ -361,13 +361,13 @@ class CommandLineToolFactory(object):
     def validate_command_line(self, attribute, value):
         """Check the command line structure."""
         if not value:
-            raise ValueError('Command line can not be empty.')
+            raise errors.UsageError('Command line can not be empty.')
 
     @directory.validator
     def validate_path(self, attribute, value):
         """Path must exists."""
         if not value.exists():
-            raise ValueError('Directory must exist.')
+            raise errors.UsageError('Directory must exist.')
 
     def file_candidate(self, candidate, ignore=None):
         """Return a path instance if it exists in current directory."""
