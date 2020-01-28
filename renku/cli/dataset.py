@@ -201,6 +201,11 @@ can chose if the repository `HEAD` version or one of the tags should be
 exported. The remote version will be set to the local tag that is being
 exported.
 
+To export to a Dataverse provider you must pass Dataverse server's URL and
+the name of the parent dataverse where the dataset will be exported to.
+Server's URL is stored in your Renku setting and you don't need to pass it
+every time.
+
 
 Listing all files in the project associated with a dataset.
 
@@ -593,7 +598,7 @@ def ls_tags(short_name, format):
 
 
 @dataset.command('export')
-@click.argument('id')
+@click.argument('short_name')
 @click.argument('provider')
 @click.option(
     '-p',
@@ -602,16 +607,24 @@ def ls_tags(short_name, format):
     help='Automatically publish exported dataset.'
 )
 @click.option('-t', '--tag', help='Dataset tag to export')
-def export_(id, provider, publish, tag):
+@click.option('--dataverse-server', default=None, help='Dataverse server URL.')
+@click.option(
+    '--dataverse-name', default=None, help='Dataverse name to export to.'
+)
+def export_(
+    short_name, provider, publish, tag, dataverse_server, dataverse_name
+):
     """Export data to 3rd party provider."""
     try:
         output = export_dataset(
-            id,
-            provider,
-            publish,
-            tag,
+            short_name=short_name,
+            provider=provider,
+            publish=publish,
+            tag=tag,
             handle_access_token_fn=prompt_access_token,
-            handle_tag_selection_fn=prompt_tag_selection
+            handle_tag_selection_fn=prompt_tag_selection,
+            dataverse_server_url=dataverse_server,
+            dataverse_name=dataverse_name,
         )
     except (
         ValueError, InvalidAccessToken, DatasetNotFound, requests.HTTPError
