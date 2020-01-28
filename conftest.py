@@ -364,6 +364,17 @@ def zenodo_sandbox(client):
 
 
 @pytest.fixture
+def dataverse_demo(client):
+    """Configure environment to use Dataverse demo environment."""
+    client.set_value(
+        'dataverse', 'access_token', '4ca13597-cf43-4815-8763-b64994058c19'
+    )
+    client.set_value('dataverse', 'server_url', 'https://demo.dataverse.org')
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('renku.ini')
+
+
+@pytest.fixture
 def doi_responses():
     """Responses for doi.org requests."""
     from renku.core.commands.providers.doi import DOI_BASE_URL

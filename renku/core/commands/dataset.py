@@ -25,8 +25,8 @@ from contextlib import contextmanager
 import click
 import git
 import yaml
-from requests import HTTPError
 
+from renku.core import errors
 from renku.core.commands.checks.migration import check_dataset_resources, \
     dataset_pre_0_3
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -172,6 +172,7 @@ def add_to_dataset(
     commit_message=None,
     extract=False,
     all_at_once=False,
+    destination_names=None,
     progress=None,
 ):
     """Add data to a dataset."""
@@ -197,6 +198,7 @@ def add_to_dataset(
                     ref=ref,
                     extract=extract,
                     all_at_once=all_at_once,
+                    destination_names=destination_names,
                     progress=progress,
                 )
 
@@ -341,13 +343,15 @@ def dataset_remove(
 )
 def export_dataset(
     client,
-    id,
+    short_name,
     provider,
     publish,
     tag,
     handle_access_token_fn=None,
     handle_tag_selection_fn=None,
     commit_message=None,
+    dataverse_server_url=None,
+    dataverse_name=None,
 ):
     """Export data to 3rd party provider.
 
@@ -356,9 +360,9 @@ def export_dataset(
     """
     # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = 'access_token'
-    provider_id = provider
+    provider_id = provider.lower()
 
-    dataset_ = client.load_dataset(id)
+    dataset_ = client.load_dataset(short_name)
     if not dataset_:
         raise DatasetNotFound()
 
@@ -385,7 +389,7 @@ def export_dataset(
             selected_commit = tag_result.commit
 
     with client.with_commit(selected_commit):
-        dataset_ = client.load_dataset(id)
+        dataset_ = client.load_dataset(short_name)
         if not dataset_:
             raise DatasetNotFound()
 
@@ -405,14 +409,35 @@ def export_dataset(
             )
             exporter.set_access_token(access_token)
 
-        try:
-            destination = exporter.export(publish, selected_tag)
-        except HTTPError as e:
-            if 'unauthorized' in str(e):
-                client.remove_value(
-                    provider_id, config_key_secret, global_only=True
+        if provider_id == 'dataverse':
+            if not dataverse_name:
+                raise errors.ParameterError('Dataverse name is required.')
+
+            CONFIG_BASE_URL = 'server_url'
+
+            if not dataverse_server_url:
+                dataverse_server_url = client.get_value(
+                    provider_id, CONFIG_BASE_URL
+                )
+            else:
+                client.set_value(
+                    provider_id,
+                    CONFIG_BASE_URL,
+                    dataverse_server_url,
+                    global_only=True
                 )
 
+        try:
+            destination = exporter.export(
+                publish=publish,
+                tag=selected_tag,
+                server_url=dataverse_server_url,
+                dataverse_name=dataverse_name
+            )
+        except errors.AuthenticationError:
+            client.remove_value(
+                provider_id, config_key_secret, global_only=True
+            )
             raise
 
     result = 'Exported to: {0}'.format(destination)
@@ -484,15 +509,18 @@ def import_dataset(
 
         dataset.url = remove_credentials(dataset.url)
 
+        urls, names = zip(*[(f.url, f.filename) for f in files])
+
         add_to_dataset(
             client,
-            urls=[f.url for f in files],
+            urls=urls,
             short_name=short_name,
             create=True,
             with_metadata=dataset,
             force=True,
             extract=extract,
             all_at_once=True,
+            destination_names=names,
             progress=progress,
         )
 
