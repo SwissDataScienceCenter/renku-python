@@ -175,7 +175,8 @@ class StorageApiMixin(RepositoryApiMixin):
             client, commit, path = self.resolve_in_submodules(
                 self.repo.commit(), path
             )
-            client_dict[client.path].append(str(path))
+            rel_path = Path(path).relative_to(client.path)
+            client_dict[client.path].append(str(rel_path))
 
         for client_path, paths in client_dict.items():
             batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
