@@ -3,3 +3,4 @@ invalidStatus: "pending"
 labelRule:
   not:
     - "documentation:pending"
+    - "pr:do-not-merge"
