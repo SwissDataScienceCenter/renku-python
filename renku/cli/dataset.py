@@ -455,7 +455,9 @@ def add(short_name, urls, link, force, create, sources, destination, ref):
         sources=sources,
         destination=destination,
         ref=ref,
-        urlscontext=progress
+        urlscontext=progress,
+        progress=_DownloadProgressbar,
+        interactive=True,
     )
 
 

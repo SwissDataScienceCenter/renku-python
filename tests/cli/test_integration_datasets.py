@@ -17,7 +17,9 @@
 # limitations under the License.
 """Integration tests for dataset command."""
 import os
+import shutil
 import subprocess
+from collections import namedtuple
 from pathlib import Path
 
 import git
@@ -1170,3 +1172,27 @@ def test_add_removes_credentials(runner, client):
     with client.with_dataset('my-dataset') as dataset:
         file_ = dataset.files[0]
         assert file_.url == 'https://example.com/index.html'
+
+
+@pytest.mark.integration
+def test_check_disk_space(runner, client, monkeypatch):
+    """Check adding to dataset prompts if disk space is not enough."""
+    url = 'https://example.com/index.html'
+
+    def disk_usage(_):
+        """Mocked response."""
+        Usage = namedtuple('Usage', 'free')
+        return Usage(free=0)
+
+    monkeypatch.setattr(shutil, 'disk_usage', disk_usage)
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '-c', 'my-data', url],
+        catch_exceptions=False,
+    )
+    assert 1 == result.exit_code
+    assert 'Insufficient disk space' in result.output
+
+    result = runner.invoke(cli, ['dataset', 'ls-files'])
+    assert 'index.html' not in result.output

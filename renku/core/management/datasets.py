@@ -265,7 +265,11 @@ class DatasetsApiMixin(object):
                         )
                     else:  # Remote URL
                         new_files = self._add_from_url(
-                            dataset, url, destination, extract
+                            dataset,
+                            url,
+                            destination,
+                            extract,
+                            progress=progress
                         )
 
                 files.extend(new_files)
