@@ -18,12 +18,14 @@
 """Repository datasets management."""
 
 import re
+import shutil
 import urllib
 from collections import OrderedDict
 from contextlib import contextmanager
 
 import click
 import git
+import requests
 import yaml
 
 from renku.core import errors
@@ -33,7 +35,7 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired, ParameterError, UsageError
+    MigrationRequired, OperationError, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Dataset, generate_default_short_name
@@ -140,6 +142,8 @@ def add_file(
     with_metadata=None,
     urlscontext=contextlib.nullcontext,
     commit_message=None,
+    progress=None,
+    interactive=False,
 ):
     """Add data file to a dataset."""
     add_to_dataset(
@@ -153,7 +157,9 @@ def add_file(
         destination=destination,
         ref=ref,
         with_metadata=with_metadata,
-        urlscontext=urlscontext
+        urlscontext=urlscontext,
+        progress=progress,
+        interactive=interactive,
     )
 
 
@@ -174,6 +180,8 @@ def add_to_dataset(
     all_at_once=False,
     destination_names=None,
     progress=None,
+    interactive=False,
+    total_size=None,
 ):
     """Add data to a dataset."""
     if len(urls) == 0:
@@ -182,6 +190,25 @@ def add_to_dataset(
         raise UsageError(
             'Cannot add multiple URLs with --source or --destination'
         )
+
+    if interactive:
+        if total_size is None:
+            total_size = 0
+            for url in urls:
+                try:
+                    with requests.get(url, stream=True) as r:
+                        total_size += int(r.headers.get('content-length', 0))
+                except requests.exceptions.RequestException:
+                    pass
+        usage = shutil.disk_usage(client.path)
+
+        if total_size > usage.free:
+            mb = 2**20
+            message = 'Insufficient disk space (required: {:.2f} MB' \
+                      '/available: {:.2f} MB). '.format(
+                          total_size/mb, usage.free/mb
+                      )
+            raise OperationError(message)
 
     try:
         with client.with_dataset(
@@ -467,6 +494,7 @@ def import_dataset(
         record = provider.find_record(uri)
         dataset = record.as_dataset(client)
         files = dataset.files
+        total_size = 0
 
         if with_prompt:
             click.echo(
@@ -477,7 +505,8 @@ def import_dataset(
                         ('filename', 'name'),
                         ('size_in_mb', 'size (mb)'),
                         ('filetype', 'type'),
-                    ))
+                    )),
+                    floatfmt='.2f'
                 )
             )
 
@@ -488,6 +517,11 @@ def import_dataset(
                 ) + text_prompt
 
             click.confirm(text_prompt, abort=True)
+
+            for file_ in files:
+                total_size += file_.size_in_mb
+
+            total_size *= 2**20
 
     except KeyError as e:
         raise ParameterError((
@@ -522,6 +556,8 @@ def import_dataset(
             all_at_once=True,
             destination_names=names,
             progress=progress,
+            interactive=with_prompt,
+            total_size=total_size,
         )
 
         if dataset.version:
