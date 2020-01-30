@@ -3,11 +3,17 @@ name: Test, Integration Tests and Deploy
 on:
   push:
     branches:
-    - '**'
+    - '*'
     tags:
     - 'v*.*.*'
 
 jobs:
+  cleanup-runs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: rokroskar/workflow-run-cleanup-action@master
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
   docs-linux:
     runs-on: ubuntu-latest
     strategy:
@@ -15,7 +21,6 @@ jobs:
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
-    - uses: rokroskar/workflow-run-cleanup-action@master
     - uses: actions/checkout@v2
     - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Set up Python ${{ matrix.python-version }}
