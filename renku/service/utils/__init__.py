@@ -44,6 +44,15 @@ def make_file_path(user, cached_file):
         )
 
 
+def valid_file(user, cached_file):
+    """Ensure file system and cache state matches."""
+    file_path = make_file_path(user, cached_file)
+
+    if file_path.exists():
+        cached_file['is_dir'] = file_path.is_dir()
+        return cached_file
+
+
 def repo_sync(repo_path, remote_names=('origin', )):
     """Sync the repo with the remotes."""
     repo = Repo(repo_path)

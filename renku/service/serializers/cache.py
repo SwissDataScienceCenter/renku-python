@@ -71,6 +71,7 @@ class FileUploadContext(Schema):
 
     relative_path = fields.String(required=True)
     is_archive = fields.Boolean(missing=False)
+    is_dir = fields.Boolean(required=True)
     unpack_archive = fields.Boolean(missing=False)
 
 
