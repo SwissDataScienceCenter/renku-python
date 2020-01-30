@@ -426,6 +426,13 @@ class Dataset(Entity, CreatorMixin):
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
 
+    @property
+    def datadir(self):
+        """Directory where dataset files are stored."""
+        if self.client:
+            return Path(self.client.datadir) / self.short_name
+        return ''
+
     def contains_any(self, files):
         """Check if files are already within a dataset."""
         for file_ in files:
