@@ -470,7 +470,7 @@ def test_upload_zip_unpack_archive(datapack_zip, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
@@ -528,7 +528,7 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
@@ -542,14 +542,15 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
     assert response
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
 
-    uploaded_dir = response.json['result']['files'].pop()
-    assert uploaded_dir['is_dir']
+    dirs = filter(lambda x: x['is_dir'], response.json['result']['files'])
+    assert dirs
 
-    paths = [
-        _file['relative_path'] for _file in response.json['result']['files']
-    ]
+    files = filter(lambda x: not x['is_dir'], response.json['result']['files'])
+    assert files
+
+    paths = [_file['relative_path'] for _file in files]
     assert sorted(paths) == paths
 
 
@@ -605,7 +606,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
     assert 200 == response.status_code
 
     assert {'result'} == set(response.json.keys())
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
     assert {
         'content_type',
         'file_id',
