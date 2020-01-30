@@ -297,10 +297,10 @@
         },
         "flask-apispec": {
             "hashes": [
-                "sha256:46bb89f8c4be3547d3f48536100f88a2a249ae59b050589cff57a0ec8e25d000",
-                "sha256:b97a9d7200293021ff11fa393157f51736dc12d6b4fc4502140561fb3cf64a16"
+                "sha256:4e1ec03e532f1f0625290d54764179d8e0445dd3d00e1a0a2e9891092df7181a",
+                "sha256:f76d001bfc3088bd0cdad14dc929284875666b41e9cf0d30cd03bb5b6ea288ed"
             ],
-            "version": "==0.8.3"
+            "version": "==0.8.5"
         },
         "flask-swagger-ui": {
             "hashes": [
