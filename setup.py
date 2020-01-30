@@ -100,7 +100,7 @@ tests_require = [
     'flake8>=3.5',
     'flaky==3.6.1',
     'freezegun>=0.3.12',
-    'isort==4.3.4',
+    'isort==4.3.21',
     'six>=1.13.0',
     'pydocstyle>=3.0.0',
     'pytest-cache>=1.0',
