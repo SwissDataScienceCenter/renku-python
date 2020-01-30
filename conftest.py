@@ -38,9 +38,6 @@ from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
 
-from renku.core.models.git import GitURL
-from renku.service.config import CACHE_PROJECTS_PATH
-
 
 @pytest.fixture(scope='module')
 def renku_path(tmpdir_factory):
@@ -603,6 +600,7 @@ def svc_client(mock_redis):
 def integration_repo(headers, url_components):
     """With integration repo helper."""
     from renku.core.utils.contexts import chdir
+    from renku.service.config import CACHE_PROJECTS_PATH
 
     project_path = (
         CACHE_PROJECTS_PATH / headers['Renku-User-Id'] / url_components.owner /
@@ -617,6 +615,7 @@ def integration_repo(headers, url_components):
 @pytest.fixture(scope='module')
 def integration_lifecycle(svc_client, mock_redis):
     """Setup and teardown steps for integration tests."""
+    from renku.core.models.git import GitURL
     remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
     url_components = GitURL.parse(remote_url)
 
