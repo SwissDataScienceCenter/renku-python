@@ -220,10 +220,10 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:904e11511a91221ea6490e776a2d6d49eefc5c43b14a53f5b6cf7991f2e3f71f",
-                "sha256:dfc7a5e80d86c98478a0da658ea420b506c97f4beb1df4ee629cd6cf6cfbf04a"
+                "sha256:75b4bb1496ffa0b55674f57b1eb443ca09ae25d173a7311d744a00d81031ef82",
+                "sha256:8bd363bc47be8806c35e9dad739b9972afe497532fc497b28ca08ee183524085"
             ],
-            "version": "==1.0.20191206125148"
+            "version": "==2.0.20200122124526"
         },
         "decorator": {
             "hashes": [
@@ -314,12 +314,6 @@
                 "sha256:6262de2f4bab671f7189bb8a0b9d8751da69a53f0b9813fb8f412681662d872a"
             ],
             "version": "==0.3.14"
-        },
-        "future": {
-            "hashes": [
-                "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"
-            ],
-            "version": "==0.18.2"
         },
         "gitdb2": {
             "hashes": [
@@ -796,10 +790,10 @@
         },
         "ruamel.yaml": {
             "hashes": [
-                "sha256:4c1dbad22790b5ea8587c2a0cae97ebc7a9d0d88de5d0edb70dea2eab7d8534a",
-                "sha256:eb4b1ffd095785c50f110118cb6f7bb9cd011ecc013b014436d38b7f8fb7afa9"
+                "sha256:0db639b1b2742dae666c6fc009b8d1931ef15c9276ef31c0673cc6dcf766cf40",
+                "sha256:412a6f5cfdc0525dee6a27c08f5415c7fd832a7afcb7a0ed7319628aed23d408"
             ],
-            "version": "==0.16.0"
+            "version": "==0.16.5"
         },
         "ruamel.yaml.clib": {
             "hashes": [
@@ -826,28 +820,12 @@
             "markers": "platform_python_implementation == 'CPython' and python_version < '3.8'",
             "version": "==0.2.0"
         },
-        "scandir": {
-            "hashes": [
-                "sha256:2586c94e907d99617887daed6c1d102b5ca28f1085f90446554abf1faf73123e",
-                "sha256:2ae41f43797ca0c11591c0c35f2f5875fa99f8797cb1a1fd440497ec0ae4b022",
-                "sha256:2b8e3888b11abb2217a32af0766bc06b65cc4a928d8727828ee68af5a967fa6f",
-                "sha256:2c712840c2e2ee8dfaf36034080108d30060d759c7b73a01a52251cc8989f11f",
-                "sha256:4d4631f6062e658e9007ab3149a9b914f3548cb38bfb021c64f39a025ce578ae",
-                "sha256:67f15b6f83e6507fdc6fca22fedf6ef8b334b399ca27c6b568cbfaa82a364173",
-                "sha256:7d2d7a06a252764061a020407b997dd036f7bd6a175a5ba2b345f0a357f0b3f4",
-                "sha256:8c5922863e44ffc00c5c693190648daa6d15e7c1207ed02d6f46a8dcc2869d32",
-                "sha256:92c85ac42f41ffdc35b6da57ed991575bdbe69db895507af88b9f499b701c188",
-                "sha256:b24086f2375c4a094a6b51e78b4cf7ca16c721dcee2eddd7aa6494b42d6d519d",
-                "sha256:cb925555f43060a1745d0a321cca94bcea927c50114b623d73179189a4e100ac"
-            ],
-            "version": "==1.10.0"
-        },
         "schema-salad": {
             "hashes": [
-                "sha256:222bad3746554b8c544dd203ffae4cff2e69575736fbab910c1c2f2fa605b8eb",
-                "sha256:fce45d4f4575c0783c18694fdaf5fde5193768829c2d211baa75fa0fa22a6933"
+                "sha256:927b161ee68047d9aa81f993d385e8343db71fc4d75602ec91953c8f48481c91",
+                "sha256:a6ad801d3350c26dfd6da89745ae2dbbac3606074c750984bf4bd0fccab2750f"
             ],
-            "version": "==4.5.20191229160203"
+            "version": "==5.0.20200126033820"
         },
         "sentry-sdk": {
             "hashes": [
