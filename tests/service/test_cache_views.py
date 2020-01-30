@@ -545,10 +545,10 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
     assert response.json['result']['files']
 
     dirs = filter(lambda x: x['is_dir'], response.json['result']['files'])
-    assert dirs
+    assert list(dirs)
 
     files = filter(lambda x: not x['is_dir'], response.json['result']['files'])
-    assert files
+    assert list(files)
 
     paths = [_file['relative_path'] for _file in files]
     assert sorted(paths) == paths
