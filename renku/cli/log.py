@@ -91,7 +91,11 @@ from renku.core.commands.graph import Graph
 
 
 @click.command()
-@click.option('--revision', default='HEAD')
+@click.option(
+    '--revision',
+    default='HEAD',
+    help='The git revision to generate the log for, default: HEAD'
+)
 @click.option(
     '--format',
     type=click.Choice(FORMATS),
