@@ -547,6 +547,11 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
     uploaded_dir = response.json['result']['files'].pop()
     assert uploaded_dir['is_dir']
 
+    paths = [
+        _file['relative_path'] for _file in response.json['result']['files']
+    ]
+    assert sorted(paths) == paths
+
 
 @pytest.mark.service
 def test_upload_tar_archive(datapack_tar, svc_client_with_repo):
