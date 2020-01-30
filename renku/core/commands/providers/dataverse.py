@@ -16,20 +16,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataverse API integration."""
+import json
 import pathlib
 import re
 import urllib
 import urllib.parse as urlparse
+from pathlib import Path
+from string import Template
 
 import attr
+import requests
+from tqdm import tqdm
 
+from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.requests import retry
 
-DATAVERSE_API_PATH = 'api'
+from .dataverse_metadata_templates import AUTHOR_METADATA_TEMPLATE, \
+    CONTACT_METADATA_TEMPLATE, DATASET_METADATA_TEMPLATE
+
+DATAVERSE_API_PATH = 'api/v1'
 
 DATAVERSE_VERSION_API = 'info/version'
 DATAVERSE_METADATA_API = 'datasets/export'
@@ -160,7 +169,7 @@ class DataverseProvider(ProviderApi):
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
-        raise NotImplementedError()
+        return DataverseExporter(dataset=dataset, access_token=access_token)
 
 
 @attr.s
@@ -281,7 +290,185 @@ class DataverseFileSerializer:
         return urllib.parse.urlparse(file_url)
 
 
+@attr.s
 class DataverseExporter(ExporterApi):
     """Dataverse export manager."""
 
-    pass
+    server_url = attr.ib(default=None)
+    dataset = attr.ib(kw_only=True)
+    access_token = attr.ib(kw_only=True)
+
+    def set_access_token(self, access_token):
+        """Set access token."""
+        self.access_token = access_token
+
+    def access_token_url(self):
+        """Endpoint for creation of access token."""
+        return urllib.parse.urljoin(
+            self.server_url, '/dataverseuser.xhtml?selectTab=apiTokenTab'
+        )
+
+    def export(self, publish, server_url=None, dataverse_name=None, **kwargs):
+        """Execute export process."""
+        self._set_server_url(server_url)
+
+        deposition = _DataverseDeposition(
+            server_url=self.server_url, access_token=self.access_token
+        )
+        metadata = self._get_dataset_metadata()
+        response = deposition.create_dataset(
+            dataverse_name=dataverse_name, metadata=metadata
+        )
+        dataset_pid = response.json()['data']['persistentId']
+
+        with tqdm(total=len(self.dataset.files)) as progressbar:
+            for file_ in self.dataset.files:
+                try:
+                    path = Path(file_.path).relative_to(self.dataset.datadir)
+                except ValueError:
+                    path = Path(file_.path)
+                deposition.upload_file(
+                    full_path=file_.full_path, path_in_dataset=path
+                )
+                progressbar.update(1)
+
+        if publish:
+            deposition.publish_dataset()
+
+        return dataset_pid
+
+    def _set_server_url(self, server_url):
+        if server_url:
+            self.server_url = server_url
+        else:
+            raise errors.ParameterError('Dataverse server URL is required.')
+
+    def _get_dataset_metadata(self):
+        authors, contacts = self._get_creators()
+        metadata_template = Template(DATASET_METADATA_TEMPLATE)
+        metadata = metadata_template.substitute(
+            name=self.dataset.name,
+            authors=json.dumps(authors),
+            contacts=json.dumps(contacts),
+            description=self.dataset.description
+        )
+        return json.loads(metadata)
+
+    def _get_creators(self):
+        authors = []
+        contacts = []
+
+        for creator in self.dataset.creator:
+            author_template = Template(AUTHOR_METADATA_TEMPLATE)
+            author = author_template.substitute(
+                name=creator.name, affiliation=creator.affiliation
+            )
+            authors.append(json.loads(author))
+
+            contact_template = Template(CONTACT_METADATA_TEMPLATE)
+            contact = contact_template.substitute(
+                name=creator.name, email=creator.email
+            )
+            contacts.append(json.loads(contact))
+
+        return authors, contacts
+
+
+@attr.s
+class _DataverseDeposition:
+    """Dataverse record for deposit."""
+
+    server_url = attr.ib(default=None, kw_only=True)
+    access_token = attr.ib(kw_only=True)
+    dataset_pid = attr.ib(default=None)
+
+    DATASET_CREATE_PATH = 'dataverses/{dataverseName}/datasets'
+    FILE_UPLOAD_PATH = 'datasets/:persistentId/add'
+    DATASET_PUBLISH_PATH = 'datasets/:persistentId/actions/:publish'
+
+    def create_dataset(self, dataverse_name, metadata):
+        """Create a dataset in a given dataverse."""
+        api_path = self.DATASET_CREATE_PATH.format(
+            dataverseName=dataverse_name
+        )
+        url = self._make_url(api_path=api_path)
+
+        response = self._post(url=url, json=metadata)
+        self._check_response(response)
+
+        self.dataset_pid = response.json()['data']['persistentId']
+
+        return response
+
+    def upload_file(self, full_path, path_in_dataset):
+        """Upload a file to a previously-created dataset."""
+        if self.dataset_pid is None:
+            raise errors.ExportError('Dataset not created.')
+
+        url = self._make_url(
+            self.FILE_UPLOAD_PATH, persistentId=self.dataset_pid
+        )
+
+        params = {'directoryLabel': str(path_in_dataset.parent)}
+        data = dict(jsonData=json.dumps(params))
+
+        files = {'file': (path_in_dataset.name, open(full_path, 'rb'))}
+
+        response = self._post(url=url, data=data, files=files)
+        self._check_response(response)
+
+        return response
+
+    def publish_dataset(self):
+        """Publish a previously-created dataset."""
+        if self.dataset_pid is None:
+            raise errors.ExportError('Dataset not created.')
+
+        url = self._make_url(
+            self.DATASET_PUBLISH_PATH,
+            persistentId=self.dataset_pid,
+            type='major'
+        )
+
+        response = self._post(url=url)
+        self._check_response(response)
+
+        return response
+
+    def _make_url(self, api_path, **query_params):
+        """Create URL for creating a dataset."""
+        url_parts = urlparse.urlparse(self.server_url)
+        path = pathlib.posixpath.join(DATAVERSE_API_PATH, api_path)
+
+        query_params = urllib.parse.urlencode(query_params)
+        url_parts = url_parts._replace(path=path, query=query_params)
+        return urllib.parse.urlunparse(url_parts)
+
+    def _post(self, url, json=None, data=None, files=None):
+        headers = {'X-Dataverse-key': self.access_token}
+        try:
+            with retry() as session:
+                return session.post(
+                    url=url,
+                    json=json,
+                    data=data,
+                    files=files,
+                    headers=headers
+                )
+        except requests.exceptions.RequestException as e:
+            raise errors.ExportError('Cannot POST to remote server.') from e
+
+    @staticmethod
+    def _check_response(response):
+        if response.status_code not in [200, 201]:
+            if response.status_code == 401:
+                raise errors.AuthenticationError(
+                    'Access unauthorized - update access token.'
+                )
+
+            raise errors.ExportError(
+                'HTTP {} - Cannot export dataset: {}'.format(
+                    response.status_code,
+                    response.json()['message']
+                )
+            )

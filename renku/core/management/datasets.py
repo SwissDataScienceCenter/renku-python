@@ -217,6 +217,7 @@ class DatasetsApiMixin(object):
         link=False,
         extract=False,
         all_at_once=False,
+        destination_names=None,
         progress=None
     ):
         """Import the data into the data directory."""
@@ -233,6 +234,7 @@ class DatasetsApiMixin(object):
             files = self._add_from_urls(
                 dataset=dataset,
                 urls=urls,
+                destination_names=destination_names,
                 destination=destination,
                 extract=extract,
                 progress=progress
@@ -263,7 +265,11 @@ class DatasetsApiMixin(object):
                         )
                     else:  # Remote URL
                         new_files = self._add_from_url(
-                            dataset, url, destination, extract
+                            dataset,
+                            url,
+                            destination,
+                            extract,
+                            progress=progress
                         )
 
                 files.extend(new_files)
@@ -399,7 +405,9 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_urls(self, dataset, urls, destination, extract, progress):
+    def _add_from_urls(
+        self, dataset, urls, destination, destination_names, extract, progress
+    ):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
@@ -407,10 +415,10 @@ class DatasetsApiMixin(object):
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
-                    self._add_from_url, dataset, url, destination, extract,
-                    progress
+                    self._add_from_url, dataset, url, destination / name,
+                    extract, progress
                 )
-                for url in urls
+                for url, name in zip(urls, destination_names)
             }
 
             for future in concurrent.futures.as_completed(futures):
@@ -423,6 +431,8 @@ class DatasetsApiMixin(object):
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
+        else:
+            destination.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             paths = _download(

@@ -428,3 +428,7 @@ class WorkflowRerunError(RenkuException):
 
 class InvalidTemplateError(RenkuException):
     """Raised when using a non-valid template."""
+
+
+class ExportError(RenkuException):
+    """Raised when a dataset cannot be exported."""
