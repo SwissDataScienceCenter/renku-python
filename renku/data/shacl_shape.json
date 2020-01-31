@@ -323,8 +323,8 @@
             {
                "nodeKind": "sh:Literal",
                "path": "schema:sameAs",
-               "datatype": {
-                  "@id": "xsd:string"
+               "sh:class": {
+                  "@id": "schema:URL"
                }
             },
             {
@@ -386,6 +386,34 @@
                "datatype": {
                   "@id": "xsd:string"
                },
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:URLShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "schema:URL",
+         "property": [
+            {
+               "path": "schema:url",
+               "or": [
+                  {
+                     "nodeKind": "sh:Literal",
+                     "datatype": {
+                        "@id": "xsd:string"
+                     }
+                  },
+                  {
+                     "nodeKind": "sh:IRI"
+                  }
+               ],
                "maxCount": 1
             }
          ]
