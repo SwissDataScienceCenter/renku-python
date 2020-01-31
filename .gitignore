@@ -12,6 +12,9 @@ __pycache__/
 
 # Idea software family
 .idea/
+*.ipr
+*.iws
+
 
 # C extensions
 *.so
