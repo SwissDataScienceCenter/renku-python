@@ -41,3 +41,14 @@ def cmdline_tool_annotations(tool):
               objects.
     """
     pass
+
+
+@hookspec
+def pre_run(tool):
+    """Plugin Hook that gets called at the start of a ``renku run`` call.
+
+    Can be used to setup plugins that get executed during the run.
+
+    :param run: A ``WorkflowTool`` object to get annotations for.
+    """
+    pass

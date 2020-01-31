@@ -712,6 +712,24 @@ def dummy_run_plugin_hook():
 
 
 @pytest.fixture
+def dummy_pre_run_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _PreRun(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        called = 0
+
+        @hookimpl
+        def pre_run(self, tool):
+            """``cmdline_tool_annotations`` hook implementation."""
+            self.called = 1
+
+    return _PreRun()
+
+
+@pytest.fixture
 def dummy_processrun_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugins import hookimpl

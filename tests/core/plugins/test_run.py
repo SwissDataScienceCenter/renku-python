@@ -21,6 +21,22 @@ import renku.core.plugins.pluginmanager as pluginmanager
 from renku.cli import cli
 
 
+def test_renku_pre_run_hook(
+    monkeypatch, dummy_pre_run_plugin_hook, runner, project
+):
+    """Tests that the renku run plugin hook on ``CmdLineTool`` is called."""
+    pm = pluginmanager.get_plugin_manager()
+    pm.register(dummy_pre_run_plugin_hook)
+
+    with monkeypatch.context() as m:
+        m.setattr(pluginmanager, 'get_plugin_manager', lambda: pm)
+        cmd = ['echo', 'test']
+        result = runner.invoke(cli, ['run', '--no-output'] + cmd)
+        assert 0 == result.exit_code
+
+        assert dummy_pre_run_plugin_hook.called == 1
+
+
 def test_renku_run_cwl_hook(
     monkeypatch, dummy_run_plugin_hook, runner, project
 ):

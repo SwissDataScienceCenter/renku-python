@@ -279,6 +279,10 @@ class CommandLineToolFactory(object):
             for p in client.path.glob('**/')
         }
 
+        from renku.core.plugins.pluginmanager import get_plugin_manager
+        pm = get_plugin_manager()
+        pm.hook.pre_run(tool=tool)
+
         yield tool
 
         if repo:
@@ -370,9 +374,6 @@ class CommandLineToolFactory(object):
                 InlineJavascriptRequirement(),
                 initial_work_dir_requirement,
             ])
-
-        from renku.core.plugins.pluginmanager import get_plugin_manager
-        pm = get_plugin_manager()
 
         results = pm.hook.cmdline_tool_annotations(tool=tool)
         tool.annotations = [a for r in results for a in r]
