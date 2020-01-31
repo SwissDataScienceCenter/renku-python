@@ -80,8 +80,41 @@ def migrate_doi_identifier(data):
         if not is_uuid(identifier):
             data['identifier'] = str(uuid.uuid4())
         if is_doi(data.get('_id', '')):
-            data['same_as'] = data['_id']
+            data['same_as'] = {'@type': ['schema:URL'], 'url': data['_id']}
             if data.get('@context'):
-                data['@context'].setdefault('same_as', 'schema:sameAs')
+                data['@context'].setdefault(
+                    'same_as', {
+                        '@id': 'schema:sameAs',
+                        '@type': 'schema:URL',
+                        '@context': {
+                            '@version': '1.1',
+                            'url': 'schema:url',
+                            'schema': 'http://schema.org/'
+                        }
+                    }
+                )
         data['_id'] = data['identifier']
+    return data
+
+
+def migrate_same_as_structure(data):
+    """Changes sameAs string to schema:URL object."""
+    same_as = data.get('same_as')
+
+    if same_as and isinstance(same_as, str):
+        data['same_as'] = {'@type': ['schema:URL'], 'url': same_as}
+
+        if data.get('@context'):
+            data['@context'].setdefault(
+                'same_as', {
+                    '@id': 'schema:sameAs',
+                    '@type': 'schema:URL',
+                    '@context': {
+                        '@version': '1.1',
+                        'url': 'schema:url',
+                        'schema': 'http://schema.org/'
+                    }
+                }
+            )
+
     return data
