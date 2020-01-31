@@ -239,13 +239,8 @@ def add_to_dataset(
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
 
-                if is_doi(with_metadata.identifier):
-                    dataset.same_as = Url(
-                        url=urllib.parse.
-                        urljoin('https://doi.org', with_metadata.identifier)
-                    )
-
                 dataset.update_metadata(with_metadata)
+                dataset.same_as = with_metadata.same_as
 
     except DatasetNotFound:
         raise DatasetNotFound(
@@ -521,7 +516,8 @@ def import_dataset(
             click.confirm(text_prompt, abort=True)
 
             for file_ in files:
-                total_size += file_.size_in_mb
+                if file_.size_in_mb is not None:
+                    total_size += file_.size_in_mb
 
             total_size *= 2**20
 
@@ -540,13 +536,20 @@ def import_dataset(
     if not files:
         raise ParameterError('Dataset {} has no files.'.format(uri))
 
+    dataset.url = remove_credentials(uri)
+    dataset.same_as = Url(url=remove_credentials(uri))
+
     if not provider.is_git_based:
         if not short_name:
             short_name = generate_default_short_name(
                 dataset.name, dataset.version
             )
 
-        dataset.url = remove_credentials(dataset.url)
+        if is_doi(dataset.identifier):
+            dataset.same_as = Url(
+                url=urllib.parse.
+                urljoin('https://doi.org', dataset.identifier)
+            )
 
         urls, names = zip(*[(f.url, f.filename) for f in files])
 
@@ -572,8 +575,6 @@ def import_dataset(
                 'Tag {} created by renku import'.format(dataset.version)
             )
     else:
-        dataset.url = remove_credentials(uri)
-        dataset.same_as = remove_credentials(uri)
         short_name = short_name or dataset.short_name
 
         add_to_dataset(

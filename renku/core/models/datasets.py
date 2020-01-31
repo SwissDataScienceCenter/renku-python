@@ -201,7 +201,7 @@ class DatasetFile(Entity, CreatorMixin):
 
     name = jsonld.ib(context='schema:name', kw_only=True, default=None)
 
-    filesize = attr.ib(default=0, kw_only=True)
+    filesize = attr.ib(default=None, kw_only=True)
 
     filetype = attr.ib(default=None, kw_only=True)
 
@@ -236,7 +236,7 @@ class DatasetFile(Entity, CreatorMixin):
     @property
     def size_in_mb(self):
         """Return file size in megabytes."""
-        return self.filesize * 1e-6
+        return None if self.filesize is None else self.filesize * 1e-6
 
     def __attrs_post_init__(self):
         """Set the property "name" after initialization."""
@@ -301,7 +301,7 @@ class Dataset(Entity, CreatorMixin):
 
     EDITABLE_FIELDS = [
         'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files', 'same_as'
+        'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)

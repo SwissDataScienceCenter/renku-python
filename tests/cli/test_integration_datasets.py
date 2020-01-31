@@ -299,12 +299,13 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'url', [
-        'https://dev.renku.ch/datasets/10.5281%2Fzenodo.3351812',
-        'https://dev.renku.ch/datasets/10.5281%2Fzenodo.3351812/',
+        'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62',
+        'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62/',
         'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
-        'datasets/10.5281%2Fzenodo.3351812'
+        'datasets/48299db3-8870-4cbe-a480-f75985c42a62'
     ]
 )
 def test_dataset_import_renku(runner, project, client, url):
@@ -315,18 +316,19 @@ def test_dataset_import_renku(runner, project, client, url):
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
     assert 0 == result.exit_code
-    assert 'Courty, Laurent G.,Wilby, Robert L.,Hillier' in result.output
-    assert 'parametrized_extreme_rai_210/pxr_changelog.txt' in result.output
+    path = 'zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
+    assert path in result.output
 
     dataset = [d for d in client.datasets.values()][0]
-    assert dataset.same_as == url
+    assert dataset.same_as.url == url
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_renku_fail(runner, client, monkeypatch):
     """Test dataset import fails if cannot clone repo."""
     from renku.core.management import LocalClient
-    url = 'https://dev.renku.ch/datasets/10.5281%2Fzenodo.3351812'
+    url = 'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62'
 
     def prepare_git_repo(*_):
         raise errors.GitError
@@ -339,15 +341,16 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch):
         assert 'Cannot find any project for the dataset.' in result.output
 
 
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'url,exit_code',
     [('https://dev.renku.ch/projects/virginiafriedrich/datasets-test/', 2),
      (
          'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
-         'datasets/10.5281%2Fzenodo.666', 2
+         'datasets/b9f7b21b-8b00-42a2-976a-invalid', 2
      ), ('https://dev.renku.ch/datasets/10.5281%2Fzenodo.666', 1)]
 )
-@pytest.mark.integration
 def test_dataset_import_renku_errors(runner, project, url, exit_code):
     """Test usage errors in Renku dataset import."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
@@ -358,10 +361,11 @@ def test_dataset_import_renku_errors(runner, project, url, exit_code):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_reimport_renku_dataset(runner, project):
     """Test dataset import for existing dataset"""
     URL = 'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/' \
-        'datasets/10.5281%2Fzenodo.3351812'
+        'datasets/48299db3-8870-4cbe-a480-f75985c42a62'
 
     result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
     assert 'OK' in result.output
@@ -369,7 +373,7 @@ def test_dataset_reimport_renku_dataset(runner, project):
 
     result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
     assert 1 == result.exit_code
-    assert 'Dataset exists: "parametrized_extreme_rai_210"' in result.output
+    assert 'Dataset exists: "zhbikes"' in result.output
 
 
 @pytest.mark.integration

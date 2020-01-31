@@ -175,6 +175,25 @@ A tag can be removed with:
     $ renku dataset rm-tags my-dataset 1.0
 
 
+Importing data from other Renku projects:
+
+To import all data files and their metadata from another Renku dataset use:
+
+.. code-block:: console
+
+    $ renku dataset import \
+        https://renkulab.io/projects/username/project/datasets/dataset-id
+
+or
+
+.. code-block:: console
+
+    $ renku dataset import \
+        https://renkulab.io/datasets/project-id
+
+You can get the link to a dataset form the UI or you can construct it by
+knowing the dataset's ID.
+
 
 Importing data from an external provider:
 
