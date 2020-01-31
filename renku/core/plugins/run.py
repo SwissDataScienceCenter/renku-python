@@ -49,6 +49,7 @@ def pre_run(tool):
 
     Can be used to setup plugins that get executed during the run.
 
-    :param run: A ``WorkflowTool`` object to get annotations for.
+    :param run: A ``WorkflowTool`` object that will get executed by
+                ``renku run``.
     """
     pass
