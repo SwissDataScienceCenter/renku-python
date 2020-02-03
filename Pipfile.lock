@@ -649,10 +649,10 @@
         },
         "pyshacl": {
             "hashes": [
-                "sha256:74739aa88dcdb161849f769d28e3a14ed0b01eb8256a21cc2941a27dc80e70af",
-                "sha256:d551c0e5842f30151b3e398407f5ffc8250e602add925f0bb31bce5771419169"
+                "sha256:5bc4340b429d0facb67463bf249e3fd248ad80c709d2c52cdbb97a262f3a9b0f",
+                "sha256:8ba1a80eff45fdd3488f104a407596e7b77d9471b36f5be9a5ff029258712108"
             ],
-            "version": "==0.11.3.post1"
+            "version": "==0.11.4"
         },
         "pytest": {
             "hashes": [
@@ -1003,10 +1003,10 @@
         },
         "yapf": {
             "hashes": [
-                "sha256:34f6f80c446dcb2c44bd644c4037a2024b6645e293a4c9c4521983dd0bb247a1",
-                "sha256:613deba14233623ff3432d9d5032631b5f600be97b39f66932cbe67648bfa8ea"
+                "sha256:02ace10a00fa2e36c7ebd1df2ead91dbfbd7989686dc4ccbdc549e95d19f5780",
+                "sha256:6f94b6a176a7c114cfa6bad86d40f259bbe0f10cf2fa7f2f4b3596fc5802a41b"
             ],
-            "version": "==0.27.0"
+            "version": "==0.28.0"
         },
         "zipp": {
             "hashes": [
