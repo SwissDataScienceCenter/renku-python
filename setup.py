@@ -159,6 +159,7 @@ install_requires = [
     'gitpython==3.0.5',
     'jinja2>=2.10.3',
     'patool>=1.12',
+    'pluggy>=0.13.1',
     'psutil>=5.4.7',
     'pyasn1>=0.4.5',
     'PyYAML>=3.12',
