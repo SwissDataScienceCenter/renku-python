@@ -60,7 +60,7 @@ def repo_sync(repo_path, remote_names=('origin', )):
 
     for remote in repo.remotes:
         if remote.name in remote_names:
-            remote.push()
+            repo.git.push(remote.name, repo.active_branch)
             is_pushed = True
 
     return is_pushed
