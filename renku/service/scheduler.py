@@ -33,16 +33,19 @@ from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
 def schedule():
     """Creates scheduler object."""
     build_scheduler = Scheduler(
-        connection=REDIS_CONNECTION,
-        interval=60,
+        connection=REDIS_CONNECTION
     )
+
+    cleanup_interval = int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 60))
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
         queue_name=CLEANUP_QUEUE_FILES,
         func=cache_files_cleanup,
         args=[],
-        interval=int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 1800)),
+        interval=cleanup_interval,
+        result_ttl=cleanup_interval + 1,
+        repeat=None,
     )
 
     build_scheduler.schedule(
@@ -50,7 +53,9 @@ def schedule():
         queue_name=CLEANUP_QUEUE_PROJECTS,
         func=cache_project_cleanup,
         args=[],
-        interval=int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 1800)),
+        interval=cleanup_interval,
+        result_ttl=cleanup_interval + 1,
+        repeat=None,
     )
 
     setup_loghandlers(os.getenv('RQ_WORKER_LOG_LEVEL', 'WARNING'))

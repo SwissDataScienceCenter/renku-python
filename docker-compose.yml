@@ -28,19 +28,26 @@ services:
     env_file: .env
     ports:
       - "8080:8080"
+    volumes:
+      - /tmp/renku-core:/tmp/renku-core
 
   renku-scheduler:
     build:
       context: .
-      dockerfile: Dockerfile.scheduler
+      dockerfile: Dockerfile.svc
+    entrypoint: ["python", "renku/service/scheduler.py"]
     networks:
       - net
     env_file: .env
 
+
   renku-worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile.svc
+    entrypoint: ["python", "renku/service/worker.py"]
     networks:
       - net
     env_file: .env
+    volumes:
+      - /tmp/renku-core:/tmp/renku-core

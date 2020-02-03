@@ -5,8 +5,13 @@
 replicaCount: 1
 
 cacheDirectory: /svc/cache
-
+cleanupInterval: 60
 projectCloneDepth: 1
+
+workerQueues: cache.cleanup.files,cache.cleanup.projects
+cleanupFilesTTL: 60
+cleanupProjectsTTL: 60
+logLevel: WARNING
 
 image:
   repository: renku/renku-core
