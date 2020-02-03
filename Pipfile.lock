@@ -649,10 +649,10 @@
         },
         "pyshacl": {
             "hashes": [
-                "sha256:74739aa88dcdb161849f769d28e3a14ed0b01eb8256a21cc2941a27dc80e70af",
-                "sha256:d551c0e5842f30151b3e398407f5ffc8250e602add925f0bb31bce5771419169"
+                "sha256:5bc4340b429d0facb67463bf249e3fd248ad80c709d2c52cdbb97a262f3a9b0f",
+                "sha256:8ba1a80eff45fdd3488f104a407596e7b77d9471b36f5be9a5ff029258712108"
             ],
-            "version": "==0.11.3.post1"
+            "version": "==0.11.4"
         },
         "pytest": {
             "hashes": [
