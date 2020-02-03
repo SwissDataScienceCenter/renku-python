@@ -22,10 +22,14 @@ jobs:
         pip install pipenv
         pipenv lock
     - name: Commit changed Pipfile.lock
-      uses: stefanzweifel/git-auto-commit-action@v2.5.0
+      run: |
+        git config --local user.email "renku@datascience.ch"
+        git config --local user.name "RenkuBot"
+        git add Pipfile.lock
+        git commit -m 'chore: automatically update Pipfile.lock' || true
+    #     git push origin ${{ github.head_ref }}
+    - name: Push changes
+      uses: ad-m/github-push-action@master
       with:
-        commit_message: "chore: automatically update Pipfile.lock"
+        github_token: ${{ secrets.RENKU_CI_TOKEN }}
         branch: ${{ github.head_ref }}
-        file_pattern: Pipfile.lock
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
