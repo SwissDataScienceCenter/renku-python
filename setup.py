@@ -111,7 +111,7 @@ tests_require = [
     'pytest>=4.0.0',
     'responses>=0.7.0',
     'unify>=0.4',
-    'yapf==0.27.0',
+    'yapf==0.28.0',
 ]
 
 extras_require = {
