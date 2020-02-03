@@ -43,8 +43,11 @@ def check_queues(queue_list):
     """Check if listening on specified queues is possible."""
     for queue in queue_list:
         if queue not in QUEUES:
-            err_msg = 'invalid queue name.\n\nvalid queue names: \n{0}'.format(
-                '\n'.join(QUEUES.keys())
+            err_msg = (
+                'invalid queue name: {0}\n\n'
+                'valid queue names: \n{1}'.format(
+                    queue, '\n'.join(QUEUES.keys())
+                )
             )
             raise UsageError(err_msg)
 
@@ -65,4 +68,6 @@ if __name__ == '__main__':
             'Please, set RENKU_SVC_WORKER_QUEUES environment variable.'
         ))
 
-    start_worker(queues.split(','))
+    start_worker([
+        queue_name.strip() for queue_name in queues.strip().split(',')
+    ])

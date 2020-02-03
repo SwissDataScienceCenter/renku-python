@@ -21,8 +21,6 @@ from rq import Queue
 
 from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, \
     REDIS_PASSWORD, REDIS_PORT
-from renku.service.jobs.constants import CLEANUP_QUEUE_FILES, \
-    CLEANUP_QUEUE_PROJECTS
 
 REDIS_CONNECTION = redis.Redis(
     host=REDIS_HOST,
@@ -30,6 +28,9 @@ REDIS_CONNECTION = redis.Redis(
     port=REDIS_PORT,
     db=REDIS_DATABASE
 )
+
+CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
+CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
 
 QUEUES = {
     CLEANUP_QUEUE_FILES:

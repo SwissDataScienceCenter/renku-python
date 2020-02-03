@@ -25,9 +25,8 @@ from rq_scheduler.utils import setup_loghandlers
 
 from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
-from renku.service.jobs.constants import CLEANUP_QUEUE_FILES, \
-    CLEANUP_QUEUE_PROJECTS
-from renku.service.jobs.queues import REDIS_CONNECTION
+from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
+    CLEANUP_QUEUE_PROJECTS, REDIS_CONNECTION
 
 
 @contextmanager
