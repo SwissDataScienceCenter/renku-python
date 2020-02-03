@@ -28,6 +28,7 @@ from git import NULL_TREE
 
 from renku.core.models import jsonld
 from renku.core.models.cwl import WORKFLOW_STEP_RUN_TYPES
+from renku.core.models.cwl.annotation import Annotation
 from renku.core.models.cwl.ascwl import CWLClass
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, Entity
@@ -340,6 +341,7 @@ class Activity(CommitMixin):
     type='wfprov:ProcessRun',
     context={
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
+        'oa': 'http://www.w3.org/ns/oa#',
     },
     cmp=False,
 )
@@ -364,6 +366,12 @@ class ProcessRun(Activity):
         type=Association
     )
 
+    annotations = jsonld.container.list(
+        context={
+            '@reverse': 'oa:hasTarget',
+        }, kw_only=True, type=Annotation
+    )
+
     qualified_usage = jsonld.ib(
         context='prov:qualifiedUsage', kw_only=True, type=Usage
     )
@@ -374,6 +382,15 @@ class ProcessRun(Activity):
 
         if self.association is None:
             self.association = Association.from_activity(self)
+
+        if not self.annotations:
+            if (
+                hasattr(self.process, 'annotations') and
+                self.process.annotations
+            ):
+                self.annotations = self.process.annotations
+
+            self.annotations.extend(self.plugin_annotations())
 
         if self.path is None:
             # FIXME only works for linking directory to file
@@ -387,6 +404,14 @@ class ProcessRun(Activity):
                         ), output_path
                     )] = output_id
                     break
+
+    def plugin_annotations(self):
+        """Adds ``Annotation``s from plugins to a ``ProcessRun``."""
+        from renku.core.plugins.pluginmanager import get_plugin_manager
+        pm = get_plugin_manager()
+
+        results = pm.hook.process_run_annotations(run=self)
+        return [a for r in results for a in r]
 
     @inputs.default
     def default_inputs(self):
