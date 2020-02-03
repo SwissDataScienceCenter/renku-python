@@ -32,10 +32,10 @@
         },
         "apispec": {
             "hashes": [
-                "sha256:5fdaa1173b32515cc83f9d413a49a6c37fafc2b87f6b40e95923d3e85f0942c5",
-                "sha256:9e88c51517a6515612e818459f61c1bc06c00f2313e5187828bdbabaa7461473"
+                "sha256:c1625ae910f699c9adb21928693a3245b9faab6843f1b1c94ab2d505549cd78a",
+                "sha256:f2ecb3a6534cfb42cf69b5c1222d2c0e695aab5ec3d7edde31b7354670948f05"
             ],
-            "version": "==3.0.0"
+            "version": "==3.2.0"
         },
         "appdirs": {
             "hashes": [
@@ -465,11 +465,11 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:0ba81b6da4ae69eb229b74b3c741ff13fe04fb899824377b1aff5aaa1a9fd46e",
-                "sha256:3e53dd9e9358977a3929e45cdbe4a671f9eff53a7d6a23f33ed3eab8c1890d8f"
+                "sha256:7669b944d6233b81f68739d5826f1176c3841cc31cf6b856841083b5a72f5ca9",
+                "sha256:c9d277f6092f32300395fb83d343be9f61b5e99d66d22bae1e5e7cd82608fee6"
             ],
             "markers": "python_version >= '3'",
-            "version": "==3.3.0"
+            "version": "==3.4.0"
         },
         "mccabe": {
             "hashes": [
@@ -649,10 +649,10 @@
         },
         "pyshacl": {
             "hashes": [
-                "sha256:74739aa88dcdb161849f769d28e3a14ed0b01eb8256a21cc2941a27dc80e70af",
-                "sha256:d551c0e5842f30151b3e398407f5ffc8250e602add925f0bb31bce5771419169"
+                "sha256:5bc4340b429d0facb67463bf249e3fd248ad80c709d2c52cdbb97a262f3a9b0f",
+                "sha256:8ba1a80eff45fdd3488f104a407596e7b77d9471b36f5be9a5ff029258712108"
             ],
-            "version": "==0.11.3.post1"
+            "version": "==0.11.4"
         },
         "pytest": {
             "hashes": [

@@ -86,6 +86,7 @@ def test_file_modification_during_run(tmpdir, runner, project, client, run):
         process = subprocess.Popen(
             prefix + cmd, stdin=subprocess.PIPE, stdout=stdout
         )
+
         while not lock.exists():
             time.sleep(1)
 

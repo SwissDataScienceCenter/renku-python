@@ -145,7 +145,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'appdirs>=1.4.3',
-    'apispec==3.0.0',
+    'apispec==3.2.0',
     'attrs>=18.2.0',
     'click-completion>=0.5.0',
     'click>=7.0',
@@ -159,6 +159,7 @@ install_requires = [
     'gitpython==3.0.5',
     'jinja2>=2.10.3',
     'patool>=1.12',
+    'pluggy>=0.13.1',
     'psutil>=5.4.7',
     'pyasn1>=0.4.5',
     'PyYAML>=3.12',
@@ -172,7 +173,7 @@ install_requires = [
     'rdflib-jsonld>=0.4.0',
     'requests>=2.21.0',
     'ndg-httpsclient>=0.5.1',
-    'marshmallow==3.3.0',
+    'marshmallow==3.4.0',
     'idna>=2.8',
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',
