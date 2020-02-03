@@ -32,10 +32,10 @@
         },
         "apispec": {
             "hashes": [
-                "sha256:5fdaa1173b32515cc83f9d413a49a6c37fafc2b87f6b40e95923d3e85f0942c5",
-                "sha256:9e88c51517a6515612e818459f61c1bc06c00f2313e5187828bdbabaa7461473"
+                "sha256:c1625ae910f699c9adb21928693a3245b9faab6843f1b1c94ab2d505549cd78a",
+                "sha256:f2ecb3a6534cfb42cf69b5c1222d2c0e695aab5ec3d7edde31b7354670948f05"
             ],
-            "version": "==3.0.0"
+            "version": "==3.2.0"
         },
         "appdirs": {
             "hashes": [
@@ -227,10 +227,10 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:75b4bb1496ffa0b55674f57b1eb443ca09ae25d173a7311d744a00d81031ef82",
-                "sha256:8bd363bc47be8806c35e9dad739b9972afe497532fc497b28ca08ee183524085"
+                "sha256:2285d95231a00e33a4571941e31ade7765de5f6320e43a9287dece711e306b62",
+                "sha256:614e8b4f3e2ca08260569d4a5f18cf20933292674af3d8c51c3c31eccffee6bd"
             ],
-            "version": "==2.0.20200122124526"
+            "version": "==2.0.20200126090152"
         },
         "decorator": {
             "hashes": [
@@ -472,11 +472,11 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:0ba81b6da4ae69eb229b74b3c741ff13fe04fb899824377b1aff5aaa1a9fd46e",
-                "sha256:3e53dd9e9358977a3929e45cdbe4a671f9eff53a7d6a23f33ed3eab8c1890d8f"
+                "sha256:7669b944d6233b81f68739d5826f1176c3841cc31cf6b856841083b5a72f5ca9",
+                "sha256:c9d277f6092f32300395fb83d343be9f61b5e99d66d22bae1e5e7cd82608fee6"
             ],
             "markers": "python_version >= '3'",
-            "version": "==3.3.0"
+            "version": "==3.4.0"
         },
         "mccabe": {
             "hashes": [

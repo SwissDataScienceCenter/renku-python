@@ -749,7 +749,6 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
     yield methods, request.param, svc_client
 
 
-@pytest.fixture
 def service_job(svc_client, mock_redis):
     """Ensure correct environment during testing of service jobs."""
     old_environ = dict(os.environ)
@@ -762,3 +761,68 @@ def service_job(svc_client, mock_redis):
     finally:
         os.environ.clear()
         os.environ.update(old_environ)
+
+
+def dummy_run_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _CmdlineToolAnnotations(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        @hookimpl
+        def cmdline_tool_annotations(self, tool):
+            """``cmdline_tool_annotations`` hook implementation."""
+            from renku.core.models.cwl.annotation import Annotation
+
+            return [
+                Annotation(
+                    id='_:annotation',
+                    source='Dummy Cmdline Hook',
+                    body='dummy cmdline hook body'
+                )
+            ]
+
+    return _CmdlineToolAnnotations()
+
+
+@pytest.fixture
+def dummy_pre_run_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _PreRun(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        called = 0
+
+        @hookimpl
+        def pre_run(self, tool):
+            """``cmdline_tool_annotations`` hook implementation."""
+            self.called = 1
+
+    return _PreRun()
+
+
+@pytest.fixture
+def dummy_processrun_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _ProcessRunAnnotations(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        @hookimpl
+        def process_run_annotations(self, run):
+            """``process_run_annotations`` hook implementation."""
+            from renku.core.models.cwl.annotation import Annotation
+
+            return [
+                Annotation(
+                    id='_:annotation',
+                    source='Dummy ProcessRun Hook',
+                    body='dummy ProcessRun hook body'
+                )
+            ]
+
+    return _ProcessRunAnnotations()

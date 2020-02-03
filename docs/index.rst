@@ -78,3 +78,4 @@ Full Table of Contents
    commands
    models/index
    management
+   plugins
