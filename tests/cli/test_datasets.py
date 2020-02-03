@@ -1467,3 +1467,17 @@ def test_add_remove_credentials(runner, client, monkeypatch):
     o = client._add_from_url(dataset, url, client.path, extract=False)
 
     assert 'https://example.com/index.html' == o[0]['url']
+
+
+def test_pull_data_from_lfs(runner, client, tmpdir):
+    """Test pulling data from LFS using relative paths."""
+    data = tmpdir.join('data.txt')
+    data.write('DATA')
+
+    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-data', str(data)])
+    assert 0 == result.exit_code
+
+    relative_path = Path('data') / 'my-data' / 'data.txt'
+
+    result = runner.invoke(cli, ['storage', 'pull', str(relative_path)])
+    assert 0 == result.exit_code
