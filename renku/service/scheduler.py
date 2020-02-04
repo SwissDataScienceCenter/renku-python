@@ -32,9 +32,7 @@ from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
 @contextmanager
 def schedule():
     """Creates scheduler object."""
-    build_scheduler = Scheduler(
-        connection=REDIS_CONNECTION
-    )
+    build_scheduler = Scheduler(connection=REDIS_CONNECTION)
 
     cleanup_interval = int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 60))
 
