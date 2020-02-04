@@ -43,7 +43,7 @@ class BaseCache:
         self.cache.hset(name, key, value)
 
     def invalidate_key(self, name, key):
-        """Invalidate cache `key` in users hash set."""
+        """Invalidate a cache `key` in users hash set."""
         try:
             self.cache.hdel(name, key)
         except RedisError:
@@ -61,3 +61,11 @@ class BaseCache:
             json.loads(record.decode('utf-8'))
             for record in self.cache.hgetall(name).values()
         ]
+
+    def scan_iter(self, pattern):
+        """Scan keys to return all user cached elements."""
+        return self.cache.scan_iter(match=pattern)
+
+    def hash_table(self, hash_table):
+        """Return hash table."""
+        return self.cache.hgetall(hash_table)

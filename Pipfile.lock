@@ -185,6 +185,13 @@
             ],
             "version": "==5.0.3"
         },
+        "croniter": {
+            "hashes": [
+                "sha256:8984b4b27ddfc4b95b2bcec17ee31f827426cf1d717c2af79eff4b4435e23197",
+                "sha256:cfd0837246845d3f3eb463ae8790bfb7db6ac76743e8f31aacaf37830de7fb52"
+            ],
+            "version": "==0.3.31"
+        },
         "cryptography": {
             "hashes": [
                 "sha256:02079a6addc7b5140ba0825f542c0869ff4df9a69c360e339ecead5baefa843c",
@@ -787,6 +794,20 @@
                 "sha256:8ce8cb4e7e1ad89336f8865af152e0563d2e7f0e0b86d2cf75f015f819409243"
             ],
             "version": "==0.10.9"
+        },
+        "rq": {
+            "hashes": [
+                "sha256:15c7020297e37132891e43ca37a0340d80ade7b34e9f34806c27f1c07e71a17f",
+                "sha256:b5e10c41a7259ba069933c5bfc668176b42a2b9c4a9102b54aebb6b516964a21"
+            ],
+            "version": "==1.2.0"
+        },
+        "rq-scheduler": {
+            "hashes": [
+                "sha256:06038a42d33d653f89d534ba3bb95694b9d82b39fdd17c6ac6d9bf77d1acdefb",
+                "sha256:9f9f68d0a4749c83f023d903e148b81da2191229e25ac644a9ff9d6eac31bff4"
+            ],
+            "version": "==0.9.1"
         },
         "ruamel.yaml": {
             "hashes": [
