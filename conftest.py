@@ -568,11 +568,10 @@ def datapack_tar(directory_tree):
 @pytest.fixture(scope='module')
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
-    from renku.service.cache import ServiceCache
+    from renku.service.cache.base import BaseCache
     monkeypatch = MonkeyPatch()
-
     with monkeypatch.context() as m:
-        m.setattr(ServiceCache, 'cache', fakeredis.FakeRedis())
+        m.setattr(BaseCache, 'cache', fakeredis.FakeRedis())
         yield
 
     monkeypatch.undo()
@@ -596,18 +595,23 @@ def svc_client(mock_redis):
     ctx.pop()
 
 
-@contextlib.contextmanager
-def integration_repo(headers, url_components):
-    """With integration repo helper."""
-    from renku.core.utils.contexts import chdir
+def integration_repo_path(headers, url_components):
+    """Constructs integration repo path."""
     from renku.service.config import CACHE_PROJECTS_PATH
-
     project_path = (
         CACHE_PROJECTS_PATH / headers['Renku-User-Id'] / url_components.owner /
         url_components.name
     )
 
-    with chdir(project_path):
+    return project_path
+
+
+@contextlib.contextmanager
+def integration_repo(headers, url_components):
+    """With integration repo helper."""
+    from renku.core.utils.contexts import chdir
+
+    with chdir(integration_repo_path(headers, url_components)):
         repo = Repo('.')
         yield repo
 
@@ -644,16 +648,18 @@ def integration_lifecycle(svc_client, mock_redis):
 
     yield svc_client, headers, project_id, url_components
 
-    # Teardown step: Delete all branches except master.
-    with integration_repo(headers, url_components) as repo:
-        for repo_branch in repo.references:
-            if repo_branch.name == 'master':
-                continue
-
-            try:
-                repo.remote().push(refspec=(':{0}'.format(repo_branch.name)))
-            except git.exc.GitCommandError:
-                continue
+    # Teardown step: Delete all branches except master (if needed).
+    if integration_repo_path(headers, url_components).exists():
+        with integration_repo(headers, url_components) as repo:
+            for repo_branch in repo.references:
+                if repo_branch.name == 'master':
+                    continue
+                try:
+                    repo.remote().push(
+                        refspec=(':{0}'.format(repo_branch.name))
+                    )
+                except git.exc.GitCommandError:
+                    continue
 
 
 @pytest.fixture
@@ -748,6 +754,21 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
     }
 
     yield methods, request.param, svc_client
+
+
+@pytest.fixture
+def service_job(svc_client, mock_redis):
+    """Ensure correct environment during testing of service jobs."""
+    old_environ = dict(os.environ)
+
+    os.environ['RENKU_SVC_CLEANUP_TTL_FILES'] = '0'
+    os.environ['RENKU_SVC_CLEANUP_TTL_PROJECTS'] = '0'
+
+    try:
+        yield svc_client, mock_redis
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)
 
 
 @pytest.fixture
