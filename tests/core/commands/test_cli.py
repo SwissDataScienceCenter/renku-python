@@ -57,7 +57,7 @@ def test_config_path(runner):
     assert 'renku.ini' in output
 
 
-def test_show_context(runner):
+def test_show_context(runner, project):
     """Test context generation."""
     import json
 
