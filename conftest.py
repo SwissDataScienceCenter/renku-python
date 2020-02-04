@@ -595,18 +595,23 @@ def svc_client(mock_redis):
     ctx.pop()
 
 
-@contextlib.contextmanager
-def integration_repo(headers, url_components):
-    """With integration repo helper."""
-    from renku.core.utils.contexts import chdir
+def integration_repo_path(headers, url_components):
+    """Constructs integration repo path."""
     from renku.service.config import CACHE_PROJECTS_PATH
-
     project_path = (
         CACHE_PROJECTS_PATH / headers['Renku-User-Id'] / url_components.owner /
         url_components.name
     )
 
-    with chdir(project_path):
+    return project_path
+
+
+@contextlib.contextmanager
+def integration_repo(headers, url_components):
+    """With integration repo helper."""
+    from renku.core.utils.contexts import chdir
+
+    with chdir(integration_repo_path(headers, url_components)):
         repo = Repo('.')
         yield repo
 
@@ -643,16 +648,18 @@ def integration_lifecycle(svc_client, mock_redis):
 
     yield svc_client, headers, project_id, url_components
 
-    # Teardown step: Delete all branches except master.
-    with integration_repo(headers, url_components) as repo:
-        for repo_branch in repo.references:
-            if repo_branch.name == 'master':
-                continue
-
-            try:
-                repo.remote().push(refspec=(':{0}'.format(repo_branch.name)))
-            except git.exc.GitCommandError:
-                continue
+    # Teardown step: Delete all branches except master (if needed).
+    if integration_repo_path(headers, url_components).exists():
+        with integration_repo(headers, url_components) as repo:
+            for repo_branch in repo.references:
+                if repo_branch.name == 'master':
+                    continue
+                try:
+                    repo.remote().push(
+                        refspec=(':{0}'.format(repo_branch.name))
+                    )
+                except git.exc.GitCommandError:
+                    continue
 
 
 @pytest.fixture
