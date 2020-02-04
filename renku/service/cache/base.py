@@ -64,7 +64,6 @@ class BaseCache:
 
     def scan_iter(self, pattern):
         """Scan keys to return all user cached elements."""
-        # TODO: Look into adding protection from iterating over RQ jobs.
         return self.cache.scan_iter(match=pattern)
 
     def hash_table(self, hash_table):

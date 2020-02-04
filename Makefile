@@ -70,6 +70,6 @@ brew-commit-bottle: *.bottle.json
 brew-release:
 	open "https://github.com/SwissDataScienceCenter/renku-python/releases/new?tag=v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
 
-service:
+service-container:
 	docker build -f Dockerfile.svc -t renku-core:`git rev-parse --short HEAD` .
 
