@@ -763,6 +763,7 @@ def service_job(svc_client, mock_redis):
         os.environ.update(old_environ)
 
 
+@pytest.fixture
 def dummy_run_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugins import hookimpl
