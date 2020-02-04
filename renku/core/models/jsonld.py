@@ -34,7 +34,6 @@ from attr._make import Factory, fields
 
 from renku.core.compat import pyld
 from renku.core.models.locals import ReferenceMixin, with_reference
-from renku.core.models.migrations import JSONLD_MIGRATIONS
 
 KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
@@ -466,6 +465,7 @@ class JSONLDMixin(ReferenceMixin):
         data,
         client=None,
         commit=None,
+        jsonld_migrations=None,
         __reference__=None,
         __source__=None,
     ):
@@ -503,22 +503,20 @@ class JSONLDMixin(ReferenceMixin):
 
         data.setdefault('@context', cls._jsonld_context)
 
-        schema_type = data.get('@type')
-        migrations = []
+        if jsonld_migrations:
+            schema_type = data.get('@type')
+            migrations = []
 
-        if isinstance(schema_type, list):
-            for schema in schema_type:
-                mig_ = JSONLD_MIGRATIONS.get(schema)
-                if mig_:
-                    migrations += mig_
+            if isinstance(schema_type, list):
+                for schema in schema_type:
+                    migrations += jsonld_migrations.get(schema, [])
+            elif isinstance(schema_type, str):
+                migrations += jsonld_migrations.get(schema_type, [])
 
-        if isinstance(schema_type, str) and not migrations:
-            migrations += JSONLD_MIGRATIONS.get(schema_type, [])
-
-        for migration in set(migrations):
-            data = migration(data, client)
-            if __source__:
-                __source__ = migration(__source__, client)
+            for migration in set(migrations):
+                data = migration(data)
+                if __source__:
+                    __source__ = migration(__source__)
 
         if data['@context'] != cls._jsonld_context:
             # merge new context into old context to prevent properties
@@ -569,7 +567,7 @@ class JSONLDMixin(ReferenceMixin):
         return self
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None):
+    def from_yaml(cls, path, client=None, commit=None, jsonld_migrations=None):
         """Return an instance from a YAML file."""
         import yaml
 
@@ -579,6 +577,7 @@ class JSONLDMixin(ReferenceMixin):
                 source,
                 client=client,
                 commit=commit,
+                jsonld_migrations=jsonld_migrations,
                 __reference__=path,
                 __source__=deepcopy(source)
             )

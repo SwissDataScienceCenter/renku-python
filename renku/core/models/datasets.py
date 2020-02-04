@@ -543,7 +543,7 @@ class Dataset(Entity, CreatorMixin):
                 quote(str(self.uid), safe='')
             )
 
-        if self.files:
+        if self.files and self.client is not None:
             for dataset_file in self.files:
                 file_exists = Path(dataset_file.path).exists()
 

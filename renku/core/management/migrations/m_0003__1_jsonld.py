@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,13 +15,50 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Migrations for dataset."""
+"""JSON-LD dataset migrations."""
+import itertools
 import os
 import uuid
 from pathlib import Path
 
+from renku.core.models.datasets import Dataset
 
-def migrate_dataset_schema(data, client):
+__all__ = [
+    'migrate_datasets_metadata',
+]
+
+
+def migrate_datasets_metadata(client):
+    """Apply all initial JSON-LD migrations to datasets."""
+    jsonld_migrations = {
+        'dctypes:Dataset': [_migrate_dataset_schema, _migrate_absolute_paths],
+        'schema:Dataset': [
+            _migrate_absolute_paths, _migrate_doi_identifier,
+            _migrate_same_as_structure
+        ],
+    }
+
+    old_metadata_paths = _dataset_pre_0_3(client)
+    new_metadata_paths = (client.path / client.renku_datasets_path).rglob(
+        client.METADATA
+    )
+
+    for file_ in itertools.chain(old_metadata_paths, new_metadata_paths):
+        dataset = Dataset.from_yaml(
+            file_, jsonld_migrations=jsonld_migrations, client=client
+        )
+        dataset.to_yaml()
+
+
+def _dataset_pre_0_3(client):
+    """Return paths of dataset metadata for pre 0.3.4."""
+    project_is_pre_0_3 = int(client.project.version) < 2
+    if project_is_pre_0_3:
+        return (client.path / 'data').rglob(client.METADATA)
+    return []
+
+
+def _migrate_dataset_schema(data):
     """Migrate from old dataset formats."""
     if 'authors' not in data:
         return
@@ -42,7 +79,7 @@ def migrate_dataset_schema(data, client):
     return data
 
 
-def migrate_absolute_paths(data, client):
+def _migrate_absolute_paths(data):
     """Migrate dataset paths to use relative path."""
     raw_path = data.get('path', '.')
     path = Path(raw_path)
@@ -68,7 +105,7 @@ def migrate_absolute_paths(data, client):
     return data
 
 
-def migrate_doi_identifier(data, client):
+def _migrate_doi_identifier(data):
     """If the dataset _id is doi, make it a UUID."""
     from renku.core.utils.doi import is_doi
     from renku.core.utils.uuid import is_uuid
@@ -97,7 +134,7 @@ def migrate_doi_identifier(data, client):
     return data
 
 
-def migrate_same_as_structure(data, client):
+def _migrate_same_as_structure(data):
     """Changes sameAs string to schema:URL object."""
     same_as = data.get('same_as')
 

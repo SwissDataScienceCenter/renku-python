@@ -1540,6 +1540,6 @@ keywords: []
 license:
   _id: http://creativecommons.org/licenses/by/4.0/legalcode
 name: Binary black-hole surrogate waveform catalog
-path: /home/jovyan/zurich-bikes-2/.renku/datasets/dd38afca-0e96-4034-a2e5-dc7505c0af30
+path: .renku/datasets/dd38afca-0e96-4034-a2e5-dc7505c0af30
 url: https://zenodo.org/record/3348115
 version: null

@@ -17,8 +17,8 @@
 # limitations under the License.
 """Define repository checks for :program:`renku doctor`."""
 
+from .datasets import check_dataset_metadata, check_missing_files
 from .githooks import check_git_hooks_installed
-from .migration import check_dataset_metadata, check_missing_files
 from .references import check_missing_references
 from .validate_shacl import check_datasets_structure, check_project_structure
 

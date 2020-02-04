@@ -22,6 +22,7 @@ import os
 
 import attr
 
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
 from renku.core.models.datastructures import Collection
 from renku.core.models.provenance.agents import Person
@@ -62,7 +63,7 @@ class Project(object):
 
     version = jsonld.ib(
         converter=str,
-        default='2',
+        default=str(SUPPORTED_PROJECT_VERSION),
         context='schema:schemaVersion',
     )
 

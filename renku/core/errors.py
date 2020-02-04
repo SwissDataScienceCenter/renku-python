@@ -193,14 +193,22 @@ class ProtectedFiles(RenkuException):
 class MigrationRequired(RenkuException):
     """Raise when migration is required."""
 
-    def __init__(self, resource_type):
+    def __init__(self):
         """Build a custom message."""
-        super(MigrationRequired, self).__init__(
-            'Broken resource of type `{0}` found.\n'
-            'Migration is required.\n'
-            'Please check `renku migrate --help` '
-            'command to fix the issue.\n'
-            'Hint: `renku migrate datasets`'.format(resource_type)
+        super().__init__(
+            'Project version is old and a migration is required.\n'
+            'Run `renku migrate` command to fix the issue.'
+        )
+
+
+class ProjectNotSupported(RenkuException):
+    """Raise when project version is newer than the supported version."""
+
+    def __init__(self):
+        """Build a custom message."""
+        super().__init__(
+            'Project is not supported by this version of Renku.\n'
+            'Upgrade to the latest version of Renku.'
         )
 
 
