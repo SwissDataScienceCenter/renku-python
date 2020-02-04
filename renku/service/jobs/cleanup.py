@@ -44,7 +44,7 @@ def cache_files_cleanup():
             if old >= ttl:
                 file_path = make_file_path(user, data)
                 if file_path.exists() and file_path.is_file():
-                    file_path.unlink()
+                    file_path.unlink(missing_ok=True)
 
                 if file_path.exists() and file_path.is_dir():
                     shutil.rmtree(str(file_path))
