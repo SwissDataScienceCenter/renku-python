@@ -749,6 +749,7 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
     yield methods, request.param, svc_client
 
 
+@pytest.fixture
 def service_job(svc_client, mock_redis):
     """Ensure correct environment during testing of service jobs."""
     old_environ = dict(os.environ)
