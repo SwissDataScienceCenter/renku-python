@@ -25,6 +25,7 @@ If applicable, add screenshots and/or copy-pasted execution output to help expla
 
 **Run environment (please complete the following information):**
  - renku-python version
+ - Python version
  - local terminal OR renkulab interactive environment?
  - if renkulab, specify RStudio / Jupyterlab / Other & browser [e.g. chrome, safari]
 
