@@ -121,7 +121,6 @@ def print_global_config_path(ctx, param, value):
 
 def is_allowed_command(ctx):
     """Check if invoked command contains help command."""
-
     return (
         ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or
         '-h' in sys.argv or '--help' in sys.argv
