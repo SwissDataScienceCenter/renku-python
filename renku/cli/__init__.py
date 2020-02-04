@@ -100,6 +100,8 @@ from renku.core.management.repository import default_path
 #: Monkeypatch Click application.
 click_completion.init()
 
+WARNING_UNPROTECTED_COMMANDS = ['init', 'clone', 'help']
+
 
 def _uuid_representer(dumper, data):
     """Add UUID serializer for YAML."""
@@ -117,11 +119,12 @@ def print_global_config_path(ctx, param, value):
     ctx.exit()
 
 
-def is_help_command(ctx):
+def is_allowed_command(ctx):
     """Check if invoked command contains help command."""
+
     return (
-        ctx.invoked_subcommand == 'help' or '-h' in sys.argv or
-        '--help' in sys.argv
+        ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or
+        '-h' in sys.argv or '--help' in sys.argv
     )
 
 
@@ -186,7 +189,7 @@ def cli(ctx, path, renku_home, use_external_storage):
     """Check common Renku commands used in various situations."""
     renku_path = Path(path) / renku_home
 
-    if not renku_path.exists() and not is_help_command(ctx):
+    if not renku_path.exists() and not is_allowed_command(ctx):
         click.echo(
             WARNING +
             '`{0}` is not a renku initialized repository.'.format(path)
