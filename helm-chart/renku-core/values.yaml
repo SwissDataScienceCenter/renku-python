@@ -9,8 +9,8 @@ cleanupInterval: 60
 projectCloneDepth: 1
 
 workerQueues: cache.cleanup.files,cache.cleanup.projects
-cleanupFilesTTL: 60
-cleanupProjectsTTL: 60
+cleanupFilesTTL: 1800
+cleanupProjectsTTL: 1800
 logLevel: WARNING
 
 image:
