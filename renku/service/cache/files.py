@@ -49,3 +49,7 @@ class FileManagementCache(BaseCache):
     def invalidate_file(self, user, file_id):
         """Remove file record from hash set."""
         self.invalidate_key(self.files_cache_key(user), file_id)
+
+    def all_files_iter(self):
+        """Iterate over cached files."""
+        return self.scan_iter('*_{0}'.format(FileManagementCache.FILES_SUFFIX))
