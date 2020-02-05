@@ -38,13 +38,13 @@ spec:
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
-              value: {{ .Values.cleanupInterval }}
+              value: {{ .Values.cleanupInterval | quote }}
             - name: RENKU_SVC_WORKER_QUEUES
               value: {{ .Values.workerQueues }}
             - name: RENKU_SVC_CLEANUP_TTL_FILES
-              value: {{ .Values.cleanupFilesTTL }}
+              value: {{ .Values.cleanupFilesTTL | quote }}
             - name: RENKU_SVC_CLEANUP_TTL_PROJECTS
-              value: {{ .Values.cleanupProjectsTTL }}
+              value: {{ .Values.cleanupProjectsTTL | quote }}
             - name: RQ_WORKER_LOG_LEVEL
               value: {{ .Values.logLevel }}
 
@@ -62,9 +62,9 @@ spec:
             - name: REDIS_PASSWORD
               value:
             - name: CACHE_DIR
-              value: {{ .Values.cacheDirectory }}
+              value: {{ .Values.cacheDirectory | quote }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
-              value: {{ .Values.cleanupInterval }}
+              value: {{ .Values.cleanupInterval | quote }}
 
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
