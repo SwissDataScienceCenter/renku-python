@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -57,7 +57,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Renku'
-copyright = u'2017-2019, Swiss Data Science Center'
+copyright = u'2017-2020, Swiss Data Science Center'
 author = u'Swiss Data Science Center'
 
 # The version info for the project you're documenting, acts as replacement for
