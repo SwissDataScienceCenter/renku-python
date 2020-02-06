@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,9 +15,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# TODO: Add development versions of some important dependencies here to get a
-#       warning when there are breaking upstream changes, e.g.:
-#
-#     -e git+git://github.com/mitsuhiko/werkzeug.git#egg=Werkzeug
-#     -e git+git://github.com/mitsuhiko/jinja2.git#egg=Jinja2
+"""Job queues."""
+import redis
+from rq import Queue
+
+from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, \
+    REDIS_PASSWORD, REDIS_PORT
+
+REDIS_CONNECTION = redis.Redis(
+    host=REDIS_HOST,
+    password=REDIS_PASSWORD,
+    port=REDIS_PORT,
+    db=REDIS_DATABASE
+)
+
+CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
+CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
+
+QUEUES = {
+    CLEANUP_QUEUE_FILES:
+        Queue(CLEANUP_QUEUE_FILES, connection=REDIS_CONNECTION),
+    CLEANUP_QUEUE_PROJECTS:
+        Queue(CLEANUP_QUEUE_PROJECTS, connection=REDIS_CONNECTION),
+}
