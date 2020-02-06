@@ -1,5 +1,5 @@
 ..
-    Copyright 2019 - Swiss Data Science Center (SDSC)
+    Copyright 2019-2020 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -30,7 +30,7 @@ reproducible.
 If you are using ``Makefile`` to generate your :term:`outputs` you are on a
 good path. However you might be missing versioning of your past executions.
 
-Renku internally builds rules similar to those defined in a ``Makefile`` and 
+Renku internally builds rules similar to those defined in a ``Makefile`` and
 makes sure that all files are saved before running a :term:`tool`.
 
 Running the following ``renku run`` commands
