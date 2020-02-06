@@ -677,6 +677,7 @@ def import_(uri, short_name, extract):
         with_prompt=True,
         progress=_DownloadProgressbar
     )
+    click.secho(' ' * 79 + '\r', nl=False)
     click.secho('OK', fg='green')
 
 

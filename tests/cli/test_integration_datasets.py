@@ -302,7 +302,6 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'url', [
-        'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62',
         'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62/',
         'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
         'datasets/48299db3-8870-4cbe-a480-f75985c42a62'
@@ -311,8 +310,12 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
 def test_dataset_import_renku(runner, project, client, url):
     """Test dataset import from Renku projects."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
-    assert 'OK' in result.output
     assert 0 == result.exit_code
+    checksum = '54751585bb81a0bff32727e46e2aabaa0c8d19f8'
+    assert checksum in result.output
+    size = '66.00'
+    assert size in result.output
+    assert 'OK' in result.output
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
     assert 0 == result.exit_code
