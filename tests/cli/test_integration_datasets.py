@@ -323,7 +323,7 @@ def test_dataset_import_renku(runner, project, client, url):
     assert path in result.output
 
     dataset = [d for d in client.datasets.values()][0]
-    assert dataset.same_as.url == url
+    assert dataset.same_as.url['@id'] == url
 
 
 @pytest.mark.integration
