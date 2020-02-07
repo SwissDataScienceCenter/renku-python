@@ -88,7 +88,6 @@ from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
 from renku.cli.workflow import workflow
-from renku.core.commands.echo import WARNING
 from renku.core.commands.options import install_completion, \
     option_use_external_storage
 from renku.core.commands.version import check_version, print_version
@@ -187,15 +186,11 @@ def is_allowed_command(ctx):
 def cli(ctx, path, renku_home, use_external_storage):
     """Check common Renku commands used in various situations."""
     renku_path = Path(path) / renku_home
-
     if not renku_path.exists() and not is_allowed_command(ctx):
-        click.echo(
-            WARNING +
-            '`{0}` is not a renku initialized repository.'.format(path)
-        )
         raise UsageError((
-            'To initialize this as a renku managed '
-            'repository use: `renku init`'
+            '`{0}` is not a renku repository.\n'
+            'To initialize this as a renku '
+            'repository use: `renku init`'.format(path)
         ))
 
     ctx.obj = LocalClient(

@@ -16,33 +16,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """CLI tests."""
+import sys
 import tempfile
+
+import pytest
 
 from renku.cli import cli
 
 
-def test_cli_initialization_err(runner):
-    """Check correct user warning within non-renku repository."""
+@pytest.mark.parametrize(
+    'cmd', [
+        ['config'],
+        ['dataset'],
+        ['doctor'],
+        ['githooks'],
+        ['log'],
+        ['migrate'],
+        ['mv'],
+        ['rerun'],
+        ['rm'],
+        ['run'],
+        ['show'],
+        ['status'],
+        ['storage'],
+        ['update'],
+        ['workflow'],
+    ]
+)
+def test_cli_initialization_err(cmd, runner):
+    """Test correct exception raise within non-renku repository."""
     from renku.core.utils.contexts import chdir
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
-            result = runner.invoke(cli, ['config', 'key', 'local-value'])
+            result = runner.invoke(cli, cmd)
             assert 2 == result.exit_code
 
             expected_output = (
-                'Warning: `.` is not a renku initialized repository.\n'
-                'Error: To initialize this as a renku managed repository use: '
-                '`renku init`\n'
+                'Error: `.` is not a renku repository.\n'
+                'To initialize this as a '
+                'renku repository use: `renku init`\n'
             )
             assert expected_output == result.output
 
 
-def test_cli_initialization_no_err_help(runner):
-    """Check correct user warning within non-renku repository."""
+@pytest.mark.parametrize(
+    'cmd',
+    [
+        # NOTE: Clone command covered through integration tests.
+        ['config', '--help'],
+        ['dataset', '--help'],
+        ['doctor', '--help'],
+        ['githooks', '--help'],
+        ['log', '--help'],
+        ['migrate', '--help'],
+        ['mv', '--help'],
+        ['rerun', '--help'],
+        ['rm', '--help'],
+        ['run', '--help'],
+        ['show', '--help'],
+        ['status', '--help'],
+        ['storage', '--help'],
+        ['update', '--help'],
+        ['workflow', '--help'],
+        ['init', '--template', 'Basic Python Project', '--force'],
+        ['init', '--help'],
+        ['help'],
+        ['--help'],
+    ]
+)
+def test_cli_initialization_no_err_help(cmd, runner):
+    """Test allowed commands within non-renku repository."""
     from renku.core.utils.contexts import chdir
-
+    sys.argv = cmd
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
-            result = runner.invoke(cli, ['--help'])
+            result = runner.invoke(cli, cmd)
             assert 0 == result.exit_code
