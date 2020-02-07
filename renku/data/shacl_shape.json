@@ -321,7 +321,6 @@
                "maxCount": 1
             },
             {
-               "nodeKind": "sh:Literal",
                "path": "schema:sameAs",
                "sh:class": {
                   "@id": "schema:URL"
