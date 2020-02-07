@@ -236,6 +236,7 @@ def add_to_dataset(
             if with_metadata:
                 for file_ in dataset.files:
                     file_.creator = with_metadata.creator
+                    file_.based_on = None
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
 

@@ -523,7 +523,7 @@ class DatasetsApiMixin(object):
                             creators.append(creator)
 
                     based_on = DatasetFile.from_revision(
-                        remote_client, path=path, url=url
+                        remote_client, path=path, url=url, creator=creators
                     )
 
                 path_in_dst_repo = dst.relative_to(self.path)

@@ -467,6 +467,13 @@
                "maxCount": 1
             },
             {
+               "path": "schema:isBasedOn",
+               "sh:class": {
+                  "@id": "schema:DigitalDocument"
+               },
+               "maxCount": 1
+            },
+            {
                "nodeKind": "sh:Literal",
                "path": "schema:dateCreated",
                "datatype": {

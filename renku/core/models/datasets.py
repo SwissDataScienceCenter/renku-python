@@ -77,9 +77,6 @@ class Url:
 
     def default_url(self):
         """Define default value for url field."""
-
-        print(self)
-        print(dir(self))
         if self.url_str:
             return self.url_str
         elif self.url_id:
@@ -98,6 +95,7 @@ class Url:
             raise NotImplementedError('Either url_id or url_str has to be set')
 
     def __attrs_post_init__(self):
+        """Post-initialize attributes."""
         if not self.url:
             self.url = self.default_url()
 
