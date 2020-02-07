@@ -62,8 +62,9 @@ Windows:
 If in doubt where to look for the configuration file, you can display its path
 by running ``renku --global-config-path``.
 """
-
+import sys
 import uuid
+from pathlib import Path
 
 import click
 import click_completion
@@ -90,12 +91,15 @@ from renku.cli.workflow import workflow
 from renku.core.commands.options import install_completion, \
     option_use_external_storage
 from renku.core.commands.version import check_version, print_version
+from renku.core.errors import UsageError
 from renku.core.management.client import LocalClient
 from renku.core.management.config import RENKU_HOME, ConfigManagerMixin
 from renku.core.management.repository import default_path
 
 #: Monkeypatch Click application.
 click_completion.init()
+
+WARNING_UNPROTECTED_COMMANDS = ['init', 'clone', 'help']
 
 
 def _uuid_representer(dumper, data):
@@ -112,6 +116,14 @@ def print_global_config_path(ctx, param, value):
         return
     click.echo(ConfigManagerMixin().global_config_path)
     ctx.exit()
+
+
+def is_allowed_command(ctx):
+    """Check if invoked command contains help command."""
+    return (
+        ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or
+        '-h' in sys.argv or '--help' in sys.argv
+    )
 
 
 @click.group(
@@ -173,6 +185,14 @@ def print_global_config_path(ctx, param, value):
 @click.pass_context
 def cli(ctx, path, renku_home, use_external_storage):
     """Check common Renku commands used in various situations."""
+    renku_path = Path(path) / renku_home
+    if not renku_path.exists() and not is_allowed_command(ctx):
+        raise UsageError((
+            '`{0}` is not a renku repository.\n'
+            'To initialize this as a renku '
+            'repository use: `renku init`'.format(path)
+        ))
+
     ctx.obj = LocalClient(
         path=path,
         renku_home=renku_home,
