@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -57,7 +57,7 @@ def test_config_path(runner):
     assert 'renku.ini' in output
 
 
-def test_show_context(runner):
+def test_show_context(runner, project):
     """Test context generation."""
     import json
 
