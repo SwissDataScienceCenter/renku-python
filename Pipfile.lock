@@ -264,10 +264,10 @@
         },
         "fakeredis": {
             "hashes": [
-                "sha256:4582d8fbd9d91983e0113b7513ec33a2a80333752ffc2d24b330c412d341685c",
-                "sha256:b8cf9c19fbcd53fe0512ece75b2df9430c46f75898111f50cff309c3a35b921d"
+                "sha256:5cda80461b83137b7759bca7432ee260b44b0ca7bd8ea1af7780d4f36aab73e1",
+                "sha256:b0b64d0fe0e491752006c1880eacac647ed30a12a13066e0cea54449778ad811"
             ],
-            "version": "==1.1.1"
+            "version": "==1.2.0"
         },
         "filelock": {
             "hashes": [
