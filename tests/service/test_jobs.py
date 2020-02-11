@@ -22,12 +22,11 @@ import uuid
 
 import pytest
 from flaky import flaky
-
-from renku.service.utils import make_project_path
 from tests.service.test_dataset_views import assert_rpc_response
 
 from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
+from renku.service.utils import make_project_path
 
 
 @pytest.mark.service
