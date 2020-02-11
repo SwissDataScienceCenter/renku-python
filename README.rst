@@ -177,6 +177,29 @@ still possible with ``pipx``. First clone the repository and then do:
 
 This will install all the extras for testing and debugging.
 
+Run tests
+---------
+
+To run tests locally with specific version of Python:
+
+::
+
+    $ pyenv install 3.7.5rc1
+    $ pipenv --python ~/.pyenv/versions/3.7.5rc1/bin/python install
+    $ pipenv run tests
+
+
+To recreate environment with different version of Python, it's easy to do so with the following commands:
+
+::
+
+    $ pipenv --rm
+    $ pyenv install 3.6.9
+    $ pipenv --python ~/.pyenv/versions/3.6.9/bin/python install
+    $ pipenv run tests
+
+
+
 Using External Debuggers
 ------------------------
 
