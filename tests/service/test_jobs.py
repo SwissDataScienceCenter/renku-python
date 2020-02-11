@@ -80,7 +80,7 @@ def test_cleanup_files_old_keys(svc_client_cache, tmp_path):
 
     user = {'user_id': 'user'}
     mydata = tmp_path / 'mydata.json'
-    mydata.write_text("1,2,3")
+    mydata.write_text('1,2,3')
 
     file_upload = {
         'file_id': uuid.uuid4().hex,
