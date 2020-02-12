@@ -107,7 +107,7 @@ def _rdf2dot_simple(g, stream):
     import re
 
     path_re = re.compile(
-        r'(?P<prefix>file://|https://\w+/\w+/){0,1}(?P<type>[a-zA-Z]+)/'
+        r'(?P<prefix>https://\w+/|https://\w+/\w+/){0,1}(?P<type>[a-zA-Z]+)/'
         r'(?P<commit>\w+)'
         r'(?P<path>.+)?'
     )
