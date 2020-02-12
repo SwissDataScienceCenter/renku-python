@@ -71,4 +71,4 @@ class ProviderFactory:
     @staticmethod
     def from_id(provider_id):
         """Get provider type based on identifier."""
-        return ProviderFactory.PROVIDERS[provider_id]()
+        return ProviderFactory.PROVIDERS[provider_id.lower()]()

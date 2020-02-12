@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -476,7 +476,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     assert_rpc_response(response)
 
     assert 200 == response.status_code
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
 
     mm = {}
     for file_ in response.json['result']['files']:
@@ -573,7 +573,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
     assert_rpc_response(response)
     assert 200 == response.status_code
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
 
     mm = {}
     for file_ in response.json['result']['files']:

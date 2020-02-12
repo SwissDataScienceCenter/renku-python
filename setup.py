@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -96,11 +96,11 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'check-manifest>=0.37',
     'coverage>=4.5.3',
-    'fakeredis==1.1.0',
+    'fakeredis==1.1.1',
     'flake8>=3.5',
     'flaky==3.6.1',
     'freezegun>=0.3.12',
-    'isort==4.3.4',
+    'isort==4.3.21',
     'six>=1.13.0',
     'pydocstyle>=3.0.0',
     'pytest-cache>=1.0',
@@ -145,20 +145,21 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'appdirs>=1.4.3',
-    'apispec==3.0.0',
+    'apispec==3.2.0',
     'attrs>=18.2.0',
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
-    'cwltool==1.0.20191206125148',
+    'cwltool==2.0.20200126090152',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'flask==1.1.1',
-    'flask-apispec==0.8.3',
+    'flask-apispec==0.8.5',
     'flask-swagger-ui==3.20.9',
-    'gitpython==3.0.3',
+    'gitpython==3.0.5',
     'jinja2>=2.10.3',
     'patool>=1.12',
+    'pluggy>=0.13.1',
     'psutil>=5.4.7',
     'pyasn1>=0.4.5',
     'PyYAML>=3.12',
@@ -171,8 +172,10 @@ install_requires = [
     'rdflib==4.2.2',
     'rdflib-jsonld>=0.4.0',
     'requests>=2.21.0',
+    'rq==1.2.2',
+    'rq-scheduler==0.9.1',
     'ndg-httpsclient>=0.5.1',
-    'marshmallow==3.2.2',
+    'marshmallow==3.4.0',
     'idna>=2.8',
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',

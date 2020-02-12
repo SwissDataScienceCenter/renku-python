@@ -10,3 +10,6 @@ renku = {editable = true,extras = ["all"],path = "."}
 
 [requires]
 python_version = "3.7"
+
+[scripts]
+tests = "./run-tests.sh -t -s -d"

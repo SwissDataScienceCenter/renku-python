@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -470,7 +470,7 @@ def test_upload_zip_unpack_archive(datapack_zip, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
@@ -528,11 +528,30 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
 
     assert 200 == response.status_code
     assert {'result'} == set(response.json.keys())
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
 
     for file_ in response.json['result']['files']:
         assert not file_['is_archive']
         assert not file_['unpack_archive']
+
+    response = svc_client.get(
+        '/cache.files_list',
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {'result'} == set(response.json.keys())
+    assert response.json['result']['files']
+
+    dirs = filter(lambda x: x['is_dir'], response.json['result']['files'])
+    assert list(dirs)
+
+    files = filter(lambda x: not x['is_dir'], response.json['result']['files'])
+    assert list(files)
+
+    paths = [_file['relative_path'] for _file in files]
+    assert sorted(paths) == paths
 
 
 @pytest.mark.service
@@ -587,7 +606,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
     assert 200 == response.status_code
 
     assert {'result'} == set(response.json.keys())
-    assert 3 == len(response.json['result']['files'])
+    assert response.json['result']['files']
     assert {
         'content_type',
         'file_id',
@@ -596,6 +615,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
         'is_archive',
         'timestamp',
         'is_archive',
+        'is_dir',
         'unpack_archive',
         'relative_path',
     } == set(response.json['result']['files'][0].keys())

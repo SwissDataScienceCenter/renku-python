@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019- Swiss Data Science Center (SDSC)
+# Copyright 2017-2020- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Pytest configuration."""
-
+import contextlib
 import json
 import os
 import pathlib
@@ -26,13 +26,17 @@ import tempfile
 import time
 import urllib
 import uuid
+from copy import deepcopy
 from pathlib import Path
 
 import fakeredis
+import git
 import pytest
 import responses
 import yaml
+from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
+from git import Repo
 
 
 @pytest.fixture(scope='module')
@@ -363,6 +367,17 @@ def zenodo_sandbox(client):
 
 
 @pytest.fixture
+def dataverse_demo(client):
+    """Configure environment to use Dataverse demo environment."""
+    client.set_value(
+        'dataverse', 'access_token', '4ca13597-cf43-4815-8763-b64994058c19'
+    )
+    client.set_value('dataverse', 'server_url', 'https://demo.dataverse.org')
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('renku.ini')
+
+
+@pytest.fixture
 def doi_responses():
     """Responses for doi.org requests."""
     from renku.core.commands.providers.doi import DOI_BASE_URL
@@ -549,16 +564,19 @@ def datapack_tar(directory_tree):
     yield Path(workspace_dir.name) / 'datapack.tar'
 
 
-@pytest.fixture(scope='function')
-def mock_redis(monkeypatch):
+@pytest.fixture(scope='module')
+def mock_redis():
     """Monkey patch service cache with mocked redis."""
-    from renku.service.cache import ServiceCache
+    from renku.service.cache.base import BaseCache
+    monkeypatch = MonkeyPatch()
     with monkeypatch.context() as m:
-        m.setattr(ServiceCache, 'cache', fakeredis.FakeRedis())
+        m.setattr(BaseCache, 'cache', fakeredis.FakeRedis())
         yield
 
+    monkeypatch.undo()
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope='module')
 def svc_client(mock_redis):
     """Renku service client."""
     from renku.service.entrypoint import create_app
@@ -577,9 +595,51 @@ def svc_client(mock_redis):
 
 
 @pytest.fixture(scope='function')
-def svc_client_with_repo(svc_client, mock_redis):
-    """Renku service remote repository."""
+def svc_client_cache(mock_redis):
+    """Service jobs fixture."""
+    from renku.service.entrypoint import create_app
+
+    flask_app = create_app()
+
+    testing_client = flask_app.test_client()
+    testing_client.testing = True
+
+    ctx = flask_app.app_context()
+    ctx.push()
+
+    yield testing_client, flask_app.config.get('cache')
+
+    ctx.pop()
+
+
+def integration_repo_path(headers, url_components):
+    """Constructs integration repo path."""
+    from renku.service.config import CACHE_PROJECTS_PATH
+    project_path = (
+        CACHE_PROJECTS_PATH / headers['Renku-User-Id'] / url_components.owner /
+        url_components.name
+    )
+
+    return project_path
+
+
+@contextlib.contextmanager
+def integration_repo(headers, url_components):
+    """With integration repo helper."""
+    from renku.core.utils.contexts import chdir
+
+    with chdir(integration_repo_path(headers, url_components)):
+        repo = Repo('.')
+        yield repo
+
+
+@pytest.fixture(scope='module')
+def integration_lifecycle(svc_client, mock_redis):
+    """Setup and teardown steps for integration tests."""
+    from renku.core.models.git import GitURL
     remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
+    url_components = GitURL.parse(remote_url)
+
     headers = {
         'Content-Type': 'application/json',
         'Renku-User-Id': 'b4b4de0eda0f471ab82702bd5c367fa7',
@@ -599,10 +659,37 @@ def svc_client_with_repo(svc_client, mock_redis):
     assert response
     assert 'result' in response.json
     assert 'error' not in response.json
+
     project_id = response.json['result']['project_id']
     assert isinstance(uuid.UUID(project_id), uuid.UUID)
 
-    yield svc_client, headers, project_id
+    yield svc_client, headers, project_id, url_components
+
+    # Teardown step: Delete all branches except master (if needed).
+    if integration_repo_path(headers, url_components).exists():
+        with integration_repo(headers, url_components) as repo:
+            for repo_branch in repo.references:
+                if repo_branch.name == 'master':
+                    continue
+                try:
+                    repo.remote().push(
+                        refspec=(':{0}'.format(repo_branch.name))
+                    )
+                except git.exc.GitCommandError:
+                    continue
+
+
+@pytest.fixture
+def svc_client_with_repo(integration_lifecycle):
+    """Service client with a remote repository."""
+    svc_client, headers, project_id, url_components = integration_lifecycle
+
+    with integration_repo(headers, url_components) as repo:
+        new_branch = uuid.uuid4().hex
+        current = repo.create_head(new_branch)
+        current.checkout()
+
+    yield svc_client, deepcopy(headers), project_id
 
 
 @pytest.fixture(
@@ -684,3 +771,84 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
     }
 
     yield methods, request.param, svc_client
+
+
+@pytest.fixture
+def service_job(svc_client, mock_redis):
+    """Ensure correct environment during testing of service jobs."""
+    old_environ = dict(os.environ)
+
+    os.environ['RENKU_SVC_CLEANUP_TTL_FILES'] = '0'
+    os.environ['RENKU_SVC_CLEANUP_TTL_PROJECTS'] = '0'
+
+    try:
+        yield svc_client, mock_redis
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)
+
+
+@pytest.fixture
+def dummy_run_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _CmdlineToolAnnotations(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        @hookimpl
+        def cmdline_tool_annotations(self, tool):
+            """``cmdline_tool_annotations`` hook implementation."""
+            from renku.core.models.cwl.annotation import Annotation
+
+            return [
+                Annotation(
+                    id='_:annotation',
+                    source='Dummy Cmdline Hook',
+                    body='dummy cmdline hook body'
+                )
+            ]
+
+    return _CmdlineToolAnnotations()
+
+
+@pytest.fixture
+def dummy_pre_run_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _PreRun(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        called = 0
+
+        @hookimpl
+        def pre_run(self, tool):
+            """``cmdline_tool_annotations`` hook implementation."""
+            self.called = 1
+
+    return _PreRun()
+
+
+@pytest.fixture
+def dummy_processrun_plugin_hook():
+    """A dummy hook to be used with the renku run plugin."""
+    from renku.core.plugins import hookimpl
+
+    class _ProcessRunAnnotations(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        @hookimpl
+        def process_run_annotations(self, run):
+            """``process_run_annotations`` hook implementation."""
+            from renku.core.models.cwl.annotation import Annotation
+
+            return [
+                Annotation(
+                    id='_:annotation',
+                    source='Dummy ProcessRun Hook',
+                    body='dummy ProcessRun hook body'
+                )
+            ]
+
+    return _ProcessRunAnnotations()

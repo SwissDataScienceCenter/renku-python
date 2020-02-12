@@ -165,8 +165,9 @@ def attrs(
             jsonld_cls.__type_registry__[type_] != jsonld_cls
         ):
             raise TypeError(
-                'Type {0!r} is already registered for class {1!r}.'.format(
+                'Type {0!r} in {1!r} is already registered for {2!r}.'.format(
                     jsonld_cls._jsonld_type,
+                    jsonld_cls,
                     jsonld_cls.__type_registry__[type_],
                 )
             )

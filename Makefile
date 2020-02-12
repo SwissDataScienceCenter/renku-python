@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -71,4 +71,5 @@ brew-release:
 	open "https://github.com/SwissDataScienceCenter/renku-python/releases/new?tag=v$(shell brew info --json=v1 renku | jq -r '.[0].versions.stable')"
 
 service-container:
-	docker build -f Dockerfile.svc -t renku-svc:`git rev-parse --short HEAD` .
+	docker build -f Dockerfile.svc -t renku-core:`git rev-parse --short HEAD` .
+

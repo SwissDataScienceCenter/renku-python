@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2019- Swiss Data Science Center (SDSC)
+# Copyright 2018-2020- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -86,6 +86,7 @@ def test_file_modification_during_run(tmpdir, runner, project, client, run):
         process = subprocess.Popen(
             prefix + cmd, stdin=subprocess.PIPE, stdout=stdout
         )
+
         while not lock.exists():
             time.sleep(1)
 

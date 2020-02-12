@@ -46,6 +46,30 @@ _path_attr = partial(
 )
 
 
+@jsonld.s(
+    type='schema:URL',
+    context={
+        'schema': 'http://schema.org/',
+    },
+)
+class Url:
+    """Represents a schema URL reference."""
+
+    url = jsonld.ib(default=None, kw_only=True, context='schema:url')
+
+    _id = jsonld.ib(kw_only=True, context='@id')
+
+    @_id.default
+    def default_id(self):
+        """Define default value for id field."""
+        if self.url:
+            parsed_result = urllib.parse.urlparse(self.url)
+            id_ = urllib.parse.ParseResult('', *parsed_result[1:]).geturl()
+        else:
+            id_ = str(uuid.uuid4())
+        return '_:URL@{0}'.format(id_)
+
+
 def _convert_creators(value):
     """Convert creators."""
     if isinstance(value, dict):  # compatibility with previous versions
@@ -288,7 +312,7 @@ class Dataset(Entity, CreatorMixin):
     )
 
     description = jsonld.ib(
-        default='', context='schema:description', kw_only=True
+        default=None, context='schema:description', kw_only=True
     )
 
     identifier = jsonld.ib(
@@ -349,7 +373,9 @@ class Dataset(Entity, CreatorMixin):
         kw_only=True
     )
 
-    same_as = jsonld.ib(context='schema:sameAs', default=None, kw_only=True)
+    same_as = jsonld.ib(
+        context='schema:sameAs', default=None, kw_only=True, type=Url
+    )
 
     short_name = jsonld.ib(
         default=None, context='schema:alternateName', kw_only=True
@@ -399,6 +425,13 @@ class Dataset(Entity, CreatorMixin):
         obj = self.asjsonld()
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
+
+    @property
+    def datadir(self):
+        """Directory where dataset files are stored."""
+        if self.client:
+            return Path(self.client.datadir) / self.short_name
+        return ''
 
     def contains_any(self, files):
         """Check if files are already within a dataset."""

@@ -25,9 +25,9 @@ from urllib.parse import urlparse
 
 import attr
 import requests
-from requests import HTTPError
 from tqdm import tqdm
 
+from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
 from renku.core.models.datasets import Dataset, DatasetFile
@@ -59,23 +59,25 @@ def check_or_raise(response):
     """Check for expected response status code."""
     if response.status_code not in [200, 201, 202]:
         if response.status_code == 401:
-            raise HTTPError('Access unauthorized - update access token.')
+            raise errors.AuthenticationError(
+                'Access unauthorized - update access token.'
+            )
 
         if response.status_code == 400:
             err_response = response.json()
-            errors = [
+            messages = [
                 '"{0}" failed with "{1}"'.format(err['field'], err['message'])
                 for err in err_response['errors']
             ]
 
-            raise HTTPError(
-                '\n' + '\n'.join(errors) +
+            raise errors.ExportError(
+                '\n' + '\n'.join(messages) +
                 '\nSee `renku dataset edit -h` for details on how to edit'
                 ' metadata'
             )
 
         else:
-            raise HTTPError(response.content)
+            raise errors.ExportError(response.content)
 
 
 @attr.s
@@ -119,6 +121,8 @@ class ZenodoMetadataSerializer:
 
     doi = attr.ib(default=None, kw_only=True)
 
+    extras = attr.ib(default=None, kw_only=True)
+
     grants = attr.ib(default=None, kw_only=True)
 
     image_type = attr.ib(default=None, kw_only=True)
@@ -158,7 +162,14 @@ class ZenodoMetadataSerializer:
 
 def _metadata_converter(data):
     """Convert dict to ZenodoMetadata instance."""
-    return ZenodoMetadataSerializer(**data)
+    all_keys = set(vars(ZenodoMetadataSerializer()).keys())
+
+    _data = {key: data.get(key) for key in all_keys}
+
+    _data['extras'] = {key: data.get(key) for key in (data.keys()) - all_keys}
+
+    serialized = ZenodoMetadataSerializer(**_data)
+    return serialized
 
 
 @attr.s
@@ -365,10 +376,12 @@ class ZenodoDeposition:
             'metadata': {
                 'title': dataset.name,
                 'upload_type': 'dataset',
-                'description': dataset.description,
+                'description':
+                    dataset.description if dataset.description else None,
                 'creators': [{
                     'name': creator.name,
-                    'affiliation': creator.affiliation
+                    'affiliation':
+                        creator.affiliation if creator.affiliation else None
                 } for creator in dataset.creator]
             }
         }
@@ -441,7 +454,7 @@ class ZenodoExporter(ExporterApi):
         jsonld['upload_type'] = 'dataset'
         return jsonld
 
-    def export(self, publish, tag=None):
+    def export(self, publish, tag=None, **kwargs):
         """Execute entire export process."""
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)

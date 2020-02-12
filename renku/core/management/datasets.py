@@ -154,7 +154,7 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, short_name=None, title=None, description='', creators=None
+        self, short_name=None, title=None, description=None, creators=None
     ):
         """Create a dataset."""
         if not short_name:
@@ -217,6 +217,7 @@ class DatasetsApiMixin(object):
         link=False,
         extract=False,
         all_at_once=False,
+        destination_names=None,
         progress=None
     ):
         """Import the data into the data directory."""
@@ -233,6 +234,7 @@ class DatasetsApiMixin(object):
             files = self._add_from_urls(
                 dataset=dataset,
                 urls=urls,
+                destination_names=destination_names,
                 destination=destination,
                 extract=extract,
                 progress=progress
@@ -263,7 +265,11 @@ class DatasetsApiMixin(object):
                         )
                     else:  # Remote URL
                         new_files = self._add_from_url(
-                            dataset, url, destination, extract
+                            dataset,
+                            url,
+                            destination,
+                            extract,
+                            progress=progress
                         )
 
                 files.extend(new_files)
@@ -311,6 +317,20 @@ class DatasetsApiMixin(object):
         dataset.update_files(dataset_files)
         return warning_message
 
+    def _check_protected_path(self, path):
+        """Checks if a path is protected by renku."""
+        try:
+            path_in_repo = path.relative_to(self.path)
+        except ValueError:
+            return False
+
+        for protected_path in self.RENKU_PROTECTED_PATHS:
+            str_path = str(path_in_repo)
+            if re.match('^{}$'.format(protected_path), str_path):
+                return True
+
+        return False
+
     def _add_from_local(self, dataset, path, link, destination):
         """Add a file or directory from local filesystem."""
         src = Path(path).resolve()
@@ -332,6 +352,9 @@ class DatasetsApiMixin(object):
                 # Cannot have a '.git' directory inside a Git repo
                 return []
 
+            if self._check_protected_path(src):
+                raise errors.ProtectedFiles([src])
+
             files = []
             destination.mkdir(parents=True, exist_ok=True)
             for f in src.iterdir():
@@ -348,6 +371,9 @@ class DatasetsApiMixin(object):
             # Check if file is in the project and return it
             try:
                 path_in_repo = src.relative_to(self.path)
+
+                if self._check_protected_path(src):
+                    raise errors.ProtectedFiles([src])
             except ValueError:
                 pass
             else:
@@ -379,7 +405,9 @@ class DatasetsApiMixin(object):
             'parent': self
         }]
 
-    def _add_from_urls(self, dataset, urls, destination, extract, progress):
+    def _add_from_urls(
+        self, dataset, urls, destination, destination_names, extract, progress
+    ):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
@@ -387,10 +415,10 @@ class DatasetsApiMixin(object):
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
-                    self._add_from_url, dataset, url, destination, extract,
-                    progress
+                    self._add_from_url, dataset, url, destination / name,
+                    extract, progress
                 )
-                for url in urls
+                for url, name in zip(urls, destination_names)
             }
 
             for future in concurrent.futures.as_completed(futures):
@@ -403,6 +431,8 @@ class DatasetsApiMixin(object):
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
+        else:
+            destination.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             paths = _download(

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019- Swiss Data Science Center (SDSC)
+# Copyright 2017-2020- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -59,16 +59,16 @@ def test_dataset_deserialization(client, dataset):
     )
 
     dataset_types = {
-        'created': datetime.datetime,
-        'creator': list,
-        'description': str,
-        'files': list,
-        'identifier': str,
-        'keywords': list,
+        'created': [datetime.datetime],
+        'creator': [list],
+        'description': [str, type(None)],
+        'files': [list],
+        'identifier': [str],
+        'keywords': [list],
     }
 
     for attribute, type_ in dataset_types.items():
-        assert type(dataset_.__getattribute__(attribute)) is type_
+        assert type(dataset_.__getattribute__(attribute)) in type_
 
     creator_types = {'email': str, '_id': str, 'name': str, 'affiliation': str}
 
@@ -98,7 +98,8 @@ def test_uuid_migration(dataset_metadata, client):
     assert urljoin(
         'https://localhost/datasets/', dataset.identifier
     ) == dataset._id
-    assert dataset.same_as.startswith('https://doi.org')
+
+    assert dataset.same_as.url.startswith('https://doi.org')
 
 
 def test_dataset_creator_email(dataset_metadata):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2019 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -1400,9 +1400,37 @@ def test_add_same_filename_multiple(runner, client, directory_tree):
     result = runner.invoke(
         cli, [
             'dataset', 'add', '--force', 'my-dataset1', directory_tree.strpath,
-            'Dockerfile'
+            'README.md'
         ]
     )
+    assert 0 == result.exit_code
+
+
+@pytest.mark.parametrize('filename', ['.renku', '.renku/', 'Dockerfile'])
+def test_add_protected_file(runner, client, filename):
+    """Check adding a protected file."""
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1', filename]
+    )
+
+    assert 1 == result.exit_code
+    assert 'Error: The following paths are protected' in result.output
+
+
+@pytest.mark.parametrize(
+    'filename', ['.renkunotactuallyrenku', 'thisisnot.renku']
+)
+def test_add_nonprotected_file(runner, client, tmpdir, filename):
+    """Check adding an 'almost' protected file."""
+
+    new_file = tmpdir.join('filename')
+    new_file.write(str('test'))
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset1',
+              str(new_file)]
+    )
+
     assert 0 == result.exit_code
 
 
@@ -1439,3 +1467,17 @@ def test_add_remove_credentials(runner, client, monkeypatch):
     o = client._add_from_url(dataset, url, client.path, extract=False)
 
     assert 'https://example.com/index.html' == o[0]['url']
+
+
+def test_pull_data_from_lfs(runner, client, tmpdir):
+    """Test pulling data from LFS using relative paths."""
+    data = tmpdir.join('data.txt')
+    data.write('DATA')
+
+    result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-data', str(data)])
+    assert 0 == result.exit_code
+
+    relative_path = Path('data') / 'my-data' / 'data.txt'
+
+    result = runner.invoke(cli, ['storage', 'pull', str(relative_path)])
+    assert 0 == result.exit_code
