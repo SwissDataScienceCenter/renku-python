@@ -17,6 +17,8 @@
 # limitations under the License.
 """Renku service job tests."""
 import io
+import os
+import uuid
 
 import pytest
 from flaky import flaky
@@ -24,6 +26,7 @@ from tests.service.test_dataset_views import assert_rpc_response
 
 from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
+from renku.service.utils import make_project_path
 
 
 @pytest.mark.service
@@ -65,6 +68,51 @@ def test_cleanup_old_files(
 
 @pytest.mark.service
 @pytest.mark.jobs
+def test_cleanup_files_old_keys(svc_client_cache, tmp_path):
+    """Cleanup old project with old hset keys."""
+    svc_client, cache = svc_client_cache
+
+    headers = {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        'Renku-User-Id': 'user'
+    }
+
+    user = {'user_id': 'user'}
+    mydata = tmp_path / 'mydata.json'
+    mydata.write_text('1,2,3')
+
+    file_upload = {
+        'file_id': uuid.uuid4().hex,
+        'content_type': 'application/json',
+        'file_name': 'mydata.json',
+        'file_size': 6,
+        'is_archive': False,
+        'is_dir': False,
+        'unpack_archive': False,
+        'relative_path': str(mydata)
+    }
+    cache.set_file(user, file_upload['file_id'], file_upload)
+
+    response = svc_client.get('/cache.files_list', headers=headers)
+    assert response
+
+    assert_rpc_response(response)
+    assert 200 == response.status_code
+    assert 1 == len(response.json['result']['files'])
+
+    cache_files_cleanup()
+    response = svc_client.get('/cache.files_list', headers=headers)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert 200 == response.status_code
+    assert 0 == len(response.json['result']['files'])
+
+
+@pytest.mark.service
+@pytest.mark.jobs
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_cleanup_old_project(
@@ -89,5 +137,48 @@ def test_cleanup_old_project(
     assert response
 
     assert_rpc_response(response)
+    assert 200 == response.status_code
+    assert 0 == len(response.json['result']['projects'])
+
+
+@pytest.mark.service
+@pytest.mark.jobs
+def test_cleanup_project_old_keys(svc_client_cache):
+    """Cleanup old project with old hset keys."""
+    svc_client, cache = svc_client_cache
+
+    headers = {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        'Renku-User-Id': 'user'
+    }
+
+    user = {'user_id': 'user'}
+
+    project = {
+        'project_id': uuid.uuid4().hex,
+        'name': 'my-project',
+        'fullname': 'full project name',
+        'email': 'my@email.com',
+        'owner': 'me',
+        'token': 'awesome token',
+        'git_url': 'git@gitlab.com'
+    }
+    cache.set_project(user, project['project_id'], project)
+    os.makedirs(str(make_project_path(user, project)), exist_ok=True)
+
+    response = svc_client.get('/cache.project_list', headers=headers)
+    assert response
+
+    assert_rpc_response(response)
+    assert 200 == response.status_code
+    assert 1 == len(response.json['result']['projects'])
+
+    cache_project_cleanup()
+    response = svc_client.get('/cache.project_list', headers=headers)
+
+    assert response
+    assert_rpc_response(response)
+
     assert 200 == response.status_code
     assert 0 == len(response.json['result']['projects'])
