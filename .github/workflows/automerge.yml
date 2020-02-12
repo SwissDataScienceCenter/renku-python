@@ -15,6 +15,12 @@ on:
       - submitted
   status: {}
 jobs:
+  cleanup-runs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: rokroskar/workflow-run-cleanup-action@master
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
   automerge:
     runs-on: ubuntu-latest
     steps:
@@ -25,5 +31,5 @@ jobs:
           MERGE_METHOD: "squash"
           MERGE_DELETE_BRANCH: "true"
           MERGE_LABELS: "automerge,!do-not-merge"
-          MERGE_RETRIES: 120
+          MERGE_RETRIES: 5
           MERGE_RETRY_SLEEP: 60000
