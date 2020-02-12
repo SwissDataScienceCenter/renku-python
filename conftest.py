@@ -595,6 +595,24 @@ def svc_client(mock_redis):
     ctx.pop()
 
 
+@pytest.fixture(scope='function')
+def svc_client_cache(mock_redis):
+    """Service jobs fixture."""
+    from renku.service.entrypoint import create_app
+
+    flask_app = create_app()
+
+    testing_client = flask_app.test_client()
+    testing_client.testing = True
+
+    ctx = flask_app.app_context()
+    ctx.push()
+
+    yield testing_client, flask_app.config.get('cache')
+
+    ctx.pop()
+
+
 def integration_repo_path(headers, url_components):
     """Constructs integration repo path."""
     from renku.service.config import CACHE_PROJECTS_PATH
