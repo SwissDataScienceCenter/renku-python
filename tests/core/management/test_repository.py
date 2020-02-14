@@ -31,11 +31,11 @@ def test_init_repository(local_client):
 
 def test_import_from_template(local_client):
     """Test importing data from template."""
-    OUTPUT_FILE = 'metadata.yml'
+    output_file = 'metadata.yml'
     local_client.init_repository()
     with tempfile.TemporaryDirectory() as tempdir:
         template_path = Path(tempdir)
-        fake_template_file = template_path / OUTPUT_FILE
+        fake_template_file = template_path / output_file
         with fake_template_file.open('w') as dest:
             dest.writelines([
                 'name: {{ name }}', 'description: {{ description }}',
@@ -48,7 +48,7 @@ def test_import_from_template(local_client):
                 'date_updated': 'now',
             }
         local_client.import_from_template(template_path, metadata)
-        compiled_file = local_client.path / OUTPUT_FILE
+        compiled_file = local_client.path / output_file
         compiled_content = compiled_file.read_text()
         expected_content = (
             'name: name'
@@ -56,4 +56,4 @@ def test_import_from_template(local_client):
             'created: now'
             'updated: now'
         )
-        assert compiled_content == expected_content
+        assert expected_content == compiled_content

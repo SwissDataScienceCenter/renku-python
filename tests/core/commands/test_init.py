@@ -72,7 +72,7 @@ def test_fetch_template(url, ref, result, error):
     with TemporaryDirectory() as tempdir:
         with raises(error):
             manifest_file = fetch_template(url, ref, Path(tempdir))
-            assert manifest_file == Path(tempdir) / TEMPLATE_MANIFEST
+            assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
             assert manifest_file.exists()
 
 
@@ -105,11 +105,11 @@ def test_read_template_manifest():
         )
 
         manifest = read_template_manifest(Path(tempdir), checkout=False)
-        assert len(manifest) == 2
-        assert manifest[0]['folder'] == 'first'
-        assert manifest[1]['folder'] == 'second'
-        assert manifest[0]['name'] == 'Basic Project 1'
-        assert manifest[1]['description'] == 'Description 2'
+        assert 2 == len(manifest)
+        assert 'first' == manifest[0]['folder']
+        assert 'second' == manifest[1]['folder']
+        assert 'Basic Project 1' == manifest[0]['name']
+        assert 'Description 2' == manifest[1]['description']
 
         template_file.write_text(
             '-\n'

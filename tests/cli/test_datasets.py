@@ -282,7 +282,7 @@ def test_datasets_list_non_empty(output_format, runner, project):
     result = runner.invoke(
         cli, ['dataset', '--revision=HEAD~1', format_option]
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'my-dataset' not in result.output
 
 
@@ -335,7 +335,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
               str(directory_tree)],
         catch_exceptions=False
     )
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
     assert 'Dataset "new-dataset" does not exist.' in result.output
 
     # Add succeeds with --create
@@ -345,7 +345,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
          str(directory_tree)],
         catch_exceptions=False
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     # Further, add with --create fails
     result = runner.invoke(
@@ -354,7 +354,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
          str(directory_tree)],
         catch_exceptions=False
     )
-    assert result.exit_code == 1
+    assert 1 == result.exit_code
 
 
 def test_multiple_file_to_dataset(tmpdir, runner, project, client):
@@ -462,7 +462,7 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
         ['dataset', 'add', 'remote', '--create'] + params,
         catch_exceptions=False,
     )
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
     assert message in result.output
 
 
@@ -476,7 +476,7 @@ def test_add_from_local_repo_warning(
          str(directory_tree)],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert 'Use remote\'s Git URL instead to enable lineage ' in result.output
 
 
@@ -1325,7 +1325,7 @@ def test_dataset_clean_up_when_add_fails(runner, client):
         catch_exceptions=True,
     )
 
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
     ref = client.renku_path / 'refs' / 'datasets' / 'new-dataset'
     assert not ref.is_symlink() and not ref.exists()
 

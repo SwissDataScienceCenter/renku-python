@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``run`` command."""
-
 from __future__ import absolute_import, print_function
 
 import os
@@ -62,7 +61,7 @@ def test_run_clean(runner, project, run_shell):
     output = run_shell('renku run echo "a" > output')
 
     # Assert expected empty stdout.
-    assert output[0] == b''
+    assert b'' == output[0]
     # Assert not allocated stderr.
     assert output[1] is None
 

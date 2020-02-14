@@ -40,16 +40,16 @@ def test_indirect_inputs(cli, client):
     )
 
     exit_code, cwl = cli('run', 'sh', '-c', 'sh script.sh')
-    assert exit_code == 0
+    assert 0 == exit_code
 
-    assert len(cwl.inputs) == 3
+    assert 3 == len(cwl.inputs)
     cwl.inputs.sort(key=lambda e: e.type)
-    assert str(cwl.inputs[0].default) == '../../foo'
-    assert cwl.inputs[0].type == 'Directory'
+    assert '../../foo' == str(cwl.inputs[0].default)
+    assert 'Directory' == cwl.inputs[0].type
     assert cwl.inputs[0].inputBinding is None
-    assert str(cwl.inputs[1].default) == '../../baz'
-    assert cwl.inputs[1].type == 'File'
+    assert '../../baz' == str(cwl.inputs[1].default)
+    assert 'File' == cwl.inputs[1].type
     assert cwl.inputs[1].inputBinding is None
 
-    assert len(cwl.outputs) == 1
-    assert cwl.outputs[0].outputBinding.glob == 'qux'
+    assert 1 == len(cwl.outputs)
+    assert 'qux' == cwl.outputs[0].outputBinding.glob
