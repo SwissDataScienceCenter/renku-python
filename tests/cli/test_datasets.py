@@ -37,6 +37,7 @@ from renku.core.commands.providers import DataverseProvider, ProviderFactory, \
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.models.refs import LinkReference
+from renku.core.utils.contexts import chdir
 from renku.core.utils.datetime8601 import validate_iso8601
 
 
@@ -1481,3 +1482,20 @@ def test_pull_data_from_lfs(runner, client, tmpdir):
 
     result = runner.invoke(cli, ['storage', 'pull', str(relative_path)])
     assert 0 == result.exit_code
+
+
+def test_dataset_cmd_subdirectory(runner, project):
+    """Check dataset command in sub directory."""
+    # Ensure root.
+    result = runner.invoke(cli, ['dataset'])
+    assert 0 == result.exit_code
+
+    # Ensure sub directory.
+    with chdir(Path(project) / 'data'):
+        result = runner.invoke(cli, ['dataset'])
+        assert 0 == result.exit_code
+
+    # Ensure a protected directory.
+    with chdir(Path(project) / '.renku'):
+        result = runner.invoke(cli, ['dataset'])
+        assert 0 == result.exit_code
