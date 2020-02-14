@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Repository datasets management."""
-
 import re
 import shutil
 import urllib
@@ -54,7 +53,7 @@ from .format.datasets import DATASETS_FORMATS
 
 @pass_local_client(clean=False, commit=False)
 def check_for_migration(client):
-    """Checks if dataset migration is required."""
+    """Check need for dataset migration."""
     missing_dataset, missing_files = check_dataset_resources(client)
     old_datasets = [ds for ds in dataset_pre_0_3(client)]
 
@@ -64,7 +63,7 @@ def check_for_migration(client):
 
 @pass_local_client(clean=False, commit=False)
 def list_datasets(client, revision, datadir, format, columns=None):
-    """Handle datasets subcommands."""
+    """Handle datasets sub commands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
