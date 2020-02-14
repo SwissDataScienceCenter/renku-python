@@ -15,15 +15,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache management for files."""
-from renku.service.cache.files import FileManagementCache
-from renku.service.cache.jobs import JobsManagementCache
-from renku.service.cache.projects import ProjectManagementCache
+"""Renku service response json encoder."""
+from datetime import datetime
+
+from flask.json import JSONEncoder
+from marshmallow.utils import isoformat
 
 
-class ServiceCache(
-    FileManagementCache, ProjectManagementCache, JobsManagementCache
-):
-    """Service cache manager."""
+class SvcJSONEncoder(JSONEncoder):
+    """Custom service json encoder."""
 
-    pass
+    def default(self, obj):
+        """Overrides default json encoder with datetime iso format."""
+        try:
+            if isinstance(obj, datetime):
+                return isoformat(obj)
+            iterable = iter(obj)
+        except TypeError:
+            pass
+        else:
+            return list(iterable)
+        return JSONEncoder.default(self, obj)
