@@ -16,44 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset tests."""
-
 import os
 import shutil
 import stat
-from contextlib import contextmanager
 
 import pytest
 from git import Repo
+from tests.utils import raises
 
 from renku.core import errors
 from renku.core.commands.dataset import create_dataset
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.models.provenance.agents import Person
-
-
-def _key(client, dataset, filename):
-    """Return key in dataset for a given filename."""
-    dataset_path = client.renku_datasets_path / dataset.name
-    return os.path.relpath(
-        str(client.path / client.datadir / dataset.name / filename),
-        start=str(dataset_path),
-    )
-
-
-def raises(error):
-    """Wrapper around pytest.raises to support None."""
-    if error:
-        return pytest.raises(error)
-    else:
-
-        @contextmanager
-        def not_raises():
-            try:
-                yield
-            except Exception as e:
-                raise e
-
-        return not_raises()
 
 
 @pytest.mark.parametrize(
