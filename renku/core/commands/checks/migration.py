@@ -16,10 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Checks needed to determine dataset migration policy."""
+import os
 import shutil
+import urllib
 import uuid
 from collections import defaultdict
-from pathlib import Path
+from pathlib import Path, posixpath
 from urllib.parse import quote
 
 import click
@@ -196,10 +198,28 @@ def migrate_broken_dataset_paths(client):
                     client.find_previous_commit(file_.path, revision='HEAD'),
                     file_.path,
                 )
-                id_format = 'blob/{commit}/{path}'
-                file_._id = id_format.format(
-                    commit=commit.hexsha, path=new_path
+                host = client.remote.get('host') or 'localhost'
+                host = os.environ.get('RENKU_DOMAIN') or host
+
+                # always set the id by the identifier
+                file_._id = urllib.parse.urljoin(
+                    'https://{host}'.format(host=host),
+                    posixpath.join(
+                        '/blob/{hexsha}/{path}'.format(
+                            hexsha=commit.hexsha, path=new_path
+                        )
+                    )
                 )
+
+        dataset.to_yaml()
+
+
+def dataset_file_id_migration(client):
+    """Ensure dataset files have a fully qualified url."""
+    for dataset in client.datasets.values():
+        for file_ in dataset.files:
+            if not file_._id.startswith('https'):
+                file_._id = file_.default_id()
 
         dataset.to_yaml()
 
@@ -262,10 +282,7 @@ def fix_dataset_files_urls(client):
 
 
 STRUCTURE_MIGRATIONS = [
-    ensure_clean_lock,
-    migrate_datasets_pre_v0_3,
-    migrate_broken_dataset_paths,
-    fix_uncommitted_labels,
-    fix_dataset_files_urls,
-    fix_broken_dataset_file_project,
+    ensure_clean_lock, migrate_datasets_pre_v0_3, migrate_broken_dataset_paths,
+    fix_uncommitted_labels, fix_dataset_files_urls,
+    fix_broken_dataset_file_project, dataset_file_id_migration
 ]

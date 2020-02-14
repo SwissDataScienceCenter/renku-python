@@ -76,7 +76,7 @@ class CommitMixin:
         return urllib.parse.urljoin(
             'https://{host}'.format(host=host),
             pathlib.posixpath.join(
-                '/blob/{hexsha}/{self.path}'.format(hexsha=hexsha, self=self)
+                '/blob/{hexsha}/{path}'.format(hexsha=hexsha, path=self.path)
             )
         )
 

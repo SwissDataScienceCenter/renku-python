@@ -506,9 +506,9 @@ class JSONLDMixin(ReferenceMixin):
             migrations += JSONLD_MIGRATIONS.get(schema_type, [])
 
         for migration in set(migrations):
-            data = migration(data)
+            data = migration(data, client)
             if __source__:
-                __source__ = migration(__source__)
+                __source__ = migration(__source__, client)
 
         if data['@context'] != cls._jsonld_context:
             # merge new context into old context to prevent properties
