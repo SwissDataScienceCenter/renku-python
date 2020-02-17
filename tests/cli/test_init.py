@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``init`` command."""
-
 from pathlib import Path
 
 import pytest
@@ -127,7 +126,7 @@ def test_init_on_cloned_repo(isolated_runner, data_repository):
 
 @pytest.mark.integration
 def test_init_remote(isolated_runner):
-    """Test project initialization from remote template."""
+    """Test project initialization from a remote template."""
     # create the project
     new_project = Path('test-new-project')
     assert not new_project.exists()

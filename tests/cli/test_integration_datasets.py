@@ -768,7 +768,7 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
         ['dataset', 'add', 'remote', '--ref', '0.3.0'] + params + urls,
         catch_exceptions=False,
     )
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
     assert message in result.output
 
 

@@ -40,13 +40,13 @@ def test_run_succeeds_normally(cli):
     """Test when an output is detected"""
     exit_code, cwl = cli('run', 'touch', 'foo')
 
-    assert exit_code == 0
-    assert len(cwl.inputs) == 1
-    assert cwl.inputs[0].default == 'foo'
-    assert cwl.inputs[0].type == 'string'
-    assert len(cwl.outputs) == 1
-    assert cwl.outputs[0].type == 'File'
-    assert cwl.outputs[0].outputBinding.glob == '$(inputs.input_1)'
+    assert 0 == exit_code
+    assert 1 == len(cwl.inputs)
+    assert 'foo' == cwl.inputs[0].default
+    assert 'string' == cwl.inputs[0].type
+    assert 1 == len(cwl.outputs)
+    assert 'File' == cwl.outputs[0].type
+    assert '$(inputs.input_1)' == cwl.outputs[0].outputBinding.glob
 
 
 def test_when_no_change_in_outputs_is_detected(cli):
@@ -54,7 +54,7 @@ def test_when_no_change_in_outputs_is_detected(cli):
     cli('run', 'touch', 'foo')
     exit_code, cwl = cli('run', 'ls', 'foo')
 
-    assert exit_code == 1
+    assert 1 == exit_code
 
 
 def test_with_no_output_option(cli, client):
@@ -62,16 +62,16 @@ def test_with_no_output_option(cli, client):
     cli('run', 'touch', 'foo')
     exit_code, cwl = cli('run', '--no-output', 'touch', 'foo')
 
-    assert exit_code == 0
-    assert len(cwl.inputs) == 1
-    assert cwl.inputs[0].type == 'File'
-    assert str(cwl.inputs[0].default) == '../../foo'
-    assert len(cwl.outputs) == 0
+    assert 0 == exit_code
+    assert 1 == len(cwl.inputs)
+    assert 'File' == cwl.inputs[0].type
+    assert '../../foo' == str(cwl.inputs[0].default)
+    assert 0 == len(cwl.outputs)
 
     cwls = read_all_cwl_files(client)
 
     # There should be two command line tool.
-    assert len(cwls) == 2
+    assert 2 == len(cwls)
     assert cwls[0].inputs != cwls[1].inputs
     assert cwls[0].outputs != cwls[1].outputs
 
@@ -85,13 +85,13 @@ def test_explicit_outputs(cli, command, expected_type):
     cli('run', *command, 'foo')
     exit_code, cwl = cli('run', '--output', 'foo', *command, 'foo')
 
-    assert exit_code == 0
-    assert len(cwl.inputs) == 1
-    assert cwl.inputs[0].default == 'foo'
-    assert cwl.inputs[0].type == 'string'
-    assert len(cwl.outputs) == 1
-    assert cwl.outputs[0].type == expected_type
-    assert cwl.outputs[0].outputBinding.glob == '$(inputs.input_1)'
+    assert 0 == exit_code
+    assert 1 == len(cwl.inputs)
+    assert 'foo' == cwl.inputs[0].default
+    assert 'string' == cwl.inputs[0].type
+    assert 1 == len(cwl.outputs)
+    assert expected_type == cwl.outputs[0].type
+    assert '$(inputs.input_1)' == cwl.outputs[0].outputBinding.glob
 
 
 def test_explicit_output_results(cli, client):
@@ -102,7 +102,7 @@ def test_explicit_output_results(cli, client):
     cwls = read_all_cwl_files(client)
 
     # There should be two command line tool.
-    assert len(cwls) == 2
+    assert 2 == len(cwls)
     assert cwls[0].inputs == cwls[1].inputs
     assert cwls[0].outputs == cwls[1].outputs
 
@@ -112,15 +112,15 @@ def test_explicit_outputs_and_normal_outputs(cli, client):
     cli('run', 'touch', 'foo')
     exit_code, cwl = cli('run', '--output', 'foo', 'touch', 'foo', 'bar')
 
-    assert exit_code == 0
+    assert 0 == exit_code
     cwl.inputs.sort(key=lambda e: e.default)
-    assert len(cwl.inputs) == 2
-    assert cwl.inputs[0].type == 'string'
-    assert str(cwl.inputs[0].default) == 'bar'
-    assert cwl.inputs[1].type == 'string'
-    assert str(cwl.inputs[1].default) == 'foo'
+    assert 2 == len(cwl.inputs)
+    assert 'string' == cwl.inputs[0].type
+    assert 'bar' == str(cwl.inputs[0].default)
+    assert 'string' == cwl.inputs[1].type
+    assert 'foo' == str(cwl.inputs[1].default)
 
-    assert len(cwl.outputs) == 2
+    assert 2 == len(cwl.outputs)
     assert cwl.outputs[0].outputBinding != cwl.outputs[1].outputBinding
 
 
@@ -128,52 +128,52 @@ def test_explicit_outputs_and_std_output_streams(cli, client):
     """Test that unchanged std output streams can be marked with explicit
     outputs"""
     exit_code, _ = cli('run', 'sh', '-c', 'echo foo > bar')
-    assert exit_code == 0
+    assert 0 == exit_code
 
     exit_code, _ = cli('run', 'sh', '-c', 'echo foo > bar')
-    assert exit_code == 1
+    assert 1 == exit_code
 
     exit_code, _ = cli('run', '--output', 'bar', 'sh', '-c', 'echo foo > bar')
-    assert exit_code == 0
+    assert 0 == exit_code
 
 
 def test_output_directory_with_output_option(cli, client):
     """Test output directories are not deleted with --output"""
-    A_SCRIPT = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
-    cli('run', *A_SCRIPT, 'outdir', 'foo')
+    a_script = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
+    cli('run', *a_script, 'outdir', 'foo')
 
-    exit_code, _ = cli('run', '--output', 'outdir', *A_SCRIPT, 'outdir', 'bar')
+    exit_code, _ = cli('run', '--output', 'outdir', *a_script, 'outdir', 'bar')
 
-    assert exit_code == 0
+    assert 0 == exit_code
     assert (client.path / 'outdir' / 'foo').exists()
     assert (client.path / 'outdir' / 'bar').exists()
 
 
 def test_output_directory_without_separate_outputs(cli, client):
-    """Output files in directory are not listed as separate outputs.
+    """Test output files not listed as separate outputs.
 
     See https://github.com/SwissDataScienceCenter/renku-python/issues/387
     """
-    A_SCRIPT = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
-    exit_code, cwl = cli('run', *A_SCRIPT, 'outdir', 'foo')
+    a_script = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
+    exit_code, cwl = cli('run', *a_script, 'outdir', 'foo')
 
-    assert exit_code == 0
-    assert len(cwl.outputs) == 1
-    assert cwl.outputs[0].type == 'Directory'
+    assert 0 == exit_code
+    assert 1 == len(cwl.outputs)
+    assert 'Directory' == cwl.outputs[0].type
 
 
 def test_explicit_inputs_must_exist(cli):
     """Test explicit inputs exist before run"""
     exit_code, _ = cli('run', '--input', 'foo', 'touch', 'bar')
 
-    assert exit_code == 1
+    assert 1 == exit_code
 
 
 def test_explicit_inputs_are_inside_repo(cli):
     """Test explicit inputs are inside the Renku repo"""
     exit_code, _ = cli('run', '--input', '/tmp', 'touch', 'foo')
 
-    assert exit_code == 1
+    assert 1 == exit_code
 
 
 def test_explicit_inputs_and_outputs_are_listed(cli, client):
@@ -185,17 +185,19 @@ def test_explicit_inputs_and_outputs_are_listed(cli, client):
         'run', '--input', 'foo', '--input', 'bar', '--output', 'baz', 'echo'
     )
 
-    assert exit_code == 0
-    assert len(cwl.inputs) == 2
+    assert 0 == exit_code
+    assert 2 == len(cwl.inputs)
     cwl.inputs.sort(key=lambda e: e.type)
-    assert str(cwl.inputs[0].default) == '../../foo'
-    assert cwl.inputs[0].type == 'Directory'
+
+    assert '../../foo' == str(cwl.inputs[0].default)
+    assert 'Directory' == cwl.inputs[0].type
+
     assert cwl.inputs[0].inputBinding is None
-    assert str(cwl.inputs[1].default) == '../../bar'
-    assert cwl.inputs[1].type == 'File'
+    assert '../../bar' == str(cwl.inputs[1].default)
+
     assert cwl.inputs[1].inputBinding is None
-    assert len(cwl.outputs) == 1
-    assert cwl.outputs[0].outputBinding.glob == 'baz'
+    assert 'File' == cwl.inputs[1].type
+    assert 'baz' == cwl.outputs[0].outputBinding.glob
 
 
 def test_explicit_inputs_can_be_in_inputs(cli):
@@ -204,10 +206,12 @@ def test_explicit_inputs_can_be_in_inputs(cli):
 
     exit_code, cwl = cli('run', '--input', 'foo', '--no-output', 'ls', 'foo')
 
-    assert exit_code == 0
-    assert len(cwl.inputs) == 1
-    assert str(cwl.inputs[0].default) == '../../foo'
-    assert cwl.inputs[0].type == 'File'
+    assert 0 == exit_code
+    assert 1 == len(cwl.inputs)
+
+    assert '../../foo' == str(cwl.inputs[0].default)
+    assert 'File' == cwl.inputs[0].type
+
     assert cwl.inputs[0].inputBinding is not None
 
 
@@ -223,15 +227,15 @@ def test_explicit_inputs_in_subdirectories(cli, client):
         'run', '--input', 'foo/bar', '--input', 'script.sh', 'sh', '-c',
         'sh script.sh > output'
     )
-    assert exit_code == 0
+    assert 0 == exit_code
 
     # Status must be dirty if foo/bar changes
     cli('run', 'sh', '-c', 'echo "new changes" > foo/bar')
     exit_code, _ = cli('status')
-    assert exit_code == 1
+    assert 1 == exit_code
 
     exit_code, cwl = cli('update')
-    assert exit_code == 0
+    assert 0 == exit_code
     assert (client.path / 'foo' / 'bar').exists()
     assert (client.path / 'script.sh').exists()
     assert (client.path / 'output').exists()
