@@ -132,7 +132,7 @@ class ProjectCloneContext(ProjectCloneRequest):
 
     @post_load()
     def format_url(self, data, **kwargs):
-        """Format URL with username and password."""
+        """Format URL with a username and password."""
         git_url = urlparse(data['git_url'])
 
         url = 'oauth2:{0}@{1}'.format(data['token'], git_url.netloc)
