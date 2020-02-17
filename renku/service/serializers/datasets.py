@@ -122,7 +122,7 @@ class DatasetListRequest(Schema):
 
 
 class DatasetDetails(Schema):
-    """Serialize a dataset to response object."""
+    """Serialize a dataset to a response object."""
 
     identifier = fields.String(required=True)
     name = fields.String(required=True)
@@ -150,7 +150,7 @@ class DatasetFilesListRequest(Schema):
 
 
 class DatasetFileDetails(Schema):
-    """Serialize dataset files to response object."""
+    """Serialize dataset files to a response object."""
 
     name = fields.String(required=True)
 
