@@ -18,12 +18,12 @@
 """Project initialization tests."""
 
 import shutil
-from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pkg_resources
 import pytest
+from tests.utils import raises
 
 from renku.core import errors
 from renku.core.commands.init import TEMPLATE_MANIFEST, create_from_template, \
@@ -41,22 +41,6 @@ FAKE = 'NON_EXISTING'
 template_local = Path(pkg_resources.resource_filename('renku', 'templates'))
 
 
-def raises(error):
-    """Wrapper around pytest.raises to support None."""
-    if error:
-        return pytest.raises(error)
-    else:
-
-        @contextmanager
-        def not_raises():
-            try:
-                yield
-            except Exception as e:
-                raise e
-
-        return not_raises()
-
-
 @pytest.mark.parametrize(
     'url, ref, result, error', [(TEMPLATE_URL, TEMPLATE_REF, True, None),
                                 (FAKE, TEMPLATE_REF, None, errors.GitError),
@@ -72,7 +56,7 @@ def test_fetch_template(url, ref, result, error):
     with TemporaryDirectory() as tempdir:
         with raises(error):
             manifest_file = fetch_template(url, ref, Path(tempdir))
-            assert manifest_file == Path(tempdir) / TEMPLATE_MANIFEST
+            assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
             assert manifest_file.exists()
 
 
@@ -105,11 +89,11 @@ def test_read_template_manifest():
         )
 
         manifest = read_template_manifest(Path(tempdir), checkout=False)
-        assert len(manifest) == 2
-        assert manifest[0]['folder'] == 'first'
-        assert manifest[1]['folder'] == 'second'
-        assert manifest[0]['name'] == 'Basic Project 1'
-        assert manifest[1]['description'] == 'Description 2'
+        assert 2 == len(manifest)
+        assert 'first' == manifest[0]['folder']
+        assert 'second' == manifest[1]['folder']
+        assert 'Basic Project 1' == manifest[0]['name']
+        assert 'Description 2' == manifest[1]['description']
 
         template_file.write_text(
             '-\n'

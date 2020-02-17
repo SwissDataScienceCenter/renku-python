@@ -136,7 +136,8 @@ def list_dataset_files_view(user, cache):
 @use_kwargs(DatasetAddRequest)
 @marshal_with(DatasetAddResponseRPC)
 @header_doc(
-    'Add uploaded file to cloned repository.', tags=(DATASET_BLUEPRINT_TAG, )
+    'Add an uploaded file to a cloned repository.',
+    tags=(DATASET_BLUEPRINT_TAG, )
 )
 @dataset_blueprint.route(
     '/datasets.add',

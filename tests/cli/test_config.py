@@ -24,34 +24,34 @@ from renku.cli import cli
 def test_config_value_locally(client, runner, project, global_config_dir):
     """Check setting/getting from local configuration."""
     result = runner.invoke(cli, ['config', 'key', 'local-value'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['config', 'key'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert result.output == 'local-value\n'
     # Value set locally is not visible globally
     result = runner.invoke(cli, ['config', 'key', '--global'])
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
 
     # Reading non-existing values is an error
     result = runner.invoke(cli, ['config', 'non-existing'])
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
 
 
 def test_config_value_globally(client, runner, project, global_config_dir):
     """Check setting/getting from global configuration."""
     result = runner.invoke(cli, ['config', 'key', 'global-value', '--global'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['config', 'key'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert result.output == 'global-value\n'
     result = runner.invoke(cli, ['config', 'key', '--global'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert result.output == 'global-value\n'
     # Value set globally is not visible in local config
     result = runner.invoke(cli, ['config', 'key', '--local'])
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
 
 
 def test_config_get_non_existing_value(
@@ -59,7 +59,7 @@ def test_config_get_non_existing_value(
 ):
     """Check getting non-existing value is an error."""
     result = runner.invoke(cli, ['config', 'non-existing'])
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
 
 
 def test_local_overrides_global_config(
@@ -67,17 +67,17 @@ def test_local_overrides_global_config(
 ):
     """Test setting config both global and locally."""
     result = runner.invoke(cli, ['config', 'key', 'global-value', '--global'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['config', 'key'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert result.output == 'global-value\n'
 
     result = runner.invoke(cli, ['config', 'key', 'local-value'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['config', 'key'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     assert result.output == 'local-value\n'
 
 
@@ -88,13 +88,13 @@ def test_config_remove_value_locally(
     """Check removing value from local configuration."""
     param = ['--global'] if global_only else ['--local']
     result = runner.invoke(cli, ['config', 'key', 'some-value'] + param)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['config', 'key'] + param)
     assert 'some-value\n' == result.output
 
     result = runner.invoke(cli, ['config', '--remove', 'key'] + param)
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['config', 'key'] + param)
     assert 'some-value' not in result.output
@@ -107,7 +107,7 @@ def test_local_config_committed(
     commit_sha_before = client.repo.head.object.hexsha
 
     result = runner.invoke(cli, ['config', 'local-key', 'value'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after != commit_sha_before
 
@@ -115,13 +115,13 @@ def test_local_config_committed(
     commit_sha_before = client.repo.head.object.hexsha
 
     result = runner.invoke(cli, ['config', 'local-key', 'value'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
 
     # Adding a global config should not create a new commit
     result = runner.invoke(cli, ['config', 'global-key', 'value', '--global'])
-    assert result.exit_code == 0
+    assert 0 == result.exit_code
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
 
@@ -138,5 +138,5 @@ def test_invalid_command_args(
 ):
     """Test invalid combination of command-line arguments."""
     result = runner.invoke(cli, ['config'] + args)
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
     assert message in result.output

@@ -96,7 +96,7 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'check-manifest>=0.37',
     'coverage>=4.5.3',
-    'fakeredis==1.2.0',
+    'fakeredis==1.2.1',
     'flake8>=3.5',
     'flaky==3.6.1',
     'freezegun>=0.3.12',
@@ -145,7 +145,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'appdirs>=1.4.3',
-    'apispec==3.2.0',
+    'apispec==3.3.0',
     'attrs>=18.2.0',
     'click-completion>=0.5.0',
     'click>=7.0',
