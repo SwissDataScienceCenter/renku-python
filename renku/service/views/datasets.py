@@ -17,6 +17,8 @@
 # limitations under the License.
 """Renku service datasets view."""
 import json
+import os
+import uuid
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
@@ -28,11 +30,16 @@ from renku.core.commands.dataset import add_file, create_dataset, \
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
+from renku.service.jobs.constants import USER_JOB_STATE_ENQUEUED
+from renku.service.jobs.contexts import enqueue_retry
+from renku.service.jobs.datasets import dataset_import
+from renku.service.jobs.queues import DATASETS_JOB_QUEUE
 from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetAddResponse, DatasetAddResponseRPC, DatasetCreateRequest, \
     DatasetCreateResponse, DatasetCreateResponseRPC, DatasetDetails, \
     DatasetFileDetails, DatasetFilesListRequest, DatasetFilesListResponse, \
-    DatasetFilesListResponseRPC, DatasetListRequest, DatasetListResponse, \
+    DatasetFilesListResponseRPC, DatasetImportRequest, \
+    DatasetImportResponseRPC, DatasetListRequest, DatasetListResponse, \
     DatasetListResponseRPC
 from renku.service.utils import make_file_path, make_project_path, repo_sync
 from renku.service.views.decorators import accepts_json, handle_base_except, \
@@ -76,7 +83,7 @@ def list_datasets_view(user, cache):
     with chdir(project_path):
         datasets = [
             DatasetDetails().load(ds, unknown=EXCLUDE)
-            # TODO: fix core interface to address this issue (add ticket ref)
+            # TODO: fix core interface to address this issue: #1022
             for ds in json.loads(list_datasets(None, 'data', 'json-ld'))
         ]
 
@@ -261,3 +268,50 @@ def create_dataset_view(user, cache):
             'result': DatasetCreateResponse().load(ctx, unknown=EXCLUDE)
         })
     )
+
+
+@use_kwargs(DatasetImportRequest)
+@marshal_with(DatasetImportResponseRPC)
+@header_doc('Import a dataset', tags=(DATASET_BLUEPRINT_TAG, ))
+@dataset_blueprint.route(
+    '/datasets.import',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_base_except
+@handle_validation_except
+@requires_cache
+@requires_identity
+def import_dataset_view(user, cache):
+    """Import a dataset view."""
+    ctx = DatasetImportRequest().load(request.json)
+    project = cache.get_project(user, ctx['project_id'])
+    project_path = make_project_path(user, project)
+
+    if not project_path:
+        return jsonify(
+            error={
+                'code': INVALID_PARAMS_ERROR_CODE,
+                'message': 'invalid project_id: {0}'.format(ctx['project_id']),
+            }
+        )
+
+    user_job = {
+        'job_id': uuid.uuid4().hex,
+        'state': USER_JOB_STATE_ENQUEUED,
+    }
+    cache.create_job(user, user_job)
+
+    with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
+        queue.enqueue(
+            dataset_import,
+            user,
+            user_job['job_id'],
+            ctx['project_id'],
+            ctx['dataset_uri'],
+            short_name=ctx.get('short_name'),
+            extract=ctx.get('extract', False),
+            timeout=os.getenv('WORKER_DATASETS_JOBS_TIMEOUT', 1800),
+        )
+
+    return jsonify(DatasetImportResponseRPC().dump({'result': user_job}))

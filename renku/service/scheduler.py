@@ -26,13 +26,13 @@ from rq_scheduler.utils import setup_loghandlers
 from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
 from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
-    CLEANUP_QUEUE_PROJECTS, REDIS_CONNECTION
+    CLEANUP_QUEUE_PROJECTS, WorkerQueues
 
 
 @contextmanager
 def schedule():
     """Creates scheduler object."""
-    build_scheduler = Scheduler(connection=REDIS_CONNECTION)
+    build_scheduler = Scheduler(connection=WorkerQueues.connection)
 
     cleanup_interval = int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 60))
 

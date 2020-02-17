@@ -18,24 +18,29 @@
 """Renku service dataset view tests."""
 import io
 import json
+import os
 import re
+import shutil
 import uuid
+from pathlib import Path
 
 import pytest
 from flaky import flaky
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from renku.service.utils import make_project_path
 
 
 def assert_rpc_response(response, with_key='result'):
     """Check rpc result in response."""
+    assert response and 200 == response.status_code
+
     response_text = re.sub(
         r'http\S+',
         '',
         json.dumps(response.json),
     )
-
     assert with_key in response_text
 
 
@@ -690,3 +695,71 @@ def test_add_existing_file(svc_client_with_repo):
             'project_id'} == set(response.json['result'].keys())
 
     assert files == response.json['result']['files']
+
+
+@pytest.mark.parametrize(
+    'doi',
+    [
+        '10.5281/zenodo.3239980', '10.7910/DVN/TJCLKP'
+        # TODO: add http uri
+    ]
+)
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=1, min_passes=1)
+def test_import_dataset_job_enqueue(
+    doi, svc_client_cache, project, mock_redis
+):
+    """Test import a dataset."""
+    client, cache = svc_client_cache
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': 'user',
+        'Renku-User-FullName': 'full name',
+        'Renku-User-Email': 'renku@sdsc.ethz.ch',
+    }
+
+    user = {'user_id': 'user'}
+
+    project_meta = {
+        'project_id': uuid.uuid4().hex,
+        'name': Path(project).name,
+        'fullname': 'full project name',
+        'email': 'my@email.com',
+        'owner': 'me',
+        'token': 'awesome token',
+        'git_url': 'git@gitlab.com'
+    }
+
+    cache.set_project(user, project_meta['project_id'], project_meta)
+
+    dest = make_project_path(user, project_meta)
+    os.makedirs(dest.parent, exist_ok=True)
+    if not (project / dest).exists():
+        shutil.copytree(project, dest)
+
+    response = client.post(
+        '/datasets.import',
+        data=json.dumps({
+            'project_id': project_meta['project_id'],
+            'dataset_uri': doi,
+        }),
+        headers=headers,
+    )
+    assert_rpc_response(response)
+    assert {
+        'created_at',
+        'job_id',
+    } == set(response.json['result'])
+
+    user_job = cache.get_job(user, response.json['result']['job_id'])
+    assert response.json['result']['job_id'] == user_job['job_id']
+
+    response = client.get('/jobs', headers=headers)
+    assert_rpc_response(response)
+    assert response.json['result']['jobs']
+
+    assert user_job['job_id'] in [
+        job['job_id'] for job in response.json['result']['jobs']
+    ]

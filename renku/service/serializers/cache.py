@@ -176,7 +176,7 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class JobResponse(Schema):
+class UserJob(Schema):
     """Job serialization."""
 
     job_id = fields.String(required=True)
@@ -189,7 +189,7 @@ class JobResponse(Schema):
 class JobListResponse(Schema):
     """Response schema for job listing."""
 
-    jobs = fields.List(fields.Nested(JobResponse), required=True)
+    jobs = fields.List(fields.Nested(UserJob), required=True)
 
 
 class JobListResponseRPC(JsonRPCResponse):
