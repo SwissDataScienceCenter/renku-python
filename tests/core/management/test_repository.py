@@ -56,4 +56,4 @@ def test_import_from_template(local_client):
             'created: now'
             'updated: now'
         )
-        assert compiled_content == expected_content
+        assert expected_content == compiled_content

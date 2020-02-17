@@ -819,7 +819,7 @@ def test_config_get_value(client, global_config_dir):
     # Value set locally is not visible globally
     client.set_value('local', 'key', 'local-value')
     value = client.get_value('local', 'key')
-    assert value == 'local-value'
+    assert 'local-value' == value
     value = client.get_value('local', 'key', global_only=True)
     assert value is None
 
@@ -828,9 +828,9 @@ def test_config_get_value(client, global_config_dir):
     value = client.get_value('global', 'key', local_only=True)
     assert value is None
     value = client.get_value('global', 'key', global_only=True)
-    assert value == 'global-value'
+    assert 'global-value' == value
     value = client.get_value('global', 'key')
-    assert value == 'global-value'
+    assert 'global-value' == value
 
     # Reading non-existing values returns None
     value = client.get_value('non-existing', 'key')
