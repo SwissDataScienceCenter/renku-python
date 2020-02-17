@@ -18,12 +18,12 @@
 """Project initialization tests."""
 
 import shutil
-from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pkg_resources
 import pytest
+from tests.utils import raises
 
 from renku.core import errors
 from renku.core.commands.init import TEMPLATE_MANIFEST, create_from_template, \
@@ -39,22 +39,6 @@ METADATA = {'name': 'myname', 'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 
 template_local = Path(pkg_resources.resource_filename('renku', 'templates'))
-
-
-def raises(error):
-    """Wrapper around pytest.raises to support None."""
-    if error:
-        return pytest.raises(error)
-    else:
-
-        @contextmanager
-        def not_raises():
-            try:
-                yield
-            except Exception as e:
-                raise e
-
-        return not_raises()
 
 
 @pytest.mark.parametrize(
