@@ -34,8 +34,8 @@ def test_inheritance():
         """Define a process execution based on an activity."""
 
     data = jsonld.asjsonld(ProcessRun())
-    assert set(data['@type']) == types
-    assert set(data['@context'].keys()) == context_keys
+    assert types == set(data['@type'])
+    assert context_keys == set(data['@context'].keys())
 
     types = {'prov:Activity', 'wfprov:ProcessRun', 'wfprov:WorkflowRun'}
 
@@ -44,5 +44,5 @@ def test_inheritance():
         """Define a workflow run."""
 
     data = jsonld.asjsonld(WorkflowRun())
-    assert set(data['@type']) == types
-    assert set(data['@context'].keys()) == context_keys
+    assert types == set(data['@type'])
+    assert context_keys == set(data['@context'].keys())

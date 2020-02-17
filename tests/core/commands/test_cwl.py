@@ -28,9 +28,9 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 def test_1st_tool():
     """Check creation of 1st tool example from args."""
     tool = CommandLineToolFactory(('echo', 'Hello world!')).generate_tool()
-    assert tool.cwlVersion == 'v1.0'
-    assert tool.__class__.__name__ == 'CommandLineTool'
-    assert tool.inputs[0].default == 'Hello world!'
+    assert 'v1.0' == tool.cwlVersion
+    assert 'CommandLineTool' == tool.__class__.__name__
+    assert 'Hello world!' == tool.inputs[0].default
 
 
 def test_03_input(instance_path):
@@ -50,24 +50,24 @@ def test_03_input(instance_path):
         argv, directory=instance_path, working_dir=instance_path
     ).generate_tool()
 
-    assert tool.arguments[0].to_argv() == ['-f']
+    assert ['-f'] == tool.arguments[0].to_argv()
 
-    assert tool.inputs[0].default == 42
-    assert tool.inputs[0].type == 'int'
-    assert tool.inputs[0].inputBinding.prefix == '-i'
+    assert 42 == tool.inputs[0].default
+    assert 'int' == tool.inputs[0].type
+    assert '-i' == tool.inputs[0].inputBinding.prefix
     assert tool.inputs[0].inputBinding.separate is False
 
-    assert tool.inputs[1].default == 'hello'
-    assert tool.inputs[1].type == 'string'
-    assert tool.inputs[1].inputBinding.prefix == '--example-string'
+    assert 'hello' == tool.inputs[1].default
+    assert 'string' == tool.inputs[1].type
+    assert '--example-string' == tool.inputs[1].inputBinding.prefix
     assert tool.inputs[1].inputBinding.separate is True
 
     assert tool.inputs[2].default.path.samefile(whale)
-    assert tool.inputs[2].type == 'File'
-    assert tool.inputs[2].inputBinding.prefix == '--file='
+    assert 'File' == tool.inputs[2].type
+    assert '--file=' == tool.inputs[2].inputBinding.prefix
     assert tool.inputs[2].inputBinding.separate is False
 
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
 
 def test_base_command_detection(instance_path):
@@ -80,13 +80,13 @@ def test_base_command_detection(instance_path):
         argv, directory=instance_path, working_dir=instance_path
     ).generate_tool()
 
-    assert tool.baseCommand == ['tar', 'xf']
+    assert ['tar', 'xf'] == tool.baseCommand
     assert tool.inputs[0].default.path.samefile(hello)
-    assert tool.inputs[0].type == 'File'
+    assert 'File' == tool.inputs[0].type
     assert tool.inputs[0].inputBinding.prefix is None
     assert tool.inputs[0].inputBinding.separate is True
 
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
 
 def test_base_command_as_file_input(instance_path):
@@ -112,11 +112,11 @@ def test_base_command_as_file_input(instance_path):
 def test_short_base_command_detection():
     """Test base command detection without arguments."""
     tool = CommandLineToolFactory(('echo', 'A')).generate_tool()
-    assert tool.cwlVersion == 'v1.0'
-    assert tool.__class__.__name__ == 'CommandLineTool'
-    assert tool.inputs[0].default == 'A'
 
-    assert tool.to_argv() == ['echo', 'A']
+    assert 'v1.0' == tool.cwlVersion
+    assert 'CommandLineTool' == tool.__class__.__name__
+    assert 'A' == tool.inputs[0].default
+    assert ['echo', 'A'] == tool.to_argv()
 
 
 def test_04_output(instance_path):
@@ -136,11 +136,11 @@ def test_04_output(instance_path):
 
     parameters = list(factory.guess_outputs([output]))
 
-    assert parameters[0][0].type == 'File'
-    assert parameters[0][0].outputBinding.glob == 'hello.txt'
+    assert 'File' == parameters[0][0].type
+    assert 'hello.txt' == parameters[0][0].outputBinding.glob
 
     tool = factory.generate_tool()
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
 
 def test_05_stdout(instance_path):
@@ -156,11 +156,11 @@ def test_05_stdout(instance_path):
         stdout='output.txt',
     )
 
-    assert factory.stdout == 'output.txt'
-    assert factory.outputs[0].type == 'stdout'
+    assert 'output.txt' == factory.stdout
+    assert 'stdout' == factory.outputs[0].type
 
     tool = factory.generate_tool()
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
 
 def test_stdout_with_conflicting_arg(instance_path):
@@ -176,13 +176,13 @@ def test_stdout_with_conflicting_arg(instance_path):
         stdout='lalala',
     )
 
-    assert factory.inputs[0].default == 'lalala'
-    assert factory.inputs[0].type == 'string'
-    assert factory.stdout == 'lalala'
-    assert factory.outputs[0].type == 'stdout'
+    assert 'lalala' == factory.inputs[0].default
+    assert 'string' == factory.inputs[0].type
+    assert 'lalala' == factory.stdout
+    assert 'stdout' == factory.outputs[0].type
 
     tool = factory.generate_tool()
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
 
 def test_06_params(instance_path):
@@ -197,9 +197,9 @@ def test_06_params(instance_path):
         working_dir=instance_path,
     )
 
-    assert factory.inputs[1].default == 'goodbye.txt'
-    assert factory.inputs[1].type == 'string'
-    assert factory.inputs[1].inputBinding.position == 2
+    assert 'goodbye.txt' == factory.inputs[1].default
+    assert 'string' == factory.inputs[1].type
+    assert 2 == factory.inputs[1].inputBinding.position
 
     goodbye_id = factory.inputs[1].id
 
@@ -210,12 +210,12 @@ def test_06_params(instance_path):
 
     parameters = list(factory.guess_outputs([output]))
 
-    assert parameters[0][0].type == 'File'
-    assert parameters[0][0].outputBinding.glob == \
-        '$(inputs.{0})'.format(goodbye_id)
+    assert 'File' == parameters[0][0].type
+    assert '$(inputs.{0})'.format(goodbye_id) == \
+           parameters[0][0].outputBinding.glob
 
     tool = factory.generate_tool()
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
 
 def test_09_array_inputs(instance_path):
@@ -235,15 +235,13 @@ def test_09_array_inputs(instance_path):
         argv, directory=instance_path, working_dir=instance_path
     ).generate_tool()
 
-    # TODO add grouping for -A and -B
-
-    assert tool.inputs[-1].type == 'string[]'
-    assert tool.inputs[-1].default == ['seven', 'eight', 'nine']
-    assert tool.inputs[-1].inputBinding.prefix == '-C='
-    assert tool.inputs[-1].inputBinding.itemSeparator == ','
+    assert 'string[]' == tool.inputs[-1].type
+    assert ['seven', 'eight', 'nine'] == tool.inputs[-1].default
+    assert '-C=' == tool.inputs[-1].inputBinding.prefix
+    assert ',' == tool.inputs[-1].inputBinding.itemSeparator
     assert tool.inputs[-1].inputBinding.separate is False
 
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
 
 @pytest.mark.parametrize('argv', [['wc'], ['wc', '-l']])
@@ -267,11 +265,11 @@ def test_stdin_and_stdout(argv, instance_path):
     if len(argv) > 1:
         assert factory.arguments
 
-    assert factory.stdout == 'output.txt'
-    assert factory.outputs[0].type == 'stdout'
+    assert 'output.txt' == factory.stdout
+    assert 'stdout' == factory.outputs[0].type
 
     tool = factory.generate_tool()
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
     std_streams = (' < input.txt', ' > output.txt', ' 2> error.log')
     tool_str = str(tool)
     assert tool_str.startswith(' '.join(argv))
@@ -298,11 +296,11 @@ def test_input_directory(instance_path):
     src_tar.touch()
 
     tool = factory.generate_tool()
-    assert tool.to_argv() == argv
+    assert argv == tool.to_argv()
 
-    assert tool.inputs[0].type == 'string'
-    assert tool.inputs[0].default == src_tar.name
-    assert tool.inputs[1].type == 'Directory'
+    assert 'string' == tool.inputs[0].type
+    assert src_tar.name == tool.inputs[0].default
+    assert 'Directory' == tool.inputs[1].type
     assert tool.inputs[1].default.path.samefile(src)
 
 
@@ -338,7 +336,7 @@ def test_exitings_output_directory(client):
         if r.__class__.__name__ == 'InitialWorkDirRequirement'
     ]
     assert 1 == len(initial_work_dir_requirement)
-    assert initial_work_dir_requirement[0].listing[0].entryname == output.name
+    assert output.name == initial_work_dir_requirement[0].listing[0].entryname
 
     assert 1 == len(tool.inputs)
     assert 1 == len(tool.outputs)
