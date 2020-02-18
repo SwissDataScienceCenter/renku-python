@@ -44,6 +44,24 @@ Then the following outputs would be shown.
    G
    $ renku show siblings A
    A
+   $ renku show siblings C G
+   C
+   D
+   ---
+   F
+   G
+   $ renku show siblings
+   A
+   ---
+   B
+   ---
+   C
+   D
+   ---
+   E
+   ---
+   F
+   G
 
 
 Input and output files
