@@ -257,7 +257,6 @@ class Activity(CommitMixin):
         """Calculate action ID."""
         host = 'localhost'
         if hasattr(cls, 'client'):
-            breakpoint()
             host = cls.client.remote.get('host') or host
         host = os.environ.get('RENKU_DOMAIN') or 'localhost'
 
