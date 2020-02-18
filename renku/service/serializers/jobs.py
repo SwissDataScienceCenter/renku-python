@@ -15,23 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Context for jobs."""
-import contextlib
-import time
+"""Renku service cache serializers for jobs."""
+from marshmallow import Schema, fields
 
-from redis import BusyLoadingError
-
-from renku.service.jobs.queues import WorkerQueues
+from renku.service.serializers.rpc import JsonRPCResponse
 
 
-@contextlib.contextmanager
-def enqueue_retry(queue, retry=3):
-    """Ensure job gets queued."""
-    count = 0
-    while count < retry:
-        try:
-            yield WorkerQueues.get(queue)
-        except (OSError, IOError, BusyLoadingError):
-            time.sleep(2**count)
-            count += 1
-        break
+class UserJob(Schema):
+    """Job serialization."""
+
+    job_id = fields.String(required=True)
+    state = fields.String(required=True)
+    created_at = fields.DateTime()
+    updated_at = fields.DateTime()
+    extras = fields.Dict()
+
+
+class JobListResponse(Schema):
+    """Response schema for job listing."""
+
+    jobs = fields.List(fields.Nested(UserJob), required=True)
+
+
+class JobListResponseRPC(JsonRPCResponse):
+    """RPC response schema for jobs listing."""
+
+    result = fields.Nested(JobListResponse)

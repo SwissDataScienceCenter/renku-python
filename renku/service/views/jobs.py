@@ -19,7 +19,7 @@
 from flask import Blueprint, jsonify
 
 from renku.service.config import SERVICE_PREFIX
-from renku.service.serializers.cache import JobListResponseRPC
+from renku.service.serializers.jobs import JobListResponseRPC
 from renku.service.views.decorators import handle_validation_except, \
     header_doc, requires_cache, requires_identity
 

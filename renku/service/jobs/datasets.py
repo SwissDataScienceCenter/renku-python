@@ -24,7 +24,7 @@ from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.jobs.constants import USER_JOB_STATE_COMPLETED, \
     USER_JOB_STATE_FAILED, USER_JOB_STATE_IN_PROGRESS
-from renku.service.serializers.cache import UserJob
+from renku.service.serializers.jobs import UserJob
 from renku.service.utils import make_project_path
 from renku.service.views.decorators import requires_cache
 

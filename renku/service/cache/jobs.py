@@ -19,11 +19,11 @@
 from datetime import datetime
 
 from renku.service.cache.base import BaseCache
-from renku.service.serializers.cache import UserJob
+from renku.service.serializers.jobs import UserJob
 
 
 class JobsManagementCache(BaseCache):
-    """File management cache."""
+    """Job management cache."""
 
     JOBS_SUFFIX = 'jobs'
     schema = UserJob()
@@ -34,12 +34,12 @@ class JobsManagementCache(BaseCache):
 
     def create_job(self, user, job):
         """Create new user job."""
-        job['created_at'] = datetime.now()
+        job['created_at'] = datetime.utcnow()
         self.set_job(user, job)
 
     def set_job(self, user, job):
         """Cache job state under user hash set."""
-        job['updated_at'] = datetime.now()
+        job['updated_at'] = datetime.utcnow()
         job = self.schema.dump(job)
         self.set_record(self.job_cache_key(user), job['job_id'], job)
 

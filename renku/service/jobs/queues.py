@@ -16,11 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Job queues."""
-import redis
 from rq import Queue
 
-from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, \
-    REDIS_PASSWORD, REDIS_PORT
+from renku.service.cache.base import BaseCache
 
 CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
 CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
@@ -37,12 +35,7 @@ QUEUES = [
 class WorkerQueues:
     """Worker queues."""
 
-    connection = redis.Redis(
-        host=REDIS_HOST,
-        password=REDIS_PASSWORD,
-        port=REDIS_PORT,
-        db=REDIS_DATABASE
-    )
+    connection = BaseCache.cache
 
     @staticmethod
     def describe():

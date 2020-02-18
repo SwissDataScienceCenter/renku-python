@@ -312,7 +312,8 @@ def import_dataset_view(user, cache):
             ctx['dataset_uri'],
             short_name=ctx.get('short_name'),
             extract=ctx.get('extract', False),
-            timeout=os.getenv('WORKER_DATASETS_JOBS_TIMEOUT', 1800),
+            timeout=int(os.getenv('WORKER_DATASET_JOBS_TIMEOUT', 1800)),
+            result_ttl=int(os.getenv('WORKER_DATASET_JOBS_RESULT_TTL', 500))
         )
 
     return jsonify(DatasetImportResponseRPC().dump({'result': user_job}))
