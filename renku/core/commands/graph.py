@@ -411,6 +411,8 @@ class Graph(object):
         parent = None
 
         if isinstance(node, Entity):
+            if not node.parent:
+                return {node}
             parent_siblings = self.siblings(node.parent) - {node.parent}
             return set(node.parent.members) | parent_siblings
         elif isinstance(node, Generation):

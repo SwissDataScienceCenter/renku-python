@@ -69,8 +69,10 @@ respectively.
 
 import click
 
+from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.graph import Graph
+from renku.core.models.entities import Entity
 
 
 @click.group()
@@ -91,13 +93,38 @@ def siblings(client, revision, paths):
     """Show siblings for given paths."""
     graph = Graph(client)
     nodes = graph.build(paths=paths, revision=revision)
-    siblings_ = set(nodes)
-    for node in nodes:
-        siblings_ |= graph.siblings(node)
+    nodes = [n for n in nodes if not isinstance(n, Entity) or n.parent]
 
-    paths = {node.path for node in siblings_}
-    for path in paths:
-        click.echo(graph._format_path(path))
+    sibling_sets = {frozenset([n]) for n in set(nodes)}
+    for node in nodes:
+        try:
+            sibling_sets.add(frozenset(graph.siblings(node)))
+        except (errors.InvalidOutputPath):
+            # ignore nodes that aren't outputs if no path was supplied
+            if paths:
+                raise
+            else:
+                sibling_sets.discard({node})
+
+    result_sets = []
+    for candidate in sibling_sets:
+        new_result = []
+
+        for result in result_sets:
+            if candidate & result:
+                candidate |= result
+            else:
+                new_result.append(result)
+
+        result_sets = new_result
+        result_sets.append(candidate)
+
+    messages = []
+    for result in result_sets:
+        paths = [graph._format_path(node.path) for node in result]
+        messages.append('\n'.join(paths))
+
+    click.echo('\n---\n'.join(messages))
 
 
 @show.command()
