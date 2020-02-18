@@ -66,7 +66,7 @@ def _nodes(output, parent=None):
 class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = jsonld.ib(default=None, context='@id', kw_only=True)
     _message = jsonld.ib(context='rdfs:comment', kw_only=True)
     _was_informed_by = jsonld.ib(
         context='prov:wasInformedBy',
@@ -255,6 +255,10 @@ class Activity(CommitMixin):
     @classmethod
     def generate_id(cls, commit):
         """Calculate action ID."""
+        host = 'localhost'
+        if hasattr(cls, 'client'):
+            breakpoint()
+            host = cls.client.remote.get('host') or host
         host = os.environ.get('RENKU_DOMAIN') or 'localhost'
 
         # always set the id by the identifier
@@ -265,7 +269,6 @@ class Activity(CommitMixin):
             )
         )
 
-    @_id.default
     def default_id(self):
         """Configure calculated ID."""
         return self.generate_id(self.commit)
@@ -331,6 +334,10 @@ class Activity(CommitMixin):
     def __attrs_post_init__(self):
         """Sets ``generated`` and ``invalidated`` default values if needed."""
         super().__attrs_post_init__()
+        if not self._id:
+            self._id = self.default_id()
+        if not self.outputs:
+            self.outputs = self.default_outputs()
         if not self.generated:
             self.generated = self.default_generated()
         if not self.invalidated:
@@ -350,13 +357,16 @@ class ProcessRun(Activity):
 
     __association_cls__ = Process
 
-    inputs = attr.ib(kw_only=True)
-    outputs = attr.ib(kw_only=True)
+    inputs = attr.ib(default=None, kw_only=True)
+    outputs = attr.ib(default=None, kw_only=True)
 
     generated = jsonld.container.list(
-        Generation, context={
+        Generation,
+        context={
             '@reverse': 'prov:activity',
-        }, kw_only=True
+        },
+        kw_only=True,
+        default=None
     )
 
     association = jsonld.ib(
@@ -373,12 +383,18 @@ class ProcessRun(Activity):
     )
 
     qualified_usage = jsonld.ib(
-        context='prov:qualifiedUsage', kw_only=True, type=Usage
+        default=None, context='prov:qualifiedUsage', kw_only=True, type=Usage
     )
 
     def __attrs_post_init__(self):
         """Calculate properties."""
         super().__attrs_post_init__()
+
+        if not self.inputs:
+            self.inputs = self.default_inputs()
+
+        if not self.qualified_usage:
+            self.qualified_usage = self.default_qualified_usage()
 
         if self.association is None:
             self.association = Association.from_activity(self)
@@ -413,7 +429,6 @@ class ProcessRun(Activity):
         results = pm.hook.process_run_annotations(run=self)
         return [a for r in results for a in r]
 
-    @inputs.default
     def default_inputs(self):
         """Guess default inputs from a process."""
         inputs = {}
@@ -441,7 +456,6 @@ class ProcessRun(Activity):
 
         return inputs
 
-    @qualified_usage.default
     def default_qualified_usage(self):
         """Generate list of used artifacts."""
         return list(self.inputs.values())
@@ -467,7 +481,6 @@ class ProcessRun(Activity):
                 else:
                     yield output.id, glob
 
-    @outputs.default
     def default_outputs(self):
         """Guess default outputs from a process."""
         if self.path is None:
@@ -519,9 +532,9 @@ class WorkflowRun(ProcessRun):
         kw_only=True,
         type=Process
     )
-    subprocesses = attr.ib(kw_only=True)
+    subprocesses = attr.ib(default=None, kw_only=True)
 
-    outputs = attr.ib(kw_only=True)
+    outputs = attr.ib(default=None, kw_only=True)
 
     generated = jsonld.container.list(
         Generation, context={
@@ -549,7 +562,6 @@ class WorkflowRun(ProcessRun):
 
         return {step.id: _load(step) for step in self.process.steps}
 
-    @subprocesses.default
     def default_subprocesses(self):
         """Load subprocesses."""
         basedir = os.path.dirname(self.path)
@@ -661,11 +673,6 @@ class WorkflowRun(ProcessRun):
                 else:
                     yield output.id, glob
 
-    @outputs.default
-    def default_outputs(self):
-        """Guess default outputs from a workflow."""
-        return super().default_outputs()
-
     def default_generated(self):
         """Calculate default values."""
         results = []
@@ -699,6 +706,12 @@ class WorkflowRun(ProcessRun):
 
     def __attrs_post_init__(self):
         """Attrs post initializations."""
+        if not self._id:
+            self._id = self.default_id()
+        if not self.inputs:
+            self.inputs = self.default_inputs()
+        if not self.subprocesses:
+            self.subprocesses = self.default_subprocesses()
         if not self.generated:
             self.generated = self.default_generated()
 
