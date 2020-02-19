@@ -256,10 +256,20 @@ def _propagate_reference_contexts(
 
             for subtype in subtypes:
                 # Use nested, type scoped contexts for each semantic type
-                # of a reference, to uniquely bind a context to a type
+                # of a reference, to uniquely bind a context to a type.
+                # We need to expand the subtype, as type scoped contexts
+                # behave weirdly
+
+                expanded_subtype = subtype
+
+                prefix, suffix = subtype.split(':', 1)
+
+                if prefix in merge_ctx:
+                    expanded_subtype = '{}{}'.format(merge_ctx[prefix], suffix)
+
                 current_context['@context'].append({
                     fullname(cls) + '_' + subtype: {
-                        '@id': subtype,
+                        '@id': expanded_subtype,
                         '@context': merge_ctx
                     }
                 })
