@@ -63,6 +63,9 @@ Then the following outputs would be shown.
    F
    G
 
+You can use the ``-f`` or ``--flat`` flag to output a flat list, as well as
+the ``-v`` or ``--verbose`` flag to also output commit information.
+
 
 Input and output files
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -103,11 +106,13 @@ def show():
 
 @show.command()
 @click.option('--revision', default='HEAD')
+@click.option('-f', '--flat', is_flag=True)
+@click.option('-v', '--verbose', is_flag=True)
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
 @pass_local_client
-def siblings(client, revision, paths):
+def siblings(client, revision, flat, verbose, paths):
     """Show siblings for given paths."""
     graph = Graph(client)
     nodes = graph.build(paths=paths, revision=revision)
@@ -137,12 +142,13 @@ def siblings(client, revision, paths):
         result_sets = new_result
         result_sets.append(candidate)
 
-    messages = []
-    for result in result_sets:
-        paths = [graph._format_path(node.path) for node in result]
-        messages.append('\n'.join(paths))
+    result = [[sibling_name(graph, node, verbose) for node in r]
+              for r in result_sets]
 
-    click.echo('\n---\n'.join(messages))
+    if flat:
+        click.echo('\n'.join({n for r in result for n in r}))
+    else:
+        click.echo('\n---\n'.join('\n'.join(r) for r in result))
 
 
 @show.command()
@@ -220,6 +226,16 @@ def outputs(ctx, client, revision, paths):
             if tree.get(output) is None:
                 ctx.exit(1)
                 return
+
+
+def sibling_name(graph, node, verbose=False):
+    """Return the display name of a sibling."""
+    name = graph._format_path(node.path)
+
+    if verbose:
+        name = '{} @ {}'.format(name, node.commit)
+
+    return name
 
 
 def _context_names():
