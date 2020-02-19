@@ -15,34 +15,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Job queues."""
-from rq import Queue
+"""Context for jobs."""
+import contextlib
+import time
 
-from renku.service.cache.base import BaseCache
+from redis import BusyLoadingError
 
-CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
-CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
-
-DATASETS_JOB_QUEUE = 'datasets.jobs'
-
-QUEUES = [
-    CLEANUP_QUEUE_FILES,
-    CLEANUP_QUEUE_PROJECTS,
-    DATASETS_JOB_QUEUE,
-]
+from renku.service.jobs.queues import WorkerQueues
 
 
-class WorkerQueues:
-    """Worker queues."""
-
-    connection = BaseCache.cache
-
-    @staticmethod
-    def describe():
-        """List possible queues."""
-        return QUEUES
-
-    @staticmethod
-    def get(name):
-        """Get specific queue object."""
-        return Queue(name, connection=WorkerQueues.connection)
+@contextlib.contextmanager
+def enqueue_retry(queue, retry=3):
+    """Ensure job gets queued."""
+    count = 0
+    while count < retry:
+        try:
+            yield WorkerQueues.get(queue)
+        except (OSError, IOError, BusyLoadingError):
+            time.sleep(2**count)
+            count += 1
+        break

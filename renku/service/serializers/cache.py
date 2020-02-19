@@ -174,25 +174,3 @@ class ProjectListResponseRPC(JsonRPCResponse):
     """RPC response schema for project listing."""
 
     result = fields.Nested(ProjectListResponse)
-
-
-class JobResponse(Schema):
-    """Job serialization."""
-
-    job_id = fields.String(required=True)
-    state = fields.String(required=True)
-    created_at = fields.DateTime()
-    updated_at = fields.DateTime()
-    extras = fields.Dict()
-
-
-class JobListResponse(Schema):
-    """Response schema for job listing."""
-
-    jobs = fields.List(fields.Nested(JobResponse), required=True)
-
-
-class JobListResponseRPC(JsonRPCResponse):
-    """RPC response schema for jobs listing."""
-
-    result = fields.Nested(JobListResponse)

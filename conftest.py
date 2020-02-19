@@ -569,12 +569,16 @@ def datapack_tar(directory_tree):
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from renku.service.cache.base import BaseCache
-    monkeypatch = MonkeyPatch()
-    with monkeypatch.context() as m:
+    from renku.service.jobs.queues import WorkerQueues
+
+    monkey_patch = MonkeyPatch()
+    with monkey_patch.context() as m:
+        m.setattr(WorkerQueues, 'connection', fakeredis.FakeRedis())
         m.setattr(BaseCache, 'cache', fakeredis.FakeRedis())
+
         yield
 
-    monkeypatch.undo()
+    monkey_patch.undo()
 
 
 @pytest.fixture(scope='module')

@@ -15,34 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Job queues."""
-from rq import Queue
+"""Renku service cache serializers for jobs."""
+from marshmallow import Schema, fields
 
-from renku.service.cache.base import BaseCache
-
-CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
-CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
-
-DATASETS_JOB_QUEUE = 'datasets.jobs'
-
-QUEUES = [
-    CLEANUP_QUEUE_FILES,
-    CLEANUP_QUEUE_PROJECTS,
-    DATASETS_JOB_QUEUE,
-]
+from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class WorkerQueues:
-    """Worker queues."""
+class UserJob(Schema):
+    """Job serialization."""
 
-    connection = BaseCache.cache
+    job_id = fields.String(required=True)
+    state = fields.String(required=True)
+    created_at = fields.DateTime()
+    updated_at = fields.DateTime()
+    extras = fields.Dict()
 
-    @staticmethod
-    def describe():
-        """List possible queues."""
-        return QUEUES
 
-    @staticmethod
-    def get(name):
-        """Get specific queue object."""
-        return Queue(name, connection=WorkerQueues.connection)
+class JobListResponse(Schema):
+    """Response schema for job listing."""
+
+    jobs = fields.List(fields.Nested(UserJob), required=True)
+
+
+class JobListResponseRPC(JsonRPCResponse):
+    """RPC response schema for jobs listing."""
+
+    result = fields.Nested(JobListResponse)

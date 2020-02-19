@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service cache management."""
 import json
+import os
 
 import redis
 from redis import RedisError
@@ -32,7 +33,11 @@ class BaseCache:
         host=REDIS_HOST,
         port=REDIS_PORT,
         db=REDIS_DATABASE,
-        password=REDIS_PASSWORD
+        password=REDIS_PASSWORD,
+        retry_on_timeout=True,
+        health_check_interval=int(
+            os.getenv('CACHE_HEALTH_CHECK_INTERVAL', 60)
+        )
     )
 
     def set_record(self, name, key, value):
