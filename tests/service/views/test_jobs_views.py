@@ -21,7 +21,6 @@ import uuid
 from datetime import datetime
 
 import pytest
-from marshmallow.utils import isoformat
 
 
 @pytest.mark.service
@@ -61,13 +60,13 @@ def test_jobs_view_expected_job(svc_client_cache):
     job = {
         'job_id': uuid.uuid4().hex,
         'state': 'CREATED',
-        'created_at': isoformat(datetime.now()),
-        'updated_at': isoformat(datetime.now()),
+        'created_at': datetime.now(),
+        'updated_at': datetime.now(),
         'extras': {
             'progress': 42
         }
     }
-    cache.set_job(user, job['job_id'], job)
+    cache.set_job(user, job)
 
     headers = {
         'Content-Type': 'application/json',
@@ -100,17 +99,17 @@ def test_jobs_view_check_exclusion(svc_client_cache):
         job = {
             'job_id': uuid.uuid4().hex,
             'state': 'CREATED',
-            'created_at': isoformat(datetime.now()),
-            'updated_at': isoformat(datetime.now()),
+            'created_at': datetime.now(),
+            'updated_at': datetime.now(),
             'extras': {
                 'progress': 42
             }
         }
-        cache.set_job(user, job['job_id'], job)
+        cache.set_job(user, job)
 
         new_job = copy.deepcopy(job)
         new_job['job_id'] = uuid.uuid4().hex
-        cache.set_job(excluded_user, new_job['job_id'], new_job)
+        cache.set_job(excluded_user, new_job)
 
     headers = {
         'Content-Type': 'application/json',

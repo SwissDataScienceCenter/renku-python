@@ -166,3 +166,25 @@ class DatasetFilesListResponseRPC(JsonRPCResponse):
     """RPC schema for dataset files list view."""
 
     result = fields.Nested(DatasetFilesListResponse)
+
+
+class DatasetImportRequest(Schema):
+    """Dataset import request."""
+
+    project_id = fields.String(required=True)
+    dataset_uri = fields.String(required=True)
+    short_name = fields.String()
+    extract = fields.Boolean()
+
+
+class DatasetImportResponse(Schema):
+    """Dataset import response."""
+
+    job_id = fields.String(required=True)
+    created_at = fields.DateTime()
+
+
+class DatasetImportResponseRPC(JsonRPCResponse):
+    """RPC schema for a dataset import."""
+
+    result = fields.Nested(DatasetImportResponse)

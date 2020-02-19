@@ -15,34 +15,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Job queues."""
-from rq import Queue
+"""Job constants."""
 
-from renku.service.cache.base import BaseCache
-
-CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
-CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
-
-DATASETS_JOB_QUEUE = 'datasets.jobs'
-
-QUEUES = [
-    CLEANUP_QUEUE_FILES,
-    CLEANUP_QUEUE_PROJECTS,
-    DATASETS_JOB_QUEUE,
-]
-
-
-class WorkerQueues:
-    """Worker queues."""
-
-    connection = BaseCache.cache
-
-    @staticmethod
-    def describe():
-        """List possible queues."""
-        return QUEUES
-
-    @staticmethod
-    def get(name):
-        """Get specific queue object."""
-        return Queue(name, connection=WorkerQueues.connection)
+# User job states
+USER_JOB_STATE_ENQUEUED = 'ENQUEUED'
+USER_JOB_STATE_IN_PROGRESS = 'IN_PROGRESS'
+USER_JOB_STATE_COMPLETED = 'COMPLETED'
+USER_JOB_STATE_FAILED = 'FAILED'

@@ -16,22 +16,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service jobs management."""
+from datetime import datetime
 
 from renku.service.cache.base import BaseCache
+from renku.service.serializers.jobs import UserJob
 
 
 class JobsManagementCache(BaseCache):
-    """File management cache."""
+    """Job management cache."""
 
     JOBS_SUFFIX = 'jobs'
+    schema = UserJob()
 
     def job_cache_key(self, user):
         """Construct cache key based on user and jobs suffix."""
         return '{0}_{1}'.format(user['user_id'], self.JOBS_SUFFIX)
 
-    def set_job(self, user, job_id, metadata):
+    def create_job(self, user, job):
+        """Create new user job."""
+        job['created_at'] = datetime.utcnow()
+        self.set_job(user, job)
+
+    def set_job(self, user, job):
         """Cache job state under user hash set."""
-        self.set_record(self.job_cache_key(user), job_id, metadata)
+        job['updated_at'] = datetime.utcnow()
+        job = self.schema.dump(job)
+        self.set_record(self.job_cache_key(user), job['job_id'], job)
+
+    def get_job(self, user, job_id):
+        """Get user job."""
+        record = self.get_record(self.job_cache_key(user), job_id)
+        return self.schema.load(record)
 
     def get_jobs(self, user):
         """Get all user jobs."""
