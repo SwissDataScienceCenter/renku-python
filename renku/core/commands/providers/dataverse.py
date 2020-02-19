@@ -167,9 +167,11 @@ class DataverseProvider(ProviderApi):
             json=response.json(), dataverse=self, uri=uri
         )
 
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(self, dataset, access_token, server_url='', **kwargs):
         """Create export manager for given dataset."""
-        return DataverseExporter(dataset=dataset, access_token=access_token)
+        return DataverseExporter(
+            dataset=dataset, access_token=access_token, server_url=server_url
+        )
 
 
 @attr.s
@@ -347,10 +349,10 @@ class DataverseExporter(ExporterApi):
         authors, contacts = self._get_creators()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
-            name=self.dataset.name,
+            name=_escape_json_string(self.dataset.name),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
-            description=self.dataset.description
+            description=_escape_json_string(self.dataset.description)
         )
         return json.loads(metadata)
 
@@ -359,15 +361,20 @@ class DataverseExporter(ExporterApi):
         contacts = []
 
         for creator in self.dataset.creator:
+            name = creator.name or ''
+            affiliation = creator.affiliation or ''
+            email = creator.email or ''
+
             author_template = Template(AUTHOR_METADATA_TEMPLATE)
             author = author_template.substitute(
-                name=creator.name, affiliation=creator.affiliation
+                name=_escape_json_string(name),
+                affiliation=_escape_json_string(affiliation)
             )
             authors.append(json.loads(author))
 
             contact_template = Template(CONTACT_METADATA_TEMPLATE)
             contact = contact_template.substitute(
-                name=creator.name, email=creator.email
+                name=_escape_json_string(name), email=email
             )
             contacts.append(json.loads(contact))
 
@@ -472,3 +479,10 @@ class _DataverseDeposition:
                     response.json()['message']
                 )
             )
+
+
+def _escape_json_string(value):
+    """Create a JSON-safe string."""
+    if isinstance(value, str):
+        return json.dumps(value)[1:-1]
+    return value

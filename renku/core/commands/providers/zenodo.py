@@ -541,6 +541,6 @@ class ZenodoProvider(ProviderApi):
 
         return ZenodoRecordSerializer(**response.json(), zenodo=self, uri=uri)
 
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(self, dataset, access_token, **kwargs):
         """Create export manager for given dataset."""
         return ZenodoExporter(dataset=dataset, access_token=access_token)

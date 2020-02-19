@@ -308,7 +308,7 @@ def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output
 ):
-    """Test successful uploading of a file to Zenodo deposit."""
+    """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
 
     assert 0 == result.exit_code
@@ -353,7 +353,7 @@ def test_dataset_export_upload_tag(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output
 ):
-    """Test successful uploading of a file to Zenodo deposit."""
+    """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
@@ -662,6 +662,32 @@ def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
 
     assert 2 == result.exit_code
     assert 'Dataverse server URL is required.' in result.output
+
+
+@pytest.mark.integration
+def test_export_imported_dataset_to_dataverse(
+    runner, client, dataverse_demo, zenodo_sandbox
+):
+    """Test exporting an imported Zenodo dataset to dataverse."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'import', '10.5281/zenodo.2658634', '--short-name',
+            'my-data'
+        ],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'export', 'my-data', 'dataverse', '--dataverse-name',
+            'SDSC-Test'
+        ],
+        input='2'
+    )
+
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
 
 
 @pytest.mark.integration
