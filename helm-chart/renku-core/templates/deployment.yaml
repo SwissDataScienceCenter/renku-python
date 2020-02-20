@@ -22,7 +22,33 @@ spec:
         {{- toYaml . | nindent 8 }}
     {{- end }}
       containers:
-        - name: {{ .Chart.Name }}-worker
+        - name: {{ .Chart.Name }}-datasets-worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "renku/service/worker.py"]
+          env:
+            - name: REDIS_HOST
+              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+            - name: REDIS_PORT
+            value: "6379"
+              - name: REDIS_DATABASE
+                value: "0"
+              - name: REDIS_PASSWORD
+                value:
+              - name: CACHE_DIR
+                value: {{ .Values.cacheDirectory }}
+              - name: RENKU_SVC_CLEANUP_INTERVAL
+                value: {{ .Values.cleanupInterval | quote }}
+              - name: RENKU_SVC_WORKER_QUEUES
+                value: {{ .Values.datasetsWorkerQueues }}
+              - name: RENKU_SVC_CLEANUP_TTL_FILES
+                value: {{ .Values.cleanupFilesTTL | quote }}
+              - name: RENKU_SVC_CLEANUP_TTL_PROJECTS
+                value: {{ .Values.cleanupProjectsTTL | quote }}
+              - name: RQ_WORKER_LOG_LEVEL
+                value: {{ .Values.logLevel }}
+
+        - name: {{ .Chart.Name }}-management-worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["python", "renku/service/worker.py"]
@@ -40,7 +66,7 @@ spec:
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ .Values.cleanupInterval | quote }}
             - name: RENKU_SVC_WORKER_QUEUES
-              value: {{ .Values.workerQueues }}
+              value: {{ .Values.managementWorkerQueues }}
             - name: RENKU_SVC_CLEANUP_TTL_FILES
               value: {{ .Values.cleanupFilesTTL | quote }}
             - name: RENKU_SVC_CLEANUP_TTL_PROJECTS
