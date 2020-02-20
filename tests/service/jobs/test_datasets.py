@@ -76,10 +76,10 @@ def test_dataset_import_job(doi, svc_client_cache, project):
     )
 
     with chdir(dest):
-        # TODO: #1022
-        result = list_datasets(None, 'data', 'json-ld')
-        assert result
-        assert doi in result
+        datasets = list_datasets()
+
+        assert datasets and isinstance(datasets, list)
+        assert doi in ';'.join([ds.same_as.url for ds in datasets])
 
     updated_job = cache.get_job(user, job_request['job_id'])
 
