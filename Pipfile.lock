@@ -838,10 +838,10 @@
         },
         "schema-salad": {
             "hashes": [
-                "sha256:927b161ee68047d9aa81f993d385e8343db71fc4d75602ec91953c8f48481c91",
-                "sha256:a6ad801d3350c26dfd6da89745ae2dbbac3606074c750984bf4bd0fccab2750f"
+                "sha256:1c916cfeec2156c60b775a14e3cd91225fe4aa0e34fea33012e23db246e0be9d",
+                "sha256:e707fc849e19c48ff3d06c0fed3dcba7b7c5b5e763d2d3377de225351b1fcb26"
             ],
-            "version": "==5.0.20200126033820"
+            "version": "==5.0.20200220195218"
         },
         "sentry-sdk": {
             "hashes": [
