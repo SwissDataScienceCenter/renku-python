@@ -16,14 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets view."""
-import json
 import os
 import uuid
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
-from marshmallow import EXCLUDE
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     list_datasets, list_files
@@ -35,13 +33,12 @@ from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
 from renku.service.serializers.datasets import DatasetAddRequest, \
-    DatasetAddResponse, DatasetAddResponseRPC, DatasetCreateRequest, \
-    DatasetCreateResponse, DatasetCreateResponseRPC, DatasetDetails, \
-    DatasetFileDetails, DatasetFilesListRequest, DatasetFilesListResponse, \
-    DatasetFilesListResponseRPC, DatasetImportRequest, \
-    DatasetImportResponseRPC, DatasetListRequest, DatasetListResponse, \
+    DatasetAddResponseRPC, DatasetCreateRequest, DatasetCreateResponseRPC, \
+    DatasetFilesListRequest, DatasetFilesListResponseRPC, \
+    DatasetImportRequest, DatasetImportResponseRPC, DatasetListRequest, \
     DatasetListResponseRPC
 from renku.service.utils import make_file_path, make_project_path, repo_sync
+from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
     header_doc, requires_cache, requires_identity
@@ -68,27 +65,19 @@ dataset_blueprint = Blueprint(
 @requires_identity
 def list_datasets_view(user, cache):
     """List all datasets in project."""
-    req = DatasetListRequest().load(request.args)
-    project = cache.get_project(user, req['project_id'])
+    ctx = DatasetListRequest().load(request.args)
+    project = cache.get_project(user, ctx['project_id'])
     project_path = make_project_path(user, project)
 
     if not project_path:
-        return jsonify(
-            error={
-                'code': INVALID_PARAMS_ERROR_CODE,
-                'reason': 'invalid project_id argument',
-            }
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
     with chdir(project_path):
-        datasets = [
-            DatasetDetails().load(ds, unknown=EXCLUDE)
-            # TODO: fix core interface to address this issue: #1022
-            for ds in json.loads(list_datasets(None, 'data', 'json-ld'))
-        ]
+        ctx['datasets'] = list_datasets()
 
-    response = DatasetListResponse().load({'datasets': datasets})
-    return jsonify(DatasetListResponseRPC().load({'result': response}))
+    return result_response(DatasetListResponseRPC(), ctx)
 
 
 @use_kwargs(DatasetFilesListRequest, locations=['query'])
@@ -112,25 +101,14 @@ def list_dataset_files_view(user, cache):
     project_path = make_project_path(user, project)
 
     if not project_path:
-        return jsonify(
-            error={
-                'code': INVALID_PARAMS_ERROR_CODE,
-                'reason': 'invalid project_id argument',
-            }
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
     with chdir(project_path):
-        dataset_files = json.loads(
-            # TODO: fix core interface to address this issue (add ticket ref)
-            list_files(ctx['dataset_name'], None, None, None, 'json-ld')
-        )
-        ctx['files'] = [
-            DatasetFileDetails().load(ds, unknown=EXCLUDE)
-            for ds in dataset_files
-        ]
+        ctx['files'] = list_files(datasets=[ctx['dataset_name']])
 
-    response = DatasetFilesListResponse().load(ctx, unknown=EXCLUDE)
-    return jsonify(DatasetFilesListResponseRPC().load({'result': response}))
+    return result_response(DatasetFilesListResponseRPC(), ctx)
 
 
 @use_kwargs(DatasetAddRequest)
@@ -158,11 +136,9 @@ def add_file_to_dataset_view(user, cache):
     project_path = make_project_path(user, project)
 
     if not project_path:
-        return jsonify(
-            error={
-                'code': INVALID_PARAMS_ERROR_CODE,
-                'message': 'invalid project_id: {0}'.format(ctx['project_id']),
-            }
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE,
+            'invalid project_id: {0}'.format(ctx['project_id'])
         )
 
     if not ctx['commit_message']:
@@ -182,13 +158,11 @@ def add_file_to_dataset_view(user, cache):
             local_path = project_path / Path(_file['file_path'])
 
         if not local_path or not local_path.exists():
-            return jsonify(
-                error={
-                    'code': INVALID_PARAMS_ERROR_CODE,
-                    'message':
-                        'invalid file reference: {0}'.
-                        format(local_path.relative_to(project_path))
-                }
+            return error_response(
+                INVALID_PARAMS_ERROR_CODE,
+                'invalid file reference: {0}'.format(
+                    local_path.relative_to(project_path)
+                )
             )
 
         ctx['commit_message'] += ' {0}'.format(local_path.name)
@@ -203,18 +177,11 @@ def add_file_to_dataset_view(user, cache):
         )
 
         if not repo_sync(project_path):
-            return jsonify(
-                error={
-                    'code': INTERNAL_FAILURE_ERROR_CODE,
-                    'message': 'repo sync failed'
-                }
+            return error_response(
+                INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
             )
 
-    return jsonify(
-        DatasetAddResponseRPC().load({
-            'result': DatasetAddResponse().load(ctx, unknown=EXCLUDE)
-        })
-    )
+    return result_response(DatasetAddResponseRPC(), ctx)
 
 
 @use_kwargs(DatasetCreateRequest)
@@ -241,11 +208,8 @@ def create_dataset_view(user, cache):
 
     project_path = make_project_path(user, project)
     if not project_path:
-        return jsonify(
-            error={
-                'code': INVALID_PARAMS_ERROR_CODE,
-                'message': 'invalid project_id argument',
-            }
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
     with chdir(project_path):
@@ -257,18 +221,12 @@ def create_dataset_view(user, cache):
         )
 
     if not repo_sync(project_path):
-        return jsonify(
-            error={
-                'code': INTERNAL_FAILURE_ERROR_CODE,
-                'reason': 'push to remote failed silently - try again'
-            }
+        return error_response(
+            INTERNAL_FAILURE_ERROR_CODE,
+            'push to remote failed silently - try again'
         )
 
-    return jsonify(
-        DatasetCreateResponseRPC().load({
-            'result': DatasetCreateResponse().load(ctx, unknown=EXCLUDE)
-        })
-    )
+    return result_response(DatasetCreateResponseRPC(), ctx)
 
 
 @use_kwargs(DatasetImportRequest)
@@ -290,11 +248,9 @@ def import_dataset_view(user, cache):
     project_path = make_project_path(user, project)
 
     if not project_path:
-        return jsonify(
-            error={
-                'code': INVALID_PARAMS_ERROR_CODE,
-                'message': 'invalid project_id: {0}'.format(ctx['project_id']),
-            }
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE,
+            'invalid project_id: {0}'.format(ctx['project_id'])
         )
 
     user_job = {
@@ -316,4 +272,4 @@ def import_dataset_view(user, cache):
             result_ttl=int(os.getenv('WORKER_DATASET_JOBS_RESULT_TTL', 500))
         )
 
-    return jsonify(DatasetImportResponseRPC().dump({'result': user_job}))
+    return result_response(DatasetImportResponseRPC(), user_job)
