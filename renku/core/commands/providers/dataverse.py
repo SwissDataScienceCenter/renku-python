@@ -296,7 +296,7 @@ class DataverseExporter(ExporterApi):
 
     dataset = attr.ib(kw_only=True)
     access_token = attr.ib(kw_only=True)
-    server_url = attr.ib(default=None)
+    server_url = attr.ib(kw_only=True, default=None)
 
     def set_access_token(self, access_token):
         """Set access token."""
@@ -379,8 +379,8 @@ class _DataverseDeposition:
     """Dataverse record for deposit."""
 
     access_token = attr.ib(kw_only=True)
-    dataset_pid = attr.ib(default=None)
-    server_url = attr.ib(default=None, kw_only=True)
+    server_url = attr.ib(kw_only=True)
+    dataset_pid = attr.ib(kw_only=True, default=None)
 
     DATASET_CREATE_PATH = 'dataverses/{dataverseName}/datasets'
     FILE_UPLOAD_PATH = 'datasets/:persistentId/add'
