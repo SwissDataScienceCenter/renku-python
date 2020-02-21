@@ -156,6 +156,7 @@ install_requires = [
     'flask==1.1.1',
     'flask-apispec==0.8.5',
     'flask-swagger-ui==3.20.9',
+    'gitdb2==3.0.1',
     'gitpython==3.0.8',
     'jinja2>=2.10.3',
     'patool>=1.12',
