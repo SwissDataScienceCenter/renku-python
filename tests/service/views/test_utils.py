@@ -43,3 +43,30 @@ def test_result_response(svc_client):
     assert {'result'} == set(response.keys())
     assert {'datasets'} == set(response['result'].keys())
     assert ctx == response['result']
+
+
+def test_result_response_with_none(svc_client):
+    """Test result response with None value."""
+    response = result_response(DatasetListResponseRPC(), None).json
+
+    assert response
+    assert {'result'} == set(response.keys())
+    assert {} == response['result']
+
+
+def test_result_response_with_empty_dict(svc_client):
+    """Test result response with empty value."""
+    response = result_response(DatasetListResponseRPC(), {}).json
+
+    assert response
+    assert {'result'} == set(response.keys())
+    assert {} == response['result']
+
+
+def test_result_response_with_empty_tuple(svc_client):
+    """Test result response with empty value."""
+    response = result_response(DatasetListResponseRPC(), ()).json
+
+    assert response
+    assert {'result'} == set(response.keys())
+    assert {} == response['result']
