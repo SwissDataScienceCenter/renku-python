@@ -309,12 +309,14 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+    - name: set up environment variables
+      run: |
+        echo ::set-env name=GIT_USER::"Renku Bot"
+        echo ::set-env name=GIT_EMAIL::"renku@datascience.ch"
     - name: push chart and images
       uses: SwissDataScienceCenter/renku/actions/publish-chart@add-actions
       env:
         CHART_DIR: helm-chart/renku-core
-        GIT_EMAIL: "renku@datascience.ch"
-        GIT_USER: Renku Bot
         GITHUB_TOKEN: ${{ secrets.RENKU_CI_TOKEN }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
