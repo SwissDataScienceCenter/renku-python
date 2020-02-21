@@ -146,7 +146,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     'appdirs>=1.4.3',
     'apispec==3.3.0',
-    'attrs>=18.2.0',
+    'attrs>=19.3.0',
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
