@@ -25,6 +25,7 @@ from flask_apispec import marshal_with, use_kwargs
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     list_datasets, list_files
+from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
@@ -160,9 +161,7 @@ def add_file_to_dataset_view(user, cache):
         if not local_path or not local_path.exists():
             return error_response(
                 INVALID_PARAMS_ERROR_CODE,
-                'invalid file reference: {0}'.format(
-                    local_path.relative_to(project_path)
-                )
+                'invalid file reference: {0}'.format(json.dumps(_file))
             )
 
         ctx['commit_message'] += ' {0}'.format(local_path.name)

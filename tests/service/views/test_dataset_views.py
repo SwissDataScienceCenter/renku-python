@@ -299,6 +299,49 @@ def test_add_file_commit_msg(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
+def test_add_file_failure(svc_client_with_repo):
+    """Check adding of uploaded file to dataset with non-existing file."""
+    svc_client, headers, project_id = svc_client_with_repo
+    content_type = headers.pop('Content-Type')
+
+    response = svc_client.post(
+        '/cache.files_upload',
+        data=dict(file=(io.BytesIO(b'this is a test'), 'datafile1.txt'), ),
+        query_string={'override_existing': True},
+        headers=headers
+    )
+
+    file_id = response.json['result']['files'][0]['file_id']
+    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+
+    payload = {
+        'commit_message': 'my awesome data file',
+        'project_id': project_id,
+        'dataset_name': '{0}'.format(uuid.uuid4().hex),
+        'create_dataset': True,
+        'files': [{
+            'file_id': file_id,
+        }, {
+            'file_path': 'my problem right here'
+        }]
+    }
+    headers['Content-Type'] = content_type
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response, with_key='error')
+
+    assert {'code', 'reason'} == set(response.json['error'].keys())
+    assert 'invalid file reference' in response.json['error']['reason']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
 def test_list_datasets_view(svc_client_with_repo):
     """Check listing of existing datasets."""
     svc_client, headers, project_id = svc_client_with_repo
