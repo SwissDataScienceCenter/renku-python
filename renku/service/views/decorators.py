@@ -18,7 +18,7 @@
 """Renku service view decorators."""
 from functools import wraps
 
-from flask import current_app, jsonify, request
+from flask import jsonify, request
 from flask_apispec import doc
 from git import GitCommandError
 from marshmallow import ValidationError
