@@ -25,7 +25,7 @@ from renku.core.utils.contexts import chdir
 from renku.service.jobs.constants import USER_JOB_STATE_COMPLETED, \
     USER_JOB_STATE_FAILED, USER_JOB_STATE_IN_PROGRESS
 from renku.service.serializers.jobs import UserJob
-from renku.service.utils import make_project_path
+from renku.service.utils import make_project_path, repo_sync
 from renku.service.views.decorators import requires_cache
 
 
@@ -79,8 +79,9 @@ def dataset_import(
     """Job for dataset import."""
     user_job = cache.get_job(user, user_job_id)
     project = cache.get_project(user, project_id)
+    project_path = make_project_path(user, project)
 
-    with chdir(make_project_path(user, project)):
+    with chdir(project_path):
         try:
             import_dataset(
                 dataset_uri,
@@ -95,3 +96,6 @@ def dataset_import(
 
             # Reraise exception, so we see trace in job metadata.
             raise exp
+
+    if not repo_sync(project_path):
+        raise RuntimeError('failed to push refs')

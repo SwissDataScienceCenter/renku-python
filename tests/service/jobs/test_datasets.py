@@ -22,6 +22,7 @@ import uuid
 from pathlib import Path
 
 import pytest
+from git import Repo
 
 from renku.core.commands.dataset import list_datasets
 from renku.core.utils.contexts import chdir
@@ -64,6 +65,7 @@ def test_dataset_import_job(doi, svc_client_cache, project):
     cache.set_project(user, project_meta['project_id'], project_meta)
 
     dest = make_project_path(user, project_meta)
+    old_commit = Repo(dest).head.commit
     os.makedirs(dest.parent, exist_ok=True)
     if not (project / dest).exists():
         shutil.copytree(project, dest)
@@ -80,6 +82,9 @@ def test_dataset_import_job(doi, svc_client_cache, project):
 
         assert datasets and isinstance(datasets, list)
         assert doi in ';'.join([ds.same_as.url for ds in datasets])
+
+        new_commit = Repo(dest).head.commit
+        assert old_commit != new_commit
 
     updated_job = cache.get_job(user, job_request['job_id'])
 
