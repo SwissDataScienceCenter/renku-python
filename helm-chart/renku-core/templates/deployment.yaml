@@ -23,11 +23,15 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      volumes:
+        - name: shared-volume
+          emptyDir: {}
       containers:
-        - name: {{ .Chart.Name }}-datasets-worker
+        - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python", "renku/service/worker.py"]
+          command: ["python"]
+          args: ["renku/service/worker.py"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -49,11 +53,15 @@ spec:
               value: {{ .Values.cleanupProjectsTTL | quote }}
             - name: RQ_WORKER_LOG_LEVEL
               value: {{ .Values.logLevel }}
+          volumeMounts:
+            - name: shared-volume
+              mountPath: {{ .Values.cacheDirectory }}
 
-        - name: {{ .Chart.Name }}-management-worker
+        - name: {{ .Chart.Name }}-management-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python", "renku/service/worker.py"]
+          command: ["python"]
+          args: ["renku/service/worker.py"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -75,11 +83,15 @@ spec:
               value: {{ .Values.cleanupProjectsTTL | quote }}
             - name: RQ_WORKER_LOG_LEVEL
               value: {{ .Values.logLevel }}
+          volumeMounts:
+            - name: shared-volume
+              mountPath: {{ .Values.cacheDirectory }}
 
         - name: {{ .Chart.Name }}-scheduler
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python", "renku/service/scheduler.py"]
+          command: ["python"]
+          args: ["renku/service/scheduler.py"]
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -114,6 +126,9 @@ spec:
               value: /renku
             - name: RENKU_SVC_SWAGGER_URL
               value: /renku/openapi.json
+          volumeMounts:
+            - name: shared-volume
+              mountPath: {{ .Values.cacheDirectory }}
           ports:
             - name: http
               containerPort: 8080

@@ -5,7 +5,7 @@
 replicaCount: 1
 
 cacheDirectory: /svc/cache
-cleanupInterval: 60
+cleanupInterval: 3600
 projectCloneDepth: 1
 
 datasetsWorkerQueues: datasets.jobs
@@ -15,9 +15,9 @@ cleanupProjectsTTL: 1800
 logLevel: WARNING
 
 image:
-  repository: renku/renku-core
+  repository: psam/renku-core
   tag: 'latest'
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 imagePullSecrets: []
 nameOverride: ""
