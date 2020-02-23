@@ -150,7 +150,7 @@ def test_job_details_empty(svc_client):
     response = svc_client.get('/jobs/myjob', headers=headers)
 
     assert {'result'} == set(response.json.keys())
-    assert response['result'] is None
+    assert response['result'] is {}
 
 
 @pytest.mark.service

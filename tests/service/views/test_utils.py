@@ -51,7 +51,7 @@ def test_result_response_with_none(svc_client):
 
     assert response
     assert {'result'} == set(response.keys())
-    assert {} == response['result']
+    assert not response['result']
 
 
 def test_result_response_with_empty_dict(svc_client):
