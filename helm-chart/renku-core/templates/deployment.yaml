@@ -6,8 +6,6 @@ metadata:
 {{ include "renku-core.labels" . | indent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "renku-core.name" . }}
