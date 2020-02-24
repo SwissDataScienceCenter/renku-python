@@ -29,6 +29,13 @@ from renku.service.utils import make_project_path, repo_sync
 from renku.service.views.decorators import requires_cache
 
 
+def fail_job(cache, user_job, user, error):
+    """Mark job as failed."""
+    user_job['state'] = USER_JOB_STATE_FAILED
+    user_job['extras']['error'] = error
+    cache.set_job(user, user_job)
+
+
 class DatasetImportJobProcess(DownloadProgressCallback):
     """Track dataset import job progress."""
 
@@ -90,12 +97,13 @@ def dataset_import(
                 progress=DatasetImportJobProcess(cache, user, user_job)
             )
         except (HTTPError, ParameterError) as exp:
-            user_job['state'] = USER_JOB_STATE_FAILED
-            user_job['extras']['error'] = str(exp)
-            cache.set_job(user, user_job)
+            fail_job(cache, user_job, user, str(exp))
 
             # Reraise exception, so we see trace in job metadata.
             raise exp
 
     if not repo_sync(project_path):
-        raise RuntimeError('failed to push refs')
+        error = 'failed to push refs'
+        fail_job(cache, user_job, user, error)
+
+        raise RuntimeError(error)
