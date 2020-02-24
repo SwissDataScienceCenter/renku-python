@@ -35,8 +35,7 @@ def make_cache():
     sub_dirs = [CACHE_UPLOADS_PATH, CACHE_PROJECTS_PATH]
 
     for subdir in sub_dirs:
-        if not subdir.exists():
-            subdir.mkdir()
+        subdir.mkdir(parents=True, exist_ok=True)
 
     return ServiceCache()
 
