@@ -500,14 +500,16 @@ def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
     assert 'metadata.description' in result.output
 
 
-@pytest.mark.integration
+@pytest.mark.publish
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'provider,params,output',
     [('zenodo', [], 'zenodo.org/record'),
-     ('dataverse', ['--dataverse-name', 'sdsc-test-dataverse'], 'doi:')]
+     (
+         'dataverse', ['--dataverse-name', 'sdsc-published-test-dataverse'
+                       ], 'doi:'
+     )]
 )
-@pytest.mark.skip(reason='temporarily disabled, until #1035')
 def test_dataset_export_published_url(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output
