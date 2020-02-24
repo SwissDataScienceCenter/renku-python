@@ -117,7 +117,9 @@ jobs:
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
       env:
+        DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+        ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
       run: pytest -m integration -v
 
   test-macos-integration:
@@ -147,7 +149,9 @@ jobs:
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
       env:
+        DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+        ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
       run: pytest -m integration -v
 
   # test-macos-integration-pr:
@@ -177,7 +181,9 @@ jobs:
   #       git config --global --add user.email "renku@datascience.ch"
   #   - name: Test with pytest
   #     env:
+  #       DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
   #       IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+  #       ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
   #     run: pytest -m integration -v
 
   publish-pypi:
