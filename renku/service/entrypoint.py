@@ -26,10 +26,9 @@ from flask import Flask
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
 
-from renku.service.cache import ServiceCache
+from renku.service.cache import cache
 from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, \
-    CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH, OPENAPI_VERSION, SERVICE_NAME, \
-    SWAGGER_URL
+    OPENAPI_VERSION, SERVICE_NAME, SWAGGER_URL
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views.cache import CACHE_BLUEPRINT_TAG, cache_blueprint, \
     list_projects_view, list_uploaded_files_view, project_clone, \
@@ -43,19 +42,8 @@ from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, \
 logging.basicConfig(level=os.getenv('SERVICE_LOG_LEVEL', 'WARNING'))
 
 
-def make_cache():
-    """Create cache structure."""
-    sub_dirs = [CACHE_UPLOADS_PATH, CACHE_PROJECTS_PATH]
-
-    for subdir in sub_dirs:
-        if not subdir.exists():
-            subdir.mkdir()
-
-    return ServiceCache()
-
-
 def create_app():
-    """Creates a Flask app with necessary configuration."""
+    """Creates a Flask app with a necessary configuration."""
     app = Flask(__name__)
     app.secret_key = os.getenv('RENKU_SVC_SERVICE_KEY', uuid.uuid4().hex)
     app.json_encoder = SvcJSONEncoder
@@ -65,7 +53,6 @@ def create_app():
     if max_content_size:
         app.config['MAX_CONTENT_LENGTH'] = max_content_size
 
-    cache = make_cache()
     app.config['cache'] = cache
 
     build_routes(app)
