@@ -18,7 +18,7 @@
 """Renku service view decorators."""
 from functools import wraps
 
-from flask import current_app, jsonify, request
+from flask import jsonify, request
 from flask_apispec import doc
 from git import GitCommandError
 from marshmallow import ValidationError
@@ -26,6 +26,7 @@ from redis import RedisError
 from werkzeug.exceptions import HTTPException
 
 from renku.core.errors import RenkuException
+from renku.service.cache import cache
 from renku.service.config import GIT_ACCESS_DENIED_ERROR_CODE, \
     GIT_UNKNOWN_ERROR_CODE, INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, \
@@ -82,7 +83,7 @@ def requires_cache(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
-        return f(current_app.config.get('cache'), *args, **kwargs)
+        return f(cache, *args, **kwargs)
 
     return decorated_function
 

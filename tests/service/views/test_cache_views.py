@@ -451,7 +451,7 @@ def test_clone_projects_invalid_headers(svc_client):
 @pytest.mark.service
 def test_upload_zip_unpack_archive(datapack_zip, svc_client_with_repo):
     """Upload zip archive with unpack."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -480,7 +480,7 @@ def test_upload_zip_unpack_archive(datapack_zip, svc_client_with_repo):
 @pytest.mark.service
 def test_upload_zip_archive(datapack_zip, svc_client_with_repo):
     """Upload zip archive."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -509,7 +509,7 @@ def test_upload_zip_archive(datapack_zip, svc_client_with_repo):
 @pytest.mark.service
 def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
     """Upload zip archive with unpack."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -557,7 +557,7 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
 @pytest.mark.service
 def test_upload_tar_archive(datapack_tar, svc_client_with_repo):
     """Upload zip archive."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -586,7 +586,7 @@ def test_upload_tar_archive(datapack_tar, svc_client_with_repo):
 @pytest.mark.service
 def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
     """Check response fields."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     headers.pop('Content-Type')
 
     response = svc_client.post(
