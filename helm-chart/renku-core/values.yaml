@@ -15,9 +15,9 @@ cleanupProjectsTTL: 1800
 logLevel: WARNING
 
 image:
-  repository: psam/renku-core
+  repository: renku/renku-core
   tag: 'latest'
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 imagePullSecrets: []
 nameOverride: ""
