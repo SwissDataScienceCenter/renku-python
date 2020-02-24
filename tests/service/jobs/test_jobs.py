@@ -37,7 +37,7 @@ def test_cleanup_old_files(
     datapack_zip, svc_client_with_repo, service_job, mock_redis
 ):
     """Upload archive and add its contents to a dataset."""
-    svc_client, headers, _ = svc_client_with_repo
+    svc_client, headers, _, _ = svc_client_with_repo
     headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -119,7 +119,7 @@ def test_cleanup_old_project(
     datapack_zip, svc_client_with_repo, service_job, mock_redis
 ):
     """Upload archive and add its contents to a dataset."""
-    svc_client, headers, _ = svc_client_with_repo
+    svc_client, headers, _, _ = svc_client_with_repo
     headers.pop('Content-Type')
 
     response = svc_client.get('/cache.project_list', headers=headers)
