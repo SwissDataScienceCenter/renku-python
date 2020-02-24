@@ -18,18 +18,21 @@
 """Renku service view decorators."""
 from functools import wraps
 
-from flask import current_app, jsonify, request
+from flask import jsonify, request
 from flask_apispec import doc
 from git import GitCommandError
 from marshmallow import ValidationError
 from redis import RedisError
+from werkzeug.exceptions import HTTPException
 
 from renku.core.errors import RenkuException
+from renku.service.cache import cache
 from renku.service.config import GIT_ACCESS_DENIED_ERROR_CODE, \
     GIT_UNKNOWN_ERROR_CODE, INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, \
     REDIS_EXCEPTION_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 from renku.service.serializers.headers import UserIdentityHeaders
+from renku.service.views import error_response
 
 
 def requires_identity(f):
@@ -80,7 +83,7 @@ def requires_cache(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
-        return f(current_app.config.get('cache'), *args, **kwargs)
+        return f(cache, *args, **kwargs)
 
     return decorated_function
 
@@ -185,17 +188,16 @@ def handle_base_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
-        except (Exception, BaseException, OSError) as e:
-            error_code = INTERNAL_FAILURE_ERROR_CODE
+        except HTTPException as e:  # handle general werkzeug exception
+            return error_response(e.code, e.description)
 
-            return jsonify(
-                error={
-                    'code': error_code,
-                    'reason':
-                        'internal error: {0}'.
-                        format(' '.join(e.stderr.strip().split('\n'))),
-                }
-            )
+        except (Exception, BaseException, OSError, IOError) as e:
+            internal_error = 'internal error'
+            if hasattr(e, 'stderr'):
+                internal_error += ': {0}'.format(
+                    ' '.join(e.stderr.strip().split('\n'))
+                )
+            return error_response(INTERNAL_FAILURE_ERROR_CODE, internal_error)
 
     return decorated_function
 

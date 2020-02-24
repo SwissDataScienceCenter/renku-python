@@ -75,6 +75,7 @@ def dataset_import(
     dataset_uri,
     short_name=None,
     extract=False,
+    timeout=None,
 ):
     """Job for dataset import."""
     user_job = cache.get_job(user, user_job_id)
