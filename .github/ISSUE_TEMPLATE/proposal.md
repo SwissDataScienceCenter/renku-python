@@ -4,7 +4,7 @@ about: Submit a proposal for open discussion
 
 ---
 
-**Note: for support questions, please use our discourse (https://renku.discourse.group/)**.
+<!-- Note: for support questions, please use our discourse (https://renku.discourse.group/) -->
 
 [This is a template for Renku's change proposal process.]
 

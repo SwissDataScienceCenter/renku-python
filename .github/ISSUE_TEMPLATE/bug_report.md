@@ -4,7 +4,7 @@ about: Create a report to help us improve
 
 ---
 
-**Note: for support questions, please use our discourse (https://renku.discourse.group/)**.
+<!-- Note: for support questions, please use our discourse (https://renku.discourse.group/) -->
 
 **Describe the bug**
 A clear and concise description of what the bug is.

@@ -4,7 +4,7 @@ about: Suggest an idea for this project
 
 ---
 
-**Note: for support questions, please use our discourse (https://renku.discourse.group/)**.
+<!-- Note: for support questions, please use our discourse (https://renku.discourse.group/) -->
 
 
 **Is your feature request related to a problem? Please describe.**
