@@ -5,10 +5,11 @@
 replicaCount: 1
 
 cacheDirectory: /svc/cache
-cleanupInterval: 60
+cleanupInterval: 3600
 projectCloneDepth: 1
 
-workerQueues: cache.cleanup.files,cache.cleanup.projects
+datasetsWorkerQueues: datasets.jobs
+managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects
 cleanupFilesTTL: 1800
 cleanupProjectsTTL: 1800
 logLevel: WARNING
