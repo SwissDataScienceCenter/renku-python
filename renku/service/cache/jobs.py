@@ -46,7 +46,8 @@ class JobsManagementCache(BaseCache):
     def get_job(self, user, job_id):
         """Get user job."""
         record = self.get_record(self.job_cache_key(user), job_id)
-        return self.schema.load(record)
+        if record:
+            return self.schema.load(record)
 
     def get_jobs(self, user):
         """Get all user jobs."""

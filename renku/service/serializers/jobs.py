@@ -41,3 +41,9 @@ class JobListResponseRPC(JsonRPCResponse):
     """RPC response schema for jobs listing."""
 
     result = fields.Nested(JobListResponse)
+
+
+class JobDetailsResponseRPC(Schema):
+    """Response schema for job details."""
+
+    result = fields.Nested(UserJob)
