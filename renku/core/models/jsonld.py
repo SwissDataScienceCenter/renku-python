@@ -465,7 +465,6 @@ class JSONLDMixin(ReferenceMixin):
         data,
         client=None,
         commit=None,
-        jsonld_migrations=None,
         __reference__=None,
         __source__=None,
     ):
@@ -491,10 +490,7 @@ class JSONLDMixin(ReferenceMixin):
                 new_cls = cls.__type_registry__[type_]
                 if cls != new_cls:
                     return new_cls.from_jsonld(
-                        data,
-                        client=client,
-                        commit=commit,
-                        jsonld_migrations=jsonld_migrations
+                        data, client=client, commit=commit
                     )
 
         if cls._jsonld_translate:
@@ -505,21 +501,6 @@ class JSONLDMixin(ReferenceMixin):
             data = pyld.jsonld.compact(data, cls._jsonld_context)
 
         data.setdefault('@context', cls._jsonld_context)
-
-        if jsonld_migrations:
-            schema_type = data.get('@type')
-            migrations = []
-
-            if isinstance(schema_type, list):
-                for schema in schema_type:
-                    migrations += jsonld_migrations.get(schema, [])
-            elif isinstance(schema_type, str):
-                migrations += jsonld_migrations.get(schema_type, [])
-
-            for migration in set(migrations):
-                data = migration(data)
-                if __source__:
-                    __source__ = migration(__source__)
 
         if data['@context'] != cls._jsonld_context:
             # merge new context into old context to prevent properties
@@ -570,20 +551,17 @@ class JSONLDMixin(ReferenceMixin):
         return self
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None, jsonld_migrations=None):
+    def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
-        import yaml
+        source = read_yaml(path)
 
-        with path.open(mode='r') as fp:
-            source = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
-            self = cls.from_jsonld(
-                source,
-                client=client,
-                commit=commit,
-                jsonld_migrations=jsonld_migrations,
-                __reference__=path,
-                __source__=deepcopy(source)
-            )
+        self = cls.from_jsonld(
+            source,
+            client=client,
+            commit=commit,
+            __reference__=path,
+            __source__=deepcopy(source)
+        )
         return self
 
     def asjsonld(self):
@@ -596,12 +574,23 @@ class JSONLDMixin(ReferenceMixin):
 
     def to_yaml(self):
         """Store an instance to the referenced YAML file."""
-        dumper = yaml.dumper.Dumper
-        dumper.ignore_aliases = lambda _, data: True
+        jsonld_ = self.asjsonld()
+        write_yaml(path=self.__reference__, data=jsonld_)
 
-        with self.__reference__.open('w') as fp:
-            jsonld_ = self.asjsonld()
-            yaml.dump(jsonld_, fp, default_flow_style=False, Dumper=dumper)
+
+def read_yaml(path):
+    """Load YAML file and return its content as a dict."""
+    with Path(path).open(mode='r') as fp:
+        return yaml.load(fp, Loader=NoDatesSafeLoader) or {}
+
+
+def write_yaml(path, data):
+    """Store data to a YAML file."""
+    dumper = yaml.dumper.Dumper
+    dumper.ignore_aliases = lambda _, data: True
+
+    with Path(path).open('w') as fp:
+        yaml.dump(data, fp, default_flow_style=False, Dumper=dumper)
 
 
 def fullname(cls):
