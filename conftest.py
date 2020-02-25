@@ -40,8 +40,6 @@ from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
 
-from renku.core.utils.requests import retry
-
 
 @pytest.fixture(scope='module')
 def renku_path(tmpdir_factory):
@@ -382,6 +380,8 @@ def dataverse_demo(client, dataverse_demo_cleanup):
 @pytest.fixture(scope='module')
 def dataverse_demo_cleanup(request):
     """Delete all Dataverse datasets at the end of the test session."""
+    from renku.core.utils.requests import retry
+
     server_url = 'https://demo.dataverse.org'
     access_token = os.getenv('DATAVERSE_ACCESS_TOKEN', '')
     headers = {'X-Dataverse-key': access_token}
