@@ -730,7 +730,7 @@ def svc_client_with_repo(integration_lifecycle):
         current = repo.create_head(new_branch)
         current.checkout()
 
-    yield svc_client, deepcopy(headers), project_id
+    yield svc_client, deepcopy(headers), project_id, url_components
 
 
 @pytest.fixture(

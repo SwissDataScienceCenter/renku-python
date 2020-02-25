@@ -19,6 +19,7 @@
 from renku.service.cache.files import FileManagementCache
 from renku.service.cache.jobs import JobsManagementCache
 from renku.service.cache.projects import ProjectManagementCache
+from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
 class ServiceCache(
@@ -27,3 +28,18 @@ class ServiceCache(
     """Service cache manager."""
 
     pass
+
+
+def make_cache():
+    """Create cache structure."""
+    sub_dirs = [CACHE_UPLOADS_PATH, CACHE_PROJECTS_PATH]
+
+    for subdir in sub_dirs:
+        subdir.mkdir(parents=True, exist_ok=True)
+
+    return ServiceCache()
+
+
+cache = make_cache()
+
+__all__ = ['cache']

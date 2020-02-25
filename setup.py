@@ -146,11 +146,11 @@ for name, reqs in extras_require.items():
 install_requires = [
     'appdirs>=1.4.3',
     'apispec==3.3.0',
-    'attrs>=18.2.0',
+    'attrs>=19.3.0',
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
-    'cwltool==2.0.20200219182542',
+    'cwltool==2.0.20200224214940',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'flask==1.1.1',

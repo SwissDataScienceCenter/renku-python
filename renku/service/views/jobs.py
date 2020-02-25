@@ -19,7 +19,9 @@
 from flask import Blueprint, jsonify
 
 from renku.service.config import SERVICE_PREFIX
-from renku.service.serializers.jobs import JobListResponseRPC
+from renku.service.serializers.jobs import JobDetailsResponseRPC, \
+    JobListResponseRPC
+from renku.service.views import result_response
 from renku.service.views.decorators import handle_validation_except, \
     header_doc, requires_cache, requires_identity
 
@@ -41,3 +43,23 @@ def list_jobs(user, cache):
     jobs = cache.get_jobs(user)
     response = JobListResponseRPC().load({'result': {'jobs': jobs}})
     return jsonify(response)
+
+
+@header_doc(
+    description='Show details for a specific job.',
+    tags=(JOBS_BLUEPRINT_TAG, )
+)
+@jobs_blueprint.route(
+    '/jobs/<job_id>',
+    methods=['GET'],
+    provide_automatic_options=False,
+)
+@handle_validation_except
+@requires_cache
+@requires_identity
+def job_details(user, cache, job_id):
+    """Show details for a specific job."""
+    return result_response(
+        JobDetailsResponseRPC(),
+        cache.get_job(user, job_id),
+    )

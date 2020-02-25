@@ -25,8 +25,15 @@ from renku.core.utils.contexts import chdir
 from renku.service.jobs.constants import USER_JOB_STATE_COMPLETED, \
     USER_JOB_STATE_FAILED, USER_JOB_STATE_IN_PROGRESS
 from renku.service.serializers.jobs import UserJob
-from renku.service.utils import make_project_path
+from renku.service.utils import make_project_path, repo_sync
 from renku.service.views.decorators import requires_cache
+
+
+def fail_job(cache, user_job, user, error):
+    """Mark job as failed."""
+    user_job['state'] = USER_JOB_STATE_FAILED
+    user_job['extras']['error'] = error
+    cache.set_job(user, user_job)
 
 
 class DatasetImportJobProcess(DownloadProgressCallback):
@@ -75,12 +82,14 @@ def dataset_import(
     dataset_uri,
     short_name=None,
     extract=False,
+    timeout=None,
 ):
     """Job for dataset import."""
     user_job = cache.get_job(user, user_job_id)
     project = cache.get_project(user, project_id)
+    project_path = make_project_path(user, project)
 
-    with chdir(make_project_path(user, project)):
+    with chdir(project_path):
         try:
             import_dataset(
                 dataset_uri,
@@ -89,9 +98,13 @@ def dataset_import(
                 progress=DatasetImportJobProcess(cache, user, user_job)
             )
         except (HTTPError, ParameterError) as exp:
-            user_job['state'] = USER_JOB_STATE_FAILED
-            user_job['extras']['error'] = str(exp)
-            cache.set_job(user, user_job)
+            fail_job(cache, user_job, user, str(exp))
 
             # Reraise exception, so we see trace in job metadata.
             raise exp
+
+    if not repo_sync(project_path):
+        error = 'failed to push refs'
+        fail_job(cache, user_job, user, error)
+
+        raise RuntimeError(error)
