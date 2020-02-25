@@ -196,7 +196,7 @@ class MigrationRequired(RenkuException):
     def __init__(self):
         """Build a custom message."""
         super().__init__(
-            'Project version is old and a migration is required.\n'
+            'Project version is outdated and a migration is required.\n'
             'Run `renku migrate` command to fix the issue.'
         )
 

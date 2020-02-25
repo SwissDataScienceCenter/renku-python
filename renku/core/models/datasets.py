@@ -295,7 +295,7 @@ def _convert_keyword(keywords):
     },
 )
 class Dataset(Entity, CreatorMixin):
-    """Repesent a dataset."""
+    """Represent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 

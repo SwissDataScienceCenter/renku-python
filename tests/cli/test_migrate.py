@@ -44,7 +44,7 @@ def test_commands_fail_on_old_repository(
     result = runner.invoke(cli, [command])
     assert 1 == result.exit_code
     output = result.output
-    assert 'Project version is old and a migration is required.' in output
+    assert 'Project version is outdated and a migration is required' in output
 
 
 @pytest.mark.migration

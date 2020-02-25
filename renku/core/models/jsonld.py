@@ -491,7 +491,10 @@ class JSONLDMixin(ReferenceMixin):
                 new_cls = cls.__type_registry__[type_]
                 if cls != new_cls:
                     return new_cls.from_jsonld(
-                        data, client=client, commit=commit
+                        data,
+                        client=client,
+                        commit=commit,
+                        jsonld_migrations=jsonld_migrations
                     )
 
         if cls._jsonld_translate:

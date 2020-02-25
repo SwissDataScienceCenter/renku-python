@@ -23,9 +23,10 @@ from pathlib import Path
 
 from renku.core.models.datasets import Dataset
 
-__all__ = [
-    'migrate_datasets_metadata',
-]
+
+def migrate(client):
+    """Migration function."""
+    migrate_datasets_metadata(client)
 
 
 def migrate_datasets_metadata(client):

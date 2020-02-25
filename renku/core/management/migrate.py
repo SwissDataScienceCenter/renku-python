@@ -20,12 +20,13 @@
 Migrations files are put in renku/core/management/migrations directory. Name
 of these files has m_1234__name.py format where 1234 is the migration version
 and name can be any alphanumeric and underscore combination. Migration files
-are sorted based on their lowercase name.
+are sorted based on their lowercase name. Each migration file must define a
+public "migrate" function that accepts a client as its argument.
 
-When executing a migration, the migration file is imported as a module and all
-functions defined in __all__ are executed sequentially. Migration version is
-checked against the Renku project version (in .renku/metadata.yml) and any
-migration which has a higher version is applied to the project.
+When executing a migration, the migration file is imported as a module and the
+"migrate" function is executed. Migration version is checked against the Renku
+project version (in .renku/metadata.yml) and any migration which has a higher
+version is applied to the project.
 """
 import importlib
 import re
@@ -63,10 +64,8 @@ def migrate(client):
     for version, path in get_migrations():
         if version > project_version:
             module = importlib.import_module(path)
-            for name in module.__all__:
-                function = getattr(module, name)
-                function(client)
-                migration_executed = True
+            module.migrate(client)
+            migration_executed = True
 
     client.project.version = str(version)
     client.project.to_yaml()

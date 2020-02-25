@@ -39,7 +39,7 @@ from git import GitCommandError, GitError, Repo
 from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.migrate import migrate
+from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
     is_dataset_short_name_valid
 from renku.core.models.git import GitURL
@@ -624,6 +624,9 @@ class DatasetsApiMixin(object):
     def _fetch_files_metadata(client, paths):
         """Return metadata for files from paths."""
         files = {}
+
+        if is_project_unsupported(client):
+            return files
 
         migrate(client)
 

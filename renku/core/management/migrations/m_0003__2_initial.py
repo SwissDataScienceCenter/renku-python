@@ -27,18 +27,19 @@ from renku.core.models.datasets import Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.utils.urls import url_to_string
 
-__all__ = [
-    'ensure_clean_lock',
-    'do_not_track_lock_file',
-    'migrate_datasets_pre_v0_3',
-    'migrate_broken_dataset_paths',
-    'fix_uncommitted_labels',
-    'fix_broken_dataset_file_project',
-    'fix_dataset_files_urls',
-]
+
+def migrate(client):
+    """Migration function."""
+    _ensure_clean_lock(client)
+    _do_not_track_lock_file(client)
+    _migrate_datasets_pre_v0_3(client)
+    _migrate_broken_dataset_paths(client)
+    _fix_uncommitted_labels(client)
+    _fix_broken_dataset_file_project(client)
+    _fix_dataset_files_urls(client)
 
 
-def ensure_clean_lock(client):
+def _ensure_clean_lock(client):
     """Make sure Renku lock file is not part of repository."""
     lock_file = client.path / '.renku.lock'
     try:
@@ -47,7 +48,7 @@ def ensure_clean_lock(client):
         pass
 
 
-def do_not_track_lock_file(client):
+def _do_not_track_lock_file(client):
     """Add lock file to .gitingore if not already exists."""
     # Add lock file to .gitignore.
     lock_file = '.renku.lock'
@@ -56,7 +57,7 @@ def do_not_track_lock_file(client):
         gitignore.open('a').write('\n{0}\n'.format(lock_file))
 
 
-def migrate_datasets_pre_v0_3(client):
+def _migrate_datasets_pre_v0_3(client):
     """Migrate datasets from Renku 0.3.x."""
     for old_path in _dataset_pre_0_3(client):
         name = str(old_path.parent.relative_to(client.path / 'data'))
@@ -98,7 +99,7 @@ def _dataset_pre_0_3(client):
     return []
 
 
-def migrate_broken_dataset_paths(client):
+def _migrate_broken_dataset_paths(client):
     """Ensure all paths are using correct directory structure."""
     for dataset in client.datasets.values():
         dataset_path = Path(dataset.path)
@@ -168,7 +169,7 @@ def dataset_file_id_migration(client):
         dataset.to_yaml()
 
 
-def dataset_file_path_migration(client, dataset, file_):
+def _dataset_file_path_migration(client, dataset, file_):
     """Migrate a DatasetFile file path."""
     file_path = Path(file_.path)
     if not file_path.exists():
@@ -190,7 +191,7 @@ def dataset_file_path_migration(client, dataset, file_):
     file_._label = file_.default_label()
 
 
-def fix_uncommitted_labels(client):
+def _fix_uncommitted_labels(client):
     """Ensure files have correct label instantiation."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
@@ -205,7 +206,7 @@ def fix_uncommitted_labels(client):
         dataset.to_yaml()
 
 
-def fix_broken_dataset_file_project(client):
+def _fix_broken_dataset_file_project(client):
     """Ensure project is correctly set on ``DatasetFile``."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
@@ -215,7 +216,7 @@ def fix_broken_dataset_file_project(client):
         dataset.to_yaml()
 
 
-def fix_dataset_files_urls(client):
+def _fix_dataset_files_urls(client):
     """Ensure dataset files have correct url format."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
