@@ -18,6 +18,73 @@
 Changes
 =======
 
+`0.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.9.0...v0.9.1>`__ (2020-02-24)
+=======================================================================================================
+
+Bug Fixes
+~~~~~~~~~
+
+-  added test utility functions and cleanup
+   (`#1014 <https://github.com/SwissDataScienceCenter/renku-python/issues/1014>`__)
+   (`f41100d <https://github.com/SwissDataScienceCenter/renku-python/commit/f41100de7c6a30e1cf6d0cd49faedba82200c5df>`__)
+-  cache instance cleanup
+   (`#1051 <https://github.com/SwissDataScienceCenter/renku-python/issues/1051>`__)
+   (`12f5446 <https://github.com/SwissDataScienceCenter/renku-python/commit/12f5446ca00ca9bbb9466f4d41f52a0e4d06466d>`__)
+-  enable dataset cmd in sub directories
+   (`#1012 <https://github.com/SwissDataScienceCenter/renku-python/issues/1012>`__)
+   (`e3191e1 <https://github.com/SwissDataScienceCenter/renku-python/commit/e3191e154b7e5c830ab915884c2dae17e9450cc6>`__)
+-  fields with default need to come last
+   (`#1046 <https://github.com/SwissDataScienceCenter/renku-python/issues/1046>`__)
+   (`649b159 <https://github.com/SwissDataScienceCenter/renku-python/commit/649b15928a6c8791989e953933f676a75b7a29c7>`__)
+-  fixes renku show sibling handling with no paths
+   (`#1026 <https://github.com/SwissDataScienceCenter/renku-python/issues/1026>`__)
+   (`8df678f <https://github.com/SwissDataScienceCenter/renku-python/commit/8df678f887d33ea75ab118c3204fc105bcd188ed>`__)
+-  flush old keys for user projects and files
+   (`#1002 <https://github.com/SwissDataScienceCenter/renku-python/issues/1002>`__)
+   (`7438c73 <https://github.com/SwissDataScienceCenter/renku-python/commit/7438c7353433d60269d4adef0bd2fc49db02c029>`__)
+-  generate https IDs for entities instead of file://
+   (`#1009 <https://github.com/SwissDataScienceCenter/renku-python/issues/1009>`__)
+   (`87f7750 <https://github.com/SwissDataScienceCenter/renku-python/commit/87f7750e3841d6b2784656bfb6f56106ccdbf305>`__)
+-  handle errors correctly
+   (`#1040 <https://github.com/SwissDataScienceCenter/renku-python/issues/1040>`__)
+   (`950eeac <https://github.com/SwissDataScienceCenter/renku-python/commit/950eeac1eea619fa07bccd27e4fad54c42691e58>`__)
+-  improved list datasets and files
+   (`#1034 <https://github.com/SwissDataScienceCenter/renku-python/issues/1034>`__)
+   (`fd96d68 <https://github.com/SwissDataScienceCenter/renku-python/commit/fd96d685fa44777d98c4e7d6d59368c93e130a29>`__)
+-  pin idna to 2.8
+   (`#1020 <https://github.com/SwissDataScienceCenter/renku-python/issues/1020>`__)
+   (`19ea7af <https://github.com/SwissDataScienceCenter/renku-python/commit/19ea7af66414f8df605d328d7f10fadac828ccf5>`__)
+-  resync repo after import action
+   (`#1052 <https://github.com/SwissDataScienceCenter/renku-python/issues/1052>`__)
+   (`b38341b <https://github.com/SwissDataScienceCenter/renku-python/commit/b38341be4b13df493daf285be8ef2cc985fabc8b>`__)
+-  standardize test assertions
+   (`#1016 <https://github.com/SwissDataScienceCenter/renku-python/issues/1016>`__)
+   (`16e8e63 <https://github.com/SwissDataScienceCenter/renku-python/commit/16e8e636e2e0dd79c35e2f88c20a18c9022022f5>`__)
+-  temporarily disable integration tests
+   (`#1036 <https://github.com/SwissDataScienceCenter/renku-python/issues/1036>`__)
+   (`8c8fd7a <https://github.com/SwissDataScienceCenter/renku-python/commit/8c8fd7afc228b188f739e3963536f4b58bfbb22d>`__)
+-  updated readme to include local testing
+   (`#1000 <https://github.com/SwissDataScienceCenter/renku-python/issues/1000>`__)
+   (`351a650 <https://github.com/SwissDataScienceCenter/renku-python/commit/351a6500984ca248c8a2af7470eea343dcc7e4bf>`__)
+-  run tests via pipenv run commands
+   (`#999 <https://github.com/SwissDataScienceCenter/renku-python/issues/999>`__)
+   (`d8095e3 <https://github.com/SwissDataScienceCenter/renku-python/commit/d8095e3a9aebd859999acfae49f4433448480937>`__)
+
+Features
+~~~~~~~~
+
+-  **svc:** adds job details endpoint
+   (`#1050 <https://github.com/SwissDataScienceCenter/renku-python/issues/1050>`__)
+   (`9c58a08 <https://github.com/SwissDataScienceCenter/renku-python/commit/9c58a086c74ff3113901891b1a7be0290157714a>`__)
+-  **svc:** added list user jobs endpoint
+   (`#1001 <https://github.com/SwissDataScienceCenter/renku-python/issues/1001>`__)
+   (`f3c200c <https://github.com/SwissDataScienceCenter/renku-python/commit/f3c200cae55716e5644a705efed74b6a3e9fcf40>`__)
+-  **svc:** dataset import via service
+   (`#1023 <https://github.com/SwissDataScienceCenter/renku-python/issues/1023>`__)
+   (`d6c670a <https://github.com/SwissDataScienceCenter/renku-python/commit/d6c670a01bef863611b114896207e15045e8ac9a>`__)
+
+.. _section-1:
+
 
 `0.9.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.8.2...v0.9.0>`__ (2020-02-07)
 -------------------------------------------------------------------------------------------------------
