@@ -26,12 +26,14 @@ import tempfile
 import time
 import urllib
 import uuid
+import warnings
 from copy import deepcopy
 from pathlib import Path
 
 import fakeredis
 import git
 import pytest
+import requests
 import responses
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
@@ -361,21 +363,55 @@ def local_client():
 def zenodo_sandbox(client):
     """Configure environment to use Zenodo sandbox environment."""
     os.environ['ZENODO_USE_SANDBOX'] = 'true'
-    client.set_value(
-        'zenodo', 'access_token',
-        'HPwXfABPZ7JNiwXMrktL7pevuuo9jt4gsUCkh3Gs2apg65ixa3JPyFukdGup'
-    )
+    access_token = os.getenv('ZENODO_ACCESS_TOKEN', '')
+    client.set_value('zenodo', 'access_token', access_token)
 
 
 @pytest.fixture
-def dataverse_demo(client):
+def dataverse_demo(client, dataverse_demo_cleanup):
     """Configure environment to use Dataverse demo environment."""
-    client.set_value(
-        'dataverse', 'access_token', '4ca13597-cf43-4815-8763-b64994058c19'
-    )
+    access_token = os.getenv('DATAVERSE_ACCESS_TOKEN', '')
+    client.set_value('dataverse', 'access_token', access_token)
     client.set_value('dataverse', 'server_url', 'https://demo.dataverse.org')
     client.repo.git.add('.renku/renku.ini')
     client.repo.index.commit('renku.ini')
+
+
+@pytest.fixture(scope='module')
+def dataverse_demo_cleanup(request):
+    """Delete all Dataverse datasets at the end of the test session."""
+    from renku.core.utils.requests import retry
+
+    server_url = 'https://demo.dataverse.org'
+    access_token = os.getenv('DATAVERSE_ACCESS_TOKEN', '')
+    headers = {'X-Dataverse-key': access_token}
+
+    def remove_datasets():
+        url = f'{server_url}/api/v1/dataverses/sdsc-test-dataverse/contents'
+        try:
+            with retry() as session:
+                response = session.get(url=url, headers=headers)
+        except (ConnectionError, requests.exceptions.RequestException):
+            warnings.warn('Cannot clean up Dataverse datasets')
+            return
+
+        if response.status_code != 200:
+            warnings.warn('Cannot clean up Dataverse datasets')
+            return
+
+        datasets = response.json().get('data', [])
+
+        for dataset in datasets:
+            id = dataset.get('id')
+            if id is not None:
+                url = f'https://demo.dataverse.org/api/v1/datasets/{id}'
+                try:
+                    with retry() as session:
+                        session.delete(url=url, headers=headers)
+                except (ConnectionError, requests.exceptions.RequestException):
+                    pass
+
+    request.addfinalizer(remove_datasets)
 
 
 @pytest.fixture

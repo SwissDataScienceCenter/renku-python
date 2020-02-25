@@ -59,7 +59,7 @@ class redirect_stdin(contextlib.ContextDecorator):
         setattr(sys, self._stream, self._old_targets.pop())
 
 
-def _wrap_path_or_stream(method, mode):  # noqa: D202
+def _wrap_path_or_stream(method, mode):
     """Open path with context or close stream at the end."""
 
     def decorator(path_or_stream):
