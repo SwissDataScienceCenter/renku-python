@@ -222,10 +222,10 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:3454770dd9cbe7ade7c312a241d570c746c8bc8d345aed65ec049373b3df03d1",
-                "sha256:9c5dac75834ad54f5898fe4a4e2138e8be75ea54b9d94b120860a4cc117b3acb"
+                "sha256:088daec3f2962c447f2489bb94147eca59aac946e6423e5bce35f9fe558053ac",
+                "sha256:7eae22b9a44cc4cb7fc67e6a1ab3e066cddb51c03ed0632472223b88cac13800"
             ],
-            "version": "==2.0.20200219182542"
+            "version": "==2.0.20200224214940"
         },
         "decorator": {
             "hashes": [
@@ -785,10 +785,10 @@
         },
         "responses": {
             "hashes": [
-                "sha256:515fd7c024097e5da76e9c4cf719083d181f1c3ddc09c2e0e49284ce863dd263",
-                "sha256:8ce8cb4e7e1ad89336f8865af152e0563d2e7f0e0b86d2cf75f015f819409243"
+                "sha256:33d8994990de31a9fbb8c889c3a378dac296b821f37330c845608ae565e7fca3",
+                "sha256:859a7f8495a069ce835620bb4bb111688f593a6f8873a3335a99c31a5aef9a9a"
             ],
-            "version": "==0.10.9"
+            "version": "==0.10.11"
         },
         "rq": {
             "hashes": [
