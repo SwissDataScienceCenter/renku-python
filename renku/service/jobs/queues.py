@@ -16,25 +16,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Job queues."""
-import redis
 from rq import Queue
 
-from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, \
-    REDIS_PASSWORD, REDIS_PORT
-
-REDIS_CONNECTION = redis.Redis(
-    host=REDIS_HOST,
-    password=REDIS_PASSWORD,
-    port=REDIS_PORT,
-    db=REDIS_DATABASE
-)
+from renku.service.cache.base import BaseCache
 
 CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
 CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
 
-QUEUES = {
-    CLEANUP_QUEUE_FILES:
-        Queue(CLEANUP_QUEUE_FILES, connection=REDIS_CONNECTION),
-    CLEANUP_QUEUE_PROJECTS:
-        Queue(CLEANUP_QUEUE_PROJECTS, connection=REDIS_CONNECTION),
-}
+DATASETS_JOB_QUEUE = 'datasets.jobs'
+
+QUEUES = [
+    CLEANUP_QUEUE_FILES,
+    CLEANUP_QUEUE_PROJECTS,
+    DATASETS_JOB_QUEUE,
+]
+
+
+class WorkerQueues:
+    """Worker queues."""
+
+    connection = BaseCache.cache
+
+    @staticmethod
+    def describe():
+        """List possible queues."""
+        return QUEUES
+
+    @staticmethod
+    def get(name):
+        """Get specific queue object."""
+        return Queue(name, connection=WorkerQueues.connection)

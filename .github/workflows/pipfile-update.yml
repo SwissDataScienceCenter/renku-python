@@ -12,6 +12,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         ref: ${{ github.head_ref }}
+        token: ${{ secrets.RENKU_CI_TOKEN }}
     - name: Setup python
       uses: actions/setup-python@v1
       with:
@@ -27,9 +28,9 @@ jobs:
         git config --local user.name "RenkuBot"
         git add Pipfile.lock
         git commit -m 'chore: automatically update Pipfile.lock' || true
-    #     git push origin ${{ github.head_ref }}
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.RENKU_CI_TOKEN }}
-        branch: ${{ github.head_ref }}
+        git push origin ${{ github.head_ref }}
+    # - name: Push changes
+    #   uses: ad-m/github-push-action@master
+    #   with:
+    #     github_token: ${{ secrets.RENKU_CI_TOKEN }}
+    #     branch: ${{ github.head_ref }}

@@ -21,7 +21,7 @@ import uuid
 from pathlib import Path
 
 
-def migrate_dataset_schema(data):
+def migrate_dataset_schema(data, client):
     """Migrate from old dataset formats."""
     if 'authors' not in data:
         return
@@ -42,7 +42,7 @@ def migrate_dataset_schema(data):
     return data
 
 
-def migrate_absolute_paths(data):
+def migrate_absolute_paths(data, client):
     """Migrate dataset paths to use relative path."""
     raw_path = data.get('path', '.')
     path = Path(raw_path)
@@ -68,7 +68,7 @@ def migrate_absolute_paths(data):
     return data
 
 
-def migrate_doi_identifier(data):
+def migrate_doi_identifier(data, client):
     """If the dataset _id is doi, make it a UUID."""
     from renku.core.utils.doi import is_doi
     from renku.core.utils.uuid import is_uuid
@@ -97,7 +97,7 @@ def migrate_doi_identifier(data):
     return data
 
 
-def migrate_same_as_structure(data):
+def migrate_same_as_structure(data, client):
     """Changes sameAs string to schema:URL object."""
     same_as = data.get('same_as')
 
@@ -115,6 +115,23 @@ def migrate_same_as_structure(data):
                         'schema': 'http://schema.org/'
                     }
                 }
+            )
+
+    return data
+
+
+def migrate_dataset_file_id(data, client):
+    """Ensure dataset files have a fully qualified url as id."""
+    host = 'localhost'
+    if client:
+        host = client.remote.get('host') or host
+    host = os.environ.get('RENKU_DOMAIN') or host
+
+    files = data.get('files', [])
+    for file_ in files:
+        if not file_['_id'].startswith('http'):
+            file_['_id'] = 'https://{host}/{id}'.format(
+                host=host, id=file_['_id']
             )
 
     return data

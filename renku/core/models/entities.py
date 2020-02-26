@@ -17,8 +17,10 @@
 # limitations under the License.
 """Represent provenance entities."""
 
+import os
+import pathlib
+import urllib
 import weakref
-from pathlib import Path
 
 import attr
 
@@ -44,7 +46,7 @@ class CommitMixin:
         converter=_str_or_none
     )
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = jsonld.ib(default=None, context='@id', kw_only=True)
     _label = jsonld.ib(context='rdfs:label', kw_only=True)
     _project = jsonld.ib(
         context='schema:isPartOf', type=Project, kw_only=True, default=None
@@ -55,15 +57,27 @@ class CommitMixin:
         """Proxy to client submodules."""
         return self.client.submodules
 
-    @_id.default
     def default_id(self):
         """Configure calculated ID."""
         if self.commit:
             hexsha = self.commit.hexsha
         else:
             hexsha = 'UNCOMMITTED'
-        return 'file://blob/{hexsha}/{self.path}'.format(
-            hexsha=hexsha, self=self
+
+        # Determine the hostname for the resource URIs.
+        # If RENKU_DOMAIN is set, it overrides the host from remote.
+        # Default is localhost.
+        host = 'localhost'
+        if self.client:
+            host = self.client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
+
+        # always set the id by the identifier
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join(
+                '/blob/{hexsha}/{path}'.format(hexsha=hexsha, path=self.path)
+            )
         )
 
     @_label.default
@@ -80,13 +94,16 @@ class CommitMixin:
     def __attrs_post_init__(self):
         """Post-init hook."""
         if self.path:
-            path = Path(self.path)
+            path = pathlib.Path(self.path)
             if path.is_absolute():
                 self.path = str(path.relative_to(self.client.path))
 
         # always force "project" to be the current project
         if self.client:
             self._project = self.client.project
+
+        if not self._id:
+            self._id = self.default_id()
 
 
 @jsonld.s(

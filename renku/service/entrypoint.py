@@ -26,43 +26,33 @@ from flask import Flask
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
 
-from renku.service.cache import ServiceCache
+from renku.service.cache import cache
 from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, \
-    CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH, OPENAPI_VERSION, SERVICE_NAME, \
-    SWAGGER_URL
+    OPENAPI_VERSION, SERVICE_NAME, SWAGGER_URL
+from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views.cache import CACHE_BLUEPRINT_TAG, cache_blueprint, \
     list_projects_view, list_uploaded_files_view, project_clone, \
     upload_file_view
 from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
     add_file_to_dataset_view, create_dataset_view, dataset_blueprint, \
     list_dataset_files_view, list_datasets_view
+from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, \
+    list_jobs
 
 logging.basicConfig(level=os.getenv('SERVICE_LOG_LEVEL', 'WARNING'))
 
 
-def make_cache():
-    """Create cache structure."""
-    sub_dirs = [CACHE_UPLOADS_PATH, CACHE_PROJECTS_PATH]
-
-    for subdir in sub_dirs:
-        if not subdir.exists():
-            subdir.mkdir()
-
-    return ServiceCache()
-
-
 def create_app():
-    """Creates a Flask app with necessary configuration."""
+    """Creates a Flask app with a necessary configuration."""
     app = Flask(__name__)
     app.secret_key = os.getenv('RENKU_SVC_SERVICE_KEY', uuid.uuid4().hex)
-
+    app.json_encoder = SvcJSONEncoder
     app.config['UPLOAD_FOLDER'] = CACHE_DIR
 
     max_content_size = os.getenv('MAX_CONTENT_LENGTH')
     if max_content_size:
         app.config['MAX_CONTENT_LENGTH'] = max_content_size
 
-    cache = make_cache()
     app.config['cache'] = cache
 
     build_routes(app)
@@ -91,6 +81,7 @@ def build_routes(app):
     })
     app.register_blueprint(cache_blueprint)
     app.register_blueprint(dataset_blueprint)
+    app.register_blueprint(jobs_blueprint)
 
     swaggerui_blueprint = get_swaggerui_blueprint(
         SWAGGER_URL, API_SPEC_URL, config={'app_name': 'Renku Service'}
@@ -108,6 +99,8 @@ def build_routes(app):
     docs.register(add_file_to_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(list_datasets_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(list_dataset_files_view, blueprint=DATASET_BLUEPRINT_TAG)
+
+    docs.register(list_jobs, blueprint=JOBS_BLUEPRINT_TAG)
 
 
 app = create_app()

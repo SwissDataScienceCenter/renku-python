@@ -384,7 +384,7 @@ def test_dataset_reimport_renku_dataset(runner, project):
 @pytest.mark.parametrize(
     'provider,params,output',
     [('zenodo', [], 'zenodo.org/deposit'),
-     ('dataverse', ['--dataverse-name', 'SDSC-Test'], 'doi:')]
+     ('dataverse', ['--dataverse-name', 'sdsc-test-dataverse'], 'doi:')]
 )
 def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
@@ -429,7 +429,7 @@ def test_dataset_export_upload_file(
 @pytest.mark.parametrize(
     'provider,params,output',
     [('zenodo', [], 'zenodo.org/deposit'),
-     ('dataverse', ['--dataverse-name', 'SDSC-Test'], 'doi:')]
+     ('dataverse', ['--dataverse-name', 'sdsc-test-dataverse'], 'doi:')]
 )
 def test_dataset_export_upload_tag(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
@@ -511,7 +511,7 @@ def test_dataset_export_upload_tag(
 @pytest.mark.parametrize(
     'provider,params,output',
     [('zenodo', [], 'zenodo.org/deposit'),
-     ('dataverse', ['--dataverse-name', 'SDSC-Test'], 'doi:')]
+     ('dataverse', ['--dataverse-name', 'sdsc-test-dataverse'], 'doi:')]
 )
 def test_dataset_export_upload_multiple(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
@@ -582,12 +582,15 @@ def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
     assert 'metadata.description' in result.output
 
 
-@pytest.mark.integration
+@pytest.mark.publish
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'provider,params,output',
     [('zenodo', [], 'zenodo.org/record'),
-     ('dataverse', ['--dataverse-name', 'SDSC-Test'], 'doi:')]
+     (
+         'dataverse', ['--dataverse-name', 'sdsc-published-test-dataverse'
+                       ], 'doi:'
+     )]
 )
 def test_dataset_export_published_url(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
@@ -630,9 +633,7 @@ def test_dataset_export_published_url(
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_export_dataset_wrong_provider(
-    runner, project, tmpdir, client, zenodo_sandbox
-):
+def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
     """Test non-existing provider."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
 
@@ -672,8 +673,9 @@ def test_dataset_export(runner, client, project):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    'provider,params', [('zenodo', []),
-                        ('dataverse', ['--dataverse-name', 'SDSC-Test'])]
+    'provider,params',
+    [('zenodo', []),
+     ('dataverse', ['--dataverse-name', 'sdsc-test-dataverse'])]
 )
 def test_export_dataset_unauthorized(
     runner, project, client, tmpdir, zenodo_sandbox, dataverse_demo, provider,
@@ -850,7 +852,7 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
         ['dataset', 'add', 'remote', '--ref', '0.3.0'] + params + urls,
         catch_exceptions=False,
     )
-    assert result.exit_code == 2
+    assert 2 == result.exit_code
     assert message in result.output
 
 

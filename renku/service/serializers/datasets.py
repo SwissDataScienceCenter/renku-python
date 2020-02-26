@@ -31,7 +31,7 @@ class DatasetCreators(Schema):
 
 
 class DatasetCreateRequest(Schema):
-    """Request schema for dataset create view."""
+    """Request schema for a dataset create view."""
 
     creators = fields.List(fields.Nested(DatasetCreators))
     commit_message = fields.String()
@@ -51,7 +51,7 @@ class DatasetCreateRequest(Schema):
 
 
 class DatasetCreateResponse(Schema):
-    """Response schema for dataset create view."""
+    """Response schema for a dataset create view."""
 
     dataset_name = fields.String(required=True)
 
@@ -63,14 +63,14 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
 
 
 class DatasetAddFile(Schema):
-    """Schema for dataset add file view."""
+    """Schema for a dataset add file view."""
 
     file_id = fields.String()
     file_path = fields.String()
 
 
 class DatasetAddRequest(Schema):
-    """Request schema for dataset add file view."""
+    """Request schema for a dataset add file view."""
 
     commit_message = fields.String()
     dataset_name = fields.String(required=True)
@@ -102,7 +102,7 @@ class DatasetAddRequest(Schema):
 
 
 class DatasetAddResponse(Schema):
-    """Response schema for dataset add file view."""
+    """Response schema for a dataset add file view."""
 
     dataset_name = fields.String(required=True)
     project_id = fields.String(required=True)
@@ -110,7 +110,7 @@ class DatasetAddResponse(Schema):
 
 
 class DatasetAddResponseRPC(JsonRPCResponse):
-    """RPC schema for dataset add."""
+    """RPC schema for a dataset add."""
 
     result = fields.Nested(DatasetAddResponse)
 
@@ -122,7 +122,7 @@ class DatasetListRequest(Schema):
 
 
 class DatasetDetails(Schema):
-    """Serialize dataset to response object."""
+    """Serialize a dataset to a response object."""
 
     identifier = fields.String(required=True)
     name = fields.String(required=True)
@@ -150,7 +150,7 @@ class DatasetFilesListRequest(Schema):
 
 
 class DatasetFileDetails(Schema):
-    """Serialzie dataset files to response object."""
+    """Serialize dataset files to a response object."""
 
     name = fields.String(required=True)
 
@@ -166,3 +166,25 @@ class DatasetFilesListResponseRPC(JsonRPCResponse):
     """RPC schema for dataset files list view."""
 
     result = fields.Nested(DatasetFilesListResponse)
+
+
+class DatasetImportRequest(Schema):
+    """Dataset import request."""
+
+    project_id = fields.String(required=True)
+    dataset_uri = fields.String(required=True)
+    short_name = fields.String()
+    extract = fields.Boolean()
+
+
+class DatasetImportResponse(Schema):
+    """Dataset import response."""
+
+    job_id = fields.String(required=True)
+    created_at = fields.DateTime()
+
+
+class DatasetImportResponseRPC(JsonRPCResponse):
+    """RPC schema for a dataset import."""
+
+    result = fields.Nested(DatasetImportResponse)

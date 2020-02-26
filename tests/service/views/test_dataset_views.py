@@ -18,24 +18,29 @@
 """Renku service dataset view tests."""
 import io
 import json
+import os
 import re
+import shutil
 import uuid
+from pathlib import Path
 
 import pytest
 from flaky import flaky
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from renku.service.utils import make_project_path
 
 
 def assert_rpc_response(response, with_key='result'):
     """Check rpc result in response."""
+    assert response and 200 == response.status_code
+
     response_text = re.sub(
         r'http\S+',
         '',
         json.dumps(response.json),
     )
-
     assert with_key in response_text
 
 
@@ -44,7 +49,7 @@ def assert_rpc_response(response, with_key='result'):
 @flaky(max_runs=30, min_passes=1)
 def test_create_dataset_view(svc_client_with_repo):
     """Create a new dataset successfully."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
         'project_id': project_id,
@@ -69,7 +74,7 @@ def test_create_dataset_view(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_create_dataset_commit_msg(svc_client_with_repo):
     """Create a new dataset successfully with custom commit message."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
         'project_id': project_id,
@@ -95,7 +100,7 @@ def test_create_dataset_commit_msg(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     """Create a new dataset which already exists."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
         'project_id': project_id,
@@ -120,7 +125,7 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_create_dataset_view_unknown_param(svc_client_with_repo):
     """Create new dataset by specifying unknown parameters."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
         'project_id': project_id,
@@ -146,7 +151,7 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_create_dataset_with_no_identity(svc_client_with_repo):
     """Create a new dataset with no identification provided."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
         'project_id': project_id,
@@ -175,7 +180,7 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_add_file_view_with_no_identity(svc_client_with_repo):
     """Check identity error raise in dataset add."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     payload = {
         'project_id': project_id,
         'dataset_name': 'mydata',
@@ -202,7 +207,7 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_add_file_view(svc_client_with_repo):
     """Check adding of uploaded file to dataset."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     content_type = headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -252,7 +257,7 @@ def test_add_file_view(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_add_file_commit_msg(svc_client_with_repo):
     """Check adding of uploaded file to dataset with custom commit message."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     content_type = headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -294,9 +299,52 @@ def test_add_file_commit_msg(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
+def test_add_file_failure(svc_client_with_repo):
+    """Check adding of uploaded file to dataset with non-existing file."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    content_type = headers.pop('Content-Type')
+
+    response = svc_client.post(
+        '/cache.files_upload',
+        data=dict(file=(io.BytesIO(b'this is a test'), 'datafile1.txt'), ),
+        query_string={'override_existing': True},
+        headers=headers
+    )
+
+    file_id = response.json['result']['files'][0]['file_id']
+    assert isinstance(uuid.UUID(file_id), uuid.UUID)
+
+    payload = {
+        'commit_message': 'my awesome data file',
+        'project_id': project_id,
+        'dataset_name': '{0}'.format(uuid.uuid4().hex),
+        'create_dataset': True,
+        'files': [{
+            'file_id': file_id,
+        }, {
+            'file_path': 'my problem right here'
+        }]
+    }
+    headers['Content-Type'] = content_type
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response, with_key='error')
+
+    assert {'code', 'reason'} == set(response.json['error'].keys())
+    assert 'invalid file reference' in response.json['error']['reason']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
 def test_list_datasets_view(svc_client_with_repo):
     """Check listing of existing datasets."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = {
         'project_id': project_id,
@@ -322,7 +370,7 @@ def test_list_datasets_view(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_list_datasets_view_no_auth(svc_client_with_repo):
     """Check listing of existing datasets with no auth."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = {
         'project_id': project_id,
@@ -342,7 +390,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_create_and_list_datasets_view(svc_client_with_repo):
     """Create and list created dataset."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
         'project_id': project_id,
@@ -389,7 +437,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_list_dataset_files(svc_client_with_repo):
     """Check listing of dataset files"""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     content_type = headers.pop('Content-Type')
 
     file_name = '{0}'.format(uuid.uuid4().hex)
@@ -457,7 +505,7 @@ def test_list_dataset_files(svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     """Upload archive and add it to a dataset."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     content_type = headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -554,7 +602,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     """Upload archive and add its contents to a dataset."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     content_type = headers.pop('Content-Type')
 
     response = svc_client.post(
@@ -654,7 +702,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 @flaky(max_runs=30, min_passes=1)
 def test_add_existing_file(svc_client_with_repo):
     """Upload archive and add it to a dataset."""
-    svc_client, headers, project_id = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
     payload = {
         'project_id': project_id,
         'dataset_name': '{0}'.format(uuid.uuid4().hex),
@@ -690,3 +738,71 @@ def test_add_existing_file(svc_client_with_repo):
             'project_id'} == set(response.json['result'].keys())
 
     assert files == response.json['result']['files']
+
+
+@pytest.mark.parametrize(
+    'doi',
+    [
+        '10.5281/zenodo.3239980', '10.7910/DVN/TJCLKP'
+        # TODO: add http uri
+    ]
+)
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=1, min_passes=1)
+def test_import_dataset_job_enqueue(
+    doi, svc_client_cache, project, mock_redis
+):
+    """Test import a dataset."""
+    client, cache = svc_client_cache
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': 'user',
+        'Renku-User-FullName': 'full name',
+        'Renku-User-Email': 'renku@sdsc.ethz.ch',
+    }
+
+    user = {'user_id': 'user'}
+
+    project_meta = {
+        'project_id': uuid.uuid4().hex,
+        'name': Path(project).name,
+        'fullname': 'full project name',
+        'email': 'my@email.com',
+        'owner': 'me',
+        'token': 'awesome token',
+        'git_url': 'git@gitlab.com'
+    }
+
+    cache.set_project(user, project_meta['project_id'], project_meta)
+
+    dest = make_project_path(user, project_meta)
+    os.makedirs(dest.parent, exist_ok=True)
+    if not (project / dest).exists():
+        shutil.copytree(project, dest)
+
+    response = client.post(
+        '/datasets.import',
+        data=json.dumps({
+            'project_id': project_meta['project_id'],
+            'dataset_uri': doi,
+        }),
+        headers=headers,
+    )
+    assert_rpc_response(response)
+    assert {
+        'created_at',
+        'job_id',
+    } == set(response.json['result'])
+
+    user_job = cache.get_job(user, response.json['result']['job_id'])
+    assert response.json['result']['job_id'] == user_job['job_id']
+
+    response = client.get('/jobs', headers=headers)
+    assert_rpc_response(response)
+    assert response.json['result']['jobs']
+
+    assert user_job['job_id'] in [
+        job['job_id'] for job in response.json['result']['jobs']
+    ]

@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Repository datasets management."""
-
 import re
 import shutil
 import urllib
@@ -54,7 +53,7 @@ from .format.datasets import DATASETS_FORMATS
 
 @pass_local_client(clean=False, commit=False)
 def check_for_migration(client):
-    """Checks if dataset migration is required."""
+    """Check need for dataset migration."""
     missing_dataset, missing_files = check_dataset_resources(client)
     old_datasets = [ds for ds in dataset_pre_0_3(client)]
 
@@ -63,12 +62,23 @@ def check_for_migration(client):
 
 
 @pass_local_client(clean=False, commit=False)
-def list_datasets(client, revision, datadir, format, columns=None):
-    """Handle datasets subcommands."""
+def list_datasets(
+    client, revision=None, datadir=None, format=None, columns=None
+):
+    """Handle datasets sub commands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
         datasets = client.datasets_from_commit(client.repo.commit(revision))
+
+    if datadir:
+        client.datadir = datadir
+
+    if format is None:
+        return list(datasets)
+
+    if format not in DATASETS_FORMATS:
+        raise UsageError('format not supported')
 
     return DATASETS_FORMATS[format](client, datasets, columns=columns)
 
@@ -258,12 +268,18 @@ def add_to_dataset(
 
 @pass_local_client(clean=False, commit=False)
 def list_files(
-    client, short_names, creators, include, exclude, format, columns=None
+    client,
+    datasets=None,
+    creators=None,
+    include=None,
+    exclude=None,
+    format=None,
+    columns=None
 ):
     """List files in dataset."""
     records = _filter(
         client,
-        short_names=short_names,
+        short_names=datasets,
         creators=creators,
         include=include,
         exclude=exclude
@@ -271,6 +287,12 @@ def list_files(
     for record in records:
         record.title = record.dataset.name
         record.short_name = record.dataset.short_name
+
+    if format is None:
+        return records
+
+    if format not in DATASETS_FORMATS:
+        raise UsageError('format not supported')
 
     return DATASET_FILES_FORMATS[format](client, records, columns=columns)
 

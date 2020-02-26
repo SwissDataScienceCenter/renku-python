@@ -16,44 +16,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset tests."""
-
 import os
 import shutil
 import stat
-from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
 from git import Repo
+from tests.utils import raises
 
 from renku.core import errors
-from renku.core.commands.dataset import create_dataset
+from renku.core.commands.dataset import add_file, create_dataset, \
+    list_datasets, list_files
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.models.provenance.agents import Person
-
-
-def _key(client, dataset, filename):
-    """Return key in dataset for a given filename."""
-    dataset_path = client.renku_datasets_path / dataset.name
-    return os.path.relpath(
-        str(client.path / client.datadir / dataset.name / filename),
-        start=str(dataset_path),
-    )
-
-
-def raises(error):
-    """Wrapper around pytest.raises to support None."""
-    if error:
-        return pytest.raises(error)
-    else:
-
-        @contextmanager
-        def not_raises():
-            try:
-                yield
-            except Exception as e:
-                raise e
-
-        return not_raises()
 
 
 @pytest.mark.parametrize(
@@ -197,3 +173,38 @@ def test_create_dataset_custom_message(project):
 
     last_commit = Repo('.').head.commit
     assert 'my awesome dataset' == last_commit.message
+
+
+def test_list_datasets_default(project):
+    """Test a default dataset listing."""
+    create_dataset(
+        'ds1',
+        title='',
+        description='',
+        creators=[],
+        commit_message='my awesome dataset'
+    )
+
+    datasets = list_datasets()
+
+    assert isinstance(datasets, list)
+    assert 'ds1' in [ds.name for ds in datasets]
+
+
+def test_list_files_default(project, tmpdir):
+    """Test a default file listing."""
+    create_dataset(
+        'ds1',
+        title='',
+        description='',
+        creators=[],
+        commit_message='my awesome dataset'
+    )
+    data_file = tmpdir / Path('somefile')
+    data_file.write_text('1,2,3', encoding='utf-8')
+
+    add_file([str(data_file)], 'ds1')
+    files = list_files(datasets=['ds1'])
+
+    assert isinstance(files, list)
+    assert 'somefile' in [ds.name for ds in files]

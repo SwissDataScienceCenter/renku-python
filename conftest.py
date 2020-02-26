@@ -26,12 +26,14 @@ import tempfile
 import time
 import urllib
 import uuid
+import warnings
 from copy import deepcopy
 from pathlib import Path
 
 import fakeredis
 import git
 import pytest
+import requests
 import responses
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
@@ -361,21 +363,55 @@ def local_client():
 def zenodo_sandbox(client):
     """Configure environment to use Zenodo sandbox environment."""
     os.environ['ZENODO_USE_SANDBOX'] = 'true'
-    client.set_value(
-        'zenodo', 'access_token',
-        'HPwXfABPZ7JNiwXMrktL7pevuuo9jt4gsUCkh3Gs2apg65ixa3JPyFukdGup'
-    )
+    access_token = os.getenv('ZENODO_ACCESS_TOKEN', '')
+    client.set_value('zenodo', 'access_token', access_token)
 
 
 @pytest.fixture
-def dataverse_demo(client):
+def dataverse_demo(client, dataverse_demo_cleanup):
     """Configure environment to use Dataverse demo environment."""
-    client.set_value(
-        'dataverse', 'access_token', '4ca13597-cf43-4815-8763-b64994058c19'
-    )
+    access_token = os.getenv('DATAVERSE_ACCESS_TOKEN', '')
+    client.set_value('dataverse', 'access_token', access_token)
     client.set_value('dataverse', 'server_url', 'https://demo.dataverse.org')
     client.repo.git.add('.renku/renku.ini')
     client.repo.index.commit('renku.ini')
+
+
+@pytest.fixture(scope='module')
+def dataverse_demo_cleanup(request):
+    """Delete all Dataverse datasets at the end of the test session."""
+    from renku.core.utils.requests import retry
+
+    server_url = 'https://demo.dataverse.org'
+    access_token = os.getenv('DATAVERSE_ACCESS_TOKEN', '')
+    headers = {'X-Dataverse-key': access_token}
+
+    def remove_datasets():
+        url = f'{server_url}/api/v1/dataverses/sdsc-test-dataverse/contents'
+        try:
+            with retry() as session:
+                response = session.get(url=url, headers=headers)
+        except (ConnectionError, requests.exceptions.RequestException):
+            warnings.warn('Cannot clean up Dataverse datasets')
+            return
+
+        if response.status_code != 200:
+            warnings.warn('Cannot clean up Dataverse datasets')
+            return
+
+        datasets = response.json().get('data', [])
+
+        for dataset in datasets:
+            id = dataset.get('id')
+            if id is not None:
+                url = f'https://demo.dataverse.org/api/v1/datasets/{id}'
+                try:
+                    with retry() as session:
+                        session.delete(url=url, headers=headers)
+                except (ConnectionError, requests.exceptions.RequestException):
+                    pass
+
+    request.addfinalizer(remove_datasets)
 
 
 @pytest.fixture
@@ -569,12 +605,16 @@ def datapack_tar(directory_tree):
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from renku.service.cache.base import BaseCache
-    monkeypatch = MonkeyPatch()
-    with monkeypatch.context() as m:
+    from renku.service.jobs.queues import WorkerQueues
+
+    monkey_patch = MonkeyPatch()
+    with monkey_patch.context() as m:
+        m.setattr(WorkerQueues, 'connection', fakeredis.FakeRedis())
         m.setattr(BaseCache, 'cache', fakeredis.FakeRedis())
+
         yield
 
-    monkeypatch.undo()
+    monkey_patch.undo()
 
 
 @pytest.fixture(scope='module')
@@ -591,6 +631,24 @@ def svc_client(mock_redis):
     ctx.push()
 
     yield testing_client
+
+    ctx.pop()
+
+
+@pytest.fixture(scope='function')
+def svc_client_cache(mock_redis):
+    """Service jobs fixture."""
+    from renku.service.entrypoint import create_app
+
+    flask_app = create_app()
+
+    testing_client = flask_app.test_client()
+    testing_client.testing = True
+
+    ctx = flask_app.app_context()
+    ctx.push()
+
+    yield testing_client, flask_app.config.get('cache')
 
     ctx.pop()
 
@@ -672,7 +730,7 @@ def svc_client_with_repo(integration_lifecycle):
         current = repo.create_head(new_branch)
         current.checkout()
 
-    yield svc_client, deepcopy(headers), project_id
+    yield svc_client, deepcopy(headers), project_id, url_components
 
 
 @pytest.fixture(

@@ -31,10 +31,11 @@ def test_renku_pre_run_hook(
     with monkeypatch.context() as m:
         m.setattr(pluginmanager, 'get_plugin_manager', lambda: pm)
         cmd = ['echo', 'test']
-        result = runner.invoke(cli, ['run', '--no-output'] + cmd)
-        assert 0 == result.exit_code
 
-        assert dummy_pre_run_plugin_hook.called == 1
+        result = runner.invoke(cli, ['run', '--no-output'] + cmd)
+
+        assert 0 == result.exit_code
+        assert 1 == dummy_pre_run_plugin_hook.called
 
 
 def test_renku_run_cwl_hook(

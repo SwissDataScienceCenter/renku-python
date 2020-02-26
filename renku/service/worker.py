@@ -23,7 +23,7 @@ from rq import Worker
 from rq.logutils import setup_loghandlers
 
 from renku.core.errors import ConfigurationError, UsageError
-from renku.service.jobs.queues import QUEUES, REDIS_CONNECTION
+from renku.service.jobs.queues import QUEUES, WorkerQueues
 
 
 @contextmanager
@@ -33,7 +33,7 @@ def worker(queue_list):
     def build_worker():
         """Build worker."""
         setup_loghandlers(os.getenv('RQ_WORKER_LOG_LEVEL', 'WARNING'))
-        rq_worker = Worker(queue_list, connection=REDIS_CONNECTION)
+        rq_worker = Worker(queue_list, connection=WorkerQueues.connection)
         return rq_worker
 
     yield build_worker()
@@ -45,9 +45,7 @@ def check_queues(queue_list):
         if queue not in QUEUES:
             err_msg = (
                 'invalid queue name: {0}\n\n'
-                'valid queue names: \n{1}'.format(
-                    queue, '\n'.join(QUEUES.keys())
-                )
+                'valid queue names: \n{1}'.format(queue, '\n'.join(QUEUES))
             )
             raise UsageError(err_msg)
 
