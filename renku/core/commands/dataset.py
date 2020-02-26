@@ -50,7 +50,6 @@ from .format.datasets import DATASETS_FORMATS
 
 
 @pass_local_client(clean=False, commit=False)
-@pass_local_client(clean=False, commit=False)
 def list_datasets(
     client, revision=None, datadir=None, format=None, columns=None
 ):

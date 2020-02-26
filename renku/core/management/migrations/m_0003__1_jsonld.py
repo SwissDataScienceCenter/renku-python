@@ -52,7 +52,7 @@ def _migrate_datasets_metadata(client):
         'dctypes:Dataset': [_migrate_dataset_schema, _migrate_absolute_paths],
         'schema:Dataset': [
             _migrate_absolute_paths, _migrate_doi_identifier,
-            _migrate_same_as_structure
+            _migrate_same_as_structure, _migrate_dataset_file_id
         ],
     }
 
@@ -66,6 +66,7 @@ def _migrate_datasets_metadata(client):
             path=path,
             jsonld_context=_INITIAL_JSONLD_DATASET_CONTEXT,
             fields=_DATASET_FIELDS,
+            client=client,
             jsonld_migrations=jsonld_migrations
         )
 
@@ -74,6 +75,7 @@ def _apply_on_the_fly_jsonld_migrations(
     path,
     jsonld_context,
     fields,
+    client=None,
     jsonld_migrations=None,
     jsonld_translate=None
 ):
@@ -99,7 +101,7 @@ def _apply_on_the_fly_jsonld_migrations(
             migrations += jsonld_migrations.get(schema_type, [])
 
         for migration in set(migrations):
-            data = migration(data)
+            data = migration(data, client)
 
     if data['@context'] != jsonld_context:
         # merge new context into old context to prevent properties
@@ -140,7 +142,7 @@ def _dataset_pre_0_3(client):
     return []
 
 
-def _migrate_dataset_schema(data):
+def _migrate_dataset_schema(data, client):
     """Migrate from old dataset formats."""
     if 'authors' not in data:
         return
@@ -161,7 +163,7 @@ def _migrate_dataset_schema(data):
     return data
 
 
-def _migrate_absolute_paths(data):
+def _migrate_absolute_paths(data, client):
     """Migrate dataset paths to use relative path."""
     raw_path = data.get('path', '.')
     path = Path(raw_path)
@@ -187,7 +189,7 @@ def _migrate_absolute_paths(data):
     return data
 
 
-def _migrate_doi_identifier(data):
+def _migrate_doi_identifier(data, client):
     """If the dataset _id is doi, make it a UUID."""
     from renku.core.utils.doi import is_doi
     from renku.core.utils.uuid import is_uuid
@@ -216,7 +218,7 @@ def _migrate_doi_identifier(data):
     return data
 
 
-def _migrate_same_as_structure(data):
+def _migrate_same_as_structure(data, client):
     """Changes sameAs string to schema:URL object."""
     same_as = data.get('same_as')
 
@@ -239,7 +241,7 @@ def _migrate_same_as_structure(data):
     return data
 
 
-def migrate_dataset_file_id(data, client):
+def _migrate_dataset_file_id(data, client):
     """Ensure dataset files have a fully qualified url as id."""
     host = 'localhost'
     if client:

@@ -35,8 +35,9 @@ def migrate(client):
     _migrate_datasets_pre_v0_3(client)
     _migrate_broken_dataset_paths(client)
     _fix_uncommitted_labels(client)
-    _fix_broken_dataset_file_project(client)
     _fix_dataset_files_urls(client)
+    _fix_broken_dataset_file_project(client)
+    _dataset_file_id_migration(client)
 
 
 def _ensure_clean_lock(client):
@@ -159,7 +160,7 @@ def _migrate_broken_dataset_paths(client):
         dataset.to_yaml()
 
 
-def dataset_file_id_migration(client):
+def _dataset_file_id_migration(client):
     """Ensure dataset files have a fully qualified url."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
