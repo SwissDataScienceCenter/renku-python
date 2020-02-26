@@ -38,6 +38,7 @@ def migrate(client):
     _fix_dataset_files_urls(client)
     _fix_broken_dataset_file_project(client)
     _dataset_file_id_migration(client)
+    _migrate_files_project(client)
 
 
 def _ensure_clean_lock(client):
@@ -223,5 +224,14 @@ def _fix_dataset_files_urls(client):
         for file_ in dataset.files:
             if file_.url:
                 file_.url = url_to_string(file_.url)
+
+        dataset.to_yaml()
+
+
+def _migrate_files_project(client):
+    """Ensure dataset files have correct project."""
+    for dataset in client.datasets.values():
+        for file_ in dataset.files:
+            file_._project = dataset._project
 
         dataset.to_yaml()
