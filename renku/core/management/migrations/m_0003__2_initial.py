@@ -61,6 +61,14 @@ def _do_not_track_lock_file(client):
 
 def _migrate_datasets_pre_v0_3(client):
     """Migrate datasets from Renku 0.3.x."""
+
+    def _dataset_pre_0_3(client):
+        """Return paths of dataset metadata for pre 0.3.4."""
+        project_is_pre_0_3 = int(client.project.version) < 2
+        if project_is_pre_0_3:
+            return (client.path / 'data').rglob(client.METADATA)
+        return []
+
     for old_path in _dataset_pre_0_3(client):
         name = str(old_path.parent.relative_to(client.path / 'data'))
 
@@ -91,14 +99,6 @@ def _migrate_datasets_pre_v0_3(client):
             force=True,
         )
         ref.set_reference(new_path)
-
-
-def _dataset_pre_0_3(client):
-    """Return paths of dataset metadata for pre 0.3.4."""
-    project_is_pre_0_3 = int(client.project.version) < 2
-    if project_is_pre_0_3:
-        return (client.path / 'data').rglob(client.METADATA)
-    return []
 
 
 def _migrate_broken_dataset_paths(client):
@@ -161,38 +161,6 @@ def _migrate_broken_dataset_paths(client):
         dataset.to_yaml()
 
 
-def _dataset_file_id_migration(client):
-    """Ensure dataset files have a fully qualified url."""
-    for dataset in client.datasets.values():
-        for file_ in dataset.files:
-            if not file_._id.startswith('https'):
-                file_._id = file_.default_id()
-
-        dataset.to_yaml()
-
-
-def _dataset_file_path_migration(client, dataset, file_):
-    """Migrate a DatasetFile file path."""
-    file_path = Path(file_.path)
-    if not file_path.exists():
-        # old-style migrated paths relative to dataset root
-        if file_.path.startswith('..'):
-            new_path = (client.renku_datasets_path / dataset.uid /
-                        file_path).resolve().relative_to(client.path)
-        else:
-            new_path = ((
-                client.path / client.datadir / dataset.name / file_path
-            ).relative_to(client.path))
-        file_.path = new_path
-
-        _, commit, _ = client.resolve_in_submodules(
-            client.find_previous_commit(file_.path, revision='HEAD'),
-            file_.path,
-        )
-    file_._id = file_.default_id()
-    file_._label = file_.default_label()
-
-
 def _fix_uncommitted_labels(client):
     """Ensure files have correct label instantiation."""
     for dataset in client.datasets.values():
@@ -208,6 +176,16 @@ def _fix_uncommitted_labels(client):
         dataset.to_yaml()
 
 
+def _fix_dataset_files_urls(client):
+    """Ensure dataset files have correct url format."""
+    for dataset in client.datasets.values():
+        for file_ in dataset.files:
+            if file_.url:
+                file_.url = url_to_string(file_.url)
+
+        dataset.to_yaml()
+
+
 def _fix_broken_dataset_file_project(client):
     """Ensure project is correctly set on ``DatasetFile``."""
     for dataset in client.datasets.values():
@@ -218,12 +196,12 @@ def _fix_broken_dataset_file_project(client):
         dataset.to_yaml()
 
 
-def _fix_dataset_files_urls(client):
-    """Ensure dataset files have correct url format."""
+def _dataset_file_id_migration(client):
+    """Ensure dataset files have a fully qualified url."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
-            if file_.url:
-                file_.url = url_to_string(file_.url)
+            if not file_._id.startswith('https'):
+                file_._id = file_.default_id()
 
         dataset.to_yaml()
 
