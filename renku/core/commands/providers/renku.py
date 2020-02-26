@@ -55,36 +55,46 @@ class RenkuProvider(ProviderApi):
         """
         from renku.core.management import LocalClient
 
-        kg_urls = self._get_project_kg_urls(uri)
+        same_as, kg_urls = self._get_dataset_info(uri)
         project_url = None
 
-        for url in kg_urls:
-            ssh_url, https_url = self._get_project_urls(url)
-            try:
-                repo, repo_path = client.prepare_git_repo(ssh_url)
-            except errors.GitError:
-                pass
-            else:
-                project_url = ssh_url
+        for kg_url in kg_urls:
+            kg_datasets_url, ssh_url, https_url = self._get_project_urls(
+                kg_url
+            )
+            for url in (ssh_url, https_url):
+                try:
+                    repo, repo_path = client.prepare_git_repo(url)
+                except errors.GitError:
+                    pass
+                else:
+                    project_url = url
+                    break
+            if project_url is not None:
                 break
 
-            try:
-                repo, repo_path = client.prepare_git_repo(https_url)
-            except errors.GitError:
-                pass
-            else:
-                project_url = https_url
-                break
-
-        if not project_url:
+        if project_url is None:
             raise errors.ParameterError(
                 'Cannot find any project for the dataset.'
             )
 
-        dataset_id = self._record_id(uri)
-
         remote_client = LocalClient(repo_path)
         self._migrate_project(remote_client)
+
+        if same_as is None:  # Dataset is in the project
+            dataset_id = self._extract_dataset_id(uri)
+        else:  # Dataset is sameAs one of the datasets in the project
+            datasets = self._query_knowledge_graph(kg_datasets_url)
+            ids = [
+                ds['identifier'] for ds in datasets if ds['sameAs'] == same_as
+            ]
+            if not ids:
+                raise errors.ParameterError(
+                    'Cannot find a dataset which is same as {} in project {}'.
+                    format(same_as, kg_datasets_url)
+                )
+            dataset_id = ids[0]
+
         datasets = [
             d for d in remote_client.datasets.values()
             if urllib.parse.quote(d.uid, safe='') == dataset_id
@@ -121,52 +131,61 @@ class RenkuProvider(ProviderApi):
 
     @staticmethod
     def _is_project_dataset(parsed_url):
-        path = parsed_url.path
-        return path.startswith('/projects/') and '/datasets/' in path
+        # https://<host>/projects/:namespace/:name/datasets/:id
+        path = parsed_url.path.rstrip('/')
+        return re.match(r'.*?/projects/[^?/]+/[^?/]+/datasets/[^?/]+$', path)
 
     @staticmethod
     def _is_standalone_dataset(parsed_url):
-        return parsed_url.path.startswith('/datasets/')
+        # https://<host>/datasets/:id
+        path = parsed_url.path.rstrip('/')
+        return re.match(r'.*?/datasets/[^?/]+$', path)
 
     @staticmethod
-    def _record_id(uri):
+    def _extract_dataset_id(uri):
         """Extract dataset id from uri."""
         u = urllib.parse.urlparse(uri)
         return Path(u.path).name
 
     @staticmethod
-    def _get_project_kg_urls(uri):
-        """Extract project url from uri."""
+    def _get_dataset_info(uri):
+        """Return sameAs and urls of all projects that contain the dataset."""
         u = urllib.parse.urlparse(uri)
+        project_id = RenkuProvider._extract_project_id(u).lstrip('/')
+        kg_path = f'/knowledge-graph/{project_id}'
+        kg_parsed_url = u._replace(path=kg_path)
+        kg_url = urllib.parse.urlunparse(kg_parsed_url)
 
         if RenkuProvider._is_project_dataset(u):
-            ds_start = u.path.rindex('/datasets/')
-            path = u.path[:ds_start]
-            path = '/knowledge-graph' + path
-            u = u._replace(path=path)
-            return [urllib.parse.urlunparse(u)]
+            return None, [kg_url]
         else:
 
             def get_project_link(project):
-                links = project.get('_links', {})
+                links = project.get('_links', [])
                 for l in links:
                     if l.get('rel') == 'project-details':
                         return l.get('href', '')
 
-            path = '/knowledge-graph' + u.path.rstrip('/')
-            u = u._replace(path=path)
-            kg_url = urllib.parse.urlunparse(u)
-            r = RenkuProvider._access_knowledge_graph(kg_url)
-            projects = r.get('isPartOf', {})
-            projects_kg_urls = []
-            for p in projects:
-                project_kg_url = get_project_link(p)
-                if project_kg_url:
-                    projects_kg_urls.append(project_kg_url)
-            return projects_kg_urls
+            response = RenkuProvider._query_knowledge_graph(kg_url)
+            same_as = response.get('sameAs')
+            projects = response.get('isPartOf', {})
+            projects_kg_urls = [get_project_link(p) for p in projects]
+            return same_as, [u for u in projects_kg_urls if u]
 
     @staticmethod
-    def _access_knowledge_graph(url):
+    def _extract_project_id(parsed_url):
+        if RenkuProvider._is_project_dataset(parsed_url):
+            ds_start = parsed_url.path.rindex('/datasets/')
+            return parsed_url.path[:ds_start]
+        else:
+            return parsed_url.path.rstrip('/')
+
+    @staticmethod
+    def _get_project_datasets(uri):
+        pass
+
+    @staticmethod
+    def _query_knowledge_graph(url):
         try:
             response = requests.get(url)
         except urllib.error.HTTPError as e:
@@ -184,10 +203,17 @@ class RenkuProvider(ProviderApi):
 
     @staticmethod
     def _get_project_urls(project_kg_url):
-        json = RenkuProvider._access_knowledge_graph(project_kg_url)
-        urls = json.get('url', {})
+        json = RenkuProvider._query_knowledge_graph(project_kg_url)
+        urls = json.get('urls', {})
 
-        return urls.get('ssh'), urls.get('http')
+        kg_datasets_url = None
+        links = json.get('_links', [])
+        for link in links:
+            if link['rel'] == 'datasets':
+                kg_datasets_url = link['href']
+                break
+
+        return kg_datasets_url, urls.get('ssh'), urls.get('http')
 
 
 class _RenkuRecordSerializer:
