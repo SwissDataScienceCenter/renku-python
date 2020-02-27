@@ -55,7 +55,8 @@ class CommitMixin:
     @property
     def submodules(self):
         """Proxy to client submodules."""
-        return self.client.submodules
+        if self.client:
+            return self.client.submodules
 
     def default_id(self):
         """Configure calculated ID."""
@@ -115,6 +116,7 @@ class CommitMixin:
         'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#'
     },
     cmp=False,
 )
@@ -199,11 +201,14 @@ class Entity(CommitMixin):
 class Collection(Entity):
     """Represent a directory with files."""
 
-    members = jsonld.ib(context='prov:hadMember', kw_only=True)
+    members = jsonld.container.list(
+        type=Entity, context='prov:hadMember', kw_only=True
+    )
 
-    @members.default
     def default_members(self):
         """Generate default members as entities from current path."""
+        if not self.client:
+            return []
         dir_path = self.client.path / self.path
         assert dir_path.is_dir()
 
@@ -228,3 +233,13 @@ class Collection(Entity):
         for member in self.members:
             yield from member.entities
         yield self
+
+    def __attrs_post_init__(self):
+        """Init members."""
+        super().__attrs_post_init__()
+
+        if not self.members:
+            self.members = self.default_members()
+
+        for member in self.members:
+            member._parent = weakref.ref(self)

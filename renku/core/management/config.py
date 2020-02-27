@@ -70,6 +70,11 @@ class ConfigManagerMixin:
         lock_file = '{0}/{1}.lock'.format(
             self.global_config_dir, self.CONFIG_NAME
         )
+
+        import logging
+
+        logging.getLogger('filelock').setLevel(logging.ERROR)
+
         return filelock.FileLock(lock_file, timeout=0)
 
     def load_config(self, local_only, global_only):

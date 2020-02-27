@@ -323,13 +323,13 @@ def makefile(graph, strict=False):
             steps = [activity]
 
         for step in steps:
-            click.echo(' '.join(step.outputs) + ': ' + ' '.join(step.inputs))
-            tool = step.process
+            plan = step.association.plan
+            inputs = [i.consumes.path for i in plan.inputs]
+            outputs = [o.produces.path for o in plan.outputs]
+            click.echo(' '.join(outputs) + ': ' + ' '.join(inputs))
             click.echo(
-                '\t@' + ' '.join(tool.to_argv()) + ' ' + ' '.join(
-                    tool.STD_STREAMS_REPR[key] + ' ' + str(path)
-                    for key, path in tool._std_streams().items()
-                )
+                '\t@' + ' '.join(plan.to_argv()) + ' ' +
+                ' '.join(plan.to_stream_repr())
             )
 
 

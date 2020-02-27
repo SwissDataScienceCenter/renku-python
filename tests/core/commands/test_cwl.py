@@ -19,24 +19,31 @@
 from pathlib import Path
 
 import pytest
-import yaml
 
-from renku.core.models.cwl import CWLClass
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
+from renku.core.models.entities import Collection, Entity
 
 
-def test_1st_tool():
+def test_1st_tool(client):
     """Check creation of 1st tool example from args."""
-    tool = CommandLineToolFactory(('echo', 'Hello world!')).generate_tool()
-    assert 'v1.0' == tool.cwlVersion
-    assert 'CommandLineTool' == tool.__class__.__name__
-    assert 'Hello world!' == tool.inputs[0].default
+    tool = CommandLineToolFactory(('echo', 'Hello world!')
+                                  ).generate_process_run(
+                                      client=client,
+                                      commit=client.repo.head.commit,
+                                      path='dummy.yaml'
+                                  )
+
+    tool = tool.association.plan
+    assert 'Hello world!' == tool.arguments[0].value
 
 
-def test_03_input(instance_path):
+def test_03_input(client):
     """Check the essential input parameters."""
-    whale = Path(instance_path) / 'whale.txt'
+    whale = Path(client.path) / 'whale.txt'
     whale.touch()
+
+    client.repo.index.add([str(whale)])
+    client.repo.index.commit('add whale.txt')
 
     argv = [
         'echo',
@@ -47,91 +54,110 @@ def test_03_input(instance_path):
         '--file=whale.txt',
     ]
     tool = CommandLineToolFactory(
-        argv, directory=instance_path, working_dir=instance_path
-    ).generate_tool()
+        argv, directory=client.path, working_dir=client.path
+    ).generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+
+    tool = tool.association.plan
 
     assert ['-f'] == tool.arguments[0].to_argv()
 
-    assert 42 == tool.inputs[0].default
-    assert 'int' == tool.inputs[0].type
-    assert '-i' == tool.inputs[0].inputBinding.prefix
-    assert tool.inputs[0].inputBinding.separate is False
+    assert 42 == tool.arguments[1].value
+    assert '-i' == tool.arguments[1].prefix
 
-    assert 'hello' == tool.inputs[1].default
-    assert 'string' == tool.inputs[1].type
-    assert '--example-string' == tool.inputs[1].inputBinding.prefix
-    assert tool.inputs[1].inputBinding.separate is True
+    assert 'hello' == tool.arguments[2].value
+    assert '--example-string ' == tool.arguments[2].prefix
 
-    assert tool.inputs[2].default.path.samefile(whale)
-    assert 'File' == tool.inputs[2].type
-    assert '--file=' == tool.inputs[2].inputBinding.prefix
-    assert tool.inputs[2].inputBinding.separate is False
+    assert tool.inputs[0].consumes.path == 'whale.txt'
+    assert isinstance(tool.inputs[0].consumes, Entity)
+    assert not isinstance(tool.inputs[0].consumes, Collection)
+    assert '--file=' == tool.inputs[0].prefix
 
     assert argv == tool.to_argv()
 
 
-def test_base_command_detection(instance_path):
+def test_base_command_detection(client):
     """Test base command detection."""
-    hello = Path(instance_path) / 'hello.tar'
+    hello = Path(client.path) / 'hello.tar'
     hello.touch()
+
+    client.repo.index.add([str(hello)])
+    client.repo.index.commit('add hello.tar')
 
     argv = ['tar', 'xf', 'hello.tar']
     tool = CommandLineToolFactory(
-        argv, directory=instance_path, working_dir=instance_path
-    ).generate_tool()
+        argv, directory=client.path, working_dir=client.path
+    ).generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
 
-    assert ['tar', 'xf'] == tool.baseCommand
-    assert tool.inputs[0].default.path.samefile(hello)
-    assert 'File' == tool.inputs[0].type
-    assert tool.inputs[0].inputBinding.prefix is None
-    assert tool.inputs[0].inputBinding.separate is True
+    tool = tool.association.plan
+
+    assert 'tar xf' == tool.command
+    assert tool.inputs[0].consumes.path == 'hello.tar'
+    assert isinstance(tool.inputs[0].consumes, Entity)
+    assert not isinstance(tool.inputs[0].consumes, Collection)
+    assert tool.inputs[0].prefix is None
 
     assert argv == tool.to_argv()
 
 
-def test_base_command_as_file_input(instance_path):
+def test_base_command_as_file_input(client):
     """Test base command detection when it is a script file."""
-    cwd = Path(instance_path)
+    cwd = Path(client.path)
     script = cwd / 'script.py'
     script.touch()
 
     input_file = cwd / 'input.csv'
     input_file.touch()
 
+    client.repo.index.add([str(script), str(input_file)])
+    client.repo.index.commit('add file')
+
     argv = ['script.py', 'input.csv']
     tool = CommandLineToolFactory(
         argv,
-        directory=instance_path,
-        working_dir=instance_path,
-    ).generate_tool()
+        directory=client.path,
+        working_dir=client.path,
+    ).generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
 
-    assert not tool.baseCommand
+    tool = tool.association.plan
+
+    assert not tool.command
     assert 2 == len(tool.inputs)
 
 
-def test_short_base_command_detection():
+def test_short_base_command_detection(client):
     """Test base command detection without arguments."""
-    tool = CommandLineToolFactory(('echo', 'A')).generate_tool()
+    tool = CommandLineToolFactory(('echo', 'A')).generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
 
-    assert 'v1.0' == tool.cwlVersion
-    assert 'CommandLineTool' == tool.__class__.__name__
-    assert 'A' == tool.inputs[0].default
+    tool = tool.association.plan
+
+    assert 'A' == tool.arguments[0].value
     assert ['echo', 'A'] == tool.to_argv()
 
 
-def test_04_output(instance_path):
+def test_04_output(client):
     """Test describtion of outputs from a command."""
-    hello = Path(instance_path) / 'hello.tar'
+    hello = Path(client.path) / 'hello.tar'
     hello.touch()
+
+    client.repo.index.add([str(hello)])
+    client.repo.index.commit('add hello.tar')
 
     argv = ['tar', 'xf', 'hello.tar']
     factory = CommandLineToolFactory(
-        argv, directory=instance_path, working_dir=instance_path
+        argv, directory=client.path, working_dir=client.path
     )
 
     # simulate run
 
-    output = Path(instance_path) / 'hello.txt'
+    output = Path(client.path) / 'hello.txt'
     output.touch()
 
     parameters = list(factory.guess_outputs([output]))
@@ -139,40 +165,54 @@ def test_04_output(instance_path):
     assert 'File' == parameters[0][0].type
     assert 'hello.txt' == parameters[0][0].outputBinding.glob
 
-    tool = factory.generate_tool()
+    tool = factory.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+
+    tool = tool.association.plan
     assert argv == tool.to_argv()
 
 
-def test_05_stdout(instance_path):
+def test_05_stdout(client):
     """Test stdout mapping."""
-    output = Path(instance_path) / 'output.txt'
+    output = Path(client.path) / 'output.txt'
     output.touch()
+
+    client.repo.index.add([str(output)])
+    client.repo.index.commit('add output')
 
     argv = ['echo', 'Hello world!']
     factory = CommandLineToolFactory(
         argv,
-        directory=instance_path,
-        working_dir=instance_path,
+        directory=client.path,
+        working_dir=client.path,
         stdout='output.txt',
     )
 
     assert 'output.txt' == factory.stdout
     assert 'stdout' == factory.outputs[0].type
 
-    tool = factory.generate_tool()
+    tool = factory.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+
+    tool = tool.association.plan
     assert argv == tool.to_argv()
 
 
-def test_stdout_with_conflicting_arg(instance_path):
+def test_stdout_with_conflicting_arg(client):
     """Test stdout with conflicting argument value."""
-    output = Path(instance_path) / 'lalala'
+    output = Path(client.path) / 'lalala'
     output.touch()
+
+    client.repo.index.add([str(output)])
+    client.repo.index.commit('add lalala')
 
     argv = ['echo', 'lalala']
     factory = CommandLineToolFactory(
         argv,
-        directory=instance_path,
-        working_dir=instance_path,
+        directory=client.path,
+        working_dir=client.path,
         stdout='lalala',
     )
 
@@ -181,20 +221,26 @@ def test_stdout_with_conflicting_arg(instance_path):
     assert 'lalala' == factory.stdout
     assert 'stdout' == factory.outputs[0].type
 
-    tool = factory.generate_tool()
+    tool = factory.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+
+    tool = tool.association.plan
     assert argv == tool.to_argv()
 
 
-def test_06_params(instance_path):
+def test_06_params(client):
     """Test referencing input parameters in other fields."""
-    hello = Path(instance_path) / 'hello.tar'
+    hello = Path(client.path) / 'hello.tar'
     hello.touch()
+    client.repo.index.add([str(hello)])
+    client.repo.index.commit('add hello.tar')
 
     argv = ['tar', 'xf', 'hello.tar', 'goodbye.txt']
     factory = CommandLineToolFactory(
         argv,
-        directory=instance_path,
-        working_dir=instance_path,
+        directory=client.path,
+        working_dir=client.path,
     )
 
     assert 'goodbye.txt' == factory.inputs[1].default
@@ -205,7 +251,7 @@ def test_06_params(instance_path):
 
     # simulate run
 
-    output = Path(instance_path) / 'goodbye.txt'
+    output = Path(client.path) / 'goodbye.txt'
     output.touch()
 
     parameters = list(factory.guess_outputs([output]))
@@ -214,11 +260,15 @@ def test_06_params(instance_path):
     assert '$(inputs.{0})'.format(goodbye_id) == \
            parameters[0][0].outputBinding.glob
 
-    tool = factory.generate_tool()
+    tool = factory.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+
+    tool = tool.association.plan
     assert argv == tool.to_argv()
 
 
-def test_09_array_inputs(instance_path):
+def test_09_array_inputs(client):
     """Test specification of input parameters in arrays."""
     argv = [
         'echo',
@@ -232,30 +282,36 @@ def test_09_array_inputs(instance_path):
         '-C=seven,eight,nine',
     ]
     tool = CommandLineToolFactory(
-        argv, directory=instance_path, working_dir=instance_path
-    ).generate_tool()
+        argv, directory=client.path, working_dir=client.path
+    ).generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
 
-    assert 'string[]' == tool.inputs[-1].type
-    assert ['seven', 'eight', 'nine'] == tool.inputs[-1].default
-    assert '-C=' == tool.inputs[-1].inputBinding.prefix
-    assert ',' == tool.inputs[-1].inputBinding.itemSeparator
-    assert tool.inputs[-1].inputBinding.separate is False
+    tool = tool.association.plan
+
+    assert 'seven,eight,nine' == tool.arguments[-1].value
+    assert '-C=' == tool.arguments[-1].prefix
 
     assert argv == tool.to_argv()
 
 
 @pytest.mark.parametrize('argv', [['wc'], ['wc', '-l']])
-def test_stdin_and_stdout(argv, instance_path):
+def test_stdin_and_stdout(argv, client):
     """Test stdout mapping."""
-    input_ = Path(instance_path) / 'input.txt'
+    input_ = Path(client.path) / 'input.txt'
     input_.touch()
-    output = Path(instance_path) / 'output.txt'
+    output = Path(client.path) / 'output.txt'
     output.touch()
+    error = Path(client.path) / 'error.log'
+    error.touch()
+
+    client.repo.index.add([str(input_), str(output), str(error)])
+    client.repo.index.commit('add files')
 
     factory = CommandLineToolFactory(
         argv,
-        directory=instance_path,
-        working_dir=instance_path,
+        directory=client.path,
+        working_dir=client.path,
         stdin='input.txt',
         stdout='output.txt',
         stderr='error.log',
@@ -268,101 +324,103 @@ def test_stdin_and_stdout(argv, instance_path):
     assert 'output.txt' == factory.stdout
     assert 'stdout' == factory.outputs[0].type
 
-    tool = factory.generate_tool()
+    tool = factory.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+
+    tool = tool.association.plan
     assert argv == tool.to_argv()
-    std_streams = (' < input.txt', ' > output.txt', ' 2> error.log')
-    tool_str = str(tool)
-    assert tool_str.startswith(' '.join(argv))
-    assert all(stream in tool_str for stream in std_streams)
+    assert any(
+        i.mapped_to and i.mapped_to.stream_type == 'stdin' for i in tool.inputs
+    )
+    assert any(
+        o.mapped_to and o.mapped_to.stream_type == 'stdout'
+        for o in tool.outputs
+    )
+    assert any(
+        o.mapped_to and o.mapped_to.stream_type == 'stderr'
+        for o in tool.outputs
+    )
 
 
-def test_input_directory(instance_path):
+def test_input_directory(client):
     """Test input directory."""
-    cwd = Path(instance_path)
+    cwd = Path(client.path)
     src = cwd / 'src'
     src.mkdir(parents=True)
 
     for i in range(5):
         (src / str(i)).touch()
 
+    src_tar = cwd / 'src.tar'
+    src_tar.touch()
+
+    client.repo.index.add([str(src), str(src_tar)])
+    client.repo.index.commit('add file and folder')
+
     argv = ['tar', 'czvf', 'src.tar', 'src']
     factory = CommandLineToolFactory(
         argv,
-        directory=instance_path,
-        working_dir=instance_path,
+        directory=client.path,
+        working_dir=client.path,
     )
 
-    src_tar = src / 'src.tar'
-    src_tar.touch()
+    tool = factory.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
 
-    tool = factory.generate_tool()
+    tool = tool.association.plan
     assert argv == tool.to_argv()
 
-    assert 'string' == tool.inputs[0].type
-    assert src_tar.name == tool.inputs[0].default
-    assert 'Directory' == tool.inputs[1].type
-    assert tool.inputs[1].default.path.samefile(src)
+    inputs = sorted(tool.inputs, key=lambda x: x.position)
+
+    assert src_tar.name == inputs[0].consumes.path
+    assert isinstance(inputs[0].consumes, Entity)
+    assert not isinstance(inputs[0].consumes, Collection)
+    assert inputs[1].consumes.path == src.name
+    assert isinstance(inputs[1].consumes, Collection)
 
 
-def test_exitings_output_directory(client):
-    """Test creation of InitialWorkDirRequirement for output directory."""
-    instance_path = client.path
+def test_existing_output_directory(client, runner, project):
+    """Test creation of InitialWorkDirRequirement for output."""
+    from renku.core.models.workflow.converters.cwl import CWLConverter
+
+    client.path = client.path
     output = client.path / 'output'
 
     argv = ['script', 'output']
     factory = CommandLineToolFactory(
         argv,
-        directory=instance_path,
-        working_dir=instance_path,
+        directory=client.path,
+        working_dir=client.path,
     )
 
     with factory.watch(client, no_output=True) as tool:
         # Script creates the directory.
         output.mkdir(parents=True)
 
-    initial_work_dir_requirement = [
-        r for r in tool.requirements
-        if r.__class__.__name__ == 'InitialWorkDirRequirement'
-    ]
-    assert 0 == len(initial_work_dir_requirement)
+    run = factory.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+
+    cwl, _ = CWLConverter.convert(run.association.plan, client)
+
+    assert 0 == len([r for r in cwl.requirements if hasattr(r, 'listing')])
 
     output.mkdir(parents=True, exist_ok=True)
     with factory.watch(client) as tool:
         # The directory already exists.
         (output / 'result.txt').touch()
 
-    initial_work_dir_requirement = [
-        r for r in tool.requirements
-        if r.__class__.__name__ == 'InitialWorkDirRequirement'
-    ]
-    assert 1 == len(initial_work_dir_requirement)
-    assert output.name == initial_work_dir_requirement[0].listing[0].entryname
-
     assert 1 == len(tool.inputs)
+
+    run = tool.generate_process_run(
+        client=client, commit=client.repo.head.commit, path='dummy.yaml'
+    )
+    cwl, _ = CWLConverter.convert(run.association.plan, client)
+
+    reqs = [r for r in cwl.requirements if hasattr(r, 'listing')]
+
+    assert 1 == len(reqs)
+    assert output.name == reqs[0].listing[0].entryname
     assert 1 == len(tool.outputs)
-
-
-LINK_CWL = """
-class: CommandLineTool
-cwlVersion: v1.0
-requirements:
-  - class: InlineJavascriptRequirement
-  - class: InitialWorkDirRequirement
-    listing:
-      - class: Directory
-        listing: $(inputs.indir.listing)
-baseCommand: ["true"]
-inputs:
-  indir: Directory
-  filename: string
-outputs:
-  outlist:
-    type: File
-    outputBinding:
-      glob: $(inputs.filename)
-"""
-
-
-def test_load_inputs_defined_as_type():
-    """Test loading of CWL definition with specific input parameters."""
-    assert CWLClass.from_cwl(yaml.safe_load(LINK_CWL))
