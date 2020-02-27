@@ -24,42 +24,12 @@ from pathlib import Path
 import attr
 
 from renku.core import errors
-from renku.core.models.cwl import CommandLineTool
-from renku.core.models.cwl.parameter import InputParameter, \
-    WorkflowOutputParameter
-from renku.core.models.cwl.types import PATH_TYPES
-from renku.core.models.cwl.workflow import Workflow
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
 from renku.core.models.provenance.activities import Activity, ProcessRun, Usage
 from renku.core.models.provenance.processes import Process
 from renku.core.models.provenance.qualified import Generation
-
-LINK_CWL = CommandLineTool(
-    baseCommand=['true'],
-    requirements=[
-        {
-            'class': 'InlineJavascriptRequirement',
-        },
-        {
-            'class': 'InitialWorkDirRequirement',
-            'listing': '$(inputs.input_directory.listing)',
-        },
-    ],
-    inputs={
-        'input_directory': 'Directory',
-        'filename': 'string',
-    },
-    outputs={
-        'output_file': {
-            'type': 'File',
-            'outputBinding': {
-                'glob': '$(inputs.filename)',
-                # .slice(inputs.input_directory.basename.length)
-            },
-        },
-    },
-)
+from renku.core.models.workflow.run import Run
 
 
 def _safe_path(filepath, can_be_cwl=False):
@@ -74,7 +44,7 @@ def _safe_path(filepath, can_be_cwl=False):
     # Ignore everything in .renku ...
     if filepath.startswith('.renku'):
         # ... unless it can be a CWL.
-        if can_be_cwl and filepath.endswith('.cwl'):
+        if can_be_cwl and filepath.startswith('.renku/workflow/'):
             return True
         return False
 
@@ -109,13 +79,6 @@ class Graph(object):
         for commit in reversed(self._sorted_commits):
             try:
                 activity = self.activities[commit]
-
-                # for node in reversed(list(activity.nodes)):
-                #     key = (node.commit, node.path)
-                #     if key in nodes:
-                #         del nodes[key]
-                #     nodes[key] = node
-
                 nodes.update(((node.commit, node.path), node)
                              for node in reversed(list(activity.nodes)))
 
@@ -181,7 +144,7 @@ class Graph(object):
         if isinstance(node, Generation):
             result = [node.parent] if node.parent is not None else []
             if node.activity and isinstance(node.activity, ProcessRun):
-                return result + [node.activity.association.plan]
+                return result + self.parents(node.activity.association.plan)
             return result
         elif isinstance(node, Usage):
             return _from_entity(node.entity)
@@ -189,7 +152,7 @@ class Graph(object):
             # Link files and directories and generations.
             return ([node.parent] if node.parent is not None else
                     []) + _from_entity(node, check_parents=False)
-        elif isinstance(node, Process):
+        elif isinstance(node, Process) or isinstance(node, Run):
             # warnings.warn('Called on run {0}'.format(node), stacklevel=2)
             return self.parents(node.activity)
         elif isinstance(node, ProcessRun):
@@ -300,14 +263,40 @@ class Graph(object):
             if isinstance(activity, ProcessRun):
                 for entity in activity.qualified_usage:
                     for member in entity.entities:
+                        parent_activities = self.client.activities_for_paths(
+                            member.path, revision='HEAD'
+                        )
+                        for a in parent_activities:
+                            if a.commit and a.commit not in visited:
+                                self.activities[a.commit] = a
                         if member.commit not in visited:
                             queue.append(member)
 
         from renku.core.models.sort import topological
-        self._sorted_commits = topological({
+
+        commit_nodes = {
             commit: activity.parents
             for commit, activity in self.activities.items()
-        })
+        }
+
+        # add dependencies between processes
+        for activity in self.activities.values():
+            if not isinstance(activity, ProcessRun):
+                continue
+            for usage in activity.qualified_usage:
+                for other_activity in self.activities.values():
+                    if other_activity == activity:
+                        continue
+                    if any(
+                        g.path == usage.path and
+                        g.commit.hexsha == usage.commit.hexsha
+                        for g in other_activity.generated
+                    ):
+                        commit_nodes[activity.commit].append(
+                            other_activity.commit
+                        )
+
+        self._sorted_commits = topological(commit_nodes)
         self._nodes = self.default_nodes()
 
     def build(
@@ -337,8 +326,15 @@ class Graph(object):
         """Return all output paths."""
         paths = set()
         for activity in self.activities.values():
-            if isinstance(activity, ProcessRun):
-                paths |= {path for path in activity.outputs.keys() if path}
+            if (
+                isinstance(activity, ProcessRun) and activity.association and
+                activity.association.plan
+            ):
+                paths |= {
+                    o.produces.path
+                    for o in activity.association.plan.outputs
+                    if o.produces.path
+                }
         return paths
 
     def build_status(self, revision='HEAD', can_be_cwl=False):
@@ -425,7 +421,7 @@ class Graph(object):
             parent = node.activity
         elif isinstance(node, Usage):
             parent = self.activities[node.commit]
-        elif isinstance(node, Process):
+        elif isinstance(node, Process) or isinstance(node, Run):
             return {node}
 
         if parent is None or not isinstance(parent, ProcessRun):
@@ -438,14 +434,14 @@ class Graph(object):
 
         return set(parent.generated)
 
-    def ascwl(
+    def as_renku_workflow(
         self,
         input_paths=None,
         output_paths=None,
         outputs=None,
         use_latest=True,
     ):
-        """Serialize graph to CWL workflow.
+        """Serialize graph to renku ``Run`` workflow.
 
         :param global_step_outputs: Make all step outputs global.
         """
@@ -455,82 +451,41 @@ class Graph(object):
                 for node in outputs if _safe_path(node.path)
             }
 
-        workflow = Workflow()
-
         processes = set()
         stack = []
 
         output_keys = {(node.commit, node.path) for node in outputs}
         nodes = {(node.commit, node.path): node for node in self.nodes}
 
-        def connect_file_to_directory(node):
-            """Return step connecting file to a directory."""
-            process = attr.evolve(
-                LINK_CWL,
-                inputs={
-                    'input_directory': 'Directory',
-                    'filename': {
-                        'type': 'string',
-                        'default':
-                            str(Path(node.path).relative_to(node.parent.path)),
-                    },
-                }
-            )
-            process_run = ProcessRun(
-                commit=node.commit,
-                client=node.client,
-                path=None,
-                process=process,
-                inputs={
-                    node.parent.path:
-                        Usage(
-                            entity=node.parent,
-                            role='input_directory',
-                        ),
-                },
-                outputs={
-                    node.path: 'output_file',
-                },
-            )
-
-            for generated in process_run.generated:
-                nodes[(generated.commit, generated.path)] = generated
-
-            return process_run
-
         for node in self.nodes:
             if (node.commit, node.path) not in output_keys:
                 continue
 
             process_run = None
-            if isinstance(node, Entity) and not hasattr(node, 'activity'):
-                process_run = connect_file_to_directory(node)
 
+            assert hasattr(node, 'activity'), node
+            assert isinstance(node.activity, ProcessRun)
+
+            plan = node.activity.association.plan
+
+            process_run = plan.activity
+
+            if process_run not in processes:
                 stack.append(process_run)
                 processes.add(process_run)
-
-            else:
-                assert hasattr(node, 'activity'), node
-                assert isinstance(node.activity, ProcessRun)
-
-                plan = node.activity.association.plan
-                latest = self.latest(plan)
-                if use_latest and latest:
-                    plan = nodes[(latest, plan.path)]
-
-                process_run = plan.activity
-
-                if process_run not in processes:
-                    stack.append(process_run)
-                    processes.add(process_run)
 
         while stack:
             action = stack.pop()
 
-            if not hasattr(action, 'inputs'):
+            if (
+                not hasattr(action, 'association') or
+                not hasattr(action.association.plan, 'inputs')
+            ):
                 continue
 
-            for path, dependency in action.inputs.items():
+            for inp in action.association.plan.inputs:
+                path = inp.consumes.path
+                dependency = inp.consumes
                 # Do not follow defined input paths.
                 if input_paths and path in input_paths:
                     continue
@@ -542,8 +497,6 @@ class Graph(object):
                     process_run = node.activity
                 elif isinstance(node, Collection) and node.parent:
                     raise NotImplementedError('Can not connect subdirectory')
-                elif isinstance(node, Entity) and node.parent:
-                    process_run = connect_file_to_directory(node)
                 else:
                     process_run = None
 
@@ -560,97 +513,18 @@ class Graph(object):
                         stack.append(process_run)
                         processes.add(process_run)
 
-        steps = {
-            tool: 'step_{0}'.format(tool_index)
-            for tool_index, tool in enumerate(processes, 1)
+        commit_indices = {
+            c: i
+            for i, c in enumerate(reversed(self._sorted_commits))
         }
+        processes = sorted(processes, key=lambda x: commit_indices[x.commit])
 
-        def _source_name(commit, path):
-            """Find source name for a node."""
-            try:
-                process_run = nodes[(commit, path)].activity
-                output_id = process_run.outputs[path]
-                return '{0}/{1}'.format(steps[process_run], output_id)
-            except (KeyError, AttributeError):
-                pass
+        parent_process = Run()
+        input_paths = []
+        output_paths = []
 
-        def _relative_default(client, default):
-            """Evolve ``File`` or ``Directory`` path."""
-            if isinstance(default, PATH_TYPES):
-                path = Path(
-                    os.path.abspath(client.workflow_path / default.path)
-                )
-                return attr.evolve(default, path=path)
-            return default
+        for index, step in enumerate(processes):
+            # loop through runs and add them as subprocesses to parent.
+            parent_process.add_subprocess(step.association.plan, index)
 
-        input_index = 1
-
-        for action, step_id in steps.items():
-            tool = action.process
-
-            ins = {}
-            for path, dependency in action.inputs.items():
-                alias = _source_name(dependency.commit, path)
-                if alias:
-                    ins[dependency.role] = alias
-
-            outs = list(set(action.outputs.values()))
-
-            for generated in action.generated:
-                if generated.entity.path not in output_paths:
-                    output_paths.add(generated.entity.path)
-                    outputs.add(generated.entity)
-
-            for input_ in tool.inputs:
-                input_mapping = ins.get(input_.id)
-                if input_mapping is None:
-                    input_id = 'input_{0}'.format(input_index)
-                    workflow.inputs.append(
-                        InputParameter(
-                            id=input_id,
-                            type=input_.type,
-                            default=_relative_default(
-                                self.client, input_.default
-                            ),
-                        )
-                    )
-                    input_index += 1
-                    ins[input_.id] = input_id
-
-            workflow.add_step(
-                run=self.client.path / action.path if action.path else tool,
-                id=step_id,
-                in_=ins,
-                out=outs,
-            )
-
-        for index, node in enumerate(
-            (node for node in outputs if node.path in output_paths)
-        ):
-            commit, path = node.commit, node.path
-            id_ = 'output_{0}'.format(index)
-            process_run = nodes[(commit, path)].activity
-
-            if process_run.process is None or process_run.path is None:
-                continue
-
-            output_id = process_run.outputs[path]
-            type_ = next(
-                output for output in process_run.process.outputs
-                if output.id == output_id
-            ).type
-            type_ = type_ if type_ == 'Directory' else 'File'
-            output_source = _source_name(commit, path)
-
-            if output_source is None:
-                continue
-
-            workflow.outputs.append(
-                WorkflowOutputParameter(
-                    id=id_,
-                    type=type_,
-                    outputSource=output_source,
-                )
-            )
-
-        return workflow
+        return parent_process

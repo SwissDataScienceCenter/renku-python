@@ -30,15 +30,14 @@ names may be cumbersome. The names can be added to the last executed
 file in ``.renku/workflow/*.cwl`` anytime later.
 """
 
-import os
 from collections import defaultdict
+from pathlib import Path
 
 import click
-import yaml
 
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.graph import Graph
-from renku.core.models.cwl.ascwl import ascwl
+from renku.core.models.workflow.converters.cwl import CWLConverter
 
 # TODO: Finish refactoring (ticket #703)
 
@@ -66,7 +65,7 @@ def workflow(ctx, client):
         for ref in LinkReference.iter_items(client, common_path='workflows'):
             names[ref.reference.name].append(ref.name)
 
-        for path in client.workflow_path.glob('*.cwl'):
+        for path in client.workflow_path.glob('*.yaml'):
             click.echo(
                 '{path}: {names}'.format(
                     path=path.name,
@@ -139,8 +138,8 @@ def remove(client, name):
     '-o',
     '--output-file',
     metavar='FILE',
-    type=click.File('w'),
-    default='-',
+    type=click.Path(exists=False),
+    default=None,
     help='Write workflow to the FILE.',
 )
 @click.argument('paths', type=click.Path(dir_okay=True), nargs=-1)
@@ -150,14 +149,12 @@ def create(client, output_file, revision, paths):
     graph = Graph(client)
     outputs = graph.build(paths=paths, revision=revision)
 
-    output_file.write(
-        yaml.dump(
-            ascwl(
-                graph.ascwl(outputs=outputs),
-                filter=lambda _, x: x is not None and x != [],
-                basedir=os.path.dirname(getattr(output_file, 'name', '.')) or
-                '.',
-            ),
-            default_flow_style=False
-        )
-    )
+    workflow = graph.as_renku_workflow(outputs=outputs, )
+
+    if output_file:
+        output_file = Path(output_file)
+
+    wf, path = CWLConverter.convert(workflow, client, path=output_file)
+
+    if not output_file:
+        click.echo(wf.export_string())

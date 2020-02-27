@@ -19,13 +19,9 @@
 
 import attr
 
-from .ascwl import CWLClass
-
 
 def convert_default(value):
     """Convert a default value."""
-    if isinstance(value, dict):
-        return CWLClass.from_cwl(value)
     return value
 
 

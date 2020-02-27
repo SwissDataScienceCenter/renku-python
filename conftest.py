@@ -625,18 +625,22 @@ def cli(client, run):
     It returns the exit code and content of the resulting CWL tool.
     """
     import yaml
-    from renku.core.models.cwl import CWLClass
+    from renku.core.models.provenance.activities import Activity
 
     def renku_cli(*args):
-        before_cwl_files = set(client.workflow_path.glob('*.cwl'))
+        before_wf_files = set(client.workflow_path.glob('*.yaml'))
         exit_code = run(args)
-        after_cwl_files = set(client.workflow_path.glob('*.cwl'))
-        new_files = after_cwl_files - before_cwl_files
+        after_wf_files = set(client.workflow_path.glob('*.yaml'))
+        new_files = after_wf_files - before_wf_files
         assert len(new_files) <= 1
         if new_files:
-            cwl_filepath = new_files.pop()
-            with cwl_filepath.open('r') as f:
-                content = CWLClass.from_cwl(yaml.safe_load(f))
+            wf_filepath = new_files.pop()
+            with wf_filepath.open('r') as f:
+                content = Activity.from_jsonld(
+                    yaml.safe_load(f),
+                    client=client,
+                    commit=client.repo.head.commit
+                )
         else:
             content = None
 

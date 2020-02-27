@@ -22,6 +22,7 @@ from pathlib import Path
 import git
 
 from renku.cli import cli
+from renku.core.models.entities import Collection
 
 
 def update_and_commit(data, file_, repo):
@@ -129,7 +130,6 @@ def test_workflow_without_outputs(runner, project, run):
     cmd = ['status', '--no-output']
     result = runner.invoke(cli, cmd)
     assert 1 == result.exit_code
-
     assert 0 == run(args=('update', '--no-output'))
 
     cmd = ['status', '--no-output']
@@ -247,7 +247,6 @@ def test_siblings_in_output_directory(runner, project, run):
         ('fourth', '4'),
     ]
     write_source()
-
     assert 0 == run(args=['update', 'output'])
     check_files()
 
@@ -265,7 +264,8 @@ def test_relative_path_for_directory_input(client, run, cli):
     client.repo.index.commit('Add one more file')
 
     exit_code, cwl = cli('update')
+    cwl = cwl.association.plan
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
-    assert 'Directory' == cwl.inputs[0].type
-    assert '../../data' == cwl.inputs[0].default.path
+    assert isinstance(cwl.inputs[0].consumes, Collection)
+    assert 'data' == cwl.inputs[0].consumes.path

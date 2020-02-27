@@ -17,6 +17,8 @@
 # limitations under the License.
 """Test behavior of indirect inputs/outputs files list."""
 
+from renku.core.models.entities import Collection, Entity
+
 
 def test_indirect_inputs(cli, client):
     """Test indirect inputs that are programmatically created."""
@@ -38,18 +40,18 @@ def test_indirect_inputs(cli, client):
         'run', 'sh', '-c',
         'echo "echo qux > .renku/tmp/outputs.txt" >> script.sh'
     )
-
     exit_code, cwl = cli('run', 'sh', '-c', 'sh script.sh')
     assert 0 == exit_code
+    plan = cwl.association.plan
+    assert 2 == len(plan.inputs)
+    assert 1 == len(plan.arguments)
+    plan.inputs.sort(key=lambda e: e.consumes.path)
+    assert 'baz' == str(plan.inputs[0].consumes.path)
+    assert isinstance(plan.inputs[0].consumes, Entity)
+    assert plan.inputs[0].position is None
+    assert 'foo' == str(plan.inputs[1].consumes.path)
+    assert isinstance(plan.inputs[1].consumes, Collection)
+    assert plan.inputs[1].position is None
 
-    assert 3 == len(cwl.inputs)
-    cwl.inputs.sort(key=lambda e: e.type)
-    assert '../../foo' == str(cwl.inputs[0].default)
-    assert 'Directory' == cwl.inputs[0].type
-    assert cwl.inputs[0].inputBinding is None
-    assert '../../baz' == str(cwl.inputs[1].default)
-    assert 'File' == cwl.inputs[1].type
-    assert cwl.inputs[1].inputBinding is None
-
-    assert 1 == len(cwl.outputs)
-    assert 'qux' == cwl.outputs[0].outputBinding.glob
+    assert 1 == len(plan.outputs)
+    assert 'qux' == plan.outputs[0].produces.path

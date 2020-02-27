@@ -161,7 +161,7 @@ def attrs(
 
         if (
             type_ in jsonld_cls.__type_registry__ and
-            jsonld_cls.__type_registry__[type_] != jsonld_cls
+            str(jsonld_cls.__type_registry__[type_]) != str(jsonld_cls)
         ):
             raise TypeError(
                 'Type {0!r} in {1!r} is already registered for {2!r}.'.format(
@@ -270,7 +270,8 @@ def _propagate_reference_contexts(
                     fullname(cls) + '_' + subtype: {
                         '@id': expanded_subtype,
                         '@context': merge_ctx
-                    }
+                    },
+                    '@version': 1.1
                 })
 
     return current_context, scoped_properties
@@ -278,9 +279,35 @@ def _propagate_reference_contexts(
 
 def _default_converter(cls, value):
     """A default converter method that tries to deserialize objects."""
+    cls = import_class_from_string(cls)
     if isinstance(value, dict):
         return cls.from_jsonld(value)
 
+    return value
+
+
+def _default_multi_converter(types, value):
+    """A default converter for properties that can have several types."""
+    if isinstance(value, dict) and '@type' in value:
+        expanded = pyld.jsonld.expand(value)[0]
+        type_ = expanded['@type']
+        if not isinstance(type_, list):
+            type_ = [type_]
+        # If a json-ld class has multiple types, they are in a
+        # sorted tuple. This is used as the key for the class
+        # registry, so we have to match it here.
+        type_ = tuple(sorted(type_))
+        if type_ in JSONLDMixin.__type_registry__:
+            new_cls = JSONLDMixin.__type_registry__[type_]
+            if all(str(t) not in str(new_cls) for t in types):
+                raise NotImplementedError(
+                    'Unexpected property type {},  expected one of {}'.format(
+                        new_cls, ','.join(types)
+                    )
+                )
+            # expand and compact with relevant context
+            value = pyld.jsonld.compact(value, new_cls._jsonld_context)
+            return new_cls.from_jsonld(value)
     return value
 
 
@@ -291,19 +318,29 @@ def attrib(context=None, type=None, **kwargs):
     if type:
         kwargs['metadata'][KEY_CLS] = type
 
-        if 'converter' not in kwargs and hasattr(type, 'from_jsonld'):
-            kwargs['converter'] = partial(_default_converter, type)
+        if 'converter' not in kwargs:
+            if hasattr(type, 'from_jsonld') or isinstance(type, str):
+                kwargs['converter'] = partial(_default_converter, type)
+            elif isinstance(type, list):
+                kwargs['converter'] = partial(_default_multi_converter, type)
+
     return attr.ib(**kwargs)
 
 
 _container_types = (
-    ('list', list, lambda type, value: [type.from_jsonld(v) for v in value]),
-    ('set', set, lambda type, value: {type.from_jsonld(v)
-                                      for v in value}),
     (
-        'index', dict,
-        lambda type, value: {k: type.from_jsonld(v)
-                             for k, v in value.items()}
+        'list', list,
+        lambda type, value: [_default_converter(type, v) for v in value]
+    ),
+    (
+        'set', set,
+        lambda type, value: {_default_converter(type, v)
+                             for v in value}
+    ),
+    (
+        'index', dict, lambda type, value:
+        {k: _default_converter(type, v)
+         for k, v in value.items()}
     ),
 )
 
@@ -322,6 +359,9 @@ def _container_attrib_builder(name, container, mapper):
             """Convert value to the given type."""
             if isinstance(value, container):
                 return mapper(type, value)
+            elif isinstance(value, dict) and '@type' in value:
+                # Collection might have been compacted away, wrap value
+                return mapper(type, container([value]))
             elif value is None:
                 return value
 
@@ -477,7 +517,8 @@ class JSONLDMixin(ReferenceMixin):
 
         if '@type' in data:
             # @type could be a string or a list - make sure it is a list
-            type_ = data['@type']
+            expanded = pyld.jsonld.expand(data)[0]
+            type_ = expanded['@type']
             if not isinstance(type_, list):
                 type_ = [type_]
             # If a json-ld class has multiple types, they are in a

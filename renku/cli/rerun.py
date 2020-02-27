@@ -41,27 +41,21 @@ a tool, then these files must be recreated as well. See the explanation in
 :ref:`updating siblings <cli-update-with-siblings>`.
 """
 
-import os
 import sys
 import uuid
+from pathlib import Path
 
 import click
+from git import Actor
 
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph
 from renku.core.commands.options import option_siblings
-from renku.core.models.cwl.ascwl import ascwl
-from renku.core.models.cwl.types import File
-
-
-def _format_default(client, value):
-    """Format default values."""
-    if isinstance(value, File):
-        return os.path.relpath(
-            str((client.workflow_path / value.path).resolve())
-        )
-    return value
+from renku.core.models.locals import with_reference
+from renku.core.models.provenance.activities import WorkflowRun
+from renku.core.models.workflow.converters.cwl import CWLConverter
+from renku.version import __version__, version_url
 
 
 def show_inputs(client, workflow):
@@ -69,8 +63,8 @@ def show_inputs(client, workflow):
     for input_ in workflow.inputs:
         click.echo(
             '{id}: {default}'.format(
-                id=input_.id,
-                default=_format_default(client, input_.default),
+                id=input_._id,
+                default=input_.consumes.path,
             )
         )
     sys.exit(0)
@@ -78,19 +72,22 @@ def show_inputs(client, workflow):
 
 def edit_inputs(client, workflow):
     """Edit workflow inputs."""
-    types = {
-        'int': int,
-        'string': str,
-        'File': lambda x: File(path=os.path.abspath(x)),
-    }
     for input_ in workflow.inputs:
-        convert = types.get(input_.type, str)
-        input_.default = convert(
-            click.prompt(
-                '{0.id} ({0.type})'.format(input_),
-                default=_format_default(client, input_.default),
-            )
+        new_path = click.prompt(
+            '{0._id}'.format(input_),
+            default=input_.consumes.path,
         )
+        input_.consumes.path = str(
+            Path(new_path).resolve().relative_to(client.path)
+        )
+
+    for step in workflow.subprocesses:
+        for argument in step.arguments:
+            argument.value = click.prompt(
+                '{0._id}'.format(argument),
+                default=argument.value,
+            )
+
     return workflow
 
 
@@ -151,43 +148,50 @@ def rerun(client, revision, roots, siblings, inputs, paths):
     # NOTE The workflow creation is done before opening a new file.
     workflow = inputs(
         client,
-        graph.ascwl(
+        graph.as_renku_workflow(
             input_paths=roots,
             output_paths=output_paths,
             outputs=outputs,
         )
     )
 
+    wf, path = CWLConverter.convert(workflow, client)
+
     # Don't compute paths if storage is disabled.
     if client.check_external_storage():
         # Make sure all inputs are pulled from a storage.
-        paths_ = (
-            path
-            for _, path in workflow.iter_input_files(client.workflow_path)
-        )
+        paths_ = (i.consumes.path for i in workflow.inputs)
         client.pull_paths_from_storage(*paths_)
-
-    # Store the generated workflow used for updating paths.
-    import yaml
-
-    output_file = client.workflow_path / '{0}.cwl'.format(uuid.uuid4().hex)
-    with output_file.open('w') as f:
-        f.write(
-            yaml.dump(
-                ascwl(
-                    workflow,
-                    filter=lambda _, x: x is not None,
-                    basedir=client.workflow_path,
-                ),
-                default_flow_style=False
-            )
-        )
 
     # Execute the workflow and relocate all output files.
     # FIXME get new output paths for edited tools
     # output_paths = {path for _, path in workflow.iter_output_files()}
     execute(
         client,
-        output_file,
+        path,
         output_paths=output_paths,
     )
+
+    paths = [o.produces.path for o in workflow.outputs]
+
+    client.repo.git.add(*paths)
+
+    if client.repo.is_dirty():
+        commit_msg = ('renku rerun: '
+                      'committing {} newly added files').format(len(paths))
+
+        committer = Actor('renku {0}'.format(__version__), version_url)
+
+        client.repo.index.commit(
+            commit_msg,
+            committer=committer,
+            skip_hooks=True,
+        )
+
+    workflow_name = '{0}_rerun.yaml'.format(uuid.uuid4().hex)
+
+    path = client.workflow_path / workflow_name
+
+    with with_reference(path):
+        run = WorkflowRun.from_run(workflow, client, path)
+        run.to_yaml()

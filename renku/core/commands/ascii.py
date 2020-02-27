@@ -22,6 +22,8 @@ import re
 import attr
 import click
 
+from renku.core.models.workflow.run import Run
+
 try:
     from itertools import zip_longest
 except ImportError:
@@ -43,6 +45,7 @@ def _format_sha1(graph, node):
             )
     except KeyError:
         pass
+
     return click.style(node.commit.hexsha[:8], fg='yellow')
 
 
@@ -122,10 +125,8 @@ class DAG(object):
         indentation = ' ' * len(_RE_ESC.sub('', formatted_sha1))
 
         # Handle subprocesses of a workflow.
-        from renku.core.models.provenance.processes import Process
-
         part_of = None
-        if isinstance(node, Process):
+        if isinstance(node, Run):
             part_of = getattr(node.activity, 'part_of', None)
 
         if part_of:
@@ -147,7 +148,6 @@ class DAG(object):
             )
 
         parent = getattr(node, 'parent', None)
-
         if parent and hasattr(parent, 'members'):
             result.append(
                 '{indentation} (part of {parent_path} directory)'.format(
@@ -178,8 +178,8 @@ class DAG(object):
         existing_columns = []
         new_columns = []
         for parent in parents:
-            assert parent != (
-                node.commit, node.path
+            assert (parent[0].hexsha, parent[1]) != (
+                node.commit.hexsha, node.path
             ), 'Self reference is not allowed.'
 
             if parent in self.columns:

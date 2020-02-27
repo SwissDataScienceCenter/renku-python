@@ -36,13 +36,13 @@ def test_limit_log(runner, project, run, subdirectory):
     assert output.exists()
 
     relative_path = os.path.relpath(output, os.getcwd())
-    cmd = ['log', '--revision', 'HEAD^..', relative_path]
+    cmd = ['log', '--revision', 'HEAD^^..', relative_path]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert data.name not in result.output
     assert output.name in result.output
 
-    cmd = ['log', '--revision', 'HEAD^']
+    cmd = ['log', '--revision', 'HEAD^^^']
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert data.name in result.output

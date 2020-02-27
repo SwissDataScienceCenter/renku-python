@@ -39,9 +39,11 @@ class Process(CommitMixin):
     """Represent a process."""
 
     _activity = jsonld.ib(
+        default=None,
         context='prov:activity',
         kw_only=True,
-        converter=weakref.ref,
+        converter=lambda value: weakref.ref(value)
+        if value is not None else None,
         type='renku.core.models.provenance.activities.Activity'
     )
 

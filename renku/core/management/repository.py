@@ -33,6 +33,8 @@ from werkzeug.utils import cached_property, secure_filename
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
+from renku.core.models.entities import Collection
+from renku.core.models.locals import with_reference
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
 
@@ -98,6 +100,8 @@ class RepositoryApiMixin(GitCore):
         'requirements\\.txt'
     ]
 
+    _path_activities = {}
+
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         #: Configure Renku path.
@@ -125,6 +129,10 @@ class RepositoryApiMixin(GitCore):
     @property
     def lock(self):
         """Create a Renku config lock."""
+        import logging
+
+        logging.getLogger('filelock').setLevel(logging.ERROR)
+
         return filelock.FileLock(
             str(self.renku_path.with_suffix(self.LOCK_SUFFIX)),
             timeout=0,
@@ -189,7 +197,6 @@ class RepositoryApiMixin(GitCore):
         :param commit: Commit to process. (default: ``HEAD``)
         :param path: Process a specific CWL file.
         """
-        from renku.core.models.cwl.ascwl import CWLClass
         from renku.core.models.provenance.activities import Activity
 
         commit = commit or self.repo.head.commit
@@ -199,31 +206,42 @@ class RepositoryApiMixin(GitCore):
         if path is None:
             for file_ in commit.stats.files.keys():
                 # Find a process (CommandLineTool or Workflow)
-                if self.is_cwl(file_):
+                if self.is_workflow(file_):
                     if path is not None:
                         # Regular activity since it edits multiple CWL files
                         return Activity(commit=commit, client=self)
 
                     path = file_
 
+        if not path:
+            # search for activities a file could have been a part of
+            activities = self.activities_for_paths(
+                commit.stats.files.keys(), file_commit=commit, revision='HEAD'
+            )
+            if len(activities) > 1:
+                raise errors.CommitProcessingError(
+                    'Found multiple activities that produced the same entity'
+                    'at commit {}'.format(commit)
+                )
+            if activities:
+                return activities[0]
+
         if path:
             data = (commit.tree / path).data_stream.read()
-            process = CWLClass.from_cwl(
-                yaml.safe_load(data), __reference__=Path(path)
+            process = Activity.from_jsonld(
+                yaml.safe_load(data),
+                client=self,
+                commit=commit,
+                __reference__=path
             )
 
-            return process.create_run(
-                commit=commit,
-                client=self,
-                process=process,
-                path=path,
-            )
+            return process
 
         return Activity(commit=commit, client=self)
 
-    def is_cwl(self, path):
+    def is_workflow(self, path):
         """Check if the path is a valid CWL file."""
-        return path.startswith(self.cwl_prefix) and path.endswith('.cwl')
+        return path.startswith(self.cwl_prefix) and path.endswith('.yaml')
 
     def find_previous_commit(self, paths, revision='HEAD', return_first=False):
         """Return a previous commit for a given path starting from ``revision``.
@@ -359,14 +377,13 @@ class RepositoryApiMixin(GitCore):
     @contextmanager
     def with_workflow_storage(self):
         """Yield a workflow storage."""
-        from renku.core.models.cwl.ascwl import ascwl
         from renku.core.models.cwl.workflow import Workflow
 
         workflow = Workflow()
         yield workflow
 
         for step in workflow.steps:
-            step_name = '{0}_{1}.cwl'.format(
+            step_name = '{0}_{1}.yaml'.format(
                 uuid.uuid4().hex,
                 secure_filename('_'.join(step.run.baseCommand)),
             )
@@ -375,18 +392,15 @@ class RepositoryApiMixin(GitCore):
             if not workflow_path.exists():
                 workflow_path.mkdir()
 
-            step_path = workflow_path / step_name
-            with step_path.open('w') as step_file:
-                yaml.dump(
-                    ascwl(
-                        # filter=lambda _, x: not (x is False or bool(x)
-                        step.run,
-                        filter=lambda _, x: x is not None,
-                        basedir=workflow_path,
-                    ),
-                    stream=step_file,
-                    default_flow_style=False
+            path = workflow_path / step_name
+
+            with with_reference(path):
+                run = step.run.generate_process_run(
+                    client=self,
+                    commit=self.repo.head.commit,
+                    path=path,
                 )
+                run.to_yaml()
 
     def init_repository(self, force=False):
         """Initialize an empty Renku repository."""
@@ -406,6 +420,37 @@ class RepositoryApiMixin(GitCore):
 
         # verify if author information is available
         Person.from_git(self.repo)
+
+    def activities_for_paths(self, paths, file_commit=None, revision='HEAD'):
+        """Get all activities involving a path."""
+        from renku.core.models.provenance.activities import Activity
+
+        def paths_in_generation(paths, generation):
+            if isinstance(generation.entity, Collection):
+                return any(p.startswith(generation.path) for p in paths)
+            return generation.path in paths
+
+        result = []
+        for path in self.workflow_path.rglob('*.yaml'):
+            if (path, revision) in self._path_activities:
+                activity = self._path_activities[(path, revision)]
+            else:
+                try:
+                    commit = self.find_previous_commit(path, revision=revision)
+                except KeyError:
+                    continue
+
+                activity = Activity.from_yaml(path, client=self, commit=commit)
+
+                self._path_activities[(path, revision)] = activity
+
+            if any(
+                paths_in_generation(paths, g) and
+                (not file_commit or g.commit.hexsha == file_commit.hexsha)
+                for g in activity.generated
+            ):
+                result.append(activity)
+        return result
 
     def import_from_template(self, template_path, metadata, force=False):
         """Render template files from a template directory."""
