@@ -8,11 +8,12 @@ Types of Contributions
 ----------------------
 
 Report issues / contacting developers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Report bugs at our issue tracker_.
+Report bugs on our issue tracker_.
 
-If you want to submit a bug, improvement or feature suggestions feel free to open a corresponding issue on GitHub.
+If you want to submit a bug, improvement or feature suggestions feel free to open a
+corresponding issue on GitHub.
 
 If you are reporting a bug, please help us to speed up the diagnosing a problem
 by providing us with as much as information as possible.
@@ -40,8 +41,8 @@ is open to whoever wants to implement it.
 Improvement requests
 ~~~~~~~~~~~~~~~~~~~~
 
-If you see some of the things could be done in a better way, feel free to submit a issue with a improvement suggestion.
-In suggestion you might include motivation for improvement and why new solution would be improvement.
+If you see room for improvement, please open an issue with a suggestion.
+Please motivate your suggestion by illustrating a problem it solves.
 
 Write Documentation
 ~~~~~~~~~~~~~~~~~~~
@@ -75,8 +76,8 @@ Ready to contribute? Here's how to set up `renku` for local development.
 
       $ git clone git@github.com:your_name_here/renku.git
 
-3. Ensure you have your development environment set up. For this we encourage usage of `pipenv`
-(other virtual environment tools could be used as well) `pyenv`:
+3. Ensure you have your development environment set up. For this we
+encourage usage of `pipenv` and `pyenv`:
 
    .. code-block:: console
 
@@ -138,25 +139,26 @@ Ready to contribute? Here's how to set up `renku` for local development.
 Commit message guidelines
 -------------------------
 
-This project is using conventional commits style for generation of changelog upon each release. Therefore,
-it's important that our commit messages convey what they do correctly. Commit message should always follow this pattern:
+This project is using conventional commits style for generation of changelog upon
+each release. Therefore, it's important that our commit messages convey what they
+do correctly. Commit message should always follow this pattern:
 
    $ %{type}(%{scope}): %{description}
 
 **Type's used for describing commit's which will end up in changelog are** :code:`fix:` & :code:`feat:`.
 
-Please note, that fix type here is only for user facing bug fixes and not fixes on tests or CI.
+Please note that the :code:`fix` type here is only for user-facing bug fixes and not fixes on tests or CI.
 For those, please use: :code:`ci:` or :code:`test:`
 
 Full list of types which are in use:
-  * :code:`feat:` - Used for new user facing features. This should be related to one of the predefined scopes. If a scope does not exist, new scope should be proposed for a adoption.
-  * :code:`fix:` - Used for fixing user facing bugs. This should be related to one of the predefined scopes.
-  * :code:`chore:` - Used for change which are not user facing. Scope should be a module name in which chore occurred.
-  * :code:`test:` - Used for fixing existing or adding new tests. Scope should relate to a module name which is being tested.
+  * :code:`feat:` - Used for new user-facing features. This should be related to one of the predefined scopes. If a scope does not exist, a new scope may be proposed.
+  * :code:`fix:` - Used for fixing user-facing bugs. This should be related to one of the predefined scopes.
+  * :code:`chore:` - Used for changes which are not user-facing. The scope should be a module name in which chore occurred.
+  * :code:`tests:` - Used for fixing existing or adding new tests. The scope should relate to a module name which is being tested.
   * :code:`docs:` - Used for adding more documentation. If documentation is not related to predefined user scopes, it can be omitted.
   * :code:`refactor` - Used for changing the code structure. Scope being used here should be module name. If refactoring is across multiple modules, scope could be omitted or PR broken down into smaller chunks.
 
-Full list of user facing scope's which are in use:
+Full list of user-facing scopes which are in use:
   * :code:`graph` - Scope for describing knowledge graph which is being build with users usage of the system.
   * :code:`workflow` - Scope for describing reproducibility flow.
   * :code:`dataset` - Scope for describing datasets.
