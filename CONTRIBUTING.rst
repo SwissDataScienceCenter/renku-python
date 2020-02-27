@@ -34,8 +34,9 @@ is open to whoever wants to implement it.
 Implement Features
 ~~~~~~~~~~~~~~~~~~
 
-Look through the GitHub issues for features. Anything tagged with "feature"
-is open to whoever wants to implement it.
+Look through the GitHub issues for proposal discussions or epics and feel free to
+express your proposal on the topic. Once topic has been flushed out and we have
+decided how feature should be implemented, we can start implementing them.
 
 
 Improvement requests
@@ -139,9 +140,11 @@ encourage usage of `pipenv` and `pyenv`:
 Commit message guidelines
 -------------------------
 
-This project is using conventional commits style for generation of changelog upon
+This project is using conventional_ commits style for generation of changelog upon
 each release. Therefore, it's important that our commit messages convey what they
 do correctly. Commit message should always follow this pattern:
+
+.. _conventional: https://www.conventionalcommits.org/en/v1.0.0/
 
    $ %{type}(%{scope}): %{description}
 
