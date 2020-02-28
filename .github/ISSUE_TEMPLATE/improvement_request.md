@@ -8,5 +8,3 @@ about: Suggest an improvement/optimization for this project
 
 **Is your improvement request related to a use case or a component design? Please describe.**
 A clear and concise description of what the use case is.
-
-**Is your improvement request related to a use case or component? Please describe.**
