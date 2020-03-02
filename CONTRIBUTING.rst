@@ -166,7 +166,7 @@ Full list of user-facing scopes which are in use:
   * :code:`workflow` - Scope for describing reproducibility flow.
   * :code:`dataset` - Scope for describing datasets.
   * :code:`core` - General scope for describing all core elements of Renku project.
-  * :code:`svc` - General scope for describing interaction or operation of Renku as a service.
+  * :code:`service` - General scope for describing interaction or operation of Renku as a service.
   * :code:`cli` - General scope for describing interaction through CLI.
 
 
