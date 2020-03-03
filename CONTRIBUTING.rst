@@ -157,7 +157,7 @@ Full list of types which are in use:
   * :code:`feat:` - Used for new user-facing features. This should be related to one of the predefined scopes. If a scope does not exist, a new scope may be proposed.
   * :code:`fix:` - Used for fixing user-facing bugs. This should be related to one of the predefined scopes.
   * :code:`chore:` - Used for changes which are not user-facing. The scope should be a module name in which chore occurred.
-  * :code:`tests:` - Used for fixing existing or adding new tests. The scope should relate to a module name which is being tested.
+  * :code:`tests:` - Used for fixing existing or adding new tests. The scope should relate to a predefined scope or be omitted.
   * :code:`docs:` - Used for adding more documentation. If documentation is not related to predefined user scopes, it can be omitted.
   * :code:`refactor` - Used for changing the code structure. Scope being used here should be module name. If refactoring is across multiple modules, scope could be omitted or PR broken down into smaller chunks.
 
