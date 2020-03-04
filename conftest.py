@@ -39,6 +39,7 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
+from walrus import Database
 
 
 @pytest.fixture(scope='module')
@@ -605,12 +606,21 @@ def datapack_tar(directory_tree):
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from renku.service.cache.base import BaseCache
+    from renku.service.cache.models.user import User
+    from renku.service.cache.models.job import Job
     from renku.service.jobs.queues import WorkerQueues
 
     monkey_patch = MonkeyPatch()
     with monkey_patch.context() as m:
-        m.setattr(WorkerQueues, 'connection', fakeredis.FakeRedis())
-        m.setattr(BaseCache, 'cache', fakeredis.FakeRedis())
+        fake_redis = fakeredis.FakeRedis()
+        fake_model_db = Database(connection_pool=fake_redis.connection_pool)
+
+        m.setattr(WorkerQueues, 'connection', fake_redis)
+        m.setattr(BaseCache, 'cache', fake_redis)
+        m.setattr(BaseCache, 'model_db', fake_model_db)
+
+        m.setattr(Job, '__database__', fake_model_db)
+        m.setattr(User, '__database__', fake_model_db)
 
         yield
 
@@ -678,7 +688,8 @@ def integration_repo(headers, url_components):
 def integration_lifecycle(svc_client, mock_redis):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
-    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
+    # 'https://dev.renku.ch/gitlab/contact/integration-test'
+    remote_url = 'https://gitlab.com/justsam.io/myrepo'
     url_components = GitURL.parse(remote_url)
 
     headers = {

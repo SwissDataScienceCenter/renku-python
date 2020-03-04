@@ -15,10 +15,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache configuration."""
-import os
+"""Renku service cache project related models."""
+from walrus import Model
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
-REDIS_DATABASE = int(os.getenv('REDIS_DATABASE', 0))
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+
+class Project(Model):
+    """User project object."""
+
+    pass

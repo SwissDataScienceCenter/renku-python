@@ -27,9 +27,9 @@ from renku.core.commands.dataset import add_file, create_dataset, \
     list_datasets, list_files
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
+from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
-from renku.service.jobs.constants import USER_JOB_STATE_ENQUEUED
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
@@ -240,11 +240,12 @@ def create_dataset_view(user, cache):
 @handle_validation_except
 @requires_cache
 @requires_identity
-def import_dataset_view(user, cache):
+def import_dataset_view(user_data, cache):
     """Import a dataset view."""
+    user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
-    project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
+    project = cache.get_project(user_data, ctx['project_id'])
+    project_path = make_project_path(user_data, project)
 
     if not project_path:
         return error_response(
@@ -256,12 +257,12 @@ def import_dataset_view(user, cache):
         'job_id': uuid.uuid4().hex,
         'state': USER_JOB_STATE_ENQUEUED,
     }
-    cache.create_job(user, user_job)
+    job = cache.make_job(user, user_job)
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
             dataset_import,
-            user,
+            user_data,
             user_job['job_id'],
             ctx['project_id'],
             ctx['dataset_uri'],
@@ -271,4 +272,4 @@ def import_dataset_view(user, cache):
             result_ttl=int(os.getenv('WORKER_DATASET_JOBS_RESULT_TTL', 500))
         )
 
-    return result_response(DatasetImportResponseRPC(), user_job)
+    return result_response(DatasetImportResponseRPC(), job)

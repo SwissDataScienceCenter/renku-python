@@ -790,19 +790,22 @@ def test_import_dataset_job_enqueue(
         }),
         headers=headers,
     )
+
     assert_rpc_response(response)
     assert {
         'created_at',
         'job_id',
     } == set(response.json['result'])
 
-    user_job = cache.get_job(user, response.json['result']['job_id'])
-    assert response.json['result']['job_id'] == user_job['job_id']
+    user_job = cache.get_job(
+        cache.ensure_user(user), response.json['result']['job_id']
+    )
+    assert response.json['result']['job_id'] == user_job.job_id
 
     response = client.get('/jobs', headers=headers)
     assert_rpc_response(response)
     assert response.json['result']['jobs']
 
-    assert user_job['job_id'] in [
+    assert user_job.job_id in [
         job['job_id'] for job in response.json['result']['jobs']
     ]

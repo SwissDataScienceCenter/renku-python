@@ -22,9 +22,8 @@ from renku.core.commands.dataset import import_dataset
 from renku.core.errors import ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
-from renku.service.jobs.constants import USER_JOB_STATE_COMPLETED, \
-    USER_JOB_STATE_FAILED, USER_JOB_STATE_IN_PROGRESS
-from renku.service.serializers.jobs import UserJob
+from renku.service.cache.serializers.job import USER_JOB_STATE_COMPLETED, \
+    USER_JOB_STATE_FAILED, USER_JOB_STATE_IN_PROGRESS, JobSchema
 from renku.service.utils import make_project_path, repo_sync
 from renku.service.views.decorators import requires_cache
 
@@ -39,7 +38,7 @@ def fail_job(cache, user_job, user, error):
 class DatasetImportJobProcess(DownloadProgressCallback):
     """Track dataset import job progress."""
 
-    schema = UserJob()
+    schema = JobSchema()
 
     def __init__(self, cache, user, job):
         """Construct dataset import job progress."""
@@ -85,7 +84,7 @@ def dataset_import(
     timeout=None,
 ):
     """Job for dataset import."""
-    user_job = cache.get_job(user, user_job_id)
+    user_job = cache.get_job(cache.ensure_user(user), user_job_id)
     project = cache.get_project(user, project_id)
     project_path = make_project_path(user, project)
 
