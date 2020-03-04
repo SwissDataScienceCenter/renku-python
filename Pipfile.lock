@@ -222,10 +222,10 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:088daec3f2962c447f2489bb94147eca59aac946e6423e5bce35f9fe558053ac",
-                "sha256:7eae22b9a44cc4cb7fc67e6a1ab3e066cddb51c03ed0632472223b88cac13800"
+                "sha256:2f501469fa256f52c076ed679e2eb444332c5e7eb120abedaad13cfed0d9149f",
+                "sha256:c8bef50f1954eccc6667ccf6dcf40cfeb305e831790d85cace9aa4e5af68b0be"
             ],
-            "version": "==2.0.20200224214940"
+            "version": "==2.0.20200303141624"
         },
         "decorator": {
             "hashes": [
@@ -792,10 +792,10 @@
         },
         "responses": {
             "hashes": [
-                "sha256:33d8994990de31a9fbb8c889c3a378dac296b821f37330c845608ae565e7fca3",
-                "sha256:859a7f8495a069ce835620bb4bb111688f593a6f8873a3335a99c31a5aef9a9a"
+                "sha256:0474ce3c897fbcc1aef286117c93499882d5c440f06a805947e4b1cb5ab3d474",
+                "sha256:f83613479a021e233e82d52ffb3e2e0e2836d24b0cc88a0fa31978789f78d0e5"
             ],
-            "version": "==0.10.11"
+            "version": "==0.10.12"
         },
         "rq": {
             "hashes": [
@@ -845,10 +845,10 @@
         },
         "schema-salad": {
             "hashes": [
-                "sha256:1c916cfeec2156c60b775a14e3cd91225fe4aa0e34fea33012e23db246e0be9d",
-                "sha256:e707fc849e19c48ff3d06c0fed3dcba7b7c5b5e763d2d3377de225351b1fcb26"
+                "sha256:6347d694b5127f31f91cbdf811dfaac293dea57f297e2ed5c5aadd6dadab7893",
+                "sha256:f5944760684dac1dbb8adbb8d6116f6dd50184894dfc9bae3e4827b6e78d28ae"
             ],
-            "version": "==5.0.20200220195218"
+            "version": "==5.0.20200302192450"
         },
         "sentry-sdk": {
             "hashes": [
@@ -1040,11 +1040,11 @@
         },
         "zipp": {
             "hashes": [
-                "sha256:12248a63bbdf7548f89cb4c7cda4681e537031eda29c02ea29674bc6854460c2",
-                "sha256:7c0f8e91abc0dc07a5068f315c52cb30c66bfbc581e5b50704c8a2f6ebae794a"
+                "sha256:aa36550ff0c0b7ef7fa639055d797116ee891440eac1a56f378e2d3179e0320b",
+                "sha256:c599e4d75c98f6798c509911d08a22e6c021d074469042177c8c86fb92eefd96"
             ],
             "markers": "python_version < '3.8'",
-            "version": "==3.0.0"
+            "version": "==3.1.0"
         }
     },
     "develop": {}
