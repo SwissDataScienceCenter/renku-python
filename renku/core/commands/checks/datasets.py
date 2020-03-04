@@ -59,9 +59,7 @@ def check_missing_files(client):
         for file_ in dataset.files:
             filepath = Path(file_.path)
             if not filepath.exists():
-                missing[str(
-                    path.parent.relative_to(client.renku_datasets_path)
-                )].append(str(filepath))
+                missing[dataset.name].append(str(filepath))
 
     if not missing:
         return True, None

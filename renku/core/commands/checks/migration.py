@@ -15,22 +15,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define repository checks for :program:`renku doctor`."""
+"""Warn if migration is required."""
+from renku.core.commands.echo import ERROR, WARNING
+from renku.core.management.migrate import is_migration_required, \
+    is_project_unsupported
 
-from .datasets import check_dataset_metadata, check_missing_files
-from .githooks import check_git_hooks_installed
-from .migration import check_migration
-from .references import check_missing_references
-from .validate_shacl import check_datasets_structure, check_project_structure
 
-# Checks will be executed in the order as they are listed in __all__.
-# They are mostly used in ``doctor`` command to inspect broken things.
-__all__ = (
-    'check_migration',
-    'check_git_hooks_installed',
-    'check_dataset_metadata',
-    'check_missing_files',
-    'check_missing_references',
-    'check_project_structure',
-    'check_datasets_structure',
-)
+def check_migration(client):
+    """Check for project version."""
+    if is_migration_required(client):
+        problems = (
+            WARNING + 'Project requires migration.\n' +
+            '  (use "renku migrate" to fix this issue)\n'
+        )
+    elif is_project_unsupported(client):
+        problems = (
+            ERROR +
+            'Project version is not supported by your version of Renku.\n' +
+            '  (upgrade your Renku version)\n'
+        )
+    else:
+        return True, None
+
+    return False, problems

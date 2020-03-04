@@ -204,7 +204,7 @@ def cli(ctx, path, renku_home, use_external_storage):
         check_for_migration()
 
 
-SAFE_COMMANDS = ['clone', 'githooks', 'help', 'migrate']
+SAFE_COMMANDS = ['clone', 'doctor', 'githooks', 'help', 'migrate']
 """Commands that don't require migration to run."""
 
 

@@ -165,14 +165,17 @@ def _fix_uncommitted_labels(client):
     """Ensure files have correct label instantiation."""
     for dataset in client.datasets.values():
         for file_ in dataset.files:
-            _, commit, _ = client.resolve_in_submodules(
-                client.find_previous_commit(file_.path, revision='HEAD'),
-                file_.path,
-            )
-            file_.commit = commit
-            if 'UNCOMMITTED' in file_._label or '@' not in file_._label:
-                file_._label = file_.default_label()
-                file_._id = file_.default_id()
+            try:
+                _, commit, _ = client.resolve_in_submodules(
+                    client.find_previous_commit(file_.path, revision='HEAD'),
+                    file_.path,
+                )
+                file_.commit = commit
+                if 'UNCOMMITTED' in file_._label or '@' not in file_._label:
+                    file_._label = file_.default_label()
+                    file_._id = file_.default_id()
+            except KeyError:
+                pass
         dataset.to_yaml()
 
 
