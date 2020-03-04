@@ -24,7 +24,7 @@ from renku.core.commands.migrate import migrate_project
 @click.command()
 def migrate():
     """Migrate to latest Renku version."""
-    if migrate_project():
+    if migrate_project(progress_callback=click.secho):
         click.secho('OK', fg='green')
     else:
         click.secho('No migrations required.')

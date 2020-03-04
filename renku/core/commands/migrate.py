@@ -33,6 +33,6 @@ def check_for_migration(client):
 
 
 @pass_local_client(clean=True, commit=True, commit_empty=False)
-def migrate_project(client, commit_message=None):
+def migrate_project(client, progress_callback=None, commit_message=None):
     """Migrate all project's entities."""
-    return migrate(client=client)
+    return migrate(client=client, progress_callback=progress_callback)

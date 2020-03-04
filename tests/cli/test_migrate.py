@@ -138,6 +138,7 @@ def test_migrations_runs(isolated_runner, old_project):
     """Check that migration can be run more than once."""
     result = isolated_runner.invoke(cli, ['migrate'])
     assert 0 == result.exit_code
+    assert 'Successfully applied' in result.output
     assert 'OK' in result.output
 
     result = isolated_runner.invoke(cli, ['migrate'])
