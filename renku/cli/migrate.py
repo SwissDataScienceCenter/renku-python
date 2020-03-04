@@ -18,13 +18,24 @@
 """Migrate project to the latest Renku version."""
 import click
 
-from renku.core.commands.migrate import migrate_project
+from renku.core.commands.migrate import migrate_project, \
+    migrate_project_no_commit
 
 
 @click.command()
-def migrate():
+@click.option(
+    '--no-commit',
+    is_flag=True,
+    help='Do not commit changes after the migration.'
+)
+def migrate(no_commit):
     """Migrate to latest Renku version."""
-    if migrate_project(progress_callback=click.secho):
+    if no_commit:
+        result = migrate_project_no_commit(progress_callback=click.secho)
+    else:
+        result = migrate_project(progress_callback=click.secho)
+
+    if result:
         click.secho('OK', fg='green')
     else:
         click.secho('No migrations required.')

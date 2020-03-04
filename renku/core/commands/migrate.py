@@ -36,3 +36,9 @@ def check_for_migration(client):
 def migrate_project(client, progress_callback=None, commit_message=None):
     """Migrate all project's entities."""
     return migrate(client=client, progress_callback=progress_callback)
+
+
+@pass_local_client(clean=True, commit=False)
+def migrate_project_no_commit(client, progress_callback=None):
+    """Migrate all project's entities but do not commit changes."""
+    return migrate(client=client, progress_callback=progress_callback)

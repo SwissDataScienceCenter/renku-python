@@ -165,3 +165,15 @@ def test_migration_version():
     max_migration_version = max([m[0] for m in migrations])
 
     assert max_migration_version == SUPPORTED_PROJECT_VERSION
+
+
+@pytest.mark.migration
+def test_migrations_no_commit(isolated_runner, old_project):
+    """Check --no-commit flag doesn't commit changes."""
+    client = LocalClient(path=old_project['path'])
+    sha_before = client.repo.head.object.hexsha
+
+    result = isolated_runner.invoke(cli, ['migrate', '--no-commit'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+    assert sha_before == client.repo.head.object.hexsha
