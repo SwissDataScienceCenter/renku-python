@@ -72,3 +72,4 @@ def test_dataset_import_job(doi, svc_client_with_repo):
 
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
+    assert f'service: dataset import {doi}' == new_commit.message

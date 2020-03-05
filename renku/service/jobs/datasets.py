@@ -95,6 +95,7 @@ def dataset_import(
                 dataset_uri,
                 short_name,
                 extract,
+                commit_message=f'service: dataset import {dataset_uri}',
                 progress=DatasetImportJobProcess(cache, user, user_job)
             )
         except (HTTPError, ParameterError) as exp:
