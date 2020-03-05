@@ -26,6 +26,7 @@ from renku.core.commands.migrate import migrate_project, \
 @click.option(
     '--no-commit',
     is_flag=True,
+    hidden=True,
     help='Do not commit changes after the migration.'
 )
 def migrate(no_commit):
