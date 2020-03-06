@@ -15,16 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku JSON-LD migrations."""
-
-from renku.core.models.migrations.dataset import migrate_absolute_paths, \
-    migrate_dataset_file_id, migrate_dataset_schema, migrate_doi_identifier, \
-    migrate_same_as_structure
-
-JSONLD_MIGRATIONS = {
-    'dctypes:Dataset': [migrate_dataset_schema, migrate_absolute_paths],
-    'schema:Dataset': [
-        migrate_absolute_paths, migrate_doi_identifier,
-        migrate_same_as_structure, migrate_dataset_file_id
-    ],
-}
+"""Renku migrations."""

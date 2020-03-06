@@ -16,7 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Check your system and repository for potential problems."""
-from .client import pass_local_client
+import traceback
+
+from renku.core.commands.client import pass_local_client
+from renku.core.commands.echo import ERROR
 
 DOCTOR_INFO = """\
 Please note that the diagnosis report is used to help Renku maintainers with
@@ -34,7 +37,13 @@ def doctor_check(client):
     problems = []
 
     for check in checks.__all__:
-        ok, problems_ = getattr(checks, check)(client)
+        try:
+            ok, problems_ = getattr(checks, check)(client)
+        except Exception:
+            ok = False
+            tb = '\n\t'.join(traceback.format_exc().split('\n'))
+            problems_ = f'{ERROR}Exception raised when running {check}\n\t{tb}'
+
         is_ok &= ok
 
         if problems_:
