@@ -19,7 +19,7 @@
 from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import import_dataset
-from renku.core.errors import ParameterError
+from renku.core.errors import DatasetExistsError, ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.jobs.constants import USER_JOB_STATE_COMPLETED, \
@@ -32,6 +32,10 @@ from renku.service.views.decorators import requires_cache
 def fail_job(cache, user_job, user, error):
     """Mark job as failed."""
     user_job['state'] = USER_JOB_STATE_FAILED
+
+    if 'extras' not in user_job:
+        user_job['extras'] = {}
+
     user_job['extras']['error'] = error
     cache.set_job(user, user_job)
 
@@ -98,7 +102,7 @@ def dataset_import(
                 commit_message=f'service: dataset import {dataset_uri}',
                 progress=DatasetImportJobProcess(cache, user, user_job)
             )
-        except (HTTPError, ParameterError) as exp:
+        except (HTTPError, ParameterError, DatasetExistsError) as exp:
             fail_job(cache, user_job, user, str(exp))
 
             # Reraise exception, so we see trace in job metadata.
