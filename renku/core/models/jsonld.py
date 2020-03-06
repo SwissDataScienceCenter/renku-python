@@ -34,7 +34,6 @@ from attr._make import Factory, fields
 
 from renku.core.compat import pyld
 from renku.core.models.locals import ReferenceMixin, with_reference
-from renku.core.models.migrations import JSONLD_MIGRATIONS
 
 KEY = '__json_ld'
 KEY_CLS = '__json_ld_cls'
@@ -503,23 +502,6 @@ class JSONLDMixin(ReferenceMixin):
 
         data.setdefault('@context', cls._jsonld_context)
 
-        schema_type = data.get('@type')
-        migrations = []
-
-        if isinstance(schema_type, list):
-            for schema in schema_type:
-                mig_ = JSONLD_MIGRATIONS.get(schema)
-                if mig_:
-                    migrations += mig_
-
-        if isinstance(schema_type, str) and not migrations:
-            migrations += JSONLD_MIGRATIONS.get(schema_type, [])
-
-        for migration in set(migrations):
-            data = migration(data, client)
-            if __source__:
-                __source__ = migration(__source__, client)
-
         if data['@context'] != cls._jsonld_context:
             # merge new context into old context to prevent properties
             # getting lost in jsonld expansion
@@ -571,17 +553,15 @@ class JSONLDMixin(ReferenceMixin):
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
-        import yaml
+        source = read_yaml(path)
 
-        with path.open(mode='r') as fp:
-            source = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
-            self = cls.from_jsonld(
-                source,
-                client=client,
-                commit=commit,
-                __reference__=path,
-                __source__=deepcopy(source)
-            )
+        self = cls.from_jsonld(
+            source,
+            client=client,
+            commit=commit,
+            __reference__=path,
+            __source__=deepcopy(source)
+        )
         return self
 
     def asjsonld(self):
@@ -594,12 +574,23 @@ class JSONLDMixin(ReferenceMixin):
 
     def to_yaml(self):
         """Store an instance to the referenced YAML file."""
-        dumper = yaml.dumper.Dumper
-        dumper.ignore_aliases = lambda _, data: True
+        jsonld_ = self.asjsonld()
+        write_yaml(path=self.__reference__, data=jsonld_)
 
-        with self.__reference__.open('w') as fp:
-            jsonld_ = self.asjsonld()
-            yaml.dump(jsonld_, fp, default_flow_style=False, Dumper=dumper)
+
+def read_yaml(path):
+    """Load YAML file and return its content as a dict."""
+    with Path(path).open(mode='r') as fp:
+        return yaml.load(fp, Loader=NoDatesSafeLoader) or {}
+
+
+def write_yaml(path, data):
+    """Store data to a YAML file."""
+    dumper = yaml.dumper.Dumper
+    dumper.ignore_aliases = lambda _, data: True
+
+    with Path(path).open('w') as fp:
+        yaml.dump(data, fp, default_flow_style=False, Dumper=dumper)
 
 
 def fullname(cls):

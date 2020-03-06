@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,23 +15,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Migrate files and metadata to the latest Renku version."""
-from renku.core.commands.checks.migration import STRUCTURE_MIGRATIONS
+"""Migrate project to the latest Renku version."""
+from renku.core.errors import MigrationRequired, ProjectNotSupported
+from renku.core.management.migrate import is_migration_required, \
+    is_project_unsupported, migrate
 
 from .client import pass_local_client
 
 
-@pass_local_client(
-    clean=True, commit=True, commit_empty=False, raise_if_empty=True
-)
-def migrate_datasets(
-    client,
-    commit_message=None,
-):
-    """Migrate dataset metadata."""
-    results = [
-        migration(client) is not False for migration in STRUCTURE_MIGRATIONS
-    ]
+@pass_local_client(clean=False, commit=False)
+def check_for_migration(client):
+    """Checks if migration is required."""
+    if is_migration_required(client):
+        raise MigrationRequired
+    elif is_project_unsupported(client):
+        raise ProjectNotSupported
 
-    if all(results) and client.repo.index.diff(None):
-        return results
+
+@pass_local_client(clean=True, commit=True, commit_empty=False)
+def migrate_project(client, progress_callback=None, commit_message=None):
+    """Migrate all project's entities."""
+    return migrate(client=client, progress_callback=progress_callback)
+
+
+@pass_local_client(clean=True, commit=False)
+def migrate_project_no_commit(client, progress_callback=None):
+    """Migrate all project's entities but do not commit changes."""
+    return migrate(client=client, progress_callback=progress_callback)

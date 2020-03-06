@@ -281,9 +281,9 @@ import requests
 import yaml
 from tqdm import tqdm
 
-from renku.core.commands.dataset import add_file, check_for_migration, \
-    create_dataset, dataset_remove, edit_dataset, export_dataset, \
-    file_unlink, import_dataset, list_datasets, list_files, list_tags, \
+from renku.core.commands.dataset import add_file, create_dataset, \
+    dataset_remove, edit_dataset, export_dataset, file_unlink, \
+    import_dataset, list_datasets, list_files, list_tags, \
     remove_dataset_tags, tag_dataset_with_client, update_datasets
 from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
@@ -291,6 +291,7 @@ from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
     DATASETS_FORMATS
+from renku.core.commands.migrate import check_for_migration
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 from renku.core.management.datasets import DownloadProgressCallback
 
