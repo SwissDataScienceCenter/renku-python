@@ -18,6 +18,7 @@
 """Define repository checks for :program:`renku doctor`."""
 
 from .datasets import check_dataset_metadata, check_missing_files
+from .external import check_missing_external_files
 from .githooks import check_git_hooks_installed
 from .migration import check_migration
 from .references import check_missing_references
@@ -33,4 +34,5 @@ __all__ = (
     'check_missing_references',
     'check_project_structure',
     'check_datasets_structure',
+    'check_missing_external_files',
 )

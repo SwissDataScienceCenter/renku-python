@@ -21,12 +21,13 @@ Removing a file that belongs to a dataset will update its metadata. It also
 will attempt to update tracking information for files stored in an external
 storage (using Git LFS).
 """
-
+import os
 from pathlib import Path
 from subprocess import run
 
 import click
 
+from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import WARNING, progressbar
 
@@ -44,7 +45,13 @@ def remove(ctx, client, sources):
 
     def fmt_path(path):
         """Format path as relative to the client path."""
-        return str(Path(path).absolute().relative_to(client.path))
+        abs_path = os.path.abspath(client.path / path)
+        try:
+            return str(Path(abs_path).relative_to(client.path))
+        except ValueError:
+            raise errors.ParameterError(
+                f'File {abs_path} is not within the project.'
+            )
 
     files = {
         fmt_path(source): fmt_path(file_or_dir)
@@ -70,6 +77,7 @@ def remove(ctx, client, sources):
             if remove:
                 for key in remove:
                     dataset.unlink_file(key)
+                    client.remove_file(key)
 
                 dataset.to_yaml()
 

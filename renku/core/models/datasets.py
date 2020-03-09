@@ -214,6 +214,8 @@ class DatasetFile(Entity, CreatorMixin):
         converter=convert_based_on
     )
 
+    external = jsonld.ib(context='sdsc:external', default=False, kw_only=True)
+
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
