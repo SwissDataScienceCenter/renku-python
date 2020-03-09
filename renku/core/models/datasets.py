@@ -325,7 +325,7 @@ def _convert_keyword(keywords):
     },
 )
 class Dataset(Entity, CreatorMixin):
-    """Repesent a dataset."""
+    """Represent a dataset."""
 
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
@@ -573,7 +573,7 @@ class Dataset(Entity, CreatorMixin):
                 quote(str(self.uid), safe='')
             )
 
-        if self.files:
+        if self.files and self.client is not None:
             for dataset_file in self.files:
                 file_exists = Path(dataset_file.path).exists()
 

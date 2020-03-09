@@ -1041,6 +1041,8 @@ def test_import_from_renku_project(tmpdir, client, runner):
     git.Repo.clone_from(remote, path, recursive=True)
 
     remote_client = LocalClient(path)
+    with chdir(remote_client.path):
+        runner.invoke(cli, ['migrate'])
     file_ = read_dataset_file_metadata(
         remote_client, 'zhbikes',
         '2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
@@ -1192,6 +1194,9 @@ def test_renku_clone(runner, monkeypatch):
         result = runner.invoke(cli, ['githooks', 'install'])
         assert 0 == result.exit_code
         assert 'Hook already exists.' in result.output
+
+        result = runner.invoke(cli, ['migrate'])
+        assert 0 == result.exit_code
 
         # Check Git LFS is enabled
         with monkeypatch.context() as monkey:
