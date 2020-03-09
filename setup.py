@@ -155,7 +155,7 @@ install_requires = [
     'filelock>=3.0.0',
     'flask==1.1.1',
     'flask-apispec==0.8.6',
-    'flask-swagger-ui==3.20.9',
+    'flask-swagger-ui==3.25.0',
     'gitdb2==3.0.1',
     'gitpython==3.0.8',
     'jinja2>=2.10.3',

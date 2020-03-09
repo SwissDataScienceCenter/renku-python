@@ -23,47 +23,34 @@ import pytest
 from renku import LocalClient
 from renku.cli import cli
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, \
+    get_migrations
 from renku.core.models.datasets import Dataset
 from renku.core.utils.urls import url_to_string
 
 
 @pytest.mark.migration
-def test_status_with_old_repository(isolated_runner, old_project):
-    """Test status on all old repositories created by old version of renku."""
+@pytest.mark.parametrize(
+    'command', [
+        'config', 'dataset', 'log', 'mv', 'rerun', 'run', 'show', 'status',
+        'storage', 'update', 'workflow'
+    ]
+)
+def test_commands_fail_on_old_repository(
+    isolated_runner, old_project, command
+):
+    """Test commands that fail on projects created by old version of renku."""
     runner = isolated_runner
-    result = runner.invoke(cli, ['status'])
-    assert 0 == result.exit_code
-
-    output = result.output.split('\n')
-    assert output.pop(0) == 'On branch master'
-    assert output.pop(0) == 'All files were generated from the latest inputs.'
-
-
-@pytest.mark.migration
-def test_update_with_old_repository(isolated_runner, old_project):
-    """Test update on all old repositories created by old version of renku."""
-    runner = isolated_runner
-
-    result = runner.invoke(cli, ['update'])
-    assert 0 == result.exit_code
-
-    output = result.output.split('\n')
-    assert output.pop(0) == 'All files were generated from the latest inputs.'
-
-
-@pytest.mark.migration
-def test_list_with_old_repository(isolated_runner, old_project):
-    """Test dataset list on old repository."""
-    result = isolated_runner.invoke(cli, ['dataset'])
-
-    assert old_project['exit_code'] == result.exit_code
-    assert not old_project['repo'].is_dirty()
+    result = runner.invoke(cli, [command])
+    assert 1 == result.exit_code
+    output = result.output
+    assert 'Project version is outdated and a migration is required' in output
 
 
 @pytest.mark.migration
 def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
-    result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
+    result = isolated_runner.invoke(cli, ['migrate'])
     assert 0 == result.exit_code
     assert not old_project['repo'].is_dirty()
 
@@ -71,7 +58,7 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 @pytest.mark.migration
 def test_correct_path_migrated(isolated_runner, old_project):
     """Check if path on dataset files has been correctly migrated."""
-    result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
+    result = isolated_runner.invoke(cli, ['migrate'])
     assert 0 == result.exit_code
 
     client = LocalClient(path=old_project['path'])
@@ -91,26 +78,20 @@ def test_correct_path_migrated(isolated_runner, old_project):
 @pytest.mark.migration
 def test_author_to_creator_migration(isolated_runner, old_project):
     """Check renaming of author to creator migration."""
+    result = isolated_runner.invoke(cli, ['migrate'])
+    assert 0 == result.exit_code
+
     client = LocalClient(path=old_project['path'])
-    if client.datasets:
-        dataset = client.datasets.popitem()[1]
-        dataset_path_pre40 = Path(dataset.path.replace('-', ''))
-        if dataset_path_pre40.exists():
-            metadata = (dataset_path_pre40 / client.METADATA).read_text()
-
-            assert 'authors:' in metadata
-            result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
-            assert 0 == result.exit_code
-
-            after_metadata = (Path(dataset.path) / client.METADATA).read_text()
-            assert 'creator:' in after_metadata
-            assert 'authors:' not in after_metadata
+    for dataset in client.datasets.values():
+        after_metadata = (Path(dataset.path) / client.METADATA).read_text()
+        assert 'creator:' in after_metadata
+        assert 'authors:' not in after_metadata
 
 
 @pytest.mark.migration
 def test_correct_relative_path(isolated_runner, old_project):
     """Check if path on dataset has been correctly migrated."""
-    result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
+    result = isolated_runner.invoke(cli, ['migrate'])
     assert 0 == result.exit_code
 
     client = LocalClient(path=old_project['path'])
@@ -132,7 +113,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     repo.index.add(['.renku.lock'])
     repo.index.commit('locked')
 
-    result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
+    result = isolated_runner.invoke(cli, ['migrate'])
     assert 0 == result.exit_code
 
     assert (repo_path / '.renku.lock').exists() is False
@@ -145,7 +126,7 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
 @pytest.mark.migration
 def test_graph_building_after_migration(isolated_runner, old_project):
     """Check that structural migration did not break graph building."""
-    result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
+    result = isolated_runner.invoke(cli, ['migrate'])
     assert 0 == result.exit_code
 
     result = isolated_runner.invoke(cli, ['log'])
@@ -153,16 +134,16 @@ def test_graph_building_after_migration(isolated_runner, old_project):
 
 
 @pytest.mark.migration
-def test_migrations_run_once(isolated_runner, old_project):
-    """Check that migration commit is not empty."""
-    result = isolated_runner.invoke(cli, ['dataset'])
-    assert old_project['exit_code'] == result.exit_code
-
-    result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
+def test_migrations_runs(isolated_runner, old_project):
+    """Check that migration can be run more than once."""
+    result = isolated_runner.invoke(cli, ['migrate'])
     assert 0 == result.exit_code
+    assert 'Successfully applied' in result.output
+    assert 'OK' in result.output
 
-    result = isolated_runner.invoke(cli, ['migrate', 'datasets'])
-    assert 1 == result.exit_code
+    result = isolated_runner.invoke(cli, ['migrate'])
+    assert 0 == result.exit_code
+    assert 'No migrations required.' in result.output
 
 
 @pytest.mark.migration
@@ -175,3 +156,24 @@ def test_migration_broken_urls(dataset_metadata):
 
     for file_ in dataset.files:
         assert isinstance(url_to_string(file_.url), str)
+
+
+@pytest.mark.migration
+def test_migration_version():
+    """Test migrations and project version match."""
+    migrations = get_migrations()
+    max_migration_version = max([m[0] for m in migrations])
+
+    assert max_migration_version == SUPPORTED_PROJECT_VERSION
+
+
+@pytest.mark.migration
+def test_migrations_no_commit(isolated_runner, old_project):
+    """Check --no-commit flag doesn't commit changes."""
+    client = LocalClient(path=old_project['path'])
+    sha_before = client.repo.head.object.hexsha
+
+    result = isolated_runner.invoke(cli, ['migrate', '--no-commit'])
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+    assert sha_before == client.repo.head.object.hexsha

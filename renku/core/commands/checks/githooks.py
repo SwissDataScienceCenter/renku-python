@@ -46,8 +46,8 @@ def check_git_hooks_installed(client):
             return False, message
 
         if actual_hook != expected_hook:
-            message = WARNING + 'Git hooks are outdated or not installed. ' \
-                'Use "renku githooks install --force" to update them. \n'
+            message = WARNING + 'Git hooks are outdated or not installed.\n' \
+                '  (use "renku githooks install --force" to update them) \n'
             return False, message
 
     return True, None
