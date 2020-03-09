@@ -460,6 +460,7 @@ def add(short_name, urls, link, force, create, sources, destination, ref):
         progress=_DownloadProgressbar,
         interactive=True,
     )
+    click.secho('OK', fg='green')
 
 
 @dataset.command('ls-files')

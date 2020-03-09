@@ -21,22 +21,9 @@ import cgi
 import contextlib
 import html
 import json
-import os
-import sys
 from pathlib import Path
 
 import pyld
-
-if sys.version_info < (3, 6):
-    original_resolve = Path.resolve
-
-    def resolve(self, strict=False):
-        """Support strict parameter."""
-        if strict:
-            return original_resolve(self)
-        return Path(os.path.realpath(os.path.abspath(str(self))))
-
-    Path.resolve = resolve
 
 try:
     contextlib.nullcontext
