@@ -31,7 +31,7 @@ class UserManagementCache(BaseCache):
         user_obj = self.user_schema.load(user_data)
 
         try:
-            return UserManagementCache.get_user(user_obj.user_id)
+            User.get(User.user_id == user_obj.user_id)
         except ValueError:
             user_obj.save()
 
@@ -40,5 +40,14 @@ class UserManagementCache(BaseCache):
     @staticmethod
     def get_user(user_id):
         """Get specific user."""
-        user_obj = User.get(User.user_id == user_id)
+        try:
+            user_obj = User.get(User.user_id == user_id)
+        except ValueError:
+            return
+
         return user_obj
+
+    @staticmethod
+    def get_users():
+        """Get all users."""
+        return User.all()

@@ -30,23 +30,18 @@ def cache_files_cleanup():
     ttl = int(os.getenv('RENKU_SVC_CLEANUP_TTL_FILES', 1800))
     cache = FileManagementCache()
 
-    for file_key in cache.all_files_iter():
-        try:
-            user, _ = file_key.decode('utf-8').split('_')
-        except ValueError:
-            continue
-
-        user = {'user_id': user}
-        for file_meta in cache.hash_table(file_key).values():
-            data = json.loads(file_meta)
-
+    for user, files in cache.user_files():
+        for file in files:
             # If record does not contain timestamp,
             # it means its an old record, and we should mark it for deletion.
-            created_at = data.get('timestamp', (time.time() - ttl) * 1e+3)
+            created_at = file.timestamp
+            if not file.timestamp:
+                created_at = (time.time() - ttl) * 1e+3
+
             old = ((time.time() * 1e+3) - created_at) / 1e+3
 
             if old >= ttl:
-                file_path = make_file_path(user, data)
+                file_path = file.abs_path
                 if file_path.exists() and file_path.is_file():
                     try:
                         file_path.unlink()
@@ -56,7 +51,7 @@ def cache_files_cleanup():
                 if file_path.exists() and file_path.is_dir():
                     shutil.rmtree(str(file_path))
 
-                cache.invalidate_file(user, data['file_id'])
+                file.delete()
 
 
 def cache_project_cleanup():

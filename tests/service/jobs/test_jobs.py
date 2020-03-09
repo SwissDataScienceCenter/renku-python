@@ -69,7 +69,7 @@ def test_cleanup_old_files(
 @pytest.mark.service
 @pytest.mark.jobs
 def test_cleanup_files_old_keys(svc_client_cache, tmp_path):
-    """Cleanup old project with old hset keys."""
+    """Cleanup old project."""
     svc_client, cache = svc_client_cache
 
     headers = {
@@ -78,7 +78,7 @@ def test_cleanup_files_old_keys(svc_client_cache, tmp_path):
         'Renku-User-Id': 'user'
     }
 
-    user = {'user_id': 'user'}
+    user = cache.ensure_user({'user_id': 'user'})
     mydata = tmp_path / 'mydata.json'
     mydata.write_text('1,2,3')
 
@@ -92,7 +92,7 @@ def test_cleanup_files_old_keys(svc_client_cache, tmp_path):
         'unpack_archive': False,
         'relative_path': str(mydata)
     }
-    cache.set_file(user, file_upload['file_id'], file_upload)
+    cache.set_file(user, file_upload)
 
     response = svc_client.get('/cache.files_list', headers=headers)
     assert response

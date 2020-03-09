@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service jobs views."""
-from flask import Blueprint, jsonify
+from flask import Blueprint
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.serializers.jobs import JobDetailsResponseRPC, \

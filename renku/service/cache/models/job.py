@@ -20,6 +20,12 @@ from walrus import DateTimeField, JSONField, Model, TextField
 
 from renku.service.cache.base import BaseCache
 
+# User job states
+USER_JOB_STATE_ENQUEUED = 'ENQUEUED'
+USER_JOB_STATE_IN_PROGRESS = 'IN_PROGRESS'
+USER_JOB_STATE_COMPLETED = 'COMPLETED'
+USER_JOB_STATE_FAILED = 'FAILED'
+
 
 class Job(Model):
     """Job cache model."""
@@ -34,3 +40,13 @@ class Job(Model):
 
     state = TextField()
     extras = JSONField()
+
+    def fail_job(self, error):
+        """Mark job as failed."""
+        self.state = USER_JOB_STATE_FAILED
+
+        if not self.extras:
+            self.extras = {}
+
+        self.extras['error'] = error
+        self.save()

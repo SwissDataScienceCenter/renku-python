@@ -135,6 +135,7 @@ def add_file_to_dataset_view(user, cache):
     ctx = DatasetAddRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
     project_path = make_project_path(user, project)
+    user = cache.ensure_user(user)
 
     if not project_path:
         return error_response(
@@ -153,7 +154,7 @@ def add_file_to_dataset_view(user, cache):
 
         if 'file_id' in _file:
             file = cache.get_file(user, _file['file_id'])
-            local_path = make_file_path(user, file)
+            local_path = file.abs_path
 
         elif 'file_path' in _file:
             local_path = project_path / Path(_file['file_path'])

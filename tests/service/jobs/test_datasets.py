@@ -29,15 +29,16 @@ from renku.service.utils import make_project_path
 
 
 @pytest.mark.parametrize(
-    'doi', [
-        '10.5281/zenodo.3239980',
+    'doi',
+    [
+        # '10.5281/zenodo.3239980',
         '10.5281/zenodo.3188334',
         '10.7910/DVN/TJCLKP',
     ]
 )
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=1, min_passes=1)
 def test_dataset_import_job(doi, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo

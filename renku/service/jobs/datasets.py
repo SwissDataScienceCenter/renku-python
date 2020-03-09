@@ -22,21 +22,11 @@ from renku.core.commands.dataset import import_dataset
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
-from renku.service.cache.serializers.job import USER_JOB_STATE_COMPLETED, \
-    USER_JOB_STATE_FAILED, USER_JOB_STATE_IN_PROGRESS, JobSchema
+from renku.service.cache.models.job import USER_JOB_STATE_COMPLETED, \
+    USER_JOB_STATE_IN_PROGRESS
+from renku.service.cache.serializers.job import JobSchema
 from renku.service.utils import make_project_path, repo_sync
 from renku.service.views.decorators import requires_cache
-
-
-def fail_job(cache, user_job, user, error):
-    """Mark job as failed."""
-    user_job['state'] = USER_JOB_STATE_FAILED
-
-    if 'extras' not in user_job:
-        user_job['extras'] = {}
-
-    user_job['extras']['error'] = error
-    cache.set_job(user, user_job)
 
 
 class DatasetImportJobProcess(DownloadProgressCallback):
@@ -54,26 +44,26 @@ class DatasetImportJobProcess(DownloadProgressCallback):
 
     def __call__(self, description, total_size):
         """Job progress call."""
-        self.job['state'] = USER_JOB_STATE_IN_PROGRESS
-        self.job['extras'] = {
+        self.job.state = USER_JOB_STATE_IN_PROGRESS
+        self.job.extras = {
             'description': description,
             'total_size': total_size,
         }
 
-        self.cache.set_job(self.user, self.job)
+        self.job.save()
         super().__init__(description, total_size)
 
         return self
 
     def update(self, size):
         """Update status."""
-        self.job['extras']['progress_size'] = size
-        self.cache.set_job(self.user, self.job)
+        self.job.extras['progress_size'] = size
+        self.job.save()
 
     def finalize(self):
         """Finalize job tracking."""
-        self.job['state'] = USER_JOB_STATE_COMPLETED
-        self.cache.set_job(self.user, self.job)
+        self.job.state = USER_JOB_STATE_COMPLETED
+        self.job.save()
 
 
 @requires_cache
@@ -102,13 +92,13 @@ def dataset_import(
                 progress=DatasetImportJobProcess(cache, user, user_job)
             )
         except (HTTPError, ParameterError, DatasetExistsError) as exp:
-            fail_job(cache, user_job, user, str(exp))
+            user_job.fail_job(str(exp))
 
             # Reraise exception, so we see trace in job metadata.
             raise exp
 
     if not repo_sync(project_path):
         error = 'failed to push refs'
-        fail_job(cache, user_job, user, error)
+        user_job.fail_job(error)
 
         raise RuntimeError(error)

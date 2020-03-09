@@ -41,6 +41,8 @@ from click.testing import CliRunner
 from git import Repo
 from walrus import Database
 
+from renku.service.cache.models.file import File
+
 
 @pytest.fixture(scope='module')
 def renku_path(tmpdir_factory):
@@ -621,6 +623,7 @@ def mock_redis():
 
         m.setattr(Job, '__database__', fake_model_db)
         m.setattr(User, '__database__', fake_model_db)
+        m.setattr(File, '__database__', fake_model_db)
 
         yield
 
@@ -688,8 +691,7 @@ def integration_repo(headers, url_components):
 def integration_lifecycle(svc_client, mock_redis):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
-    # 'https://dev.renku.ch/gitlab/contact/integration-test'
-    remote_url = 'https://gitlab.com/justsam.io/myrepo'
+    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
     url_components = GitURL.parse(remote_url)
 
     headers = {

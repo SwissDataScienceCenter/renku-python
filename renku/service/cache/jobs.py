@@ -24,13 +24,13 @@ from renku.service.cache.serializers.job import JobSchema
 class JobManagementCache(BaseCache):
     """Job management cache."""
 
-    schema = JobSchema()
+    job_schema = JobSchema()
 
     def make_job(self, user, job_data):
         """Cache job state under user hash set."""
         job_data.update({'user_id': user.user_id})
 
-        job_obj = self.schema.load(job_data)
+        job_obj = self.job_schema.load(job_data)
         job_obj.save()
 
         return job_obj
@@ -39,12 +39,12 @@ class JobManagementCache(BaseCache):
     def get_job(user, job_id):
         """Get user job."""
         try:
-            record = Job.get((Job.job_id == job_id) &
-                             (Job.user_id == user.user_id))
+            job_obj = Job.get((Job.job_id == job_id) &
+                              (Job.user_id == user.user_id))
         except ValueError:
             return
 
-        return record
+        return job_obj
 
     @staticmethod
     def get_jobs(user):
@@ -54,11 +54,9 @@ class JobManagementCache(BaseCache):
     @staticmethod
     def invalidate_job(user, job_id):
         """Remove users job record."""
-        try:
-            record = Job.get((Job.user_id == user.user_id) &
-                             (Job.job_id == job_id))
-        except ValueError:
-            return
+        job_obj = JobManagementCache.get_job(user, job_id)
 
-        record.delete()
-        return record
+        if job_obj:
+            job_obj.delete()
+
+        return job_obj

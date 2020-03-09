@@ -16,10 +16,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache file related models."""
-from walrus import Model
+from walrus import BooleanField, IntegerField, Model, TextField
+
+from renku.service.cache.base import BaseCache
+from renku.service.cache.models.user import User
+from renku.service.config import CACHE_UPLOADS_PATH
 
 
 class File(Model):
     """User file object."""
 
-    pass
+    __database__ = BaseCache.model_db
+
+    file_id = TextField(primary_key=True, index=True)
+    user_id = TextField(index=True)
+
+    timestamp = IntegerField()
+
+    content_type = TextField()
+    file_name = TextField()
+
+    file_size = IntegerField()
+
+    relative_path = TextField()
+    is_archive = BooleanField()
+    is_dir = BooleanField()
+    unpack_archive = BooleanField()
+
+    @property
+    def abs_path(self):
+        """Full path of cached file."""
+        user = User.get(User.user_id == self.user_id)
+        return CACHE_UPLOADS_PATH / user.user_id / self.relative_path
+
+    def valid_file(self):
+        """Ensure a file exists."""
+        if self.abs_path.exists():
+            self.is_dir = self.abs_path.is_dir()
+            return True
+
+        return False

@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku service views."""
 from flask import current_app
-from marshmallow import EXCLUDE
 
 from renku.service.serializers.rpc import JsonRPCResponse
 

@@ -35,6 +35,7 @@ from renku.service.serializers.cache import FileListResponse, \
     ProjectCloneRequest, ProjectCloneResponse, ProjectCloneResponseRPC, \
     ProjectListResponse, ProjectListResponseRPC, extract_file
 from renku.service.utils import make_project_path, valid_file
+from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
     header_doc, requires_cache, requires_identity
@@ -58,19 +59,16 @@ cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
 @requires_identity
 def list_uploaded_files_view(user, cache):
     """List uploaded files ready to be added to projects."""
-    files = filter(None, [valid_file(user, f) for f in cache.get_files(user)])
+    user = cache.ensure_user(user)
 
-    response_payload = {
+    files = [f for f in cache.get_files(user) if f.valid_file()]
+
+    response = {
         'files':
-            sorted(
-                files, key=lambda rec: (rec['is_dir'], rec['relative_path'])
-            )
+            sorted(files, key=lambda rec: (rec.is_dir, rec.relative_path))
     }
 
-    response = FileListResponseRPC().load({
-        'result': FileListResponse().load(response_payload)
-    })
-    return jsonify(response)
+    return result_response(FileListResponseRPC(), response)
 
 
 @use_kwargs(FileUploadRequest)
@@ -92,6 +90,7 @@ def list_uploaded_files_view(user, cache):
 @requires_identity
 def upload_file_view(user, cache):
     """Upload file or archive of files."""
+    user = cache.ensure_user(user)
     file = extract_file(request)
 
     response_builder = {
@@ -101,7 +100,7 @@ def upload_file_view(user, cache):
     }
     response_builder.update(FileUploadRequest().load(request.args))
 
-    user_cache_dir = CACHE_UPLOADS_PATH / user['user_id']
+    user_cache_dir = CACHE_UPLOADS_PATH / user.user_id
     user_cache_dir.mkdir(exist_ok=True)
 
     file_path = user_cache_dir / file.filename
@@ -138,7 +137,7 @@ def upload_file_view(user, cache):
 
         for file_ in temp_dir.glob('**/*'):
             relative_path = file_.relative_to(
-                CACHE_UPLOADS_PATH / user['user_id']
+                CACHE_UPLOADS_PATH / user.user_id
             )
 
             file_obj = {
@@ -152,7 +151,7 @@ def upload_file_view(user, cache):
 
     else:
         relative_path = file_path.relative_to(
-            CACHE_UPLOADS_PATH / user['user_id']
+            CACHE_UPLOADS_PATH / user.user_id
         )
         response_builder['file_size'] = os.stat(str(file_path)).st_size
         response_builder['relative_path'] = str(relative_path)

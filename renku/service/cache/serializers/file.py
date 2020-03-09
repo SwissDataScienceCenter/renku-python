@@ -15,27 +15,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache job related models."""
-from datetime import datetime
+"""Renku service file cache serializers."""
+import time
+import uuid
 
 from marshmallow import Schema, fields, post_load
 
-from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, Job
+from renku.service.cache.models.file import File
 
 
-class JobSchema(Schema):
-    """Job serialization."""
+class FileSchema(Schema):
+    """Schema for file model."""
 
-    created_at = fields.DateTime(missing=datetime.utcnow)
-    updated_at = fields.DateTime(missing=datetime.utcnow)
-
-    job_id = fields.String(required=True)
+    file_id = fields.String(missing=lambda: uuid.uuid4().hex)
     user_id = fields.String(required=True)
 
-    state = fields.String(required=False, missing=USER_JOB_STATE_ENQUEUED)
-    extras = fields.Dict(required=False)
+    # measured in ms
+    timestamp = fields.Integer(missing=time.time() * 1e+3)
+
+    content_type = fields.String(missing='unknown')
+    file_name = fields.String(required=True)
+
+    # measured in bytes (comes from stat() - st_size)
+    file_size = fields.Integer(required=True)
+
+    relative_path = fields.String(required=True)
+    is_archive = fields.Boolean(missing=False)
+    is_dir = fields.Boolean(required=True)
+    unpack_archive = fields.Boolean(missing=False)
 
     @post_load
-    def make_job(self, data, **options):
-        """Construct job object."""
-        return Job(**data)
+    def make_file(self, data, **options):
+        """Construct file object."""
+        return File(**data)
