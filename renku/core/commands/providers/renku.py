@@ -26,8 +26,8 @@ import attr
 import requests
 
 from renku.core import errors
-from renku.core.commands.checks.migration import STRUCTURE_MIGRATIONS
 from renku.core.commands.providers.api import ProviderApi
+from renku.core.management.migrate import is_project_unsupported, migrate
 
 
 @attr.s
@@ -62,6 +62,22 @@ class RenkuProvider(ProviderApi):
             kg_datasets_url, ssh_url, https_url = self._get_project_urls(
                 kg_url
             )
+
+            # Check if the project contains the dataset
+            if same_as is None:  # Dataset is in the project
+                dataset_id = self._extract_dataset_id(uri)
+            else:  # Dataset is sameAs one of the datasets in the project
+                datasets = self._query_knowledge_graph(kg_datasets_url)
+
+                ids = [
+                    ds['identifier']
+                    for ds in datasets if ds['sameAs'] == same_as
+                ]
+                if not ids:
+                    continue
+                dataset_id = ids[0]
+
+            # Check if we can clone the project
             for url in (ssh_url, https_url):
                 try:
                     repo, repo_path = client.prepare_git_repo(url)
@@ -80,20 +96,6 @@ class RenkuProvider(ProviderApi):
 
         remote_client = LocalClient(repo_path)
         self._migrate_project(remote_client)
-
-        if same_as is None:  # Dataset is in the project
-            dataset_id = self._extract_dataset_id(uri)
-        else:  # Dataset is sameAs one of the datasets in the project
-            datasets = self._query_knowledge_graph(kg_datasets_url)
-            ids = [
-                ds['identifier'] for ds in datasets if ds['sameAs'] == same_as
-            ]
-            if not ids:
-                raise errors.ParameterError(
-                    'Cannot find a dataset which is same as {} in project {}'.
-                    format(same_as, kg_datasets_url)
-                )
-            dataset_id = ids[0]
 
         datasets = [
             d for d in remote_client.datasets.values()
@@ -123,11 +125,9 @@ class RenkuProvider(ProviderApi):
         return True
 
     def _migrate_project(self, client):
-        for migration in STRUCTURE_MIGRATIONS:
-            try:
-                migration(client)
-            except Exception:
-                pass
+        if is_project_unsupported(client):
+            return
+        migrate(client)
 
     @staticmethod
     def _is_project_dataset(parsed_url):
