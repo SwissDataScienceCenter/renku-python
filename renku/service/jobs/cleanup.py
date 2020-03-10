@@ -22,7 +22,7 @@ import shutil
 import time
 
 from renku.service.cache import FileManagementCache, ProjectManagementCache
-from renku.service.utils import make_file_path, make_project_path
+from renku.service.utils import make_project_path
 
 
 def cache_files_cleanup():
