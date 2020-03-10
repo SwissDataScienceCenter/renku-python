@@ -609,6 +609,7 @@ def mock_redis():
     from renku.service.cache.models.user import User
     from renku.service.cache.models.job import Job
     from renku.service.cache.models.file import File
+    from renku.service.cache.models.project import Project
     from renku.service.jobs.queues import WorkerQueues
 
     monkey_patch = MonkeyPatch()
@@ -623,6 +624,7 @@ def mock_redis():
         m.setattr(Job, '__database__', fake_model_db)
         m.setattr(User, '__database__', fake_model_db)
         m.setattr(File, '__database__', fake_model_db)
+        m.setattr(Project, '__database__', fake_model_db)
 
         yield
 

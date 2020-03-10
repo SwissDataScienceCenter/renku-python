@@ -16,10 +16,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache project related models."""
-from walrus import Model
+from walrus import IntegerField, Model, TextField
+
+from renku.service.cache.base import BaseCache
+from renku.service.config import CACHE_PROJECTS_PATH
 
 
 class Project(Model):
     """User project object."""
 
-    pass
+    __database__ = BaseCache.model_db
+
+    project_id = TextField(primary_key=True, index=True)
+    user_id = TextField(index=True)
+
+    # measured in ms
+    timestamp = IntegerField()
+    clone_depth = IntegerField()
+    git_url = TextField()
+
+    name = TextField()
+    fullname = TextField()
+    email = TextField()
+    owner = TextField()
+    token = TextField()
+
+    @property
+    def abs_path(self):
+        """Full path of cached project."""
+        return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.name

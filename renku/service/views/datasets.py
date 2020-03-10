@@ -67,15 +67,14 @@ dataset_blueprint = Blueprint(
 def list_datasets_view(user, cache):
     """List all datasets in project."""
     ctx = DatasetListRequest().load(request.args)
-    project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
+    project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         ctx['datasets'] = list_datasets()
 
     return result_response(DatasetListResponseRPC(), ctx)
@@ -98,15 +97,14 @@ def list_datasets_view(user, cache):
 def list_dataset_files_view(user, cache):
     """List files in a dataset."""
     ctx = DatasetFilesListRequest().load(request.args)
-    project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
+    project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         ctx['files'] = list_files(datasets=[ctx['dataset_name']])
 
     return result_response(DatasetFilesListResponseRPC(), ctx)
@@ -133,11 +131,10 @@ def list_dataset_files_view(user, cache):
 def add_file_to_dataset_view(user, cache):
     """Add the uploaded file to cloned repository."""
     ctx = DatasetAddRequest().load(request.json)
-    project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
     user = cache.ensure_user(user)
+    project = cache.get_project(user, ctx['project_id'])
 
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE,
             'invalid project_id: {0}'.format(ctx['project_id'])
@@ -157,7 +154,7 @@ def add_file_to_dataset_view(user, cache):
             local_path = file.abs_path
 
         elif 'file_path' in _file:
-            local_path = project_path / Path(_file['file_path'])
+            local_path = project.abs_path / Path(_file['file_path'])
 
         if not local_path or not local_path.exists():
             return error_response(
@@ -168,7 +165,7 @@ def add_file_to_dataset_view(user, cache):
         ctx['commit_message'] += ' {0}'.format(local_path.name)
         local_paths.append(str(local_path))
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         add_file(
             local_paths,
             ctx['dataset_name'],
@@ -176,7 +173,7 @@ def add_file_to_dataset_view(user, cache):
             commit_message=ctx['commit_message']
         )
 
-        if not repo_sync(project_path):
+        if not repo_sync(project.abs_path):
             return error_response(
                 INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
             )
@@ -204,15 +201,14 @@ def add_file_to_dataset_view(user, cache):
 def create_dataset_view(user, cache):
     """Create a new dataset in a project."""
     ctx = DatasetCreateRequest().load(request.json)
-    project = cache.get_project(user, ctx['project_id'])
+    project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    project_path = make_project_path(user, project)
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         create_dataset(
             ctx['dataset_name'],
             commit_message=ctx['commit_message'],
@@ -220,7 +216,7 @@ def create_dataset_view(user, cache):
             description=ctx.get('description'),
         )
 
-    if not repo_sync(project_path):
+    if not repo_sync(project.abs_path):
         return error_response(
             INTERNAL_FAILURE_ERROR_CODE,
             'push to remote failed silently - try again'
@@ -245,10 +241,9 @@ def import_dataset_view(user_data, cache):
     """Import a dataset view."""
     user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
-    project = cache.get_project(user_data, ctx['project_id'])
-    project_path = make_project_path(user_data, project)
+    project = cache.get_project(user, ctx['project_id'])
 
-    if not project_path:
+    if project is None or project.abs_path is False:
         return error_response(
             INVALID_PARAMS_ERROR_CODE,
             'invalid project_id: {0}'.format(ctx['project_id'])

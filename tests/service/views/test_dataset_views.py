@@ -29,7 +29,6 @@ from flaky import flaky
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
-from renku.service.utils import make_project_path
 
 
 def assert_rpc_response(response, with_key='result'):
@@ -699,7 +698,7 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_add_existing_file(svc_client_with_repo):
     """Upload archive and add it to a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -713,7 +712,6 @@ def test_add_existing_file(svc_client_with_repo):
         data=json.dumps(payload),
         headers=headers,
     )
-
     assert response
     assert_rpc_response(response)
 
@@ -726,11 +724,13 @@ def test_add_existing_file(svc_client_with_repo):
         'dataset_name': payload['dataset_name'],
         'files': files,
     }
+
     response = svc_client.post(
         '/datasets.add',
         data=json.dumps(payload),
         headers=headers,
     )
+
     assert response
     assert_rpc_response(response)
 
@@ -763,7 +763,7 @@ def test_import_dataset_job_enqueue(
         'Renku-User-Email': 'renku@sdsc.ethz.ch',
     }
 
-    user = {'user_id': 'user'}
+    user = cache.ensure_user({'user_id': 'user'})
 
     project_meta = {
         'project_id': uuid.uuid4().hex,
@@ -775,9 +775,9 @@ def test_import_dataset_job_enqueue(
         'git_url': 'git@gitlab.com'
     }
 
-    cache.set_project(user, project_meta['project_id'], project_meta)
+    project_obj = cache.make_project(user, project_meta)
 
-    dest = make_project_path(user, project_meta)
+    dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
     if not (project / dest).exists():
         shutil.copytree(project, dest)
@@ -797,9 +797,7 @@ def test_import_dataset_job_enqueue(
         'job_id',
     } == set(response.json['result'])
 
-    user_job = cache.get_job(
-        cache.ensure_user(user), response.json['result']['job_id']
-    )
+    user_job = cache.get_job(user, response.json['result']['job_id'])
     assert response.json['result']['job_id'] == user_job.job_id
 
     response = client.get('/jobs', headers=headers)

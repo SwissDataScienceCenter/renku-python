@@ -194,15 +194,15 @@ def project_clone(user, cache):
         (lambda a, b: a.update(b) or a)(request.json, user),
         unknown=EXCLUDE,
     )
-
     local_path = make_project_path(user, ctx)
+    user = cache.ensure_user(user)
 
     if local_path.exists():
         shutil.rmtree(str(local_path))
 
         for project in cache.get_projects(user):
-            if project['git_url'] == ctx['git_url']:
-                cache.invalidate_project(user, project['project_id'])
+            if project.git_url == ctx['git_url']:
+                project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
     renku_clone(
@@ -215,12 +215,10 @@ def project_clone(user, cache):
             'user.email': ctx['email'],
         }
     )
-    cache.set_project(user, ctx['project_id'], ctx)
 
-    response = ProjectCloneResponseRPC().load({
-        'result': ProjectCloneResponse().load(ctx, unknown=EXCLUDE)
-    })
-    return jsonify(response)
+    project = cache.make_project(user, ctx)
+
+    return result_response(ProjectCloneResponseRPC(), project)
 
 
 @marshal_with(ProjectListResponseRPC)
@@ -241,13 +239,9 @@ def project_clone(user, cache):
 @requires_identity
 def list_projects_view(user, cache):
     """List cached projects."""
-    projects = cache.get_projects(user)
     projects = [
-        ProjectCloneResponse().load(p, unknown=EXCLUDE)
-        for p in projects if make_project_path(user, p).exists()
+        project for project in cache.get_projects(cache.ensure_user(user))
+        if project.abs_path.exists()
     ]
 
-    response = ProjectListResponseRPC().load({
-        'result': ProjectListResponse().load({'projects': projects})
-    })
-    return jsonify(response)
+    return result_response(ProjectListResponseRPC(), {'projects': projects})

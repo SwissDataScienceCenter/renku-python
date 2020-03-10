@@ -299,7 +299,7 @@ def test_clone_projects_with_auth(svc_client):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=1, min_passes=1)
 def test_clone_projects_multiple(svc_client):
     """Check multiple cloning of remote repository."""
     project_ids = []
@@ -319,7 +319,6 @@ def test_clone_projects_multiple(svc_client):
     response = svc_client.post(
         '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
-
     assert response
 
     assert {'result'} == set(response.json.keys())
@@ -398,6 +397,7 @@ def test_clone_projects_list_view_errors(svc_client):
     assert INVALID_HEADERS_ERROR_CODE == response.json['error']['code']
 
     response = svc_client.get('/cache.project_list', headers=headers)
+
     assert response
     assert {'result'} == set(response.json.keys())
     assert 1 == len(response.json['result']['projects'])

@@ -46,8 +46,7 @@ class File(Model):
     @property
     def abs_path(self):
         """Full path of cached file."""
-        user = User.get(User.user_id == self.user_id)
-        return CACHE_UPLOADS_PATH / user.user_id / self.relative_path
+        return CACHE_UPLOADS_PATH / self.user_id / self.relative_path
 
     def valid_file(self):
         """Ensure a file exists."""

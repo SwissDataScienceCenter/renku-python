@@ -26,7 +26,6 @@ from tests.service.views.test_dataset_views import assert_rpc_response
 
 from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
-from renku.service.utils import make_project_path
 
 
 @pytest.mark.service
@@ -114,7 +113,7 @@ def test_cleanup_files_old_keys(svc_client_cache, service_job, tmp_path):
 @pytest.mark.service
 @pytest.mark.jobs
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_cleanup_old_project(
     datapack_zip, svc_client_with_repo, service_job, mock_redis
 ):
@@ -152,8 +151,7 @@ def test_cleanup_project_old_keys(svc_client_cache):
         'accept': 'application/json',
         'Renku-User-Id': 'user'
     }
-
-    user = {'user_id': 'user'}
+    user = cache.ensure_user({'user_id': 'user'})
 
     project = {
         'project_id': uuid.uuid4().hex,
@@ -164,8 +162,8 @@ def test_cleanup_project_old_keys(svc_client_cache):
         'token': 'awesome token',
         'git_url': 'git@gitlab.com'
     }
-    cache.set_project(user, project['project_id'], project)
-    os.makedirs(str(make_project_path(user, project)), exist_ok=True)
+    project = cache.make_project(user, project)
+    os.makedirs(str(project.abs_path), exist_ok=True)
 
     response = svc_client.get('/cache.project_list', headers=headers)
     assert response

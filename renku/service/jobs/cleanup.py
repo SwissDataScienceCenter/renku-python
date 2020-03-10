@@ -16,13 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Cleanup jobs."""
-import json
 import os
 import shutil
 import time
 
 from renku.service.cache import FileManagementCache, ProjectManagementCache
-from renku.service.utils import make_project_path
 
 
 def cache_files_cleanup():
@@ -59,24 +57,20 @@ def cache_project_cleanup():
     ttl = int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
     cache = ProjectManagementCache()
 
-    for file_key in cache.all_projects_iter():
-        try:
-            user, _ = file_key.decode('utf-8').split('_')
-        except ValueError:
-            continue
-
-        user = {'user_id': user}
-        for file_meta in cache.hash_table(file_key).values():
-            data = json.loads(file_meta)
+    for user, projects in cache.user_projects():
+        for project in projects:
 
             # If record does not contain timestamp,
             # it means its an old record, and we should mark it for deletion.
-            created_at = data.get('timestamp', (time.time() - ttl) * 1e+3)
+            created_at = project.timestamp
+            if not project.timestamp:
+                created_at = (time.time() - ttl) * 1e+3
+
             old = ((time.time() * 1e+3) - created_at) / 1e+3
 
             if old >= ttl:
-                project_path = make_project_path(user, data)
+                project_path = project.abs_path
                 if project_path.exists():
                     shutil.rmtree(str(project_path))
 
-                cache.invalidate_project(user, data['project_id'])
+                project.delete()
