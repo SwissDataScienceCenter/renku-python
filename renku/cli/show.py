@@ -245,10 +245,7 @@ def _context_names():
 
     # NOTE: You should only pass a list or tuple of choices. Other iterables
     # (like generators) may lead to surprising results.
-    return [
-        cls.__name__
-        for cls in JSONLDMixin.__type_registry__.values()
-    ]
+    return [cls.__name__ for cls in JSONLDMixin.__type_registry__.values()]
 
 
 def print_context_names(ctx, param, value):

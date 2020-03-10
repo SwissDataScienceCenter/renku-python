@@ -68,7 +68,7 @@ def test_cleanup_old_files(
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_cleanup_files_old_keys(svc_client_cache, tmp_path):
+def test_cleanup_files_old_keys(svc_client_cache, service_job, tmp_path):
     """Cleanup old project."""
     svc_client, cache = svc_client_cache
 
