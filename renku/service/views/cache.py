@@ -30,10 +30,10 @@ from renku.core.commands.clone import renku_clone
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponseRPC, \
-    FileUploadContext, FileUploadRequest, \
-    FileUploadResponse, FileUploadResponseRPC, ProjectCloneContext, \
-    ProjectCloneRequest, ProjectCloneResponse, ProjectCloneResponseRPC, \
-    ProjectListResponse, ProjectListResponseRPC, extract_file
+    FileUploadContext, FileUploadRequest, FileUploadResponse, \
+    FileUploadResponseRPC, ProjectCloneContext, ProjectCloneRequest, \
+    ProjectCloneResponse, ProjectCloneResponseRPC, ProjectListResponse, \
+    ProjectListResponseRPC, extract_file
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
