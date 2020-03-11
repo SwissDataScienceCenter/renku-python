@@ -749,7 +749,7 @@ def test_add_existing_file(svc_client_with_repo):
 )
 @pytest.mark.integration
 @pytest.mark.service
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=30, min_passes=1)
 def test_import_dataset_job_enqueue(
     doi, svc_client_cache, project, mock_redis
 ):
