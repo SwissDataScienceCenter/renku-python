@@ -19,7 +19,6 @@
 from walrus import BooleanField, IntegerField, Model, TextField
 
 from renku.service.cache.base import BaseCache
-from renku.service.cache.models.user import User
 from renku.service.config import CACHE_UPLOADS_PATH
 
 

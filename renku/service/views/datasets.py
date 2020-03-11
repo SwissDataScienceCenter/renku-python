@@ -38,7 +38,7 @@ from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetFilesListRequest, DatasetFilesListResponseRPC, \
     DatasetImportRequest, DatasetImportResponseRPC, DatasetListRequest, \
     DatasetListResponseRPC
-from renku.service.utils import make_project_path, repo_sync
+from renku.service.utils import repo_sync
 from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \

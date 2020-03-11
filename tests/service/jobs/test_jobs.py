@@ -142,7 +142,7 @@ def test_cleanup_old_project(
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_cleanup_project_old_keys(svc_client_cache):
+def test_cleanup_project_old_keys(svc_client_cache, service_job):
     """Cleanup old project with old hset keys."""
     svc_client, cache = svc_client_cache
 
