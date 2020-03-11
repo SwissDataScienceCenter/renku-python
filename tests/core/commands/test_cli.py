@@ -20,6 +20,7 @@
 from __future__ import absolute_import, print_function
 
 import contextlib
+import json
 import os
 import subprocess
 import sys
@@ -59,16 +60,16 @@ def test_config_path(runner):
 
 def test_show_context(runner, project):
     """Test context generation."""
-    import json
-
     result = runner.invoke(cli, ['show', 'context', '--list'])
     contexts = [name for name in result.output.split('\n') if name]
+
     assert 0 == result.exit_code
     assert 1 < len(contexts)
 
     result = runner.invoke(cli, ['show', 'context'] + contexts)
-    data = json.loads(result.output)
     assert 0 == result.exit_code
+
+    data = json.loads(result.output)
     assert len(contexts) == len(data)
 
 
