@@ -44,7 +44,6 @@ a tool, then these files must be recreated as well. See the explanation in
 import os
 import sys
 import uuid
-from pathlib import Path
 
 import click
 
@@ -82,7 +81,7 @@ def edit_inputs(client, workflow):
     types = {
         'int': int,
         'string': str,
-        'File': lambda x: File(path=Path(x).resolve()),
+        'File': lambda x: File(path=os.path.abspath(x)),
     }
     for input_ in workflow.inputs:
         convert = types.get(input_.type, str)
