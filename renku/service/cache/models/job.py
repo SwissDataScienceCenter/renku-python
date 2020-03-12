@@ -41,6 +41,16 @@ class Job(Model):
     state = TextField()
     extras = JSONField()
 
+    def in_progress(self):
+        """Mark job in progress."""
+        self.state = USER_JOB_STATE_IN_PROGRESS
+        self.save()
+
+    def complete(self):
+        """Mark job as completed."""
+        self.state = USER_JOB_STATE_COMPLETED
+        self.save()
+
     def fail_job(self, error):
         """Mark job as failed."""
         self.state = USER_JOB_STATE_FAILED

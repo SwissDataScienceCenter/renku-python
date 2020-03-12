@@ -22,8 +22,6 @@ from renku.core.commands.dataset import import_dataset
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
-from renku.service.cache.models.job import USER_JOB_STATE_COMPLETED, \
-    USER_JOB_STATE_IN_PROGRESS
 from renku.service.cache.serializers.job import JobSchema
 from renku.service.utils import repo_sync
 from renku.service.views.decorators import requires_cache
@@ -43,15 +41,13 @@ class DatasetImportJobProcess(DownloadProgressCallback):
 
     def __call__(self, description, total_size):
         """Job progress call."""
-        self.job.state = USER_JOB_STATE_IN_PROGRESS
         self.job.extras = {
             'description': description,
             'total_size': total_size,
         }
+        self.job.in_progress()
 
-        self.job.save()
         super().__init__(description, total_size)
-
         return self
 
     def update(self, size):
@@ -61,8 +57,7 @@ class DatasetImportJobProcess(DownloadProgressCallback):
 
     def finalize(self):
         """Finalize job tracking."""
-        self.job.state = USER_JOB_STATE_COMPLETED
-        self.job.save()
+        self.job.complete()
 
 
 @requires_cache

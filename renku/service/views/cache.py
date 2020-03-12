@@ -30,9 +30,9 @@ from renku.core.commands.clone import renku_clone
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponseRPC, \
-    FileUploadContext, FileUploadRequest, FileUploadResponse, \
-    FileUploadResponseRPC, ProjectCloneContext, ProjectCloneRequest, \
-    ProjectCloneResponseRPC, ProjectListResponseRPC, extract_file
+    FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
+    ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
+    extract_file
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
@@ -146,26 +146,21 @@ def upload_file_view(user, cache):
                 'is_dir': relative_path.is_dir(),
             }
 
-            files.append(FileUploadContext().load(file_obj, unknown=EXCLUDE))
+            files.append(file_obj)
 
     else:
         relative_path = file_path.relative_to(
             CACHE_UPLOADS_PATH / user.user_id
         )
+
         response_builder['file_size'] = os.stat(str(file_path)).st_size
         response_builder['relative_path'] = str(relative_path)
         response_builder['is_dir'] = relative_path.is_dir()
 
-        files.append(
-            FileUploadContext().load(response_builder, unknown=EXCLUDE)
-        )
+        files.append(response_builder)
 
-    response = FileUploadResponseRPC().load({
-        'result': FileUploadResponse().load({'files': files})
-    })
-    cache.set_files(user, files)
-
-    return jsonify(response)
+    files = cache.set_files(user, files)
+    return result_response(FileUploadResponseRPC(), {'files': files})
 
 
 @use_kwargs(ProjectCloneRequest)

@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache project related serializers."""
-import time
 import uuid
+from datetime import datetime
 
 from marshmallow import Schema, fields, post_load
 
@@ -27,10 +27,11 @@ from renku.service.cache.models.project import Project
 class ProjectSchema(Schema):
     """Context schema for project clone."""
 
+    created_at = fields.DateTime(missing=datetime.utcnow)
+
     project_id = fields.String(missing=lambda: uuid.uuid4().hex)
     user_id = fields.String(required=True)
 
-    timestamp = fields.Integer(missing=time.time() * 1e+3)
     clone_depth = fields.Integer()
     git_url = fields.String()
 

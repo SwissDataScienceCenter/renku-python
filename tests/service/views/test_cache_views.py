@@ -607,14 +607,14 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
     assert {'result'} == set(response.json.keys())
     assert response.json['result']['files']
+
     assert {
         'content_type',
         'file_id',
         'file_name',
         'file_size',
         'is_archive',
-        'timestamp',
-        'is_archive',
+        'created_at',
         'is_dir',
         'unpack_archive',
         'relative_path',

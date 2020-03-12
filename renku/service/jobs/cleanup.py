@@ -19,6 +19,7 @@
 import os
 import shutil
 import time
+from datetime import datetime
 
 from renku.service.cache import FileManagementCache, ProjectManagementCache
 
@@ -30,10 +31,12 @@ def cache_files_cleanup():
 
     for user, files in cache.user_files():
         for file in files:
-            # If record does not contain timestamp,
+            # If record does not contain created_at,
             # it means its an old record, and we should mark it for deletion.
-            created_at = file.timestamp
-            if not file.timestamp:
+            created_at = (file.created_at -
+                          datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+
+            if not file.created_at:
                 created_at = (time.time() - ttl) * 1e+3
 
             old = ((time.time() * 1e+3) - created_at) / 1e+3
@@ -60,10 +63,12 @@ def cache_project_cleanup():
     for user, projects in cache.user_projects():
         for project in projects:
 
-            # If record does not contain timestamp,
+            # If record does not contain created_at,
             # it means its an old record, and we should mark it for deletion.
-            created_at = project.timestamp
-            if not project.timestamp:
+            created_at = (project.created_at -
+                          datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+
+            if not project.created_at:
                 created_at = (time.time() - ttl) * 1e+3
 
             old = ((time.time() * 1e+3) - created_at) / 1e+3

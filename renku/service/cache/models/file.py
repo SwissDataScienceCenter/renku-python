@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache file related models."""
-from walrus import BooleanField, IntegerField, Model, TextField
+from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
 
 from renku.service.cache.base import BaseCache
 from renku.service.config import CACHE_UPLOADS_PATH
@@ -27,10 +27,10 @@ class File(Model):
 
     __database__ = BaseCache.model_db
 
+    created_at = DateTimeField()
+
     file_id = TextField(primary_key=True, index=True)
     user_id = TextField(index=True)
-
-    timestamp = IntegerField()
 
     content_type = TextField()
     file_name = TextField()

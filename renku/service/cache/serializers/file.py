@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service file cache serializers."""
-import time
 import uuid
+from datetime import datetime
 
 from marshmallow import Schema, fields, post_load
 
@@ -27,11 +27,10 @@ from renku.service.cache.models.file import File
 class FileSchema(Schema):
     """Schema for file model."""
 
+    created_at = fields.DateTime(missing=datetime.utcnow)
+
     file_id = fields.String(missing=lambda: uuid.uuid4().hex)
     user_id = fields.String(required=True)
-
-    # measured in ms
-    timestamp = fields.Integer(missing=time.time() * 1e+3)
 
     content_type = fields.String(missing='unknown')
     file_name = fields.String(required=True)
@@ -43,6 +42,7 @@ class FileSchema(Schema):
     is_archive = fields.Boolean(missing=False)
     is_dir = fields.Boolean(required=True)
     unpack_archive = fields.Boolean(missing=False)
+    override_existing = fields.Boolean(missing=False)
 
     @post_load
     def make_file(self, data, **options):

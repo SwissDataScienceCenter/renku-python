@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache project related models."""
-from walrus import IntegerField, Model, TextField
+from walrus import DateTimeField, IntegerField, Model, TextField
 
 from renku.service.cache.base import BaseCache
 from renku.service.config import CACHE_PROJECTS_PATH
@@ -27,11 +27,11 @@ class Project(Model):
 
     __database__ = BaseCache.model_db
 
+    created_at = DateTimeField()
+
     project_id = TextField(primary_key=True, index=True)
     user_id = TextField(index=True)
 
-    # measured in ms
-    timestamp = IntegerField()
     clone_depth = IntegerField()
     git_url = TextField()
 
