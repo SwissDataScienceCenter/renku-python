@@ -29,12 +29,12 @@ from patoolib.util import PatoolError
 from renku.core.commands.clone import renku_clone
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
-from renku.service.serializers.cache import FileListResponse, \
-    FileListResponseRPC, FileUploadContext, FileUploadRequest, \
-    FileUploadResponse, FileUploadResponseRPC, ProjectCloneContext, \
-    ProjectCloneRequest, ProjectCloneResponse, ProjectCloneResponseRPC, \
-    ProjectListResponse, ProjectListResponseRPC, extract_file
-from renku.service.utils import make_project_path, valid_file
+from renku.service.serializers.cache import FileListResponseRPC, \
+    FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
+    ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
+    extract_file
+from renku.service.utils import make_project_path
+from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
     header_doc, requires_cache, requires_identity
@@ -58,19 +58,16 @@ cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
 @requires_identity
 def list_uploaded_files_view(user, cache):
     """List uploaded files ready to be added to projects."""
-    files = filter(None, [valid_file(user, f) for f in cache.get_files(user)])
+    user = cache.ensure_user(user)
 
-    response_payload = {
+    files = [f for f in cache.get_files(user) if f.valid_file()]
+
+    response = {
         'files':
-            sorted(
-                files, key=lambda rec: (rec['is_dir'], rec['relative_path'])
-            )
+            sorted(files, key=lambda rec: (rec.is_dir, rec.relative_path))
     }
 
-    response = FileListResponseRPC().load({
-        'result': FileListResponse().load(response_payload)
-    })
-    return jsonify(response)
+    return result_response(FileListResponseRPC(), response)
 
 
 @use_kwargs(FileUploadRequest)
@@ -92,6 +89,7 @@ def list_uploaded_files_view(user, cache):
 @requires_identity
 def upload_file_view(user, cache):
     """Upload file or archive of files."""
+    user = cache.ensure_user(user)
     file = extract_file(request)
 
     response_builder = {
@@ -101,7 +99,7 @@ def upload_file_view(user, cache):
     }
     response_builder.update(FileUploadRequest().load(request.args))
 
-    user_cache_dir = CACHE_UPLOADS_PATH / user['user_id']
+    user_cache_dir = CACHE_UPLOADS_PATH / user.user_id
     user_cache_dir.mkdir(exist_ok=True)
 
     file_path = user_cache_dir / file.filename
@@ -138,7 +136,7 @@ def upload_file_view(user, cache):
 
         for file_ in temp_dir.glob('**/*'):
             relative_path = file_.relative_to(
-                CACHE_UPLOADS_PATH / user['user_id']
+                CACHE_UPLOADS_PATH / user.user_id
             )
 
             file_obj = {
@@ -148,26 +146,21 @@ def upload_file_view(user, cache):
                 'is_dir': relative_path.is_dir(),
             }
 
-            files.append(FileUploadContext().load(file_obj, unknown=EXCLUDE))
+            files.append(file_obj)
 
     else:
         relative_path = file_path.relative_to(
-            CACHE_UPLOADS_PATH / user['user_id']
+            CACHE_UPLOADS_PATH / user.user_id
         )
+
         response_builder['file_size'] = os.stat(str(file_path)).st_size
         response_builder['relative_path'] = str(relative_path)
         response_builder['is_dir'] = relative_path.is_dir()
 
-        files.append(
-            FileUploadContext().load(response_builder, unknown=EXCLUDE)
-        )
+        files.append(response_builder)
 
-    response = FileUploadResponseRPC().load({
-        'result': FileUploadResponse().load({'files': files})
-    })
-    cache.set_files(user, files)
-
-    return jsonify(response)
+    files = cache.set_files(user, files)
+    return result_response(FileUploadResponseRPC(), {'files': files})
 
 
 @use_kwargs(ProjectCloneRequest)
@@ -195,15 +188,15 @@ def project_clone(user, cache):
         (lambda a, b: a.update(b) or a)(request.json, user),
         unknown=EXCLUDE,
     )
-
     local_path = make_project_path(user, ctx)
+    user = cache.ensure_user(user)
 
     if local_path.exists():
         shutil.rmtree(str(local_path))
 
         for project in cache.get_projects(user):
-            if project['git_url'] == ctx['git_url']:
-                cache.invalidate_project(user, project['project_id'])
+            if project.git_url == ctx['git_url']:
+                project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
     renku_clone(
@@ -216,12 +209,10 @@ def project_clone(user, cache):
             'user.email': ctx['email'],
         }
     )
-    cache.set_project(user, ctx['project_id'], ctx)
 
-    response = ProjectCloneResponseRPC().load({
-        'result': ProjectCloneResponse().load(ctx, unknown=EXCLUDE)
-    })
-    return jsonify(response)
+    project = cache.make_project(user, ctx)
+
+    return result_response(ProjectCloneResponseRPC(), project)
 
 
 @marshal_with(ProjectListResponseRPC)
@@ -242,13 +233,9 @@ def project_clone(user, cache):
 @requires_identity
 def list_projects_view(user, cache):
     """List cached projects."""
-    projects = cache.get_projects(user)
     projects = [
-        ProjectCloneResponse().load(p, unknown=EXCLUDE)
-        for p in projects if make_project_path(user, p).exists()
+        project for project in cache.get_projects(cache.ensure_user(user))
+        if project.abs_path.exists()
     ]
 
-    response = ProjectListResponseRPC().load({
-        'result': ProjectListResponse().load({'projects': projects})
-    })
-    return jsonify(response)
+    return result_response(ProjectListResponseRPC(), {'projects': projects})

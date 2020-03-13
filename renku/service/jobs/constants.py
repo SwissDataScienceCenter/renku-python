@@ -16,9 +16,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Job constants."""
-
-# User job states
-USER_JOB_STATE_ENQUEUED = 'ENQUEUED'
-USER_JOB_STATE_IN_PROGRESS = 'IN_PROGRESS'
-USER_JOB_STATE_COMPLETED = 'COMPLETED'
-USER_JOB_STATE_FAILED = 'FAILED'
