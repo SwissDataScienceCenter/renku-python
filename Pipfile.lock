@@ -126,10 +126,10 @@
         },
         "click": {
             "hashes": [
-                "sha256:2335065e6395b9e67ca716de5f7526736bfa6ceead690adf616d925bdc622b13",
-                "sha256:5b94b49521f6456670fdb30cd82a4eca9412788a93fa6dd6df72c94d5a8ff2d7"
+                "sha256:8a18b4ea89d8820c5d0c7da8a64b2c324b4dabb695804dbfea19b9be9d88c0cc",
+                "sha256:e345d143d80bf5ee7534056164e5e112ea5e22716bbb1ce727941f4c8b471b9a"
             ],
-            "version": "==7.0"
+            "version": "==7.1.1"
         },
         "click-completion": {
             "hashes": [
@@ -222,10 +222,10 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:2f501469fa256f52c076ed679e2eb444332c5e7eb120abedaad13cfed0d9149f",
-                "sha256:c8bef50f1954eccc6667ccf6dcf40cfeb305e831790d85cace9aa4e5af68b0be"
+                "sha256:4817b70971f4231d8764644398c45736b8c20fbb169dd021e3e688bd05edd445",
+                "sha256:d7252b39975d9a5f6b21cfeeff05c389c1f709db481f89bec07c57022157eab2"
             ],
-            "version": "==2.0.20200303141624"
+            "version": "==2.0.20200312183052"
         },
         "decorator": {
             "hashes": [
@@ -633,7 +633,7 @@
         "pygments": {
             "hashes": [
                 "sha256:647344a061c249a3b74e230c739f434d7ea4d8b1d5f3721bc0f3558049b38f44",
-                "sha256:aa931c0bd5daa25c475afadb2147115134cfe501f0656828cbe7cb566c7123bc"
+                "sha256:ff7a40b4860b727ab48fad6360eb351cc1b33cbf9b15a0f689ca5353e9463324"
             ],
             "version": "==2.6.1"
         },
@@ -666,10 +666,10 @@
         },
         "pytest": {
             "hashes": [
-                "sha256:0d5fe9189a148acc3c3eb2ac8e1ac0742cb7618c084f3d228baaec0c254b318d",
-                "sha256:ff615c761e25eb25df19edddc0b970302d2a9091fbce0e7213298d85fb61fef6"
+                "sha256:48c891b40d391ec824477c13d10d5eadf698c83a1671aba491f6db222035d6da",
+                "sha256:76418969e4b9db462a393f1baa13eeb39ba32eccf6013657f4f8295baa234842"
             ],
-            "version": "==5.3.5"
+            "version": "==5.4.0"
         },
         "pytest-cache": {
             "hashes": [
