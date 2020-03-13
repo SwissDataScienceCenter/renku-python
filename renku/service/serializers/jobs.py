@@ -21,20 +21,22 @@ from marshmallow import Schema, fields
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
-class UserJob(Schema):
-    """Job serialization."""
+class JobDetails(Schema):
+    """Response job details."""
 
-    job_id = fields.String(required=True)
-    state = fields.String(required=True)
     created_at = fields.DateTime()
     updated_at = fields.DateTime()
+
+    job_id = fields.String(required=True)
+
+    state = fields.String()
     extras = fields.Dict()
 
 
 class JobListResponse(Schema):
     """Response schema for job listing."""
 
-    jobs = fields.List(fields.Nested(UserJob), required=True)
+    jobs = fields.List(fields.Nested(JobDetails), required=True)
 
 
 class JobListResponseRPC(JsonRPCResponse):
@@ -46,4 +48,4 @@ class JobListResponseRPC(JsonRPCResponse):
 class JobDetailsResponseRPC(Schema):
     """Response schema for job details."""
 
-    result = fields.Nested(UserJob)
+    result = fields.Nested(JobDetails)
