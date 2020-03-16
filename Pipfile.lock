@@ -1010,6 +1010,12 @@
             ],
             "version": "==1.25.8"
         },
+        "walrus": {
+            "hashes": [
+                "sha256:b862719ae430b76af41205a7350ad681a77b90e9d9b1dbd8881f27246963f309"
+            ],
+            "version": "==0.8.0"
+        },
         "wcwidth": {
             "hashes": [
                 "sha256:8fd29383f539be45b20bd4df0dc29c20ba48654a41e661925e612311e9f3c603",
