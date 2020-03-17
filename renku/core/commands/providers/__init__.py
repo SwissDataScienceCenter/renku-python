@@ -54,15 +54,15 @@ class ProviderFactory:
 
         if is_doi_ and provider is None:
             return None, (
-                warning + 'Provider {} not found. '.format(
+                warning + 'Reason: provider {} not found'.format(
                     uri.split('/')[1].split('.')[0]  # Get DOI provider name.
-                ) + 'Currently supporting following providers: {}'.
+                ) + '\nHint: Supported providers are: {}'.
                 format(supported_providers)
             )
         elif provider is None:
             return None, (
-                warning + 'Provider not found for {}. '.format(uri) +
-                'Currently supporting following providers: {}'.
+                warning + 'Reason: provider not found for {} '.format(uri) +
+                '\nHint: Supported providers are: {}'.
                 format(supported_providers)
             )
         else:
