@@ -128,7 +128,7 @@ class DatasetsApiMixin(object):
 
         if dataset is None:
             if not create:
-                raise errors.DatasetNotFound
+                raise errors.DatasetNotFound(name=short_name)
 
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(
