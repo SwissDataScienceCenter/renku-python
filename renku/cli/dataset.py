@@ -132,8 +132,8 @@ Adding external data to the dataset:
 
 Sometimes you might want to add data to your dataset without copying the
 actual files to your repository. This is useful for example when external data
-is too large to store locally. The external data must exist (i.e. mounted) on
-your filesystem. Renku create a symbolic to your data and you can use this
+is too large to store locally. The external data must exist (i.e. be mounted)
+on your filesystem. Renku creates a symbolic to your data and you can use this
 symbolic link in renku commands as a normal file. To add an external file pass
 ``--external`` or ``-e`` when adding local data to a dataset:
 
@@ -742,12 +742,7 @@ class _DownloadProgressbar(DownloadProgressCallback):
     is_flag=True,
     help='Delete local files that are deleted from remote.'
 )
-@click.option(
-    '-e',
-    '--external',
-    is_flag=True,
-    help='Update only external storage files (symlinks).'
-)
+@click.option('-e', '--external', is_flag=True, help='Update external data.')
 def update(short_names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')

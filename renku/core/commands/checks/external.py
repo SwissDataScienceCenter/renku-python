@@ -39,8 +39,8 @@ def check_missing_external_files(client):
 
     problems = (
         '\n' + WARNING + 'There are missing external files.\n'
-        '  (make sure that external volume is mounted and accessible)' +
-        '\n\n\t' + '\n\t'.join(
+        '  (make sure that external paths are accessible)' + '\n\n\t' +
+        '\n\t'.join(
             click.style(path, fg='yellow') + ' -> ' +
             click.style(target, fg='red') for path, target in missing
         ) + '\n'
