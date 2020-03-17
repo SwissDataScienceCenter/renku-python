@@ -167,7 +167,12 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 @pytest.mark.parametrize(
     'doi,err', [('10.5281/zenodo.5979642342', 'record not found'),
                 ('10.7910/DVN/S8MSVFXXXX', 'provider DVN not found'),
-                ('10.5281/zenodo.1494915', 'no files have been found')]
+                ('10.5281/zenodo.1494915', 'no files have been found'),
+                ('https://zenodo.org/record/2621201248', 'record not found'),
+                ((
+                    'https://dataverse.harvard.edu/dataset.xhtml'
+                    '?persistentId=doi:10.7910/DVN/F4NUMRXXXX'
+                ), 'record not found')]
 )
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
@@ -195,23 +200,6 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
 
     assert 0 == result.exit_code
     assert 'OK' in result.output
-
-
-@pytest.mark.parametrize(
-    'url', [
-        'https://zenodo.org/record/2621201248',
-        'https://dataverse.harvard.edu/dataset.xhtml' +
-        '?persistentId=doi:10.7910/DVN/F4NUMRXXXX'
-    ]
-)
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-def test_dataset_import_fake_http(runner, project, url):
-    """Test dataset import through HTTPS."""
-    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
-
-    assert 2 == result.exit_code
-    assert 'URI not found.' in result.output
 
 
 @pytest.mark.integration
