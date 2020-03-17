@@ -16,37 +16,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project cache management."""
+from marshmallow import EXCLUDE
+
 from renku.service.cache.base import BaseCache
+from renku.service.cache.models.project import Project
+from renku.service.cache.models.user import User
+from renku.service.cache.serializers.project import ProjectSchema
 
 
 class ProjectManagementCache(BaseCache):
     """Project management cache."""
 
-    PROJECTS_SUFFIX = 'projects'
+    project_schema = ProjectSchema()
 
-    def projects_cache_key(self, user):
-        """Construct cache key based on user and projects suffix."""
-        return '{0}_{1}'.format(user['user_id'], self.PROJECTS_SUFFIX)
+    def make_project(self, user, project_data):
+        """Store user project metadata."""
+        project_data.update({'user_id': user.user_id})
 
-    def set_project(self, user, project_id, metadata):
-        """Cache project metadata under user hash set."""
-        self.set_record(self.projects_cache_key(user), project_id, metadata)
+        project_obj = self.project_schema.load(project_data, unknown=EXCLUDE)
+        project_obj.save()
 
-    def get_projects(self, user):
-        """Get all user cache projects."""
-        return self.get_all_records(self.projects_cache_key(user))
+        return project_obj
 
-    def get_project(self, user, project_id):
+    @staticmethod
+    def get_project(user, project_id):
         """Get user cached project."""
-        result = self.get_record(self.projects_cache_key(user), project_id)
-        return result
+        try:
+            record = Project.get((Project.project_id == project_id) &
+                                 (Project.user_id == user.user_id))
+        except ValueError:
+            return
 
-    def invalidate_project(self, user, project_id):
-        """Remove project record from hash set."""
-        self.invalidate_key(self.projects_cache_key(user), project_id)
+        return record
 
-    def all_projects_iter(self):
-        """Iterate over cached projects."""
-        return self.scan_iter(
-            '*_{0}'.format(ProjectManagementCache.PROJECTS_SUFFIX)
-        )
+    @staticmethod
+    def get_projects(user):
+        """Get all user cache projects."""
+        return Project.query(Project.user_id == user.user_id)
+
+    @staticmethod
+    def invalidate_project(user, project_id):
+        """Remove user project record."""
+        project_obj = ProjectManagementCache.get_project(user, project_id)
+
+        if project_obj:
+            project_obj.delete()
+
+        return project_obj
+
+    def user_projects(self):
+        """Iterate through all cached projects."""
+        for user in User.all():
+            yield user, self.get_projects(user)
