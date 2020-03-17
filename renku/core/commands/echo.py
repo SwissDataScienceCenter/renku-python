@@ -24,6 +24,7 @@ import click
 from git.remote import RemoteProgress
 
 WARNING = click.style('Warning: ', bold=True, fg='yellow')
+ERROR = click.style('Error: ', bold=True, fg='red')
 
 
 def echo_via_pager(*args, **kwargs):

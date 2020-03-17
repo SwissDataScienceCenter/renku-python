@@ -28,13 +28,11 @@ import requests
 import yaml
 
 from renku.core import errors
-from renku.core.commands.checks.migration import check_dataset_resources, \
-    dataset_pre_0_3
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
 from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
-    MigrationRequired, OperationError, ParameterError, UsageError
+    OperationError, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
 from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Dataset, Url, \
@@ -49,16 +47,6 @@ from .client import pass_local_client
 from .echo import WARNING
 from .format.dataset_files import DATASET_FILES_FORMATS
 from .format.datasets import DATASETS_FORMATS
-
-
-@pass_local_client(clean=False, commit=False)
-def check_for_migration(client):
-    """Check need for dataset migration."""
-    missing_dataset, missing_files = check_dataset_resources(client)
-    old_datasets = [ds for ds in dataset_pre_0_3(client)]
-
-    if missing_dataset or missing_files or old_datasets:
-        raise MigrationRequired('datasets')
 
 
 @pass_local_client(clean=False, commit=False)

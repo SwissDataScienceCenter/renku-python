@@ -99,8 +99,6 @@ def test_uuid_migration(dataset_metadata, client):
         'https://localhost/datasets/', dataset.identifier
     ) == dataset._id
 
-    assert dataset.same_as.url.startswith('https://doi.org')
-
 
 def test_dataset_creator_email(dataset_metadata):
     """Check that creators without an email are assigned a blank node."""

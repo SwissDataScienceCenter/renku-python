@@ -17,39 +17,56 @@
 # limitations under the License.
 """Renku service files cache management."""
 from renku.service.cache.base import BaseCache
+from renku.service.cache.models.file import File
+from renku.service.cache.models.user import User
+from renku.service.cache.serializers.file import FileSchema
 
 
 class FileManagementCache(BaseCache):
     """File management cache."""
 
-    FILES_SUFFIX = 'files'
+    file_schema = FileSchema()
 
-    def files_cache_key(self, user):
-        """Construct cache key based on user and files suffix."""
-        return '{0}_{1}'.format(user['user_id'], self.FILES_SUFFIX)
+    def set_file(self, user, file_data):
+        """Cache file metadata."""
+        file_data.update({'user_id': user.user_id})
 
-    def set_file(self, user, file_id, metadata):
-        """Cache file metadata under user hash set."""
-        self.set_record(self.files_cache_key(user), file_id, metadata)
+        file_obj = self.file_schema.load(file_data)
+        file_obj.save()
+
+        return file_obj
 
     def set_files(self, user, files):
-        """Cache a list of metadata files under user hash set."""
-        for file_ in files:
-            self.set_file(user, file_['file_id'], file_)
+        """Cache files metadata."""
+        return [self.set_file(user, file_) for file_ in files]
 
-    def get_files(self, user):
+    @staticmethod
+    def get_file(user, file_id):
+        """Get user file."""
+        try:
+            record = File.get((File.file_id == file_id) &
+                              (File.user_id == user.user_id))
+        except ValueError:
+            return
+
+        return record
+
+    @staticmethod
+    def get_files(user):
         """Get all user cached files."""
-        return self.get_all_records(self.files_cache_key(user))
+        return File.query(File.user_id == user.user_id)
 
-    def get_file(self, user, file_id):
-        """Get user cached file."""
-        result = self.get_record(self.files_cache_key(user), file_id)
-        return result
+    @staticmethod
+    def invalidate_file(user, file_id):
+        """Remove users file records."""
+        file_obj = FileManagementCache.get_file(user, file_id)
 
-    def invalidate_file(self, user, file_id):
-        """Remove file record from hash set."""
-        self.invalidate_key(self.files_cache_key(user), file_id)
+        if file_obj:
+            file_obj.delete()
 
-    def all_files_iter(self):
-        """Iterate over cached files."""
-        return self.scan_iter('*_{0}'.format(FileManagementCache.FILES_SUFFIX))
+        return file_obj
+
+    def user_files(self):
+        """Iterate through all cached files."""
+        for user in User.all():
+            yield user, self.get_files(user)
