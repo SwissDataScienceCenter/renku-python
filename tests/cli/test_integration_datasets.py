@@ -165,11 +165,9 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 
 
 @pytest.mark.parametrize(
-    'doi,err', [
-        ('10.5281/zenodo.5979642342', 'record not found'),
-        ('10.7910/DVN/S8MSVFXXXX', 'provider DVN not found'),
-        ('10.5281/zenodo.1494915', 'no files have been found')
-    ]
+    'doi,err', [('10.5281/zenodo.5979642342', 'record not found'),
+                ('10.7910/DVN/S8MSVFXXXX', 'provider DVN not found'),
+                ('10.5281/zenodo.1494915', 'no files have been found')]
 )
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
