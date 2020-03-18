@@ -21,6 +21,7 @@ import shutil
 import urllib
 from collections import OrderedDict
 from contextlib import contextmanager
+from pathlib import Path
 
 import click
 import git
@@ -133,6 +134,7 @@ def add_file(
     urls,
     short_name,
     link=False,
+    external=False,
     force=False,
     create=False,
     sources=(),
@@ -150,6 +152,7 @@ def add_file(
         urls=urls,
         short_name=short_name,
         link=link,
+        external=external,
         force=force,
         create=create,
         sources=sources,
@@ -167,6 +170,7 @@ def add_to_dataset(
     urls,
     short_name,
     link=False,
+    external=False,
     force=False,
     create=False,
     sources=(),
@@ -189,6 +193,8 @@ def add_to_dataset(
         raise UsageError(
             'Cannot add multiple URLs with --source or --destination'
         )
+    if link and external:
+        raise UsageError('Cannot use "--link" and "--external" together.')
 
     if interactive:
         if total_size is None:
@@ -218,6 +224,7 @@ def add_to_dataset(
                     dataset,
                     bar,
                     link=link,
+                    external=external,
                     force=force,
                     sources=sources,
                     destination=destination,
@@ -612,6 +619,7 @@ def update_datasets(
     exclude,
     ref,
     delete,
+    external=False,
     progress_context=contextlib.nullcontext,
     commit_message=None,
 ):
@@ -629,11 +637,14 @@ def update_datasets(
 
     possible_updates = []
     unique_remotes = set()
+    external_files = []
 
     for file_ in records:
         if file_.based_on:
             possible_updates.append(file_)
             unique_remotes.add(file_.based_on.url)
+        elif file_.external:
+            external_files.append(file_)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
@@ -641,6 +652,15 @@ def update_datasets(
             'Limit list of files to be updated to one repository. See'
             '"renku dataset update -h" for more information.'
         )
+
+    if external_files:
+        if external:
+            client.update_external_files(external_files)
+        else:
+            click.echo(
+                'To update external files run update command with '
+                '"--external" flag.'
+            )
 
     with progress_context(
         possible_updates, item_show_func=lambda x: x.path if x else None
@@ -698,7 +718,7 @@ def _filter(
         if not short_names or dataset.short_name in short_names:
             for file_ in dataset.files:
                 file_.dataset = dataset
-                path_ = file_.full_path.relative_to(client.path)
+                path_ = Path(file_.path)
                 match = _include_exclude(path_, include, exclude)
 
                 if creators:
