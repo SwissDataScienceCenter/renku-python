@@ -327,7 +327,8 @@ class DatasetsApiMixin(object):
         self.repo.git.add(*files_to_commit, force=True)
         self.repo.git.add(self.renku_pointers_path, force=True)
 
-        if self.repo.is_dirty():
+        staged_files = self.repo.index.diff('HEAD')
+        if staged_files:
             msg = 'renku dataset: committing {} newly added files'.format(
                 len(files_to_commit)
             )
@@ -1206,5 +1207,7 @@ def _check_url(url):
 
 DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
+    Path(RENKU_HOME) / Path(DatasetsApiMixin.POINTERS),
     Path(RENKU_HOME) / Path(LinkReference.REFS),
+    '.gitattributes',
 ]
