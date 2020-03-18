@@ -19,8 +19,8 @@
  Renku CLI and SDK for Python
 ==============================
 
-.. image:: https://img.shields.io/travis/SwissDataScienceCenter/renku-python.svg
-   :target: https://travis-ci.org/SwissDataScienceCenter/renku-python
+.. image:: https://github.com/SwissDataScienceCenter/renku-python/workflows/Test,%20Integration%20Tests%20and%20Deploy/badge.svg
+   :target: https://github.com/SwissDataScienceCenter/renku-python/actions?query=workflow%3A%22Test%2C+Integration+Tests+and+Deploy%22+branch%3Amaster
 
 .. image:: https://img.shields.io/coveralls/SwissDataScienceCenter/renku-python.svg
    :target: https://coveralls.io/r/SwissDataScienceCenter/renku-python

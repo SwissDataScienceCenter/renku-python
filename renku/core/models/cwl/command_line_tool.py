@@ -184,11 +184,11 @@ class CommandLineToolFactory(object):
 
     explicit_inputs = attr.ib(
         default=[],
-        converter=lambda paths: [Path(path).resolve() for path in paths]
+        converter=lambda paths: [Path(os.path.abspath(p)) for p in paths]
     )
     explicit_outputs = attr.ib(
         default=[],
-        converter=lambda paths: [Path(path).resolve() for path in paths]
+        converter=lambda paths: [Path(os.path.abspath(p)) for p in paths]
     )
 
     directory = attr.ib(
@@ -328,7 +328,7 @@ class CommandLineToolFactory(object):
                 stream = getattr(self, stream_name)
                 if (
                     stream and stream not in candidates and
-                    Path(stream).resolve() not in self.explicit_outputs
+                    Path(os.path.abspath(stream)) not in self.explicit_outputs
                 ):
                     unmodified.add(stream)
                 elif stream:
@@ -400,8 +400,14 @@ class CommandLineToolFactory(object):
         if not candidate.is_absolute():
             candidate = self.directory / candidate
 
-        if candidate.exists():
-            return candidate.resolve()
+        if candidate.exists() or candidate.is_symlink():
+            try:
+                path = candidate.resolve()
+                path.relative_to(self.directory)
+            except ValueError:  # An external file
+                return Path(os.path.abspath(candidate))
+            else:
+                return path
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
@@ -577,7 +583,8 @@ class CommandLineToolFactory(object):
                     str(input_path / path)
                     for path in tree.get(input_path, default=[])
                 }
-                if input_path.resolve() not in self.explicit_outputs:
+                absolute_path = os.path.abspath(input_path)
+                if Path(absolute_path) not in self.explicit_outputs:
                     content = {
                         str(path)
                         for path in input_path.rglob('*')
@@ -622,7 +629,7 @@ class CommandLineToolFactory(object):
         # TODO group by a common prefix
 
         for position, path in enumerate(paths):
-            if Path(path).resolve() in self.explicit_outputs:
+            if Path(os.path.abspath(path)) in self.explicit_outputs:
                 del paths[position]
 
         for position, path in enumerate(paths):
@@ -792,6 +799,6 @@ class CommandLineToolFactory(object):
                 for line in f:
                     line = line.strip()
                     if line:
-                        yield Path(line).resolve()
+                        yield Path(os.path.abspath(line))
         except FileNotFoundError:
             return

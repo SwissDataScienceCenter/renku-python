@@ -366,6 +366,8 @@ def zenodo_sandbox(client):
     os.environ['ZENODO_USE_SANDBOX'] = 'true'
     access_token = os.getenv('ZENODO_ACCESS_TOKEN', '')
     client.set_value('zenodo', 'access_token', access_token)
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('update renku.ini')
 
 
 @pytest.fixture
