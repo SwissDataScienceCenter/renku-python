@@ -35,7 +35,6 @@ from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     OperationError, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
-from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Dataset, Url, \
     generate_default_short_name
 from renku.core.models.provenance.agents import Person
@@ -125,7 +124,7 @@ def edit_dataset(client, dataset_id, transform_fn, commit_message=None):
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
     commit_empty=False,
     raise_if_empty=True
 )
@@ -299,7 +298,7 @@ def list_files(
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 @contextmanager
 def file_unlink(client, short_name, include, exclude, commit_message=None):
@@ -326,7 +325,7 @@ def file_unlink(client, short_name, include, exclude, commit_message=None):
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def dataset_remove(
     client,
@@ -382,11 +381,7 @@ def dataset_remove(
                 ref.delete()
 
 
-@pass_local_client(
-    clean=True,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=True, commit=False)
 def export_dataset(
     client,
     short_name,
@@ -493,7 +488,7 @@ def export_dataset(
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def import_dataset(
     client,
@@ -718,7 +713,7 @@ def _filter(
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def tag_dataset_with_client(
     client, short_name, tag, description, force=False, commit_message=None
@@ -744,7 +739,7 @@ def tag_dataset(client, short_name, tag, description, force=False):
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def remove_dataset_tags(client, short_name, tags, commit_message=True):
     """Removes tags from a dataset."""
