@@ -222,10 +222,10 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:2f501469fa256f52c076ed679e2eb444332c5e7eb120abedaad13cfed0d9149f",
-                "sha256:c8bef50f1954eccc6667ccf6dcf40cfeb305e831790d85cace9aa4e5af68b0be"
+                "sha256:446ac1b16d480dcd26d19a490371ab652e424eecb0c526400217261a6d2143ce",
+                "sha256:7126c4a69a3fc8e50588b96e32f381ac9d0c23d6ae50bd4c7bbc943830962b28"
             ],
-            "version": "==2.0.20200303141624"
+            "version": "==3.0.20200317203547"
         },
         "decorator": {
             "hashes": [
