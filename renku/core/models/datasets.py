@@ -367,10 +367,6 @@ class Dataset(Entity, CreatorMixin):
         kw_only=True
     )
 
-    based_on = jsonld.ib(
-        default=None, context='schema:isBasedOn', kw_only=True
-    )
-
     license = jsonld.ib(default=None, context='schema:license', kw_only=True)
 
     name = jsonld.ib(
