@@ -69,7 +69,7 @@ def dot(graph, simple=True, debug=False, landscape=False, strict=False):
     from rdflib.tools.rdf2dot import rdf2dot
 
     if strict:
-        raise SHACLValidationError('--strict not supported for json-ld-graph')
+        raise SHACLValidationError('--strict not supported for dot')
 
     g = _conjunctive_graph(graph)
 

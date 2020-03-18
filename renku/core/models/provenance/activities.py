@@ -239,7 +239,10 @@ class Activity(CommitMixin):
 
             is_dataset = self.client.DATASETS in str(path_)
             not_refs = LinkReference.REFS not in str(path_)
-            does_not_exists = not path_.exists()
+            does_not_exists = not (
+                path_.exists() or
+                (path_.is_symlink() and os.path.lexists(path_))
+            )
 
             if all([is_dataset, not_refs, does_not_exists]):
                 uid = uuid.UUID(path_.parent.name)
