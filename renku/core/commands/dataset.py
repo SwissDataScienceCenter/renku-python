@@ -87,7 +87,7 @@ def create_dataset(
     if not creators:
         creators = [Person.from_git(client.repo)]
     else:
-        creators = _construct_creators(creators)
+        creators, _ = _construct_creators(creators)
 
     dataset, _, __ = client.create_dataset(
         short_name=short_name,
@@ -109,7 +109,9 @@ def edit_dataset(
     client, short_name, title, description, creators, commit_message=None
 ):
     """Edit dataset metadata."""
-    creators = _construct_creators(creators, ignore_email=True)
+    creators, no_email_warnings = _construct_creators(
+        creators, ignore_email=True
+    )
     title = title.strip() if isinstance(title, str) else ''
 
     updated = []
@@ -125,7 +127,7 @@ def edit_dataset(
             dataset.name = title
             updated.append('title')
 
-    return updated
+    return updated, no_email_warnings
 
 
 def _construct_creators(creators, ignore_email=False):
@@ -137,6 +139,7 @@ def _construct_creators(creators, ignore_email=False):
         raise errors.ParameterError('Invalid type')
 
     people = []
+    no_email_warnings = []
     for creator in creators:
         if isinstance(creator, str):
             person = Person.from_string(creator)
@@ -152,14 +155,17 @@ def _construct_creators(creators, ignore_email=False):
                 f'Name is invalid: "{creator}".\n{message}'
             )
 
-        if not person.email and not ignore_email:  # pragma: no cover
-            raise errors.ParameterError(
-                f'Email is invalid: "{creator}".\n{message}'
-            )
+        if not person.email:
+            if not ignore_email:  # pragma: no cover
+                raise errors.ParameterError(
+                    f'Email is invalid: "{creator}".\n{message}'
+                )
+            else:
+                no_email_warnings.append(creator)
 
         people.append(person)
 
-    return people
+    return people, no_email_warnings
 
 
 @pass_local_client(

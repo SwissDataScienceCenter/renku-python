@@ -453,7 +453,7 @@ def edit(short_name, title, description, creator):
     """Edit dataset metadata."""
     creators = creator or ()
 
-    updated = edit_dataset(
+    updated, no_email_warnings = edit_dataset(
         short_name=short_name,
         title=title,
         description=description,
@@ -464,6 +464,10 @@ def edit(short_name, title, description, creator):
         click.echo('Nothing to update.')
     else:
         click.echo('Successfully updated: {}.'.format(', '.join(updated)))
+        if no_email_warnings:
+            click.echo(
+                WARNING + 'No email set for: ' + ', '.join(no_email_warnings)
+            )
 
 
 @dataset.command()

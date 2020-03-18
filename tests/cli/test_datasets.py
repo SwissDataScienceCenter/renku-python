@@ -1003,6 +1003,7 @@ def test_dataset_edit(runner, client, project, dirty):
     )
     assert 0 == result.exit_code
     assert 'Successfully updated: creators, description.' in result.output
+    assert 'Warning: No email set for: Forename2 Surname2' in result.output
 
     dataset = client.load_dataset('dataset')
     assert ' new description ' == dataset.description
