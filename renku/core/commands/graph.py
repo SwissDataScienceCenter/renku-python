@@ -228,7 +228,13 @@ class Graph(object):
     def normalize_path(self, path):
         """Normalize path relative to the Git workdir."""
         start = self.client.path.resolve()
-        path = Path(path).resolve()
+        try:
+            p = Path(path).resolve()
+            p.relative_to(self.client.path)
+        except ValueError:  # External file
+            path = os.path.abspath(path)
+        else:
+            path = p
         return os.path.relpath(str(path), start=str(start))
 
     def _format_path(self, path):
@@ -571,7 +577,7 @@ class Graph(object):
         def _relative_default(client, default):
             """Evolve ``File`` or ``Directory`` path."""
             if isinstance(default, PATH_TYPES):
-                path = (client.workflow_path / default.path).resolve()
+                path = os.path.abspath(client.workflow_path / default.path)
                 return attr.evolve(default, path=path)
             return default
 

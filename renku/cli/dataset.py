@@ -128,6 +128,19 @@ To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
 reference in the remote Git repository.
 
+Adding external data to the dataset:
+
+Sometimes you might want to add data to your dataset without copying the
+actual files to your repository. This is useful for example when external data
+is too large to store locally. The external data must exist (i.e. be mounted)
+on your filesystem. Renku creates a symbolic to your data and you can use this
+symbolic link in renku commands as a normal file. To add an external file pass
+``--external`` or ``-e`` when adding local data to a dataset:
+
+.. code-block:: console
+
+    $ renku dataset add my-dataset -e /path/to/external/file
+
 Updating a dataset:
 
 After adding files from a remote Git repository, you can check for updates in
@@ -148,6 +161,14 @@ updates only CSV files from ``my-dataset``:
 
 Note that putting glob patterns in quotes is needed to tell Unix shell not
 to expand them.
+
+External data are not updated automatically because they require a checksum
+calculation which can take a long time when data is large. To update external
+files pass ``--external`` or ``-e`` to the update command:
+
+.. code-block:: console
+
+    $ renku dataset update -e
 
 Tagging a dataset:
 
@@ -416,6 +437,9 @@ def edit(dataset_id):
 @click.argument('urls', nargs=-1)
 @click.option('--link', is_flag=True, help='Creates a hard link.')
 @click.option(
+    '-e', '--external', is_flag=True, help='Creates a link to external data.'
+)
+@click.option(
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
 @click.option(
@@ -444,13 +468,16 @@ def edit(dataset_id):
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
-def add(short_name, urls, link, force, create, sources, destination, ref):
+def add(
+    short_name, urls, link, external, force, create, sources, destination, ref
+):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
         urls=urls,
         short_name=short_name,
         link=link,
+        external=external,
         force=force,
         create=create,
         sources=sources,
@@ -460,6 +487,7 @@ def add(short_name, urls, link, force, create, sources, destination, ref):
         progress=_DownloadProgressbar,
         interactive=True,
     )
+    click.secho('OK', fg='green')
 
 
 @dataset.command('ls-files')
@@ -714,7 +742,8 @@ class _DownloadProgressbar(DownloadProgressCallback):
     is_flag=True,
     help='Delete local files that are deleted from remote.'
 )
-def update(short_names, creators, include, exclude, ref, delete):
+@click.option('-e', '--external', is_flag=True, help='Update external data.')
+def update(short_names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')
     update_datasets(
@@ -724,6 +753,7 @@ def update(short_names, creators, include, exclude, ref, delete):
         exclude=exclude,
         ref=ref,
         delete=delete,
+        external=external,
         progress_context=progress_context
     )
     click.secho('OK', fg='green')
