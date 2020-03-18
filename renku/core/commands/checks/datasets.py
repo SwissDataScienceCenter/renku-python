@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Checks needed to determine integrity of datasets."""
+import os
 from collections import defaultdict
 from pathlib import Path
 
@@ -57,9 +58,12 @@ def check_missing_files(client):
 
     for path, dataset in client.datasets.items():
         for file_ in dataset.files:
-            filepath = Path(file_.path)
-            if not filepath.exists():
-                missing[dataset.name].append(str(filepath))
+            file_exists = (
+                Path(file_.path).exists() or
+                (file_.external and os.path.lexists(file_.path))
+            )
+            if not file_exists:
+                missing[dataset.name].append(file_.path)
 
     if not missing:
         return True, None

@@ -214,6 +214,8 @@ class DatasetFile(Entity, CreatorMixin):
         converter=convert_based_on
     )
 
+    external = jsonld.ib(context='sdsc:external', default=False, kw_only=True)
+
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
@@ -228,10 +230,8 @@ class DatasetFile(Entity, CreatorMixin):
     @property
     def full_path(self):
         """Return full path in the current reference frame."""
-        path = Path(self.path)
-        if self.client:
-            return (self.client.path / path).resolve()
-        return path.resolve()
+        path = self.client.path / self.path if self.client else self.path
+        return Path(os.path.abspath(path))
 
     @property
     def size_in_mb(self):
@@ -545,7 +545,11 @@ class Dataset(Entity, CreatorMixin):
 
         if self.files and self.client is not None:
             for dataset_file in self.files:
-                file_exists = Path(dataset_file.path).exists()
+                path = Path(dataset_file.path)
+                file_exists = (
+                    path.exists() or
+                    (path.is_symlink() and os.path.lexists(path))
+                )
 
                 if dataset_file.client is None and file_exists:
                     client, _, _ = self.client.resolve_in_submodules(
