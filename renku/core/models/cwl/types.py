@@ -35,7 +35,7 @@ class PathFormatterMixin:
         if reference:
             return str(os.path.normpath(str(reference.parent / self.path)))
         return os.path.relpath(
-            os.path.realpath(str(self.path)), os.path.realpath(os.getcwd())
+            os.path.abspath(str(self.path)), os.path.realpath(os.getcwd())
         )
 
 

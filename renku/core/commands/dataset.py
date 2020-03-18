@@ -21,6 +21,7 @@ import shutil
 import urllib
 from collections import OrderedDict
 from contextlib import contextmanager
+from pathlib import Path
 
 import click
 import git
@@ -33,7 +34,6 @@ from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     OperationError, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
-from renku.core.management.git import COMMIT_DIFF_STRATEGY
 from renku.core.models.datasets import Url, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
@@ -171,7 +171,7 @@ def _construct_creators(creators, ignore_email=False):
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
     commit_empty=False,
     raise_if_empty=True
 )
@@ -180,6 +180,7 @@ def add_file(
     urls,
     short_name,
     link=False,
+    external=False,
     force=False,
     create=False,
     sources=(),
@@ -197,6 +198,7 @@ def add_file(
         urls=urls,
         short_name=short_name,
         link=link,
+        external=external,
         force=force,
         create=create,
         sources=sources,
@@ -214,6 +216,7 @@ def add_to_dataset(
     urls,
     short_name,
     link=False,
+    external=False,
     force=False,
     create=False,
     sources=(),
@@ -236,6 +239,8 @@ def add_to_dataset(
         raise UsageError(
             'Cannot add multiple URLs with --source or --destination'
         )
+    if link and external:
+        raise UsageError('Cannot use "--link" and "--external" together.')
 
     if interactive:
         if total_size is None:
@@ -265,6 +270,7 @@ def add_to_dataset(
                     dataset,
                     bar,
                     link=link,
+                    external=external,
                     force=force,
                     sources=sources,
                     destination=destination,
@@ -339,7 +345,7 @@ def list_files(
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 @contextmanager
 def file_unlink(client, short_name, include, exclude, commit_message=None):
@@ -366,7 +372,7 @@ def file_unlink(client, short_name, include, exclude, commit_message=None):
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def dataset_remove(
     client,
@@ -422,11 +428,7 @@ def dataset_remove(
                 ref.delete()
 
 
-@pass_local_client(
-    clean=True,
-    commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
-)
+@pass_local_client(clean=True, commit=False)
 def export_dataset(
     client,
     short_name,
@@ -533,7 +535,7 @@ def export_dataset(
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def import_dataset(
     client,
@@ -641,6 +643,7 @@ def update_datasets(
     exclude,
     ref,
     delete,
+    external=False,
     progress_context=contextlib.nullcontext,
     commit_message=None,
 ):
@@ -658,11 +661,14 @@ def update_datasets(
 
     possible_updates = []
     unique_remotes = set()
+    external_files = []
 
     for file_ in records:
         if file_.based_on:
             possible_updates.append(file_)
             unique_remotes.add(file_.based_on.url)
+        elif file_.external:
+            external_files.append(file_)
 
     if ref and len(unique_remotes) > 1:
         raise ParameterError(
@@ -670,6 +676,15 @@ def update_datasets(
             'Limit list of files to be updated to one repository. See'
             '"renku dataset update -h" for more information.'
         )
+
+    if external_files:
+        if external:
+            client.update_external_files(external_files)
+        else:
+            click.echo(
+                'To update external files run update command with '
+                '"--external" flag.'
+            )
 
     with progress_context(
         possible_updates, item_show_func=lambda x: x.path if x else None
@@ -727,7 +742,7 @@ def _filter(
         if not short_names or dataset.short_name in short_names:
             for file_ in dataset.files:
                 file_.dataset = dataset
-                path_ = file_.full_path.relative_to(client.path)
+                path_ = Path(file_.path)
                 match = _include_exclude(path_, include, exclude)
 
                 if creators:
@@ -745,7 +760,7 @@ def _filter(
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def tag_dataset_with_client(
     client, short_name, tag, description, force=False, commit_message=None
@@ -771,7 +786,7 @@ def tag_dataset(client, short_name, tag, description, force=False):
 @pass_local_client(
     clean=False,
     commit=True,
-    commit_only=COMMIT_DIFF_STRATEGY,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def remove_dataset_tags(client, short_name, tags, commit_message=True):
     """Removes tags from a dataset."""
