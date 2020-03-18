@@ -466,7 +466,8 @@ def edit(short_name, title, description, creator):
         click.echo('Successfully updated: {}.'.format(', '.join(updated)))
         if no_email_warnings:
             click.echo(
-                WARNING + 'No email set for: ' + ', '.join(no_email_warnings)
+                WARNING + 'No email or wrong format for: ' +
+                ', '.join(no_email_warnings)
             )
 
 
