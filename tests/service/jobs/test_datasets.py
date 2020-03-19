@@ -29,8 +29,9 @@ from renku.service.utils import make_project_path
 
 
 @pytest.mark.parametrize(
-    'doi', [
-        '10.5281/zenodo.3239980',
+    'doi',
+    [
+        # '10.5281/zenodo.3239980',
         '10.5281/zenodo.3188334',
         '10.7910/DVN/TJCLKP',
     ]

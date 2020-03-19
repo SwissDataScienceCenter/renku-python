@@ -39,6 +39,7 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
+from walrus import Database
 
 
 @pytest.fixture(scope='module')
@@ -365,6 +366,8 @@ def zenodo_sandbox(client):
     os.environ['ZENODO_USE_SANDBOX'] = 'true'
     access_token = os.getenv('ZENODO_ACCESS_TOKEN', '')
     client.set_value('zenodo', 'access_token', access_token)
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('update renku.ini')
 
 
 @pytest.fixture
@@ -605,12 +608,25 @@ def datapack_tar(directory_tree):
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from renku.service.cache.base import BaseCache
+    from renku.service.cache.models.user import User
+    from renku.service.cache.models.job import Job
+    from renku.service.cache.models.file import File
+    from renku.service.cache.models.project import Project
     from renku.service.jobs.queues import WorkerQueues
 
     monkey_patch = MonkeyPatch()
     with monkey_patch.context() as m:
-        m.setattr(WorkerQueues, 'connection', fakeredis.FakeRedis())
-        m.setattr(BaseCache, 'cache', fakeredis.FakeRedis())
+        fake_redis = fakeredis.FakeRedis()
+        fake_model_db = Database(connection_pool=fake_redis.connection_pool)
+
+        m.setattr(WorkerQueues, 'connection', fake_redis)
+        m.setattr(BaseCache, 'cache', fake_redis)
+        m.setattr(BaseCache, 'model_db', fake_model_db)
+
+        m.setattr(Job, '__database__', fake_model_db)
+        m.setattr(User, '__database__', fake_model_db)
+        m.setattr(File, '__database__', fake_model_db)
+        m.setattr(Project, '__database__', fake_model_db)
 
         yield
 

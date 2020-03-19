@@ -17,13 +17,15 @@
 # limitations under the License.
 """Renku service cache management for files."""
 from renku.service.cache.files import FileManagementCache
-from renku.service.cache.jobs import JobsManagementCache
+from renku.service.cache.jobs import JobManagementCache
 from renku.service.cache.projects import ProjectManagementCache
+from renku.service.cache.users import UserManagementCache
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
 class ServiceCache(
-    FileManagementCache, ProjectManagementCache, JobsManagementCache
+    FileManagementCache, ProjectManagementCache, JobManagementCache,
+    UserManagementCache
 ):
     """Service cache manager."""
 
