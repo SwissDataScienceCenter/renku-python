@@ -23,6 +23,7 @@ import re
 import shutil
 import stat
 import tempfile
+import time
 import uuid
 import warnings
 from configparser import NoSectionError
@@ -362,7 +363,7 @@ class DatasetsApiMixin(object):
         return checksum, filesize
 
     def _check_protected_path(self, path):
-        """Checks if a path is protected by renku."""
+        """Checks if a path is a protected path."""
         try:
             path_in_repo = path.relative_to(self.path)
         except ValueError:
@@ -376,7 +377,7 @@ class DatasetsApiMixin(object):
         return False
 
     def _add_from_local(self, dataset, path, link, external, destination):
-        """Add a file or directory from local filesystem."""
+        """Add a file or directory from a local filesystem."""
         src = Path(path).resolve()
 
         if not src.exists():
@@ -453,7 +454,7 @@ class DatasetsApiMixin(object):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
-        max_workers = min(os.cpu_count() + 4, 8)
+        max_workers = min(os.cpu_count() - 2, 4) or 1
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
@@ -469,7 +470,7 @@ class DatasetsApiMixin(object):
         return files
 
     def _add_from_url(self, dataset, url, destination, extract, progress=None):
-        """Process an add from url and return the location on disk."""
+        """Process add from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
@@ -477,13 +478,23 @@ class DatasetsApiMixin(object):
             destination.parent.mkdir(parents=True, exist_ok=True)
 
         try:
+            start = time.time() * 1e+3
             paths = _download(
                 url=url,
                 download_to=destination,
                 extract=extract,
                 progress_class=progress
             )
-        except error.HTTPError as e:  # pragma nocover
+
+            exec_time = (time.time() * 1e+3 - start) // 1e+3
+            # If execution time was less or equal to zero seconds,
+            # block the thread a bit to avoid being rate limited.
+            if exec_time == 0:
+                time.sleep(max(os.cpu_count() - 2, 4))
+
+        except (
+            requests.exceptions.HTTPError, error.HTTPError
+        ) as e:  # pragma nocover
             raise errors.OperationError(
                 'Cannot download from {}'.format(url)
             ) from e
@@ -1166,12 +1177,14 @@ def _download(
 
     with requests.get(url, stream=True) as request:
         request.raise_for_status()
+
         with open(str(download_to), 'wb') as file_:
             total_size = int(request.headers.get('content-length', 0))
             progress_class = progress_class or DownloadProgressCallback
             progress = progress_class(
                 description=download_to.name, total_size=total_size
             )
+
             try:
                 for chunk in request.iter_content(chunk_size=chunk_size):
                     if chunk:  # ignore keep-alive chunks
