@@ -85,7 +85,7 @@ URL schemes. For example,
 
     $ renku dataset add my-dataset git+ssh://host.io/namespace/project.git
 
-Sometimes you want to import just specific paths within the parent project.
+Sometimes you want to add just specific paths within the parent project.
 In this case, use the ``--source`` or ``-s`` flag:
 
 .. code-block:: console
@@ -203,14 +203,14 @@ To import all data files and their metadata from another Renku dataset use:
 .. code-block:: console
 
     $ renku dataset import \
-        https://renkulab.io/projects/username/project/datasets/dataset-id
+        https://renkulab.io/projects/<username>/<project>/datasets/<dataset-id>
 
 or
 
 .. code-block:: console
 
     $ renku dataset import \
-        https://renkulab.io/datasets/project-id
+        https://renkulab.io/datasets/<dataset-id>
 
 You can get the link to a dataset form the UI or you can construct it by
 knowing the dataset's ID.
@@ -695,7 +695,7 @@ def export_(
     help='Extract files before importing to dataset.'
 )
 def import_(uri, short_name, extract):
-    """Import data from a 3rd party provider.
+    """Import data from a 3rd party provider or another renku project.
 
     Supported providers: [Dataverse, Renku, Zenodo]
     """
