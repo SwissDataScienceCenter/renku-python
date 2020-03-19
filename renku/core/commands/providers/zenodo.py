@@ -237,7 +237,9 @@ class ZenodoRecordSerializer:
     def get_files(self):
         """Get Zenodo files metadata as ``ZenodoFile``."""
         if not self.files:
-            raise LookupError('no files have been found')
+            raise LookupError(
+                'no files have been found - deposit is empty or protected'
+            )
 
         return [ZenodoFileSerializer(**file_) for file_ in self.files]
 

@@ -214,7 +214,7 @@ class DataverseRecordSerializer:
 
     def get_files(self):
         """Get Dataverse files metadata as ``DataverseFileSerializer``."""
-        if len(self.files) == 0:
+        if not self.files:
             raise LookupError(
                 'no files have been found - deposit is empty or protected'
             )
