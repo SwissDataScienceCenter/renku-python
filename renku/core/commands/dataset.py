@@ -20,7 +20,6 @@ import re
 import shutil
 import urllib
 from collections import OrderedDict
-from contextlib import contextmanager
 from pathlib import Path
 
 import click
@@ -300,8 +299,15 @@ def list_files(
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
 )
-@contextmanager
-def file_unlink(client, short_name, include, exclude, commit_message=None):
+def file_unlink(
+    client,
+    short_name,
+    include,
+    exclude,
+    interactive=False,
+    yes=False,
+    commit_message=None
+):
     """Remove matching files from a dataset."""
     dataset = client.load_dataset(short_name=short_name)
 
@@ -314,7 +320,13 @@ def file_unlink(client, short_name, include, exclude, commit_message=None):
     if not records:
         raise ParameterError('No records found.')
 
-    yield records
+    if interactive and not yes:
+        prompt_text = (
+            f'You are about to remove following from "{short_name}" dataset.' +
+            '\n' + '\n'.join([str(record.full_path) for record in records]) +
+            '\nDo you wish to continue?'
+        )
+        click.confirm(WARNING + prompt_text, abort=True)
 
     for item in records:
         dataset.unlink_file(item.path)

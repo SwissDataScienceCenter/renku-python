@@ -922,6 +922,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
               str(new_file)]
     )
     assert 0 == result.exit_code
+    assert not client.repo.is_dirty()
 
     with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename in {
@@ -936,6 +937,7 @@ def test_dataset_unlink_file(tmpdir, runner, client):
         ]
     )
     assert 0 == result.exit_code
+    assert not client.repo.is_dirty()
 
     with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename not in [

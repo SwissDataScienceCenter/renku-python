@@ -306,7 +306,7 @@ from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_remove, edit_dataset, export_dataset, file_unlink, \
     import_dataset, list_datasets, list_files, list_tags, \
     remove_dataset_tags, tag_dataset_with_client, update_datasets
-from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
+from renku.core.commands.echo import echo_via_pager, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
     DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -554,15 +554,13 @@ def ls_files(short_names, creators, include, exclude, format, columns):
 )
 def unlink(short_name, include, exclude, yes):
     """Remove matching files from a dataset."""
-    with file_unlink(short_name, include, exclude) as records:
-        if not yes and records:
-            prompt_text = (
-                'You are about to remove '
-                'following from "{0}" dataset.\n'.format(short_name) +
-                '\n'.join([str(record.full_path) for record in records]) +
-                '\nDo you wish to continue?'
-            )
-            click.confirm(WARNING + prompt_text, abort=True)
+    file_unlink(
+        short_name=short_name,
+        include=include,
+        exclude=exclude,
+        yes=yes,
+        interactive=True
+    )
 
     click.secho('OK', fg='green')
 
