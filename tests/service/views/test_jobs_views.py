@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime
 
 import pytest
+from marshmallow.utils import isoformat
 
 
 @pytest.mark.service
@@ -56,17 +57,17 @@ def test_jobs_view_expected_job(svc_client_cache):
     """Check non-empty result for user requested job."""
     svc_client, cache = svc_client_cache
 
-    user = {'user_id': 'user'}
-    job = {
+    user = cache.ensure_user({'user_id': 'user'})
+    job_data = {
         'job_id': uuid.uuid4().hex,
         'state': 'CREATED',
-        'created_at': datetime.now(),
-        'updated_at': datetime.now(),
+        'created_at': isoformat(datetime.now()),
+        'updated_at': isoformat(datetime.now()),
         'extras': {
             'progress': 42
         }
     }
-    cache.set_job(user, job)
+    job = cache.make_job(user, job_data)
 
     headers = {
         'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ def test_jobs_view_expected_job(svc_client_cache):
         'extras',
     } == set(response.json['result']['jobs'][0].keys())
 
-    cache.invalidate_job(user, job['job_id'])
+    cache.invalidate_job(user, job.job_id)
     response = svc_client.get('/jobs', headers=headers)
     assert 0 == len(response.json['result']['jobs'])
 
@@ -93,23 +94,29 @@ def test_jobs_view_check_exclusion(svc_client_cache):
     """Check non-empty result for user requested jobs."""
     svc_client, cache = svc_client_cache
 
-    user = {'user_id': 'user'}
-    excluded_user = {'user_id': 'excluded_user'}
+    user = cache.ensure_user({'user_id': 'user'})
+    excluded_user = cache.ensure_user({'user_id': 'excluded_user'})
+
     for _ in range(10):
-        job = {
+        job_data = {
             'job_id': uuid.uuid4().hex,
             'state': 'CREATED',
-            'created_at': datetime.now(),
-            'updated_at': datetime.now(),
+            'created_at': isoformat(datetime.utcnow()),
+            'updated_at': isoformat(datetime.utcnow()),
             'extras': {
                 'progress': 42
             }
         }
-        cache.set_job(user, job)
+        job1 = cache.make_job(user, job_data)
+        assert job1
 
-        new_job = copy.deepcopy(job)
+        new_job = copy.deepcopy(job_data)
         new_job['job_id'] = uuid.uuid4().hex
-        cache.set_job(excluded_user, new_job)
+
+        job2 = cache.make_job(excluded_user, new_job)
+        assert job2
+
+        assert job1.job_id != job2.job_id
 
     headers = {
         'Content-Type': 'application/json',
@@ -158,19 +165,19 @@ def test_job_details_2user(svc_client_cache):
     """Check job details for a user."""
     svc_client, cache = svc_client_cache
 
-    user = {'user_id': 'user'}
+    user = cache.ensure_user({'user_id': 'user'})
     jobs = [{
         'job_id': uuid.uuid4().hex,
         'state': 'CREATED',
-        'created_at': datetime.now(),
-        'updated_at': datetime.now(),
+        'created_at': isoformat(datetime.now()),
+        'updated_at': isoformat(datetime.now()),
         'extras': {
             'progress': 42
         }
     } for _ in range(10)]
 
-    for job in jobs:
-        cache.set_job(user, job)
+    for job_data in jobs:
+        cache.make_job(user, job_data)
 
     headers = {
         'Content-Type': 'application/json',

@@ -18,6 +18,7 @@
 """Renku service cache serializers."""
 import time
 import uuid
+from datetime import datetime
 from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, \
@@ -58,10 +59,8 @@ class FileUploadRequest(Schema):
 class FileUploadContext(Schema):
     """Context schema for file upload."""
 
+    created_at = fields.DateTime(missing=datetime.utcnow)
     file_id = fields.String(missing=lambda: uuid.uuid4().hex)
-
-    # measured in ms
-    timestamp = fields.Integer(missing=time.time() * 1e+3)
 
     content_type = fields.String(missing='unknown')
     file_name = fields.String(required=True)

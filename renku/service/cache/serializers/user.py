@@ -15,10 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache configuration."""
-import os
+"""Renku service cache user related models."""
+from marshmallow import Schema, fields, post_load
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
-REDIS_DATABASE = int(os.getenv('REDIS_DATABASE', 0))
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+from renku.service.cache.models.user import User
+
+
+class UserSchema(Schema):
+    """User identity schema."""
+
+    user_id = fields.String(required=True)
+    fullname = fields.String()
+    email = fields.String()
+    token = fields.String()
+
+    @post_load
+    def make_job(self, data, **options):
+        """Construct job object."""
+        return User(**data)

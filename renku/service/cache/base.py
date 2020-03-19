@@ -21,6 +21,7 @@ import os
 
 import redis
 from redis import RedisError
+from walrus import Database
 
 from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, \
     REDIS_PASSWORD, REDIS_PORT
@@ -29,16 +30,18 @@ from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, \
 class BaseCache:
     """Cache management."""
 
-    cache = redis.Redis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        db=REDIS_DATABASE,
-        password=REDIS_PASSWORD,
-        retry_on_timeout=True,
-        health_check_interval=int(
-            os.getenv('CACHE_HEALTH_CHECK_INTERVAL', 60)
-        )
-    )
+    config_ = {
+        'host': REDIS_HOST,
+        'port': REDIS_PORT,
+        'db': REDIS_DATABASE,
+        'password': REDIS_PASSWORD,
+        'retry_on_timeout': True,
+        'health_check_interval':
+            int(os.getenv('CACHE_HEALTH_CHECK_INTERVAL', 60))
+    }
+
+    cache = redis.Redis(**config_)
+    model_db = Database(**config_)
 
     def set_record(self, name, key, value):
         """Insert a record to hash set."""

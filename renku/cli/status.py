@@ -62,6 +62,12 @@ def status(ctx, client, revision, no_output, path):
     # TODO filter only paths = {graph.normalize_path(p) for p in path}
     status = graph.build_status(revision=revision, can_be_cwl=no_output)
 
+    if client.has_external_files():
+        click.echo(
+            'Changes in external files are not detected automatically. To '
+            'update external files run "renku dataset update -e".'
+        )
+
     try:
         click.echo('On branch {0}'.format(client.repo.active_branch))
     except TypeError:

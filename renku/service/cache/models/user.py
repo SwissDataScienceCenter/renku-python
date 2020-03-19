@@ -15,10 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache configuration."""
-import os
+"""Renku service cache user related models."""
+from walrus import Model, TextField
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
-REDIS_DATABASE = int(os.getenv('REDIS_DATABASE', 0))
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+from renku.service.cache.base import BaseCache
+
+
+class User(Model):
+    """User cache model."""
+
+    __database__ = BaseCache.model_db
+
+    user_id = TextField(primary_key=True, index=True)
+    fullname = TextField()
+    email = TextField()
+    token = TextField()

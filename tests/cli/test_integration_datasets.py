@@ -285,7 +285,7 @@ def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=30, min_passes=1)
 def test_dataset_import_preserve_names(runner, project, sleep_after):
     """Test import keeps original file names."""
     doi = '10.7910/DVN/F4NUMR'
@@ -601,6 +601,9 @@ def test_export_dataset_unauthorized(
 ):
     """Test unauthorized exception raised."""
     client.set_value(provider, 'access_token', 'not-a-token')
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('update renku.ini')
+
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
