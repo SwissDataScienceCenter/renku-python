@@ -357,6 +357,42 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
     assert 1 == result.exit_code
 
 
+def test_add_to_dirty_repo(directory_tree, runner, project, client):
+    """Test adding to a dataset in a dirty repo commits only added files."""
+    with (client.path / 'tracked').open('w') as fp:
+        fp.write('tracked file')
+    client.repo.git.add('*')
+    client.repo.index.commit('tracked file')
+
+    with (client.path / 'tracked').open('w') as fp:
+        fp.write('modified tracked file')
+    with (client.path / 'untracked').open('w') as fp:
+        fp.write('untracked file')
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--create', 'new-dataset',
+         str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    assert client.repo.is_dirty()
+    assert ['untracked'] == client.repo.untracked_files
+
+    # Add without making a change
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'new-dataset',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 1 == result.exit_code
+    assert 'Error: File already exists in dataset' in result.output
+
+    assert client.repo.is_dirty()
+    assert ['untracked'] == client.repo.untracked_files
+
+
 def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     """Test importing multiple data into a dataset at once."""
     # create a dataset

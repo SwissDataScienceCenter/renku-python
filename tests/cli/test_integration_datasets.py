@@ -588,6 +588,9 @@ def test_export_dataset_unauthorized(
 ):
     """Test unauthorized exception raised."""
     client.set_value(provider, 'access_token', 'not-a-token')
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('update renku.ini')
+
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'OK' in result.output
