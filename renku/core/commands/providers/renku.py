@@ -57,6 +57,7 @@ class RenkuProvider(ProviderApi):
 
         same_as, kg_urls = self._get_dataset_info(uri)
         project_url = None
+        failed_urls = []
 
         for kg_url in kg_urls:
             kg_datasets_url, ssh_url, https_url = self._get_project_urls(
@@ -82,7 +83,7 @@ class RenkuProvider(ProviderApi):
                 try:
                     repo, repo_path = client.prepare_git_repo(url)
                 except errors.GitError:
-                    pass
+                    failed_urls.append(url)
                 else:
                     project_url = url
                     break
@@ -90,9 +91,14 @@ class RenkuProvider(ProviderApi):
                 break
 
         if project_url is None:
-            raise errors.ParameterError(
-                'Cannot find any project for the dataset.'
-            )
+            if failed_urls:
+                message = 'Cannot clone remote projects:\n\t' + '\n\t'.join(
+                    failed_urls
+                )
+            else:
+                message = 'Cannot find any project for the dataset.'
+
+            raise errors.ParameterError(message, param_hint=uri)
 
         remote_client = LocalClient(repo_path)
         self._migrate_project(remote_client)

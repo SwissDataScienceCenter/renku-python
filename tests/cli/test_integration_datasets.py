@@ -328,7 +328,8 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch):
 
         result = runner.invoke(cli, ['dataset', 'import', url], input='y')
         assert 2 == result.exit_code
-        assert 'Cannot find any project for the dataset.' in result.output
+        assert f'Invalid parameter value for {url}' in result.output
+        assert 'Cannot clone remote projects:' in result.output
 
 
 @pytest.mark.integration
