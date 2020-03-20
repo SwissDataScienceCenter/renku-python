@@ -157,7 +157,7 @@ def create_template_sentence(templates, instructions=False):
 
     if not instructions:
         return text
-    return '{0}\nPlease choose a template by typing the number'.format(text)
+    return '{0}\nPlease choose a template by typing the index'.format(text)
 
 
 def is_path_empty(path):
@@ -193,7 +193,12 @@ def check_git_user_config():
     callback=validate_name,
     help='Provide a custom project name.',
 )
-@click.option('--template', help='Provide the name of the template to use.')
+@click.option('--template-id', help='Provide the id of the template to use.')
+@click.option(
+    '--template-index',
+    help='Provide the index number of the template to use.',
+    type=int,
+)
 @click.option(
     '--template-source', help='Provide the templates repository url or path.'
 )
@@ -220,8 +225,9 @@ def check_git_user_config():
 @pass_local_client
 @click.pass_context
 def init(
-    ctx, client, use_external_storage, path, name, template, template_source,
-    template_ref, template_variables, description, print_manifest, force
+    ctx, client, use_external_storage, path, name, template_id, template_index,
+    template_source, template_ref, template_variables, description,
+    print_manifest, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
@@ -263,15 +269,31 @@ def init(
     # select specific template
     repeat = False
     template_data = None
-    if template:
+    if template_id:
+        if template_index:
+            raise errors.ParameterError(
+                'Use either --template-id or --template-index, not both',
+                '"--template-index"'
+            )
         template_filtered = [
             template_elem for template_elem in template_manifest
-            if template_elem['name'] == template
+            if template_elem['folder'] == template_id
         ]
         if len(template_filtered) == 1:
             template_data = template_filtered[0]
         else:
-            click.echo('The template "{0}" is not available.'.format(template))
+            click.echo(
+                f'The template with id "{template_id}" is not available.'
+            )
+            repeat = True
+
+    if template_index or template_index == 0:
+        if template_index > 0 and template_index <= len(template_manifest):
+            template_data = template_manifest[template_index - 1]
+        else:
+            click.echo(
+                f'The template at index {template_index} is not available.'
+            )
             repeat = True
 
     if print_manifest:
@@ -281,7 +303,7 @@ def init(
             click.echo(create_template_sentence(template_manifest))
         return
 
-    if not template or repeat:
+    if repeat or not (template_id or template_index):
         templates = [template_elem for template_elem in template_manifest]
         if len(templates) == 1:
             template_data = templates[0]

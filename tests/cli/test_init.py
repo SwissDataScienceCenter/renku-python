@@ -19,18 +19,20 @@
 from pathlib import Path
 
 import pytest
-from tests.core.commands.test_init import TEMPLATE_NAME, TEMPLATE_REF, \
-    TEMPLATE_URL
+from tests.core.commands.test_init import TEMPLATE_ID, TEMPLATE_INDEX, \
+    TEMPLATE_REF, TEMPLATE_URL
 
 from renku.cli import cli
 from renku.cli.init import create_template_sentence
 
-INIT = ['init', 'test-new-project', '--template', TEMPLATE_NAME]
+INIT = ['init', 'test-new-project', '--template-id', TEMPLATE_ID]
 INIT_REMOTE = [
     '--template-source', TEMPLATE_URL, '--template-ref', TEMPLATE_REF
 ]
 INIT_FORCE = ['--force']
 INIT_VARIABLES = ['--template-variables']
+INIT_INDEX = ['init', 'test-new-project-2', '--template-index', TEMPLATE_INDEX]
+INIT_ID = ['--template-id', TEMPLATE_ID]
 
 
 def test_template_selection_helpers():
@@ -43,7 +45,7 @@ def test_template_selection_helpers():
         'folder': 'folder_R',
         'description': 'Description R'
     }]
-    instructions = 'Please choose a template by typing the number'
+    instructions = 'Please choose a template by typing the index'
     sentence = create_template_sentence(templates)
     stripped_sentence = ' '.join(sentence.split())
     assert (
@@ -79,6 +81,30 @@ def test_init(isolated_runner):
     assert (new_project / '.renku').exists()
     assert (new_project / '.renku' / 'renku.ini').exists()
     assert (new_project / '.renku' / 'metadata.yml').exists()
+
+    # init using index instead of id
+    new_project_2 = Path('test-new-project-2')
+    result = isolated_runner.invoke(cli, INIT_INDEX)
+    assert 0 == result.exit_code
+    assert new_project_2.exists()
+    assert (new_project_2 / '.renku').exists()
+    assert (new_project_2 / '.renku' / 'renku.ini').exists()
+    assert (new_project_2 / '.renku' / 'metadata.yml').exists()
+
+    # verify both init lead to the same result
+    template_files = [
+        f for f in new_project.glob('**/*') if '.git' not in str(f)
+    ]
+    for template_file in template_files:
+        expected_file = new_project_2 / template_file.relative_to(new_project)
+        assert expected_file.exists()
+
+    # verify providing both index and id fails
+    result = isolated_runner.invoke(cli, INIT_INDEX + INIT_ID + INIT_FORCE)
+    assert 2 == result.exit_code
+    assert (
+        'Use either --template-id or --template-index, not both'
+    ) in result.output
 
 
 @pytest.mark.integration
