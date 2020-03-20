@@ -734,7 +734,8 @@ def test_add_from_git_copies_metadata(runner, client):
           ], 1, 'Cannot copy multiple files or directories to a file'),
         (['-s', 'LICENSE', '-s', 'Makefile', '-d', 'LICENSE'
           ], 1, 'Cannot copy multiple files or directories to a file'),
-        (['-d', 'LICENSE'], 1, 'Cannot copy repo to file'),
+        (['-d', 'LICENSE'
+          ], 1, 'Cannot copy multiple files or directories to a file'),
     ]
 )
 @flaky(max_runs=10, min_passes=1)

@@ -27,6 +27,7 @@ import uuid
 import warnings
 from configparser import NoSectionError
 from contextlib import contextmanager
+from fnmatch import fnmatch
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
@@ -520,7 +521,7 @@ class DatasetsApiMixin(object):
 
             if result:
                 files.add(result)
-                source = result[3]
+                _, _, _, source = result
                 copied_sources.add(source)
 
         uncopied_sources = sources - copied_sources
@@ -529,6 +530,15 @@ class DatasetsApiMixin(object):
             raise errors.ParameterError(
                 'No such file or directory', param_hint=uncopied_sources
             )
+
+        if destination.exists() and not destination.is_dir():
+            # FIXME this is not needed anymore
+            if not sources:
+                raise errors.ParameterError('Cannot copy repo to file')
+            if len(files) > 1:
+                raise errors.ParameterError(
+                    'Cannot copy multiple files or directories to a file'
+                )
 
         # Create metadata and move files to dataset
         results = []
@@ -609,6 +619,9 @@ class DatasetsApiMixin(object):
             )
 
     def _get_src_and_dst(self, path, repo_path, sources, dst_root):
+        is_wildcard = False
+        consumed_source = None
+
         if not sources:
             source = Path('.')
         else:
@@ -617,7 +630,10 @@ class DatasetsApiMixin(object):
                 try:
                     Path(path).relative_to(s)
                 except ValueError:
-                    pass
+                    if fnmatch(path, str(s)):  # might be a wildcard match
+                        source = path
+                        is_wildcard = True
+                        break
                 else:
                     source = s
                     break
@@ -625,28 +641,28 @@ class DatasetsApiMixin(object):
             if not source:
                 return
 
+            consumed_source = s
+
         src = repo_path / path
         source_name = Path(source).name
         relative_path = Path(path).relative_to(source)
 
-        if not dst_root.exists():
-            if len(sources) == 1:
+        if not dst_root.exists():  # Destination will be a file or directory
+            if len(sources) == 1 and not is_wildcard:
                 dst = dst_root / relative_path
             else:  # Treat destination as a directory
                 dst = dst_root / source_name / relative_path
         elif dst_root.is_dir():
             dst = dst_root / source_name / relative_path
         else:  # Destination is an existing file
-            if len(sources) == 1 and not src.is_dir():
-                dst = dst_root
-            elif not sources:
-                raise errors.ParameterError('Cannot copy repo to file')
-            else:
+            if src.is_dir():
                 raise errors.ParameterError(
                     'Cannot copy multiple files or directories to a file'
                 )
+            # Later we need to check if we are copying multiple files
+            dst = dst_root
 
-        return (path, src, dst, source)
+        return (path, src, dst, consumed_source)
 
     def _fetch_lfs_files(self, repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
