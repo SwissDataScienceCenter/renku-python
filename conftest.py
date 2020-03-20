@@ -39,6 +39,7 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
+from tests.core.commands.test_init import TEMPLATE_ID
 from walrus import Database
 
 
@@ -155,7 +156,7 @@ def repository():
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(
-            cli, ['init', '.', '--template', 'Basic Python Project'],
+            cli, ['init', '.', '--template-id', TEMPLATE_ID],
             catch_exceptions=False
         )
         assert 0 == result.exit_code
@@ -561,9 +562,7 @@ def remote_project(data_repository, directory_tree):
     runner = CliRunner()
 
     with runner.isolated_filesystem() as project_path:
-        runner.invoke(
-            cli, ['-S', 'init', '.', '--template', 'Basic Python Project']
-        )
+        runner.invoke(cli, ['-S', 'init', '.', '--template-id', TEMPLATE_ID])
         result = runner.invoke(
             cli, ['-S', 'dataset', 'create', 'remote-dataset']
         )
