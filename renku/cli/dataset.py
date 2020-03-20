@@ -27,6 +27,12 @@ Creating an empty dataset inside a Renku project:
     $ renku dataset create my-dataset
     Creating a dataset ... OK
 
+You can provide a title and a description for the dataset by using ``--title``
+and ``--description`` options when creating a dataset. You can also set
+creator of a dataset by passing a ``--creator`` option along with a string
+that defines creator's name, email, and an optional affiliation. Pass multiple
+``--creator`` flags to add a list of creators.
+
 Listing all datasets:
 
 .. code-block:: console
@@ -49,6 +55,17 @@ comma-separated list of column names:
     9436e36c  my-dataset     2020-02-28 16:48:09  sam
 
 Displayed results are sorted based on the value of the first column.
+
+Editing a dataset's metadata
+
+Use ``edit`` subcommand to change metadata of a dataset. You can edit title,
+description, and list of creators of a dataset by using ``--title``,
+``--description``, and ``--creator`` flags.
+
+.. code-block:: console
+
+    $ renku dataset edit my-dataset --title 'New title'
+    Successfully updated: title.
 
 Deleting a dataset:
 
@@ -196,7 +213,6 @@ A tag can be removed with:
     $ renku dataset rm-tags my-dataset 1.0
 
 
-
 Importing data from an external provider:
 
 .. code-block:: console
@@ -297,9 +313,7 @@ Unlink all files from a dataset:
 from functools import partial
 
 import click
-import editor
 import requests
-import yaml
 from tqdm import tqdm
 
 from renku.core.commands.dataset import add_file, create_dataset, \
@@ -391,16 +405,27 @@ def dataset(ctx, revision, datadir, format, columns):
 
 @dataset.command()
 @click.argument('short_name')
-@click.option('--title', default='', help='Title of the dataset.')
 @click.option(
-    '-d', '--description', default=None, help='Dataset\'s description.'
+    '-t',
+    '--title',
+    default=None,
+    type=click.STRING,
+    help='Title of the dataset.'
+)
+@click.option(
+    '-d',
+    '--description',
+    default=None,
+    type=click.STRING,
+    help='Dataset\'s description.'
 )
 @click.option(
     '-c',
     '--creator',
     default=None,
     multiple=True,
-    help='Creator\'s name and email ("Name <email>").'
+    help='Creator\'s name, email, and affiliation. '
+    'Accepted format is \'Forename Surname <email> [affiliation]\'.'
 )
 def create(short_name, title, description, creator):
     """Create an empty dataset in the current repo."""
@@ -422,14 +447,49 @@ def create(short_name, title, description, creator):
 
 
 @dataset.command()
-@click.argument('dataset_id')
-def edit(dataset_id):
+@click.argument('short_name')
+@click.option(
+    '-t',
+    '--title',
+    default=None,
+    type=click.STRING,
+    help='Title of the dataset.'
+)
+@click.option(
+    '-d',
+    '--description',
+    default=None,
+    type=click.STRING,
+    help='Dataset\'s description.'
+)
+@click.option(
+    '-c',
+    '--creator',
+    default=None,
+    multiple=True,
+    help='Creator\'s name, email, and affiliation. '
+    'Accepted format is \'Forename Surname <email> [affiliation]\'.'
+)
+def edit(short_name, title, description, creator):
     """Edit dataset metadata."""
-    edit_dataset(
-        dataset_id, lambda dataset: editor.edit(
-            contents=bytes(yaml.safe_dump(dataset.editable), encoding='utf-8')
-        )
+    creators = creator or ()
+
+    updated, no_email_warnings = edit_dataset(
+        short_name=short_name,
+        title=title,
+        description=description,
+        creators=creators
     )
+
+    if not updated:
+        click.echo('Nothing to update.')
+    else:
+        click.echo('Successfully updated: {}.'.format(', '.join(updated)))
+        if no_email_warnings:
+            click.echo(
+                WARNING + 'No email or wrong format for: ' +
+                ', '.join(no_email_warnings)
+            )
 
 
 @dataset.command()
