@@ -59,6 +59,7 @@ DATASETS_COLUMNS = {
     'created': ('created', None),
     'short_name': ('short_name', None),
     'creators': ('creators_csv', 'creators'),
+    'creators_full': ('creators_full_csv', 'creators'),
     'tags': ('tags_csv', 'tags'),
     'version': ('version', None),
     'title': ('name', 'title'),

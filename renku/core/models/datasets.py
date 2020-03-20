@@ -125,6 +125,11 @@ class CreatorMixin:
         """Comma-separated list of creators associated with dataset."""
         return ', '.join(creator.name for creator in self.creator)
 
+    @property
+    def creators_full_csv(self):
+        """Comma-separated list of creators with full identity."""
+        return ', '.join(creator.full_identity for creator in self.creator)
+
 
 def _extract_doi(value):
     """Return either a string or the doi part of a URL."""

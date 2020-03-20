@@ -101,6 +101,13 @@ class Person:
 
         return '{0}.{1}'.format('.'.join(initials), last_name)
 
+    @property
+    def full_identity(self):
+        """Return name, email, and affiliation."""
+        email = f' <{self.email}>' if self.email else ''
+        affiliation = f' [{self.affiliation}]' if self.affiliation else ''
+        return f'{self.name}{email}{affiliation}'
+
     @classmethod
     def from_git(cls, git):
         """Create an instance from a Git repo."""
@@ -130,22 +137,17 @@ class Person:
     @classmethod
     def from_string(cls, string):
         """Create an instance from a 'Name <email>' string."""
-        regex_pattern = r'([^<]*)<{0,1}([^@<>]+@[^@<>]+\.[^@<>]+)*>{0,1}'
-        name, email = re.search(regex_pattern, string).groups()
-        name = name.rstrip()
+        regex_pattern = r'([^<>\[\]]*)' \
+            r'(?:<{1}\s*(\S+@\S+\.\S+){0,1}\s*>{1}){0,1}\s*' \
+            r'(?:\[{1}(.*)\]{1}){0,1}'
+        name, email, affiliation = re.search(regex_pattern, string).groups()
+        if name:
+            name = name.strip()
+        if affiliation:
+            affiliation = affiliation.strip()
+        affiliation = affiliation or None
 
-        # Check the git configuration.
-        if not name:  # pragma: no cover
-            raise errors.ParameterError(
-                'Name is invalid: A valid format is "Name <email>"'
-            )
-
-        if not email:  # pragma: no cover
-            raise errors.ParameterError(
-                'Email is invalid: A valid format is "Name <email>"'
-            )
-
-        return cls(name=name, email=email)
+        return cls(name=name, email=email, affiliation=affiliation)
 
     @classmethod
     def from_dict(cls, obj):
