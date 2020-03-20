@@ -135,20 +135,22 @@ def create_template_sentence(templates, instructions=False):
     :ref templates: list of templates coming from manifest file
     :ref instructions: add instructions
     """
-    Template = namedtuple('Template', ['index', 'name', 'description'])
+    Template = namedtuple('Template', ['index', 'id', 'description'])
     templates_friendly = [
         Template(
             index=index + 1,
-            name=template_elem['name'],
-            description=template_elem['description'],
+            id=template_elem['folder'],
+            description=(
+                f'{template_elem["name"]}: {template_elem["description"]}'
+            ),
         ) for index, template_elem in enumerate(templates)
     ]
 
     text = tabulate(
         templates_friendly,
         headers=OrderedDict((
-            ('index', 'Number'),
-            ('name', 'Name'),
+            ('index', 'Index'),
+            ('id', 'Id'),
             ('description', 'Description'),
         ))
     )

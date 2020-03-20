@@ -36,16 +36,20 @@ INIT_VARIABLES = ['--template-variables']
 def test_template_selection_helpers():
     templates = [{
         'name': 'Template Python',
+        'folder': 'folder_python',
         'description': 'Description Python'
     }, {
         'name': 'Template R',
+        'folder': 'folder_R',
         'description': 'Description R'
     }]
     instructions = 'Please choose a template by typing the number'
     sentence = create_template_sentence(templates)
     stripped_sentence = ' '.join(sentence.split())
-    assert '1 Template Python Description Python' in stripped_sentence
-    assert '2 Template R Description R' in stripped_sentence
+    assert (
+        '1 folder_python Template Python: Description Python'
+    ) in stripped_sentence
+    assert '2 folder_R Template R: Description R' in stripped_sentence
     assert instructions not in stripped_sentence
     full_sentence = create_template_sentence(templates, True)
     assert instructions in full_sentence
