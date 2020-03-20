@@ -33,6 +33,7 @@ INIT_FORCE = ['--force']
 INIT_VARIABLES = ['--template-variables']
 INIT_INDEX = ['init', 'test-new-project-2', '--template-index', TEMPLATE_INDEX]
 INIT_ID = ['--template-id', TEMPLATE_ID]
+LIST_TEMPLATES = ['--list-templates']
 
 
 def test_template_selection_helpers():
@@ -55,6 +56,17 @@ def test_template_selection_helpers():
     assert instructions not in stripped_sentence
     full_sentence = create_template_sentence(templates, True)
     assert instructions in full_sentence
+
+
+@pytest.mark.integration
+def test_list_templates(isolated_runner):
+    """Test listing templates."""
+    new_project = Path('test-new-project')
+    assert not new_project.exists()
+    result = isolated_runner.invoke(cli, INIT + LIST_TEMPLATES)
+    assert 0 == result.exit_code
+    assert not new_project.exists()
+    assert TEMPLATE_ID in result.output
 
 
 @pytest.mark.integration

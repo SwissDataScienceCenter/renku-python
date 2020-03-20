@@ -218,7 +218,9 @@ def check_git_user_config():
 )
 @click.option('--description', help='Describe your project.')
 @click.option(
-    '--print-manifest', is_flag=True, help='Print templates manifest only.'
+    '--list-templates',
+    is_flag=True,
+    help='List templates available in the template-source.'
 )
 @click.option('--force', is_flag=True, help='Override target path.')
 @option_use_external_storage
@@ -227,11 +229,11 @@ def check_git_user_config():
 def init(
     ctx, client, use_external_storage, path, name, template_id, template_index,
     template_source, template_ref, template_variables, description,
-    print_manifest, force
+    list_templates, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
-    if not is_path_empty(path) and not force and not print_manifest:
+    if not is_path_empty(path) and not force and not list_templates:
         raise errors.InvalidFileOperation(
             'Folder "{0}" is not empty. Please add --force '
             'flag to transform it into a Renku repository.'.format(str(path))
@@ -296,7 +298,7 @@ def init(
             )
             repeat = True
 
-    if print_manifest:
+    if list_templates:
         if template_data:
             click.echo(create_template_sentence([template_data]))
         else:
