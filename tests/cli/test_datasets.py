@@ -1017,39 +1017,73 @@ def test_dataset_overwrite_no_confirm(runner, project):
     assert 'OK' not in result.output
 
 
-def test_dataset_edit(runner, client, project):
+@pytest.mark.parametrize('dirty', [False, True])
+def test_dataset_edit(runner, client, project, dirty):
     """Check dataset metadata editing."""
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    dataset = client.load_dataset('dataset')
+    if dirty:
+        with (client.path / 'dirty_file').open('w') as fp:
+            fp.write('a')
 
     result = runner.invoke(
-        cli, ['dataset', 'edit', dataset.identifier],
-        input='wq',
+        cli, ['dataset', 'create', 'dataset', '-t', 'original title']
+    )
+    assert 0 == result.exit_code
+
+    creator1 = 'Forename1 Surname1 <name.1@mail.com> [Affiliation 1]'
+    creator2 = 'Forename2 Surname2'
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'edit', 'dataset', '-d', ' new description ', '-c',
+            creator1, '-c', creator2
+        ],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
-
-
-def test_dataset_edit_dirty(runner, client, project):
-    """Check dataset metadata editing when dirty repository."""
-    # Create a file in root of the repository.
-    with (client.path / 'a').open('w') as fp:
-        fp.write('a')
-
-    # Create a dataset.
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
+    assert 'Successfully updated: creators, description.' in result.output
+    warning_msg = 'Warning: No email or wrong format for: Forename2 Surname2'
+    assert warning_msg in result.output
 
     dataset = client.load_dataset('dataset')
+    assert ' new description ' == dataset.description
+    assert 'original title' == dataset.name
+    assert {creator1, creator2} == {c.full_identity for c in dataset.creator}
 
     result = runner.invoke(
-        cli, ['dataset', 'edit', dataset.identifier], input='wq'
+        cli, ['dataset', 'edit', 'dataset', '-t', ' new title '],
+        catch_exceptions=False
     )
     assert 0 == result.exit_code
+    assert 'Successfully updated: title.' in result.output
+
+    dataset = client.load_dataset('dataset')
+    assert ' new description ' == dataset.description
+    assert 'new title' == dataset.name
+    assert {creator1, creator2} == {c.full_identity for c in dataset.creator}
+
+
+@pytest.mark.parametrize('dirty', [False, True])
+def test_dataset_edit_no_change(runner, client, project, dirty):
+    """Check metadata editing does not commit when there is no change."""
+    if dirty:
+        with (client.path / 'dirty_file').open('w') as fp:
+            fp.write('a')
+
+    result = runner.invoke(
+        cli, ['dataset', 'create', 'dataset', '-t', 'original title']
+    )
+    assert 0 == result.exit_code
+
+    commit_sha_before = client.repo.head.object.hexsha
+
+    result = runner.invoke(
+        cli, ['dataset', 'edit', 'dataset'], catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert 'Nothing to update.' in result.output
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_after == commit_sha_before
 
 
 def test_dataset_date_created_format(runner, client, project):
