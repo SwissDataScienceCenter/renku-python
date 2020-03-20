@@ -590,10 +590,10 @@ def import_dataset(
             'Unable to fetch metadata due to {1}'.format(uri, e)
         ))
 
-    except LookupError:
+    except LookupError as e:
         raise ParameterError(
             ('Could not process {0}.\n'
-             'URI not found.'.format(uri))
+             'Reason: {1}'.format(uri, str(e)))
         )
 
     if files:
