@@ -32,7 +32,8 @@ def tabular(client, records, *, columns=None):
     return tabulate(
         collection=records,
         columns=columns,
-        columns_mapping=DATASET_FILES_COLUMNS
+        columns_mapping=DATASET_FILES_COLUMNS,
+        columns_alignments=DATASET_FILES_COLUMNS_ALIGNMENTS,
     )
 
 
@@ -62,4 +63,7 @@ DATASET_FILES_COLUMNS = {
     'full_path': ('full_path', None),
     'path': ('path', None),
     'short_name': ('short_name', 'dataset short_name'),
+    'size': ('size', 'size (bytes)')
 }
+
+DATASET_FILES_COLUMNS_ALIGNMENTS = {'size': 'right'}

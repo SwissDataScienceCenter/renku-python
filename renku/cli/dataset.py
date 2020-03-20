@@ -521,7 +521,7 @@ def add(
     '-c',
     '--columns',
     type=click.STRING,
-    default='short_name,added,path',
+    default='short_name,added,size,path',
     metavar='<columns>',
     help='Comma-separated list of column to display: {}.'.format(
         ', '.join(DATASET_FILES_COLUMNS.keys())
