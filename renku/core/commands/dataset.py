@@ -496,6 +496,7 @@ def import_dataset(
     short_name='',
     extract=False,
     with_prompt=False,
+    yes=False,
     commit_message=None,
     progress=None,
 ):
@@ -510,7 +511,7 @@ def import_dataset(
         files = dataset.files
         total_size = 0
 
-        if with_prompt:
+        if with_prompt and not yes:
             click.echo(
                 tabulate(
                     files,
