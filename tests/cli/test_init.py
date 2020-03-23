@@ -30,7 +30,7 @@ INIT_REMOTE = [
     '--template-source', TEMPLATE_URL, '--template-ref', TEMPLATE_REF
 ]
 INIT_FORCE = ['--force']
-INIT_VARIABLES = ['--template-variables']
+INIT_VARIABLES = ['--variables']
 INIT_INDEX = ['init', 'test-new-project-2', '--template-index', TEMPLATE_INDEX]
 INIT_ID = ['--template-id', TEMPLATE_ID]
 LIST_TEMPLATES = ['--list-templates']
