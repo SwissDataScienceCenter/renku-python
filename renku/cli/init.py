@@ -149,12 +149,12 @@ def raise_template_error(value):
     error_info = [
         '{0}'.format(value), 'Tip: a dictionary is expected',
         (
-            'Example: --template-variables '
+            'Example: --variables '
             '\'{ "variable_1": "string", "variable_2": 2 }\''
         )
     ]
     raise errors.ParameterError(
-        '\n'.join(error_info), '"--template-variables"'
+        '\n'.join(error_info), '"--variables"'
     )
 
 
@@ -251,7 +251,7 @@ def check_git_user_config():
     help='Specify the reference to checkout on remote template repository.',
 )
 @click.option(
-    '--template-variables',
+    '--variables',
     default='{}',
     callback=parse_variables,
     help=(
@@ -270,7 +270,7 @@ def check_git_user_config():
 @click.pass_context
 def init(
     ctx, client, use_external_storage, path, name, template_id, template_index,
-    template_source, template_ref, template_variables, list_templates, force
+    template_source, template_ref, variables, list_templates, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
@@ -393,9 +393,7 @@ def init(
     click.echo('Initializing new Renku repository... ', nl=False)
     with client.lock:
         try:
-            create_from_template(
-                template_path, client, name, template_variables, force
-            )
+            create_from_template(template_path, client, name, variables, force)
         except FileExistsError as e:
             raise click.UsageError(e)
 
