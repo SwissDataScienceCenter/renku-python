@@ -138,7 +138,7 @@ class DataverseProvider(ProviderApi):
                 raise LookupError('record not found')
             return response
 
-    def find_record(self, uri):
+    def find_record(self, uri, client=None):
         """Retrieves a record from Dataverse.
 
         :raises: ``LookupError``

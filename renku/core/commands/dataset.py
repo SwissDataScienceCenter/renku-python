@@ -287,16 +287,12 @@ def add_to_dataset(
             if with_metadata:
                 for file_ in dataset.files:
                     file_.creator = with_metadata.creator
+                    file_.based_on = None
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
 
-                if is_doi(with_metadata.identifier):
-                    dataset.same_as = Url(
-                        url=urllib.parse.
-                        urljoin('https://doi.org', with_metadata.identifier)
-                    )
-
                 dataset.update_metadata(with_metadata)
+                dataset.same_as = with_metadata.same_as
 
     except DatasetNotFound:
         raise DatasetNotFound(
@@ -546,13 +542,13 @@ def import_dataset(
     commit_message=None,
     progress=None,
 ):
-    """Import data from a 3rd party provider."""
+    """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise ParameterError('Could not process {0}.\n{1}'.format(uri, err))
 
     try:
-        record = provider.find_record(uri)
+        record = provider.find_record(uri, client)
         dataset = record.as_dataset(client)
         files = dataset.files
         total_size = 0
@@ -580,7 +576,8 @@ def import_dataset(
             click.confirm(text_prompt, abort=True)
 
             for file_ in files:
-                total_size += file_.size_in_mb
+                if file_.size_in_mb is not None:
+                    total_size += file_.size_in_mb
 
             total_size *= 2**20
 
@@ -596,13 +593,23 @@ def import_dataset(
              'Reason: {1}'.format(uri, str(e)))
         )
 
-    if files:
+    if not files:
+        raise ParameterError('Dataset {} has no files.'.format(uri))
+
+    dataset.url = remove_credentials(uri)
+    dataset.same_as = Url(url_id=remove_credentials(uri))
+
+    if not provider.is_git_based:
         if not short_name:
             short_name = generate_default_short_name(
                 dataset.name, dataset.version
             )
 
-        dataset.url = remove_credentials(dataset.url)
+        if is_doi(dataset.identifier):
+            dataset.same_as = Url(
+                url_str=urllib.parse.
+                urljoin('https://doi.org', dataset.identifier)
+            )
 
         urls, names = zip(*[(f.url, f.filename) for f in files])
 
@@ -627,6 +634,17 @@ def import_dataset(
                 client, short_name, tag_name,
                 'Tag {} created by renku import'.format(dataset.version)
             )
+    else:
+        short_name = short_name or dataset.short_name
+
+        add_to_dataset(
+            client,
+            urls=[record.project_url],
+            short_name=short_name,
+            sources=[f.path for f in files],
+            with_metadata=dataset,
+            create=True
+        )
 
 
 @pass_local_client(
