@@ -216,7 +216,6 @@ def check_git_user_config():
         'dictionary.\nExample: \'{ "variable_1": "string", "variable_2": 2 }\''
     )
 )
-@click.option('--description', help='Describe your project.')
 @click.option(
     '--list-templates',
     is_flag=True,
@@ -228,8 +227,7 @@ def check_git_user_config():
 @click.pass_context
 def init(
     ctx, client, use_external_storage, path, name, template_id, template_index,
-    template_source, template_ref, template_variables, description,
-    list_templates, force
+    template_source, template_ref, template_variables, list_templates, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
@@ -353,8 +351,7 @@ def init(
     with client.lock:
         try:
             create_from_template(
-                template_path, client, name, description, template_variables,
-                force
+                template_path, client, name, template_variables, force
             )
         except FileExistsError as e:
             raise click.UsageError(e)

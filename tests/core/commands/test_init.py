@@ -36,7 +36,7 @@ TEMPLATE_URL = (
 TEMPLATE_ID = 'python-minimal'
 TEMPLATE_INDEX = 1
 TEMPLATE_REF = '0.1.6'
-METADATA = {'name': 'myname', 'description': 'nodesc'}
+METADATA = {'name': 'myName'}
 FAKE = 'NON_EXISTING'
 
 template_local = Path(pkg_resources.resource_filename('renku', 'templates'))
@@ -168,8 +168,9 @@ def test_create_from_template(local_client):
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]['folder']
         create_from_template(
-            template_path, local_client, METADATA['name'],
-            METADATA['description']
+            template_path,
+            local_client,
+            METADATA['name'],
         )
         template_files = [
             f
