@@ -182,6 +182,7 @@ install_requires = [
     'tabulate>=0.7.7',
     'tqdm>=4.31.1',
     'walrus>=0.8.0',
+    'wcmatch>=6.0.0',
     'werkzeug>=0.15.5',
 ]
 
