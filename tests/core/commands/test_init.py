@@ -168,8 +168,9 @@ def test_create_from_template(local_client):
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]['folder']
         create_from_template(
-            template_path, local_client, METADATA['name'],
-            METADATA['description']
+            template_path,
+            local_client,
+            METADATA['name'],
         )
         template_files = [
             f
