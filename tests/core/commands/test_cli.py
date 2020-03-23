@@ -320,7 +320,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
         monkey.setattr(StorageApiMixin, 'storage_installed', False)
         # Missing --no-external-storage flag.
         result = runner.invoke(cli, ['run', 'touch', 'output'])
-        assert 'is not configured' in result.output
+        assert 'External storage is not configured' in result.output
         assert 1 == result.exit_code
 
         # Since repo is not using external storage.
@@ -354,7 +354,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
         monkey.setattr(StorageApiMixin, 'storage_installed', False)
         # Repo is using external storage but it's not installed.
         result = runner.invoke(cli, ['run', 'touch', 'output'])
-        assert 'is not configured' in result.output
+        assert 'External storage is not installed' in result.output
         assert 1 == result.exit_code
 
     # Clean repo and check external storage.
@@ -374,9 +374,13 @@ def test_file_tracking(isolated_runner):
     )
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['run', 'touch', 'output'])
+    result = runner.invoke(cli, ['run', 'touch', 'tracked'])
     assert 0 == result.exit_code
-    assert 'output' in Path('.gitattributes').read_text()
+    assert 'tracked' in Path('.gitattributes').read_text()
+
+    result = runner.invoke(cli, ['-S', 'run', 'touch', 'untracked'])
+    assert 0 == result.exit_code
+    assert 'untracked' not in Path('.gitattributes').read_text()
 
 
 @pytest.mark.xfail

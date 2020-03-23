@@ -83,17 +83,19 @@ class StorageApiMixin(RepositoryApiMixin):
         :raises: ``errors.ExternalStorageNotInstalled``
         :raises: ``errors.ExternalStorageDisabled``
         """
+        if not self.use_external_storage:
+            return False
+
         repo_config = self.repo.config_reader(config_level='repository')
         lfs_enabled = repo_config.has_section('filter "lfs"')
 
-        storage_enabled = lfs_enabled and self.storage_installed
-        if self.use_external_storage and not storage_enabled:
+        if not lfs_enabled:
             raise errors.ExternalStorageDisabled(self.repo)
 
-        if lfs_enabled and not self.storage_installed:
+        if not self.storage_installed:
             raise errors.ExternalStorageNotInstalled(self.repo)
 
-        return lfs_enabled and self.storage_installed
+        return True
 
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
