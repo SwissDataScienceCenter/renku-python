@@ -454,7 +454,7 @@ class DatasetsApiMixin(object):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
-        max_workers = min(os.cpu_count() - 2, 4) or 1
+        max_workers = min(os.cpu_count() - 1, 4) or 1
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
@@ -490,7 +490,7 @@ class DatasetsApiMixin(object):
             # If execution time was less or equal to zero seconds,
             # block the thread a bit to avoid being rate limited.
             if exec_time == 0:
-                time.sleep(max(os.cpu_count() - 2, 4))
+                time.sleep(min(os.cpu_count() - 1, 4) or 1)
 
         except (
             requests.exceptions.HTTPError, error.HTTPError
