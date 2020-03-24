@@ -1196,7 +1196,7 @@ def test_renku_clone(runner, monkeypatch):
             monkey.setattr(StorageApiMixin, 'storage_installed', False)
             # Repo is using external storage but it's not installed.
             result = runner.invoke(cli, ['run', 'touch', 'output'])
-            assert 'is not configured' in result.output
+            assert 'External storage is not configured' in result.output
             assert 1 == result.exit_code
 
 
