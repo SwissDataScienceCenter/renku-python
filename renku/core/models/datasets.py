@@ -57,17 +57,47 @@ class Url:
 
     url = jsonld.ib(default=None, kw_only=True, context='schema:url')
 
+    url_str = attr.ib(default=None, kw_only=True)
+    url_id = attr.ib(default=None, kw_only=True)
+
     _id = jsonld.ib(kw_only=True, context='@id')
 
     @_id.default
     def default_id(self):
         """Define default value for id field."""
-        if self.url:
-            parsed_result = urllib.parse.urlparse(self.url)
+        if self.url_str:
+            parsed_result = urllib.parse.urlparse(self.url_str)
+            id_ = urllib.parse.ParseResult('', *parsed_result[1:]).geturl()
+        elif self.url_id:
+            parsed_result = urllib.parse.urlparse(self.url_id)
             id_ = urllib.parse.ParseResult('', *parsed_result[1:]).geturl()
         else:
             id_ = str(uuid.uuid4())
         return '_:URL@{0}'.format(id_)
+
+    def default_url(self):
+        """Define default value for url field."""
+        if self.url_str:
+            return self.url_str
+        elif self.url_id:
+            return {'@id': self.url_id}
+        else:
+            raise NotImplementedError('Either url_id or url_str has to be set')
+
+    @property
+    def value(self):
+        """Returns the url value as string."""
+        if self.url_str:
+            return self.url_str
+        elif self.url_id:
+            return self.url_id
+        else:
+            raise NotImplementedError('Either url_id or url_str has to be set')
+
+    def __attrs_post_init__(self):
+        """Post-initialize attributes."""
+        if not self.url:
+            self.url = self.default_url()
 
 
 def _convert_creators(value):
@@ -241,7 +271,7 @@ class DatasetFile(Entity, CreatorMixin):
     @property
     def size_in_mb(self):
         """Return file size in megabytes."""
-        return self.filesize * 1e-6
+        return None if self.filesize is None else self.filesize * 1e-6
 
     def __attrs_post_init__(self):
         """Set the property "name" after initialization."""
@@ -340,10 +370,6 @@ class Dataset(Entity, CreatorMixin):
         converter=_convert_keyword,
         context='schema:keywords',
         kw_only=True
-    )
-
-    based_on = jsonld.ib(
-        default=None, context='schema:isBasedOn', kw_only=True
     )
 
     license = jsonld.ib(default=None, context='schema:license', kw_only=True)
