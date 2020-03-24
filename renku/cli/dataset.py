@@ -755,7 +755,10 @@ def export_(
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-def import_(uri, short_name, extract):
+@click.option(
+    '-y', '--yes', is_flag=True, help='Bypass download confirmation.'
+)
+def import_(uri, short_name, extract, yes):
     """Import data from a 3rd party provider or another renku project.
 
     Supported providers: [Dataverse, Renku, Zenodo]
@@ -765,6 +768,7 @@ def import_(uri, short_name, extract):
         short_name=short_name,
         extract=extract,
         with_prompt=True,
+        yes=yes,
         progress=_DownloadProgressbar
     )
     click.secho(' ' * 79 + '\r', nl=False)
