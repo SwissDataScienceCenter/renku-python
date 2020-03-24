@@ -240,7 +240,6 @@ class DatasetsApiMixin(object):
         destination = self.path / dataset_path / destination
 
         files = []
-
         if all_at_once:  # only for URLs
             files = self._add_from_urls(
                 dataset=dataset,
