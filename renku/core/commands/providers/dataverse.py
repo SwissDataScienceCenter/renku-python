@@ -138,7 +138,7 @@ class DataverseProvider(ProviderApi):
                 raise LookupError('record not found')
             return response
 
-    def find_record(self, uri):
+    def find_record(self, uri, client=None):
         """Retrieves a record from Dataverse.
 
         :raises: ``LookupError``
@@ -216,8 +216,10 @@ class DataverseRecordSerializer:
 
     def get_files(self):
         """Get Dataverse files metadata as ``DataverseFileSerializer``."""
-        if len(self.files) == 0:
-            raise LookupError('no files have been found')
+        if not self.files:
+            raise LookupError(
+                'no files have been found - deposit is empty or protected'
+            )
 
         return [DataverseFileSerializer(**file_) for file_ in self.files]
 

@@ -21,7 +21,7 @@ class ProviderApi(abc.ABC):
     """Interface defining provider methods."""
 
     @abc.abstractmethod
-    def find_record(self, uri):
+    def find_record(self, uri, client=None):
         """Find record by uri."""
         pass
 
@@ -35,6 +35,11 @@ class ProviderApi(abc.ABC):
     def supports(uri):
         """Whether or not this provider supports a given uri."""
         pass
+
+    @property
+    def is_git_based(self):
+        """True if provider is a git repository."""
+        return False
 
 
 class ExporterApi(abc.ABC):
