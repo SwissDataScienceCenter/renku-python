@@ -468,13 +468,34 @@ class DatasetsApiMixin(object):
 
         return files
 
+    def _ensure_dropbox(self, url):
+        """Ensure dropbox url is set for file download."""
+        url = parse.urlparse(url)
+
+        query = url.query or ''
+        if 'dl=0' in url.query:
+            query = query.replace('dl=0', 'dl=1')
+        else:
+            query += 'dl=1'
+
+        url = parse.urlunparse((url._replace(query=query)))
+        return url
+
+    def provider_check(self, url):
+        """Check additional provider related operations."""
+        if 'dropbox.com' in url:
+            return self._ensure_dropbox(url)
+        return url
+
     def _add_from_url(self, dataset, url, destination, extract, progress=None):
-        """Process an add from url and return the location on disk."""
+        """Process adding from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
         else:
             destination.parent.mkdir(parents=True, exist_ok=True)
+
+        url = self.provider_check(url)
 
         try:
             paths = _download(
