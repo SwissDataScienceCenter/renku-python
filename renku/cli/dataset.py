@@ -102,7 +102,7 @@ URL schemes. For example,
 
     $ renku dataset add my-dataset git+ssh://host.io/namespace/project.git
 
-Sometimes you want to import just specific paths within the parent project.
+Sometimes you want to add just specific paths within the parent project.
 In this case, use the ``--source`` or ``-s`` flag:
 
 .. code-block:: console
@@ -219,6 +219,26 @@ A tag can be removed with:
 .. code-block:: console
 
     $ renku dataset rm-tags my-dataset 1.0
+
+
+Importing data from other Renku projects:
+
+To import all data files and their metadata from another Renku dataset use:
+
+.. code-block:: console
+
+    $ renku dataset import \
+        https://renkulab.io/projects/<username>/<project>/datasets/<dataset-id>
+
+or
+
+.. code-block:: console
+
+    $ renku dataset import \
+        https://renkulab.io/datasets/<dataset-id>
+
+You can get the link to a dataset form the UI or you can construct it by
+knowing the dataset's ID.
 
 
 Importing data from an external provider:
@@ -743,18 +763,23 @@ def export_(
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-def import_(uri, short_name, extract):
-    """Import data from a 3rd party provider.
+@click.option(
+    '-y', '--yes', is_flag=True, help='Bypass download confirmation.'
+)
+def import_(uri, short_name, extract, yes):
+    """Import data from a 3rd party provider or another renku project.
 
-    Supported providers: [Zenodo, Dataverse]
+    Supported providers: [Dataverse, Renku, Zenodo]
     """
     import_dataset(
         uri=uri,
         short_name=short_name,
         extract=extract,
         with_prompt=True,
+        yes=yes,
         progress=_DownloadProgressbar
     )
+    click.secho(' ' * 79 + '\r', nl=False)
     click.secho('OK', fg='green')
 
 
