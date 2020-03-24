@@ -44,7 +44,10 @@ def test_template_selection_helpers():
     }, {
         'name': 'Template R',
         'folder': 'folder_R',
-        'description': 'Description R'
+        'description': 'Description R',
+        'variables': {
+            'custom': 'random data'
+        }
     }]
     instructions = 'Please choose a template by typing the index'
     sentence = create_template_sentence(templates)
@@ -56,6 +59,7 @@ def test_template_selection_helpers():
     assert instructions not in stripped_sentence
     full_sentence = create_template_sentence(templates, True)
     assert instructions in full_sentence
+    assert 'custom: random data' in full_sentence
 
 
 @pytest.mark.integration

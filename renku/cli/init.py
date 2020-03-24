@@ -135,7 +135,9 @@ def create_template_sentence(templates, instructions=False):
     :ref templates: list of templates coming from manifest file
     :ref instructions: add instructions
     """
-    Template = namedtuple('Template', ['index', 'id', 'description'])
+    Template = namedtuple(
+        'Template', ['index', 'id', 'description', 'variables']
+    )
     templates_friendly = [
         Template(
             index=index + 1,
@@ -143,6 +145,10 @@ def create_template_sentence(templates, instructions=False):
             description=(
                 f'{template_elem["name"]}: {template_elem["description"]}'
             ),
+            variables='\n'.join([
+                f'{variable[0]}: {variable[1]}'
+                for variable in template_elem.get('variables', {}).items()
+            ])
         ) for index, template_elem in enumerate(templates)
     ]
 
@@ -152,6 +158,7 @@ def create_template_sentence(templates, instructions=False):
             ('index', 'Index'),
             ('id', 'Id'),
             ('description', 'Description'),
+            ('variables', 'Variables'),
         ))
     )
 
