@@ -83,10 +83,13 @@ def test_read_template_manifest():
             '  folder: first\n'
             '  name: Basic Project 1\n'
             '  description: Description 1\n'
+            '  variables: {}\n'
             '-\n'
             '  folder: second\n'
             '  name: Basic Project 2\n'
             '  description: Description 2\n'
+            '  variables:\n'
+            '    custom: Custom Value\n'
         )
 
         manifest = read_template_manifest(Path(tempdir), checkout=False)
@@ -95,6 +98,14 @@ def test_read_template_manifest():
         assert 'second' == manifest[1]['folder']
         assert 'Basic Project 1' == manifest[0]['name']
         assert 'Description 2' == manifest[1]['description']
+
+        variables1 = manifest[0]['variables']
+        variables2 = manifest[1]['variables']
+        assert 0 == len(variables1)
+        assert 1 == len(variables2)
+        assert 1 == len(variables2.keys())
+        assert 'custom' in variables2.keys()
+        assert 'Custom Value' == variables2['custom']
 
         template_file.write_text(
             '-\n'

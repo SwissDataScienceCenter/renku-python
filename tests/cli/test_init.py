@@ -30,7 +30,7 @@ INIT_REMOTE = [
     '--template-source', TEMPLATE_URL, '--template-ref', TEMPLATE_REF
 ]
 INIT_FORCE = ['--force']
-INIT_VARIABLES = ['--template-variables']
+INIT_VARIABLES = ['--variables']
 INIT_INDEX = ['init', 'test-new-project-2', '--template-index', TEMPLATE_INDEX]
 INIT_ID = ['--template-id', TEMPLATE_ID]
 LIST_TEMPLATES = ['--list-templates']
@@ -44,7 +44,10 @@ def test_template_selection_helpers():
     }, {
         'name': 'Template R',
         'folder': 'folder_R',
-        'description': 'Description R'
+        'description': 'Description R',
+        'variables': {
+            'custom': 'random data'
+        }
     }]
     instructions = 'Please choose a template by typing the index'
     sentence = create_template_sentence(templates)
@@ -56,6 +59,7 @@ def test_template_selection_helpers():
     assert instructions not in stripped_sentence
     full_sentence = create_template_sentence(templates, True)
     assert instructions in full_sentence
+    assert 'custom: random data' in full_sentence
 
 
 def test_list_templates(isolated_runner):
@@ -183,6 +187,9 @@ def test_init_with_variables(isolated_runner):
     metadata = 'not_dictionary'
     result = isolated_runner.invoke(cli, INIT + INIT_VARIABLES + [metadata])
     assert 0 != result.exit_code
+    assert (
+        'Error: Invalid parameter value for "--variables"' in result.output
+    )
     metadata = '{"correct": "dictionary"}'
     result = isolated_runner.invoke(cli, INIT + INIT_VARIABLES + [metadata])
     assert 0 == result.exit_code
