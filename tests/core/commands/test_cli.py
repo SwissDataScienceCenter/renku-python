@@ -354,8 +354,12 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
         monkey.setattr(StorageApiMixin, 'storage_installed', False)
         # Repo is using external storage but it's not installed.
         result = runner.invoke(cli, ['run', 'touch', 'output'])
-        assert 'External storage is not installed' in result.output
         assert 1 == result.exit_code
+        assert 'External storage is not configured' in result.output
+
+        result = runner.invoke(cli, ['-S', 'run', 'touch', 'output'])
+        assert 1 == result.exit_code
+        assert 'External storage is not installed' in result.output
 
     # Clean repo and check external storage.
     subprocess.call(['git', 'clean', '-df'])
