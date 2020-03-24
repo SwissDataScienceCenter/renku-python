@@ -197,9 +197,10 @@ def test_dataset_import_expected_err(runner, project, doi, err):
 @flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_http(runner, project, url, sleep_after):
     """Test dataset import through HTTPS."""
-    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
+    result = runner.invoke(cli, ['dataset', 'import', '-y', url], input='n')
 
     assert 0 == result.exit_code
+    assert 'Do you wish to download this version?' not in result.output
     assert 'OK' in result.output
 
 
