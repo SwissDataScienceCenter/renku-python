@@ -26,7 +26,6 @@ from pathlib import Path
 import click
 import git
 import requests
-import yaml
 
 from renku.core import errors
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -35,8 +34,7 @@ from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     OperationError, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
-from renku.core.models.datasets import Dataset, Url, \
-    generate_default_short_name
+from renku.core.models.datasets import Url, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
@@ -88,12 +86,8 @@ def create_dataset(
     """
     if not creators:
         creators = [Person.from_git(client.repo)]
-
-    elif hasattr(creators, '__iter__') and isinstance(creators[0], str):
-        creators = [Person.from_string(c) for c in creators]
-
-    elif hasattr(creators, '__iter__') and isinstance(creators[0], dict):
-        creators = [Person.from_dict(creator) for creator in creators]
+    else:
+        creators, _ = _construct_creators(creators)
 
     dataset, _, __ = client.create_dataset(
         short_name=short_name,
@@ -106,19 +100,72 @@ def create_dataset(
 
 
 @pass_local_client(
-    clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
+    clean=False,
+    commit=True,
+    commit_empty=False,
+    commit_only=DATASET_METADATA_PATHS
 )
-def edit_dataset(client, dataset_id, transform_fn, commit_message=None):
+def edit_dataset(
+    client, short_name, title, description, creators, commit_message=None
+):
     """Edit dataset metadata."""
-    dataset = client.load_dataset(dataset_id)
+    creators, no_email_warnings = _construct_creators(
+        creators, ignore_email=True
+    )
+    title = title.strip() if isinstance(title, str) else ''
 
-    if not dataset:
-        raise DatasetNotFound()
+    updated = []
 
-    edited = yaml.safe_load(transform_fn(dataset))
-    updated_ = Dataset(client=client, **edited)
-    dataset.update_metadata(updated_)
-    dataset.to_yaml()
+    with client.with_dataset(short_name=short_name) as dataset:
+        if creators:
+            dataset.creator = creators
+            updated.append('creators')
+        if description:
+            dataset.description = description
+            updated.append('description')
+        if title:
+            dataset.name = title
+            updated.append('title')
+
+    return updated, no_email_warnings
+
+
+def _construct_creators(creators, ignore_email=False):
+    from collections.abc import Iterable
+
+    creators = creators or ()
+
+    if not isinstance(creators, Iterable) or isinstance(creators, str):
+        raise errors.ParameterError('Invalid type')
+
+    people = []
+    no_email_warnings = []
+    for creator in creators:
+        if isinstance(creator, str):
+            person = Person.from_string(creator)
+        elif isinstance(creator, dict):
+            person = Person.from_dict(creator)
+        else:
+            raise errors.ParameterError('Invalid type')
+
+        message = 'A valid format is "Name <email> [affiliation]"'
+
+        if not person.name:  # pragma: no cover
+            raise errors.ParameterError(
+                f'Name is invalid: "{creator}".\n{message}'
+            )
+
+        if not person.email:
+            if not ignore_email:  # pragma: no cover
+                raise errors.ParameterError(
+                    f'Email is invalid: "{creator}".\n{message}'
+                )
+            else:
+                no_email_warnings.append(creator)
+
+        people.append(person)
+
+    return people, no_email_warnings
 
 
 @pass_local_client(
@@ -240,16 +287,12 @@ def add_to_dataset(
             if with_metadata:
                 for file_ in dataset.files:
                     file_.creator = with_metadata.creator
+                    file_.based_on = None
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
 
-                if is_doi(with_metadata.identifier):
-                    dataset.same_as = Url(
-                        url=urllib.parse.
-                        urljoin('https://doi.org', with_metadata.identifier)
-                    )
-
                 dataset.update_metadata(with_metadata)
+                dataset.same_as = with_metadata.same_as
 
     except DatasetNotFound:
         raise DatasetNotFound(
@@ -499,13 +542,13 @@ def import_dataset(
     commit_message=None,
     progress=None,
 ):
-    """Import data from a 3rd party provider."""
+    """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
         raise ParameterError('Could not process {0}.\n{1}'.format(uri, err))
 
     try:
-        record = provider.find_record(uri)
+        record = provider.find_record(uri, client)
         dataset = record.as_dataset(client)
         files = dataset.files
         total_size = 0
@@ -533,7 +576,8 @@ def import_dataset(
             click.confirm(text_prompt, abort=True)
 
             for file_ in files:
-                total_size += file_.size_in_mb
+                if file_.size_in_mb is not None:
+                    total_size += file_.size_in_mb
 
             total_size *= 2**20
 
@@ -549,13 +593,23 @@ def import_dataset(
              'Reason: {1}'.format(uri, str(e)))
         )
 
-    if files:
+    if not files:
+        raise ParameterError('Dataset {} has no files.'.format(uri))
+
+    dataset.url = remove_credentials(uri)
+    dataset.same_as = Url(url_id=remove_credentials(uri))
+
+    if not provider.is_git_based:
         if not short_name:
             short_name = generate_default_short_name(
                 dataset.name, dataset.version
             )
 
-        dataset.url = remove_credentials(dataset.url)
+        if is_doi(dataset.identifier):
+            dataset.same_as = Url(
+                url_str=urllib.parse.
+                urljoin('https://doi.org', dataset.identifier)
+            )
 
         urls, names = zip(*[(f.url, f.filename) for f in files])
 
@@ -580,6 +634,17 @@ def import_dataset(
                 client, short_name, tag_name,
                 'Tag {} created by renku import'.format(dataset.version)
             )
+    else:
+        short_name = short_name or dataset.short_name
+
+        add_to_dataset(
+            client,
+            urls=[record.project_url],
+            short_name=short_name,
+            sources=[f.path for f in files],
+            with_metadata=dataset,
+            create=True
+        )
 
 
 @pass_local_client(

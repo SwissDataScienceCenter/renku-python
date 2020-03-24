@@ -27,6 +27,7 @@ import pytest
 from flaky import flaky
 
 from renku.cli import cli
+from renku.core import errors
 from renku.core.commands.clone import renku_clone
 from renku.core.utils.contexts import chdir
 
@@ -142,7 +143,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     )
     assert 0 == result.exit_code
     assert 'Warning: Newer version found' in result.output
-    assert 'OK'
+    assert 'OK' in result.output
 
     result = runner.invoke(
         cli, ['dataset', 'import', '10.5281/zenodo.1438326'], input='y'
@@ -282,6 +283,88 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
     result = runner.invoke(cli, ['dataset', 'ls-files'])
     assert 0 == result.exit_code
     assert 'Data Key 2002-2006' in result.output
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
+    'url', [
+        'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62/',
+        'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
+        'datasets/48299db3-8870-4cbe-a480-f75985c42a62'
+    ]
+)
+def test_dataset_import_renku(runner, project, client, url):
+    """Test dataset import from Renku projects."""
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
+    assert 0 == result.exit_code
+    checksum = '54751585bb81a0bff32727e46e2aabaa0c8d19f8'
+    assert checksum in result.output
+    size = '66.00'
+    assert size in result.output
+    assert 'OK' in result.output
+
+    result = runner.invoke(cli, ['dataset', 'ls-files'])
+    assert 0 == result.exit_code
+    path = 'zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
+    assert path in result.output
+
+    dataset = [d for d in client.datasets.values()][0]
+    assert dataset.same_as.url['@id'] == url
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_dataset_import_renku_fail(runner, client, monkeypatch):
+    """Test dataset import fails if cannot clone repo."""
+    from renku.core.management import LocalClient
+    url = 'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62'
+
+    def prepare_git_repo(*_):
+        raise errors.GitError
+
+    with monkeypatch.context() as monkey:
+        monkey.setattr(LocalClient, 'prepare_git_repo', prepare_git_repo)
+
+        result = runner.invoke(cli, ['dataset', 'import', url], input='y')
+        assert 2 == result.exit_code
+        assert f'Invalid parameter value for {url}' in result.output
+        assert 'Cannot clone remote projects:' in result.output
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
+    'url,exit_code',
+    [('https://dev.renku.ch/projects/virginiafriedrich/datasets-test/', 2),
+     (
+         'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
+         'datasets/b9f7b21b-8b00-42a2-976a-invalid', 2
+     ), ('https://dev.renku.ch/datasets/10.5281%2Fzenodo.666', 1)]
+)
+def test_dataset_import_renku_errors(runner, project, url, exit_code):
+    """Test usage errors in Renku dataset import."""
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
+    assert exit_code == result.exit_code
+
+    result = runner.invoke(cli, ['dataset'])
+    assert 0 == result.exit_code
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_dataset_reimport_renku_dataset(runner, project):
+    """Test dataset import for existing dataset"""
+    URL = 'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/' \
+        'datasets/48299db3-8870-4cbe-a480-f75985c42a62'
+
+    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    assert 'OK' in result.output
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    assert 1 == result.exit_code
+    assert 'Dataset exists: "zhbikes"' in result.output
 
 
 @pytest.mark.integration

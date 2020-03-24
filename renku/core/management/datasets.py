@@ -137,7 +137,7 @@ class DatasetsApiMixin(object):
 
         if dataset is None:
             if not create:
-                raise errors.DatasetNotFound
+                raise errors.DatasetNotFound(name=short_name)
 
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(
@@ -509,7 +509,7 @@ class DatasetsApiMixin(object):
         sources = self._resolve_paths(u.path, sources)
 
         # Get all files from repo that match sources
-        repo, repo_path = self._prepare_git_repo(url, ref)
+        repo, repo_path = self.prepare_git_repo(url, ref)
         copied_sources = set()
         files = set()
         for file in repo.head.commit.tree.traverse():
@@ -568,7 +568,7 @@ class DatasetsApiMixin(object):
                             creators.append(creator)
 
                     based_on = DatasetFile.from_revision(
-                        remote_client, path=path, url=url
+                        remote_client, path=path, url=url, creator=creators
                     )
 
                 path_in_dst_repo = dst.relative_to(self.path)
@@ -810,7 +810,7 @@ class DatasetsApiMixin(object):
             if url in visited_repos:
                 repo, repo_path, remote_client = visited_repos[url]
             else:
-                repo, repo_path = self._prepare_git_repo(url, ref)
+                repo, repo_path = self.prepare_git_repo(url, ref)
                 remote_client = LocalClient(repo_path)
                 visited_repos[url] = repo, repo_path, remote_client
 
@@ -1041,7 +1041,13 @@ class DatasetsApiMixin(object):
         else:
             return True
 
-    def _prepare_git_repo(self, url, ref):
+    def prepare_git_repo(self, url, ref=None):
+        """Clone and cache a Git repo."""
+        if not url:
+            raise errors.GitError('Invalid URL.')
+
+        RENKU_BRANCH = 'renku-default-branch'
+
         def checkout(repo, ref):
             try:
                 repo.git.checkout(ref)
@@ -1052,7 +1058,6 @@ class DatasetsApiMixin(object):
                     )
                 )
 
-        RENKU_BRANCH = 'renku-default-branch'
         ref = ref or RENKU_BRANCH
         u = GitURL.parse(url)
         path = u.pathname
