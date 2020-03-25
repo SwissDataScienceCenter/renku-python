@@ -118,6 +118,15 @@ The command above will result in a structure like
       my-dataset/
         datafile
 
+You can use shell-like wildcards (e.g. *, **, ?) when specifying paths to be
+added. Put wildcard patterns in quotes to prevent your shell from expanding
+them.
+
+.. code-block:: console
+
+    $ renku dataset add my-dataset --source 'path/**/datafile' \
+        git+ssh://host.io/namespace/project.git
+
 You can use ``--destination`` or ``-d`` flag to change the name of the target
 file or directory. The semantics here are similar to the POSIX copy command:
 if the destination does not exist or if it is a file then the source will be
@@ -755,7 +764,10 @@ def export_(
     is_flag=True,
     help='Extract files before importing to dataset.'
 )
-def import_(uri, short_name, extract):
+@click.option(
+    '-y', '--yes', is_flag=True, help='Bypass download confirmation.'
+)
+def import_(uri, short_name, extract, yes):
     """Import data from a 3rd party provider or another renku project.
 
     Supported providers: [Dataverse, Renku, Zenodo]
@@ -765,6 +777,7 @@ def import_(uri, short_name, extract):
         short_name=short_name,
         extract=extract,
         with_prompt=True,
+        yes=yes,
         progress=_DownloadProgressbar
     )
     click.secho(' ' * 79 + '\r', nl=False)
