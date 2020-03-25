@@ -58,7 +58,6 @@ def test_template_selection_helpers():
     assert instructions in full_sentence
 
 
-@pytest.mark.integration
 def test_list_templates(isolated_runner):
     """Test listing templates."""
     new_project = Path('test-new-project')
@@ -69,7 +68,6 @@ def test_list_templates(isolated_runner):
     assert TEMPLATE_ID in result.output
 
 
-@pytest.mark.integration
 def test_init(isolated_runner):
     """Test project initialization from template."""
     # create the project
@@ -119,7 +117,6 @@ def test_init(isolated_runner):
     ) in result.output
 
 
-@pytest.mark.integration
 def test_init_force_in_empty_dir(isolated_runner):
     """Run init --force in empty directory."""
     new_project = Path('test-new-project')
@@ -128,7 +125,6 @@ def test_init_force_in_empty_dir(isolated_runner):
     assert 0 == result.exit_code
 
 
-@pytest.mark.integration
 def test_init_force_in_dirty_dir(isolated_runner):
     """Run init --force in dirty directory."""
     new_project = Path('test-new-project')
@@ -145,7 +141,6 @@ def test_init_force_in_dirty_dir(isolated_runner):
     assert 0 == result.exit_code
 
 
-@pytest.mark.integration
 def test_init_on_cloned_repo(isolated_runner, data_repository):
     """Run init --force in directory containing another repo."""
     new_project = Path('test-new-project')
@@ -180,7 +175,6 @@ def test_init_remote(isolated_runner):
     assert (new_project / '.renku' / 'metadata.yml').exists()
 
 
-@pytest.mark.integration
 def test_init_with_variables(isolated_runner):
     """Test project initialization using custom metadata."""
     # create the project
