@@ -29,7 +29,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
 URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
-REFERENCE = '0.1.5'
+REFERENCE = '0.1.7'
 
 
 class DownloadTemplates(Command):
@@ -173,7 +173,7 @@ install_requires = [
     'rdflib==4.2.2',
     'rdflib-jsonld>=0.4.0',
     'requests>=2.21.0',
-    'rq==1.2.2',
+    'rq==1.3.0',
     'rq-scheduler==0.9.1',
     'ndg-httpsclient>=0.5.1',
     'marshmallow==3.5.1',
@@ -182,6 +182,7 @@ install_requires = [
     'tabulate>=0.7.7',
     'tqdm>=4.31.1',
     'walrus>=0.8.0',
+    'wcmatch>=6.0.0',
     'werkzeug>=0.15.5',
 ]
 

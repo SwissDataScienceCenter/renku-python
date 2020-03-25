@@ -34,7 +34,7 @@ TEMPLATE_URL = (
     'https://github.com/SwissDataScienceCenter/renku-project-template'
 )
 TEMPLATE_NAME = 'Basic Python Project'
-TEMPLATE_REF = '0.1.5'
+TEMPLATE_REF = '0.1.7'
 METADATA = {'name': 'myname', 'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 
