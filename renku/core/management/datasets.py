@@ -30,6 +30,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
+from urllib.parse import ParseResult
 
 import attr
 import patoolib
@@ -468,9 +469,11 @@ class DatasetsApiMixin(object):
 
         return files
 
-    def _ensure_dropbox(self, url):
+    @staticmethod
+    def _ensure_dropbox(url):
         """Ensure dropbox url is set for file download."""
-        url = parse.urlparse(url)
+        if not isinstance(url, ParseResult):
+            url = parse.urlparse(url)
 
         query = url.query or ''
         if 'dl=0' in url.query:
@@ -478,14 +481,17 @@ class DatasetsApiMixin(object):
         else:
             query += 'dl=1'
 
-        url = parse.urlunparse((url._replace(query=query)))
+        url = url._replace(query=query)
         return url
 
     def provider_check(self, url):
         """Check additional provider related operations."""
-        if 'dropbox.com' in url:
-            return self._ensure_dropbox(url)
-        return url
+        url = parse.urlparse(url)
+
+        if 'dropbox.com' in url.netloc:
+            url = self._ensure_dropbox(url)
+
+        return parse.urlunparse(url)
 
     def _add_from_url(self, dataset, url, destination, extract, progress=None):
         """Process adding from url and return the location on disk."""
