@@ -39,6 +39,49 @@ necessary files for managing the project configuration.
 
 If provided directory does not exist, it will be created.
 
+Using a different template
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Renku is installed together with a specific set of templates you can select
+when you initialize a project. You can check them by typing:
+
+.. code-block:: console
+
+    $ renku init --list-templates
+
+    INDEX  ID              DESCRIPTION
+    -----  --------------  -------------------------------------------------
+    1  python-minimal  Basic Python Project: The simplest Python-based[...]
+    2  R-minimal       Basic R Project: The simplest R-based renku proj[...]
+
+If you know which template you are going to use, you can provide either the id
+``--template-id`` or the template index number ``--template-index``.
+
+You can use a newer version of the templates or even create your own one and
+provide it to the ``init`` command by specifying the target template repository
+source ``--template-source`` (both local path and remote url are supported) and
+the reference ``--template-ref`` (branch, tag or commit).
+
+You can take inspiration from the
+`official Renku template repository
+<https://github.com/SwissDataScienceCenter/renku-project-template>`_
+
+.. code-block:: console
+
+    $ renku init --template-ref master --template-source \
+    https://github.com/SwissDataScienceCenter/renku-project-template
+
+    Fetching template from
+    https://github.com/SwissDataScienceCenter/renku-project-template@master
+    ... OK
+
+    INDEX  ID              DESCRIPTION
+    -----  --------------  -------------------------------------------------
+    1  python-minimal  Basic Python Project: The simplest Python-based[...]
+    2  R-minimal       Basic R Project: The simplest R-based renku proj[...]
+
+    Please choose a template by typing the index: 
+
 Updating an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
