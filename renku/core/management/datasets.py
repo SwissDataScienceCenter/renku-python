@@ -26,6 +26,7 @@ import tempfile
 import time
 import uuid
 import warnings
+from collections import OrderedDict
 from configparser import NoSectionError
 from contextlib import contextmanager
 from pathlib import Path
@@ -36,6 +37,7 @@ import attr
 import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
+from wcmatch import glob
 
 from renku.core import errors
 from renku.core.management.clone import clone
@@ -520,25 +522,29 @@ class DatasetsApiMixin(object):
 
         # Get all files from repo that match sources
         repo, repo_path = self.prepare_git_repo(url, ref)
-        copied_sources = set()
         files = set()
+        used_sources = set()
         for file in repo.head.commit.tree.traverse():
             path = file.path
             result = self._get_src_and_dst(
-                path, repo_path, sources, destination
+                path, repo_path, sources, destination, used_sources
             )
 
             if result:
                 files.add(result)
-                source = result[3]
-                copied_sources.add(source)
 
-        uncopied_sources = sources - copied_sources
-        if uncopied_sources:
-            uncopied_sources = {str(s) for s in uncopied_sources}
+        unused_sources = set(sources.keys()) - used_sources
+        if unused_sources:
+            unused_sources = {str(s) for s in unused_sources}
             raise errors.ParameterError(
-                'No such file or directory', param_hint=uncopied_sources
+                'No such file or directory', param_hint=unused_sources
             )
+
+        if destination.exists() and not destination.is_dir():
+            if len(files) > 1:
+                raise errors.ParameterError(
+                    'Cannot copy multiple files or directories to a file'
+                )
 
         # Create metadata and move files to dataset
         results = []
@@ -546,7 +552,7 @@ class DatasetsApiMixin(object):
 
         # Pull files from LFS
         paths = set()
-        for path, src, _, __ in files:
+        for path, src, _ in files:
             if src.is_dir():
                 continue
             if src.is_symlink():
@@ -561,7 +567,7 @@ class DatasetsApiMixin(object):
         paths = {f[0] for f in files}
         metadata = self._fetch_files_metadata(remote_client, paths)
 
-        for path, src, dst, _ in files:
+        for path, src, dst in files:
             if not src.is_dir():
                 # Use original metadata if it exists
                 based_on = metadata.get(path)
@@ -605,7 +611,11 @@ class DatasetsApiMixin(object):
 
     def _resolve_paths(self, root_path, paths):
         """Check if paths are within a root path and resolve them."""
-        return {self._resolve_path(root_path, p) for p in paths}
+        result = OrderedDict()  # Used as an ordered-set
+        for path in paths:
+            r = self._resolve_path(root_path, path)
+            result[r] = None
+        return result
 
     def _resolve_path(self, root_path, path):
         """Check if a path is within a root path and resolve it."""
@@ -618,18 +628,27 @@ class DatasetsApiMixin(object):
                 'File {} is not within path {}'.format(path, root_path)
             )
 
-    def _get_src_and_dst(self, path, repo_path, sources, dst_root):
+    def _get_src_and_dst(
+        self, path, repo_path, sources, dst_root, used_sources
+    ):
+        is_wildcard = False
+
         if not sources:
             source = Path('.')
         else:
             source = None
-            for s in sources:
+            for s in sources.keys():
                 try:
                     Path(path).relative_to(s)
                 except ValueError:
-                    pass
+                    if glob.globmatch(path, str(s), flags=glob.GLOBSTAR):
+                        is_wildcard = True
+                        source = path
+                        used_sources.add(s)
+                        break
                 else:
                     source = s
+                    used_sources.add(source)
                     break
 
             if not source:
@@ -639,24 +658,26 @@ class DatasetsApiMixin(object):
         source_name = Path(source).name
         relative_path = Path(path).relative_to(source)
 
-        if not dst_root.exists():
-            if len(sources) == 1:
+        if src.is_dir() and is_wildcard:
+            sources[source] = None
+            used_sources.add(source)
+
+        if not dst_root.exists():  # Destination will be a file or directory
+            if len(sources) == 1 and not is_wildcard:
                 dst = dst_root / relative_path
             else:  # Treat destination as a directory
                 dst = dst_root / source_name / relative_path
         elif dst_root.is_dir():
             dst = dst_root / source_name / relative_path
         else:  # Destination is an existing file
-            if len(sources) == 1 and not src.is_dir():
-                dst = dst_root
-            elif not sources:
-                raise errors.ParameterError('Cannot copy repo to file')
-            else:
+            if src.is_dir():
                 raise errors.ParameterError(
                     'Cannot copy multiple files or directories to a file'
                 )
+            # Later we need to check if we are copying multiple files
+            dst = dst_root
 
-        return (path, src, dst, source)
+        return (path, src, dst)
 
     def _fetch_lfs_files(self, repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
