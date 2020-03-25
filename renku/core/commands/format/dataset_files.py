@@ -58,6 +58,7 @@ DATASET_FILES_FORMATS = {
 DATASET_FILES_COLUMNS = {
     'added': ('added', None),
     'creators': ('creators_csv', 'creators'),
+    'creators_full': ('creators_full_csv', 'creators'),
     'dataset': ('title', 'dataset'),
     'full_path': ('full_path', None),
     'path': ('path', None),

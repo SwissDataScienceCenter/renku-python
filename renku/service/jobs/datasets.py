@@ -45,7 +45,6 @@ class DatasetImportJobProcess(DownloadProgressCallback):
             'description': description,
             'total_size': total_size,
         }
-        self.job.in_progress()
 
         super().__init__(description, total_size)
         return self
@@ -78,6 +77,7 @@ def dataset_import(
 
     with chdir(project.abs_path):
         try:
+            user_job.in_progress()
             import_dataset(
                 dataset_uri,
                 short_name,
@@ -85,6 +85,7 @@ def dataset_import(
                 commit_message=f'service: dataset import {dataset_uri}',
                 progress=DatasetImportJobProcess(cache, user_job)
             )
+            user_job.complete()
         except (HTTPError, ParameterError, DatasetExistsError) as exp:
             user_job.fail_job(str(exp))
 

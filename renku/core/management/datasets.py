@@ -23,6 +23,7 @@ import re
 import shutil
 import stat
 import tempfile
+import time
 import uuid
 import warnings
 from configparser import NoSectionError
@@ -137,7 +138,7 @@ class DatasetsApiMixin(object):
 
         if dataset is None:
             if not create:
-                raise errors.DatasetNotFound
+                raise errors.DatasetNotFound(name=short_name)
 
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(
@@ -240,7 +241,6 @@ class DatasetsApiMixin(object):
         destination = self.path / dataset_path / destination
 
         files = []
-
         if all_at_once:  # only for URLs
             files = self._add_from_urls(
                 dataset=dataset,
@@ -362,7 +362,7 @@ class DatasetsApiMixin(object):
         return checksum, filesize
 
     def _check_protected_path(self, path):
-        """Checks if a path is protected by renku."""
+        """Checks if a path is a protected path."""
         try:
             path_in_repo = path.relative_to(self.path)
         except ValueError:
@@ -376,7 +376,7 @@ class DatasetsApiMixin(object):
         return False
 
     def _add_from_local(self, dataset, path, link, external, destination):
-        """Add a file or directory from local filesystem."""
+        """Add a file or directory from a local filesystem."""
         src = Path(path).resolve()
 
         if not src.exists():
@@ -453,7 +453,7 @@ class DatasetsApiMixin(object):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
-        max_workers = min(os.cpu_count() + 4, 8)
+        max_workers = min(os.cpu_count() - 1, 4) or 1
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
@@ -469,7 +469,7 @@ class DatasetsApiMixin(object):
         return files
 
     def _add_from_url(self, dataset, url, destination, extract, progress=None):
-        """Process an add from url and return the location on disk."""
+        """Process add from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
@@ -477,13 +477,23 @@ class DatasetsApiMixin(object):
             destination.parent.mkdir(parents=True, exist_ok=True)
 
         try:
+            start = time.time() * 1e+3
             paths = _download(
                 url=url,
                 download_to=destination,
                 extract=extract,
                 progress_class=progress
             )
-        except error.HTTPError as e:  # pragma nocover
+
+            exec_time = (time.time() * 1e+3 - start) // 1e+3
+            # If execution time was less or equal to zero seconds,
+            # block the thread a bit to avoid being rate limited.
+            if exec_time == 0:
+                time.sleep(min(os.cpu_count() - 1, 4) or 1)
+
+        except (
+            requests.exceptions.HTTPError, error.HTTPError
+        ) as e:  # pragma nocover
             raise errors.OperationError(
                 'Cannot download from {}'.format(url)
             ) from e
@@ -509,7 +519,7 @@ class DatasetsApiMixin(object):
         sources = self._resolve_paths(u.path, sources)
 
         # Get all files from repo that match sources
-        repo, repo_path = self._prepare_git_repo(url, ref)
+        repo, repo_path = self.prepare_git_repo(url, ref)
         copied_sources = set()
         files = set()
         for file in repo.head.commit.tree.traverse():
@@ -568,7 +578,7 @@ class DatasetsApiMixin(object):
                             creators.append(creator)
 
                     based_on = DatasetFile.from_revision(
-                        remote_client, path=path, url=url
+                        remote_client, path=path, url=url, creator=creators
                     )
 
                 path_in_dst_repo = dst.relative_to(self.path)
@@ -810,7 +820,7 @@ class DatasetsApiMixin(object):
             if url in visited_repos:
                 repo, repo_path, remote_client = visited_repos[url]
             else:
-                repo, repo_path = self._prepare_git_repo(url, ref)
+                repo, repo_path = self.prepare_git_repo(url, ref)
                 remote_client = LocalClient(repo_path)
                 visited_repos[url] = repo, repo_path, remote_client
 
@@ -1041,7 +1051,13 @@ class DatasetsApiMixin(object):
         else:
             return True
 
-    def _prepare_git_repo(self, url, ref):
+    def prepare_git_repo(self, url, ref=None):
+        """Clone and cache a Git repo."""
+        if not url:
+            raise errors.GitError('Invalid URL.')
+
+        RENKU_BRANCH = 'renku-default-branch'
+
         def checkout(repo, ref):
             try:
                 repo.git.checkout(ref)
@@ -1052,7 +1068,6 @@ class DatasetsApiMixin(object):
                     )
                 )
 
-        RENKU_BRANCH = 'renku-default-branch'
         ref = ref or RENKU_BRANCH
         u = GitURL.parse(url)
         path = u.pathname
@@ -1161,12 +1176,14 @@ def _download(
 
     with requests.get(url, stream=True) as request:
         request.raise_for_status()
+
         with open(str(download_to), 'wb') as file_:
             total_size = int(request.headers.get('content-length', 0))
             progress_class = progress_class or DownloadProgressCallback
             progress = progress_class(
                 description=download_to.name, total_size=total_size
             )
+
             try:
                 for chunk in request.iter_content(chunk_size=chunk_size):
                     if chunk:  # ignore keep-alive chunks
