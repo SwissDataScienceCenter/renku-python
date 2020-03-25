@@ -86,6 +86,13 @@ Once ``pipx`` is installed use following command to install ``renku``.
 does not pollute any other packages or versions that you may have already
 installed.
 
+.. note::
+
+    If you install renku as a dependency in a virtual environment and the
+    environment is active, your shell will default to the version installed
+    in the virtual environment, *not* the version installed by ``pipx``.
+
+
 To install a development release:
 
 ::
