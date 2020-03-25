@@ -80,7 +80,7 @@ You can take inspiration from the
     1  python-minimal  Basic Python Project: The simplest Python-based[...]
     2  R-minimal       Basic R Project: The simplest R-based renku proj[...]
 
-    Please choose a template by typing the index: 
+    Please choose a template by typing the index:
 
 Updating an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
