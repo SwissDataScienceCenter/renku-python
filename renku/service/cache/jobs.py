@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service jobs management."""
+import uuid
+
 from renku.service.cache.base import BaseCache
 from renku.service.cache.models.job import Job
 from renku.service.cache.serializers.job import JobSchema
@@ -26,9 +28,12 @@ class JobManagementCache(BaseCache):
 
     job_schema = JobSchema()
 
-    def make_job(self, user, job_data):
+    def make_job(self, user, job_data=None):
         """Cache job state under user hash set."""
-        job_data.update({'user_id': user.user_id})
+        if job_data:
+            job_data.update({'user_id': user.user_id})
+        else:
+            job_data = {'user_id': user.user_id}
 
         job_obj = self.job_schema.load(job_data)
         job_obj.save()

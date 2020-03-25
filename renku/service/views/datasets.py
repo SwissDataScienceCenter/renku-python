@@ -31,7 +31,7 @@ from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
 from renku.service.jobs.contexts import enqueue_retry
-from renku.service.jobs.datasets import dataset_import
+from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
 from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetAddResponseRPC, DatasetCreateRequest, DatasetCreateResponseRPC, \
@@ -128,10 +128,10 @@ def list_dataset_files_view(user, cache):
 @accepts_json
 @requires_cache
 @requires_identity
-def add_file_to_dataset_view(user, cache):
+def add_file_to_dataset_view(user_data, cache):
     """Add the uploaded file to cloned repository."""
     ctx = DatasetAddRequest().load(request.json)
-    user = cache.ensure_user(user)
+    user = cache.ensure_user(user_data)
     project = cache.get_project(user, ctx['project_id'])
 
     if not project.abs_path.exists():
@@ -145,9 +145,25 @@ def add_file_to_dataset_view(user, cache):
             ctx['dataset_name']
         )
 
-    local_paths = []
+    local_paths, remote_paths = [], []
     for _file in ctx['files']:
         local_path = None
+
+        if 'file_url' in _file:
+            commit_message = '{0}{1}'.format(
+                ctx['commit_message'], _file['file_url']
+            )
+
+            job = cache.make_job(user)
+            _file['job_id'] = job.job_id
+
+            with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
+                queue.enqueue(
+                    dataset_add_remote_file, user_data, job.job_id,
+                    project.project_id, ctx['create_dataset'], commit_message,
+                    ctx['dataset_name'], _file['file_url']
+                )
+            continue
 
         if 'file_id' in _file:
             file = cache.get_file(user, _file['file_id'])
@@ -165,18 +181,19 @@ def add_file_to_dataset_view(user, cache):
         ctx['commit_message'] += ' {0}'.format(local_path.name)
         local_paths.append(str(local_path))
 
-    with chdir(project.abs_path):
-        add_file(
-            local_paths,
-            ctx['dataset_name'],
-            create=ctx['create_dataset'],
-            commit_message=ctx['commit_message']
-        )
-
-        if not repo_sync(project.abs_path):
-            return error_response(
-                INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
+    if local_paths:
+        with chdir(project.abs_path):
+            add_file(
+                local_paths,
+                ctx['dataset_name'],
+                create=ctx['create_dataset'],
+                commit_message=ctx['commit_message']
             )
+
+            if not repo_sync(project.abs_path):
+                return error_response(
+                    INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
+                )
 
     return result_response(DatasetAddResponseRPC(), ctx)
 
