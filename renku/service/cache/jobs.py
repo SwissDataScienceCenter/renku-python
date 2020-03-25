@@ -16,8 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service jobs management."""
-import uuid
-
 from renku.service.cache.base import BaseCache
 from renku.service.cache.models.job import Job
 from renku.service.cache.serializers.job import JobSchema

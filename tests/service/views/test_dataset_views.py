@@ -919,14 +919,11 @@ def test_dataset_add_multiple_remote(svc_client_cache, project, mock_redis):
             'project_id': project_meta['project_id'],
             'dataset_name': uuid.uuid4().hex,
             'create_dataset': True,
-            'files': [
-                {
-                    'file_url': url_gist,
-                },
-                {
-                    'file_url': url_dbox,
-                }
-            ]
+            'files': [{
+                'file_url': url_gist,
+            }, {
+                'file_url': url_dbox,
+            }]
         }),
         headers=headers,
     )
@@ -972,14 +969,13 @@ def test_add_remote_and_local_file(svc_client_with_repo):
     assert {'dataset_name'} == set(response.json['result'].keys())
     assert payload['dataset_name'] == response.json['result']['dataset_name']
 
-    files = [
-        {'file_path': 'README.md'},
-        {
-            'file_url': (
-                'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'
-            )
-        }
-    ]
+    files = [{
+        'file_path': 'README.md'
+    }, {
+        'file_url': (
+            'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'
+        )
+    }]
     payload = {
         'project_id': project_id,
         'dataset_name': payload['dataset_name'],

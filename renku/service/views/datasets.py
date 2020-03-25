@@ -145,7 +145,7 @@ def add_file_to_dataset_view(user_data, cache):
             ctx['dataset_name']
         )
 
-    local_paths, remote_paths = [], []
+    local_paths = []
     for _file in ctx['files']:
         local_path = None
 
