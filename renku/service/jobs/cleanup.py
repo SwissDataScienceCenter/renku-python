@@ -21,61 +21,102 @@ import shutil
 import time
 from datetime import datetime
 
-from renku.service.cache import FileManagementCache, ProjectManagementCache
+from renku.service.cache import ServiceCache
+
+
+def file_cleanup_lock_check(jobs, file):
+    """Check if file should be deleted."""
+    for job in jobs:
+        for lock_id in job.extras.get('locked', []):
+            if lock_id == file.file_id:
+                return True
+
+    return False
+
+
+def file_cleanup_ttl_check(
+    file, ttl=int(os.getenv('RENKU_SVC_CLEANUP_TTL_FILES', 1800))
+):
+    """Check if file should be deleted."""
+    # If record does not contain created_at,
+    # it means its an old record, and we should mark it for deletion.
+    created_at = (file.created_at -
+                  datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+
+    if not file.created_at:
+        created_at = (time.time() - ttl) * 1e+3
+
+    old = ((time.time() * 1e+3) - created_at) / 1e+3
+
+    return old >= ttl and file.abs_path.exists()
 
 
 def cache_files_cleanup():
     """Cache files a cleanup job."""
-    ttl = int(os.getenv('RENKU_SVC_CLEANUP_TTL_FILES', 1800))
-    cache = FileManagementCache()
+    cache = ServiceCache()
 
     for user, files in cache.user_files():
+        jobs = cache.get_jobs(user)
+
         for file in files:
-            # If record does not contain created_at,
-            # it means its an old record, and we should mark it for deletion.
-            created_at = (file.created_at -
-                          datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+            if file_cleanup_lock_check(jobs, file):
+                continue
 
-            if not file.created_at:
-                created_at = (time.time() - ttl) * 1e+3
+            ttl_check = file_cleanup_ttl_check(file)
+            file_path = file.abs_path
 
-            old = ((time.time() * 1e+3) - created_at) / 1e+3
-
-            if old >= ttl:
-                file_path = file.abs_path
-                if file_path.exists() and file_path.is_file():
+            if ttl_check:
+                if file_path.is_file():
                     try:
                         file_path.unlink()
                     except FileNotFoundError:
                         pass
 
-                if file_path.exists() and file_path.is_dir():
+                if file_path.is_dir():
                     shutil.rmtree(str(file_path))
 
                 file.delete()
 
 
+def project_cleanup_ttl_check(
+    project, ttl=int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
+):
+    """Check if file should be deleted."""
+    # If record does not contain created_at,
+    # it means its an old record, and we should mark it for deletion.
+    created_at = (project.created_at -
+                  datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+
+    if not project.created_at:
+        created_at = (time.time() - ttl) * 1e+3
+
+    old = ((time.time() * 1e+3) - created_at) / 1e+3
+
+    return old >= ttl and project.abs_path.exists()
+
+
+def project_cleanup_lock_check(jobs, project):
+    """Check if project should be deleted."""
+    for job in jobs:
+        for lock_id in job.extras.get('locked', []):
+            if lock_id == project.project_id:
+                return True
+
+    return False
+
+
 def cache_project_cleanup():
     """Cache project a cleanup job."""
-    ttl = int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
-    cache = ProjectManagementCache()
+    cache = ServiceCache()
 
     for user, projects in cache.user_projects():
+        jobs = cache.get_jobs(user)
+
         for project in projects:
-
-            # If record does not contain created_at,
-            # it means its an old record, and we should mark it for deletion.
-            created_at = (project.created_at -
-                          datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
-
-            if not project.created_at:
-                created_at = (time.time() - ttl) * 1e+3
-
-            old = ((time.time() * 1e+3) - created_at) / 1e+3
-
-            if old >= ttl:
-                project_path = project.abs_path
-                if project_path.exists():
-                    shutil.rmtree(str(project_path))
+            if project_cleanup_lock_check(jobs, project):
+                continue
+            
+            if project_cleanup_ttl_check(project):
+                shutil.rmtree(str(project.abs_path))
 
                 project.delete()
