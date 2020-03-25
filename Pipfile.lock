@@ -58,11 +58,24 @@
             ],
             "version": "==2.8.0"
         },
+        "backrefs": {
+            "hashes": [
+                "sha256:35aa207d2fa30c1b509eb109e10f2e823b9ac44a4f777e90a3cdb6be889708a3"
+            ],
+            "version": "==4.3"
+        },
         "bagit": {
             "hashes": [
                 "sha256:f248a3dad06fd3e5d329217baace6ade79d106579696b13e2c0bbc583101ded4"
             ],
             "version": "==1.7.0"
+        },
+        "bracex": {
+            "hashes": [
+                "sha256:1f22412845a7547fbc5d23761dc9c1c8e3ae2e9c6ecf928891e675b78ad69f4e",
+                "sha256:bcbedf0d658e28859ba49e64caf45c74eeea95df05f3ec8f87aa8d6d68252078"
+            ],
+            "version": "==2.0"
         },
         "cachecontrol": {
             "hashes": [
@@ -1016,6 +1029,13 @@
                 "sha256:b862719ae430b76af41205a7350ad681a77b90e9d9b1dbd8881f27246963f309"
             ],
             "version": "==0.8.0"
+        },
+        "wcmatch": {
+            "hashes": [
+                "sha256:0aba7e0d83122d25df52c45a0288953000cfc5d423d124d5f7012d0cbbcb8b07",
+                "sha256:14d9e6d7ee3f05d31a730b44a72d30e8c33f883c9d0422c8eb652ff87fef6102"
+            ],
+            "version": "==6.0.1"
         },
         "wcwidth": {
             "hashes": [

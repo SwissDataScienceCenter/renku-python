@@ -786,6 +786,44 @@ def test_add_data_from_git(runner, client, params, path):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    'params,files', [
+        (['-s', 'docker*'], {'docker'}),
+        (['-s', 'docker/*'
+          ], {'py3.7', 'cuda10.0-tf1.14', 'cuda9.2', 'r3.6.1', 'bioc3_10'}),
+        (['-s', 'docker/**'], {
+            'powerline.config', 'Dockerfile', 'entrypoint.sh',
+            'requirements.txt', 'fix-permissions.sh',
+            'LICENSE-fix-permissions', 'powerline.bashrc', 'git-config.bashrc'
+        }),
+        (['-s', 'docker/*/*sh'], {'entrypoint.sh', 'fix-permissions.sh'}),
+    ]
+)
+@flaky(max_runs=10, min_passes=1)
+def test_add_data_from_git_with_wildcards(runner, client, params, files):
+    """Test add data using wildcards to datasets from a git repository."""
+    REMOTE = 'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'remote', '--create', '--ref', '0.5.2', REMOTE] +
+        params,
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert files == set(os.listdir('data/remote'))
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'remote', '--ref', '0.5.2', '-d', 'new', REMOTE] +
+        params,
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+    assert files == set(os.listdir('data/remote/new'))
+
+
+@pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 def test_add_from_git_copies_metadata(runner, client):
     """Test an import from a git repository keeps creators name."""
@@ -815,11 +853,13 @@ def test_add_from_git_copies_metadata(runner, client):
         (['-s', 'file'], 2, 'Cannot add multiple URLs'),
         (['-d', 'file'], 2, 'Cannot add multiple URLs'),
         (['-s', 'non-existing'], 1, 'No such file or directory'),
+        (['-s', 'docker/*Dockerfile'], 1, 'No such file or directory'),
         (['-s', 'docker', '-d', 'LICENSE'
           ], 1, 'Cannot copy multiple files or directories to a file'),
         (['-s', 'LICENSE', '-s', 'Makefile', '-d', 'LICENSE'
           ], 1, 'Cannot copy multiple files or directories to a file'),
-        (['-d', 'LICENSE'], 1, 'Cannot copy repo to file'),
+        (['-d', 'LICENSE'
+          ], 1, 'Cannot copy multiple files or directories to a file'),
     ]
 )
 @flaky(max_runs=10, min_passes=1)
