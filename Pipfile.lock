@@ -250,10 +250,10 @@
         },
         "environ-config": {
             "hashes": [
-                "sha256:539a1025aeaa015eb03fdd03201517172816ce32ace377c54cbc55c1e4f24739",
-                "sha256:cd5fa819f047853fb7b6c432d35976a84eacd54647a109fa2af27bafcdab7af1"
+                "sha256:0e300307520c1e6a5424018b7f70246a2c7f4cb5cc5cbbebccc6a982eb1767cb",
+                "sha256:3167feda073bd3cd3457a3e5fa7c2836b6574c046cd0dcd79385ce3284e837bd"
             ],
-            "version": "==19.1.0"
+            "version": "==20.1.0"
         },
         "execnet": {
             "hashes": [
@@ -853,10 +853,10 @@
         },
         "sentry-sdk": {
             "hashes": [
-                "sha256:480eee754e60bcae983787a9a13bc8f155a111aef199afaa4f289d6a76aa622a",
-                "sha256:a920387dc3ee252a66679d0afecd34479fb6fc52c2bc20763793ed69e5b0dcc0"
+                "sha256:23808d571d2461a4ce3784ec12bbee5bdb8c026c143fe79d36cef8a6d653e71f",
+                "sha256:bb90a4e19c7233a580715fc986cc44be2c48fc10b31e71580a2037e1c94b6950"
             ],
-            "version": "==0.14.2"
+            "version": "==0.14.3"
         },
         "setuptools-scm": {
             "hashes": [
@@ -965,9 +965,10 @@
         },
         "tabulate": {
             "hashes": [
-                "sha256:5470cc6687a091c7042cee89b2946d9235fe9f6d49c193a4ae2ac7bf386737c8"
+                "sha256:ac64cb76d53b1231d364babcd72abbb16855adac7de6665122f97b593f1eb2ba",
+                "sha256:db2723a20d04bcda8522165c73eea7c300eda74e0ce852d9022e0159d7895007"
             ],
-            "version": "==0.8.6"
+            "version": "==0.8.7"
         },
         "toml": {
             "hashes": [
@@ -1018,10 +1019,10 @@
         },
         "wcwidth": {
             "hashes": [
-                "sha256:8fd29383f539be45b20bd4df0dc29c20ba48654a41e661925e612311e9f3c603",
-                "sha256:f28b3e8a6483e5d49e7f8949ac1a78314e740333ae305b4ba5defd3e74fb37a8"
+                "sha256:cafe2186b3c009a04067022ce1dcd79cb38d8d65ee4f4791b8888d6599d1bbe1",
+                "sha256:ee73862862a156bf77ff92b09034fc4825dd3af9cf81bc5b360668d425f3c5f1"
             ],
-            "version": "==0.1.8"
+            "version": "==0.1.9"
         },
         "webargs": {
             "hashes": [
