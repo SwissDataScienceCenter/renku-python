@@ -21,6 +21,7 @@ import shutil
 import subprocess
 from collections import namedtuple
 from pathlib import Path
+from urllib import parse
 
 import git
 import pytest
@@ -1320,3 +1321,24 @@ def test_check_disk_space(runner, client, monkeypatch):
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
     assert 'index.html' not in result.output + str(result.stderr_bytes)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    'url,size', [('https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0', 5)]
+)
+@flaky(max_runs=10, min_passes=1)
+def test_dataset_add_dropbox(runner, client, project, url, size):
+    """Test importing data from dropbox."""
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '-c', 'my-dropbox-data', url],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    filename = Path(parse.urlparse(url).path).name
+    assert url
+
+    datafile = Path(project) / 'data/my-dropbox-data' / filename
+    assert size == len(datafile.read_text())
