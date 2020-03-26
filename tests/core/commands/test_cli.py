@@ -29,6 +29,7 @@ from pathlib import Path
 import git
 import pytest
 import yaml
+from tests.core.commands.test_init import TEMPLATE_ID
 
 from renku import __version__
 from renku.cli import cli
@@ -274,8 +275,8 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
         args=(
             'init',
             str(second_project),
-            '--template',
-            'Basic Python Project',
+            '--template-id',
+            TEMPLATE_ID,
         )
     )
 
@@ -309,10 +310,8 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
     os.chdir('test-project')
 
     result = runner.invoke(
-        cli, [
-            '--no-external-storage', 'init', '.', '--template',
-            'Basic Python Project'
-        ]
+        cli,
+        ['--no-external-storage', 'init', '.', '--template-id', TEMPLATE_ID]
     )
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
@@ -343,10 +342,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     runner = isolated_runner
 
     result = runner.invoke(
-        cli, [
-            '--external-storage', 'init', '.', '--template',
-            'Basic Python Project'
-        ]
+        cli, ['--external-storage', 'init', '.', '--template-id', TEMPLATE_ID]
     )
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
@@ -373,9 +369,7 @@ def test_file_tracking(isolated_runner):
 
     os.mkdir('test-project')
     os.chdir('test-project')
-    result = runner.invoke(
-        cli, ['init', '.', '--template', 'Basic Python Project']
-    )
+    result = runner.invoke(cli, ['init', '.', '--template-id', TEMPLATE_ID])
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['run', 'touch', 'tracked'])
@@ -400,20 +394,14 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
 
     os.chdir('foo')
     result = runner.invoke(
-        cli, [
-            'init', '.', '--template', 'Basic Python Project',
-            '--no-external-storage'
-        ],
+        cli, ['init', '.', '--template', TEMPLATE_ID, '--no-external-storage'],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
 
     os.chdir('../bar')
     result = runner.invoke(
-        cli, [
-            'init', '.', '--template', 'Basic Python Project',
-            '--no-external-storage'
-        ],
+        cli, ['init', '.', '--template', TEMPLATE_ID, '--no-external-storage'],
         catch_exceptions=False
     )
     assert 0 == result.exit_code

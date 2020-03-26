@@ -98,7 +98,7 @@ def validate_template(template_path):
 
 
 def validate_template_manifest(manifest):
-    """Validate manifet content.
+    """Validate manifest content.
 
     :param manifest: manifest file content
     """

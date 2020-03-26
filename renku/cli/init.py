@@ -39,6 +39,49 @@ necessary files for managing the project configuration.
 
 If provided directory does not exist, it will be created.
 
+Using a different template
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Renku is installed together with a specific set of templates you can select
+when you initialize a project. You can check them by typing:
+
+.. code-block:: console
+
+    $ renku init --list-templates
+
+    INDEX  ID              DESCRIPTION
+    -----  --------------  -------------------------------------------------
+    1  python-minimal  Basic Python Project: The simplest Python-based[...]
+    2  R-minimal       Basic R Project: The simplest R-based renku proj[...]
+
+If you know which template you are going to use, you can provide either the id
+``--template-id`` or the template index number ``--template-index``.
+
+You can use a newer version of the templates or even create your own one and
+provide it to the ``init`` command by specifying the target template repository
+source ``--template-source`` (both local path and remote url are supported) and
+the reference ``--template-ref`` (branch, tag or commit).
+
+You can take inspiration from the
+`official Renku template repository
+<https://github.com/SwissDataScienceCenter/renku-project-template>`_
+
+.. code-block:: console
+
+    $ renku init --template-ref master --template-source \
+    https://github.com/SwissDataScienceCenter/renku-project-template
+
+    Fetching template from
+    https://github.com/SwissDataScienceCenter/renku-project-template@master
+    ... OK
+
+    INDEX  ID              DESCRIPTION
+    -----  --------------  -------------------------------------------------
+    1  python-minimal  Basic Python Project: The simplest Python-based[...]
+    2  R-minimal       Basic R Project: The simplest R-based renku proj[...]
+
+    Please choose a template by typing the index:
+
 Updating an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -135,27 +178,29 @@ def create_template_sentence(templates, instructions=False):
     :ref templates: list of templates coming from manifest file
     :ref instructions: add instructions
     """
-    Template = namedtuple('Template', ['index', 'name', 'description'])
+    Template = namedtuple('Template', ['index', 'id', 'description'])
     templates_friendly = [
         Template(
             index=index + 1,
-            name=template_elem['name'],
-            description=template_elem['description'],
+            id=template_elem['folder'],
+            description=(
+                f'{template_elem["name"]}: {template_elem["description"]}'
+            ),
         ) for index, template_elem in enumerate(templates)
     ]
 
     text = tabulate(
         templates_friendly,
         headers=OrderedDict((
-            ('index', 'Number'),
-            ('name', 'Name'),
+            ('index', 'Index'),
+            ('id', 'Id'),
             ('description', 'Description'),
         ))
     )
 
     if not instructions:
         return text
-    return '{0}\nPlease choose a template by typing the number'.format(text)
+    return '{0}\nPlease choose a template by typing the index'.format(text)
 
 
 def is_path_empty(path):
@@ -191,7 +236,12 @@ def check_git_user_config():
     callback=validate_name,
     help='Provide a custom project name.',
 )
-@click.option('--template', help='Provide the name of the template to use.')
+@click.option('--template-id', help='Provide the id of the template to use.')
+@click.option(
+    '--template-index',
+    help='Provide the index number of the template to use.',
+    type=int,
+)
 @click.option(
     '--template-source', help='Provide the templates repository url or path.'
 )
@@ -211,19 +261,22 @@ def check_git_user_config():
 )
 @click.option('--description', help='Describe your project.')
 @click.option(
-    '--print-manifest', is_flag=True, help='Print templates manifest only.'
+    '--list-templates',
+    is_flag=True,
+    help='List templates available in the template-source.'
 )
 @click.option('--force', is_flag=True, help='Override target path.')
 @option_use_external_storage
 @pass_local_client
 @click.pass_context
 def init(
-    ctx, client, use_external_storage, path, name, template, template_source,
-    template_ref, template_variables, description, print_manifest, force
+    ctx, client, use_external_storage, path, name, template_id, template_index,
+    template_source, template_ref, template_variables, description,
+    list_templates, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
-    if not is_path_empty(path) and not force and not print_manifest:
+    if not is_path_empty(path) and not force and not list_templates:
         raise errors.InvalidFileOperation(
             'Folder "{0}" is not empty. Please add --force '
             'flag to transform it into a Renku repository.'.format(str(path))
@@ -261,25 +314,41 @@ def init(
     # select specific template
     repeat = False
     template_data = None
-    if template:
+    if template_id:
+        if template_index:
+            raise errors.ParameterError(
+                'Use either --template-id or --template-index, not both',
+                '"--template-index"'
+            )
         template_filtered = [
             template_elem for template_elem in template_manifest
-            if template_elem['name'] == template
+            if template_elem['folder'] == template_id
         ]
         if len(template_filtered) == 1:
             template_data = template_filtered[0]
         else:
-            click.echo('The template "{0}" is not available.'.format(template))
+            click.echo(
+                f'The template with id "{template_id}" is not available.'
+            )
             repeat = True
 
-    if print_manifest:
+    if template_index or template_index == 0:
+        if template_index > 0 and template_index <= len(template_manifest):
+            template_data = template_manifest[template_index - 1]
+        else:
+            click.echo(
+                f'The template at index {template_index} is not available.'
+            )
+            repeat = True
+
+    if list_templates:
         if template_data:
             click.echo(create_template_sentence([template_data]))
         else:
             click.echo(create_template_sentence(template_manifest))
         return
 
-    if not template or repeat:
+    if repeat or not (template_id or template_index):
         templates = [template_elem for template_elem in template_manifest]
         if len(templates) == 1:
             template_data = templates[0]
