@@ -17,8 +17,8 @@
 # limitations under the License.
 r"""Create an empty Renku project or reinitialize an existing one.
 
-Starting a Renku project
-~~~~~~~~~~~~~~~~~~~~~~~~
+Start a Renku project
+~~~~~~~~~~~~~~~~~~~~~
 
 If you have an existing directory which you want to turn into a Renku project,
 you can type:
@@ -39,8 +39,8 @@ necessary files for managing the project configuration.
 
 If provided directory does not exist, it will be created.
 
-Using a different template
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Use a different template
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Renku is installed together with a specific set of templates you can select
 when you initialize a project. You can check them by typing:
@@ -49,10 +49,10 @@ when you initialize a project. You can check them by typing:
 
     $ renku init --list-templates
 
-    INDEX  ID              DESCRIPTION
-    -----  --------------  -------------------------------------------------
-    1  python-minimal  Basic Python Project: The simplest Python-based[...]
-    2  R-minimal       Basic R Project: The simplest R-based renku proj[...]
+    INDEX ID     DESCRIPTION                     VARIABLES
+    ----- ------ ------------------------------- -----------------------------
+    1     python The simplest Python-based [...] description: project des[...]
+    2     R      R-based renku project with[...] description: project des[...]
 
 If you know which template you are going to use, you can provide either the id
 ``--template-id`` or the template index number ``--template-index``.
@@ -75,15 +75,41 @@ You can take inspiration from the
     https://github.com/SwissDataScienceCenter/renku-project-template@master
     ... OK
 
-    INDEX  ID              DESCRIPTION
-    -----  --------------  -------------------------------------------------
-    1  python-minimal  Basic Python Project: The simplest Python-based[...]
-    2  R-minimal       Basic R Project: The simplest R-based renku proj[...]
+    INDEX ID             DESCRIPTION                VARIABLES
+    ----- -------------- -------------------------- ----------------------
+    1     python-minimal Basic Python Project:[...] description: proj[...]
+    2     R-minimal      Basic R Project: The [...] description: proj[...]
 
     Please choose a template by typing the index:
 
-Updating an existing project
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Provide variables
+~~~~~~~~~~~~~~~~~
+
+Some templates require variables to properly initialize a new project. You
+can check them by listing the templates `--list-templates`.
+
+To provide variables, use the ``--variables```option and list them as in a
+Python dictionary or a JSON object requiring either single quotes ``'`` or
+single quotes ``"`` for variables names.
+
+.. code-block:: console
+
+    $ renku init --template-id python-minimal --variables \
+    '{ "description": "my new shiny project" }'
+
+    Initializing new Renku repository... OK
+
+If you don't provide the required variables, the template will use an empty
+strings instead.
+
+.. note:: Every project requires a ``name`` that can either be provided using
+   ``--name`` or automatically taken from the target folder. This is
+   also considered as a special variable, therefore it's automatically added
+   to the list of variables forwarded to the ``init`` command. Providing a
+   different value for ``name`` through ``--variables`` has no effect.
+
+Update an existing project
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are situations when the required structure of a Renku project needs
 to be recreated or you have an **existing** Git repository. You can solve
