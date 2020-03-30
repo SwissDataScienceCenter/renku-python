@@ -256,16 +256,22 @@ def check_git_user_config():
     callback=validate_name,
     help='Provide a custom project name.',
 )
-@click.option('--template-id', help='Provide the id of the template to use.')
 @click.option(
+    '-i', '--template-id', help='Provide the id of the template to use.'
+)
+@click.option(
+    '-x',
     '--template-index',
     help='Provide the index number of the template to use.',
     type=int,
 )
 @click.option(
-    '--template-source', help='Provide the templates repository url or path.'
+    '-s',
+    '--template-source',
+    help='Provide the templates repository url or path.'
 )
 @click.option(
+    '-r',
     '--template-ref',
     default='master',
     help='Specify the reference to checkout on remote template repository.',
@@ -282,6 +288,7 @@ def check_git_user_config():
     )
 )
 @click.option(
+    '-l',
     '--list-templates',
     is_flag=True,
     help='List templates available in the template-source.'
