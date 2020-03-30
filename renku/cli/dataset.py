@@ -118,6 +118,15 @@ The command above will result in a structure like
       my-dataset/
         datafile
 
+You can use shell-like wildcards (e.g. *, **, ?) when specifying paths to be
+added. Put wildcard patterns in quotes to prevent your shell from expanding
+them.
+
+.. code-block:: console
+
+    $ renku dataset add my-dataset --source 'path/**/datafile' \
+        git+ssh://host.io/namespace/project.git
+
 You can use ``--destination`` or ``-d`` flag to change the name of the target
 file or directory. The semantics here are similar to the POSIX copy command:
 if the destination does not exist or if it is a file then the source will be

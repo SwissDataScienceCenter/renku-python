@@ -56,8 +56,52 @@ analysis tasks.
 Installation
 ============
 
-The latest release is available on PyPI and can be installed using
-``pip``:
+Renku releases and development versions are available from `PyPI
+<https://pypi.org/project/renku/>`_. You can install it using any tool that
+knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
+<https://github.com/pipxproject/pipx>`_.
+
+
+``pipx``
+--------
+
+First, `install pipx <https://github.com/pipxproject/pipx#install-pipx>`_
+and make sure that the ``$PATH`` is correctly configured.
+
+::
+
+    $ python3 -m pip install --user pipx
+    $ pipx ensurepath
+
+Once ``pipx`` is installed use following command to install ``renku``.
+
+::
+
+    $ pipx install renku
+    $ which renku
+    ~/.local/bin/renku
+
+
+``pipx`` installs renku into its own virtual environment, making sure that it
+does not pollute any other packages or versions that you may have already
+installed.
+
+.. note::
+
+    If you install renku as a dependency in a virtual environment and the
+    environment is active, your shell will default to the version installed
+    in the virtual environment, *not* the version installed by ``pipx``.
+
+
+To install a development release:
+
+::
+
+    $ pipx install --pip-args pre renku
+
+
+``pip``
+-------
 
 ::
 
@@ -76,43 +120,6 @@ Use following installation steps based on your operating system and preferences
 if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
-Homebrew
---------
-
-The recommended way of installing Renku on MacOS and Linux is via
-`Homebrew <brew.sh>`_.
-
-::
-
-    $ brew tap swissdatasciencecenter/renku
-    $ brew install renku
-
-Isolated environments using ``pipx``
-------------------------------------
-
-Install and execute Renku in an isolated environment using ``pipx``.
-It will guarantee that there are no version conflicts with dependencies
-you are using for your work and research.
-
-`Install pipx <https://github.com/pipxproject/pipx#install-pipx>`_
-and make sure that the ``$PATH`` is correctly configured.
-
-::
-
-    $ python3 -m pip install --user pipx
-    $ pipx ensurepath
-
-Once ``pipx`` is installed use following command to install ``renku``.
-
-::
-
-    $ pipx install renku
-    $ which renku
-    ~/.local/bin/renku
-
-Prevously we have recommended to use ``pipsi``. You can still use it or
-`migrate to **pipx**
-<https://github.com/pipxproject/pipx#migrating-to-pipx-from-pipsi>`_.
 
 Docker
 ------
@@ -172,10 +179,11 @@ still possible with ``pipx``. First clone the repository and then do:
 
     $ pipx install \
         --editable \
-        --spec <path-to-renku-python>[all] \
+        <path-to-renku-python>[all] \
         renku
 
 This will install all the extras for testing and debugging.
+
 
 Run tests
 ---------
