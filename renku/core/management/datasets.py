@@ -23,18 +23,22 @@ import re
 import shutil
 import stat
 import tempfile
+import time
 import uuid
 import warnings
+from collections import OrderedDict
 from configparser import NoSectionError
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
+from urllib.parse import ParseResult
 
 import attr
 import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
+from wcmatch import glob
 
 from renku.core import errors
 from renku.core.management.clone import clone
@@ -240,7 +244,6 @@ class DatasetsApiMixin(object):
         destination = self.path / dataset_path / destination
 
         files = []
-
         if all_at_once:  # only for URLs
             files = self._add_from_urls(
                 dataset=dataset,
@@ -362,7 +365,7 @@ class DatasetsApiMixin(object):
         return checksum, filesize
 
     def _check_protected_path(self, path):
-        """Checks if a path is protected by renku."""
+        """Checks if a path is a protected path."""
         try:
             path_in_repo = path.relative_to(self.path)
         except ValueError:
@@ -376,7 +379,7 @@ class DatasetsApiMixin(object):
         return False
 
     def _add_from_local(self, dataset, path, link, external, destination):
-        """Add a file or directory from local filesystem."""
+        """Add a file or directory from a local filesystem."""
         src = Path(path).resolve()
 
         if not src.exists():
@@ -453,7 +456,7 @@ class DatasetsApiMixin(object):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
-        max_workers = min(os.cpu_count() + 4, 8)
+        max_workers = min(os.cpu_count() - 1, 4) or 1
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
@@ -468,22 +471,58 @@ class DatasetsApiMixin(object):
 
         return files
 
+    @staticmethod
+    def _ensure_dropbox(url):
+        """Ensure dropbox url is set for file download."""
+        if not isinstance(url, ParseResult):
+            url = parse.urlparse(url)
+
+        query = url.query or ''
+        if 'dl=0' in url.query:
+            query = query.replace('dl=0', 'dl=1')
+        else:
+            query += 'dl=1'
+
+        url = url._replace(query=query)
+        return url
+
+    def provider_check(self, url):
+        """Check additional provider related operations."""
+        url = parse.urlparse(url)
+
+        if 'dropbox.com' in url.netloc:
+            url = self._ensure_dropbox(url)
+
+        return parse.urlunparse(url)
+
     def _add_from_url(self, dataset, url, destination, extract, progress=None):
-        """Process an add from url and return the location on disk."""
+        """Process adding from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
         else:
             destination.parent.mkdir(parents=True, exist_ok=True)
 
+        url = self.provider_check(url)
+
         try:
+            start = time.time() * 1e+3
             paths = _download(
                 url=url,
                 download_to=destination,
                 extract=extract,
                 progress_class=progress
             )
-        except error.HTTPError as e:  # pragma nocover
+
+            exec_time = (time.time() * 1e+3 - start) // 1e+3
+            # If execution time was less or equal to zero seconds,
+            # block the thread a bit to avoid being rate limited.
+            if exec_time == 0:
+                time.sleep(min(os.cpu_count() - 1, 4) or 1)
+
+        except (
+            requests.exceptions.HTTPError, error.HTTPError
+        ) as e:  # pragma nocover
             raise errors.OperationError(
                 'Cannot download from {}'.format(url)
             ) from e
@@ -510,25 +549,29 @@ class DatasetsApiMixin(object):
 
         # Get all files from repo that match sources
         repo, repo_path = self.prepare_git_repo(url, ref)
-        copied_sources = set()
         files = set()
+        used_sources = set()
         for file in repo.head.commit.tree.traverse():
             path = file.path
             result = self._get_src_and_dst(
-                path, repo_path, sources, destination
+                path, repo_path, sources, destination, used_sources
             )
 
             if result:
                 files.add(result)
-                source = result[3]
-                copied_sources.add(source)
 
-        uncopied_sources = sources - copied_sources
-        if uncopied_sources:
-            uncopied_sources = {str(s) for s in uncopied_sources}
+        unused_sources = set(sources.keys()) - used_sources
+        if unused_sources:
+            unused_sources = {str(s) for s in unused_sources}
             raise errors.ParameterError(
-                'No such file or directory', param_hint=uncopied_sources
+                'No such file or directory', param_hint=unused_sources
             )
+
+        if destination.exists() and not destination.is_dir():
+            if len(files) > 1:
+                raise errors.ParameterError(
+                    'Cannot copy multiple files or directories to a file'
+                )
 
         # Create metadata and move files to dataset
         results = []
@@ -536,7 +579,7 @@ class DatasetsApiMixin(object):
 
         # Pull files from LFS
         paths = set()
-        for path, src, _, __ in files:
+        for path, src, _ in files:
             if src.is_dir():
                 continue
             if src.is_symlink():
@@ -551,7 +594,7 @@ class DatasetsApiMixin(object):
         paths = {f[0] for f in files}
         metadata = self._fetch_files_metadata(remote_client, paths)
 
-        for path, src, dst, _ in files:
+        for path, src, dst in files:
             if not src.is_dir():
                 # Use original metadata if it exists
                 based_on = metadata.get(path)
@@ -595,7 +638,11 @@ class DatasetsApiMixin(object):
 
     def _resolve_paths(self, root_path, paths):
         """Check if paths are within a root path and resolve them."""
-        return {self._resolve_path(root_path, p) for p in paths}
+        result = OrderedDict()  # Used as an ordered-set
+        for path in paths:
+            r = self._resolve_path(root_path, path)
+            result[r] = None
+        return result
 
     def _resolve_path(self, root_path, path):
         """Check if a path is within a root path and resolve it."""
@@ -608,18 +655,27 @@ class DatasetsApiMixin(object):
                 'File {} is not within path {}'.format(path, root_path)
             )
 
-    def _get_src_and_dst(self, path, repo_path, sources, dst_root):
+    def _get_src_and_dst(
+        self, path, repo_path, sources, dst_root, used_sources
+    ):
+        is_wildcard = False
+
         if not sources:
             source = Path('.')
         else:
             source = None
-            for s in sources:
+            for s in sources.keys():
                 try:
                     Path(path).relative_to(s)
                 except ValueError:
-                    pass
+                    if glob.globmatch(path, str(s), flags=glob.GLOBSTAR):
+                        is_wildcard = True
+                        source = path
+                        used_sources.add(s)
+                        break
                 else:
                     source = s
+                    used_sources.add(source)
                     break
 
             if not source:
@@ -629,24 +685,26 @@ class DatasetsApiMixin(object):
         source_name = Path(source).name
         relative_path = Path(path).relative_to(source)
 
-        if not dst_root.exists():
-            if len(sources) == 1:
+        if src.is_dir() and is_wildcard:
+            sources[source] = None
+            used_sources.add(source)
+
+        if not dst_root.exists():  # Destination will be a file or directory
+            if len(sources) == 1 and not is_wildcard:
                 dst = dst_root / relative_path
             else:  # Treat destination as a directory
                 dst = dst_root / source_name / relative_path
         elif dst_root.is_dir():
             dst = dst_root / source_name / relative_path
         else:  # Destination is an existing file
-            if len(sources) == 1 and not src.is_dir():
-                dst = dst_root
-            elif not sources:
-                raise errors.ParameterError('Cannot copy repo to file')
-            else:
+            if src.is_dir():
                 raise errors.ParameterError(
                     'Cannot copy multiple files or directories to a file'
                 )
+            # Later we need to check if we are copying multiple files
+            dst = dst_root
 
-        return (path, src, dst, source)
+        return (path, src, dst)
 
     def _fetch_lfs_files(self, repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
@@ -1166,12 +1224,14 @@ def _download(
 
     with requests.get(url, stream=True) as request:
         request.raise_for_status()
+
         with open(str(download_to), 'wb') as file_:
             total_size = int(request.headers.get('content-length', 0))
             progress_class = progress_class or DownloadProgressCallback
             progress = progress_class(
                 description=download_to.name, total_size=total_size
             )
+
             try:
                 for chunk in request.iter_content(chunk_size=chunk_size):
                     if chunk:  # ignore keep-alive chunks

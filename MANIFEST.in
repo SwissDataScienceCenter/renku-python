@@ -37,7 +37,6 @@ include *.txt
 include *.yaml
 include *.yml
 include babel.ini
-include brew.py
 include Dockerfile*
 include LICENSE
 include Makefile

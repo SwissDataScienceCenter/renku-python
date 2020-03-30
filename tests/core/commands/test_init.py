@@ -33,8 +33,9 @@ from renku.core.management.config import RENKU_HOME
 TEMPLATE_URL = (
     'https://github.com/SwissDataScienceCenter/renku-project-template'
 )
-TEMPLATE_NAME = 'Basic Python Project'
-TEMPLATE_REF = '0.1.5'
+TEMPLATE_ID = 'python-minimal'
+TEMPLATE_INDEX = 1
+TEMPLATE_REF = '0.1.7'
 METADATA = {'name': 'myname', 'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 
@@ -63,7 +64,7 @@ def test_fetch_template(url, ref, result, error):
 def test_read_template_manifest():
     """Test reading template manifest file.
 
-    It creates a fake manifest file and it verifies it's read propery.
+    It creates a fake manifest file and it verifies it's read property.
     """
     with TemporaryDirectory() as tempdir:
         template_file = Path(tempdir) / TEMPLATE_MANIFEST
