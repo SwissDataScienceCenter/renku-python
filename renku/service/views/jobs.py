@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service jobs views."""
-from flask import Blueprint, jsonify
+from flask import Blueprint
 
 from renku.service.config import SERVICE_PREFIX
 from renku.service.serializers.jobs import JobDetailsResponseRPC, \
@@ -38,11 +38,14 @@ jobs_blueprint = Blueprint('jobs', __name__, url_prefix=SERVICE_PREFIX)
 @handle_validation_except
 @requires_cache
 @requires_identity
-def list_jobs(user, cache):
+def list_jobs(user_data, cache):
     """List user created jobs."""
-    jobs = cache.get_jobs(user)
-    response = JobListResponseRPC().load({'result': {'jobs': jobs}})
-    return jsonify(response)
+    return result_response(
+        JobListResponseRPC(), {
+            'jobs':
+                [job for job in cache.get_jobs(cache.ensure_user(user_data))]
+        }
+    )
 
 
 @header_doc(
@@ -57,9 +60,9 @@ def list_jobs(user, cache):
 @handle_validation_except
 @requires_cache
 @requires_identity
-def job_details(user, cache, job_id):
+def job_details(user_data, cache, job_id):
     """Show details for a specific job."""
     return result_response(
         JobDetailsResponseRPC(),
-        cache.get_job(user, job_id),
+        cache.get_job(cache.ensure_user(user_data), job_id),
     )

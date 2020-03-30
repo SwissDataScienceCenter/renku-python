@@ -357,6 +357,42 @@ def test_add_and_create_dataset(directory_tree, runner, project, client):
     assert 1 == result.exit_code
 
 
+def test_add_to_dirty_repo(directory_tree, runner, project, client):
+    """Test adding to a dataset in a dirty repo commits only added files."""
+    with (client.path / 'tracked').open('w') as fp:
+        fp.write('tracked file')
+    client.repo.git.add('*')
+    client.repo.index.commit('tracked file')
+
+    with (client.path / 'tracked').open('w') as fp:
+        fp.write('modified tracked file')
+    with (client.path / 'untracked').open('w') as fp:
+        fp.write('untracked file')
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--create', 'new-dataset',
+         str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    assert client.repo.is_dirty()
+    assert ['untracked'] == client.repo.untracked_files
+
+    # Add without making a change
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'new-dataset',
+              str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 1 == result.exit_code
+    assert 'Error: File already exists in dataset' in result.output
+
+    assert client.repo.is_dirty()
+    assert ['untracked'] == client.repo.untracked_files
+
+
 def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
@@ -979,39 +1015,73 @@ def test_dataset_overwrite_no_confirm(runner, project):
     assert 'OK' not in result.output
 
 
-def test_dataset_edit(runner, client, project):
+@pytest.mark.parametrize('dirty', [False, True])
+def test_dataset_edit(runner, client, project, dirty):
     """Check dataset metadata editing."""
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    dataset = client.load_dataset('dataset')
+    if dirty:
+        with (client.path / 'dirty_file').open('w') as fp:
+            fp.write('a')
 
     result = runner.invoke(
-        cli, ['dataset', 'edit', dataset.identifier],
-        input='wq',
+        cli, ['dataset', 'create', 'dataset', '-t', 'original title']
+    )
+    assert 0 == result.exit_code
+
+    creator1 = 'Forename1 Surname1 <name.1@mail.com> [Affiliation 1]'
+    creator2 = 'Forename2 Surname2'
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'edit', 'dataset', '-d', ' new description ', '-c',
+            creator1, '-c', creator2
+        ],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
-
-
-def test_dataset_edit_dirty(runner, client, project):
-    """Check dataset metadata editing when dirty repository."""
-    # Create a file in root of the repository.
-    with (client.path / 'a').open('w') as fp:
-        fp.write('a')
-
-    # Create a dataset.
-    result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
+    assert 'Successfully updated: creators, description.' in result.output
+    warning_msg = 'Warning: No email or wrong format for: Forename2 Surname2'
+    assert warning_msg in result.output
 
     dataset = client.load_dataset('dataset')
+    assert ' new description ' == dataset.description
+    assert 'original title' == dataset.name
+    assert {creator1, creator2} == {c.full_identity for c in dataset.creator}
 
     result = runner.invoke(
-        cli, ['dataset', 'edit', dataset.identifier], input='wq'
+        cli, ['dataset', 'edit', 'dataset', '-t', ' new title '],
+        catch_exceptions=False
     )
     assert 0 == result.exit_code
+    assert 'Successfully updated: title.' in result.output
+
+    dataset = client.load_dataset('dataset')
+    assert ' new description ' == dataset.description
+    assert 'new title' == dataset.name
+    assert {creator1, creator2} == {c.full_identity for c in dataset.creator}
+
+
+@pytest.mark.parametrize('dirty', [False, True])
+def test_dataset_edit_no_change(runner, client, project, dirty):
+    """Check metadata editing does not commit when there is no change."""
+    if dirty:
+        with (client.path / 'dirty_file').open('w') as fp:
+            fp.write('a')
+
+    result = runner.invoke(
+        cli, ['dataset', 'create', 'dataset', '-t', 'original title']
+    )
+    assert 0 == result.exit_code
+
+    commit_sha_before = client.repo.head.object.hexsha
+
+    result = runner.invoke(
+        cli, ['dataset', 'edit', 'dataset'], catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert 'Nothing to update.' in result.output
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_after == commit_sha_before
 
 
 def test_dataset_date_created_format(runner, client, project):
@@ -1499,3 +1569,217 @@ def test_dataset_cmd_subdirectory(runner, project):
     with chdir(Path(project) / '.renku'):
         result = runner.invoke(cli, ['dataset'])
         assert 0 == result.exit_code
+
+
+def test_add_external_files(runner, client, directory_tree):
+    """Check adding external files."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '-c', '--external', 'my-data', '-d', 'files',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+    path = client.path / 'data' / 'my-data' / 'files' / 'file'
+    assert path.exists()
+    assert path.is_symlink()
+    external_path = Path(directory_tree.strpath) / 'file'
+    assert path.resolve() == external_path
+
+    with client.with_dataset('my-data') as dataset:
+        assert dataset.find_file('data/my-data/files/file') is not None
+
+
+def test_add_external_file_multiple(runner, client, directory_tree):
+    """Check adding external files multiple times."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', '--external', 'my-data',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--external', 'my-data', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'File already exists in dataset.' in result.output
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--external', 'my-data', '--force',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+
+def test_overwrite_external_file(runner, client, directory_tree):
+    """Check overwriting external and normal files."""
+    # Add external file
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', '--external', 'my-data',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+    # Cannot add the same file
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-data', directory_tree.strpath]
+    )
+    assert 1 == result.exit_code
+    assert 'File already exists in dataset.' in result.output
+
+    # Can add the same file with --force
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-data', '--force', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+    assert [] == list(client.renku_pointers_path.rglob('*'))
+
+    # Can add the same external file
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--external', 'my-data', '--force',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+
+def test_remove_external_file(runner, client, directory_tree):
+    """Test removal of external files."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '--create', '--external', 'my-data', '-d',
+            'files', directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+    targets_before = {
+        str(p.resolve())
+        for p in client.renku_pointers_path.rglob('*')
+    }
+    path = str(Path('data') / 'my-data' / 'files' / 'file')
+
+    result = runner.invoke(cli, ['rm', str(path)])
+    assert 0 == result.exit_code
+
+    targets_after = {
+        str(p.resolve())
+        for p in client.renku_pointers_path.rglob('*')
+    }
+
+    removed = targets_before - targets_after
+    assert 1 == len(removed)
+    assert removed.pop().endswith('/file')
+
+
+def test_unavailable_external_files(runner, client, directory_tree):
+    """Check for external files that are not available."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '-c', '--external', 'my-data', '-d', 'files',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+    path = Path('data') / 'my-data' / 'files' / 'file'
+    target = path.resolve()
+
+    directory_tree.join('file').remove()
+    assert not path.exists()
+
+    # Update won't work
+    result = runner.invoke(cli, ['dataset', 'update', '--external'])
+    assert 2 == result.exit_code
+    assert 'External file not found' in result.output
+
+    # Renku doctor shows inaccessible files
+    result = runner.invoke(cli, ['doctor'])
+    assert 1 == result.exit_code
+    assert 'There are missing external files.' in result.output
+    assert str(path) in result.output
+    assert str(target) in result.output
+
+
+def test_external_and_link(runner, client, directory_tree):
+    """Test cannot use --link and --external together."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '-c', '--external', '--link', 'my-data',
+            directory_tree.strpath
+        ]
+    )
+    assert 2 == result.exit_code
+    assert 'Cannot use "--link" and "--external" together.' in result.output
+
+
+def test_external_file_update(runner, client, directory_tree, project):
+    """Check updating external files."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '-c', '--external', 'my-data', '-d', 'files',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+    directory_tree.join('file').write('some updates')
+
+    path = str(Path('data') / 'my-data' / 'files' / 'file')
+    previous_commit = client.find_previous_commit(path)
+
+    result = runner.invoke(cli, ['dataset', 'update', '--external', 'my-data'])
+    assert 0 == result.exit_code
+
+    current_commit = client.find_previous_commit(path)
+    assert current_commit != previous_commit
+
+
+def test_workflow_with_external_file(
+    runner, client, directory_tree, project, run
+):
+    """Check using external files in workflows."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'add', '-c', '--external', 'my-data', '-d', 'files',
+            directory_tree.strpath
+        ]
+    )
+    assert 0 == result.exit_code
+
+    source = Path(project) / 'data' / 'my-data' / 'files' / 'file'
+    output = Path(project) / 'data' / 'output.txt'
+
+    assert 0 == run(args=('run', 'wc', '-c'), stdin=source, stdout=output)
+
+    previous_commit = client.find_previous_commit(output)
+
+    # Update external file
+    directory_tree.join('file').write('some updates')
+
+    # Nothing is changed unless external files are updated
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['dataset', 'update', '--external', 'my-data'])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['status'])
+    assert 1 == result.exit_code
+
+    assert 0 == run(args=('update', ))
+
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    current_commit = client.find_previous_commit(source)
+    assert current_commit != previous_commit

@@ -27,9 +27,9 @@ from renku.core.commands.dataset import add_file, create_dataset, \
     list_datasets, list_files
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
+from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
-from renku.service.jobs.constants import USER_JOB_STATE_ENQUEUED
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
@@ -38,7 +38,7 @@ from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetFilesListRequest, DatasetFilesListResponseRPC, \
     DatasetImportRequest, DatasetImportResponseRPC, DatasetListRequest, \
     DatasetListResponseRPC
-from renku.service.utils import make_file_path, make_project_path, repo_sync
+from renku.service.utils import repo_sync
 from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
@@ -67,15 +67,14 @@ dataset_blueprint = Blueprint(
 def list_datasets_view(user, cache):
     """List all datasets in project."""
     ctx = DatasetListRequest().load(request.args)
-    project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
+    project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         ctx['datasets'] = list_datasets()
 
     return result_response(DatasetListResponseRPC(), ctx)
@@ -98,15 +97,14 @@ def list_datasets_view(user, cache):
 def list_dataset_files_view(user, cache):
     """List files in a dataset."""
     ctx = DatasetFilesListRequest().load(request.args)
-    project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
+    project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         ctx['files'] = list_files(datasets=[ctx['dataset_name']])
 
     return result_response(DatasetFilesListResponseRPC(), ctx)
@@ -133,10 +131,10 @@ def list_dataset_files_view(user, cache):
 def add_file_to_dataset_view(user, cache):
     """Add the uploaded file to cloned repository."""
     ctx = DatasetAddRequest().load(request.json)
+    user = cache.ensure_user(user)
     project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
 
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE,
             'invalid project_id: {0}'.format(ctx['project_id'])
@@ -153,10 +151,10 @@ def add_file_to_dataset_view(user, cache):
 
         if 'file_id' in _file:
             file = cache.get_file(user, _file['file_id'])
-            local_path = make_file_path(user, file)
+            local_path = file.abs_path
 
         elif 'file_path' in _file:
-            local_path = project_path / Path(_file['file_path'])
+            local_path = project.abs_path / Path(_file['file_path'])
 
         if not local_path or not local_path.exists():
             return error_response(
@@ -167,7 +165,7 @@ def add_file_to_dataset_view(user, cache):
         ctx['commit_message'] += ' {0}'.format(local_path.name)
         local_paths.append(str(local_path))
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         add_file(
             local_paths,
             ctx['dataset_name'],
@@ -175,7 +173,7 @@ def add_file_to_dataset_view(user, cache):
             commit_message=ctx['commit_message']
         )
 
-        if not repo_sync(project_path):
+        if not repo_sync(project.abs_path):
             return error_response(
                 INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
             )
@@ -203,15 +201,14 @@ def add_file_to_dataset_view(user, cache):
 def create_dataset_view(user, cache):
     """Create a new dataset in a project."""
     ctx = DatasetCreateRequest().load(request.json)
-    project = cache.get_project(user, ctx['project_id'])
+    project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    project_path = make_project_path(user, project)
-    if not project_path:
+    if not project.abs_path.exists():
         return error_response(
             INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
         )
 
-    with chdir(project_path):
+    with chdir(project.abs_path):
         create_dataset(
             ctx['dataset_name'],
             commit_message=ctx['commit_message'],
@@ -219,7 +216,7 @@ def create_dataset_view(user, cache):
             description=ctx.get('description'),
         )
 
-    if not repo_sync(project_path):
+    if not repo_sync(project.abs_path):
         return error_response(
             INTERNAL_FAILURE_ERROR_CODE,
             'push to remote failed silently - try again'
@@ -240,13 +237,13 @@ def create_dataset_view(user, cache):
 @handle_validation_except
 @requires_cache
 @requires_identity
-def import_dataset_view(user, cache):
+def import_dataset_view(user_data, cache):
     """Import a dataset view."""
+    user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
-    project_path = make_project_path(user, project)
 
-    if not project_path:
+    if project is None or project.abs_path is False:
         return error_response(
             INVALID_PARAMS_ERROR_CODE,
             'invalid project_id: {0}'.format(ctx['project_id'])
@@ -256,12 +253,12 @@ def import_dataset_view(user, cache):
         'job_id': uuid.uuid4().hex,
         'state': USER_JOB_STATE_ENQUEUED,
     }
-    cache.create_job(user, user_job)
+    job = cache.make_job(user, user_job)
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
             dataset_import,
-            user,
+            user_data,
             user_job['job_id'],
             ctx['project_id'],
             ctx['dataset_uri'],
@@ -271,4 +268,4 @@ def import_dataset_view(user, cache):
             result_ttl=int(os.getenv('WORKER_DATASET_JOBS_RESULT_TTL', 500))
         )
 
-    return result_response(DatasetImportResponseRPC(), user_job)
+    return result_response(DatasetImportResponseRPC(), job)

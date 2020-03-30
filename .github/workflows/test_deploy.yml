@@ -227,70 +227,20 @@ jobs:
         name: release-url
         path: release-url.txt
 
-  publish-brew:
-    runs-on: macos-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [publish-pypi]
+  push-image:
+    runs-on: ubuntu-latest
+    needs: [docs-linux, test-linux, test-macos]
+    if: "startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'"
     steps:
     - uses: actions/checkout@v2
+    - name: Docker Login
+      uses: Azure/docker-login@v1
       with:
-        fetch-depth: 0
-    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-    - name: Install dependencies
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: build and push image
       run: |
-        brew update
-        brew install git-lfs shellcheck node || brew link --overwrite node
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
-        python -m pip install -e .[all]
-        git config --global --add user.name "Renku @ SDSC"
-        git config --global --add user.email "renku@datascience.ch"
-    - name: Generate bottle
-      run: |
-        echo PY_BREW_VERSION=$(python setup.py --version)
-        make -e PY_BREW_VERSION=$(python setup.py --version) brew-commit-formula brew-build-bottle brew-commit-bottle
-    - name: Download release URl file
-      uses: actions/download-artifact@v1
-      with:
-        name: release-url
-    - name: Release params to outputd
-      id: get_release_url
-      run: |
-        echo ::set-output name=release_url::$(cat release-url.txt)
-        echo ::set-output name=bottle_json::$(find . -type f -printf "%f\n" -iname "*.bottle.json"|head -n 1)
-        echo ::set-output name=bottle_tar::$(find . -type f -printf "%f\n" -iname "*.bottle.tar.gz"|head -n 1)
-    - name: Upload Release Asset bottle.json
-      id: upload-release-asset-json-pypi
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.get_release_url.outputs.release_url}}
-        asset_path: ./${{ steps.get_release_url.outputs.bottle_json}}
-        asset_name: ${{ steps.get_release_url.outputs.bottle_json}}
-        asset_content_type: application/json
-    - name: Upload Release Asset bottle.tar
-      id: upload-release-asset-tar-pypi
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.get_release_url.outputs.release_url}}
-        asset_path: ./${{ steps.get_release_url.outputs.bottle_tar}}
-        asset_name: ${{ steps.get_release_url.outputs.bottle_tar}}
-        asset_content_type: application/tar+gzip
-    - name: Publish renku.rb
-      run: |
-        git clone https://${{secrets.HOMEBREW_ACCESS_TOKEN}}@github.com/SwissDataScienceCenter/homebrew-renku/.git homebrew
-        cd homebrew
-        cp /usr/local/Homebrew/Library/Taps/swissdatasciencecenter/homebrew-renku/* ./
-        git config --local user.email "renku@datascience.ch"
-        git config --local user.name "RenkuBot"
-        git add --all
-        git commit -m " Deploy swissdatasciencecenter/homebrew-renku to github.com/swissdatasciencecenter/homebrew-renku.git:master"
-        git push
+        make docker-push
 
   publish-chart:
     runs-on: ubuntu-latest

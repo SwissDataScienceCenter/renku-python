@@ -98,10 +98,11 @@ from renku.core.models.entities import Entity
 
 @click.group()
 def show():
-    """Show information about objects in current repository.
+    """Show information about objects in a current repository.
 
-    NOTE: The command produces machine readable output.
+    NOTE: The command produces a machine-readable output.
     """
+    pass
 
 
 @show.command()
@@ -242,8 +243,9 @@ def _context_names():
     """Return list of valid context names."""
     from renku.core.models.jsonld import JSONLDMixin
 
-    for cls in JSONLDMixin.__type_registry__.values():
-        yield cls.__name__
+    # NOTE: You should only pass a list or tuple of choices. Other iterables
+    # (like generators) may lead to surprising results.
+    return [cls.__name__ for cls in JSONLDMixin.__type_registry__.values()]
 
 
 def print_context_names(ctx, param, value):

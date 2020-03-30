@@ -236,8 +236,10 @@ class ZenodoRecordSerializer:
 
     def get_files(self):
         """Get Zenodo files metadata as ``ZenodoFile``."""
-        if len(self.files) == 0:
-            raise LookupError('no files have been found')
+        if not self.files:
+            raise LookupError(
+                'no files have been found - deposit is empty or protected'
+            )
 
         return [ZenodoFileSerializer(**file_) for file_ in self.files]
 
@@ -272,7 +274,7 @@ class ZenodoRecordSerializer:
 
 @attr.s
 class ZenodoDeposition:
-    """Zenodo record for deposit."""
+    """Zenodo record for a deposit."""
 
     exporter = attr.ib()
     id = attr.ib(default=None)
@@ -518,7 +520,7 @@ class ZenodoProvider(ProviderApi):
                 raise LookupError('record not found')
             return response
 
-    def find_record(self, uri):
+    def find_record(self, uri, client=None):
         """Retrieves a record from Zenodo.
 
         :raises: ``LookupError``

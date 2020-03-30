@@ -17,6 +17,7 @@
 # limitations under the License.
 """Client for handling a data storage."""
 import functools
+import os
 import shlex
 from collections import defaultdict
 from pathlib import Path
@@ -122,6 +123,9 @@ class StorageApiMixin(RepositoryApiMixin):
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
         # Calculate which paths can be tracked in lfs
+        if not self.use_external_storage:
+            return
+
         track_paths = []
         attrs = self.find_attr(*paths)
 
@@ -131,6 +135,11 @@ class StorageApiMixin(RepositoryApiMixin):
                 continue
 
             path = Path(path)
+
+            # Do not track symlinks in LFS
+            if path.is_symlink():
+                continue
+
             if path.is_dir():
                 track_paths.append(str(path / '**'))
             elif path.suffix != '.ipynb':
@@ -178,8 +187,9 @@ class StorageApiMixin(RepositoryApiMixin):
             try:
                 absolute_path = Path(path).resolve()
                 relative_path = absolute_path.relative_to(client.path)
-            except ValueError:
-                relative_path = path
+            except ValueError:  # An external file
+                absolute_path = Path(os.path.abspath(path))
+                relative_path = absolute_path.relative_to(client.path)
             client_dict[client.path].append(str(relative_path))
 
         for client_path, paths in client_dict.items():

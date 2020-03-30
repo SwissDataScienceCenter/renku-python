@@ -20,6 +20,7 @@
 from __future__ import absolute_import, print_function
 
 import contextlib
+import json
 import os
 import subprocess
 import sys
@@ -28,6 +29,7 @@ from pathlib import Path
 import git
 import pytest
 import yaml
+from tests.core.commands.test_init import TEMPLATE_ID
 
 from renku import __version__
 from renku.cli import cli
@@ -59,16 +61,16 @@ def test_config_path(runner):
 
 def test_show_context(runner, project):
     """Test context generation."""
-    import json
-
     result = runner.invoke(cli, ['show', 'context', '--list'])
     contexts = [name for name in result.output.split('\n') if name]
+
     assert 0 == result.exit_code
     assert 1 < len(contexts)
 
     result = runner.invoke(cli, ['show', 'context'] + contexts)
-    data = json.loads(result.output)
     assert 0 == result.exit_code
+
+    data = json.loads(result.output)
     assert len(contexts) == len(data)
 
 
@@ -273,8 +275,8 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
         args=(
             'init',
             str(second_project),
-            '--template',
-            'Basic Python Project',
+            '--template-id',
+            TEMPLATE_ID,
         )
     )
 
@@ -308,10 +310,8 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
     os.chdir('test-project')
 
     result = runner.invoke(
-        cli, [
-            '--no-external-storage', 'init', '.', '--template',
-            'Basic Python Project'
-        ]
+        cli,
+        ['--no-external-storage', 'init', '.', '--template-id', TEMPLATE_ID]
     )
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
@@ -319,7 +319,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
         monkey.setattr(StorageApiMixin, 'storage_installed', False)
         # Missing --no-external-storage flag.
         result = runner.invoke(cli, ['run', 'touch', 'output'])
-        assert 'is not configured' in result.output
+        assert 'External storage is not configured' in result.output
         assert 1 == result.exit_code
 
         # Since repo is not using external storage.
@@ -342,10 +342,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     runner = isolated_runner
 
     result = runner.invoke(
-        cli, [
-            '--external-storage', 'init', '.', '--template',
-            'Basic Python Project'
-        ]
+        cli, ['--external-storage', 'init', '.', '--template-id', TEMPLATE_ID]
     )
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
@@ -353,8 +350,12 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
         monkey.setattr(StorageApiMixin, 'storage_installed', False)
         # Repo is using external storage but it's not installed.
         result = runner.invoke(cli, ['run', 'touch', 'output'])
-        assert 'is not configured' in result.output
         assert 1 == result.exit_code
+        assert 'External storage is not configured' in result.output
+
+        result = runner.invoke(cli, ['-S', 'run', 'touch', 'output'])
+        assert 1 == result.exit_code
+        assert 'External storage is not installed' in result.output
 
     # Clean repo and check external storage.
     subprocess.call(['git', 'clean', '-df'])
@@ -368,14 +369,16 @@ def test_file_tracking(isolated_runner):
 
     os.mkdir('test-project')
     os.chdir('test-project')
-    result = runner.invoke(
-        cli, ['init', '.', '--template', 'Basic Python Project']
-    )
+    result = runner.invoke(cli, ['init', '.', '--template-id', TEMPLATE_ID])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['run', 'touch', 'output'])
+    result = runner.invoke(cli, ['run', 'touch', 'tracked'])
     assert 0 == result.exit_code
-    assert 'output' in Path('.gitattributes').read_text()
+    assert 'tracked' in Path('.gitattributes').read_text()
+
+    result = runner.invoke(cli, ['-S', 'run', 'touch', 'untracked'])
+    assert 0 == result.exit_code
+    assert 'untracked' not in Path('.gitattributes').read_text()
 
 
 @pytest.mark.xfail
@@ -391,20 +394,14 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
 
     os.chdir('foo')
     result = runner.invoke(
-        cli, [
-            'init', '.', '--template', 'Basic Python Project',
-            '--no-external-storage'
-        ],
+        cli, ['init', '.', '--template', TEMPLATE_ID, '--no-external-storage'],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
 
     os.chdir('../bar')
     result = runner.invoke(
-        cli, [
-            'init', '.', '--template', 'Basic Python Project',
-            '--no-external-storage'
-        ],
+        cli, ['init', '.', '--template', TEMPLATE_ID, '--no-external-storage'],
         catch_exceptions=False
     )
     assert 0 == result.exit_code

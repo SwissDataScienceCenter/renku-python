@@ -247,7 +247,7 @@ class FailedMerge(RenkuException):
             'Failed merge of branch {0} with args {1}'.
             format(branch, ','.join(merge_args)) +
             'The automatic merge failed.\n\n'
-            'Please use the "git" command to clean resolve it.'
+            'Please use the "git" command to clean it.'
             '\n\n' + str(repo.git.status())
         )
 
@@ -335,9 +335,13 @@ class InvalidSuccessCode(RenkuException):
 class DatasetNotFound(RenkuException):
     """Raise when dataset is not found."""
 
-    def __init__(self, msg='Dataset is not found.'):
+    def __init__(self, name=None):
         """Build a custom message."""
-        super(DatasetNotFound, self).__init__(msg)
+        if name:
+            msg = f'Dataset "{name}" is not found.'
+        else:
+            msg = 'Dataset is not found.'
+        super().__init__(msg)
 
 
 class DatasetExistsError(RenkuException):

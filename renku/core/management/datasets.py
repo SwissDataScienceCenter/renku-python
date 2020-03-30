@@ -23,18 +23,22 @@ import re
 import shutil
 import stat
 import tempfile
+import time
 import uuid
 import warnings
+from collections import OrderedDict
 from configparser import NoSectionError
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
+from urllib.parse import ParseResult
 
 import attr
 import patoolib
 import requests
 from git import GitCommandError, GitError, Repo
+from wcmatch import glob
 
 from renku.core import errors
 from renku.core.management.clone import clone
@@ -59,10 +63,19 @@ class DatasetsApiMixin(object):
     DATASETS = 'datasets'
     """Directory for storing dataset metadata in Renku."""
 
+    POINTERS = 'pointers'
+
     @property
     def renku_datasets_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
         return Path(self.renku_home).joinpath(self.DATASETS)
+
+    @property
+    def renku_pointers_path(self):
+        """Return a ``Path`` instance of Renku pointer files folder."""
+        path = Path(self.renku_home) / self.POINTERS
+        path.mkdir(exist_ok=True)
+        return path
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
@@ -128,7 +141,7 @@ class DatasetsApiMixin(object):
 
         if dataset is None:
             if not create:
-                raise errors.DatasetNotFound
+                raise errors.DatasetNotFound(name=short_name)
 
             clean_up_required = True
             dataset, path, dataset_ref = self.create_dataset(
@@ -216,6 +229,7 @@ class DatasetsApiMixin(object):
         destination='',
         ref=None,
         link=False,
+        external=False,
         extract=False,
         all_at_once=False,
         destination_names=None,
@@ -230,7 +244,6 @@ class DatasetsApiMixin(object):
         destination = self.path / dataset_path / destination
 
         files = []
-
         if all_at_once:  # only for URLs
             files = self._add_from_urls(
                 dataset=dataset,
@@ -262,7 +275,7 @@ class DatasetsApiMixin(object):
                                 'to enable lineage information and updates.'
                         u = parse.urlparse(url)
                         new_files = self._add_from_local(
-                            dataset, u.path, link, destination
+                            dataset, u.path, link, external, destination
                         )
                     else:  # Remote URL
                         new_files = self._add_from_url(
@@ -275,32 +288,54 @@ class DatasetsApiMixin(object):
 
                 files.extend(new_files)
 
-        self.track_paths_in_storage(*(f['path'] for f in files))
+        files_to_commit = {f['path'] for f in files if f['path']}
+        ignored = self.find_ignored_paths(*files_to_commit)
 
-        ignored = self.find_ignored_paths(*(data['path']
-                                            for data in files)) or []
-
-        if ignored:
-            if force:
-                self.repo.git.add(*ignored, force=True)
-            else:
+        if not force:
+            if ignored:
                 raise errors.IgnoredFiles(ignored)
+            if dataset.contains_any(files):
+                raise errors.DatasetFileExists()
 
-        if dataset.contains_any(files) and force is False:
-            raise errors.DatasetFileExists()
+        # all files at this point can be force-added and overwritten
 
-        # commit all new data
-        file_paths = {str(data['path']) for data in files if str(data['path'])}
-        files_to_add = (file_paths - set(ignored))
+        for data in files:
+            operation = data.pop('operation', None)
+            if not operation:
+                continue
 
-        self.repo.git.add(*files_to_add)
+            src, dst, action = operation
 
-        if self.repo.is_dirty():
-            commit_msg = ('renku dataset: '
-                          'committing {} newly added files'
-                          ).format(len(file_paths) + len(ignored))
+            # Remove existing file if any
+            self.remove_file(dst)
+            dst.parent.mkdir(parents=True, exist_ok=True)
 
-            self.repo.index.commit(commit_msg)
+            if action == 'copy':
+                shutil.copy(src, dst)
+            elif action == 'link':
+                try:
+                    os.link(src, dst)
+                except Exception as e:
+                    raise errors.OperationError(
+                        'Could not create hard link. Retry without "--link."'
+                    ) from e
+            elif action == 'symlink':
+                self._create_external_file(src, dst)
+                data['external'] = True
+
+        # Track non-symlinks in LFS
+        self.track_paths_in_storage(*files_to_commit)
+
+        # Force-add to include possible ignored files
+        self.repo.git.add(*files_to_commit, force=True)
+        self.repo.git.add(self.renku_pointers_path, force=True)
+
+        staged_files = self.repo.index.diff('HEAD')
+        if staged_files:
+            msg = 'renku dataset: committing {} newly added files'.format(
+                len(files_to_commit)
+            )
+            self.repo.index.commit(msg)
 
         # Generate the DatasetFiles
         dataset_files = []
@@ -318,8 +353,19 @@ class DatasetsApiMixin(object):
         dataset.update_files(dataset_files)
         return warning_message
 
+    @staticmethod
+    def calculate_metadata(filepath):
+        """Calculate checksum and size of the file."""
+        try:
+            checksum = Repo().git.hash_object(str(filepath))
+        except GitCommandError:
+            checksum = None
+        filesize = os.path.getsize(filepath)
+
+        return checksum, filesize
+
     def _check_protected_path(self, path):
-        """Checks if a path is protected by renku."""
+        """Checks if a path is a protected path."""
         try:
             path_in_repo = path.relative_to(self.path)
         except ValueError:
@@ -332,8 +378,8 @@ class DatasetsApiMixin(object):
 
         return False
 
-    def _add_from_local(self, dataset, path, link, destination):
-        """Add a file or directory from local filesystem."""
+    def _add_from_local(self, dataset, path, link, external, destination):
+        """Add a file or directory from a local filesystem."""
         src = Path(path).resolve()
 
         if not src.exists():
@@ -362,22 +408,28 @@ class DatasetsApiMixin(object):
                 files.extend(
                     self._add_from_local(
                         dataset,
-                        f.absolute().as_posix(),
+                        os.path.abspath(f),
                         link=link,
+                        external=external,
                         destination=destination
                     )
                 )
             return files
         else:
             # Check if file is in the project and return it
-            try:
-                path_in_repo = src.relative_to(self.path)
-
-                if self._check_protected_path(src):
-                    raise errors.ProtectedFiles([src])
-            except ValueError:
-                pass
+            path_in_repo = None
+            if self._is_external_file(src):
+                path_in_repo = path
             else:
+                try:
+                    path_in_repo = src.relative_to(self.path)
+                except ValueError:
+                    pass
+                else:
+                    if self._check_protected_path(src):
+                        raise errors.ProtectedFiles([src])
+
+            if path_in_repo:
                 return [{
                     'path': path_in_repo,
                     'url': path_in_repo,
@@ -388,22 +440,14 @@ class DatasetsApiMixin(object):
         # Make sure the parent directory exists.
         destination.parent.mkdir(parents=True, exist_ok=True)
 
-        if link:
-            try:
-                os.link(str(src), str(destination))
-            except Exception as e:
-                raise errors.OperationError(
-                    'Could not create hard link '
-                    '- retry without --link.'
-                ) from e
-        else:
-            shutil.copy(str(src), str(destination))
+        action = 'link' if link else 'symlink' if external else 'copy'
 
         return [{
             'path': destination.relative_to(self.path),
             'url': 'file://' + os.path.relpath(str(src), str(self.path)),
             'creator': dataset.creator,
-            'parent': self
+            'parent': self,
+            'operation': (src, destination, action)
         }]
 
     def _add_from_urls(
@@ -412,7 +456,7 @@ class DatasetsApiMixin(object):
         destination.mkdir(parents=True, exist_ok=True)
 
         files = []
-        max_workers = min(os.cpu_count() + 4, 8)
+        max_workers = min(os.cpu_count() - 1, 4) or 1
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
@@ -427,22 +471,58 @@ class DatasetsApiMixin(object):
 
         return files
 
+    @staticmethod
+    def _ensure_dropbox(url):
+        """Ensure dropbox url is set for file download."""
+        if not isinstance(url, ParseResult):
+            url = parse.urlparse(url)
+
+        query = url.query or ''
+        if 'dl=0' in url.query:
+            query = query.replace('dl=0', 'dl=1')
+        else:
+            query += 'dl=1'
+
+        url = url._replace(query=query)
+        return url
+
+    def provider_check(self, url):
+        """Check additional provider related operations."""
+        url = parse.urlparse(url)
+
+        if 'dropbox.com' in url.netloc:
+            url = self._ensure_dropbox(url)
+
+        return parse.urlunparse(url)
+
     def _add_from_url(self, dataset, url, destination, extract, progress=None):
-        """Process an add from url and return the location on disk."""
+        """Process adding from url and return the location on disk."""
         if destination.exists() and destination.is_dir():
             u = parse.urlparse(url)
             destination = destination / Path(u.path).name
         else:
             destination.parent.mkdir(parents=True, exist_ok=True)
 
+        url = self.provider_check(url)
+
         try:
+            start = time.time() * 1e+3
             paths = _download(
                 url=url,
                 download_to=destination,
                 extract=extract,
                 progress_class=progress
             )
-        except error.HTTPError as e:  # pragma nocover
+
+            exec_time = (time.time() * 1e+3 - start) // 1e+3
+            # If execution time was less or equal to zero seconds,
+            # block the thread a bit to avoid being rate limited.
+            if exec_time == 0:
+                time.sleep(min(os.cpu_count() - 1, 4) or 1)
+
+        except (
+            requests.exceptions.HTTPError, error.HTTPError
+        ) as e:  # pragma nocover
             raise errors.OperationError(
                 'Cannot download from {}'.format(url)
             ) from e
@@ -468,26 +548,30 @@ class DatasetsApiMixin(object):
         sources = self._resolve_paths(u.path, sources)
 
         # Get all files from repo that match sources
-        repo, repo_path = self._prepare_git_repo(url, ref)
-        copied_sources = set()
+        repo, repo_path = self.prepare_git_repo(url, ref)
         files = set()
+        used_sources = set()
         for file in repo.head.commit.tree.traverse():
             path = file.path
             result = self._get_src_and_dst(
-                path, repo_path, sources, destination
+                path, repo_path, sources, destination, used_sources
             )
 
             if result:
                 files.add(result)
-                source = result[3]
-                copied_sources.add(source)
 
-        uncopied_sources = sources - copied_sources
-        if uncopied_sources:
-            uncopied_sources = {str(s) for s in uncopied_sources}
+        unused_sources = set(sources.keys()) - used_sources
+        if unused_sources:
+            unused_sources = {str(s) for s in unused_sources}
             raise errors.ParameterError(
-                'No such file or directory', param_hint=uncopied_sources
+                'No such file or directory', param_hint=unused_sources
             )
+
+        if destination.exists() and not destination.is_dir():
+            if len(files) > 1:
+                raise errors.ParameterError(
+                    'Cannot copy multiple files or directories to a file'
+                )
 
         # Create metadata and move files to dataset
         results = []
@@ -495,11 +579,14 @@ class DatasetsApiMixin(object):
 
         # Pull files from LFS
         paths = set()
-        for path, src, _, __ in files:
+        for path, src, _ in files:
             if src.is_dir():
                 continue
             if src.is_symlink():
-                path = str(src.resolve().relative_to(repo_path))
+                try:
+                    path = str(src.resolve().relative_to(repo_path))
+                except ValueError:  # External file
+                    pass
             paths.add(path)
         self._fetch_lfs_files(repo_path, paths)
 
@@ -507,7 +594,7 @@ class DatasetsApiMixin(object):
         paths = {f[0] for f in files}
         metadata = self._fetch_files_metadata(remote_client, paths)
 
-        for path, src, dst, _ in files:
+        for path, src, dst in files:
             if not src.is_dir():
                 # Use original metadata if it exists
                 based_on = metadata.get(path)
@@ -524,50 +611,71 @@ class DatasetsApiMixin(object):
                             creators.append(creator)
 
                     based_on = DatasetFile.from_revision(
-                        remote_client, path=path, url=url
+                        remote_client, path=path, url=url, creator=creators
                     )
 
                 path_in_dst_repo = dst.relative_to(self.path)
+
+                if remote_client._is_external_file(src):
+                    operation = (src.resolve(), dst, 'symlink')
+                else:
+                    operation = (src, dst, 'copy')
 
                 results.append({
                     'path': path_in_dst_repo,
                     'url': remove_credentials(url),
                     'creator': creators,
                     'parent': self,
-                    'based_on': based_on
+                    'based_on': based_on,
+                    'operation': operation
                 })
-
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy(str(src), str(dst))
 
         return results
 
+    def _check_overwrite(self, files, force):
+        if force:
+            return
+
     def _resolve_paths(self, root_path, paths):
         """Check if paths are within a root path and resolve them."""
-        return {self._resolve_path(root_path, p) for p in paths}
+        result = OrderedDict()  # Used as an ordered-set
+        for path in paths:
+            r = self._resolve_path(root_path, path)
+            result[r] = None
+        return result
 
     def _resolve_path(self, root_path, path):
         """Check if a path is within a root path and resolve it."""
         try:
             root_path = Path(root_path).resolve()
-            return (root_path / path).resolve().relative_to(root_path)
+            path = os.path.abspath(root_path / path)
+            return Path(path).relative_to(root_path)
         except ValueError:
             raise errors.ParameterError(
                 'File {} is not within path {}'.format(path, root_path)
             )
 
-    def _get_src_and_dst(self, path, repo_path, sources, dst_root):
+    def _get_src_and_dst(
+        self, path, repo_path, sources, dst_root, used_sources
+    ):
+        is_wildcard = False
+
         if not sources:
             source = Path('.')
         else:
             source = None
-            for s in sources:
+            for s in sources.keys():
                 try:
                     Path(path).relative_to(s)
                 except ValueError:
-                    pass
+                    if glob.globmatch(path, str(s), flags=glob.GLOBSTAR):
+                        is_wildcard = True
+                        source = path
+                        used_sources.add(s)
+                        break
                 else:
                     source = s
+                    used_sources.add(source)
                     break
 
             if not source:
@@ -577,24 +685,26 @@ class DatasetsApiMixin(object):
         source_name = Path(source).name
         relative_path = Path(path).relative_to(source)
 
-        if not dst_root.exists():
-            if len(sources) == 1:
+        if src.is_dir() and is_wildcard:
+            sources[source] = None
+            used_sources.add(source)
+
+        if not dst_root.exists():  # Destination will be a file or directory
+            if len(sources) == 1 and not is_wildcard:
                 dst = dst_root / relative_path
             else:  # Treat destination as a directory
                 dst = dst_root / source_name / relative_path
         elif dst_root.is_dir():
             dst = dst_root / source_name / relative_path
         else:  # Destination is an existing file
-            if len(sources) == 1 and not src.is_dir():
-                dst = dst_root
-            elif not sources:
-                raise errors.ParameterError('Cannot copy repo to file')
-            else:
+            if src.is_dir():
                 raise errors.ParameterError(
                     'Cannot copy multiple files or directories to a file'
                 )
+            # Later we need to check if we are copying multiple files
+            dst = dst_root
 
-        return (path, src, dst, source)
+        return (path, src, dst)
 
     def _fetch_lfs_files(self, repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
@@ -749,13 +859,16 @@ class DatasetsApiMixin(object):
         deleted_files = []
 
         for file_ in files:
+            if not file_.based_on:
+                continue
+
             file_.based_on = DatasetFile.from_jsonld(file_.based_on)
             based_on = file_.based_on
             url = based_on.url
             if url in visited_repos:
                 repo, repo_path, remote_client = visited_repos[url]
             else:
-                repo, repo_path = self._prepare_git_repo(url, ref)
+                repo, repo_path = self.prepare_git_repo(url, ref)
                 remote_client = LocalClient(repo_path)
                 visited_repos[url] = repo, repo_path, remote_client
 
@@ -787,14 +900,18 @@ class DatasetsApiMixin(object):
                 if src.exists():
                     # Fetch file is it is tracked by Git LFS
                     self._fetch_lfs_files(repo_path, {based_on.path})
-                    shutil.copy(str(src), str(dst))
+                    if remote_client._is_external_file(src):
+                        self.remove_file(dst)
+                        self._create_external_file(src.resolve(), dst)
+                    else:
+                        shutil.copy(src, dst)
                     file_.based_on.commit = remote_file.commit
                     file_.based_on._label = remote_file._label
                     updated_files.append(file_)
                 else:
                     # File was removed or renamed
                     if delete:
-                        os.remove(str(dst))
+                        self.remove_file(dst)
                     deleted_files.append(file_)
 
         if not updated_files and (not delete or not deleted_files):
@@ -844,7 +961,151 @@ class DatasetsApiMixin(object):
 
         return deleted_files
 
-    def _prepare_git_repo(self, url, ref):
+    def _create_external_file(self, src, dst):
+        """Create a new external file."""
+        try:
+            pointer_file = self._create_pointer_file(target=src)
+            relative = os.path.relpath(pointer_file, dst.parent)
+            os.symlink(relative, dst)
+        except OSError as e:
+            raise errors.OperationError(
+                'Could not create symbolic link'
+            ) from e
+
+    def _create_pointer_file(self, target, checksum=None):
+        """Create a new pointer file."""
+        target = Path(target).resolve()
+
+        if checksum is None:
+            checksum = self._calculate_checksum(target)
+
+        while True:
+            filename = '{}-{}'.format(uuid.uuid4(), checksum)
+            path = self.path / self.renku_pointers_path / filename
+            if not path.exists():
+                break
+
+        try:
+            os.symlink(target, path)
+        except FileNotFoundError:
+            raise errors.ParameterError(
+                'Cannot find external file {}'.format(target)
+            )
+
+        return path
+
+    @staticmethod
+    def _calculate_checksum(filepath):
+        try:
+            return Repo().git.hash_object(str(filepath))
+        except GitCommandError:
+            return None
+
+    def update_external_files(self, records):
+        """Update files linked to external storage."""
+        updated_files_paths = []
+        updated_datasets = {}
+
+        for file_ in records:
+            if file_.external:
+                path = Path(file_.path)
+                link = path.parent / os.readlink(path)
+                pointer_file = self.path / link
+                pointer_file = self._update_pointer_file(pointer_file)
+                if pointer_file is not None:
+                    relative = os.path.relpath(pointer_file, path.parent)
+                    os.remove(path)
+                    os.symlink(relative, path)
+                    updated_files_paths.append(file_.path)
+                    updated_datasets[file_.dataset.short_name] = file_.dataset
+
+        if not updated_files_paths:
+            return
+
+        self.repo.git.add(*updated_files_paths, force=True)
+        self.repo.git.add(self.renku_pointers_path, force=True)
+        commit = self.repo.index.commit(
+            'renku dataset: updated {} external files'.format(
+                len(updated_files_paths)
+            )
+        )
+
+        for dataset in updated_datasets.values():
+            for file_ in dataset.files:
+                if file_.path in updated_files_paths:
+                    file_.commit = commit
+                    file_._label = file_.default_label()
+            dataset.to_yaml()
+
+    def _update_pointer_file(self, pointer_file_path):
+        """Update a pointer file."""
+        try:
+            target = pointer_file_path.resolve(strict=True)
+        except FileNotFoundError:
+            target = pointer_file_path.resolve()
+            raise errors.ParameterError(
+                'External file not found: {}'.format(target)
+            )
+
+        checksum = self._calculate_checksum(target)
+        current_checksum = pointer_file_path.name.split('-')[-1]
+
+        if checksum == current_checksum:
+            return
+
+        os.remove(pointer_file_path)
+        return self._create_pointer_file(target, checksum=checksum)
+
+    def remove_file(self, filepath):
+        """Remove a file/symlink and its pointer file (for external files)."""
+        path = Path(filepath)
+        try:
+            link = path.parent / os.readlink(path)
+        except FileNotFoundError:
+            return
+        except OSError:  # not a symlink but a normal file
+            os.remove(path)
+            return
+
+        os.remove(path)
+
+        try:
+            os.remove(link)
+        except FileNotFoundError:
+            pass
+
+    def _is_external_file(self, path):
+        """Checks if a path within repo is an external file."""
+        if not Path(path).is_symlink() or not self._is_path_within_repo(path):
+            return False
+        pointer = os.readlink(path)
+        return f'{self.renku_home}/{self.POINTERS}' in pointer
+
+    def has_external_files(self):
+        """Return True if project has external files."""
+        for dataset in self.datasets.values():
+            for file_ in dataset.files:
+                if file_.external:
+                    return True
+
+    def _is_path_within_repo(self, path):
+        if not os.path.isabs(path):
+            path = os.path.abspath(path)
+        path = Path(path)
+        try:
+            path.relative_to(self.path)
+        except ValueError:
+            return False
+        else:
+            return True
+
+    def prepare_git_repo(self, url, ref=None):
+        """Clone and cache a Git repo."""
+        if not url:
+            raise errors.GitError('Invalid URL.')
+
+        RENKU_BRANCH = 'renku-default-branch'
+
         def checkout(repo, ref):
             try:
                 repo.git.checkout(ref)
@@ -855,7 +1116,6 @@ class DatasetsApiMixin(object):
                     )
                 )
 
-        RENKU_BRANCH = 'renku-default-branch'
         ref = ref or RENKU_BRANCH
         u = GitURL.parse(url)
         path = u.pathname
@@ -964,12 +1224,14 @@ def _download(
 
     with requests.get(url, stream=True) as request:
         request.raise_for_status()
+
         with open(str(download_to), 'wb') as file_:
             total_size = int(request.headers.get('content-length', 0))
             progress_class = progress_class or DownloadProgressCallback
             progress = progress_class(
                 description=download_to.name, total_size=total_size
             )
+
             try:
                 for chunk in request.iter_content(chunk_size=chunk_size):
                     if chunk:  # ignore keep-alive chunks
@@ -1010,5 +1272,7 @@ def _check_url(url):
 
 DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
+    Path(RENKU_HOME) / Path(DatasetsApiMixin.POINTERS),
     Path(RENKU_HOME) / Path(LinkReference.REFS),
+    '.gitattributes',
 ]

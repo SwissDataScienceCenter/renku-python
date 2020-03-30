@@ -29,6 +29,63 @@ from renku.service.utils import make_project_path
 
 
 @pytest.mark.parametrize(
+    'url', [(
+        'https://dev.renku.ch/projects/rokroskar/'
+        'scratch-project/datasets/7eba3f50-1a19-4282-8a86-2497e0f43809/'
+    )]
+)
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_dataset_url_import_job(url, svc_client_with_repo):
+    """Test dataset import via url."""
+    svc_client, headers, project_id, url_components = svc_client_with_repo
+    user = {'user_id': headers['Renku-User-Id']}
+    payload = {
+        'project_id': project_id,
+        'dataset_uri': url,
+    }
+    response = svc_client.post(
+        '/datasets.import',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response)
+    assert {'job_id', 'created_at'} == set(response.json['result'].keys())
+
+    dest = make_project_path(
+        user, {
+            'owner': url_components.owner,
+            'name': url_components.name
+        }
+    )
+
+    old_commit = Repo(dest).head.commit
+    job_id = response.json['result']['job_id']
+
+    dataset_import(
+        user,
+        job_id,
+        project_id,
+        url,
+    )
+
+    new_commit = Repo(dest).head.commit
+    assert old_commit.hexsha != new_commit.hexsha
+    assert f'service: dataset import {url}' == new_commit.message
+
+    response = svc_client.get(
+        f'/jobs/{job_id}',
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response)
+    assert 'COMPLETED' == response.json['result']['state']
+
+
+@pytest.mark.parametrize(
     'doi', [
         '10.5281/zenodo.3239980',
         '10.5281/zenodo.3188334',
@@ -39,7 +96,7 @@ from renku.service.utils import make_project_path
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
 def test_dataset_import_job(doi, svc_client_with_repo):
-    """Test dataset import."""
+    """Test dataset import via doi."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
     user = {'user_id': headers['Renku-User-Id']}
     payload = {
@@ -64,10 +121,11 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     )
 
     old_commit = Repo(dest).head.commit
+    job_id = response.json['result']['job_id']
 
     dataset_import(
         user,
-        response.json['result']['job_id'],
+        job_id,
         project_id,
         doi,
     )
@@ -75,6 +133,14 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     new_commit = Repo(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
     assert f'service: dataset import {doi}' == new_commit.message
+
+    response = svc_client.get(
+        f'/jobs/{job_id}',
+        headers=headers,
+    )
+    assert response
+    assert_rpc_response(response)
+    assert 'COMPLETED' == response.json['result']['state']
 
 
 @pytest.mark.parametrize(
