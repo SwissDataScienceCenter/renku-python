@@ -18,11 +18,12 @@
 """Renku service entry point."""
 import logging
 import os
+import traceback
 import uuid
-
+from renku.service.logger import service_log
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask
+from flask import Flask, request
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
 
@@ -105,5 +106,34 @@ def build_routes(app):
 
 app = create_app()
 
+
+@app.after_request
+def after_request(response):
+    """After request handler."""
+    service_log.info(
+        '{0} {1} {2} {3} {4}'.format(
+            request.remote_addr, request.method, request.scheme,
+            request.full_path, response.status
+        )
+    )
+
+    return response
+
+
+@app.errorhandler(Exception)
+def exceptions(e):
+    """App exception logger."""
+    tb = traceback.format_exc()
+    service_log.error(
+        '{} {} {} {} 5xx INTERNAL SERVER ERROR\n{}'.format(
+            request.remote_addr, request.method, request.scheme,
+            request.full_path, tb
+        )
+    )
+
+    return e.status_code
+
+
 if __name__ == '__main__':
+    app.logger.handlers.extend(service_log.handlers)
     app.run()
