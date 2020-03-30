@@ -20,7 +20,7 @@ import logging
 import os
 import traceback
 import uuid
-from renku.service.logger import service_log
+
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from flask import Flask, request
@@ -30,6 +30,7 @@ from flask_swagger_ui import get_swaggerui_blueprint
 from renku.service.cache import cache
 from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, \
     OPENAPI_VERSION, SERVICE_NAME, SWAGGER_URL
+from renku.service.logger import service_log
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views.cache import CACHE_BLUEPRINT_TAG, cache_blueprint, \
     list_projects_view, list_uploaded_files_view, project_clone, \
