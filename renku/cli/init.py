@@ -49,7 +49,7 @@ when you initialize a project. You can check them by typing:
 
     $ renku init --list-templates
 
-    INDEX ID     DESCRIPTION                     VARIABLES
+    INDEX ID     DESCRIPTION                     PARAMETERS
     ----- ------ ------------------------------- -----------------------------
     1     python The simplest Python-based [...] description: project des[...]
     2     R      R-based renku project with[...] description: project des[...]
@@ -75,38 +75,37 @@ You can take inspiration from the
     https://github.com/SwissDataScienceCenter/renku-project-template@master
     ... OK
 
-    INDEX ID             DESCRIPTION                VARIABLES
+    INDEX ID             DESCRIPTION                PARAMETERS
     ----- -------------- -------------------------- ----------------------
     1     python-minimal Basic Python Project:[...] description: proj[...]
     2     R-minimal      Basic R Project: The [...] description: proj[...]
 
     Please choose a template by typing the index:
 
-Provide variables
-~~~~~~~~~~~~~~~~~
+Provide parameters
+~~~~~~~~~~~~~~~~~-
 
-Some templates require variables to properly initialize a new project. You
-can check them by listing the templates `--list-templates`.
+Some templates require parameters to properly initialize a new project. You
+can check them by listing the templates ``--list-templates``.
 
-To provide variables, use the ``--variables```option and list them as in a
-Python dictionary or a JSON object requiring either single quotes ``'`` or
-single quotes ``"`` for variables names.
+To provide parameters, use the ``--parameter`` option and provide each
+parameter using ``--parameter "param1"="value1"``.
 
 .. code-block:: console
 
-    $ renku init --template-id python-minimal --variables \
-    '{ "description": "my new shiny project" }'
+    $ renku init --template-id python-minimal --parameter \
+    "description"="my new shiny project"
 
     Initializing new Renku repository... OK
 
-If you don't provide the required variables, the template will use an empty
+If you don't provide the required parameters, the template will use an empty
 strings instead.
 
 .. note:: Every project requires a ``name`` that can either be provided using
    ``--name`` or automatically taken from the target folder. This is
-   also considered as a special variable, therefore it's automatically added
-   to the list of variables forwarded to the ``init`` command. Providing a
-   different value for ``name`` through ``--variables`` has no effect.
+   also considered as a special parameter, therefore it's automatically added
+   to the list of parameters forwarded to the ``init`` command. Providing a
+   different value for ``name`` through ``--parameter`` has no effect.
 
 Update an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,7 +132,6 @@ was not installed previously.
 
 """
 
-import ast
 import configparser
 import os
 from collections import OrderedDict, namedtuple
@@ -159,27 +157,18 @@ _REQUIREMENTS = 'requirements.txt'
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
-def parse_variables(ctx, param, value):
-    """Parse template variables to dictionary."""
-    try:
-        variables = ast.literal_eval(value)
-    except ValueError:
-        raise_template_error(value)
-    if type(variables) is not dict:
-        raise_template_error(value)
-    return variables
-
-
-def raise_template_error(value):
-    """Raise template error with short explanation."""
-    error_info = [
-        '{0}'.format(value), 'Tip: a dictionary is expected',
-        (
-            'Example: --variables '
-            '\'{ "variable_1": "string", "variable_2": 2 }\''
-        )
-    ]
-    raise errors.ParameterError('\n'.join(error_info), '"--variables"')
+def parse_parameters(ctx, param, value):
+    """Parse parameters to dictionary."""
+    parameters = {}
+    for index, parameter in enumerate(value):
+        splitted = parameter.split('=', 1)
+        if len(splitted) < 2 or len(splitted[0]) < 1:
+            raise errors.ParameterError(
+                'Parameter format must be --parameter "param1"="value". ',
+                f'--parameter #{index + 1}'
+            )
+        parameters[splitted[0]] = splitted[1]
+    return parameters
 
 
 def validate_name(ctx, param, value):
@@ -225,7 +214,7 @@ def create_template_sentence(templates, instructions=False):
             ('index', 'Index'),
             ('id', 'Id'),
             ('description', 'Description'),
-            ('variables', 'Variables'),
+            ('variables', 'Parameters'),
         ))
     )
 
@@ -282,12 +271,14 @@ def check_git_user_config():
     help='Specify the reference to checkout on remote template repository.',
 )
 @click.option(
-    '--variables',
-    default='{}',
-    callback=parse_variables,
+    '-p',
+    '--parameter',
+    multiple=True,
+    type=click.STRING,
+    callback=parse_parameters,
     help=(
-        'Provide custom values for template variables. It must be a python '
-        'dictionary.\nExample: \'{ "variable_1": "string", "variable_2": 2 }\''
+        'Provide parameters value. Should be invoked once per parameter. '
+        'Please specify the values as follow: --parameter "param1"="value"'
     )
 )
 @click.option(
@@ -301,7 +292,7 @@ def check_git_user_config():
 @click.pass_context
 def init(
     ctx, client, use_external_storage, path, name, template_id, template_index,
-    template_source, template_ref, variables, list_templates, force
+    template_source, template_ref, parameter, list_templates, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
@@ -424,7 +415,7 @@ def init(
     click.echo('Initializing new Renku repository... ', nl=False)
     with client.lock:
         try:
-            create_from_template(template_path, client, name, variables, force)
+            create_from_template(template_path, client, name, parameter, force)
         except FileExistsError as e:
             raise click.UsageError(e)
 
