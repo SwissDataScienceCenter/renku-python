@@ -232,7 +232,7 @@ class Graph(object):
             p = Path(path).resolve()
             p.relative_to(self.client.path)
         except ValueError:  # External file
-            path = os.path.abspath(path)
+            path = Path(os.path.abspath(path))
         else:
             path = p
         return os.path.relpath(str(path), start=str(start))
@@ -577,7 +577,9 @@ class Graph(object):
         def _relative_default(client, default):
             """Evolve ``File`` or ``Directory`` path."""
             if isinstance(default, PATH_TYPES):
-                path = os.path.abspath(client.workflow_path / default.path)
+                path = Path(
+                    os.path.abspath(client.workflow_path / default.path)
+                )
                 return attr.evolve(default, path=path)
             return default
 
