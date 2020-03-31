@@ -26,12 +26,18 @@ class JobManagementCache(BaseCache):
 
     job_schema = JobSchema()
 
-    def make_job(self, user, job_data):
+    def make_job(self, user, job_data, locked=None):
         """Cache job state under user hash set."""
+        if isinstance(locked, str) or isinstance(locked, int):
+            locked = {locked}
+
         job_data.update({'user_id': user.user_id})
 
         job_obj = self.job_schema.load(job_data)
         job_obj.save()
+
+        for lock_obj in locked or []:
+            job_obj.locked.add(lock_obj)
 
         return job_obj
 

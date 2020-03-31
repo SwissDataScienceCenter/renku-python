@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache job related models."""
-from walrus import DateTimeField, JSONField, Model, TextField
+from walrus import DateTimeField, JSONField, Model, SetField, TextField
 
 from renku.service.cache.base import BaseCache
 
@@ -40,6 +40,8 @@ class Job(Model):
 
     state = TextField()
     extras = JSONField()
+
+    locked = SetField()
 
     def in_progress(self):
         """Mark job in progress."""

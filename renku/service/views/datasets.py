@@ -253,7 +253,7 @@ def import_dataset_view(user_data, cache):
         'job_id': uuid.uuid4().hex,
         'state': USER_JOB_STATE_ENQUEUED,
     }
-    job = cache.make_job(user, user_job)
+    job = cache.make_job(user, user_job, locked=ctx['project_id'])
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(

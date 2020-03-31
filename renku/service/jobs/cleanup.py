@@ -22,14 +22,16 @@ import time
 from datetime import datetime
 
 from renku.service.cache import ServiceCache
+from renku.service.cache.models.job import USER_JOB_STATE_COMPLETED, \
+    USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_FAILED, \
+    USER_JOB_STATE_IN_PROGRESS
 
 
 def file_cleanup_lock_check(jobs, file):
     """Check if file should be deleted."""
     for job in jobs:
-        for lock_id in job.extras.get('locked', []):
-            if lock_id == file.file_id:
-                return True
+        if file.file_id in job.locked:
+            return True
 
     return False
 
@@ -56,7 +58,10 @@ def cache_files_cleanup():
     cache = ServiceCache()
 
     for user, files in cache.user_files():
-        jobs = cache.get_jobs(user)
+        jobs = [
+            job for job in cache.get_jobs(user)
+            if job.state in [USER_JOB_STATE_COMPLETED, USER_JOB_STATE_FAILED]
+        ]
 
         for file in files:
             if file_cleanup_lock_check(jobs, file):
@@ -98,9 +103,8 @@ def project_cleanup_ttl_check(
 def project_cleanup_lock_check(jobs, project):
     """Check if project should be deleted."""
     for job in jobs:
-        for lock_id in job.extras.get('locked', []):
-            if lock_id == project.project_id:
-                return True
+        if project.project_id in job.locked:
+            return True
 
     return False
 
@@ -110,12 +114,15 @@ def cache_project_cleanup():
     cache = ServiceCache()
 
     for user, projects in cache.user_projects():
-        jobs = cache.get_jobs(user)
+        jobs = [
+            job for job in cache.get_jobs(user) if job.state in
+            [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
+        ]
 
         for project in projects:
             if project_cleanup_lock_check(jobs, project):
                 continue
-            
+
             if project_cleanup_ttl_check(project):
                 shutil.rmtree(str(project.abs_path))
 
