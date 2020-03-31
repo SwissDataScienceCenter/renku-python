@@ -290,6 +290,7 @@ def add_to_dataset(
                     file_.based_on = None
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
+                with_metadata.url = dataset._id
 
                 dataset.update_metadata(with_metadata)
                 dataset.same_as = with_metadata.same_as
