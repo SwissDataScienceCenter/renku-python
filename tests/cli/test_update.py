@@ -250,3 +250,22 @@ def test_siblings_in_output_directory(runner, project, run):
 
     assert 0 == run(args=['update', 'output'])
     check_files()
+
+
+def test_relative_path_for_directory_input(client, run, cli):
+    """Test having a directory input generates relative path in CWL."""
+    (client.path / 'data' / 'file1').write_text('file1')
+    client.repo.git.add('--all')
+    client.repo.index.commit('Add file')
+
+    assert 0 == run(args=['run', 'ls', 'data'], stdout='ls.data')
+
+    (client.path / 'data' / 'file2').write_text('file2')
+    client.repo.git.add('--all')
+    client.repo.index.commit('Add one more file')
+
+    exit_code, cwl = cli('update')
+    assert 0 == exit_code
+    assert 1 == len(cwl.inputs)
+    assert 'Directory' == cwl.inputs[0].type
+    assert '../../data' == cwl.inputs[0].default.path
