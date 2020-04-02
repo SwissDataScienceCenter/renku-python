@@ -257,10 +257,10 @@ def check_git_user_config():
     help='Provide a custom project name.',
 )
 @click.option(
-    '-i', '--template-id', help='Provide the id of the template to use.'
+    '-t', '--template-id', help='Provide the id of the template to use.'
 )
 @click.option(
-    '-x',
+    '-i',
     '--template-index',
     help='Provide the index number of the template to use.',
     type=int,
