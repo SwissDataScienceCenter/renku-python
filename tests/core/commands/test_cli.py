@@ -29,13 +29,13 @@ from pathlib import Path
 import git
 import pytest
 import yaml
-from tests.core.commands.test_init import TEMPLATE_ID
 
 from renku import __version__
 from renku.cli import cli
 from renku.core.management.storage import StorageApiMixin
 from renku.core.models.cwl.ascwl import CWLClass, ascwl
 from renku.core.models.cwl.workflow import Workflow
+from renku.core.utils.templates import TEMPLATE
 
 
 def test_version(runner):
@@ -276,7 +276,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
             'init',
             str(second_project),
             '--template-id',
-            TEMPLATE_ID,
+            TEMPLATE['DEFAULT']['ID'],
         )
     )
 
@@ -310,8 +310,10 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
     os.chdir('test-project')
 
     result = runner.invoke(
-        cli,
-        ['--no-external-storage', 'init', '.', '--template-id', TEMPLATE_ID]
+        cli, [
+            '--no-external-storage', 'init', '.', '--template-id',
+            TEMPLATE['DEFAULT']['ID']
+        ]
     )
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
@@ -342,7 +344,10 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     runner = isolated_runner
 
     result = runner.invoke(
-        cli, ['--external-storage', 'init', '.', '--template-id', TEMPLATE_ID]
+        cli, [
+            '--external-storage', 'init', '.', '--template-id',
+            TEMPLATE['DEFAULT']['ID']
+        ]
     )
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
@@ -369,7 +374,9 @@ def test_file_tracking(isolated_runner):
 
     os.mkdir('test-project')
     os.chdir('test-project')
-    result = runner.invoke(cli, ['init', '.', '--template-id', TEMPLATE_ID])
+    result = runner.invoke(
+        cli, ['init', '.', '--template-id', TEMPLATE['DEFAULT']['ID']]
+    )
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['run', 'touch', 'tracked'])
@@ -394,14 +401,20 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
 
     os.chdir('foo')
     result = runner.invoke(
-        cli, ['init', '.', '--template', TEMPLATE_ID, '--no-external-storage'],
+        cli, [
+            'init', '.', '--template', TEMPLATE['DEFAULT']['ID'],
+            '--no-external-storage'
+        ],
         catch_exceptions=False
     )
     assert 0 == result.exit_code
 
     os.chdir('../bar')
     result = runner.invoke(
-        cli, ['init', '.', '--template', TEMPLATE_ID, '--no-external-storage'],
+        cli, [
+            'init', '.', '--template', TEMPLATE['DEFAULT']['ID'],
+            '--no-external-storage'
+        ],
         catch_exceptions=False
     )
     assert 0 == result.exit_code

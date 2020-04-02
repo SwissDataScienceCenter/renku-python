@@ -29,13 +29,8 @@ from renku.core import errors
 from renku.core.commands.init import TEMPLATE_MANIFEST, create_from_template, \
     fetch_template, read_template_manifest, validate_template
 from renku.core.management.config import RENKU_HOME
+from renku.core.utils.templates import TEMPLATE
 
-TEMPLATE_URL = (
-    'https://github.com/SwissDataScienceCenter/renku-project-template'
-)
-TEMPLATE_ID = 'python-minimal'
-TEMPLATE_INDEX = 1
-TEMPLATE_REF = '0.1.9'
 METADATA = {'name': 'myname', 'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 
@@ -43,9 +38,9 @@ template_local = Path(pkg_resources.resource_filename('renku', 'templates'))
 
 
 @pytest.mark.parametrize(
-    'url, ref, result, error', [(TEMPLATE_URL, TEMPLATE_REF, True, None),
-                                (FAKE, TEMPLATE_REF, None, errors.GitError),
-                                (TEMPLATE_URL, FAKE, None, errors.GitError)]
+    'url, ref, result, error', [(TEMPLATE['URL'], TEMPLATE['REF'], True, None),
+                                (FAKE, TEMPLATE['REF'], None, errors.GitError),
+                                (TEMPLATE['URL'], FAKE, None, errors.GitError)]
 )
 @pytest.mark.integration
 def test_fetch_template(url, ref, result, error):
@@ -133,7 +128,7 @@ def test_fetch_template_and_read_manifest():
     """
     with TemporaryDirectory() as tempdir:
         template_path = Path(tempdir)
-        fetch_template(TEMPLATE_URL, TEMPLATE_REF, template_path)
+        fetch_template(TEMPLATE['URL'], TEMPLATE['REF'], template_path)
         manifest = read_template_manifest(template_path, checkout=True)
         for template in manifest:
             template_folder = template_path / template['folder']

@@ -28,8 +28,10 @@ from setuptools.command.build_ext import build_ext as _build_ext
 from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
-URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
-REFERENCE = '0.1.9'
+TEMPLATE = {
+    'URL': 'https://github.com/SwissDataScienceCenter/renku-project-template',
+    'REF': '0.1.9',
+}
 
 
 class DownloadTemplates(Command):
@@ -51,7 +53,7 @@ class DownloadTemplates(Command):
             # download and extract template data
             temppath = Path(tempdir)
             print('downloading Renku templates...')
-            fetch_template(URL, REFERENCE, temppath)
+            fetch_template(TEMPLATE['URL'], TEMPLATE['REF'], temppath)
             read_template_manifest(temppath, checkout=True)
 
             # copy templates
