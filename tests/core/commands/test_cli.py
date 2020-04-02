@@ -29,6 +29,7 @@ from pathlib import Path
 import git
 import pytest
 import yaml
+from click.testing import CliRunner
 from tests.core.commands.test_init import TEMPLATE_ID
 
 from renku import __version__
@@ -36,6 +37,7 @@ from renku.cli import cli
 from renku.core.management.storage import StorageApiMixin
 from renku.core.models.cwl.ascwl import CWLClass, ascwl
 from renku.core.models.cwl.workflow import Workflow
+from renku.core.utils.contexts import chdir
 
 
 def test_version(runner):
@@ -50,6 +52,24 @@ def test_help(arg, runner):
     result = runner.invoke(cli, [arg])
     assert 0 == result.exit_code
     assert 'Show this message and exit.' in result.output
+
+
+@pytest.mark.parametrize('cwd', ('data', 'notebooks', 'subdir'))
+def test_run_from_non_root(runner, client, cwd):
+    path = client.path / cwd
+    path.mkdir(parents=True, exist_ok=True)
+    with chdir(path):
+        result = runner.invoke(cli, ['dataset'])
+        assert 0 == result.exit_code
+        assert 'Run CLI commands only from project\'s root' in result.output
+
+        result = runner.invoke(cli, ['help'])
+        assert 0 == result.exit_code
+        assert 'Run CLI commands only from project' not in result.output
+
+    result = runner.invoke(cli, ['dataset'])
+    assert 0 == result.exit_code
+    assert 'Run CLI commands only from project\'s root' not in result.output
 
 
 def test_config_path(runner):
@@ -464,9 +484,10 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
     assert 0 == result.exit_code
 
 
-def test_status_consistency(runner, client, project):
+def test_status_consistency(client, project):
     """Test if the renku status output is consistent when running the
     command from directories other than the repository root."""
+    runner = CliRunner(mix_stderr=False)
 
     os.mkdir('somedirectory')
     with open('somedirectory/woop', 'w') as fp:
@@ -489,7 +510,7 @@ def test_status_consistency(runner, client, project):
     base_result = runner.invoke(cli, ['status'])
     os.chdir('somedirectory')
     comp_result = runner.invoke(cli, ['status'])
-    assert base_result.output.replace(
+    assert base_result.stdout.replace(
         'somedirectory/', ''
     ) == comp_result.output
 
