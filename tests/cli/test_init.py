@@ -217,7 +217,8 @@ def test_init_with_parameters(isolated_runner):
     )
     assert 0 != result.exit_code
     assert (
-        'Error: Invalid parameter value for --parameter #3' in result.output
+        'Error: Invalid parameter value for --parameter '
+        f'"{PARAMETER_NO_EQUAL[1]}"' in result.output
     )
 
     result = isolated_runner.invoke(
@@ -225,7 +226,8 @@ def test_init_with_parameters(isolated_runner):
     )
     assert 0 != result.exit_code
     assert (
-        'Error: Invalid parameter value for --parameter #3' in result.output
+        'Error: Invalid parameter value for --parameter '
+        f'"{PARAMETER_EARLY_EQUAL[1]}"' in result.output
     )
 
     result = isolated_runner.invoke(cli, INIT + PARAMETERS_CORRECT)

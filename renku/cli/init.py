@@ -160,12 +160,12 @@ CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 def parse_parameters(ctx, param, value):
     """Parse parameters to dictionary."""
     parameters = {}
-    for index, parameter in enumerate(value):
+    for parameter in value:
         splitted = parameter.split('=', 1)
         if len(splitted) < 2 or len(splitted[0]) < 1:
             raise errors.ParameterError(
                 'Parameter format must be --parameter "param1"="value". ',
-                f'--parameter #{index + 1}'
+                f'--parameter "{parameter}"'
             )
         parameters[splitted[0]] = splitted[1]
     return parameters
