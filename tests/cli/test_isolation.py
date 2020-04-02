@@ -17,13 +17,14 @@
 # limitations under the License.
 """Test execution of commands in parallel."""
 
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 
-def test_run_in_isolation(runner, project, client, run):
+def test_run_in_isolation(runner, project, client, run, subdirectory):
     """Test run in isolation."""
     import filelock
 
@@ -51,22 +52,23 @@ def test_run_in_isolation(runner, project, client, run):
         assert client.repo.head.commit.hexsha != head
 
 
-def test_file_modification_during_run(tmpdir, runner, project, client, run):
+def test_file_modification_during_run(
+    tmpdir, runner, project, client, run, subdirectory
+):
     """Test run in isolation."""
     script = client.path / 'script.py'
     output = client.path / 'output'
     lock = Path(str(tmpdir.join('lock')))
 
     with client.commit():
-        with script.open('w') as fp:
-            fp.write(
-                'import os, time, sys\n'
-                'open("{lock}", "a")\n'
-                'while os.path.exists("{lock}"):\n'
-                '    time.sleep(1)\n'
-                'sys.stdout.write(sys.stdin.read())\n'
-                'sys.stdout.flush()\n'.format(lock=str(lock))
-            )
+        script.write_text(
+            'import os, time, sys\n'
+            'open("{lock}", "a")\n'
+            'while os.path.exists("{lock}"):\n'
+            '    time.sleep(1)\n'
+            'sys.stdout.write(sys.stdin.read())\n'
+            'sys.stdout.flush()\n'.format(lock=str(lock))
+        )
 
     prefix = [
         sys.executable,
@@ -75,10 +77,7 @@ def test_file_modification_during_run(tmpdir, runner, project, client, run):
         'run',
         '--isolation',
     ]
-    cmd = [
-        'python',
-        script.name,
-    ]
+    cmd = ['python', os.path.relpath(script, os.getcwd())]
 
     previous = client.repo.head.commit
 

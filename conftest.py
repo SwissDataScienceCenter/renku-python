@@ -200,6 +200,22 @@ def dataset(client):
     return dataset
 
 
+@pytest.fixture(params=['.', 'some/sub/directory'])
+def subdirectory(request):
+    """Runs tests in root directory and a subdirectory."""
+    from renku.core.utils.contexts import chdir
+
+    if request.param != '.':
+        path = Path(request.param) / '.gitkeep'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+        Repo().git.add(str(path))
+        Repo().index.commit('Create subdirectory')
+
+    with chdir(request.param):
+        yield
+
+
 @pytest.fixture
 def dataset_responses():
     """Authentication responses."""
