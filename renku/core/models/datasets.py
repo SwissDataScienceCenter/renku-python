@@ -477,6 +477,7 @@ class Dataset(Entity, CreatorMixin):
             if str(file_.path) == str(filename):
                 if return_index:
                     return index
+                file_.client = self.client
                 return file_
 
     def update_metadata(self, other_dataset):

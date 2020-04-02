@@ -293,7 +293,7 @@ class GitCore:
 
         if isinstance(commit_only, list):
             for path_ in commit_only:
-                p = Path(path_)
+                p = self.path / path_
                 if p.exists() or change_types.get(path_) == 'D':
                     self.repo.git.add(path_)
 

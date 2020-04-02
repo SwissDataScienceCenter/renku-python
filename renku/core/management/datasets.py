@@ -68,12 +68,12 @@ class DatasetsApiMixin(object):
     @property
     def renku_datasets_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
-        return Path(self.renku_home).joinpath(self.DATASETS)
+        return self.path / self.renku_home / self.DATASETS
 
     @property
     def renku_pointers_path(self):
         """Return a ``Path`` instance of Renku pointer files folder."""
-        path = Path(self.renku_home) / self.POINTERS
+        path = self.path / self.renku_home / self.POINTERS
         path.mkdir(exist_ok=True)
         return path
 
@@ -101,7 +101,7 @@ class DatasetsApiMixin(object):
     def datasets(self):
         """Return mapping from path to dataset."""
         result = {}
-        paths = (self.path / self.renku_datasets_path).rglob(self.METADATA)
+        paths = self.renku_datasets_path.rglob(self.METADATA)
         for path in paths:
             result[path] = self.load_dataset_from_path(path)
         return result
@@ -216,6 +216,7 @@ class DatasetsApiMixin(object):
         )
 
         dataset_ref.set_reference(path)
+        dataset.path = Path(dataset.path).relative_to(self.path)
         dataset.to_yaml()
 
         return dataset, path, dataset_ref
@@ -288,7 +289,10 @@ class DatasetsApiMixin(object):
 
                 files.extend(new_files)
 
-        files_to_commit = {f['path'] for f in files if f['path']}
+        files_to_commit = {
+            str(self.path / f['path'])
+            for f in files if f['path']
+        }
         ignored = self.find_ignored_paths(*files_to_commit)
 
         if not force:
@@ -785,9 +789,9 @@ class DatasetsApiMixin(object):
 
         Commits are returned sorted from newest to oldest.
         """
-        paths = [(Path(dataset.path) / self.METADATA).resolve()]
+        paths = [(self.path / dataset.path / self.METADATA).resolve()]
 
-        paths.extend(f.full_path for f in dataset.files)
+        paths.extend(self.path / f.path for f in dataset.files)
 
         commits = self.repo.iter_commits(paths=paths, max_count=max_results)
 
@@ -920,7 +924,10 @@ class DatasetsApiMixin(object):
 
         # Commit changes in files
 
-        file_paths = {str(f.path) for f in updated_files + deleted_files}
+        file_paths = {
+            str(self.path / f.path)
+            for f in updated_files + deleted_files
+        }
         # Force-add to include possible ignored files that are in datasets
         self.repo.git.add(*(file_paths), force=True)
         self.repo.index.commit(
@@ -981,7 +988,7 @@ class DatasetsApiMixin(object):
 
         while True:
             filename = '{}-{}'.format(uuid.uuid4(), checksum)
-            path = self.path / self.renku_pointers_path / filename
+            path = self.renku_pointers_path / filename
             if not path.exists():
                 break
 
@@ -994,10 +1001,9 @@ class DatasetsApiMixin(object):
 
         return path
 
-    @staticmethod
-    def _calculate_checksum(filepath):
+    def _calculate_checksum(self, filepath):
         try:
-            return Repo().git.hash_object(str(filepath))
+            return self.repo.git.hash_object(str(filepath))
         except GitCommandError:
             return None
 
@@ -1008,7 +1014,7 @@ class DatasetsApiMixin(object):
 
         for file_ in records:
             if file_.external:
-                path = Path(file_.path)
+                path = self.path / file_.path
                 link = path.parent / os.readlink(path)
                 pointer_file = self.path / link
                 pointer_file = self._update_pointer_file(pointer_file)
@@ -1016,7 +1022,7 @@ class DatasetsApiMixin(object):
                     relative = os.path.relpath(pointer_file, path.parent)
                     os.remove(path)
                     os.symlink(relative, path)
-                    updated_files_paths.append(file_.path)
+                    updated_files_paths.append(str(path))
                     updated_datasets[file_.dataset.short_name] = file_.dataset
 
         if not updated_files_paths:
@@ -1032,7 +1038,7 @@ class DatasetsApiMixin(object):
 
         for dataset in updated_datasets.values():
             for file_ in dataset.files:
-                if file_.path in updated_files_paths:
+                if str(self.path / file_.path) in updated_files_paths:
                     file_.commit = commit
                     file_._label = file_.default_label()
             dataset.to_yaml()

@@ -78,9 +78,10 @@ def check_datasets_structure(client):
 
     for path in client.renku_datasets_path.rglob(client.METADATA):
         try:
+            relative_path = path.relative_to(client.path)
             conform, graph, t = check_shacl_structure(path)
         except (Exception, BaseException) as e:
-            problems.append('Couldn\'t validate {0}: {1}\n\n'.format(path, e))
+            problems.append(f'Couldn\'t validate {relative_path}: {e}\n\n')
             continue
 
         if conform:
@@ -89,7 +90,9 @@ def check_datasets_structure(client):
         ok = False
 
         problems.append(
-            '{0}\n\t{1}\n'.format(path, _shacl_graph_to_string(graph))
+            '{0}\n\t{1}\n'.format(
+                relative_path, _shacl_graph_to_string(graph)
+            )
         )
 
     if ok:

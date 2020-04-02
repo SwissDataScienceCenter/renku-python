@@ -130,14 +130,17 @@ class StorageApiMixin(RepositoryApiMixin):
         attrs = self.find_attr(*paths)
 
         for path in paths:
-            # Do not add files with filter=lfs in .gitattributes
-            if attrs.get(path, {}).get('filter') == 'lfs':
-                continue
-
             path = Path(path)
 
             # Do not track symlinks in LFS
             if path.is_symlink():
+                continue
+
+            if path.is_absolute():
+                path = Path(path).relative_to(self.path)
+
+            # Do not add files with filter=lfs in .gitattributes
+            if attrs.get(str(path), {}).get('filter') == 'lfs':
                 continue
 
             if path.is_dir():
