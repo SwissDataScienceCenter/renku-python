@@ -104,8 +104,7 @@ strings instead.
 .. note:: Every project requires a ``name`` that can either be provided using
    ``--name`` or automatically taken from the target folder. This is
    also considered as a special parameter, therefore it's automatically added
-   to the list of parameters forwarded to the ``init`` command. Providing a
-   different value for ``name`` through ``--parameter`` has no effect.
+   to the list of parameters forwarded to the ``init`` command.
 
 Update an existing project
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
