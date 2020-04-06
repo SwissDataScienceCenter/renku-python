@@ -391,6 +391,10 @@ class DatasetsApiMixin(object):
         if src.is_dir():
             if destination.exists() and not destination.is_dir():
                 raise errors.ParameterError('Cannot copy directory to a file')
+            if src == (self.path / dataset.datadir).resolve():
+                raise errors.ParameterError(
+                    f'Cannot add dataset\'s data directory recursively: {path}'
+                )
 
             if src.name == '.git':
                 # Cannot have a '.git' directory inside a Git repo
