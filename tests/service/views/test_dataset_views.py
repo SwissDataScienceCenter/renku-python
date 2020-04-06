@@ -754,15 +754,7 @@ def test_import_dataset_job_enqueue(
     doi, svc_client_cache, project, mock_redis
 ):
     """Test import a dataset."""
-    client, cache = svc_client_cache
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Renku-User-Id': 'user',
-        'Renku-User-FullName': 'full name',
-        'Renku-User-Email': 'renku@sdsc.ethz.ch',
-    }
-
+    client, headers, cache = svc_client_cache
     user = cache.ensure_user({'user_id': 'user'})
 
     project_meta = {
@@ -819,15 +811,7 @@ def test_import_dataset_job_enqueue(
 @flaky(max_runs=30, min_passes=1)
 def test_dataset_add_remote(url, svc_client_cache, project, mock_redis):
     """Test import a dataset."""
-    client, cache = svc_client_cache
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Renku-User-Id': 'user',
-        'Renku-User-FullName': 'full name',
-        'Renku-User-Email': 'renku@sdsc.ethz.ch',
-    }
-
+    client, headers, cache = svc_client_cache
     user = cache.ensure_user({'user_id': 'user'})
 
     project_meta = {
@@ -885,15 +869,7 @@ def test_dataset_add_multiple_remote(svc_client_cache, project, mock_redis):
     url_gist = 'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'
     url_dbox = 'https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0'
 
-    client, cache = svc_client_cache
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Renku-User-Id': 'user',
-        'Renku-User-FullName': 'full name',
-        'Renku-User-Email': 'renku@sdsc.ethz.ch',
-    }
-
+    client, headers, cache = svc_client_cache
     user = cache.ensure_user({'user_id': 'user'})
 
     project_meta = {

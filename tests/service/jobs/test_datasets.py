@@ -155,6 +155,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
 )
 @pytest.mark.integration
 @pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
 def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -212,6 +213,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
 ])
 @pytest.mark.integration
 @pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
 def test_dataset_import_twice_job(doi, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -281,6 +283,7 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
 )
 @pytest.mark.integration
 @pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
 def test_dataset_add_remote_file(url, svc_client_with_repo):
     """Test dataset add a remote file."""
     svc_client, headers, project_id, url_components = svc_client_with_repo

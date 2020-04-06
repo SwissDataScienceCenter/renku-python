@@ -664,7 +664,14 @@ def svc_client_cache(mock_redis):
     ctx = flask_app.app_context()
     ctx.push()
 
-    yield testing_client, flask_app.config.get('cache')
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': 'user',
+        'Renku-User-FullName': 'full name',
+        'Renku-User-Email': 'renku@sdsc.ethz.ch',
+    }
+
+    yield testing_client, headers, flask_app.config.get('cache')
 
     ctx.pop()
 
