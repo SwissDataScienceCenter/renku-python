@@ -516,42 +516,6 @@ def test_add_from_local_repo_warning(
     assert 'Use remote\'s Git URL instead to enable lineage ' in result.output
 
 
-def test_dataset_add_with_link(tmpdir, runner, project, client):
-    """Test adding data to dataset with --link flag."""
-    import stat
-
-    # create a dataset
-    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
-    assert 0 == result.exit_code
-    assert 'OK' in result.output
-
-    paths = []
-    expected_inodes = []
-    for i in range(3):
-        new_file = tmpdir.join('file_{0}'.format(i))
-        new_file.write(str(i))
-        expected_inodes.append(os.lstat(str(new_file))[stat.ST_INO])
-        paths.append(str(new_file))
-
-    # add data
-    result = runner.invoke(
-        cli,
-        ['dataset', 'add', 'my-dataset', '--link'] + paths,
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code
-
-    received_inodes = []
-    with client.with_dataset('my-dataset') as dataset:
-        assert dataset.name == 'my-dataset'
-        for file_ in dataset.files:
-            path_ = (client.path / file_.path).resolve()
-            received_inodes.append(os.lstat(str(path_))[stat.ST_INO])
-
-    # check that original and dataset inodes are the same
-    assert sorted(expected_inodes) == sorted(received_inodes)
-
-
 def test_dataset_add_with_copy(tmpdir, runner, project, client):
     """Test adding data to dataset with copy."""
     import os
@@ -1708,18 +1672,6 @@ def test_unavailable_external_files(runner, client, directory_tree):
     assert 'There are missing external files.' in result.output
     assert str(path) in result.output
     assert str(target) in result.output
-
-
-def test_external_and_link(runner, client, directory_tree):
-    """Test cannot use --link and --external together."""
-    result = runner.invoke(
-        cli, [
-            'dataset', 'add', '-c', '--external', '--link', 'my-data',
-            directory_tree.strpath
-        ]
-    )
-    assert 2 == result.exit_code
-    assert 'Cannot use "--link" and "--external" together.' in result.output
 
 
 def test_external_file_update(runner, client, directory_tree, project):

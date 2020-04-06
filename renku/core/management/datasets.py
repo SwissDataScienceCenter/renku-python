@@ -228,7 +228,6 @@ class DatasetsApiMixin(object):
         sources=(),
         destination='',
         ref=None,
-        link=False,
         external=False,
         extract=False,
         all_at_once=False,
@@ -275,7 +274,10 @@ class DatasetsApiMixin(object):
                                 'to enable lineage information and updates.'
                         u = parse.urlparse(url)
                         new_files = self._add_from_local(
-                            dataset, u.path, link, external, destination
+                            dataset=dataset,
+                            path=u.path,
+                            external=external,
+                            destination=destination
                         )
                     else:  # Remote URL
                         new_files = self._add_from_url(
@@ -312,16 +314,11 @@ class DatasetsApiMixin(object):
 
             if action == 'copy':
                 shutil.copy(src, dst)
-            elif action == 'link':
-                try:
-                    os.link(src, dst)
-                except Exception as e:
-                    raise errors.OperationError(
-                        'Could not create hard link. Retry without "--link."'
-                    ) from e
             elif action == 'symlink':
                 self._create_external_file(src, dst)
                 data['external'] = True
+            else:
+                raise errors.OperationError(f'Invalid action {action}')
 
         # Track non-symlinks in LFS
         self.track_paths_in_storage(*files_to_commit)
@@ -378,7 +375,7 @@ class DatasetsApiMixin(object):
 
         return False
 
-    def _add_from_local(self, dataset, path, link, external, destination):
+    def _add_from_local(self, dataset, path, external, destination):
         """Add a file or directory from a local filesystem."""
         src = Path(path).resolve()
 
@@ -407,9 +404,8 @@ class DatasetsApiMixin(object):
             for f in src.iterdir():
                 files.extend(
                     self._add_from_local(
-                        dataset,
-                        os.path.abspath(f),
-                        link=link,
+                        dataset=dataset,
+                        path=os.path.abspath(f),
                         external=external,
                         destination=destination
                     )
@@ -440,7 +436,7 @@ class DatasetsApiMixin(object):
         # Make sure the parent directory exists.
         destination.parent.mkdir(parents=True, exist_ok=True)
 
-        action = 'link' if link else 'symlink' if external else 'copy'
+        action = 'symlink' if external else 'copy'
 
         return [{
             'path': destination.relative_to(self.path),
