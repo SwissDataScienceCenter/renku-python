@@ -524,7 +524,6 @@ def edit(short_name, title, description, creator):
 @dataset.command()
 @click.argument('short_name')
 @click.argument('urls', nargs=-1)
-@click.option('--link', is_flag=True, help='Creates a hard link.')
 @click.option(
     '-e', '--external', is_flag=True, help='Creates a link to external data.'
 )
@@ -557,15 +556,12 @@ def edit(short_name, title, description, creator):
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
-def add(
-    short_name, urls, link, external, force, create, sources, destination, ref
-):
+def add(short_name, urls, external, force, create, sources, destination, ref):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
         urls=urls,
         short_name=short_name,
-        link=link,
         external=external,
         force=force,
         create=create,

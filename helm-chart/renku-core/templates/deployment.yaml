@@ -126,6 +126,8 @@ spec:
               value: /renku
             - name: RENKU_SVC_SWAGGER_URL
               value: /renku/openapi.json
+            - name: SERVICE_LOG_LEVEL
+              value: {{ .Values.logLevel }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
