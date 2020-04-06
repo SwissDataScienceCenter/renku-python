@@ -179,7 +179,6 @@ def add_file(
     client,
     urls,
     short_name,
-    link=False,
     external=False,
     force=False,
     create=False,
@@ -197,7 +196,6 @@ def add_file(
         client=client,
         urls=urls,
         short_name=short_name,
-        link=link,
         external=external,
         force=force,
         create=create,
@@ -215,7 +213,6 @@ def add_to_dataset(
     client,
     urls,
     short_name,
-    link=False,
     external=False,
     force=False,
     create=False,
@@ -239,8 +236,6 @@ def add_to_dataset(
         raise UsageError(
             'Cannot add multiple URLs with --source or --destination'
         )
-    if link and external:
-        raise UsageError('Cannot use "--link" and "--external" together.')
 
     if interactive:
         if total_size is None:
@@ -269,7 +264,6 @@ def add_to_dataset(
                 warning_message = client.add_data_to_dataset(
                     dataset,
                     bar,
-                    link=link,
                     external=external,
                     force=force,
                     sources=sources,
