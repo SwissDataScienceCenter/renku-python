@@ -1,0 +1,31 @@
+---
+formatters:
+  simple:
+    format: "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    level: DEBUG
+    stream: "ext://sys.stdout"
+loggers:
+  service:
+    handlers:
+      - console
+    level: DEBUG
+    propagate: false
+  worker:
+    handlers:
+      - console
+    level: DEBUG
+    propagate: false
+  scheduler:
+    handlers:
+      - console
+    level: DEBUG
+    propagate: false
+root:
+  handlers:
+    - console
+  level: DEBUG
+version: 1

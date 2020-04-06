@@ -57,3 +57,4 @@ SUPPORTED_ARCHIVES = [
 ]
 
 SERVICE_PREFIX = os.getenv('CORE_SERVICE_PREFIX', '/')
+LOGGER_CONFIG_FILE = Path('renku') / 'service' / 'logging.yaml'
