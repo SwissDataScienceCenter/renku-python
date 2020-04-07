@@ -26,6 +26,7 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
+from tests.utils import make_dataset_add_payload
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
@@ -754,15 +755,7 @@ def test_import_dataset_job_enqueue(
     doi, svc_client_cache, project, mock_redis
 ):
     """Test import a dataset."""
-    client, cache = svc_client_cache
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Renku-User-Id': 'user',
-        'Renku-User-FullName': 'full name',
-        'Renku-User-Email': 'renku@sdsc.ethz.ch',
-    }
-
+    client, headers, cache = svc_client_cache
     user = cache.ensure_user({'user_id': 'user'})
 
     project_meta = {
@@ -807,3 +800,129 @@ def test_import_dataset_job_enqueue(
     assert user_job.job_id in [
         job['job_id'] for job in response.json['result']['jobs']
     ]
+
+
+@pytest.mark.parametrize(
+    'url', [
+        'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3',
+    ]
+)
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_dataset_add_remote(
+    url, svc_client_cache, project_metadata, mock_redis
+):
+    """Test import a dataset."""
+    project, project_meta = project_metadata
+    client, headers, cache = svc_client_cache
+
+    user = cache.ensure_user({'user_id': 'user'})
+    project_obj = cache.make_project(user, project_meta)
+
+    dest = project_obj.abs_path
+    os.makedirs(dest.parent, exist_ok=True)
+    if not (project / dest).exists():
+        shutil.copytree(project, dest)
+
+    payload = make_dataset_add_payload(project_meta['project_id'], [url])
+    response = client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert_rpc_response(response)
+    assert {'files', 'dataset_name',
+            'project_id'} == set(response.json['result'])
+    job_id = response.json['result']['files'][0]['job_id']
+
+    user_job = cache.get_job(user, job_id)
+    assert job_id == user_job.job_id
+
+    response = client.get('/jobs', headers=headers)
+    assert_rpc_response(response)
+    assert response.json['result']['jobs']
+
+    assert user_job.job_id in [
+        job['job_id'] for job in response.json['result']['jobs']
+    ]
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_dataset_add_multiple_remote(
+    svc_client_cache, project_metadata, mock_redis
+):
+    """Test dataset add multiple remote files."""
+    project, project_meta = project_metadata
+    url_gist = 'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'
+    url_dbox = 'https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0'
+
+    client, headers, cache = svc_client_cache
+    user = cache.ensure_user({'user_id': 'user'})
+    project_obj = cache.make_project(user, project_meta)
+
+    dest = project_obj.abs_path
+    os.makedirs(dest.parent, exist_ok=True)
+    if not (project / dest).exists():
+        shutil.copytree(project, dest)
+
+    payload = make_dataset_add_payload(
+        project_meta['project_id'], [url_gist, url_dbox]
+    )
+    response = client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert_rpc_response(response)
+    assert {'files', 'dataset_name',
+            'project_id'} == set(response.json['result'])
+
+    for file in response.json['result']['files']:
+        job_id = file['job_id']
+
+        user_job = cache.get_job(user, job_id)
+        assert job_id == user_job.job_id
+
+        response = client.get('/jobs', headers=headers)
+        assert_rpc_response(response)
+        assert response.json['result']['jobs']
+
+        assert user_job.job_id in [
+            job['job_id'] for job in response.json['result']['jobs']
+        ]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=1, min_passes=1)
+def test_add_remote_and_local_file(svc_client_with_repo):
+    """Test dataset add remote and local files."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = make_dataset_add_payload(
+        project_id,
+        [('file_path', 'README.md'),
+         'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'],
+    )
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {'dataset_name', 'files',
+            'project_id'} == set(response.json['result'].keys())
+
+    for pair in zip(response.json['result']['files'], payload['files']):
+        if 'job_id' in pair[0]:
+            assert pair[0].pop('job_id')
+
+        assert set(pair[0].values()) == set(pair[1].values())
