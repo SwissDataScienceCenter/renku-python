@@ -26,6 +26,7 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
+from tests.utils import make_dataset_add_payload
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
@@ -809,21 +810,14 @@ def test_import_dataset_job_enqueue(
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
-def test_dataset_add_remote(url, svc_client_cache, project, mock_redis):
+def test_dataset_add_remote(
+    url, svc_client_cache, project_metadata, mock_redis
+):
     """Test import a dataset."""
+    project, project_meta = project_metadata
     client, headers, cache = svc_client_cache
+
     user = cache.ensure_user({'user_id': 'user'})
-
-    project_meta = {
-        'project_id': uuid.uuid4().hex,
-        'name': Path(project).name,
-        'fullname': 'full project name',
-        'email': 'my@email.com',
-        'owner': 'me',
-        'token': 'awesome token',
-        'git_url': 'git@gitlab.com'
-    }
-
     project_obj = cache.make_project(user, project_meta)
 
     dest = project_obj.abs_path
@@ -831,16 +825,10 @@ def test_dataset_add_remote(url, svc_client_cache, project, mock_redis):
     if not (project / dest).exists():
         shutil.copytree(project, dest)
 
+    payload = make_dataset_add_payload(project_meta['project_id'], [url])
     response = client.post(
         '/datasets.add',
-        data=json.dumps({
-            'project_id': project_meta['project_id'],
-            'dataset_name': uuid.uuid4().hex,
-            'create_dataset': True,
-            'files': [{
-                'file_url': url
-            }]
-        }),
+        data=json.dumps(payload),
         headers=headers,
     )
 
@@ -864,24 +852,16 @@ def test_dataset_add_remote(url, svc_client_cache, project, mock_redis):
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
-def test_dataset_add_multiple_remote(svc_client_cache, project, mock_redis):
+def test_dataset_add_multiple_remote(
+    svc_client_cache, project_metadata, mock_redis
+):
     """Test dataset add multiple remote files."""
+    project, project_meta = project_metadata
     url_gist = 'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'
     url_dbox = 'https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0'
 
     client, headers, cache = svc_client_cache
     user = cache.ensure_user({'user_id': 'user'})
-
-    project_meta = {
-        'project_id': uuid.uuid4().hex,
-        'name': Path(project).name,
-        'fullname': 'full project name',
-        'email': 'my@email.com',
-        'owner': 'me',
-        'token': 'awesome token',
-        'git_url': 'git@gitlab.com'
-    }
-
     project_obj = cache.make_project(user, project_meta)
 
     dest = project_obj.abs_path
@@ -889,18 +869,12 @@ def test_dataset_add_multiple_remote(svc_client_cache, project, mock_redis):
     if not (project / dest).exists():
         shutil.copytree(project, dest)
 
+    payload = make_dataset_add_payload(
+        project_meta['project_id'], [url_gist, url_dbox]
+    )
     response = client.post(
         '/datasets.add',
-        data=json.dumps({
-            'project_id': project_meta['project_id'],
-            'dataset_name': uuid.uuid4().hex,
-            'create_dataset': True,
-            'files': [{
-                'file_url': url_gist,
-            }, {
-                'file_url': url_dbox,
-            }]
-        }),
+        data=json.dumps(payload),
         headers=headers,
     )
 
@@ -945,18 +919,12 @@ def test_add_remote_and_local_file(svc_client_with_repo):
     assert {'dataset_name'} == set(response.json['result'].keys())
     assert payload['dataset_name'] == response.json['result']['dataset_name']
 
-    files = [{
-        'file_path': 'README.md'
-    }, {
-        'file_url': (
-            'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'
-        )
-    }]
-    payload = {
-        'project_id': project_id,
-        'dataset_name': payload['dataset_name'],
-        'files': files,
-    }
+    payload = make_dataset_add_payload(
+        project_id,
+        [('file_path', 'README.md'),
+         'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'],
+        dataset_name=payload['dataset_name']
+    )
 
     response = svc_client.post(
         '/datasets.add',
@@ -970,7 +938,7 @@ def test_add_remote_and_local_file(svc_client_with_repo):
     assert {'dataset_name', 'files',
             'project_id'} == set(response.json['result'].keys())
 
-    for pair in zip(response.json['result']['files'], files):
+    for pair in zip(response.json['result']['files'], payload['files']):
         if 'job_id' in pair[0]:
             assert pair[0].pop('job_id')
 

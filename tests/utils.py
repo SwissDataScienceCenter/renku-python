@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test utility functions."""
+import uuid
 from contextlib import contextmanager
 
 import pytest
@@ -35,3 +36,21 @@ def raises(error):
                 raise e
 
         return not_raises()
+
+
+def make_dataset_add_payload(project_id, urls, dataset_name=None):
+    """Make dataset add request payload."""
+    files = []
+    for url in urls:
+        if isinstance(url, tuple):
+            files.append({url[0], url[1]})
+
+        if isinstance(url, str):
+            files.append({'file_url': url})
+
+    return {
+        'project_id': project_id,
+        'dataset_name': dataset_name or uuid.uuid4().hex,
+        'create_dataset': True,
+        'files': files
+    }

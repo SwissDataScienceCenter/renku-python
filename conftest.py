@@ -180,6 +180,22 @@ def project(repository):
 
 
 @pytest.fixture
+def project_metadata(project):
+    """Create project with metadata."""
+    metadata = {
+        'project_id': uuid.uuid4().hex,
+        'name': Path(project).name,
+        'fullname': 'full project name',
+        'email': 'my@email.com',
+        'owner': 'me',
+        'token': 'awesome token',
+        'git_url': 'git@gitlab.com'
+    }
+
+    yield project, metadata
+
+
+@pytest.fixture
 def client(project):
     """Return a Renku repository."""
     from renku.core.management import LocalClient
