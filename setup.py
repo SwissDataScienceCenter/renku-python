@@ -153,7 +153,7 @@ install_requires = [
     'cwltool==3.0.20200317203547',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
-    'flask==1.1.1',
+    'flask==1.1.2',
     'flask-apispec==0.8.7',
     'flask-swagger-ui==3.25.0',
     'gitdb2==3.0.1',
