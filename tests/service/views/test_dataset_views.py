@@ -899,33 +899,16 @@ def test_dataset_add_multiple_remote(
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=1, min_passes=1)
 def test_add_remote_and_local_file(svc_client_with_repo):
     """Test dataset add remote and local files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
-    payload = {
-        'project_id': project_id,
-        'dataset_name': '{0}'.format(uuid.uuid4().hex),
-    }
-
-    response = svc_client.post(
-        '/datasets.create',
-        data=json.dumps(payload),
-        headers=headers,
-    )
-    assert response
-    assert_rpc_response(response)
-
-    assert {'dataset_name'} == set(response.json['result'].keys())
-    assert payload['dataset_name'] == response.json['result']['dataset_name']
 
     payload = make_dataset_add_payload(
         project_id,
         [('file_path', 'README.md'),
          'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3'],
-        dataset_name=payload['dataset_name']
     )
-
     response = svc_client.post(
         '/datasets.add',
         data=json.dumps(payload),

@@ -38,12 +38,16 @@ def raises(error):
         return not_raises()
 
 
-def make_dataset_add_payload(project_id, urls, dataset_name=None):
+def make_dataset_add_payload(
+    project_id,
+    urls,
+    dataset_name=None
+):
     """Make dataset add request payload."""
     files = []
     for url in urls:
         if isinstance(url, tuple):
-            files.append({url[0], url[1]})
+            files.append({url[0]: url[1]})
 
         if isinstance(url, str):
             files.append({'file_url': url})
