@@ -22,8 +22,7 @@ import time
 from datetime import datetime
 
 from renku.service.cache import ServiceCache
-from renku.service.cache.models.job import USER_JOB_STATE_COMPLETED, \
-    USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_FAILED, \
+from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, \
     USER_JOB_STATE_IN_PROGRESS
 
 
@@ -36,10 +35,10 @@ def file_cleanup_lock_check(jobs, file):
     return False
 
 
-def file_cleanup_ttl_check(
-    file, ttl=int(os.getenv('RENKU_SVC_CLEANUP_TTL_FILES', 1800))
-):
+def file_cleanup_ttl_check(file, ttl=None):
     """Check if file should be deleted."""
+    ttl = ttl or int(os.getenv('RENKU_SVC_CLEANUP_TTL_FILES', 1800))
+
     # If record does not contain created_at,
     # it means its an old record, and we should mark it for deletion.
     created_at = (file.created_at -
@@ -83,10 +82,9 @@ def cache_files_cleanup():
                 file.delete()
 
 
-def project_cleanup_ttl_check(
-    project, ttl=int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
-):
+def project_cleanup_ttl_check(project, ttl=None):
     """Check if file should be deleted."""
+    ttl = ttl or int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
     # If record does not contain created_at,
     # it means its an old record, and we should mark it for deletion.
     created_at = (project.created_at -

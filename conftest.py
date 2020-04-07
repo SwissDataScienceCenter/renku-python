@@ -854,12 +854,12 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
 
 
 @pytest.fixture
-def service_job(svc_client, mock_redis):
+def service_job(svc_client, mock_redis, monkeypatch):
     """Ensure correct environment during testing of service jobs."""
     old_environ = dict(os.environ)
 
-    os.environ['RENKU_SVC_CLEANUP_TTL_FILES'] = '0'
-    os.environ['RENKU_SVC_CLEANUP_TTL_PROJECTS'] = '0'
+    monkeypatch.setenv('RENKU_SVC_CLEANUP_TTL_FILES', '0')
+    monkeypatch.setenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', '0')
 
     try:
         yield svc_client, mock_redis
