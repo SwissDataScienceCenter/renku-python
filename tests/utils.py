@@ -38,11 +38,7 @@ def raises(error):
         return not_raises()
 
 
-def make_dataset_add_payload(
-    project_id,
-    urls,
-    dataset_name=None
-):
+def make_dataset_add_payload(project_id, urls, dataset_name=None):
     """Make dataset add request payload."""
     files = []
     for url in urls:
