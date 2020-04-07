@@ -59,8 +59,8 @@ def cache_files_cleanup():
 
     for user, files in cache.user_files():
         jobs = [
-            job for job in cache.get_jobs(user)
-            if job.state in [USER_JOB_STATE_COMPLETED, USER_JOB_STATE_FAILED]
+            job for job in cache.get_jobs(user) if job.state in
+            [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
         ]
 
         for file in files:
