@@ -77,6 +77,7 @@ class DatasetAddRequest(Schema):
     commit_message = fields.String()
     dataset_name = fields.String(required=True)
     create_dataset = fields.Boolean(missing=False)
+    force = fields.Boolean(missing=False)
     project_id = fields.String(required=True)
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
 
