@@ -210,6 +210,8 @@ def project_clone(user, cache):
         }
     )
 
+    # TODO: switch repo?
+
     project = cache.make_project(user, ctx)
 
     return result_response(ProjectCloneResponseRPC(), project)

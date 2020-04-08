@@ -772,6 +772,48 @@ def svc_client_with_repo(integration_lifecycle):
     yield svc_client, deepcopy(headers), project_id, url_components
 
 
+@pytest.fixture(scope='module')
+def svc_client_with_templates(svc_client, mock_redis):
+    """Setup and teardown steps for templates tests."""
+    from renku.core.utils.templates import TEMPLATE
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': 'b4b4de0eda0f471ab82702bd5c367fa7',
+        'Renku-User-FullName': 'Just Sam',
+        'Renku-User-Email': 'contact@justsam.io',
+        'Authorization': 'Bearer {0}'.format(os.getenv('IT_OAUTH_GIT_TOKEN')),
+    }
+
+    payload = {'git_url': TEMPLATE['URL']}
+
+    response = svc_client.post(
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
+    )
+
+    assert response
+    assert {'result'} == set(response.json.keys())
+
+    project_id = response.json['result']['project_id']
+    assert isinstance(uuid.UUID(project_id), uuid.UUID)
+
+    yield svc_client, headers, project_id
+
+    # TODO: handle branch... not sure if here
+    # Teardown step: Delete all branches except master (if needed).
+    # if integration_repo_path(headers, url_components).exists():
+    #     with integration_repo(headers, url_components) as repo:
+    #         for repo_branch in repo.references:
+    #             if repo_branch.name == 'master':
+    #                 continue
+    #             try:
+    #                 repo.remote().push(
+    #                     refspec=(':{0}'.format(repo_branch.name))
+    #                 )
+    #             except git.exc.GitCommandError:
+    #                 continue
+
+
 @pytest.fixture(
     params=[
         {
@@ -829,6 +871,14 @@ def svc_client_with_repo(integration_lifecycle):
         },
         {
             'url': '/datasets.list',
+            'allowed_method': 'GET',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/templates.read_manifest',
             'allowed_method': 'GET',
             'headers': {
                 'Content-Type': 'application/json',
