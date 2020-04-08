@@ -17,8 +17,9 @@
 # limitations under the License.
 """Renku core."""
 import os
-
+import logging
 import requests
+
 from requests.adapters import TimeoutSauce
 
 RENKU_REQUESTS_TIMEOUT_SECONDS = float(
@@ -41,3 +42,4 @@ class CustomTimeout(TimeoutSauce):
 
 
 requests.adapters.TimeoutSauce = CustomTimeout
+logging.getLogger('py-filelock.filelock').setLevel(logging.ERROR)
