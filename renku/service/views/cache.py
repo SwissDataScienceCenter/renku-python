@@ -163,33 +163,15 @@ def upload_file_view(user, cache):
     return result_response(FileUploadResponseRPC(), {'files': files})
 
 
-@use_kwargs(ProjectCloneRequest)
-@marshal_with(ProjectCloneResponseRPC)
-@header_doc(
-    'Clone a remote project. If the project is cached already, '
-    'new clone operation will override the old cache state.',
-    tags=(CACHE_BLUEPRINT_TAG, )
-)
-@cache_blueprint.route(
-    '/cache.project_clone',
-    methods=['POST'],
-    provide_automatic_options=False,
-)
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
 @requires_cache
-@requires_identity
-@accepts_json
-def project_clone(user, cache):
-    """Clone a remote repository."""
+def _project_clone(cache, user_data, data=None):
+    """Clones the project for a given user."""
     ctx = ProjectCloneContext().load(
-        (lambda a, b: a.update(b) or a)(request.json, user),
+        (lambda a, b: a.update(b) or a)(data or request.json, user_data),
         unknown=EXCLUDE,
     )
-    local_path = make_project_path(user, ctx)
-    user = cache.ensure_user(user)
+    local_path = make_project_path(user_data, ctx)
+    user = cache.ensure_user(user_data)
 
     if local_path.exists():
         shutil.rmtree(str(local_path))
@@ -211,6 +193,30 @@ def project_clone(user, cache):
     )
 
     project = cache.make_project(user, ctx)
+    return project
+
+
+@use_kwargs(ProjectCloneRequest)
+@marshal_with(ProjectCloneResponseRPC)
+@header_doc(
+    'Clone a remote project. If the project is cached already, '
+    'new clone operation will override the old cache state.',
+    tags=(CACHE_BLUEPRINT_TAG, )
+)
+@cache_blueprint.route(
+    '/cache.project_clone',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_base_except
+@handle_git_except
+@handle_renku_except
+@handle_validation_except
+@requires_identity
+@accepts_json
+def project_clone(user_data):
+    """Clone a remote repository."""
+    project = _project_clone(user_data)
 
     return result_response(ProjectCloneResponseRPC(), project)
 
