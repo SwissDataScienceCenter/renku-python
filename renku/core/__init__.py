@@ -16,10 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku core."""
-import os
 import logging
-import requests
+import os
 
+import requests
 from requests.adapters import TimeoutSauce
 
 RENKU_REQUESTS_TIMEOUT_SECONDS = float(
