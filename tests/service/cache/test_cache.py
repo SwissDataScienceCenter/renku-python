@@ -24,7 +24,7 @@ import pytest
 
 def test_service_cache_ensure_user(svc_client_cache):
     """Test service cache user creation."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
     expected_id = uuid.uuid4().hex
     user = cache.ensure_user({'user_id': expected_id})
 
@@ -34,7 +34,7 @@ def test_service_cache_ensure_user(svc_client_cache):
 
 def test_service_cache_get_users(svc_client_cache):
     """Test getting multiple users."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     expected_users = set([
         cache.ensure_user({
@@ -49,7 +49,7 @@ def test_service_cache_get_users(svc_client_cache):
 
 def test_service_cache_get_user(svc_client_cache):
     """Test getting a single user."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
     expected_id = uuid.uuid4().hex
     expected_user = cache.ensure_user({'user_id': expected_id})
     assert expected_user
@@ -65,7 +65,7 @@ def test_service_cache_get_user(svc_client_cache):
 
 def test_service_cache_make_job(svc_client_cache):
     """Test service cache jobs."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'testuser'})
     job_data = {
@@ -88,7 +88,7 @@ def test_service_cache_make_job(svc_client_cache):
 
 def test_service_cache_get_job(svc_client_cache):
     """Test service get user job."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'testuser'})
     job_data = {
@@ -110,7 +110,7 @@ def test_service_cache_get_job(svc_client_cache):
 
 def test_service_cache_get_jobs(svc_client_cache):
     """Test service get user jobs."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'testuser1'})
     user2 = cache.ensure_user({'user_id': 'testuser2'})
@@ -134,7 +134,7 @@ def test_service_cache_get_jobs(svc_client_cache):
 
 def test_service_cache_get_job_none(svc_client_cache):
     """Test service get user jobs."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'testuser'})
     job_data = {
@@ -151,7 +151,7 @@ def test_service_cache_get_job_none(svc_client_cache):
 
 def test_service_cache_set_file(svc_client_cache):
     """Test service set user file."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': uuid.uuid4().hex})
 
@@ -169,7 +169,7 @@ def test_service_cache_set_file(svc_client_cache):
 
 def test_service_cache_set_files(svc_client_cache):
     """Test service set user files."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': uuid.uuid4().hex})
 
@@ -193,7 +193,7 @@ def test_service_cache_set_files(svc_client_cache):
 
 def test_service_cache_get_file(svc_client_cache):
     """Test service get user file."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': uuid.uuid4().hex})
     file_obj = cache.set_file(
@@ -212,7 +212,7 @@ def test_service_cache_get_file(svc_client_cache):
 
 def test_service_cache_get_files(svc_client_cache):
     """Test service get user files."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': uuid.uuid4().hex})
 
@@ -238,7 +238,7 @@ def test_service_cache_get_files(svc_client_cache):
 
 def test_service_cache_invalidate_file(svc_client_cache):
     """Test service invalidate user file."""
-    client, cache = svc_client_cache
+    client, _, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': uuid.uuid4().hex})
     file_obj = cache.set_file(

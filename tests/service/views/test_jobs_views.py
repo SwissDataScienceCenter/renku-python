@@ -55,7 +55,7 @@ def test_jobs_view_empty_result(svc_client):
 @pytest.mark.service
 def test_jobs_view_expected_job(svc_client_cache):
     """Check non-empty result for user requested job."""
-    svc_client, cache = svc_client_cache
+    svc_client, headers, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'user'})
     job_data = {
@@ -69,11 +69,6 @@ def test_jobs_view_expected_job(svc_client_cache):
     }
     job = cache.make_job(user, job_data)
 
-    headers = {
-        'Content-Type': 'application/json',
-        'accept': 'application/json',
-        'Renku-User-Id': 'user'
-    }
     response = svc_client.get('/jobs', headers=headers)
     assert 1 == len(response.json['result']['jobs'])
     assert {
@@ -92,7 +87,7 @@ def test_jobs_view_expected_job(svc_client_cache):
 @pytest.mark.service
 def test_jobs_view_check_exclusion(svc_client_cache):
     """Check non-empty result for user requested jobs."""
-    svc_client, cache = svc_client_cache
+    svc_client, headers, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'user'})
     excluded_user = cache.ensure_user({'user_id': 'excluded_user'})
@@ -118,11 +113,6 @@ def test_jobs_view_check_exclusion(svc_client_cache):
 
         assert job1.job_id != job2.job_id
 
-    headers = {
-        'Content-Type': 'application/json',
-        'accept': 'application/json',
-        'Renku-User-Id': 'user'
-    }
     response = svc_client.get('/jobs', headers=headers)
 
     assert {'result'} == set(response.json.keys())
@@ -163,7 +153,7 @@ def test_job_details_empty(svc_client):
 @pytest.mark.service
 def test_job_details_2user(svc_client_cache):
     """Check job details for a user."""
-    svc_client, cache = svc_client_cache
+    svc_client, headers, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'user'})
     jobs = [{
@@ -179,13 +169,7 @@ def test_job_details_2user(svc_client_cache):
     for job_data in jobs:
         cache.make_job(user, job_data)
 
-    headers = {
-        'Content-Type': 'application/json',
-        'accept': 'application/json',
-        'Renku-User-Id': 'user'
-    }
     user_headers = copy.deepcopy(headers)
-
     headers['Renku-User-Id'] = 'excluded_user'
     excluded_user_headers = copy.deepcopy(headers)
 

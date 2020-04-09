@@ -159,18 +159,12 @@ def read_template_manifest(folder, checkout=False):
 
 
 def create_from_template(
-    template_path,
-    client,
-    name=None,
-    description=None,
-    metadata={},
-    force=None
+    template_path, client, name=None, metadata={}, force=None
 ):
     """Initialize a new project from a template."""
     with client.commit():
         client.init_repository(force)
         metadata['name'] = name
-        metadata['description'] = description
         with client.with_metadata(name=name) as project_metadata:
             client.import_from_template(template_path, metadata, force)
             project_metadata.updated = datetime.now(timezone.utc)
