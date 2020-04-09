@@ -18,7 +18,7 @@
 """Dataset jobs."""
 from urllib3.exceptions import HTTPError
 
-from renku.core.commands.dataset import import_dataset
+from renku.core.commands.dataset import add_file, import_dataset
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
@@ -97,3 +97,33 @@ def dataset_import(
         user_job.fail_job(error)
 
         raise RuntimeError(error)
+
+
+@requires_cache
+def dataset_add_remote_file(
+    cache, user, user_job_id, project_id, create_dataset, commit_message,
+    dataset_name, url
+):
+    """Add a remote file to a specified dataset."""
+    user = cache.ensure_user(user)
+    user_job = cache.get_job(user, user_job_id)
+    project = cache.get_project(user, project_id)
+
+    try:
+        user_job.in_progress()
+
+        with chdir(project.abs_path):
+            urls = url if isinstance(url, list) else [url]
+            add_file(
+                urls,
+                dataset_name,
+                create=create_dataset,
+                commit_message=commit_message
+            )
+
+            if not repo_sync(project.abs_path):
+                user_job.fail_job('repo sync failed')
+
+            user_job.complete()
+    except (HTTPError, BaseException) as e:
+        user_job.fail_job(str(e))
