@@ -453,6 +453,12 @@ def export_dataset(
     except KeyError:
         raise ParameterError('Unknown provider.')
 
+    provider.set_parameters(
+        client,
+        dataverse_server_url=dataverse_server_url,
+        dataverse_name=dataverse_name
+    )
+
     selected_tag = None
     selected_commit = client.repo.head.commit
 
@@ -491,35 +497,6 @@ def export_dataset(
         access_token = client.get_value(provider_id, config_key_secret)
         exporter = provider.get_exporter(dataset_, access_token=access_token)
 
-        if provider_id == 'dataverse':
-            if not dataverse_name:
-                raise errors.ParameterError('Dataverse name is required.')
-
-            CONFIG_BASE_URL = 'server_url'
-
-            if not dataverse_server_url:
-                dataverse_server_url = client.get_value(
-                    provider_id, CONFIG_BASE_URL
-                )
-            else:
-                client.set_value(
-                    provider_id,
-                    CONFIG_BASE_URL,
-                    dataverse_server_url,
-                    global_only=True
-                )
-
-            if not dataverse_server_url:
-                raise errors.ParameterError(
-                    'Dataverse server URL is required.'
-                )
-
-            exporter = provider.get_exporter(
-                dataset_,
-                access_token=access_token,
-                server_url=dataverse_server_url
-            )
-
         if access_token is None:
             if handle_access_token_fn:
                 access_token = handle_access_token_fn(exporter)
@@ -533,12 +510,7 @@ def export_dataset(
             exporter.set_access_token(access_token)
 
         try:
-            destination = exporter.export(
-                publish=publish,
-                tag=selected_tag,
-                server_url=dataverse_server_url,
-                dataverse_name=dataverse_name
-            )
+            destination = exporter.export(publish=publish, tag=selected_tag)
         except errors.AuthenticationError:
             client.remove_value(
                 provider_id, config_key_secret, global_only=True

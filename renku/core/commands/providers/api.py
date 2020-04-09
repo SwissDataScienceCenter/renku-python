@@ -26,8 +26,12 @@ class ProviderApi(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_exporter(self, dataset, access_token, **kwargs):
+    def get_exporter(self, dataset, access_token):
         """Get export manager."""
+        pass
+
+    def set_parameters(self, client, **kwargs):
+        """Set and validate required parameters for a provider."""
         pass
 
     @staticmethod
