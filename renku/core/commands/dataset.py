@@ -294,7 +294,7 @@ def add_to_dataset(
 
     except DatasetNotFound:
         raise DatasetNotFound(
-            'Dataset "{0}" does not exist.\n'
+            message='Dataset "{0}" does not exist.\n'
             'Use "renku dataset create {0}" to create the dataset or retry '
             '"renku dataset add {0}" command with "--create" option for '
             'automatic dataset creation.'.format(short_name)
@@ -446,7 +446,7 @@ def export_dataset(
 
     dataset_ = client.load_dataset(short_name)
     if not dataset_:
-        raise DatasetNotFound()
+        raise DatasetNotFound(name=short_name)
 
     try:
         provider = ProviderFactory.from_id(provider_id)
@@ -473,7 +473,7 @@ def export_dataset(
     with client.with_commit(selected_commit):
         dataset_ = client.load_dataset(short_name)
         if not dataset_:
-            raise DatasetNotFound()
+            raise DatasetNotFound(name=short_name)
 
         access_token = client.get_value(provider_id, config_key_secret)
         exporter = provider.get_exporter(dataset_, access_token=access_token)
