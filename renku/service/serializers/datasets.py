@@ -67,6 +67,8 @@ class DatasetAddFile(Schema):
 
     file_id = fields.String()
     file_path = fields.String()
+    file_url = fields.String()
+    job_id = fields.String()
 
 
 class DatasetAddRequest(Schema):

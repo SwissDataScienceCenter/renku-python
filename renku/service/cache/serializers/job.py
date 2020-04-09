@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache job related models."""
+import uuid
 from datetime import datetime
 
 from marshmallow import Schema, fields, post_load
@@ -29,7 +30,7 @@ class JobSchema(Schema):
     created_at = fields.DateTime(missing=datetime.utcnow)
     updated_at = fields.DateTime(missing=datetime.utcnow)
 
-    job_id = fields.String(required=True)
+    job_id = fields.String(missing=lambda: uuid.uuid4().hex)
     user_id = fields.String(required=True)
 
     state = fields.String(required=False, missing=USER_JOB_STATE_ENQUEUED)

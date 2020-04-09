@@ -180,6 +180,22 @@ def project(repository):
 
 
 @pytest.fixture
+def project_metadata(project):
+    """Create project with metadata."""
+    metadata = {
+        'project_id': uuid.uuid4().hex,
+        'name': Path(project).name,
+        'fullname': 'full project name',
+        'email': 'my@email.com',
+        'owner': 'me',
+        'token': 'awesome token',
+        'git_url': 'git@gitlab.com'
+    }
+
+    yield project, metadata
+
+
+@pytest.fixture
 def client(project):
     """Return a Renku repository."""
     from renku.core.management import LocalClient
@@ -680,7 +696,14 @@ def svc_client_cache(mock_redis):
     ctx = flask_app.app_context()
     ctx.push()
 
-    yield testing_client, flask_app.config.get('cache')
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': 'user',
+        'Renku-User-FullName': 'full name',
+        'Renku-User-Email': 'renku@sdsc.ethz.ch',
+    }
+
+    yield testing_client, headers, flask_app.config.get('cache')
 
     ctx.pop()
 
