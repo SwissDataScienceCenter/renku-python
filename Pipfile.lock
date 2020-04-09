@@ -233,10 +233,10 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:446ac1b16d480dcd26d19a490371ab652e424eecb0c526400217261a6d2143ce",
-                "sha256:7126c4a69a3fc8e50588b96e32f381ac9d0c23d6ae50bd4c7bbc943830962b28"
+                "sha256:05234d38c96871fbecdeddcc145bc4f0f5547719f87250bb8425d65030b47d52",
+                "sha256:edcfc4b699394938d6c1ff6d3f192f8bfcb801231c31fac5458041352fb7c953"
             ],
-            "version": "==3.0.20200317203547"
+            "version": "==3.0.20200324120055"
         },
         "decorator": {
             "hashes": [
