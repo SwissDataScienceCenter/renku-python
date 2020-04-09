@@ -69,13 +69,7 @@ def test_cleanup_old_files(
 @pytest.mark.jobs
 def test_cleanup_files_old_keys(svc_client_cache, service_job, tmp_path):
     """Cleanup old project."""
-    svc_client, cache = svc_client_cache
-
-    headers = {
-        'Content-Type': 'application/json',
-        'accept': 'application/json',
-        'Renku-User-Id': 'user'
-    }
+    svc_client, headers, cache = svc_client_cache
 
     user = cache.ensure_user({'user_id': 'user'})
     mydata = tmp_path / 'mydata.json'
@@ -144,15 +138,9 @@ def test_cleanup_old_project(
 @pytest.mark.jobs
 def test_cleanup_project_old_keys(svc_client_cache, service_job):
     """Cleanup old project with old hset keys."""
-    svc_client, cache = svc_client_cache
+    svc_client, headers, cache = svc_client_cache
 
-    headers = {
-        'Content-Type': 'application/json',
-        'accept': 'application/json',
-        'Renku-User-Id': 'user'
-    }
     user = cache.ensure_user({'user_id': 'user'})
-
     project = {
         'project_id': uuid.uuid4().hex,
         'name': 'my-project',
