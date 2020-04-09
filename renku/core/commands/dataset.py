@@ -180,6 +180,7 @@ def add_file(
     short_name,
     external=False,
     force=False,
+    overwrite=False,
     create=False,
     sources=(),
     destination='',
@@ -197,6 +198,7 @@ def add_file(
         short_name=short_name,
         external=external,
         force=force,
+        overwrite=overwrite,
         create=create,
         sources=sources,
         destination=destination,
@@ -214,6 +216,7 @@ def add_to_dataset(
     short_name,
     external=False,
     force=False,
+    overwrite=False,
     create=False,
     sources=(),
     destination='',
@@ -231,10 +234,8 @@ def add_to_dataset(
     """Add data to a dataset."""
     if len(urls) == 0:
         raise UsageError('No URL is specified')
-    if (sources or destination) and len(urls) > 1:
-        raise UsageError(
-            'Cannot add multiple URLs with --source or --destination'
-        )
+    if sources and len(urls) > 1:
+        raise UsageError('Cannot use "--source" with multiple URLs.')
 
     if interactive:
         if total_size is None:
@@ -260,11 +261,12 @@ def add_to_dataset(
             short_name=short_name, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
-                warning_message = client.add_data_to_dataset(
+                warning_messages = client.add_data_to_dataset(
                     dataset,
                     bar,
                     external=external,
                     force=force,
+                    overwrite=overwrite,
                     sources=sources,
                     destination=destination,
                     ref=ref,
@@ -274,8 +276,9 @@ def add_to_dataset(
                     progress=progress,
                 )
 
-            if warning_message:
-                click.echo(WARNING + warning_message)
+            if warning_messages:
+                for msg in warning_messages:
+                    click.echo(WARNING + msg)
 
             if with_metadata:
                 for file_ in dataset.files:
@@ -290,7 +293,7 @@ def add_to_dataset(
 
     except DatasetNotFound:
         raise DatasetNotFound(
-            'Dataset "{0}" does not exist.\n'
+            message='Dataset "{0}" does not exist.\n'
             'Use "renku dataset create {0}" to create the dataset or retry '
             '"renku dataset add {0}" command with "--create" option for '
             'automatic dataset creation.'.format(short_name)
@@ -455,7 +458,7 @@ def export_dataset(
 
     dataset_ = client.load_dataset(short_name)
     if not dataset_:
-        raise DatasetNotFound()
+        raise DatasetNotFound(name=short_name)
 
     try:
         provider = ProviderFactory.from_id(provider_id)
@@ -482,7 +485,7 @@ def export_dataset(
     with client.with_commit(selected_commit):
         dataset_ = client.load_dataset(short_name)
         if not dataset_:
-            raise DatasetNotFound()
+            raise DatasetNotFound(name=short_name)
 
         access_token = client.get_value(provider_id, config_key_secret)
         exporter = provider.get_exporter(dataset_, access_token=access_token)
