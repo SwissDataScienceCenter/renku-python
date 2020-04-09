@@ -924,6 +924,8 @@ def test_dataset_unlink_file(tmpdir, runner, client):
             for file_ in dataset.files
         }
 
+    commit_sha_before = client.repo.head.object.hexsha
+
     result = runner.invoke(
         cli, [
             'dataset', 'unlink', 'my-dataset', '--include', new_file.basename,
@@ -932,6 +934,9 @@ def test_dataset_unlink_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
     assert not client.repo.is_dirty()
+
+    commit_sha_after = client.repo.head.object.hexsha
+    assert commit_sha_before != commit_sha_after
 
     with client.with_dataset('my-dataset') as dataset:
         assert new_file.basename not in [
