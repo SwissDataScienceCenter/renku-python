@@ -662,7 +662,7 @@ def test_dataset_export(runner, client, project):
     )
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert 'Dataset is not found.' in result.output
+    assert 'Dataset "doesnotexists" is not found.' in result.output
 
 
 @pytest.mark.integration
