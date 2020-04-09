@@ -33,8 +33,9 @@ from renku.core.management.config import RENKU_HOME
 TEMPLATE_URL = (
     'https://github.com/SwissDataScienceCenter/renku-project-template'
 )
-TEMPLATE_NAME = 'Basic Python Project'
-TEMPLATE_REF = '0.1.5'
+TEMPLATE_ID = 'python-minimal'
+TEMPLATE_INDEX = 1
+TEMPLATE_REF = '0.1.9'
 METADATA = {'name': 'myname', 'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 
@@ -63,7 +64,7 @@ def test_fetch_template(url, ref, result, error):
 def test_read_template_manifest():
     """Test reading template manifest file.
 
-    It creates a fake manifest file and it verifies it's read propery.
+    It creates a fake manifest file and it verifies it's read property.
     """
     with TemporaryDirectory() as tempdir:
         template_file = Path(tempdir) / TEMPLATE_MANIFEST
@@ -82,10 +83,13 @@ def test_read_template_manifest():
             '  folder: first\n'
             '  name: Basic Project 1\n'
             '  description: Description 1\n'
+            '  variables: {}\n'
             '-\n'
             '  folder: second\n'
             '  name: Basic Project 2\n'
             '  description: Description 2\n'
+            '  variables:\n'
+            '    custom: Custom Value\n'
         )
 
         manifest = read_template_manifest(Path(tempdir), checkout=False)
@@ -94,6 +98,14 @@ def test_read_template_manifest():
         assert 'second' == manifest[1]['folder']
         assert 'Basic Project 1' == manifest[0]['name']
         assert 'Description 2' == manifest[1]['description']
+
+        variables1 = manifest[0]['variables']
+        variables2 = manifest[1]['variables']
+        assert 0 == len(variables1)
+        assert 1 == len(variables2)
+        assert 1 == len(variables2.keys())
+        assert 'custom' in variables2.keys()
+        assert 'Custom Value' == variables2['custom']
 
         template_file.write_text(
             '-\n'
@@ -167,8 +179,9 @@ def test_create_from_template(local_client):
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]['folder']
         create_from_template(
-            template_path, local_client, METADATA['name'],
-            METADATA['description']
+            template_path,
+            local_client,
+            METADATA['name'],
         )
         template_files = [
             f

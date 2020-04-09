@@ -19,39 +19,87 @@
 from pathlib import Path
 
 import pytest
-from tests.core.commands.test_init import TEMPLATE_NAME, TEMPLATE_REF, \
-    TEMPLATE_URL
+from tests.core.commands.test_init import TEMPLATE_ID, TEMPLATE_INDEX, \
+    TEMPLATE_REF, TEMPLATE_URL
+from tests.utils import raises
 
 from renku.cli import cli
-from renku.cli.init import create_template_sentence
+from renku.cli.init import create_template_sentence, parse_parameters
+from renku.core import errors
 
-INIT = ['init', 'test-new-project', '--template', TEMPLATE_NAME]
+INIT = ['init', 'test-new-project', '--template-id', TEMPLATE_ID]
 INIT_REMOTE = [
     '--template-source', TEMPLATE_URL, '--template-ref', TEMPLATE_REF
 ]
 INIT_FORCE = ['--force']
-INIT_VARIABLES = ['--template-variables']
+INIT_INDEX = ['init', 'test-new-project-2', '--template-index', TEMPLATE_INDEX]
+INIT_ID = ['--template-id', TEMPLATE_ID]
+LIST_TEMPLATES = ['--list-templates']
+PARAMETERS_CORRECT = ['--parameter', 'p1=v1', '--parameter', 'p2=v2']
+PARAMETER_NO_EQUAL = ['--parameter', 'p3:v3']
+PARAMETER_EARLY_EQUAL = ['--parameter', '=p4v3']
+
+
+def test_parse_parameters():
+    def clean_param(p):
+        return [v for v in p if v != '--parameter']
+
+    parsed = parse_parameters(None, None, clean_param(PARAMETERS_CORRECT))
+    keys = parsed.keys()
+    assert 2 == len(keys)
+    assert 'p1' in keys
+    assert 'p2' in keys
+    assert 'v1' == parsed['p1']
+    assert 'v2' == parsed['p2']
+    with raises(errors.ParameterError):
+        parsed = parse_parameters(
+            None, None,
+            clean_param(PARAMETERS_CORRECT) + clean_param(PARAMETER_NO_EQUAL)
+        )
+    with raises(errors.ParameterError):
+        parsed = parse_parameters(
+            None, None,
+            clean_param(PARAMETERS_CORRECT) +
+            clean_param(PARAMETER_EARLY_EQUAL)
+        )
 
 
 def test_template_selection_helpers():
     templates = [{
         'name': 'Template Python',
+        'folder': 'folder_python',
         'description': 'Description Python'
     }, {
         'name': 'Template R',
-        'description': 'Description R'
+        'folder': 'folder_R',
+        'description': 'Description R',
+        'variables': {
+            'custom': 'random data'
+        }
     }]
-    instructions = 'Please choose a template by typing the number'
+    instructions = 'Please choose a template by typing the index'
     sentence = create_template_sentence(templates)
     stripped_sentence = ' '.join(sentence.split())
-    assert '1 Template Python Description Python' in stripped_sentence
-    assert '2 Template R Description R' in stripped_sentence
+    assert (
+        '1 folder_python Template Python: Description Python'
+    ) in stripped_sentence
+    assert '2 folder_R Template R: Description R' in stripped_sentence
     assert instructions not in stripped_sentence
     full_sentence = create_template_sentence(templates, True)
     assert instructions in full_sentence
+    assert 'custom: random data' in full_sentence
 
 
-@pytest.mark.integration
+def test_list_templates(isolated_runner):
+    """Test listing templates."""
+    new_project = Path('test-new-project')
+    assert not new_project.exists()
+    result = isolated_runner.invoke(cli, INIT + LIST_TEMPLATES)
+    assert 0 == result.exit_code
+    assert not new_project.exists()
+    assert TEMPLATE_ID in result.output
+
+
 def test_init(isolated_runner):
     """Test project initialization from template."""
     # create the project
@@ -76,8 +124,31 @@ def test_init(isolated_runner):
     assert (new_project / '.renku' / 'renku.ini').exists()
     assert (new_project / '.renku' / 'metadata.yml').exists()
 
+    # init using index instead of id
+    new_project_2 = Path('test-new-project-2')
+    result = isolated_runner.invoke(cli, INIT_INDEX)
+    assert 0 == result.exit_code
+    assert new_project_2.exists()
+    assert (new_project_2 / '.renku').exists()
+    assert (new_project_2 / '.renku' / 'renku.ini').exists()
+    assert (new_project_2 / '.renku' / 'metadata.yml').exists()
 
-@pytest.mark.integration
+    # verify both init lead to the same result
+    template_files = [
+        f for f in new_project.glob('**/*') if '.git' not in str(f)
+    ]
+    for template_file in template_files:
+        expected_file = new_project_2 / template_file.relative_to(new_project)
+        assert expected_file.exists()
+
+    # verify providing both index and id fails
+    result = isolated_runner.invoke(cli, INIT_INDEX + INIT_ID + INIT_FORCE)
+    assert 2 == result.exit_code
+    assert (
+        'Use either --template-id or --template-index, not both'
+    ) in result.output
+
+
 def test_init_force_in_empty_dir(isolated_runner):
     """Run init --force in empty directory."""
     new_project = Path('test-new-project')
@@ -86,7 +157,6 @@ def test_init_force_in_empty_dir(isolated_runner):
     assert 0 == result.exit_code
 
 
-@pytest.mark.integration
 def test_init_force_in_dirty_dir(isolated_runner):
     """Run init --force in dirty directory."""
     new_project = Path('test-new-project')
@@ -103,7 +173,6 @@ def test_init_force_in_dirty_dir(isolated_runner):
     assert 0 == result.exit_code
 
 
-@pytest.mark.integration
 def test_init_on_cloned_repo(isolated_runner, data_repository):
     """Run init --force in directory containing another repo."""
     new_project = Path('test-new-project')
@@ -138,15 +207,28 @@ def test_init_remote(isolated_runner):
     assert (new_project / '.renku' / 'metadata.yml').exists()
 
 
-@pytest.mark.integration
-def test_init_with_variables(isolated_runner):
+def test_init_with_parameters(isolated_runner):
     """Test project initialization using custom metadata."""
     # create the project
     new_project = Path('test-new-project')
     assert not new_project.exists()
-    metadata = 'not_dictionary'
-    result = isolated_runner.invoke(cli, INIT + INIT_VARIABLES + [metadata])
+    result = isolated_runner.invoke(
+        cli, INIT + PARAMETERS_CORRECT + PARAMETER_NO_EQUAL
+    )
     assert 0 != result.exit_code
-    metadata = '{"correct": "dictionary"}'
-    result = isolated_runner.invoke(cli, INIT + INIT_VARIABLES + [metadata])
+    assert (
+        'Error: Invalid parameter value for --parameter '
+        f'"{PARAMETER_NO_EQUAL[1]}"' in result.output
+    )
+
+    result = isolated_runner.invoke(
+        cli, INIT + PARAMETERS_CORRECT + PARAMETER_EARLY_EQUAL
+    )
+    assert 0 != result.exit_code
+    assert (
+        'Error: Invalid parameter value for --parameter '
+        f'"{PARAMETER_EARLY_EQUAL[1]}"' in result.output
+    )
+
+    result = isolated_runner.invoke(cli, INIT + PARAMETERS_CORRECT)
     assert 0 == result.exit_code

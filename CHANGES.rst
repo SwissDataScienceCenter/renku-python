@@ -18,6 +18,70 @@
 Changes
 =======
 
+`0.10.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.9.1...v0.10.0>`__ (2020-03-25)
+---------------------------------------------------------------------------------------------------------
+
+This release brings about several important Dataset features:
+
+- importing renku datasets (`#838 <https://github.com/SwissDataScienceCenter/renku-python/issues/838>`__)
+- working with data external to the repository (`#974 <https://github.com/SwissDataScienceCenter/renku-python/issues/974>`__)
+- editing dataset metadata (`#1111 <https://github.com/SwissDataScienceCenter/renku-python/issues/1111>`__)
+
+Please see the `Dataset documentation
+<https://renku-python.readthedocs.io/en/latest/commands.html#module-renku.cli.dataset>`_ for details.
+
+Additional features were implemented for the backend service to facilitate a smoother user
+experience for dataset file manipulation.
+
+**IMPORTANT**: starting with this version, a new metadata migration mechanism is in place
+(`#1003 <https://github.com/SwissDataScienceCenter/renku-python/issues/1003>`__). Renku commands
+will insist on migrating a project immediately if the metadata is found to be outdated.
+
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** consistenly show correct contexts
+   (`#1096 <https://github.com/SwissDataScienceCenter/renku-python/issues/1096>`__)
+   (`b333f0f <https://github.com/SwissDataScienceCenter/renku-python/commit/b333f0f27fdaeec1ce3ba7a145739055429419d9>`__)
+-  **dataset:** –no-external-storage flag not working
+   (`#1130 <https://github.com/SwissDataScienceCenter/renku-python/issues/1130>`__)
+   (`c183e97 <https://github.com/SwissDataScienceCenter/renku-python/commit/c183e97940914cca1b7415722b4af2f47ad082c0>`__)
+-  **dataset:** commit only updated dataset files
+   (`#1116 <https://github.com/SwissDataScienceCenter/renku-python/issues/1116>`__)
+   (`d9739df <https://github.com/SwissDataScienceCenter/renku-python/commit/d9739dfee081181a4801373a85a057267945da1f>`__)
+-  **datasets:** fixed importing large amount of small files
+   (`#1119 <https://github.com/SwissDataScienceCenter/renku-python/issues/1119>`__)
+   (`8d61473 <https://github.com/SwissDataScienceCenter/renku-python/commit/8d61473bb6630d4b75c0d95a3d001ea2a5bcfbb7>`__)
+-  **datasets:** raises correct error message on import of protected
+   dataset
+   (`#1112 <https://github.com/SwissDataScienceCenter/renku-python/issues/1112>`__)
+   (`e579904 <https://github.com/SwissDataScienceCenter/renku-python/commit/e579904acd4aa944476b4990e881ad6416efffb4>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** new migration mechanism
+   (`#1003 <https://github.com/SwissDataScienceCenter/renku-python/issues/1003>`__)
+   (`1cc33d4 <https://github.com/SwissDataScienceCenter/renku-python/commit/1cc33d46918468ec82fa5829d4e7bd03e7e25b77>`__)
+-  **dataset:** adding external data without copying
+   (`#974 <https://github.com/SwissDataScienceCenter/renku-python/issues/974>`__)
+   (`6a17512 <https://github.com/SwissDataScienceCenter/renku-python/commit/6a17512e416737419b370c730172117b338dd528>`__)
+
+-  **dataset:** bypass import confirmation
+   (`#1124 <https://github.com/SwissDataScienceCenter/renku-python/issues/1124>`__)
+   (`947210a <https://github.com/SwissDataScienceCenter/renku-python/commit/947210ae4432ef6eb6d3a902d239871d405abbbf>`__)
+-  **dataset:** import renku datasets
+   (`#838 <https://github.com/SwissDataScienceCenter/renku-python/issues/838>`__)
+   (`6aa3651 <https://github.com/SwissDataScienceCenter/renku-python/commit/6aa3651398432a938d29a2c355541170d496e2df>`__)
+-  **dataset:** metadata edit
+   (`#1111 <https://github.com/SwissDataScienceCenter/renku-python/issues/1111>`__)
+   (`66cfbbc <https://github.com/SwissDataScienceCenter/renku-python/commit/66cfbbc81c274822ed339b1919e6ac10646ab5fe>`__)
+-  **dataset:** wildcard support when adding data from git
+   (`#1128 <https://github.com/SwissDataScienceCenter/renku-python/issues/1128>`__)
+   (`baa1c9f <https://github.com/SwissDataScienceCenter/renku-python/commit/baa1c9f840eec9c2c0ae12723c28db1728c104eb>`__)
+
+
 `0.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.9.0...v0.9.1>`__ (2020-02-24)
 -------------------------------------------------------------------------------------------------------
 

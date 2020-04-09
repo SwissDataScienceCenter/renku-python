@@ -17,8 +17,8 @@
 # limitations under the License.
 r"""Create an empty Renku project or reinitialize an existing one.
 
-Starting a Renku project
-~~~~~~~~~~~~~~~~~~~~~~~~
+Start a Renku project
+~~~~~~~~~~~~~~~~~~~~~
 
 If you have an existing directory which you want to turn into a Renku project,
 you can type:
@@ -39,8 +39,75 @@ necessary files for managing the project configuration.
 
 If provided directory does not exist, it will be created.
 
-Updating an existing project
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Use a different template
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Renku is installed together with a specific set of templates you can select
+when you initialize a project. You can check them by typing:
+
+.. code-block:: console
+
+    $ renku init --list-templates
+
+    INDEX ID     DESCRIPTION                     PARAMETERS
+    ----- ------ ------------------------------- -----------------------------
+    1     python The simplest Python-based [...] description: project des[...]
+    2     R      R-based renku project with[...] description: project des[...]
+
+If you know which template you are going to use, you can provide either the id
+``--template-id`` or the template index number ``--template-index``.
+
+You can use a newer version of the templates or even create your own one and
+provide it to the ``init`` command by specifying the target template repository
+source ``--template-source`` (both local path and remote url are supported) and
+the reference ``--template-ref`` (branch, tag or commit).
+
+You can take inspiration from the
+`official Renku template repository
+<https://github.com/SwissDataScienceCenter/renku-project-template>`_
+
+.. code-block:: console
+
+    $ renku init --template-ref master --template-source \
+    https://github.com/SwissDataScienceCenter/renku-project-template
+
+    Fetching template from
+    https://github.com/SwissDataScienceCenter/renku-project-template@master
+    ... OK
+
+    INDEX ID             DESCRIPTION                PARAMETERS
+    ----- -------------- -------------------------- ----------------------
+    1     python-minimal Basic Python Project:[...] description: proj[...]
+    2     R-minimal      Basic R Project: The [...] description: proj[...]
+
+    Please choose a template by typing the index:
+
+Provide parameters
+~~~~~~~~~~~~~~~~~-
+
+Some templates require parameters to properly initialize a new project. You
+can check them by listing the templates ``--list-templates``.
+
+To provide parameters, use the ``--parameter`` option and provide each
+parameter using ``--parameter "param1"="value1"``.
+
+.. code-block:: console
+
+    $ renku init --template-id python-minimal --parameter \
+    "description"="my new shiny project"
+
+    Initializing new Renku repository... OK
+
+If you don't provide the required parameters, the template will use an empty
+strings instead.
+
+.. note:: Every project requires a ``name`` that can either be provided using
+   ``--name`` or automatically taken from the target folder. This is
+   also considered as a special parameter, therefore it's automatically added
+   to the list of parameters forwarded to the ``init`` command.
+
+Update an existing project
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are situations when the required structure of a Renku project needs
 to be recreated or you have an **existing** Git repository. You can solve
@@ -64,7 +131,6 @@ was not installed previously.
 
 """
 
-import ast
 import configparser
 import os
 from collections import OrderedDict, namedtuple
@@ -90,29 +156,18 @@ _REQUIREMENTS = 'requirements.txt'
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
 
-def parse_variables(ctx, param, value):
-    """Parse template variables to dictionary."""
-    try:
-        variables = ast.literal_eval(value)
-    except ValueError:
-        raise_template_error(value)
-    if type(variables) is not dict:
-        raise_template_error(value)
-    return variables
-
-
-def raise_template_error(value):
-    """Raise template error with short explanation."""
-    error_info = [
-        '{0}'.format(value), 'Tip: a dictionary is expected',
-        (
-            'Example: --template-variables '
-            '\'{ "variable_1": "string", "variable_2": 2 }\''
-        )
-    ]
-    raise errors.ParameterError(
-        '\n'.join(error_info), '"--template-variables"'
-    )
+def parse_parameters(ctx, param, value):
+    """Parse parameters to dictionary."""
+    parameters = {}
+    for parameter in value:
+        splitted = parameter.split('=', 1)
+        if len(splitted) < 2 or len(splitted[0]) < 1:
+            raise errors.ParameterError(
+                'Parameter format must be --parameter "param1"="value". ',
+                f'--parameter "{parameter}"'
+            )
+        parameters[splitted[0]] = splitted[1]
+    return parameters
 
 
 def validate_name(ctx, param, value):
@@ -135,27 +190,36 @@ def create_template_sentence(templates, instructions=False):
     :ref templates: list of templates coming from manifest file
     :ref instructions: add instructions
     """
-    Template = namedtuple('Template', ['index', 'name', 'description'])
+    Template = namedtuple(
+        'Template', ['index', 'id', 'description', 'variables']
+    )
     templates_friendly = [
         Template(
             index=index + 1,
-            name=template_elem['name'],
-            description=template_elem['description'],
+            id=template_elem['folder'],
+            description=(
+                f'{template_elem["name"]}: {template_elem["description"]}'
+            ),
+            variables='\n'.join([
+                f'{variable[0]}: {variable[1]}'
+                for variable in template_elem.get('variables', {}).items()
+            ])
         ) for index, template_elem in enumerate(templates)
     ]
 
     text = tabulate(
         templates_friendly,
         headers=OrderedDict((
-            ('index', 'Number'),
-            ('name', 'Name'),
+            ('index', 'Index'),
+            ('id', 'Id'),
             ('description', 'Description'),
+            ('variables', 'Parameters'),
         ))
     )
 
     if not instructions:
         return text
-    return '{0}\nPlease choose a template by typing the number'.format(text)
+    return '{0}\nPlease choose a template by typing the index'.format(text)
 
 
 def is_path_empty(path):
@@ -191,39 +255,54 @@ def check_git_user_config():
     callback=validate_name,
     help='Provide a custom project name.',
 )
-@click.option('--template', help='Provide the name of the template to use.')
 @click.option(
-    '--template-source', help='Provide the templates repository url or path.'
+    '-t', '--template-id', help='Provide the id of the template to use.'
 )
 @click.option(
+    '-i',
+    '--template-index',
+    help='Provide the index number of the template to use.',
+    type=int,
+)
+@click.option(
+    '-s',
+    '--template-source',
+    help='Provide the templates repository url or path.'
+)
+@click.option(
+    '-r',
     '--template-ref',
     default='master',
     help='Specify the reference to checkout on remote template repository.',
 )
 @click.option(
-    '--template-variables',
-    default='{}',
-    callback=parse_variables,
+    '-p',
+    '--parameter',
+    multiple=True,
+    type=click.STRING,
+    callback=parse_parameters,
     help=(
-        'Provide custom values for template variables. It must be a python '
-        'dictionary.\nExample: \'{ "variable_1": "string", "variable_2": 2 }\''
+        'Provide parameters value. Should be invoked once per parameter. '
+        'Please specify the values as follow: --parameter "param1"="value"'
     )
 )
-@click.option('--description', help='Describe your project.')
 @click.option(
-    '--print-manifest', is_flag=True, help='Print templates manifest only.'
+    '-l',
+    '--list-templates',
+    is_flag=True,
+    help='List templates available in the template-source.'
 )
 @click.option('--force', is_flag=True, help='Override target path.')
 @option_use_external_storage
 @pass_local_client
 @click.pass_context
 def init(
-    ctx, client, use_external_storage, path, name, template, template_source,
-    template_ref, template_variables, description, print_manifest, force
+    ctx, client, use_external_storage, path, name, template_id, template_index,
+    template_source, template_ref, parameter, list_templates, force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
-    if not is_path_empty(path) and not force and not print_manifest:
+    if not is_path_empty(path) and not force and not list_templates:
         raise errors.InvalidFileOperation(
             'Folder "{0}" is not empty. Please add --force '
             'flag to transform it into a Renku repository.'.format(str(path))
@@ -261,25 +340,41 @@ def init(
     # select specific template
     repeat = False
     template_data = None
-    if template:
+    if template_id:
+        if template_index:
+            raise errors.ParameterError(
+                'Use either --template-id or --template-index, not both',
+                '"--template-index"'
+            )
         template_filtered = [
             template_elem for template_elem in template_manifest
-            if template_elem['name'] == template
+            if template_elem['folder'] == template_id
         ]
         if len(template_filtered) == 1:
             template_data = template_filtered[0]
         else:
-            click.echo('The template "{0}" is not available.'.format(template))
+            click.echo(
+                f'The template with id "{template_id}" is not available.'
+            )
             repeat = True
 
-    if print_manifest:
+    if template_index or template_index == 0:
+        if template_index > 0 and template_index <= len(template_manifest):
+            template_data = template_manifest[template_index - 1]
+        else:
+            click.echo(
+                f'The template at index {template_index} is not available.'
+            )
+            repeat = True
+
+    if list_templates:
         if template_data:
             click.echo(create_template_sentence([template_data]))
         else:
             click.echo(create_template_sentence(template_manifest))
         return
 
-    if not template or repeat:
+    if repeat or not (template_id or template_index):
         templates = [template_elem for template_elem in template_manifest]
         if len(templates) == 1:
             template_data = templates[0]
@@ -326,10 +421,7 @@ def init(
     click.echo('Initializing new Renku repository... ', nl=False)
     with client.lock:
         try:
-            create_from_template(
-                template_path, client, name, description, template_variables,
-                force
-            )
+            create_from_template(template_path, client, name, parameter, force)
         except FileExistsError as e:
             raise click.UsageError(e)
 

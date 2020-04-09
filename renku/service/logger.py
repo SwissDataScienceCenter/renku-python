@@ -15,28 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache job related models."""
-import uuid
-from datetime import datetime
+"""Service logger."""
+import logging.config
 
-from marshmallow import Schema, fields, post_load
+import yaml
 
-from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, Job
+from renku.service.config import LOGGER_CONFIG_FILE
 
+config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
+logging.config.dictConfig(config)
 
-class JobSchema(Schema):
-    """Job serialization."""
+service_log = logging.getLogger('service')
+worker_log = logging.getLogger('worker')
+scheduler_log = logging.getLogger('scheduler')
 
-    created_at = fields.DateTime(missing=datetime.utcnow)
-    updated_at = fields.DateTime(missing=datetime.utcnow)
-
-    job_id = fields.String(missing=lambda: uuid.uuid4().hex)
-    user_id = fields.String(required=True)
-
-    state = fields.String(required=False, missing=USER_JOB_STATE_ENQUEUED)
-    extras = fields.Dict(required=False)
-
-    @post_load
-    def make_job(self, data, **options):
-        """Construct job object."""
-        return Job(**data)
+__all__ = [
+    'service_log',
+    'worker_log',
+    'scheduler_log',
+]

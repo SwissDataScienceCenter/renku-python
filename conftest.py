@@ -155,7 +155,7 @@ def repository():
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(
-            cli, ['init', '.', '--template', 'Basic Python Project'],
+            cli, ['init', '.', '--template-id', 'python-minimal'],
             catch_exceptions=False
         )
         assert 0 == result.exit_code
@@ -177,6 +177,22 @@ def project(repository):
     repo.head.reset(commit, index=True, working_tree=True)
     # remove any extra non-tracked files (.pyc, etc)
     repo.git.clean('-xdff')
+
+
+@pytest.fixture
+def project_metadata(project):
+    """Create project with metadata."""
+    metadata = {
+        'project_id': uuid.uuid4().hex,
+        'name': Path(project).name,
+        'fullname': 'full project name',
+        'email': 'my@email.com',
+        'owner': 'me',
+        'token': 'awesome token',
+        'git_url': 'git@gitlab.com'
+    }
+
+    yield project, metadata
 
 
 @pytest.fixture
@@ -562,7 +578,7 @@ def remote_project(data_repository, directory_tree):
 
     with runner.isolated_filesystem() as project_path:
         runner.invoke(
-            cli, ['-S', 'init', '.', '--template', 'Basic Python Project']
+            cli, ['-S', 'init', '.', '--template-id', 'python-minimal']
         )
         result = runner.invoke(
             cli, ['-S', 'dataset', 'create', 'remote-dataset']
@@ -664,7 +680,14 @@ def svc_client_cache(mock_redis):
     ctx = flask_app.app_context()
     ctx.push()
 
-    yield testing_client, flask_app.config.get('cache')
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': 'user',
+        'Renku-User-FullName': 'full name',
+        'Renku-User-Email': 'renku@sdsc.ethz.ch',
+    }
+
+    yield testing_client, headers, flask_app.config.get('cache')
 
     ctx.pop()
 

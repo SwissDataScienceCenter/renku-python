@@ -37,7 +37,6 @@ include *.txt
 include *.yaml
 include *.yml
 include babel.ini
-include brew.py
 include Dockerfile*
 include LICENSE
 include Makefile
@@ -68,3 +67,4 @@ recursive-include renku *.yml
 recursive-include renku Dockerfile
 recursive-include tests *.py *.gz *.yml *.json
 recursive-include renku/templates *
+recursive-include renku *.yaml

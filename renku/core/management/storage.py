@@ -123,6 +123,9 @@ class StorageApiMixin(RepositoryApiMixin):
     def track_paths_in_storage(self, *paths):
         """Track paths in the external storage."""
         # Calculate which paths can be tracked in lfs
+        if not self.use_external_storage:
+            return
+
         track_paths = []
         attrs = self.find_attr(*paths)
 

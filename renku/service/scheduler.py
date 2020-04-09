@@ -27,14 +27,17 @@ from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
 from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
     CLEANUP_QUEUE_PROJECTS, WorkerQueues
+from renku.service.logger import scheduler_log as log
 
 
 @contextmanager
 def schedule():
     """Creates scheduler object."""
     build_scheduler = Scheduler(connection=WorkerQueues.connection)
+    log.info('scheduler created')
 
     cleanup_interval = int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 60))
+    log.info('cleanup interval set to {}'.format(cleanup_interval))
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
@@ -56,13 +59,17 @@ def schedule():
         repeat=None,
     )
 
-    setup_loghandlers(os.getenv('RQ_WORKER_LOG_LEVEL', 'WARNING'))
+    log_level = os.getenv('RQ_WORKER_LOG_LEVEL', 'INFO')
+    setup_loghandlers(log_level)
+    log.info('log level set to {}'.format(log_level))
+
     yield build_scheduler
 
 
 def start_scheduler():
     """Build and start scheduler."""
     with schedule() as scheduler:
+        log.info('running scheduler')
         scheduler.run()
 
 
