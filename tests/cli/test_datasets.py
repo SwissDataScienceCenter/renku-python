@@ -516,6 +516,20 @@ def test_add_from_local_repo_warning(
     assert 'Use remote\'s Git URL instead to enable lineage ' in result.output
 
 
+def test_add_data_directory(runner, client):
+    """Test adding a dataset's data directory to it prints an error."""
+    result = runner.invoke(cli, ['dataset', 'create', 'new-dataset'])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', 'new-dataset', 'data/new-dataset'],
+        catch_exceptions=False,
+    )
+    assert 2 == result.exit_code
+    assert 'Cannot add dataset\'s data directory recursively' in result.output
+
+
 def test_dataset_add_with_copy(tmpdir, runner, project, client):
     """Test adding data to dataset with copy."""
     import os

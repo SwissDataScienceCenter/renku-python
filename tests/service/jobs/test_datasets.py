@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service dataset jobs tests."""
 import json
+import uuid
 
 import pytest
 from flaky import flaky
@@ -24,7 +25,7 @@ from git import Repo
 from tests.service.views.test_dataset_views import assert_rpc_response
 
 from renku.core.errors import DatasetExistsError, ParameterError
-from renku.service.jobs.datasets import dataset_import
+from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.utils import make_project_path
 
 
@@ -154,6 +155,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
 )
 @pytest.mark.integration
 @pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
 def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -211,6 +213,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
 ])
 @pytest.mark.integration
 @pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
 def test_dataset_import_twice_job(doi, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
@@ -271,3 +274,56 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
 
     assert 'error' in extras
     assert 'Dataset exists' in extras['error']
+
+
+@pytest.mark.parametrize(
+    'url', [
+        'https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3',
+    ]
+)
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=30, min_passes=1)
+def test_dataset_add_remote_file(url, svc_client_with_repo):
+    """Test dataset add a remote file."""
+    svc_client, headers, project_id, url_components = svc_client_with_repo
+    user = {'user_id': headers['Renku-User-Id']}
+
+    payload = {
+        'project_id': project_id,
+        'dataset_name': uuid.uuid4().hex,
+        'create_dataset': True,
+        'files': [{
+            'file_url': url
+        }]
+    }
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response)
+    assert {'files', 'dataset_name',
+            'project_id'} == set(response.json['result'].keys())
+
+    dest = make_project_path(
+        user, {
+            'owner': url_components.owner,
+            'name': url_components.name
+        }
+    )
+    old_commit = Repo(dest).head.commit
+    job_id = response.json['result']['files'][0]['job_id']
+    commit_message = 'service: dataset add remote file'
+
+    dataset_add_remote_file(
+        user, job_id, project_id, True, commit_message,
+        payload['dataset_name'], url
+    )
+
+    new_commit = Repo(dest).head.commit
+
+    assert old_commit.hexsha != new_commit.hexsha
+    assert commit_message == new_commit.message
