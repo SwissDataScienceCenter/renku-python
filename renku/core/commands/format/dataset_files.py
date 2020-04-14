@@ -16,6 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
+import re
+from subprocess import PIPE, SubprocessError, run
+
 from .tabulate import tabulate
 
 
@@ -29,12 +32,46 @@ def tabular(client, records, *, columns=None):
     if not columns:
         columns = 'added,creators,dataset,full_path'
 
+    if 'size' in columns.split(','):
+        _get_lfs_file_sizes(client, records)
+
     return tabulate(
         collection=records,
         columns=columns,
         columns_mapping=DATASET_FILES_COLUMNS,
         columns_alignments=DATASET_FILES_COLUMNS_ALIGNMENTS,
     )
+
+
+def _get_lfs_file_sizes(client, records):
+    # Try to get file size from Git LFS
+    files_sizes = {}
+
+    try:
+        lfs_run = run(('git', 'lfs', 'ls-files', '--name-only', '--size'),
+                      stdout=PIPE,
+                      cwd=client.path,
+                      universal_newlines=True)
+    except SubprocessError:
+        pass
+    else:
+        lfs_output = lfs_run.stdout.split('\n')
+        # Example line format: relative/path/to/file (7.9 MB)
+        pattern = re.compile(r'^(.*?)\s*\((.*)\)')
+
+        for line in lfs_output:
+            match = pattern.search(line)
+            if not match:
+                continue
+            filepath, size = match.groups()
+            # Fix alignment for bytes
+            if size.endswith(' B'):
+                size = size.replace(' B', '  B')
+            files_sizes[filepath] = size
+
+    for record in records:
+        size = files_sizes.get(record.path)
+        record.size = size
 
 
 def jsonld(client, records, **kwargs):
@@ -64,7 +101,7 @@ DATASET_FILES_COLUMNS = {
     'full_path': ('full_path', None),
     'path': ('path', None),
     'short_name': ('short_name', 'dataset short_name'),
-    'size': ('size', 'size (bytes)')
+    'size': ('size', 'LFS size')
 }
 
 DATASET_FILES_COLUMNS_ALIGNMENTS = {'size': 'right'}

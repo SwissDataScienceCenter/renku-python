@@ -273,16 +273,6 @@ class DatasetFile(Entity, CreatorMixin):
         """Return file size in megabytes."""
         return None if self.filesize is None else self.filesize * 1e-6
 
-    @property
-    def size(self):
-        """Return actual size on the disk."""
-        if self.filesize:
-            return self.filesize
-        try:
-            return os.path.getsize(self.full_path)
-        except OSError:
-            return
-
     def __attrs_post_init__(self):
         """Set the property "name" after initialization."""
         super().__attrs_post_init__()
