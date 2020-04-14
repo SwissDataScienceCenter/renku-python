@@ -150,6 +150,7 @@ install_requires = [
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
+    'cwlgen>=0.4.0',
     'cwltool==3.0.20200530110633',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
