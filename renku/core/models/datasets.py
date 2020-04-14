@@ -471,6 +471,11 @@ class Dataset(Entity, CreatorMixin):
                 return True
         return False
 
+    def find_files(self, paths):
+        """Return all paths that are in files container."""
+        files_paths = {str(self.client.path / f.path) for f in self.files}
+        return {p for p in paths if str(p) in files_paths}
+
     def find_file(self, filename, return_index=False):
         """Find a file in files container."""
         for index, file_ in enumerate(self.files):
