@@ -862,7 +862,7 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "minCount": 1,
+               "minCount": 0,
                "maxCount": 1
             },
             {
@@ -877,7 +877,7 @@
                "sh:class": {
                   "@id": "schema:Project"
                },
-               "minCount": 1,
+               "minCount": 0,
                "maxCount": 1
             },
             {
