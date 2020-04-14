@@ -763,7 +763,7 @@ def test_export_imported_dataset_to_dataverse(
     result = runner.invoke(
         cli, [
             'dataset', 'export', 'my-data', 'dataverse', '--dataverse-name',
-            'SDSC-Test'
+            'sdsc-test-dataverse'
         ],
         input='2'
     )
