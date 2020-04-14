@@ -24,7 +24,7 @@ from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
 
 from renku.core.commands.dataset import add_file, create_dataset, \
-    list_datasets, list_files
+    edit_dataset, list_datasets, list_files
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
@@ -35,9 +35,9 @@ from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
 from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetAddResponseRPC, DatasetCreateRequest, DatasetCreateResponseRPC, \
-    DatasetFilesListRequest, DatasetFilesListResponseRPC, \
-    DatasetImportRequest, DatasetImportResponseRPC, DatasetListRequest, \
-    DatasetListResponseRPC
+    DatasetEditRequest, DatasetEditResponseRPC, DatasetFilesListRequest, \
+    DatasetFilesListResponseRPC, DatasetImportRequest, \
+    DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC
 from renku.service.utils import repo_sync
 from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
@@ -286,3 +286,49 @@ def import_dataset_view(user_data, cache):
         )
 
     return result_response(DatasetImportResponseRPC(), job)
+
+
+@use_kwargs(DatasetEditRequest)
+@marshal_with(DatasetEditResponseRPC)
+@header_doc('Edit dataset metadata', tags=(DATASET_BLUEPRINT_TAG, ))
+@dataset_blueprint.route(
+    '/datasets.edit',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_base_except
+@handle_validation_except
+@requires_cache
+@requires_identity
+def edit_dataset_view(user_data, cache):
+    """Edit dataset metadata."""
+    user = cache.ensure_user(user_data)
+    ctx = DatasetEditRequest().load(request.json)
+    project = cache.get_project(user, ctx['project_id'])
+
+    if project is None or project.abs_path is False:
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE,
+            'invalid project_id: {0}'.format(ctx['project_id'])
+        )
+
+    if ctx.get('commit_message') is None:
+        ctx['commit_message'] = 'service: dataset add {0}'.format(
+            ctx['short_name']
+        )
+
+    with chdir(project.abs_path):
+        edited, warnings = edit_dataset(
+            ctx['short_name'],
+            ctx.get('title'),
+            ctx.get('description'),
+            ctx.get('creators'),
+            commit_message=ctx['commit_message']
+        )
+
+    return result_response(
+        DatasetEditResponseRPC(), {
+            'edited': edited,
+            'warnings': warnings
+        }
+    )

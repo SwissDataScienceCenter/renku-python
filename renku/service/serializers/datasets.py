@@ -123,13 +123,26 @@ class DatasetListRequest(Schema):
     project_id = fields.String(required=True)
 
 
+class CreatorDetails(Schema):
+    """Serialize a creator of a dataset to a response object."""
+
+    name = fields.String()
+    email = fields.String()
+    label = fields.String()
+    affiliation = fields.String()
+    alternate_name = fields.String()
+
+
 class DatasetDetails(Schema):
     """Serialize a dataset to a response object."""
 
-    identifier = fields.String(required=True)
-    name = fields.String(required=True)
+    title = fields.String(required=True, attribute='name')
+    creator = fields.List(fields.Nested(CreatorDetails), required=True)
+    description = fields.String()
+
+    short_name = fields.String(required=True)
     version = fields.String(allow_none=True)
-    created = fields.String(allow_none=True)
+    created_at = fields.String(allow_none=True, attribute='created')
 
 
 class DatasetListResponse(Schema):
@@ -190,3 +203,28 @@ class DatasetImportResponseRPC(JsonRPCResponse):
     """RPC schema for a dataset import."""
 
     result = fields.Nested(DatasetImportResponse)
+
+
+class DatasetEditRequest(Schema):
+    """Dataset edit metadata request."""
+
+    project_id = fields.String(required=True)
+    short_name = fields.String(required=True)
+
+    title = fields.String(default=None)
+    description = fields.String(default=None)
+    creators = fields.List(fields.Nested(CreatorDetails))
+    commit_message = fields.String()
+
+
+class DatasetEditResponse(Schema):
+    """Dataset edit metadata response."""
+
+    edited = fields.List(fields.String(), required=True)
+    warnings = fields.List(fields.String())
+
+
+class DatasetEditResponseRPC(JsonRPCResponse):
+    """RPC schema for a dataset import."""
+
+    result = fields.Nested(DatasetEditResponse)
