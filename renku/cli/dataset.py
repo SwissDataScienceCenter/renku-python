@@ -127,18 +127,16 @@ them.
     $ renku dataset add my-dataset --source 'path/**/datafile' \
         git+ssh://host.io/namespace/project.git
 
-You can use ``--destination`` or ``-d`` flag to change the name of the target
-file or directory. The semantics here are similar to the POSIX copy command:
-if the destination does not exist or if it is a file then the source will be
-renamed; if the destination exists and is a directory the source will be copied
-to it. You will get an error message if you try to move a directory to a file
-or copy multiple files into one.
+You can use ``--destination`` or ``-d`` flag to set the location where the new
+data is copied to. This location be will under the dataset's data directory and
+will be created if does not exists. You will get an error message if the
+destination exists and is a file.
 
 .. code-block:: console
 
     $ renku dataset add my-dataset \
         --source path/within/repo/to/datafile \
-        --destination new-dir/new-filename \
+        --destination new-dir/new-subdir \
         git+ssh://host.io/namespace/project.git
 
 will yield:
@@ -148,7 +146,8 @@ will yield:
     data/
       my-dataset/
         new-dir/
-          new-filename
+          new-subdir/
+            datafile
 
 To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
@@ -531,6 +530,9 @@ def edit(short_name, title, description, creator):
     '--force', is_flag=True, help='Allow adding otherwise ignored files.'
 )
 @click.option(
+    '-o', '--overwrite', is_flag=True, help='Overwrite existing files.'
+)
+@click.option(
     '-c',
     '--create',
     is_flag=True,
@@ -556,7 +558,10 @@ def edit(short_name, title, description, creator):
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
-def add(short_name, urls, external, force, create, sources, destination, ref):
+def add(
+    short_name, urls, external, force, overwrite, create, sources, destination,
+    ref
+):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
@@ -564,6 +569,7 @@ def add(short_name, urls, external, force, create, sources, destination, ref):
         short_name=short_name,
         external=external,
         force=force,
+        overwrite=overwrite,
         create=create,
         sources=sources,
         destination=destination,
