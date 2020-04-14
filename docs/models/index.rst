@@ -28,5 +28,6 @@ Models
    projects
    datasets
    provenance
+   workflow
    cwl
    refs

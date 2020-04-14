@@ -15,39 +15,41 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Tools and Workflows
-===================
+Renku Workflow
+==============
 
-.. py:module:: renku.core.models.cwl
+.. py:module:: renku.core.models.workflow
 
-Manage creation of tools and workflows for workflow tracking.
+Renku uses PROV-O and its own Renku ontology to represent workflows. S
 
-Command-line tool
-~~~~~~~~~~~~~~~~~
 
-.. automodule:: renku.core.models.cwl.command_line_tool
+
+Run
+---
+
+.. automodule:: renku.core.models.workflow.run
    :members:
 
-Annotation
-~~~~~~~~~~
+Parameters
+----------
 
-.. automodule:: renku.core.models.cwl.annotation
+.. automodule:: renku.core.models.workflow.parameters
    :members:
 
-Parameter
-~~~~~~~~~
+Renku Workflow Conversion
+=========================
 
-.. automodule:: renku.core.models.cwl.parameter
+.. py:module:: renku.core.models.workflow.converters
+
+Renku Allows conversion of tracked workflows to runnable workflows in
+supported tools (Current CWL)
+
+CWL
+---
+
+.. automodule:: renku.core.models.workflow.converters.cwl
+   :no-members:
+
+.. autoclass:: CWLConverter
    :members:
-
-Types
-~~~~~
-
-.. automodule:: renku.core.models.cwl.types
-   :members:
-
-Workflow
-~~~~~~~~
-
-.. automodule:: renku.core.models.cwl.workflow
-   :members:
+   :inherited-members:
