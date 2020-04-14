@@ -29,7 +29,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
 URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
-REFERENCE = '0.1.7'
+REFERENCE = '0.1.9'
 
 
 class DownloadTemplates(Command):
@@ -96,7 +96,7 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'check-manifest>=0.37',
     'coverage>=4.5.3',
-    'fakeredis==1.3.0',
+    'fakeredis==1.3.1',
     'flake8>=3.5',
     'flaky==3.6.1',
     'freezegun>=0.3.12',
@@ -150,14 +150,14 @@ install_requires = [
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
-    'cwltool==3.0.20200317203547',
+    'cwltool==3.0.20200324120055',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
-    'flask==1.1.1',
+    'flask==1.1.2',
     'flask-apispec==0.8.7',
     'flask-swagger-ui==3.25.0',
     'gitdb2==3.0.1',
-    'gitpython==3.0.8',
+    'gitpython==3.1.0',
     'jinja2>=2.10.3',
     'patool>=1.12',
     'pluggy>=0.13.1',

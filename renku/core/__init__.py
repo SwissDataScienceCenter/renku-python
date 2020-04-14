@@ -16,3 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku core."""
+import logging
+
+logging.getLogger('py-filelock.filelock').setLevel(logging.ERROR)

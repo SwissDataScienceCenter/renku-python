@@ -103,13 +103,18 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
 )
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_import_real_param(doi, runner, project, sleep_after):
+def test_dataset_import_real_param(doi, runner, project, sleep_after, client):
     """Test dataset import and check metadata parsing."""
-    result = runner.invoke(cli, ['dataset', 'import', doi[0]], input=doi[1])
+    result = runner.invoke(
+        cli, ['dataset', 'import', '--short-name', 'remote', doi[0]],
+        input=doi[1]
+    )
 
     if 'y' == doi[1]:
         assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
         assert 'OK' in result.output
+        with client.with_dataset('remote') as dataset:
+            assert dataset.url == dataset._id
     else:
         assert 1 == result.exit_code
 
@@ -657,7 +662,7 @@ def test_dataset_export(runner, client, project):
     )
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert 'Dataset is not found.' in result.output
+    assert 'Dataset "doesnotexists" is not found.' in result.output
 
 
 @pytest.mark.integration
@@ -719,7 +724,9 @@ def test_export_dataverse_no_dataverse_name(
 
 
 @pytest.mark.integration
-def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
+def test_export_dataverse_no_dataverse_url(
+    runner, client, dataverse_demo, global_config_dir
+):
     """Test export without providing a dataverse server url."""
     client.remove_value('dataverse', 'server_url')
     client.repo.git.add('.renku/renku.ini')
@@ -731,7 +738,7 @@ def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
     result = runner.invoke(
         cli, [
             'dataset', 'export', 'my-dataset', 'dataverse', '--dataverse-name',
-            'name'
+            'sdsc-test-dataverse'
         ]
     )
 
@@ -747,9 +754,10 @@ def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
         (['-s', 'docker'], 'data/remote/docker/r/Dockerfile'),
         (['-s', 'docker/r/Dockerfile'], 'data/remote/Dockerfile'),
         # add data to a non-existing destination
-        (['-s', 'docker', '-d', 'new'], 'data/remote/new/r/Dockerfile'),
-        (['-s', 'docker/r', '-d', 'new'], 'data/remote/new/Dockerfile'),
-        (['-s', 'docker/r/Dockerfile', '-d', 'new'], 'data/remote/new'),
+        (['-s', 'docker', '-d', 'new'], 'data/remote/new/docker/r/Dockerfile'),
+        (['-s', 'docker/r', '-d', 'new'], 'data/remote/new/r/Dockerfile'),
+        (['-s', 'docker/r/Dockerfile', '-d', 'new'
+          ], 'data/remote/new/Dockerfile'),
         # add data to an existing destination
         (['-s', 'docker', '-d', 'existing'
           ], 'data/remote/existing/docker/r/Dockerfile'),
@@ -850,16 +858,14 @@ def test_add_from_git_copies_metadata(runner, client):
     'params,n_urls,message', [
         ([], 0, 'No URL is specified'),
         (['-s', 'file', '-d', 'new-file'], 0, 'No URL is specified'),
-        (['-s', 'file'], 2, 'Cannot add multiple URLs'),
-        (['-d', 'file'], 2, 'Cannot add multiple URLs'),
+        (['-s', 'file'], 2, 'Cannot use "--source" with multiple URLs.'),
         (['-s', 'non-existing'], 1, 'No such file or directory'),
         (['-s', 'docker/*Dockerfile'], 1, 'No such file or directory'),
         (['-s', 'docker', '-d', 'LICENSE'
-          ], 1, 'Cannot copy multiple files or directories to a file'),
+          ], 1, 'Destination is not a directory'),
         (['-s', 'LICENSE', '-s', 'Makefile', '-d', 'LICENSE'
-          ], 1, 'Cannot copy multiple files or directories to a file'),
-        (['-d', 'LICENSE'
-          ], 1, 'Cannot copy multiple files or directories to a file'),
+          ], 1, 'Destination is not a directory'),
+        (['-d', 'LICENSE'], 1, 'Destination is not a directory'),
     ]
 )
 @flaky(max_runs=10, min_passes=1)
@@ -1086,13 +1092,14 @@ def test_import_from_renku_project(tmpdir, client, runner):
         [
             'dataset', 'add', '--create', 'remote-dataset', '-s',
             'data/zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv',
-            '-d', 'file', '--ref', 'b973db5', remote
+            '-d', 'new-directory', '--ref', 'b973db5', remote
         ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+    path = 'new-directory/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
+    metadata = read_dataset_file_metadata(client, 'remote-dataset', path)
     assert metadata.creator[0].name == file_.creator[0].name
     assert metadata.based_on._id == file_._id
     assert metadata.based_on._label == file_._label
