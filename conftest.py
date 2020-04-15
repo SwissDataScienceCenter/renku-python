@@ -368,24 +368,19 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture(
-    params=[
-        {
-            'name': 'old-datasets-v0.3.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.1.git',
-            'exit_code': 0
-        },
-        {
-            'name': 'test-renku-v0.3.0.git',
-            'exit_code': 1
-        },
-    ],
+    params=[{
+        'name': 'old-datasets-v0.3.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.1.git',
+        'exit_code': 0
+    }, {
+        'name': 'test-renku-v0.3.0.git',
+        'exit_code': 1
+    }],
     scope='module',
 )
 def old_bare_repository(request, tmpdir_factory):
@@ -405,6 +400,47 @@ def old_bare_repository(request, tmpdir_factory):
         'path': working_dir_path / request.param['name'],
         'exit_code': request.param['exit_code']
     }
+
+    shutil.rmtree(working_dir_path.strpath)
+
+
+@pytest.fixture(scope='function')
+def old_workflow_project(tmpdir_factory):
+    """Prepares a testing repo created by old version of renku."""
+    import tarfile
+    from git import Repo
+    from pathlib import Path
+
+    name = 'old-workflows-v0.10.3.git'
+
+    compressed_repo_path = Path(
+        __file__
+    ).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(name)
+
+    working_dir_path = tmpdir_factory.mktemp(name)
+
+    with tarfile.open(str(compressed_repo_path), 'r') as fixture:
+        fixture.extractall(working_dir_path.strpath)
+
+    path = working_dir_path / name
+
+    repo_path = tmpdir_factory.mktemp('repo')
+
+    repository = Repo(path.strpath,
+                      search_parent_directories=True).clone(repo_path.strpath)
+
+    repository_path = repository.working_dir
+
+    commit = repository.head.commit
+
+    os.chdir(repository_path)
+    yield {'repo': repository, 'path': repository_path}
+    os.chdir(repository_path)
+    repository.head.reset(commit, index=True, working_tree=True)
+    # remove any extra non-tracked files (.pyc, etc)
+    repository.git.clean('-xdff')
+
+    shutil.rmtree(repo_path.strpath)
 
     shutil.rmtree(working_dir_path.strpath)
 

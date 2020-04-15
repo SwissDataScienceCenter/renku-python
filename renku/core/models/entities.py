@@ -210,6 +210,11 @@ class Collection(Entity):
         if not self.client:
             return []
         dir_path = self.client.path / self.path
+
+        if not dir_path.exists():
+            # likely a directory deleted in a previous commit
+            return []
+
         assert dir_path.is_dir()
 
         members = []

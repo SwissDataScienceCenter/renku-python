@@ -199,3 +199,20 @@ def test_migrations_no_commit(isolated_runner, old_project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
     assert sha_before == client.repo.head.object.hexsha
+
+
+@pytest.mark.migration
+def test_workflow_migration(isolated_runner, old_workflow_project):
+    """Check that *.cwl workflows can be migrated."""
+    result = isolated_runner.invoke(cli, ['migrate'])
+
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
+
+    result = isolated_runner.invoke(cli, ['log', 'catoutput.txt'])
+    assert 0 == result.exit_code
+    assert 'catoutput.txt' in result.output
+    assert '_cat.yaml' in result.output
+    assert '_echo.yaml' in result.output
+    assert '9ecc28b2 stdin.txt' in result.output
+    assert 'bdc801c6 stdout.txt' in result.output

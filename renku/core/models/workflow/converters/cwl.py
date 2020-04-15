@@ -173,7 +173,7 @@ class CWLConverter(object):
 
             steps.append(step)
 
-        workflow_object = cwlgen.Workflow(str(uuid4()))
+        workflow_object = cwlgen.Workflow(str(uuid4()), cwl_version='v1.0')
         workflow_object.hints = []
         workflow_object.requirements = []
 
@@ -234,7 +234,8 @@ class CWLConverter(object):
             base_command=step.command,
             stdin=stdin,
             stderr=stderr,
-            stdout=stdout
+            stdout=stdout,
+            cwl_version='v1.0'
         )
 
         workdir_req = cwlgen.InitialWorkDirRequirement([])
