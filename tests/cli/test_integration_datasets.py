@@ -1356,6 +1356,45 @@ def test_check_disk_space(runner, client, monkeypatch):
     assert 'index.html' not in result.output + str(result.stderr_bytes)
 
 
+@pytest.mark.migration
+@pytest.mark.integration
+def test_migration_submodule_datasets(
+    isolated_runner, old_repository_with_submodules
+):
+    """Test migration of datasets that use submodules."""
+    from renku.core.management import LocalClient
+
+    repo = old_repository_with_submodules
+    project_path = repo.working_dir
+    os.chdir(project_path)
+
+    assert {'local-repo', 'r10e-ds-py'} == {s.name for s in repo.submodules}
+
+    result = isolated_runner.invoke(cli, ['migrate'])
+    assert 0 == result.exit_code
+
+    assert [] == repo.submodules
+
+    client = LocalClient(path=project_path)
+
+    with client.with_dataset('local') as dataset:
+        for file_ in dataset.files:
+            path = Path(file_.path)
+            assert path.exists()
+            assert not path.is_symlink()
+            assert file_.based_on is None
+            assert file_.url.startswith('file://')
+
+    with client.with_dataset('remote') as dataset:
+        for file_ in dataset.files:
+            path = Path(file_.path)
+            assert path.exists()
+            assert not path.is_symlink()
+            assert file_.based_on is not None
+            assert file_.based_on.based_on is None
+            assert file_.name == file_.based_on.name
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize(
     'url,size', [('https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0', 5)]

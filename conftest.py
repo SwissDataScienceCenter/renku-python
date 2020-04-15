@@ -22,6 +22,7 @@ import os
 import pathlib
 import re
 import shutil
+import tarfile
 import tempfile
 import time
 import urllib
@@ -300,9 +301,6 @@ def data_repository(directory_tree):
 )
 def old_bare_repository(request, tmpdir_factory):
     """Prepares a testing repo created by old version of renku."""
-    import tarfile
-    from pathlib import Path
-
     compressed_repo_path = Path(
         __file__
     ).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(
@@ -358,6 +356,25 @@ def old_project(old_repository):
     repo.head.reset(commit, index=True, working_tree=True)
     # remove any extra non-tracked files (.pyc, etc)
     repo.git.clean('-xdff')
+
+
+@pytest.fixture
+def old_repository_with_submodules(request, tmpdir_factory):
+    """Prepares a testing repo that has datasets using git submodules."""
+    name = 'old-dataset-with-submodule-v0.6.0'
+    base_path = Path(__file__).parent / 'tests' / 'fixtures' / f'{name}.tar.gz'
+
+    working_dir = tmpdir_factory.mktemp(name)
+
+    with tarfile.open(str(base_path), 'r') as repo:
+        repo.extractall(working_dir.strpath)
+
+    repo_path = working_dir / name
+    repo = Repo(repo_path)
+
+    yield repo
+
+    shutil.rmtree(repo_path.strpath)
 
 
 @pytest.fixture(autouse=True)
