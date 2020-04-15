@@ -33,7 +33,7 @@ from renku.core.models.provenance.agents import Person
 
 
 @pytest.mark.parametrize(
-    'scheme, path, force, error',
+    'scheme, path, overwrite, error',
     [('', 'temp', False, None), ('file://', 'temp', True, None),
      ('', 'tempp', False, errors.ParameterError),
      ('http://', 'example.com/file', False, None),
@@ -41,7 +41,7 @@ from renku.core.models.provenance.agents import Person
      ('bla://', 'file', False, errors.UrlSchemeNotSupported)]
 )
 def test_data_add(
-    scheme, path, force, error, client, data_file, directory_tree,
+    scheme, path, overwrite, error, client, data_file, directory_tree,
     dataset_responses
 ):
     """Test data import."""
@@ -59,7 +59,7 @@ def test_data_add(
             }]
 
             client.add_data_to_dataset(
-                d, ['{}{}'.format(scheme, path)], force=force
+                d, ['{}{}'.format(scheme, path)], overwrite=overwrite
             )
 
         with open('data/dataset/file') as f:
@@ -82,7 +82,7 @@ def test_data_add(
                     'identifier': 'me_id'
                 }]
                 client.add_data_to_dataset(
-                    d, ['{}{}'.format(scheme, path)], force=True
+                    d, ['{}{}'.format(scheme, path)], overwrite=True
                 )
             assert os.path.exists('data/dataset/file')
 
