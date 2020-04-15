@@ -645,15 +645,13 @@ def ls_files(short_names, creators, include, exclude, format, columns):
 )
 def unlink(short_name, include, exclude, yes):
     """Remove matching files from a dataset."""
-    with file_unlink(short_name, include, exclude) as records:
-        if not yes and records:
-            prompt_text = (
-                'You are about to remove '
-                'following from "{0}" dataset.\n'.format(short_name) +
-                '\n'.join([str(record.full_path) for record in records]) +
-                '\nDo you wish to continue?'
-            )
-            click.confirm(WARNING + prompt_text, abort=True)
+    file_unlink(
+        short_name=short_name,
+        include=include,
+        exclude=exclude,
+        yes=yes,
+        interactive=True
+    )
 
     click.secho('OK', fg='green')
 
