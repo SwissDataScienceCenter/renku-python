@@ -171,7 +171,7 @@ install_requires = [
     'python-editor>=1.0.4',
     'redis==3.4.1',
     'rdflib==4.2.2',
-    'rdflib-jsonld>=0.4.0',
+    'rdflib-jsonld>=0.4.0,<0.5.0',
     'requests>=2.21.0',
     'rq==1.3.0',
     'rq-scheduler==0.9.1',
