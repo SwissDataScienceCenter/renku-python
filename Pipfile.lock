@@ -83,13 +83,6 @@
             ],
             "version": "==0.11.7"
         },
-        "cachetools": {
-            "hashes": [
-                "sha256:1d057645db16ca7fe1f3bd953558897603d6f0b9c51ed9d11eb4d071ec4e2aab",
-                "sha256:de5d88f87781602201cde465d3afe837546663b168e8b39df67411b0bf10cefc"
-            ],
-            "version": "==4.1.0"
-        },
         "certifi": {
             "hashes": [
                 "sha256:1d987a998c75633c40847cc966fcf5904906c920a7f17ef374f5aa4282abd304",
@@ -334,12 +327,6 @@
                 "sha256:e2062f2c7f95cc276a834c22f1a17179467176b624cc6f936e8bc3be5535ad1b"
             ],
             "version": "==0.3.15"
-        },
-        "frozendict": {
-            "hashes": [
-                "sha256:774179f22db2ef8a106e9c38d4d1f8503864603db08de2e33be5b778230f6e45"
-            ],
-            "version": "==1.2"
         },
         "gitdb": {
             "hashes": [
@@ -670,9 +657,9 @@
         },
         "pyld": {
             "hashes": [
-                "sha256:0a72642bfa0a7d22ed538aab991cee113adc87af9e889197eafb837c2deb5dae"
+                "sha256:ce6d9cd065fb3a390ec65e665dcb3655ed2aa07431d98e201ea3bc99f56a8bfb"
             ],
-            "version": "==2.0.0"
+            "version": "==1.0.5"
         },
         "pyopenssl": {
             "hashes": [
