@@ -40,10 +40,6 @@ PROJECT_URL_PATH = 'projects'
         'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#'
     },
-    translate={
-        'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
-        'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
-    },
     slots=True,
 )
 class Project(object):

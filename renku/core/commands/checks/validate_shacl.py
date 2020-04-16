@@ -16,12 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Check KG structure using SHACL."""
+import pyld
 import yaml
 from rdflib.namespace import Namespace
 from rdflib.term import BNode
 
 from renku.core.commands.echo import WARNING
-from renku.core.compat import pyld
 from renku.core.models.jsonld import NoDatesSafeLoader
 from renku.core.utils.shacl import validate_graph
 

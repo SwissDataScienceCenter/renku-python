@@ -20,11 +20,9 @@
 import cgi
 import contextlib
 import html
-import json
 from pathlib import Path
 
 import pathspec
-import pyld
 
 try:
     contextlib.nullcontext
@@ -56,27 +54,6 @@ try:
 except NameError:  # pragma: no cover
     FileNotFoundError = IOError
 
-
-class PatchedActiveContextCache(pyld.jsonld.ActiveContextCache):
-    """Pyld context cache without issue of missing contexts."""
-
-    def set(self, active_ctx, local_ctx, result):
-        if len(self.order) == self.size:
-            entry = self.order.popleft()
-            if sum(
-                e['activeCtx'] == entry['activeCtx'] and
-                e['localCtx'] == entry['localCtx'] for e in self.order
-            ) == 0:
-                # only delete from cache if it doesn't exist in context deque
-                del self.cache[entry['activeCtx']][entry['localCtx']]
-        key1 = json.dumps(active_ctx)
-        key2 = json.dumps(local_ctx)
-        self.order.append({'activeCtx': key1, 'localCtx': key2})
-        self.cache.setdefault(key1, {})[key2] = json.loads(json.dumps(result))
-
-
-pyld.jsonld._cache = {'activeCtx': PatchedActiveContextCache()}
-
 cgi.escape = html.escape
 
 
@@ -97,6 +74,5 @@ __all__ = (
     'FileNotFoundError',
     'Path',
     'contextlib',
-    'pyld',
     'cgi',
 )
