@@ -210,6 +210,7 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
         process_run = ProcessRun.from_run(run, client, path)
         process_run.invalidated = _invalidations_from_commit(client, commit)
         process_run.to_yaml()
+        client.add_to_path_activity_cache(process_run)
         return process_run, path
 
 
@@ -232,6 +233,7 @@ def _migrate_composite_step(client, workflow):
     with with_reference(path):
         wf = WorkflowRun.from_run(run, client, path)
         wf.to_yaml()
+        client.add_to_path_activity_cache(wf)
 
     return wf, path
 

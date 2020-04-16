@@ -33,7 +33,6 @@ from werkzeug.utils import cached_property, secure_filename
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.entities import Collection
 from renku.core.models.locals import with_reference
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
@@ -94,13 +93,18 @@ class RepositoryApiMixin(GitCore):
     WORKFLOW = 'workflow'
     """Directory for storing workflow in Renku."""
 
+    ACTIVITY_CACHE = 'activity_cache.yaml'
+    """Caches activities that generated a path."""
+
     RENKU_PROTECTED_PATHS = [
         '\\.renku/.*', 'Dockerfile', '\\.dockerignore', '\\.gitignore',
         '\\.gitattributes', '\\.gitlab-ci\\.yml', 'environment\\.yml',
         'requirements\\.txt'
     ]
 
-    _path_activities = {}
+    _commit_activity_cache = {}
+
+    _path_activity_cache = {}
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
@@ -147,6 +151,11 @@ class RepositoryApiMixin(GitCore):
     def workflow_path(self):
         """Return a ``Path`` instance of the workflow folder."""
         return self.renku_path / self.WORKFLOW
+
+    @property
+    def activity_cache_path(self):
+        """Path to the activity filepath cache."""
+        return self.renku_path / self.ACTIVITY_CACHE
 
     @cached_property
     def cwl_prefix(self):
@@ -401,6 +410,7 @@ class RepositoryApiMixin(GitCore):
                     path=path,
                 )
                 run.to_yaml()
+                self.add_to_path_activity_cache(run)
 
     def init_repository(self, force=False):
         """Initialize an empty Renku repository."""
@@ -421,36 +431,97 @@ class RepositoryApiMixin(GitCore):
         # verify if author information is available
         Person.from_git(self.repo)
 
+    @property
+    def path_activity_cache(self):
+        """Cache of all activities and their generated paths."""
+        # TODO: this is there for performance reasons. Remove once graph
+        # is stored as a flat, append-only list (Should be graph query
+        # in the future)
+        if self._path_activity_cache:
+            return self._path_activity_cache
+
+        path = self.activity_cache_path
+
+        if path.exists():
+            with path.open('r') as stream:
+                self._path_activity_cache = yaml.safe_load(stream)
+        else:
+            self._path_activity_cache = {}
+
+            with path.open('w') as stream:
+                yaml.dump(self._path_activity_cache, stream)
+
+        return self._path_activity_cache
+
+    def add_to_path_activity_cache(self, activity):
+        """Add an activity and it's generations to the cache."""
+        for g in activity.generated:
+            if g.path not in self._path_activity_cache:
+                self._path_activity_cache[g.path] = {}
+            hexsha = g.commit.hexsha
+            if hexsha not in self._path_activity_cache[g.path]:
+                self._path_activity_cache[g.path][hexsha] = []
+
+            if activity.path in self._path_activity_cache[g.path][hexsha]:
+                continue
+
+            self._path_activity_cache[g.path][g.commit.hexsha].append(
+                activity.path
+            )
+
+        with self.activity_cache_path.open('w') as stream:
+            yaml.dump(self._path_activity_cache, stream)
+
     def activities_for_paths(self, paths, file_commit=None, revision='HEAD'):
         """Get all activities involving a path."""
         from renku.core.models.provenance.activities import Activity
 
-        def paths_in_generation(paths, generation):
-            if isinstance(generation.entity, Collection):
-                return any(p.startswith(generation.path) for p in paths)
-            return generation.path in paths
+        result = set()
 
-        result = []
-        for path in self.workflow_path.rglob('*.yaml'):
-            if (path, revision) in self._path_activities:
-                activity = self._path_activities[(path, revision)]
-            else:
-                try:
-                    commit = self.find_previous_commit(path, revision=revision)
-                except KeyError:
+        for p in paths:
+            if p not in self.path_activity_cache:
+                parent_paths = [
+                    a for a in self.path_activity_cache.keys()
+                    if p.startswith(a)
+                ]
+                if not parent_paths:
                     continue
+                matching_activities = [
+                    a for k, v in self.path_activity_cache.items()
+                    for ck, cv in v.items()
+                    for a in cv if k in parent_paths and
+                    (not file_commit or ck == file_commit.hexsha)
+                ]
+            else:
+                matching = self.path_activity_cache[p]
+                if file_commit:
+                    if file_commit.hexsha not in matching:
+                        continue
+                    matching_activities = matching[file_commit.hexsha]
+                else:
+                    matching_activities = [
+                        a for v in matching.values for a in v
+                    ]
 
-                activity = Activity.from_yaml(path, client=self, commit=commit)
+            for a in matching_activities:
+                if (a, revision) in self._commit_activity_cache:
+                    activity = self._commit_activity_cache[(a, revision)]
+                else:
+                    try:
+                        commit = self.find_previous_commit(
+                            a, revision=revision
+                        )
+                    except KeyError:
+                        continue
 
-                self._path_activities[(path, revision)] = activity
+                    activity = Activity.from_yaml(
+                        self.path / a, client=self, commit=commit
+                    )
 
-            if any(
-                paths_in_generation(paths, g) and
-                (not file_commit or g.commit.hexsha == file_commit.hexsha)
-                for g in activity.generated
-            ):
-                result.append(activity)
-        return result
+                    self._commit_activity_cache[(a, revision)] = activity
+                result.add(activity)
+
+        return list(result)
 
     def import_from_template(self, template_path, metadata, force=False):
         """Render template files from a template directory."""
