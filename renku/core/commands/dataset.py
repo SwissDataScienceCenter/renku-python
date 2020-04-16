@@ -463,7 +463,13 @@ def export_dataset(
     try:
         provider = ProviderFactory.from_id(provider_id)
     except KeyError:
-        raise ValueError('Unknown provider.')
+        raise ParameterError('Unknown provider.')
+
+    provider.set_parameters(
+        client,
+        dataverse_server_url=dataverse_server_url,
+        dataverse_name=dataverse_name
+    )
 
     selected_tag = None
     selected_commit = client.repo.head.commit
@@ -482,6 +488,19 @@ def export_dataset(
             selected_tag = tag_result
             selected_commit = tag_result.commit
 
+            # If the tag is created automatically for imported datasets, it
+            # does not have the dataset yet and we need to use the next commit
+            with client.with_commit(selected_commit):
+                test_ds = client.load_dataset(short_name)
+            if not test_ds:
+                commits = client.dataset_commits(dataset_)
+                next_commit = selected_commit
+                for commit in commits:
+                    if commit.hexsha == selected_commit:
+                        selected_commit = next_commit.hexsha
+                        break
+                    next_commit = commit
+
     with client.with_commit(selected_commit):
         dataset_ = client.load_dataset(short_name)
         if not dataset_:
@@ -491,7 +510,6 @@ def export_dataset(
         exporter = provider.get_exporter(dataset_, access_token=access_token)
 
         if access_token is None:
-
             if handle_access_token_fn:
                 access_token = handle_access_token_fn(exporter)
 
@@ -503,31 +521,8 @@ def export_dataset(
             )
             exporter.set_access_token(access_token)
 
-        if provider_id == 'dataverse':
-            if not dataverse_name:
-                raise errors.ParameterError('Dataverse name is required.')
-
-            CONFIG_BASE_URL = 'server_url'
-
-            if not dataverse_server_url:
-                dataverse_server_url = client.get_value(
-                    provider_id, CONFIG_BASE_URL
-                )
-            else:
-                client.set_value(
-                    provider_id,
-                    CONFIG_BASE_URL,
-                    dataverse_server_url,
-                    global_only=True
-                )
-
         try:
-            destination = exporter.export(
-                publish=publish,
-                tag=selected_tag,
-                server_url=dataverse_server_url,
-                dataverse_name=dataverse_name
-            )
+            destination = exporter.export(publish=publish, tag=selected_tag)
         except errors.AuthenticationError:
             client.remove_value(
                 provider_id, config_key_secret, global_only=True
