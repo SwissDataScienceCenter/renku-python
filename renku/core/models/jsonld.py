@@ -27,12 +27,12 @@ from importlib import import_module
 from pathlib import Path
 
 import attr
+import pyld
 import yaml
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import Factory, fields
 
-from renku.core.compat import pyld
 from renku.core.models.locals import ReferenceMixin, with_reference
 
 KEY = '__json_ld'
@@ -266,6 +266,8 @@ def _propagate_reference_contexts(
                 if prefix in merge_ctx:
                     expanded_subtype = '{}{}'.format(merge_ctx[prefix], suffix)
 
+                subtype = subtype.replace(':', '_')
+
                 current_context['@context'].append({
                     fullname(cls) + '_' + subtype: {
                         '@id': expanded_subtype,
@@ -486,7 +488,8 @@ def asjsonld(
 
         if use_scoped_type_form:
             rv_type = [
-                '{}_{}'.format(inst_cls._renku_type, t) for t in rv_type
+                '{}_{}'.format(inst_cls._renku_type, t.replace(':', '_'))
+                for t in rv_type
             ]
 
         rv['@type'] = rv_type[0] if len(rv_type) == 1 else rv_type

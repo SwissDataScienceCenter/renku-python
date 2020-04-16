@@ -40,7 +40,7 @@ def _jsonld(graph, format, *args, **kwargs):
     """Return formatted graph in JSON-LD ``format`` function."""
     import json
 
-    from renku.core.compat import pyld
+    import pyld
     from renku.core.models.jsonld import asjsonld
 
     output = getattr(pyld.jsonld, format)([
