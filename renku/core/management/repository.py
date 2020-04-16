@@ -259,7 +259,12 @@ class RepositoryApiMixin(GitCore):
         :param return_first: show the first commit in the history
         :raises KeyError: if path is not present in the given commit
         """
-        file_commits = list(self.repo.iter_commits(revision, paths=paths))
+        if return_first:
+            file_commits = list(self.repo.iter_commits(revision, paths=paths))
+        else:
+            file_commits = list(
+                self.repo.iter_commits(revision, paths=paths, max_count=1)
+            )
 
         if not file_commits:
             raise KeyError(
