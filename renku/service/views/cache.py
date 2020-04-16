@@ -164,35 +164,31 @@ def upload_file_view(user, cache):
 
 
 @requires_cache
-def _project_clone(cache, user_data, data=None):
+def _project_clone(cache, user_data, project_data):
     """Clones the project for a given user."""
-    ctx = ProjectCloneContext().load(
-        (lambda a, b: a.update(b) or a)(data or request.json, user_data),
-        unknown=EXCLUDE,
-    )
-    local_path = make_project_path(user_data, ctx)
+    local_path = make_project_path(user_data, project_data)
     user = cache.ensure_user(user_data)
 
     if local_path.exists():
         shutil.rmtree(str(local_path))
 
         for project in cache.get_projects(user):
-            if project.git_url == ctx['git_url']:
+            if project.git_url == project_data['git_url']:
                 project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
     renku_clone(
-        ctx['url_with_auth'],
+        project_data['url_with_auth'],
         local_path,
-        depth=ctx['depth'],
+        depth=project_data['depth'],
         raise_git_except=True,
         config={
-            'user.name': ctx['fullname'],
-            'user.email': ctx['email'],
+            'user.name': project_data['fullname'],
+            'user.email': project_data['email'],
         }
     )
 
-    project = cache.make_project(user, ctx)
+    project = cache.make_project(user, project_data)
     return project
 
 
@@ -216,7 +212,12 @@ def _project_clone(cache, user_data, data=None):
 @accepts_json
 def project_clone(user_data):
     """Clone a remote repository."""
-    project = _project_clone(user_data)
+    project_data = ProjectCloneContext().load({
+        **user_data,
+        **request.json
+    },
+                                              unknown=EXCLUDE)
+    project = _project_clone(user_data, project_data)
 
     return result_response(ProjectCloneResponseRPC(), project)
 
