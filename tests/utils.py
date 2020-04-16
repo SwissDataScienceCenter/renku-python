@@ -52,5 +52,6 @@ def make_dataset_add_payload(project_id, urls, dataset_name=None):
         'project_id': project_id,
         'dataset_name': dataset_name or uuid.uuid4().hex,
         'create_dataset': True,
+        'force': False,
         'files': files
     }
