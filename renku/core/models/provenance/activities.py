@@ -473,15 +473,20 @@ class ProcessRun(Activity):
             usages = []
             revision = '{0}'.format(self.commit)
             for usage in self.qualified_usage:
-                usages.append(
-                    Usage.from_revision(
-                        client=self.client,
-                        path=usage.path,
-                        role=usage.role,
-                        revision=revision,
-                        id=usage._id,
+                if not usage.commit:
+                    usages.append(
+                        Usage.from_revision(
+                            client=self.client,
+                            path=usage.path,
+                            role=usage.role,
+                            revision=revision,
+                            id=usage._id,
+                        )
                     )
-                )
+                else:
+                    if not usage.client:
+                        usage.client = self.client
+                    usages.append(usage)
             self.qualified_usage = usages
 
     def default_generated(self):
@@ -542,17 +547,17 @@ class ProcessRun(Activity):
             usage_id = id_ + '/inputs/' + input_.sanitized_id
             revision = commit
             input_path = input_.consumes.path
+            entity = input_.consumes
             if update_commits:
                 revision = client.find_previous_commit(
-                    input_path, revision=revision.hexsha
+                    input_path, revision=commit.hexsha
                 )
-            dependency = Usage.from_revision(
-                client=client,
-                path=input_path,
-                role=input_.sanitized_id,
-                revision=revision,
-                id=usage_id,
+                entity = Entity.from_revision(client, input_path, revision)
+
+            dependency = Usage(
+                entity=entity, role=input_.sanitized_id, id=usage_id
             )
+
             usages.append(dependency)
 
         agent = SoftwareAgent.from_commit(commit)

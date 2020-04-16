@@ -132,11 +132,20 @@ class Entity(CommitMixin):
 
     @classmethod
     def from_revision(
-        cls, client, path, revision='HEAD', parent=None, **kwargs
+        cls,
+        client,
+        path,
+        revision='HEAD',
+        parent=None,
+        find_previous=True,
+        **kwargs
     ):
         """Return dependency from given path and revision."""
+        if find_previous:
+            revision = client.find_previous_commit(path, revision=revision)
+
         client, commit, path = client.resolve_in_submodules(
-            client.find_previous_commit(path, revision=revision),
+            revision,
             path,
         )
 
@@ -150,17 +159,27 @@ class Entity(CommitMixin):
                 parent=parent,
             )
 
+            files_in_commit = commit.stats.files
+
             for member in path_.iterdir():
                 if member.name == '.gitkeep':
                     continue
+
+                member_path = str(member.relative_to(client.path))
+                find_previous = True
+
+                if member_path in files_in_commit:
+                    # we already know the newest commit, no need to look it up
+                    find_previous = False
 
                 try:
                     entity.members.append(
                         cls.from_revision(
                             client,
-                            str(member.relative_to(client.path)),
+                            member_path,
                             commit,
                             parent=entity,
+                            find_previous=find_previous,
                             **kwargs
                         )
                     )
