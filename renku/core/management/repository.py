@@ -453,9 +453,6 @@ class RepositoryApiMixin(GitCore):
         else:
             self._path_activity_cache = {}
 
-            with path.open('w') as stream:
-                yaml.dump(self._path_activity_cache, stream)
-
         return self._path_activity_cache
 
     def add_to_path_activity_cache(self, activity):
