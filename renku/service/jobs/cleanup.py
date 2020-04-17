@@ -16,66 +16,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Cleanup jobs."""
-import os
-import shutil
-import time
-from datetime import datetime
-
-from renku.service.cache import FileManagementCache, ProjectManagementCache
+from renku.service.cache import ServiceCache
+from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, \
+    USER_JOB_STATE_IN_PROGRESS
 
 
 def cache_files_cleanup():
     """Cache files a cleanup job."""
-    ttl = int(os.getenv('RENKU_SVC_CLEANUP_TTL_FILES', 1800))
-    cache = FileManagementCache()
+    cache = ServiceCache()
 
     for user, files in cache.user_files():
+        jobs = [
+            job for job in cache.get_jobs(user) if job.state in
+            [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
+        ]
+
         for file in files:
-            # If record does not contain created_at,
-            # it means its an old record, and we should mark it for deletion.
-            created_at = (file.created_at -
-                          datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+            if file.is_locked(jobs):
+                continue
 
-            if not file.created_at:
-                created_at = (time.time() - ttl) * 1e+3
-
-            old = ((time.time() * 1e+3) - created_at) / 1e+3
-
-            if old >= ttl:
-                file_path = file.abs_path
-                if file_path.exists() and file_path.is_file():
-                    try:
-                        file_path.unlink()
-                    except FileNotFoundError:
-                        pass
-
-                if file_path.exists() and file_path.is_dir():
-                    shutil.rmtree(str(file_path))
-
-                file.delete()
+            if file.ttl_expired():
+                file.purge()
 
 
 def cache_project_cleanup():
     """Cache project a cleanup job."""
-    ttl = int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
-    cache = ProjectManagementCache()
+    cache = ServiceCache()
 
     for user, projects in cache.user_projects():
+        jobs = [
+            job for job in cache.get_jobs(user) if job.state in
+            [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
+        ]
+
         for project in projects:
+            if project.is_locked(jobs):
+                continue
 
-            # If record does not contain created_at,
-            # it means its an old record, and we should mark it for deletion.
-            created_at = (project.created_at -
-                          datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
-
-            if not project.created_at:
-                created_at = (time.time() - ttl) * 1e+3
-
-            old = ((time.time() * 1e+3) - created_at) / 1e+3
-
-            if old >= ttl:
-                project_path = project.abs_path
-                if project_path.exists():
-                    shutil.rmtree(str(project_path))
-
-                project.delete()
+            if project.ttl_expired():
+                project.purge()

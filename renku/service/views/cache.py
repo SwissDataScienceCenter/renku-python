@@ -60,7 +60,7 @@ def list_uploaded_files_view(user, cache):
     """List uploaded files ready to be added to projects."""
     user = cache.ensure_user(user)
 
-    files = [f for f in cache.get_files(user) if f.valid_file()]
+    files = [f for f in cache.get_files(user) if f.exists()]
 
     response = {
         'files':
