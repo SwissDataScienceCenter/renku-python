@@ -23,7 +23,7 @@ from .client import pass_local_client
 
 
 @pass_local_client
-def renku_clone(
+def project_clone(
     client,
     url,
     path=None,
