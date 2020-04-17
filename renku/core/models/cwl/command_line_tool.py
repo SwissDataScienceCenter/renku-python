@@ -29,6 +29,7 @@ import attr
 import click
 
 from renku.core import errors
+from renku.core.commands.echo import WARNING
 
 from ...management.config import RENKU_HOME
 from ..datastructures import DirectoryTree
@@ -211,6 +212,8 @@ class CommandLineToolFactory(object):
 
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
+    warning = attr.ib(default=None)
+
     def __attrs_post_init__(self):
         """Derive basic information."""
         self.baseCommand, detect = self.split_command_and_args()
@@ -356,7 +359,19 @@ class CommandLineToolFactory(object):
                 raise errors.OutputsNotFound(repo, inputs.values())
 
             if client.has_external_storage:
-                client.track_paths_in_storage(*paths)
+                lfs_paths = client.track_paths_in_storage(*paths)
+
+                show_warnings = client.get_value('renku', 'show_lfs_warnings')
+                if (
+                    lfs_paths and show_warnings is None or
+                    show_warnings == 'True'
+                ):
+                    self.warning = (
+                        WARNING + 'Adding files to Git LFS:\n' +
+                        '\t{}'.format('\n\t'.join(lfs_paths)) +
+                        '\nTo disable this warning in the future, run:' +
+                        '\n\trenku config show_lfs_warnings False'
+                    )
 
             tool.inputs = list(inputs.values())
             tool.outputs = outputs

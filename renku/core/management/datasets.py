@@ -392,7 +392,18 @@ class DatasetsApiMixin(object):
                 raise errors.OperationError(f'Invalid action {action}')
 
         # Track non-symlinks in LFS
-        self.track_paths_in_storage(*files_to_commit)
+        if self.has_external_storage:
+            lfs_paths = self.track_paths_in_storage(*files_to_commit)
+            show_warnings = self.get_value('renku', 'show_lfs_warnings')
+            if (
+                lfs_paths and show_warnings is None or show_warnings == 'True'
+            ):
+                warning_messages.append((
+                    'Adding files to Git LFS:\n' +
+                    '\t{}'.format('\n\t'.join(lfs_paths)) +
+                    '\nTo disable this warning in the future, run:' +
+                    '\n\trenku config show_lfs_warnings False'
+                ))
 
         # Force-add to include possible ignored files
         self.repo.git.add(*files_to_commit, force=True)

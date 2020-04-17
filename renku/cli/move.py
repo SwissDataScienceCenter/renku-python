@@ -112,9 +112,20 @@ def move(ctx, client, sources, destination):
                 click.edit(filename=str(client.path / '.gitattributes'))
 
     if tracked and client.has_external_storage:
-        client.track_paths_in_storage(
+        lfs_paths = client.track_paths_in_storage(
             *(destinations[path] for path in tracked)
         )
+        if (
+            lfs_paths and
+            client.get_value('renku', 'show_lfs_warnings') is None or
+            client.get_value('renku', 'show_lfs_warnings') == 'True'
+        ):
+            click.echo(
+                WARNING + 'Adding files to Git LFS:\n' +
+                '\t{}'.format('\n\t'.join(lfs_paths)) +
+                '\nTo disable this warning in the future, run:' +
+                '\n\trenku config show_lfs_warnings False'
+            )
 
     # 4. Handle symlinks.
     dst.parent.mkdir(parents=True, exist_ok=True)
