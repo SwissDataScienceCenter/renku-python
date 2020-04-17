@@ -79,7 +79,5 @@ class Project(Model):
     def is_locked(self, jobs):
         """Check if file locked by given jobs."""
         return bool(
-            next(
-                (job for job in jobs if self.project_id in job.locked), False
-            )
+            next((job for job in jobs if self.project_id in job.locked), False)
         )
