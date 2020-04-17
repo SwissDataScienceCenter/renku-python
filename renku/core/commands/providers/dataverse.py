@@ -112,7 +112,12 @@ class DataverseProvider(ProviderApi):
     """Dataverse API provider."""
 
     is_doi = attr.ib(default=False)
+
     _accept = attr.ib(default='application/json')
+
+    _server_url = attr.ib(default=None)
+
+    _dataverse_name = attr.ib(default=None)
 
     @staticmethod
     def supports(uri):
@@ -130,7 +135,7 @@ class DataverseProvider(ProviderApi):
         parsed = urlparse.urlparse(uri)
         return urlparse.parse_qs(parsed.query)['persistentId'][0]
 
-    def make_request(self, uri):
+    def _make_request(self, uri):
         """Execute network request."""
         with retry() as session:
             response = session.get(uri, headers={'Accept': self._accept})
@@ -149,19 +154,19 @@ class DataverseProvider(ProviderApi):
             doi = DOIProvider().find_record(uri)
             uri = doi.url
 
-        uri = self.get_export_uri(uri)
+        uri = self._get_export_uri(uri)
 
-        return self.get_record(uri)
+        return self._get_record(uri)
 
-    def get_export_uri(self, uri):
+    def _get_export_uri(self, uri):
         """Gets a dataverse api export URI from a dataverse entry."""
         record_id = DataverseProvider.record_id(uri)
         uri = make_records_url(record_id, uri)
         return uri
 
-    def get_record(self, uri):
+    def _get_record(self, uri):
         """Retrieve metadata and return ``DataverseRecordSerializer``."""
-        response = self.make_request(uri)
+        response = self._make_request(uri)
 
         return DataverseRecordSerializer(
             json=response.json(), dataverse=self, uri=uri
@@ -169,7 +174,39 @@ class DataverseProvider(ProviderApi):
 
     def get_exporter(self, dataset, access_token):
         """Create export manager for given dataset."""
-        return DataverseExporter(dataset=dataset, access_token=access_token)
+        return DataverseExporter(
+            dataset=dataset,
+            access_token=access_token,
+            server_url=self._server_url,
+            dataverse_name=self._dataverse_name
+        )
+
+    def set_parameters(
+        self, client, *, dataverse_server_url, dataverse_name, **kwargs
+    ):
+        """Set and validate required parameters for a provider."""
+        CONFIG_BASE_URL = 'server_url'
+
+        if not dataverse_server_url:
+            dataverse_server_url = client.get_value(
+                'dataverse', CONFIG_BASE_URL
+            )
+        else:
+            client.set_value(
+                'dataverse',
+                CONFIG_BASE_URL,
+                dataverse_server_url,
+                global_only=True
+            )
+
+        if not dataverse_server_url:
+            raise errors.ParameterError('Dataverse server URL is required.')
+
+        if not dataverse_name:
+            raise errors.ParameterError('Dataverse name is required.')
+
+        self._server_url = dataverse_server_url
+        self._dataverse_name = dataverse_name
 
 
 @attr.s
@@ -205,12 +242,6 @@ class DataverseRecordSerializer:
             mapped_file['parent_url'] = self._uri
             file_list.append(mapped_file)
         return file_list
-
-    def get_jsonld(self):
-        """Get record metadata as jsonld."""
-        response = self._dataverse.accept_jsonld().make_request(self._uri)
-        self._jsonld = response.json()
-        return self._jsonld
 
     def get_files(self):
         """Get Dataverse files metadata as ``DataverseFileSerializer``."""
@@ -297,8 +328,12 @@ class DataverseExporter(ExporterApi):
     """Dataverse export manager."""
 
     dataset = attr.ib(kw_only=True)
+
     access_token = attr.ib(kw_only=True)
-    server_url = attr.ib(kw_only=True, default=None)
+
+    _server_url = attr.ib(kw_only=True, default=None)
+
+    _dataverse_name = attr.ib(kw_only=True, default=None)
 
     def set_access_token(self, access_token):
         """Set access token."""
@@ -307,19 +342,17 @@ class DataverseExporter(ExporterApi):
     def access_token_url(self):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(
-            self.server_url, '/dataverseuser.xhtml?selectTab=apiTokenTab'
+            self._server_url, '/dataverseuser.xhtml?selectTab=apiTokenTab'
         )
 
-    def export(self, publish, server_url=None, dataverse_name=None, **kwargs):
+    def export(self, publish, **kwargs):
         """Execute export process."""
-        self._set_server_url(server_url)
-
         deposition = _DataverseDeposition(
-            server_url=self.server_url, access_token=self.access_token
+            server_url=self._server_url, access_token=self.access_token
         )
         metadata = self._get_dataset_metadata()
         response = deposition.create_dataset(
-            dataverse_name=dataverse_name, metadata=metadata
+            dataverse_name=self._dataverse_name, metadata=metadata
         )
         dataset_pid = response.json()['data']['persistentId']
 
@@ -339,20 +372,14 @@ class DataverseExporter(ExporterApi):
 
         return dataset_pid
 
-    def _set_server_url(self, server_url):
-        if server_url:
-            self.server_url = server_url
-        else:
-            raise errors.ParameterError('Dataverse server URL is required.')
-
     def _get_dataset_metadata(self):
         authors, contacts = self._get_creators()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
-            name=self.dataset.name,
+            name=_escape_json_string(self.dataset.name),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
-            description=self.dataset.description
+            description=_escape_json_string(self.dataset.description)
         )
         return json.loads(metadata)
 
@@ -361,15 +388,20 @@ class DataverseExporter(ExporterApi):
         contacts = []
 
         for creator in self.dataset.creator:
+            name = creator.name or ''
+            affiliation = creator.affiliation or ''
+            email = creator.email or ''
+
             author_template = Template(AUTHOR_METADATA_TEMPLATE)
             author = author_template.substitute(
-                name=creator.name, affiliation=creator.affiliation
+                name=_escape_json_string(name),
+                affiliation=_escape_json_string(affiliation)
             )
             authors.append(json.loads(author))
 
             contact_template = Template(CONTACT_METADATA_TEMPLATE)
             contact = contact_template.substitute(
-                name=creator.name, email=creator.email
+                name=_escape_json_string(name), email=email
             )
             contacts.append(json.loads(contact))
 
@@ -474,3 +506,10 @@ class _DataverseDeposition:
                     response.json()['message']
                 )
             )
+
+
+def _escape_json_string(value):
+    """Create a JSON-safe string."""
+    if isinstance(value, str):
+        return json.dumps(value)[1:-1]
+    return value

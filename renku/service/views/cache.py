@@ -163,6 +163,35 @@ def upload_file_view(user, cache):
     return result_response(FileUploadResponseRPC(), {'files': files})
 
 
+@requires_cache
+def _project_clone(cache, user_data, project_data):
+    """Clones the project for a given user."""
+    local_path = make_project_path(user_data, project_data)
+    user = cache.ensure_user(user_data)
+
+    if local_path.exists():
+        shutil.rmtree(str(local_path))
+
+        for project in cache.get_projects(user):
+            if project.git_url == project_data['git_url']:
+                project.delete()
+
+    local_path.mkdir(parents=True, exist_ok=True)
+    renku_clone(
+        project_data['url_with_auth'],
+        local_path,
+        depth=project_data['depth'],
+        raise_git_except=True,
+        config={
+            'user.name': project_data['fullname'],
+            'user.email': project_data['email'],
+        }
+    )
+
+    project = cache.make_project(user, project_data)
+    return project
+
+
 @use_kwargs(ProjectCloneRequest)
 @marshal_with(ProjectCloneResponseRPC)
 @header_doc(
@@ -179,38 +208,16 @@ def upload_file_view(user, cache):
 @handle_git_except
 @handle_renku_except
 @handle_validation_except
-@requires_cache
 @requires_identity
 @accepts_json
-def project_clone(user, cache):
+def project_clone(user_data):
     """Clone a remote repository."""
-    ctx = ProjectCloneContext().load(
-        (lambda a, b: a.update(b) or a)(request.json, user),
-        unknown=EXCLUDE,
-    )
-    local_path = make_project_path(user, ctx)
-    user = cache.ensure_user(user)
-
-    if local_path.exists():
-        shutil.rmtree(str(local_path))
-
-        for project in cache.get_projects(user):
-            if project.git_url == ctx['git_url']:
-                project.delete()
-
-    local_path.mkdir(parents=True, exist_ok=True)
-    renku_clone(
-        ctx['url_with_auth'],
-        local_path,
-        depth=ctx['depth'],
-        raise_git_except=True,
-        config={
-            'user.name': ctx['fullname'],
-            'user.email': ctx['email'],
-        }
-    )
-
-    project = cache.make_project(user, ctx)
+    project_data = ProjectCloneContext().load({
+        **user_data,
+        **request.json
+    },
+                                              unknown=EXCLUDE)
+    project = _project_clone(user_data, project_data)
 
     return result_response(ProjectCloneResponseRPC(), project)
 

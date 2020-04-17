@@ -385,7 +385,7 @@ def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output
 ):
-    """Test successful uploading of a file to Zenodo deposit."""
+    """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -430,7 +430,7 @@ def test_dataset_export_upload_tag(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output
 ):
-    """Test successful uploading of a file to Zenodo deposit."""
+    """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'OK' in result.output
@@ -662,7 +662,7 @@ def test_dataset_export(runner, client, project):
     )
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert 'Dataset is not found.' in result.output
+    assert 'Dataset "doesnotexists" is not found.' in result.output
 
 
 @pytest.mark.integration
@@ -724,7 +724,9 @@ def test_export_dataverse_no_dataverse_name(
 
 
 @pytest.mark.integration
-def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
+def test_export_dataverse_no_dataverse_url(
+    runner, client, dataverse_demo, global_config_dir
+):
     """Test export without providing a dataverse server url."""
     client.remove_value('dataverse', 'server_url')
     client.repo.git.add('.renku/renku.ini')
@@ -736,12 +738,38 @@ def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
     result = runner.invoke(
         cli, [
             'dataset', 'export', 'my-dataset', 'dataverse', '--dataverse-name',
-            'name'
+            'sdsc-test-dataverse'
         ]
     )
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'Dataverse server URL is required.' in result.output
+
+
+@pytest.mark.integration
+def test_export_imported_dataset_to_dataverse(
+    runner, client, dataverse_demo, zenodo_sandbox
+):
+    """Test exporting an imported Zenodo dataset to dataverse."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'import', '10.5281/zenodo.2658634', '--short-name',
+            'my-data'
+        ],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'export', 'my-data', 'dataverse', '--dataverse-name',
+            'sdsc-test-dataverse'
+        ],
+        input='2'
+    )
+
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
 
 
 @pytest.mark.integration
@@ -752,9 +780,10 @@ def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
         (['-s', 'docker'], 'data/remote/docker/r/Dockerfile'),
         (['-s', 'docker/r/Dockerfile'], 'data/remote/Dockerfile'),
         # add data to a non-existing destination
-        (['-s', 'docker', '-d', 'new'], 'data/remote/new/r/Dockerfile'),
-        (['-s', 'docker/r', '-d', 'new'], 'data/remote/new/Dockerfile'),
-        (['-s', 'docker/r/Dockerfile', '-d', 'new'], 'data/remote/new'),
+        (['-s', 'docker', '-d', 'new'], 'data/remote/new/docker/r/Dockerfile'),
+        (['-s', 'docker/r', '-d', 'new'], 'data/remote/new/r/Dockerfile'),
+        (['-s', 'docker/r/Dockerfile', '-d', 'new'
+          ], 'data/remote/new/Dockerfile'),
         # add data to an existing destination
         (['-s', 'docker', '-d', 'existing'
           ], 'data/remote/existing/docker/r/Dockerfile'),
@@ -855,16 +884,14 @@ def test_add_from_git_copies_metadata(runner, client):
     'params,n_urls,message', [
         ([], 0, 'No URL is specified'),
         (['-s', 'file', '-d', 'new-file'], 0, 'No URL is specified'),
-        (['-s', 'file'], 2, 'Cannot add multiple URLs'),
-        (['-d', 'file'], 2, 'Cannot add multiple URLs'),
+        (['-s', 'file'], 2, 'Cannot use "--source" with multiple URLs.'),
         (['-s', 'non-existing'], 1, 'No such file or directory'),
         (['-s', 'docker/*Dockerfile'], 1, 'No such file or directory'),
         (['-s', 'docker', '-d', 'LICENSE'
-          ], 1, 'Cannot copy multiple files or directories to a file'),
+          ], 1, 'Destination is not a directory'),
         (['-s', 'LICENSE', '-s', 'Makefile', '-d', 'LICENSE'
-          ], 1, 'Cannot copy multiple files or directories to a file'),
-        (['-d', 'LICENSE'
-          ], 1, 'Cannot copy multiple files or directories to a file'),
+          ], 1, 'Destination is not a directory'),
+        (['-d', 'LICENSE'], 1, 'Destination is not a directory'),
     ]
 )
 @flaky(max_runs=10, min_passes=1)
@@ -1091,13 +1118,14 @@ def test_import_from_renku_project(tmpdir, client, runner):
         [
             'dataset', 'add', '--create', 'remote-dataset', '-s',
             'data/zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv',
-            '-d', 'file', '--ref', 'b973db5', remote
+            '-d', 'new-directory', '--ref', 'b973db5', remote
         ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    metadata = read_dataset_file_metadata(client, 'remote-dataset', 'file')
+    path = 'new-directory/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
+    metadata = read_dataset_file_metadata(client, 'remote-dataset', path)
     assert metadata.creator[0].name == file_.creator[0].name
     assert metadata.based_on._id == file_._id
     assert metadata.based_on._label == file_._label
@@ -1326,6 +1354,45 @@ def test_check_disk_space(runner, client, monkeypatch):
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
     assert 'index.html' not in result.output + str(result.stderr_bytes)
+
+
+@pytest.mark.migration
+@pytest.mark.integration
+def test_migration_submodule_datasets(
+    isolated_runner, old_repository_with_submodules
+):
+    """Test migration of datasets that use submodules."""
+    from renku.core.management import LocalClient
+
+    repo = old_repository_with_submodules
+    project_path = repo.working_dir
+    os.chdir(project_path)
+
+    assert {'local-repo', 'r10e-ds-py'} == {s.name for s in repo.submodules}
+
+    result = isolated_runner.invoke(cli, ['migrate'])
+    assert 0 == result.exit_code
+
+    assert [] == repo.submodules
+
+    client = LocalClient(path=project_path)
+
+    with client.with_dataset('local') as dataset:
+        for file_ in dataset.files:
+            path = Path(file_.path)
+            assert path.exists()
+            assert not path.is_symlink()
+            assert file_.based_on is None
+            assert file_.url.startswith('file://')
+
+    with client.with_dataset('remote') as dataset:
+        for file_ in dataset.files:
+            path = Path(file_.path)
+            assert path.exists()
+            assert not path.is_symlink()
+            assert file_.based_on is not None
+            assert file_.based_on.based_on is None
+            assert file_.name == file_.based_on.name
 
 
 @pytest.mark.integration

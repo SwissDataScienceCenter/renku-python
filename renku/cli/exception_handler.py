@@ -58,6 +58,7 @@ import traceback
 from urllib.parse import urlencode
 
 import click
+import filelock
 
 from renku.core.errors import ParameterError, RenkuException, UsageError
 
@@ -118,6 +119,16 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         try:
             result = super().main(*args, **kwargs)
             return result
+
+        except filelock.Timeout:
+            click.echo((
+                click.style(
+                    'Unable to acquire lock.\n',
+                    fg='red',
+                ) + 'Hint: Please wait for another renku '
+                'process to finish and then try again.'
+            ))
+
         except Exception:
             if HAS_SENTRY:
                 self._handle_sentry()
