@@ -385,7 +385,7 @@ def test_dataset_export_upload_file(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output
 ):
-    """Test successful uploading of a file to Zenodo deposit."""
+    """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -430,7 +430,7 @@ def test_dataset_export_upload_tag(
     runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider,
     params, output
 ):
-    """Test successful uploading of a file to Zenodo deposit."""
+    """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'OK' in result.output
@@ -744,6 +744,32 @@ def test_export_dataverse_no_dataverse_url(
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'Dataverse server URL is required.' in result.output
+
+
+@pytest.mark.integration
+def test_export_imported_dataset_to_dataverse(
+    runner, client, dataverse_demo, zenodo_sandbox
+):
+    """Test exporting an imported Zenodo dataset to dataverse."""
+    result = runner.invoke(
+        cli, [
+            'dataset', 'import', '10.5281/zenodo.2658634', '--short-name',
+            'my-data'
+        ],
+        input='y'
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli, [
+            'dataset', 'export', 'my-data', 'dataverse', '--dataverse-name',
+            'sdsc-test-dataverse'
+        ],
+        input='2'
+    )
+
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
 
 
 @pytest.mark.integration
@@ -1328,6 +1354,45 @@ def test_check_disk_space(runner, client, monkeypatch):
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
     assert 'index.html' not in result.output + str(result.stderr_bytes)
+
+
+@pytest.mark.migration
+@pytest.mark.integration
+def test_migration_submodule_datasets(
+    isolated_runner, old_repository_with_submodules
+):
+    """Test migration of datasets that use submodules."""
+    from renku.core.management import LocalClient
+
+    repo = old_repository_with_submodules
+    project_path = repo.working_dir
+    os.chdir(project_path)
+
+    assert {'local-repo', 'r10e-ds-py'} == {s.name for s in repo.submodules}
+
+    result = isolated_runner.invoke(cli, ['migrate'])
+    assert 0 == result.exit_code
+
+    assert [] == repo.submodules
+
+    client = LocalClient(path=project_path)
+
+    with client.with_dataset('local') as dataset:
+        for file_ in dataset.files:
+            path = Path(file_.path)
+            assert path.exists()
+            assert not path.is_symlink()
+            assert file_.based_on is None
+            assert file_.url.startswith('file://')
+
+    with client.with_dataset('remote') as dataset:
+        for file_ in dataset.files:
+            path = Path(file_.path)
+            assert path.exists()
+            assert not path.is_symlink()
+            assert file_.based_on is not None
+            assert file_.based_on.based_on is None
+            assert file_.name == file_.based_on.name
 
 
 @pytest.mark.integration
