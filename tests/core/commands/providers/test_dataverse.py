@@ -30,7 +30,6 @@ def test_dataverse_exporter_init():
     assert exporter
     assert 'my-dataset' == exporter.dataset
     assert 'let-me-in' == exporter.access_token
-    assert not exporter.server_url
 
 
 def test_dataverse_deposition_init():

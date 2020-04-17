@@ -187,6 +187,7 @@ def add_file_to_dataset_view(user_data, cache):
                 local_paths,
                 ctx['dataset_name'],
                 create=ctx['create_dataset'],
+                force=ctx['force'],
                 commit_message=ctx['commit_message']
             )
 
