@@ -16,8 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
+import os
 import re
 from subprocess import PIPE, SubprocessError, run
+
+import humanize
 
 from .tabulate import tabulate
 
@@ -71,6 +74,15 @@ def _get_lfs_file_sizes(client, records):
 
     for record in records:
         size = files_sizes.get(record.path)
+        if size is None:
+            try:
+                path = client.path / record.path
+                size = os.path.getsize(path)
+                size = humanize.naturalsize(size).upper()
+                size = size.replace('BYTES', ' B')
+            except OSError:
+                pass
+
         record.size = size
 
 
@@ -101,7 +113,7 @@ DATASET_FILES_COLUMNS = {
     'full_path': ('full_path', None),
     'path': ('path', None),
     'short_name': ('short_name', 'dataset short_name'),
-    'size': ('size', 'LFS size')
+    'size': ('size', None)
 }
 
 DATASET_FILES_COLUMNS_ALIGNMENTS = {'size': 'right'}
