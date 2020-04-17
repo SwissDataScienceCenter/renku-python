@@ -356,6 +356,13 @@
             ],
             "version": "==8.1"
         },
+        "humanize": {
+            "hashes": [
+                "sha256:98b7ac9d1a70ad62175c8e0dd44beebbd92418727fc4e214468dfb2baa8ebfb5",
+                "sha256:bc2a1ff065977011de2bc36197a4b14730c54bfc46ab12a153376684573a2dab"
+            ],
+            "version": "==2.3.0"
+        },
         "idna": {
             "hashes": [
                 "sha256:c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407",
@@ -864,10 +871,10 @@
         },
         "schema-salad": {
             "hashes": [
-                "sha256:6347d694b5127f31f91cbdf811dfaac293dea57f297e2ed5c5aadd6dadab7893",
-                "sha256:f5944760684dac1dbb8adbb8d6116f6dd50184894dfc9bae3e4827b6e78d28ae"
+                "sha256:5fd7b959d5f23ec8554aafc360f0584896f9f0d6f0db0d38c884676c8cc0a6de",
+                "sha256:f86cb0ddf815ee0ec010cf816d7643730a8e74b9709a5cd71f02d771ef8700c8"
             ],
-            "version": "==5.0.20200302192450"
+            "version": "==5.0.20200416112825"
         },
         "sentry-sdk": {
             "hashes": [
@@ -1024,10 +1031,10 @@
         },
         "urllib3": {
             "hashes": [
-                "sha256:2f3db8b19923a873b3e5256dc9c2dedfa883e33d87c690d9c7913e1f40673cdc",
-                "sha256:87716c2d2a7121198ebcb7ce7cccf6ce5e9ba539041cfbaeecfb641dc0bf6acc"
+                "sha256:3018294ebefce6572a474f0604c2021e33b3fd8006ecd11d62107a5d2a963527",
+                "sha256:88206b0eb87e6d677d424843ac5209e3fb9d0190d0ee169599165ec25e9d9115"
             ],
-            "version": "==1.25.8"
+            "version": "==1.25.9"
         },
         "walrus": {
             "hashes": [
