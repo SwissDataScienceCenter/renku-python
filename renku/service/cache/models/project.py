@@ -16,6 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache project related models."""
+import os
+import shutil
+import time
+from datetime import datetime
+
 from walrus import DateTimeField, IntegerField, Model, TextField
 
 from renku.service.cache.base import BaseCache
@@ -45,3 +50,34 @@ class Project(Model):
     def abs_path(self):
         """Full path of cached project."""
         return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.name
+
+    def exists(self):
+        """Ensure a project exists on file system."""
+        return self.abs_path.exists()
+
+    def ttl_expired(self, ttl=None):
+        """Check if project time to live has expired."""
+        if not self.created_at:
+            # If record does not contain created_at,
+            # it means its an old record, and
+            # we should mark it for deletion.
+            return True
+
+        ttl = ttl or int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
+
+        created_at = (self.created_at -
+                      datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+
+        age = ((time.time() * 1e+3) - created_at) / 1e+3
+        return self.exists() and age >= ttl
+
+    def purge(self):
+        """Removes project from file system and cache."""
+        shutil.rmtree(str(self.abs_path))
+        self.delete()
+
+    def is_locked(self, jobs):
+        """Check if file locked by given jobs."""
+        return bool(
+            next((job for job in jobs if self.project_id in job.locked), False)
+        )
