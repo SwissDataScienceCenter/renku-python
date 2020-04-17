@@ -116,10 +116,7 @@ class Project(object):
         if not self.creator:
             raise ValueError('Project Creator not set')
 
-        try:
-            owner = self.creator.email.split('@')[0]
-        except:
-            breakpoint()
+        owner = self.creator.email.split('@')[0]
         name = self.name
 
         if self.client:
