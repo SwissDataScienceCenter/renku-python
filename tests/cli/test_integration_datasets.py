@@ -29,7 +29,7 @@ from flaky import flaky
 
 from renku.cli import cli
 from renku.core import errors
-from renku.core.commands.clone import renku_clone
+from renku.core.commands.clone import project_clone
 from renku.core.utils.contexts import chdir
 
 
@@ -1284,7 +1284,7 @@ def test_renku_clone_with_config(tmpdir):
     remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with chdir(str(tmpdir)):
-        renku_clone(
+        project_clone(
             remote,
             config={
                 'user.name': 'sam',
