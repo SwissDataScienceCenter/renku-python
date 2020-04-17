@@ -17,12 +17,13 @@
 # limitations under the License.
 """Test Git ranges used by various commands."""
 
+import os
 from pathlib import Path
 
 from renku.cli import cli
 
 
-def test_limit_log(runner, project, run):
+def test_limit_log(runner, project, run, subdirectory):
     """Test naming of CWL tools and workflows."""
     cwd = Path(project)
     data = cwd / 'data.txt'
@@ -34,7 +35,8 @@ def test_limit_log(runner, project, run):
     assert 0 == run(args=('run', 'wc', '-c'), stdin=data, stdout=output)
     assert output.exists()
 
-    cmd = ['log', '--revision', 'HEAD^..', output.name]
+    relative_path = os.path.relpath(output, os.getcwd())
+    cmd = ['log', '--revision', 'HEAD^..', relative_path]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert data.name not in result.output

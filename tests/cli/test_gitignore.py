@@ -19,7 +19,7 @@
 from renku.cli import cli
 
 
-def test_dataset_add(tmpdir, runner, client):
+def test_dataset_add(tmpdir, runner, client, subdirectory):
     """Test importing data into a dataset."""
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'testing'])

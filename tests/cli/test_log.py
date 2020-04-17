@@ -16,10 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``log`` command."""
-from __future__ import absolute_import, print_function
-
 import os
-from pathlib import Path
 
 import git
 import pytest
@@ -44,7 +41,9 @@ def test_run_log_strict(runner, project, run_shell, format):
 
 @pytest.mark.shelled
 @pytest.mark.parametrize('format', ['json-ld', 'nt', 'rdf'])
-def test_dataset_log_strict(tmpdir, runner, project, client, format):
+def test_dataset_log_strict(
+    tmpdir, runner, project, client, format, subdirectory
+):
     """Test output of log for dataset add."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
     assert 0 == result.exit_code
@@ -75,19 +74,17 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format):
 @pytest.mark.shelled
 @pytest.mark.parametrize('format', ['json-ld', 'nt', 'rdf'])
 def test_dataset_log_invalidation_strict(
-    tmpdir, runner, project, client, format
+    tmpdir, runner, project, client, format, subdirectory
 ):
     """Test output of log for dataset add."""
     repo = git.Repo(project)
-    cwd = Path(project)
-    input_ = cwd / 'input.txt'
-    with input_.open('w') as f:
-        f.write('first')
+    input_ = client.path / 'input.txt'
+    input_.write_text('first')
 
     repo.git.add('--all')
     repo.index.commit('Created input.txt')
 
-    os.remove(str(input_))
+    os.remove(input_)
     repo.git.add('--all')
     repo.index.commit('Removed input.txt')
 

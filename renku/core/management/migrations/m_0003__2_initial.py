@@ -89,7 +89,7 @@ def _migrate_datasets_pre_v0_3(client):
                 if expected_path.exists():
                     file_.path = expected_path.relative_to(client.path)
 
-        dataset.__reference__ = new_path
+        dataset.__reference__ = new_path.relative_to(client.path)
         dataset.to_yaml()
 
         Path(old_path).unlink()
@@ -104,10 +104,10 @@ def _migrate_datasets_pre_v0_3(client):
 def _migrate_broken_dataset_paths(client):
     """Ensure all paths are using correct directory structure."""
     for dataset in client.datasets.values():
-        dataset_path = Path(dataset.path)
+        dataset_path = client.path / dataset.path
 
         expected_path = (
-            client.path / client.renku_datasets_path /
+            client.renku_datasets_path /
             Path(quote(dataset.identifier, safe=''))
         )
 
@@ -121,12 +121,11 @@ def _migrate_broken_dataset_paths(client):
 
         if not dataset_path.exists():
             dataset_path = (
-                client.path / client.renku_datasets_path /
-                uuid.UUID(dataset.identifier).hex
+                client.renku_datasets_path / uuid.UUID(dataset.identifier).hex
             )
 
         if not expected_path.exists():
-            shutil.move(str(dataset_path), str(expected_path))
+            shutil.move(dataset_path, expected_path)
             dataset.path = expected_path
             dataset.__reference__ = expected_path / client.METADATA
 
@@ -134,8 +133,7 @@ def _migrate_broken_dataset_paths(client):
             file_path = Path(file_.path)
             if not file_path.exists() and file_.path.startswith('..'):
                 new_path = (
-                    client.path / client.renku_datasets_path / dataset.uid /
-                    file_path
+                    client.renku_datasets_path / dataset.uid / file_path
                 ).resolve().relative_to(client.path)
 
                 file_.path = new_path

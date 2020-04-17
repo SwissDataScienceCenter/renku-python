@@ -57,9 +57,7 @@ def _migrate_datasets_metadata(client):
     }
 
     old_metadata_paths = _dataset_pre_0_3(client)
-    new_metadata_paths = (client.path / client.renku_datasets_path).rglob(
-        client.METADATA
-    )
+    new_metadata_paths = client.renku_datasets_path.rglob(client.METADATA)
 
     for path in itertools.chain(old_metadata_paths, new_metadata_paths):
         _apply_on_the_fly_jsonld_migrations(
