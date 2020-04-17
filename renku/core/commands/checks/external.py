@@ -16,8 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Checks for external files."""
-from pathlib import Path
-
 import click
 
 from renku.core.commands.echo import WARNING
@@ -30,7 +28,7 @@ def check_missing_external_files(client):
     for path, dataset in client.datasets.items():
         for file_ in dataset.files:
             if file_.external:
-                target = Path(file_.path).resolve()
+                target = (client.path / file_.path).resolve()
                 if not target.exists():
                     missing.append((file_.path, str(target)))
 

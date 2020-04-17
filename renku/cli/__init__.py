@@ -62,6 +62,7 @@ Windows:
 If in doubt where to look for the configuration file, you can display its path
 by running ``renku --global-config-path``.
 """
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -88,6 +89,7 @@ from renku.cli.status import status
 from renku.cli.storage import storage
 from renku.cli.update import update
 from renku.cli.workflow import workflow
+from renku.core.commands.echo import WARNING
 from renku.core.commands.migrate import check_for_migration
 from renku.core.commands.options import install_completion, \
     option_use_external_storage
@@ -199,6 +201,16 @@ def cli(ctx, path, renku_home, use_external_storage):
         renku_home=renku_home,
         use_external_storage=use_external_storage,
     )
+
+    if (
+        path != os.getcwd() and
+        ctx.invoked_subcommand not in WARNING_UNPROTECTED_COMMANDS
+    ):
+        click.secho(
+            WARNING +
+            'Run CLI commands only from project\'s root directory.\n',
+            err=True
+        )
 
     if ctx.invoked_subcommand not in SAFE_COMMANDS:
         check_for_migration()
