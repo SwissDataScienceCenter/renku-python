@@ -128,12 +128,17 @@ class Activity(CommitMixin):
         kw_only=True,
     )
 
-    agents = jsonld.container.list([
-        'renku.core.models.provenance.agents.SoftwareAgent',
-        'renku.core.models.provenance.agents.Person'
-    ],
-                                   context='prov:agent',
-                                   kw_only=True)
+    agent = jsonld.ib(
+        context='prov:agent',
+        kw_only=True,
+        default=renku_agent,
+        type='renku.core.models.provenance.agents.SoftwareAgent'
+    )
+    person_agent = jsonld.ib(
+        context='prov:agent',
+        kw_only=True,
+        type='renku.core.models.provenance.agents.Person'
+    )
 
     def default_generated(self):
         """Create default ``generated``."""
@@ -345,11 +350,12 @@ class Activity(CommitMixin):
         if self.commit:
             return self.commit.committed_datetime.isoformat()
 
-    def default_agents(self):
+    @person_agent.default
+    def default_person_agent(self):
         """Set person agent to be the author of the commit."""
         if self.commit:
-            return [renku_agent, Person.from_commit(self.commit)]
-        return [renku_agent]
+            return Person.from_commit(self.commit)
+        return None
 
     @property
     def nodes(self):
@@ -392,8 +398,6 @@ class Activity(CommitMixin):
         if self.generated:
             for g in self.generated:
                 g._activity = weakref.ref(self)
-        if not self.agents:
-            self.agents = self.default_agents()
 
 
 @jsonld.s(

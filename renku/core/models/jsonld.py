@@ -587,11 +587,7 @@ class JSONLDMixin(ReferenceMixin):
             with with_reference(__reference__):
                 self = cls(**data_)
         else:
-            try:
-                self = cls(**data_)
-            except Exception as err:
-                breakpoint()
-                pass
+            self = cls(**data_)
 
         if __source__:
             setattr(self, '__source__', __source__)
