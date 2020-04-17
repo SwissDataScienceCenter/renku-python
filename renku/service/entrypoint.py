@@ -33,7 +33,7 @@ from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, \
 from renku.service.logger import service_log
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views.cache import CACHE_BLUEPRINT_TAG, cache_blueprint, \
-    list_projects_view, list_uploaded_files_view, project_clone, \
+    list_projects_view, list_uploaded_files_view, project_clone_view, \
     upload_file_view
 from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
     add_file_to_dataset_view, create_dataset_view, dataset_blueprint, \
@@ -94,7 +94,7 @@ def build_routes(app):
 
     docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(list_uploaded_files_view, blueprint=CACHE_BLUEPRINT_TAG)
-    docs.register(project_clone, blueprint=CACHE_BLUEPRINT_TAG)
+    docs.register(project_clone_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(list_projects_view, blueprint=CACHE_BLUEPRINT_TAG)
 
     docs.register(create_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
