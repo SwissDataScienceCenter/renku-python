@@ -17,5 +17,29 @@
 # limitations under the License.
 """Renku core."""
 import logging
+import os
 
+import requests
+from requests.adapters import TimeoutSauce
+
+RENKU_REQUESTS_TIMEOUT_SECONDS = float(
+    os.getenv('RENKU_REQUESTS_TIMEOUT_SECONDS', 1200)
+)
+
+
+class CustomTimeout(TimeoutSauce):
+    """CustomTimeout for all HTTP requests."""
+
+    def __init__(self, *args, **kwargs):
+        """Construct CustomTimeout."""
+        if kwargs['connect'] is None:
+            kwargs['connect'] = RENKU_REQUESTS_TIMEOUT_SECONDS
+
+        if kwargs['read'] is None:
+            kwargs['read'] = RENKU_REQUESTS_TIMEOUT_SECONDS
+
+        super().__init__(*args, **kwargs)
+
+
+requests.adapters.TimeoutSauce = CustomTimeout
 logging.getLogger('py-filelock.filelock').setLevel(logging.ERROR)
