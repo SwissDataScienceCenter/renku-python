@@ -26,7 +26,7 @@ from flask_apispec import marshal_with, use_kwargs
 from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
-from renku.core.commands.clone import renku_clone
+from renku.core.commands.clone import project_clone
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponseRPC, \
@@ -177,7 +177,7 @@ def _project_clone(cache, user_data, project_data):
                 project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
-    renku_clone(
+    project_clone(
         project_data['url_with_auth'],
         local_path,
         depth=project_data['depth'],
@@ -210,7 +210,7 @@ def _project_clone(cache, user_data, project_data):
 @handle_validation_except
 @requires_identity
 @accepts_json
-def project_clone(user_data):
+def project_clone_view(user_data):
     """Clone a remote repository."""
     project_data = ProjectCloneContext().load({
         **user_data,
