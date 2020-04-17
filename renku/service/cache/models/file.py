@@ -16,6 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache file related models."""
+import os
+import shutil
+import time
+from datetime import datetime
+
 from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
 
 from renku.service.cache.base import BaseCache
@@ -47,10 +52,42 @@ class File(Model):
         """Full path of cached file."""
         return CACHE_UPLOADS_PATH / self.user_id / self.relative_path
 
-    def valid_file(self):
-        """Ensure a file exists."""
+    def exists(self):
+        """Ensure a file exists on file system."""
         if self.abs_path.exists():
             self.is_dir = self.abs_path.is_dir()
             return True
 
         return False
+
+    def ttl_expired(self, ttl=None):
+        """Check if file time to live has expired."""
+        if not self.created_at:
+            # If record does not contain created_at,
+            # it means its an old record, and
+            # we should mark it for deletion.
+            return True
+
+        ttl = ttl or int(os.getenv('RENKU_SVC_CLEANUP_TTL_FILES', 1800))
+
+        created_at = (self.created_at -
+                      datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+
+        age = ((time.time() * 1e+3) - created_at) / 1e+3
+        return self.exists() and age >= ttl
+
+    def purge(self):
+        """Removes file from file system and cache."""
+        if self.abs_path.is_file():
+            self.abs_path.unlink()
+
+        if self.abs_path.is_dir():
+            shutil.rmtree(str(self.abs_path))
+
+        self.delete()
+
+    def is_locked(self, jobs):
+        """Check if file locked by given jobs."""
+        return bool(
+            next((job for job in jobs if self.file_id in job.locked), False)
+        )
