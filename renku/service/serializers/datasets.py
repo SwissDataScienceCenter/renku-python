@@ -25,26 +25,37 @@ from renku.service.serializers.rpc import JsonRPCResponse
 class DatasetCreators(Schema):
     """Schema for the dataset creators."""
 
-    name = fields.String(required=True)
+    name = fields.String()
     email = fields.String()
     affiliation = fields.String()
 
 
-class DatasetCreateRequest(Schema):
+class DatasetDetails(Schema):
+    """Serialize a dataset to a response object."""
+
+    short_name = fields.String(required=True)
+    version = fields.String(allow_none=True)
+    created_at = fields.String(allow_none=True, attribute='created')
+
+    title = fields.String(attribute='name')
+    creator = fields.List(fields.Nested(DatasetCreators))
+    description = fields.String()
+
+
+class DatasetCreateRequest(DatasetDetails):
     """Request schema for a dataset create view."""
 
-    creators = fields.List(fields.Nested(DatasetCreators))
-    commit_message = fields.String()
-    dataset_name = fields.String(required=True)
-    description = fields.String()
     project_id = fields.String(required=True)
+    short_name = fields.String(required=True)
+
+    commit_message = fields.String()
 
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
         if not data.get('commit_message'):
             data['commit_message'] = 'service: dataset create {0}'.format(
-                data['dataset_name']
+                data['short_name']
             )
 
         return data
@@ -53,7 +64,7 @@ class DatasetCreateRequest(Schema):
 class DatasetCreateResponse(Schema):
     """Response schema for a dataset create view."""
 
-    dataset_name = fields.String(required=True)
+    short_name = fields.String(required=True)
 
 
 class DatasetCreateResponseRPC(JsonRPCResponse):
@@ -74,19 +85,21 @@ class DatasetAddFile(Schema):
 class DatasetAddRequest(Schema):
     """Request schema for a dataset add file view."""
 
-    commit_message = fields.String()
-    dataset_name = fields.String(required=True)
+    project_id = fields.String(required=True)
+    short_name = fields.String(required=True)
+    files = fields.List(fields.Nested(DatasetAddFile), required=True)
+
     create_dataset = fields.Boolean(missing=False)
     force = fields.Boolean(missing=False)
-    project_id = fields.String(required=True)
-    files = fields.List(fields.Nested(DatasetAddFile), required=True)
+
+    commit_message = fields.String()
 
     @post_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
         if not data.get('commit_message'):
             data['commit_message'] = 'service: dataset add {0}'.format(
-                data['dataset_name']
+                data['short_name']
             )
 
         return data
@@ -107,8 +120,9 @@ class DatasetAddRequest(Schema):
 class DatasetAddResponse(Schema):
     """Response schema for a dataset add file view."""
 
-    dataset_name = fields.String(required=True)
     project_id = fields.String(required=True)
+    short_name = fields.String(required=True)
+
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
 
 
@@ -162,7 +176,7 @@ class DatasetFilesListRequest(Schema):
     """Request schema for dataset files list view."""
 
     project_id = fields.String(required=True)
-    dataset_name = fields.String(required=True)
+    short_name = fields.String(required=True)
 
 
 class DatasetFileDetails(Schema):
@@ -174,7 +188,7 @@ class DatasetFileDetails(Schema):
 class DatasetFilesListResponse(Schema):
     """Response schema for dataset files list view."""
 
-    dataset_name = fields.String(required=True)
+    short_name = fields.String(required=True)
     files = fields.List(fields.Nested(DatasetFileDetails), required=True)
 
 
