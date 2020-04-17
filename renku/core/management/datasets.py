@@ -792,13 +792,15 @@ class DatasetsApiMixin(object):
         See https://docs.docker.com/engine/reference/commandline/tag/
         for a documentation of docker tag syntax.
 
-        :raises: ValueError
+        :raises: errors.ParameterError
         """
         if len(tag) > 128:
-            raise ValueError('Tags can be at most 128 characters long.')
+            raise errors.ParameterError(
+                'Tags can be at most 128 characters long.'
+            )
 
         if not re.match('^(?![.-])[a-zA-Z0-9_.-]{1,128}$', tag):
-            raise ValueError((
+            raise errors.ParameterError((
                 'Tag {} is invalid. \n'
                 'Only characters a-z, A-Z, 0-9, ., - and _ '
                 'are allowed. \nTag can\'t start with a . or -'
@@ -809,7 +811,9 @@ class DatasetsApiMixin(object):
                 # remove duplicate tag
                 dataset.tags = [t for t in dataset.tags if t.name != tag]
             else:
-                raise ValueError('Tag {} already exists'.format(tag))
+                raise errors.ParameterError(
+                    'Tag {} already exists'.format(tag)
+                )
 
         latest_commit = list(self.dataset_commits(dataset, max_results=1))[0]
 
@@ -830,7 +834,9 @@ class DatasetsApiMixin(object):
         not_found = set(tags).difference(tag_names)
 
         if len(not_found) > 0:
-            raise ValueError('Tags {} not found'.format(', '.join(not_found)))
+            raise errors.ParameterError(
+                'Tags {} not found'.format(', '.join(not_found))
+            )
         dataset.tags = [t for t in dataset.tags if t.name not in tags]
 
         return dataset

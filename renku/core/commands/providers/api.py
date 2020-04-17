@@ -30,6 +30,10 @@ class ProviderApi(abc.ABC):
         """Get export manager."""
         pass
 
+    def set_parameters(self, client, **kwargs):
+        """Set and validate required parameters for a provider."""
+        pass
+
     @staticmethod
     @abc.abstractmethod
     def supports(uri):

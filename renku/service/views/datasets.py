@@ -187,6 +187,7 @@ def add_file_to_dataset_view(user_data, cache):
                 local_paths,
                 ctx['dataset_name'],
                 create=ctx['create_dataset'],
+                force=ctx['force'],
                 commit_message=ctx['commit_message']
             )
 
@@ -270,7 +271,7 @@ def import_dataset_view(user_data, cache):
         'job_id': uuid.uuid4().hex,
         'state': USER_JOB_STATE_ENQUEUED,
     }
-    job = cache.make_job(user, user_job)
+    job = cache.make_job(user, user_job, locked=ctx['project_id'])
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
