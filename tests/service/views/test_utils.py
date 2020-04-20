@@ -45,7 +45,8 @@ def test_result_response(svc_client):
 
     expected = ctx['datasets'][0]
     received = response['result']['datasets'][0]
-    assert expected['name'] == received['title']
+
+    assert expected['short_name'] == received['short_name']
 
 
 def test_result_response_with_none(svc_client):
