@@ -356,6 +356,13 @@
             ],
             "version": "==8.1"
         },
+        "humanize": {
+            "hashes": [
+                "sha256:98b7ac9d1a70ad62175c8e0dd44beebbd92418727fc4e214468dfb2baa8ebfb5",
+                "sha256:bc2a1ff065977011de2bc36197a4b14730c54bfc46ab12a153376684573a2dab"
+            ],
+            "version": "==2.3.0"
+        },
         "idna": {
             "hashes": [
                 "sha256:c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407",

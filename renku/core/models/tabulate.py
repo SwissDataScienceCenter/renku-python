@@ -29,6 +29,8 @@ def format_cell(cell, datetime_fmt=None):
         if cell.tzinfo:
             cell = cell.astimezone()
         return cell.strftime(datetime_fmt)
+    elif isinstance(cell, int):
+        return f'{cell:,}'
     return cell
 
 
