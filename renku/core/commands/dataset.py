@@ -762,12 +762,13 @@ def _filter(
         creators = set(creators)
 
     records = []
-    for path_, dataset in client.datasets.items():
+    for dataset in client.datasets.values():
         if not short_names or dataset.short_name in short_names:
             for file_ in dataset.files:
                 file_.dataset = dataset
-                path_ = Path(file_.path)
-                match = _include_exclude(path_, include, exclude)
+                file_.client = client
+                path = Path(file_.path)
+                match = _include_exclude(path, include, exclude)
 
                 if creators:
                     match = match and creators.issubset({

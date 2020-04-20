@@ -77,7 +77,7 @@ def remove(ctx, client, sources):
             if remove:
                 for key in remove:
                     dataset.unlink_file(key)
-                    client.remove_file(key)
+                    client.remove_file(client.path / key)
 
                 dataset.to_yaml()
 
@@ -97,6 +97,7 @@ def remove(ctx, client, sources):
                 click.edit(filename=str(client.path / '.gitattributes'))
 
     # Finally remove the files.
-    final_sources = list(set(files.values()))
+    files_to_remove = set(str(client.path / f) for f in files.values())
+    final_sources = list(files_to_remove)
     if final_sources:
         run(['git', 'rm', '-rf'] + final_sources, check=True)

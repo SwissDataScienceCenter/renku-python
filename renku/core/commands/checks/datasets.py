@@ -18,7 +18,6 @@
 """Checks needed to determine integrity of datasets."""
 import os
 from collections import defaultdict
-from pathlib import Path
 
 import click
 
@@ -56,11 +55,11 @@ def check_missing_files(client):
     """Find missing files listed in datasets."""
     missing = defaultdict(list)
 
-    for path, dataset in client.datasets.items():
+    for dataset in client.datasets.values():
         for file_ in dataset.files:
+            path = client.path / file_.path
             file_exists = (
-                Path(file_.path).exists() or
-                (file_.external and os.path.lexists(file_.path))
+                path.exists() or (file_.external and os.path.lexists(path))
             )
             if not file_exists:
                 missing[dataset.name].append(file_.path)

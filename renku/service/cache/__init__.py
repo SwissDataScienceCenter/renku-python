@@ -44,4 +44,4 @@ def make_cache():
 
 cache = make_cache()
 
-__all__ = ['cache']
+__all__ = ['cache', 'ServiceCache']

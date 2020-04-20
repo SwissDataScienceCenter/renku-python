@@ -25,6 +25,7 @@ from pathlib import Path
 
 import git
 import pytest
+from click.testing import CliRunner
 
 from renku.cli import cli
 
@@ -116,8 +117,10 @@ def test_rerun_with_inputs(runner, project, run):
         assert f.read().startswith(first_data)
 
 
-def test_rerun_with_edited_inputs(runner, project, run):
+def test_rerun_with_edited_inputs(project, run):
     """Test input modification."""
+    runner = CliRunner(mix_stderr=False)
+
     cwd = Path(project)
     data = cwd / 'examples'
     data.mkdir()
@@ -155,7 +158,7 @@ def test_rerun_with_edited_inputs(runner, project, run):
             catch_exceptions=False
         )
         assert 0 == result.exit_code
-        assert 'input_1: {0}\n'.format(first.name) == result.output
+        assert 'input_1: {0}\n'.format(first.name) == result.stdout
 
         assert 0 == run(
             args=('rerun', '--edit-inputs', '--from', str(first), str(second)),

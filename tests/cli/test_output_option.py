@@ -17,6 +17,8 @@
 # limitations under the License.
 """Test behavior of ``--output`` option."""
 
+import os
+
 import pytest
 import yaml
 
@@ -36,9 +38,10 @@ def read_cwl_file(cwl_filepath):
         return CWLClass.from_cwl(yaml.safe_load(f))
 
 
-def test_run_succeeds_normally(cli):
+def test_run_succeeds_normally(cli, client, subdirectory):
     """Test when an output is detected"""
-    exit_code, cwl = cli('run', 'touch', 'foo')
+    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    exit_code, cwl = cli('run', 'touch', foo)
 
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
@@ -49,7 +52,7 @@ def test_run_succeeds_normally(cli):
     assert '$(inputs.input_1)' == cwl.outputs[0].outputBinding.glob
 
 
-def test_when_no_change_in_outputs_is_detected(cli):
+def test_when_no_change_in_outputs_is_detected(cli, subdirectory):
     """Test when no output is detected"""
     cli('run', 'touch', 'foo')
     exit_code, cwl = cli('run', 'ls', 'foo')
@@ -57,10 +60,11 @@ def test_when_no_change_in_outputs_is_detected(cli):
     assert 1 == exit_code
 
 
-def test_with_no_output_option(cli, client):
+def test_with_no_output_option(cli, client, subdirectory):
     """Test --no-output option with no output detection"""
-    cli('run', 'touch', 'foo')
-    exit_code, cwl = cli('run', '--no-output', 'touch', 'foo')
+    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    cli('run', 'touch', foo)
+    exit_code, cwl = cli('run', '--no-output', 'touch', foo)
 
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
@@ -80,10 +84,11 @@ def test_with_no_output_option(cli, client):
     'command,expected_type', [(('touch', ), 'File'),
                               (('mkdir', '-p'), 'Directory')]
 )
-def test_explicit_outputs(cli, command, expected_type):
+def test_explicit_outputs(cli, command, expected_type, client, subdirectory):
     """Test detection of an output file with --output option."""
-    cli('run', *command, 'foo')
-    exit_code, cwl = cli('run', '--output', 'foo', *command, 'foo')
+    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    cli('run', *command, foo)
+    exit_code, cwl = cli('run', '--output', foo, *command, foo)
 
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
@@ -94,10 +99,11 @@ def test_explicit_outputs(cli, command, expected_type):
     assert '$(inputs.input_1)' == cwl.outputs[0].outputBinding.glob
 
 
-def test_explicit_output_results(cli, client):
+def test_explicit_output_results(cli, client, subdirectory):
     """Test explicit output yield same results as normal run"""
-    cli('run', 'touch', 'foo')
-    cli('run', '--output', 'foo', 'touch', 'foo')
+    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    cli('run', 'touch', foo)
+    cli('run', '--output', foo, 'touch', foo)
 
     cwls = read_all_cwl_files(client)
 
@@ -107,10 +113,12 @@ def test_explicit_output_results(cli, client):
     assert cwls[0].outputs == cwls[1].outputs
 
 
-def test_explicit_outputs_and_normal_outputs(cli, client):
+def test_explicit_outputs_and_normal_outputs(cli, client, subdirectory):
     """Test explicit outputs and normal outputs can both exist"""
-    cli('run', 'touch', 'foo')
-    exit_code, cwl = cli('run', '--output', 'foo', 'touch', 'foo', 'bar')
+    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    bar = os.path.relpath(client.path / 'bar', os.getcwd())
+    cli('run', 'touch', foo)
+    exit_code, cwl = cli('run', '--output', foo, 'touch', foo, bar)
 
     assert 0 == exit_code
     cwl.inputs.sort(key=lambda e: e.default)
@@ -124,7 +132,7 @@ def test_explicit_outputs_and_normal_outputs(cli, client):
     assert cwl.outputs[0].outputBinding != cwl.outputs[1].outputBinding
 
 
-def test_explicit_outputs_and_std_output_streams(cli, client):
+def test_explicit_outputs_and_std_output_streams(cli, client, subdirectory):
     """Test that unchanged std output streams can be marked with explicit
     outputs"""
     exit_code, _ = cli('run', 'sh', '-c', 'echo foo > bar')
@@ -137,12 +145,13 @@ def test_explicit_outputs_and_std_output_streams(cli, client):
     assert 0 == exit_code
 
 
-def test_output_directory_with_output_option(cli, client):
+def test_output_directory_with_output_option(cli, client, subdirectory):
     """Test output directories are not deleted with --output"""
+    outdir = os.path.relpath(client.path / 'outdir', os.getcwd())
     a_script = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
-    cli('run', *a_script, 'outdir', 'foo')
+    cli('run', *a_script, outdir, 'foo')
 
-    exit_code, _ = cli('run', '--output', 'outdir', *a_script, 'outdir', 'bar')
+    exit_code, _ = cli('run', '--output', outdir, *a_script, outdir, 'bar')
 
     assert 0 == exit_code
     assert (client.path / 'outdir' / 'foo').exists()
@@ -200,11 +209,12 @@ def test_explicit_inputs_and_outputs_are_listed(cli, client):
     assert 'baz' == cwl.outputs[0].outputBinding.glob
 
 
-def test_explicit_inputs_can_be_in_inputs(cli):
+def test_explicit_inputs_can_be_in_inputs(cli, client, subdirectory):
     """Test explicit inputs that are in inputs are treated as normal inputs"""
-    cli('run', 'touch', 'foo')
+    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    cli('run', 'touch', foo)
 
-    exit_code, cwl = cli('run', '--input', 'foo', '--no-output', 'ls', 'foo')
+    exit_code, cwl = cli('run', '--input', foo, '--no-output', 'ls', foo)
 
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
