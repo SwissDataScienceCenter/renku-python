@@ -943,7 +943,7 @@ def test_edit_datasets_view(svc_client_with_repo):
 
     payload = {
         'project_id': project_id,
-        'dataset_name': short_name,
+        'short_name': short_name,
     }
 
     response = svc_client.post(
@@ -955,8 +955,8 @@ def test_edit_datasets_view(svc_client_with_repo):
     assert response
 
     assert_rpc_response(response)
-    assert {'dataset_name'} == set(response.json['result'].keys())
-    assert payload['dataset_name'] == response.json['result']['dataset_name']
+    assert {'short_name'} == set(response.json['result'].keys())
+    assert payload['short_name'] == response.json['result']['short_name']
 
     params_list = {
         'project_id': project_id,

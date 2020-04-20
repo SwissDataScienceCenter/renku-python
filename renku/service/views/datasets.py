@@ -218,7 +218,6 @@ def add_file_to_dataset_view(user_data, cache):
 @requires_identity
 def create_dataset_view(user, cache):
     """Create a new dataset in a project."""
-    breakpoint()
     ctx = DatasetCreateRequest().load(request.json)
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
