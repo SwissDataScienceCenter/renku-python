@@ -221,7 +221,7 @@ class DatasetEditRequest(Schema):
 class DatasetEditResponse(Schema):
     """Dataset edit metadata response."""
 
-    edited = fields.List(fields.String(), required=True)
+    edited = fields.Dict(required=True)
     warnings = fields.List(fields.String())
 
 

@@ -303,8 +303,9 @@ def import_dataset_view(user_data, cache):
 @requires_identity
 def edit_dataset_view(user_data, cache):
     """Edit dataset metadata."""
-    user = cache.ensure_user(user_data)
     ctx = DatasetEditRequest().load(request.json)
+
+    user = cache.ensure_user(user_data)
     project = cache.get_project(user, ctx['project_id'])
 
     if project is None or project.abs_path is False:
@@ -314,7 +315,7 @@ def edit_dataset_view(user_data, cache):
         )
 
     if ctx.get('commit_message') is None:
-        ctx['commit_message'] = 'service: dataset add {0}'.format(
+        ctx['commit_message'] = 'service: dataset edit {0}'.format(
             ctx['short_name']
         )
 
@@ -329,7 +330,8 @@ def edit_dataset_view(user_data, cache):
 
     return result_response(
         DatasetEditResponseRPC(), {
-            'edited': edited,
+            'edited': {field: ctx.get(field)
+                       for field in edited},
             'warnings': warnings
         }
     )

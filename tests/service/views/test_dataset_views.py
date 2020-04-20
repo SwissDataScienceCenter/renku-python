@@ -935,7 +935,7 @@ def test_add_remote_and_local_file(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_edit_datasets_view(svc_client_with_repo):
     """Test editing dataset metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -984,4 +984,4 @@ def test_edit_datasets_view(svc_client_with_repo):
     assert_rpc_response(response)
 
     assert {'warnings', 'edited'} == set(response.json['result'])
-    assert ['title'] == response.json['result']['edited']
+    assert {'title': 'my new title'} == response.json['result']['edited']
