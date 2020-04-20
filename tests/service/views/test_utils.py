@@ -36,7 +36,7 @@ def test_error_response(svc_client):
 
 def test_result_response(svc_client):
     """Test result response utility."""
-    ctx = {'datasets': [{'name': 'my-dataset'}]}
+    ctx = {'datasets': [{'short_name': 'my-dataset'}]}
     response = result_response(DatasetListResponseRPC(), ctx).json
 
     assert response
