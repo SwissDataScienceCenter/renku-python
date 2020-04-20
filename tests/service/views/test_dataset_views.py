@@ -361,8 +361,11 @@ def test_list_datasets_view(svc_client_with_repo):
 
     assert {'datasets'} == set(response.json['result'].keys())
     assert 0 != len(response.json['result']['datasets'])
-    assert {'identifier', 'name', 'version',
-            'created'} == set(response.json['result']['datasets'][0].keys())
+
+    assert {
+        'version', 'description', 'short_name', 'created_at', 'creator',
+        'title'
+    } == set(response.json['result']['datasets'][0].keys())
 
 
 @pytest.mark.service
@@ -424,11 +427,13 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 
     assert {'datasets'} == set(response.json['result'].keys())
     assert 0 != len(response.json['result']['datasets'])
-    assert {'identifier', 'name', 'version',
-            'created'} == set(response.json['result']['datasets'][0].keys())
+    assert {
+        'version', 'description', 'short_name', 'created_at', 'creator',
+        'title'
+    } == set(response.json['result']['datasets'][0].keys())
 
     assert payload['dataset_name'] in [
-        ds['name'] for ds in response.json['result']['datasets']
+        ds['short_name'] for ds in response.json['result']['datasets']
     ]
 
 
@@ -899,7 +904,7 @@ def test_dataset_add_multiple_remote(
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_add_remote_and_local_file(svc_client_with_repo):
     """Test dataset add remote and local files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -926,3 +931,57 @@ def test_add_remote_and_local_file(svc_client_with_repo):
             assert pair[0].pop('job_id')
 
         assert set(pair[0].values()) == set(pair[1].values())
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_edit_datasets_view(svc_client_with_repo):
+    """Test editing dataset metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    short_name = '{0}'.format(uuid.uuid4().hex)
+
+    payload = {
+        'project_id': project_id,
+        'dataset_name': short_name,
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+
+    assert_rpc_response(response)
+    assert {'dataset_name'} == set(response.json['result'].keys())
+    assert payload['dataset_name'] == response.json['result']['dataset_name']
+
+    params_list = {
+        'project_id': project_id,
+    }
+
+    response = svc_client.get(
+        '/datasets.list',
+        query_string=params_list,
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response)
+
+    edit_payload = {
+        'project_id': project_id,
+        'short_name': short_name,
+        'title': 'my new title',
+    }
+    response = svc_client.post(
+        '/datasets.edit', data=json.dumps(edit_payload), headers=headers
+    )
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {'warnings', 'edited'} == set(response.json['result'])
+    assert {'title': 'my new title'} == response.json['result']['edited']

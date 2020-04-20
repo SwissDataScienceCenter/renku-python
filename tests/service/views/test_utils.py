@@ -42,7 +42,10 @@ def test_result_response(svc_client):
     assert response
     assert {'result'} == set(response.keys())
     assert {'datasets'} == set(response['result'].keys())
-    assert ctx == response['result']
+
+    expected = ctx['datasets'][0]
+    received = response['result']['datasets'][0]
+    assert expected['name'] == received['title']
 
 
 def test_result_response_with_none(svc_client):
