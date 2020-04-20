@@ -292,7 +292,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
     payload = {
         'project_id': project_id,
-        'dataset_name': uuid.uuid4().hex,
+        'short_name': uuid.uuid4().hex,
         'create_dataset': True,
         'files': [{
             'file_url': url
@@ -306,7 +306,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
     assert response
     assert_rpc_response(response)
-    assert {'files', 'dataset_name',
+    assert {'files', 'short_name',
             'project_id'} == set(response.json['result'].keys())
 
     dest = make_project_path(
@@ -320,8 +320,8 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     commit_message = 'service: dataset add remote file'
 
     dataset_add_remote_file(
-        user, job_id, project_id, True, commit_message,
-        payload['dataset_name'], url
+        user, job_id, project_id, True, commit_message, payload['short_name'],
+        url
     )
 
     new_commit = Repo(dest).head.commit

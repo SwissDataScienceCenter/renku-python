@@ -105,7 +105,7 @@ def list_dataset_files_view(user, cache):
         )
 
     with chdir(project.abs_path):
-        ctx['files'] = list_files(datasets=[ctx['dataset_name']])
+        ctx['files'] = list_files(datasets=[ctx['short_name']])
 
     return result_response(DatasetFilesListResponseRPC(), ctx)
 
@@ -142,7 +142,7 @@ def add_file_to_dataset_view(user_data, cache):
 
     if not ctx['commit_message']:
         ctx['commit_message'] = 'service: dataset add {0}'.format(
-            ctx['dataset_name']
+            ctx['short_name']
         )
 
     local_paths = []
@@ -161,7 +161,7 @@ def add_file_to_dataset_view(user_data, cache):
                 queue.enqueue(
                     dataset_add_remote_file, user_data, job.job_id,
                     project.project_id, ctx['create_dataset'], commit_message,
-                    ctx['dataset_name'], _file['file_url']
+                    ctx['short_name'], _file['file_url']
                 )
             continue
 
@@ -185,7 +185,7 @@ def add_file_to_dataset_view(user_data, cache):
         with chdir(project.abs_path):
             add_file(
                 local_paths,
-                ctx['dataset_name'],
+                ctx['short_name'],
                 create=ctx['create_dataset'],
                 force=ctx['force'],
                 commit_message=ctx['commit_message']
@@ -228,7 +228,7 @@ def create_dataset_view(user, cache):
 
     with chdir(project.abs_path):
         create_dataset(
-            ctx['dataset_name'],
+            ctx['short_name'],
             commit_message=ctx['commit_message'],
             creators=ctx.get('creators'),
             description=ctx.get('description'),

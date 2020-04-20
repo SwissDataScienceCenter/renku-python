@@ -921,9 +921,9 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
     assert message in result.output
 
 
-def read_dataset_file_metadata(client, dataset_name, filename):
+def read_dataset_file_metadata(client, short_name, filename):
     """Return metadata from dataset's YAML file."""
-    with client.with_dataset(dataset_name) as dataset:
+    with client.with_dataset(short_name) as dataset:
         assert client.get_dataset_path(dataset.name).exists()
 
         for file_ in dataset.files:

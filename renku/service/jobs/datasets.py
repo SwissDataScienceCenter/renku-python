@@ -102,7 +102,7 @@ def dataset_import(
 @requires_cache
 def dataset_add_remote_file(
     cache, user, user_job_id, project_id, create_dataset, commit_message,
-    dataset_name, url
+    short_name, url
 ):
     """Add a remote file to a specified dataset."""
     user = cache.ensure_user(user)
@@ -116,7 +116,7 @@ def dataset_add_remote_file(
             urls = url if isinstance(url, list) else [url]
             add_file(
                 urls,
-                dataset_name,
+                short_name,
                 create=create_dataset,
                 commit_message=commit_message
             )
