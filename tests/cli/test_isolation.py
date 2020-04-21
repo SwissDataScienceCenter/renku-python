@@ -53,7 +53,8 @@ def test_run_in_isolation(runner, project, client, run, subdirectory):
 
 
 def test_file_modification_during_run(
-    tmpdir, runner, project, client, run, subdirectory, no_lfs_size_limit
+    tmpdir, runner, project, client, run, subdirectory, no_lfs_size_limit, 
+    no_lfs_warning
 ):
     """Test run in isolation."""
     script = client.path / 'script.py'
@@ -86,8 +87,10 @@ def test_file_modification_during_run(
             prefix + cmd, stdin=subprocess.PIPE, stdout=stdout
         )
 
-        while not lock.exists():
+        while not lock.exists() and process.poll() is None:
             time.sleep(1)
+
+        assert process.poll() is None, 'Subprocess exited prematurely'
 
         with script.open('w') as fp:
             fp.write('print("edited")')

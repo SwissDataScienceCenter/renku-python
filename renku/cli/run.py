@@ -239,10 +239,15 @@ def run(
     system_stdout = None
     system_stderr = None
 
+    # /dev/tty is a virtual device that points to the terminal
+    # of the currently executed process
     try:
-        # /dev/tty is a virtual device that points to the terminal
-        # of the currently executed process
-        tty_exists = os.path.exists('/dev/tty')
+        with open('/dev/tty', 'w'):
+            tty_exists = True
+    except OSError:
+        tty_exists = False
+
+    try:
         stdout_redirected = 'stdout' in mapped_std
         stderr_redirected = 'stderr' in mapped_std
 
@@ -314,13 +319,16 @@ def run(
 
                 wf.add_step(run=tool)
 
-        if factory.warning:
-            click.echo(factory.warning)
+        if factory.messages:
+            click.echo(factory.messages)
+
+        if factory.warnings:
+            click.echo(factory.warnings)
 
     finally:
         if system_stdout:
-            system_stdout.close()
             sys.stdout = old_stdout
+            system_stdout.close()
         if system_stderr:
-            system_stderr.close()
             sys.stderr = old_stderr
+            system_stderr.close()

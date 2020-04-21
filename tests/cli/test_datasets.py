@@ -392,7 +392,7 @@ def test_add_and_create_dataset_with_lfs_warning(
         catch_exceptions=False
     )
     assert 0 == result.exit_code
-    assert 'Adding files to Git LFS' in result.output
+    assert 'Adding these files to Git LFS' in result.output
     assert 'dir2/file2' in result.output
     assert 'file' in result.output
 

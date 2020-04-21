@@ -30,7 +30,7 @@ from subprocess import run
 import click
 
 from renku.core.commands.client import pass_local_client
-from renku.core.commands.echo import WARNING, progressbar
+from renku.core.commands.echo import INFO, WARNING, progressbar
 
 
 @click.command(name='mv')
@@ -115,16 +115,13 @@ def move(ctx, client, sources, destination):
         lfs_paths = client.track_paths_in_storage(
             *(destinations[path] for path in tracked)
         )
-        if (
-            lfs_paths and
-            client.get_value('renku', 'show_lfs_warnings') is None or
-            client.get_value('renku', 'show_lfs_warnings') == 'True'
-        ):
+        show_message = client.get_value('renku', 'show_lfs_message')
+        if (lfs_paths and show_message is None or show_message == 'True'):
             click.echo(
-                WARNING + 'Adding files to Git LFS:\n' +
+                INFO + 'Adding these files to Git LFS:\n' +
                 '\t{}'.format('\n\t'.join(lfs_paths)) +
-                '\nTo disable this warning in the future, run:' +
-                '\n\trenku config show_lfs_warnings False'
+                '\nTo disable this message in the future, run:' +
+                '\n\trenku config show_lfs_message False'
             )
 
     # 4. Handle symlinks.
