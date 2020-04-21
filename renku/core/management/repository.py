@@ -94,7 +94,7 @@ class RepositoryApiMixin(GitCore):
     WORKFLOW = 'workflow'
     """Directory for storing workflow in Renku."""
 
-    ACTIVITY_CACHE = 'activity_cache.yaml'
+    ACTIVITY_INDEX = 'activity_index.yaml'
     """Caches activities that generated a path."""
 
     RENKU_PROTECTED_PATHS = [
@@ -105,7 +105,7 @@ class RepositoryApiMixin(GitCore):
 
     _commit_activity_cache = {}
 
-    _path_activity_cache = {}
+    _activity_index = {}
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
@@ -154,9 +154,9 @@ class RepositoryApiMixin(GitCore):
         return self.renku_path / self.WORKFLOW
 
     @property
-    def activity_cache_path(self):
+    def activity_index_path(self):
         """Path to the activity filepath cache."""
-        return self.renku_path / self.ACTIVITY_CACHE
+        return self.renku_path / self.ACTIVITY_INDEX
 
     @cached_property
     def cwl_prefix(self):
@@ -416,7 +416,7 @@ class RepositoryApiMixin(GitCore):
                     path=path,
                 )
                 run.to_yaml()
-                self.add_to_path_activity_cache(run)
+                self.add_to_activity_index(run)
 
     def init_repository(self, force=False):
         """Initialize an empty Renku repository."""
@@ -443,37 +443,35 @@ class RepositoryApiMixin(GitCore):
         # TODO: this is there for performance reasons. Remove once graph
         # is stored as a flat, append-only list (Should be graph query
         # in the future)
-        if self._path_activity_cache:
-            return self._path_activity_cache
+        if self._activity_index:
+            return self._activity_index
 
-        path = self.activity_cache_path
+        path = self.activity_index_path
 
         if path.exists():
             with path.open('r') as stream:
-                self._path_activity_cache = yaml.safe_load(stream)
+                self._activity_index = yaml.safe_load(stream)
         else:
-            self._path_activity_cache = {}
+            self._activity_index = {}
 
-        return self._path_activity_cache
+        return self._activity_index
 
-    def add_to_path_activity_cache(self, activity):
+    def add_to_activity_index(self, activity):
         """Add an activity and it's generations to the cache."""
         for g in activity.generated:
-            if g.path not in self._path_activity_cache:
-                self._path_activity_cache[g.path] = {}
+            if g.path not in self._activity_index:
+                self._activity_index[g.path] = {}
             hexsha = g.commit.hexsha
-            if hexsha not in self._path_activity_cache[g.path]:
-                self._path_activity_cache[g.path][hexsha] = []
+            if hexsha not in self._activity_index[g.path]:
+                self._activity_index[g.path][hexsha] = []
 
-            if activity.path in self._path_activity_cache[g.path][hexsha]:
+            if activity.path in self._activity_index[g.path][hexsha]:
                 continue
 
-            self._path_activity_cache[g.path][g.commit.hexsha].append(
-                activity.path
-            )
+            self._activity_index[g.path][g.commit.hexsha].append(activity.path)
 
-        with self.activity_cache_path.open('w') as stream:
-            yaml.dump(self._path_activity_cache, stream)
+        with self.activity_index_path.open('w') as stream:
+            yaml.dump(self._activity_index, stream)
 
     def activities_for_paths(self, paths, file_commit=None, revision='HEAD'):
         """Get all activities involving a path."""
