@@ -33,7 +33,6 @@ from werkzeug.utils import cached_property, secure_filename
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.entities import Collection
 from renku.core.models.locals import with_reference
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
