@@ -151,7 +151,6 @@ def test_graph_building_after_migration(isolated_runner, old_project):
     assert 0 == result.exit_code
 
     result = isolated_runner.invoke(cli, ['log'])
-    breakpoint()
     assert 0 == result.exit_code
 
 

@@ -92,7 +92,7 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
     outputs = list(cmd_line_tool.outputs)
 
     if cmd_line_tool.stdin:
-        name = cmd_line_tool.stdin.split('.')[1]
+        name = cmd_line_tool.stdin.split('.')[1][:-1]
         matched_input = next(i for i in inputs if i.id == name)
         inputs.remove(matched_input)
 
@@ -141,7 +141,7 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
             raise NotImplementedError(
                 'Only stdout and outputs mapped to inputs are supported.'
             )
-        name = o.outputBinding.glob.split('.')[1]
+        name = o.outputBinding.glob.split('.')[1][:-1]
         matched_input = next(i for i in inputs if i.id == name)
         inputs.remove(matched_input)
 

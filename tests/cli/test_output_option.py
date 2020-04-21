@@ -20,7 +20,7 @@
 import os
 from pathlib import Path
 
-from renku.core.models.entities import Collection, Entity
+from renku.core.models.entities import Collection
 from renku.core.models.provenance.activities import Activity
 
 
@@ -68,14 +68,14 @@ def test_with_no_output_option(cli, client, subdirectory):
     assert 0 == len(cwl.outputs)
 
 
-
 def test_explicit_outputs_directory(cli, client, subdirectory):
     """Test detection of an output file with --output option."""
-    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    foo = Path(os.path.relpath(client.path / 'foo', os.getcwd()))
     foo.mkdir()
 
-    exit_code, cwl = cli('run', '--output', 'foo', 'touch', 'foo/file')
+    file_ = foo / 'file'
 
+    exit_code, cwl = cli('run', '--output', str(foo), 'touch', str(file_))
     cwl = cwl.association.plan
     assert 0 == exit_code
     assert 0 == len(cwl.inputs)
@@ -167,7 +167,7 @@ def test_explicit_inputs_are_inside_repo(cli):
 
 def test_explicit_inputs_and_outputs_are_listed(cli, client):
     """Test explicit inputs and outputs will be in generated CWL file"""
-    foo = os.path.relpath(client.path / 'foo', os.getcwd())
+    foo = Path(os.path.relpath(client.path / 'foo', os.getcwd()))
     foo.mkdir()
     cli('run', 'touch', 'foo/file')
     cli('run', 'touch', 'bar', 'baz')
@@ -175,8 +175,9 @@ def test_explicit_inputs_and_outputs_are_listed(cli, client):
     exit_code, cwl = cli(
         'run', '--input', 'foo', '--input', 'bar', '--output', 'baz', 'echo'
     )
-
     assert 0 == exit_code
+
+    cwl = cwl.association.plan
     assert 2 == len(cwl.inputs)
     cwl.inputs.sort(key=lambda e: e.consumes.path)
 
