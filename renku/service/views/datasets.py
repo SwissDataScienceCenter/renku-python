@@ -25,6 +25,7 @@ from flask_apispec import marshal_with, use_kwargs
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     edit_dataset, list_datasets, list_files
+from renku.core.errors import RenkuException
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
@@ -229,9 +230,10 @@ def create_dataset_view(user, cache):
     with chdir(project.abs_path):
         create_dataset(
             ctx['short_name'],
-            commit_message=ctx['commit_message'],
-            creators=ctx.get('creators'),
+            title=ctx.get('name'),
+            creators=ctx.get('creator'),
             description=ctx.get('description'),
+            commit_message=ctx['commit_message']
         )
 
     if not repo_sync(project.abs_path):
