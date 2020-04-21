@@ -205,4 +205,4 @@ def update(client, revision, no_output, siblings, paths):
     with with_reference(path):
         run = WorkflowRun.from_run(workflow, client, path, update_commits=True)
         run.to_yaml()
-        client.add_to_path_activity_cache(run)
+        client.add_to_activity_index(run)

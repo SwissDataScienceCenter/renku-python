@@ -146,7 +146,7 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
         inputs.remove(matched_input)
 
         path = client.workflow_path / Path(matched_input.default['path'])
-        path = path.relative_to(client.path)
+        path = Path(os.path.abspath(path)).relative_to(client.path)
 
         prefix = matched_input.inputBinding.prefix
 
@@ -172,7 +172,7 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
             i.default['class'] in ['File', 'Directory']
         ):
             path = client.workflow_path / Path(i.default['path'])
-            path = path.resolve().relative_to(client.path)
+            path = Path(os.path.abspath(path)).relative_to(client.path)
 
             run.inputs.append(
                 CommandInput(
@@ -210,7 +210,7 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
         process_run = ProcessRun.from_run(run, client, path)
         process_run.invalidated = _invalidations_from_commit(client, commit)
         process_run.to_yaml()
-        client.add_to_path_activity_cache(process_run)
+        client.add_to_activity_index(process_run)
         return process_run, path
 
 
@@ -233,7 +233,7 @@ def _migrate_composite_step(client, workflow):
     with with_reference(path):
         wf = WorkflowRun.from_run(run, client, path)
         wf.to_yaml()
-        client.add_to_path_activity_cache(wf)
+        client.add_to_activity_index(wf)
 
     return wf, path
 

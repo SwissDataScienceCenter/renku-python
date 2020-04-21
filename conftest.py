@@ -405,7 +405,7 @@ def old_bare_repository(request, tmpdir_factory):
 
 
 @pytest.fixture(scope='function')
-def old_workflow_project(tmpdir_factory):
+def old_workflow_project(tmp_path_factory):
     """Prepares a testing repo created by old version of renku."""
     import tarfile
     from git import Repo
@@ -415,19 +415,19 @@ def old_workflow_project(tmpdir_factory):
 
     compressed_repo_path = Path(
         __file__
-    ).parent / 'tests' / 'fixtures' / '{0}.tar.gz'.format(name)
+    ).parent / 'tests' / 'fixtures' / '{name}.tar.gz'.format(name=name)
 
-    working_dir_path = tmpdir_factory.mktemp(name)
+    working_dir_path = tmp_path_factory.mktemp(name)
 
     with tarfile.open(str(compressed_repo_path), 'r') as fixture:
-        fixture.extractall(working_dir_path.strpath)
+        fixture.extractall(str(working_dir_path))
 
     path = working_dir_path / name
 
-    repo_path = tmpdir_factory.mktemp('repo')
+    repo_path = tmp_path_factory.mktemp('repo')
 
-    repository = Repo(path.strpath,
-                      search_parent_directories=True).clone(repo_path.strpath)
+    repository = Repo(str(path),
+                      search_parent_directories=True).clone(str(repo_path))
 
     repository_path = repository.working_dir
 
@@ -440,9 +440,7 @@ def old_workflow_project(tmpdir_factory):
     # remove any extra non-tracked files (.pyc, etc)
     repository.git.clean('-xdff')
 
-    shutil.rmtree(repo_path.strpath)
-
-    shutil.rmtree(working_dir_path.strpath)
+    shutil.rmtree(str(repo_path))
 
 
 @pytest.fixture(scope='module')

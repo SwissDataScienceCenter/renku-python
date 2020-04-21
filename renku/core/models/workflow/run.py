@@ -153,14 +153,8 @@ class Run(CommitMixin):
         kw_only=True,
     )
 
-    successcodes = jsonld.ib(
-        default=None,
-        context={
-            '@id': 'renku:successCodes',
-            '@type': 'http://www.w3.org/2001/XMLSchema#integer',
-        },
-        type=int,
-        kw_only=True,
+    successcodes = jsonld.container.list(
+        context='renku:successCodes', kw_only=True, type=int
     )
 
     subprocesses = jsonld.container.list(

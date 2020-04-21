@@ -41,6 +41,7 @@ a tool, then these files must be recreated as well. See the explanation in
 :ref:`updating siblings <cli-update-with-siblings>`.
 """
 
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -78,7 +79,7 @@ def edit_inputs(client, workflow):
             default=input_.consumes.path,
         )
         input_.consumes.path = str(
-            Path(new_path).resolve().relative_to(client.path)
+            Path(os.path.abspath(new_path)).relative_to(client.path)
         )
 
     for step in workflow.subprocesses:
@@ -195,4 +196,4 @@ def rerun(client, revision, roots, siblings, inputs, paths):
     with with_reference(path):
         run = WorkflowRun.from_run(workflow, client, path)
         run.to_yaml()
-        client.add_to_path_activity_cache(run)
+        client.add_to_activity_index(run)

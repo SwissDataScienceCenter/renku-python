@@ -20,8 +20,7 @@ Renku Workflow
 
 .. py:module:: renku.core.models.workflow
 
-Renku uses PROV-O and its own Renku ontology to represent workflows. S
-
+Renku uses PROV-O and its own Renku ontology to represent workflows.
 
 
 Run
@@ -42,7 +41,7 @@ Renku Workflow Conversion
 .. py:module:: renku.core.models.workflow.converters
 
 Renku Allows conversion of tracked workflows to runnable workflows in
-supported tools (Current CWL)
+supported tools (Currently CWL)
 
 CWL
 ---
