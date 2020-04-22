@@ -231,7 +231,7 @@ class CWLConverter(object):
 
         tool_object = CommandLineTool(
             tool_id=step._id,
-            base_command=step.command,
+            base_command=step.command.split(' '),
             stdin=stdin,
             stderr=stderr,
             stdout=stdout,

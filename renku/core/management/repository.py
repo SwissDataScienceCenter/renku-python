@@ -229,7 +229,7 @@ class RepositoryApiMixin(GitCore):
             )
             if len(activities) > 1:
                 raise errors.CommitProcessingError(
-                    'Found multiple activities that produced the same entity'
+                    'Found multiple activities that produced the same entity '
                     'at commit {}'.format(commit)
                 )
             if activities:

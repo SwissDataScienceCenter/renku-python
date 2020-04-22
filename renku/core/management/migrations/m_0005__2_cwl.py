@@ -70,19 +70,22 @@ def _migrate_old_workflows(client):
 
 def _migrate_cwl(client, path):
     """Migrate a cwl file."""
-    workflow = parse_cwl(path)
+    workflow = parse_cwl_cached(str(path))
 
     if isinstance(workflow, CommandLineTool):
         _, path = _migrate_single_step(client, workflow, path, persist=True)
     else:
-        _, path = _migrate_composite_step(client, workflow)
+        _, path = _migrate_composite_step(client, workflow, path)
 
     return path
 
 
-def _migrate_single_step(client, cmd_line_tool, path, persist=False):
+def _migrate_single_step(
+    client, cmd_line_tool, path, commit=None, persist=False
+):
     """Migrate a single step workflow."""
-    commit = client.find_previous_commit(path)
+    if not commit:
+        commit = client.find_previous_commit(path)
 
     run = Run()
     run.command = ' '.join(cmd_line_tool.baseCommand)
@@ -92,7 +95,11 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
     outputs = list(cmd_line_tool.outputs)
 
     if cmd_line_tool.stdin:
-        name = cmd_line_tool.stdin.split('.')[1][:-1]
+        name = cmd_line_tool.stdin.split('.')[1]
+
+        if name.endswith(')'):
+            name = name[:-1]
+
         matched_input = next(i for i in inputs if i.id == name)
         inputs.remove(matched_input)
 
@@ -141,11 +148,19 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
             raise NotImplementedError(
                 'Only stdout and outputs mapped to inputs are supported.'
             )
-        name = o.outputBinding.glob.split('.')[1][:-1]
+        name = o.outputBinding.glob.split('.')[1]
+
+        if name.endswith(')'):
+            name = name[:-1]
+
         matched_input = next(i for i in inputs if i.id == name)
         inputs.remove(matched_input)
 
-        path = client.workflow_path / Path(matched_input.default['path'])
+        if isinstance(matched_input.default, dict):
+            path = client.workflow_path / Path(matched_input.default['path'])
+        else:
+            path = Path(matched_input.default)
+
         path = Path(os.path.abspath(path)).relative_to(client.path)
 
         prefix = matched_input.inputBinding.prefix
@@ -196,7 +211,7 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
         )
 
     if not persist:
-        return run
+        return run, None
 
     step_name = '{0}_{1}.yaml'.format(
         uuid.uuid4().hex,
@@ -207,15 +222,16 @@ def _migrate_single_step(client, cmd_line_tool, path, persist=False):
 
     with with_reference(path):
         run.path = path
-        process_run = ProcessRun.from_run(run, client, path)
+        process_run = ProcessRun.from_run(run, client, path, commit=commit)
         process_run.invalidated = _invalidations_from_commit(client, commit)
         process_run.to_yaml()
         client.add_to_activity_index(process_run)
         return process_run, path
 
 
-def _migrate_composite_step(client, workflow):
+def _migrate_composite_step(client, workflow, path):
     """Migrate a composite workflow."""
+    commit = client.find_previous_commit(path)
     run = Run()
 
     name = '{0}_migrated.yaml'.format(uuid.uuid4().hex)
@@ -224,18 +240,20 @@ def _migrate_composite_step(client, workflow):
 
     for step in workflow.steps:
         path = client.workflow_path / step.run
-        subrun = workflow = parse_cwl(path)
+        subrun = parse_cwl_cached(str(path))
 
-        subprocess, _ = _migrate_single_step(client, subrun, path)
+        subprocess, _ = _migrate_single_step(
+            client, subrun, path, commit=commit
+        )
         subprocess.path = run.path
         run.add_subprocess(subprocess)
 
-    with with_reference(path):
-        wf = WorkflowRun.from_run(run, client, path)
+    with with_reference(run.path):
+        wf = WorkflowRun.from_run(run, client, run.path, commit=commit)
         wf.to_yaml()
         client.add_to_activity_index(wf)
 
-    return wf, path
+    return wf, run.path
 
 
 def _entity_from_path(client, path, commit):
@@ -326,3 +344,18 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
         collection.members.append(entity)
 
     return entity
+
+
+_cwl_cache = {}
+
+
+def parse_cwl_cached(path):
+    """Parse cwl and remember the result for future execution."""
+    if path in _cwl_cache:
+        return _cwl_cache[path]
+
+    cwl = parse_cwl(path)
+
+    _cwl_cache[path] = cwl
+
+    return cwl
