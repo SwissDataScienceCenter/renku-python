@@ -25,7 +25,6 @@ from flask_apispec import marshal_with, use_kwargs
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     edit_dataset, list_datasets, list_files
-from renku.core.errors import RenkuException
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
