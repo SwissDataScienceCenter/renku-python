@@ -449,7 +449,7 @@ def test_list_datasets_view(svc_client_with_repo):
 
     assert {
         'version', 'description', 'created_at', 'short_name', 'title',
-        'creator'
+        'creators'
     } == set(response.json['result']['datasets'][0].keys())
 
 
@@ -475,7 +475,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=1, min_passes=1)
 def test_create_and_list_datasets_view(svc_client_with_repo):
     """Create and list created dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -513,7 +513,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     assert {'datasets'} == set(response.json['result'].keys())
     assert 0 != len(response.json['result']['datasets'])
     assert {
-        'creator', 'short_name', 'version', 'title', 'description',
+        'creators', 'short_name', 'version', 'title', 'description',
         'created_at'
     } == set(response.json['result']['datasets'][0].keys())
 
