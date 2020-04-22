@@ -316,7 +316,7 @@ def _convert_language(obj):
 
 def _convert_keyword(keywords):
     """Convert keywords collection."""
-    if isinstance(keywords, list):
+    if isinstance(keywords, (list, tuple)):
         return keywords
 
     if isinstance(keywords, dict):
@@ -444,6 +444,11 @@ class Dataset(Entity, CreatorMixin):
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
         return ', '.join(creator.name for creator in self.creator)
+
+    @property
+    def keywords_csv(self):
+        """Comma-separated list of keywords associated with dataset."""
+        return ', '.join(self.keywords)
 
     @property
     def tags_csv(self):

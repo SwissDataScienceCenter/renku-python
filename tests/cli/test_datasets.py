@@ -66,7 +66,8 @@ def test_datasets_create_with_metadata(runner, client, subdirectory):
             'dataset', 'create', 'my-dataset', '--title', 'Long Title',
             '--description', 'some description here', '-c',
             'John Doe <john.doe@mail.ch>', '-c',
-            'John Smiths<john.smiths@mail.ch>'
+            'John Smiths<john.smiths@mail.ch>', '-k', 'keyword-1', '-k',
+            'keyword-2'
         ]
     )
     assert 0 == result.exit_code
@@ -80,6 +81,7 @@ def test_datasets_create_with_metadata(runner, client, subdirectory):
     assert 'john.doe@mail.ch' in [c.email for c in dataset.creator]
     assert 'John Smiths' in [c.name for c in dataset.creator]
     assert 'john.smiths@mail.ch' in [c.email for c in dataset.creator]
+    assert {'keyword-1', 'keyword-2'} == set(dataset.keywords)
 
 
 def test_datasets_create_different_names(runner, client):
@@ -1002,7 +1004,10 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
             fp.write('a')
 
     result = runner.invoke(
-        cli, ['dataset', 'create', 'dataset', '-t', 'original title']
+        cli, [
+            'dataset', 'create', 'dataset', '-t', 'original title', '-k',
+            'keyword-1'
+        ]
     )
     assert 0 == result.exit_code
 
@@ -1033,10 +1038,19 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
     assert 0 == result.exit_code
     assert 'Successfully updated: title.' in result.output
 
+    result = runner.invoke(
+        cli,
+        ['dataset', 'edit', 'dataset', '-k', 'keyword-2', '-k', 'keyword-3'],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert 'Successfully updated: keywords.' in result.output
+
     dataset = client.load_dataset('dataset')
     assert ' new description ' == dataset.description
     assert 'new title' == dataset.name
     assert {creator1, creator2} == {c.full_identity for c in dataset.creator}
+    assert {'keyword-2', 'keyword-3'} == set(dataset.keywords)
 
 
 @pytest.mark.parametrize('dirty', [False, True])

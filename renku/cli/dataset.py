@@ -31,7 +31,8 @@ You can provide a title and a description for the dataset by using ``--title``
 and ``--description`` options when creating a dataset. You can also set
 creator of a dataset by passing a ``--creator`` option along with a string
 that defines creator's name, email, and an optional affiliation. Pass multiple
-``--creator`` flags to add a list of creators.
+``--creator`` flags to add a list of creators. To pass a list of keywords for
+a dataset use ``--keyword`` flag.
 
 Listing all datasets:
 
@@ -59,8 +60,8 @@ Displayed results are sorted based on the value of the first column.
 Editing a dataset's metadata
 
 Use ``edit`` subcommand to change metadata of a dataset. You can edit title,
-description, and list of creators of a dataset by using ``--title``,
-``--description``, and ``--creator`` flags.
+description, keywords, and list of creators of a dataset by using ``--title``,
+``--description``, ``--keyword``, and ``--creator`` flags.
 
 .. code-block:: console
 
@@ -455,7 +456,15 @@ def dataset(ctx, revision, datadir, format, columns):
     help='Creator\'s name, email, and affiliation. '
     'Accepted format is \'Forename Surname <email> [affiliation]\'.'
 )
-def create(short_name, title, description, creator):
+@click.option(
+    '-k',
+    '--keyword',
+    default=None,
+    multiple=True,
+    type=click.STRING,
+    help='List of keywords or tags.'
+)
+def create(short_name, title, description, creator, keyword):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
@@ -463,7 +472,8 @@ def create(short_name, title, description, creator):
         short_name=short_name,
         title=title,
         description=description,
-        creators=creators
+        creators=creators,
+        keywords=keyword,
     )
 
     click.echo(
@@ -498,15 +508,25 @@ def create(short_name, title, description, creator):
     help='Creator\'s name, email, and affiliation. '
     'Accepted format is \'Forename Surname <email> [affiliation]\'.'
 )
-def edit(short_name, title, description, creator):
+@click.option(
+    '-k',
+    '--keyword',
+    default=None,
+    multiple=True,
+    type=click.STRING,
+    help='List of keywords or tags.'
+)
+def edit(short_name, title, description, creator, keyword):
     """Edit dataset metadata."""
     creators = creator or ()
+    keywords = keyword or ()
 
     updated, no_email_warnings = edit_dataset(
         short_name=short_name,
         title=title,
         description=description,
-        creators=creators
+        creators=creators,
+        keywords=keywords,
     )
 
     if not updated:
