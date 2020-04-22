@@ -38,6 +38,7 @@ def clone(
     progress=None,
     config=None,
     raise_git_except=False,
+    checkout_rev=None,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
     from renku.core.management.client import LocalClient
@@ -62,6 +63,13 @@ def clone(
             ) from e
 
         raise e
+
+    branches = [Path(ref.abspath).name for ref in repo.references]
+
+    if checkout_rev in branches:
+        repo.git.checkout(checkout_rev)
+    elif checkout_rev:
+        repo.git.checkout(checkout_rev, b=checkout_rev)
 
     if config:
         config_writer = repo.config_writer()

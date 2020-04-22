@@ -34,10 +34,12 @@ def project_clone(
     progress=None,
     config=None,
     raise_git_except=False,
+    checkout_rev=None,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
     install_lfs = client.use_external_storage
-    clone(
+
+    return clone(
         url=url,
         path=path,
         install_githooks=install_githooks,
@@ -48,4 +50,5 @@ def project_clone(
         progress=progress,
         config=config,
         raise_git_except=raise_git_except,
+        checkout_rev=checkout_rev
     )
