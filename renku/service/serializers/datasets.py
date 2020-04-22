@@ -38,7 +38,7 @@ class DatasetDetails(Schema):
     created_at = fields.String(allow_none=True, attribute='created')
 
     title = fields.String(attribute='name')
-    creator = fields.List(fields.Nested(DatasetCreators))
+    creators = fields.List(fields.Nested(DatasetCreators), attribute='creator')
     description = fields.String()
 
 

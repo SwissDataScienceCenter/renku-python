@@ -72,6 +72,91 @@ def test_create_dataset_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
+def test_create_dataset_with_metadata(svc_client_with_repo):
+    """Create a new dataset with metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {
+        'project_id': project_id,
+        'short_name': '{0}'.format(uuid.uuid4().hex),
+        'title': 'my little dataset',
+        'creators': [{
+            'name': 'name123',
+            'email': 'name123@ethz.ch',
+            'affiliation': 'ethz'
+        }],
+        'description': 'my little description',
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {'short_name'} == set(response.json['result'].keys())
+    assert payload['short_name'] == response.json['result']['short_name']
+
+    params = {
+        'project_id': project_id,
+    }
+    response = svc_client.get(
+        '/datasets.list',
+        query_string=params,
+        headers=headers,
+    )
+
+    assert response
+    assert_rpc_response(response)
+    ds = next(
+        ds for ds in response.json['result']['datasets']
+        if ds['short_name'] == payload['short_name']
+    )
+
+    assert payload['title'] == ds['title']
+    assert payload['short_name'] == ds['short_name']
+    assert payload['description'] == ds['description']
+    assert payload['creators'] == ds['creators']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_create_dataset_invalid_creator(svc_client_with_repo):
+    """Create a new dataset with metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {
+        'project_id': project_id,
+        'short_name': '{0}'.format(uuid.uuid4().hex),
+        'title': 'my little dataset',
+        'creators': [{
+            'name': None,
+            'email': 'name123@ethz.ch',
+            'affiliation': 'ethz'
+        }],
+        'description': 'my little description',
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert INVALID_PARAMS_ERROR_CODE == response.json['error']['code']
+
+    expected_err = {'creators': {'0': {'name': ['Field may not be null.']}}}
+    assert expected_err == response.json['error']['reason']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_commit_msg(svc_client_with_repo):
     """Create a new dataset successfully with custom commit message."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -364,7 +449,7 @@ def test_list_datasets_view(svc_client_with_repo):
 
     assert {
         'version', 'description', 'created_at', 'short_name', 'title',
-        'creator'
+        'creators'
     } == set(response.json['result']['datasets'][0].keys())
 
 
@@ -390,7 +475,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=1, min_passes=1)
 def test_create_and_list_datasets_view(svc_client_with_repo):
     """Create and list created dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -428,7 +513,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     assert {'datasets'} == set(response.json['result'].keys())
     assert 0 != len(response.json['result']['datasets'])
     assert {
-        'creator', 'short_name', 'version', 'title', 'description',
+        'creators', 'short_name', 'version', 'title', 'description',
         'created_at'
     } == set(response.json['result']['datasets'][0].keys())
 
