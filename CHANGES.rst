@@ -18,6 +18,77 @@
 Changes
 =======
 
+`0.10.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.2...v0.10.3>`__ (2020-04-22)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **dataset:** avoid recursive addition of data directory
+   (`#1163 <https://github.com/SwissDataScienceCenter/renku-python/issues/1163>`__)
+   (`79e3b03 <https://github.com/SwissDataScienceCenter/renku-python/commit/79e3b0346df89dbb445df769dfa9dca0f878a242>`__)
+-  **dataset:** commit after unlinking files
+   (`#1120 <https://github.com/SwissDataScienceCenter/renku-python/issues/1120>`__)
+   (`97e8754 <https://github.com/SwissDataScienceCenter/renku-python/commit/97e8754729078a54f20876ddaaf9ca191f4cb59a>`__)
+-  **dataset:** Dataverse export
+   (`#1028 <https://github.com/SwissDataScienceCenter/renku-python/issues/1028>`__)
+   (`737cecf <https://github.com/SwissDataScienceCenter/renku-python/commit/737cecfebb298daa5704bda0ead73ebff1312539>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** CLI warning when in non-root directory
+   (`#1162 <https://github.com/SwissDataScienceCenter/renku-python/issues/1162>`__)
+   (`115e462 <https://github.com/SwissDataScienceCenter/renku-python/commit/115e46227decd7a4597a0918f3bae279fc73e366>`__)
+-  **dataset:** migrate submodule-based datasets
+   (`#1092 <https://github.com/SwissDataScienceCenter/renku-python/issues/1092>`__)
+   (`dba20c4 <https://github.com/SwissDataScienceCenter/renku-python/commit/dba20c467ecf60361785bf515cd80633765db518>`__)
+-  **dataset:** no failure when adding existing files
+   (`#1177 <https://github.com/SwissDataScienceCenter/renku-python/issues/1177>`__)
+   (`a68dcb7 <https://github.com/SwissDataScienceCenter/renku-python/commit/a68dcb789d9e9103a64fd678686256566a92d25c>`__)
+-  **dataset:** remove –link flag
+   (`#1164 <https://github.com/SwissDataScienceCenter/renku-python/issues/1164>`__)
+   (`969d4f8 <https://github.com/SwissDataScienceCenter/renku-python/commit/969d4f88a082437e7f55a123347c2f63f32d5593>`__)
+-  **dataset:** show file size in ls-files
+   (`#1123 <https://github.com/SwissDataScienceCenter/renku-python/issues/1123>`__)
+   (`0951930 <https://github.com/SwissDataScienceCenter/renku-python/commit/095193038d41c60e503d0dd52d8de2fca7ce29f8>`__)
+-  **datasets:** specify title on dataset creation
+   (`#1204 <https://github.com/SwissDataScienceCenter/renku-python/issues/1204>`__)
+   (`fb70ac5 <https://github.com/SwissDataScienceCenter/renku-python/commit/fb70ac50533bfdb1b1cfb8d1e163c40531ea35fe>`__)
+-  **init:** read and display template variables
+   (`#1134 <https://github.com/SwissDataScienceCenter/renku-python/issues/1134>`__)
+   (`0f86dc5 <https://github.com/SwissDataScienceCenter/renku-python/commit/0f86dc5fde89274a59f11345a5cc106fcbd8b206>`__),
+   closes
+   `#1126 <https://github.com/SwissDataScienceCenter/renku-python/issues/1126>`__
+-  **service:** add remote files to dataset
+   (`#1139 <https://github.com/SwissDataScienceCenter/renku-python/issues/1139>`__)
+   (`f6bebfe <https://github.com/SwissDataScienceCenter/renku-python/commit/f6bebfea203c63bcf0843b48377b786a97aaa535>`__)
+
+
+`0.10.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.0...v0.10.1>`__ (2020-03-31)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** directory input regression
+   (`#1155 <https://github.com/SwissDataScienceCenter/renku-python/issues/1155>`__)
+   (`b17c843 <https://github.com/SwissDataScienceCenter/renku-python/commit/b17c84382c68eee78f6fbaddc2b18794e72f30a3>`__)
+-  **dataset:** correct url when importing with DOI
+   (`#1156 <https://github.com/SwissDataScienceCenter/renku-python/issues/1156>`__)
+   (`025b735 <https://github.com/SwissDataScienceCenter/renku-python/commit/025b735dfbe34e2bd58e85c2cbd6722b328fccef>`__)
+
+Features
+~~~~~~~~
+
+-  renku init options refactor
+   (`#1127 <https://github.com/SwissDataScienceCenter/renku-python/issues/1127>`__)
+   (`78b208b <https://github.com/SwissDataScienceCenter/renku-python/commit/78b208bf9800a0c4caf85b4eed20bf5656561e37>`__)
+-  **datasets:** add files from dropbox
+   (`#1135 <https://github.com/SwissDataScienceCenter/renku-python/issues/1135>`__)
+   (`bf5f2db <https://github.com/SwissDataScienceCenter/renku-python/commit/bf5f2db34479ed574af9fd57a893884abddb6f41>`__)
+
+
 `0.10.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.9.1...v0.10.0>`__ (2020-03-25)
 ---------------------------------------------------------------------------------------------------------
 
