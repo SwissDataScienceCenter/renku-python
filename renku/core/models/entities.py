@@ -89,7 +89,12 @@ class CommitMixin:
         else:
             hexsha = 'UNCOMMITTED'
         if self.path:
-            return '{self.path}@{hexsha}'.format(hexsha=hexsha, self=self)
+            path = self.path
+            if self.client:
+                path = pathlib.Path(os.path.abspath(path)).relative_to(
+                    self.client.path
+                )
+            return '{path}@{hexsha}'.format(hexsha=hexsha, path=path)
         return '{hexsha}'.format(hexsha=hexsha, self=self)
 
     def __attrs_post_init__(self):
