@@ -104,7 +104,7 @@ class RepositoryApiMixin(GitCore):
 
     _commit_activity_cache = {}
 
-    _activity_index = {}
+    _activity_index = None
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
@@ -458,19 +458,22 @@ class RepositoryApiMixin(GitCore):
     def add_to_activity_index(self, activity):
         """Add an activity and it's generations to the cache."""
         for g in activity.generated:
-            if g.path not in self._activity_index:
-                self._activity_index[g.path] = {}
+            if g.path not in self.path_activity_cache:
+                self.path_activity_cache[g.path] = {}
             hexsha = g.commit.hexsha
-            if hexsha not in self._activity_index[g.path]:
-                self._activity_index[g.path][hexsha] = []
+            if hexsha not in self.path_activity_cache[g.path]:
+                self.path_activity_cache[g.path][hexsha] = []
 
-            if activity.path in self._activity_index[g.path][hexsha]:
+            if activity.path in self.path_activity_cache[g.path][hexsha]:
                 continue
 
-            self._activity_index[g.path][g.commit.hexsha].append(activity.path)
+            self.path_activity_cache[g.path][g.commit.hexsha].append(
+                activity.path
+            )
 
-        with self.activity_index_path.open('w') as stream:
-            yaml.dump(self._activity_index, stream)
+        if self.path_activity_cache:
+            with self.activity_index_path.open('w') as stream:
+                yaml.dump(self.path_activity_cache, stream)
 
     def activities_for_paths(self, paths, file_commit=None, revision='HEAD'):
         """Get all activities involving a path."""

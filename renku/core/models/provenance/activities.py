@@ -444,7 +444,7 @@ class ProcessRun(Activity):
         super().__attrs_post_init__()
 
         if not self.commit and self.client:
-            revision = self.client.find_previous_commit(self.path)
+            self.commit = self.client.find_previous_commit(self.path)
 
         if not self.annotations:
             self.annotations = self.plugin_annotations()
@@ -473,7 +473,7 @@ class ProcessRun(Activity):
             usages = []
             revision = '{0}'.format(self.commit)
             for usage in self.qualified_usage:
-                if not usage.commit:
+                if not usage.commit and '@UNCOMMITTED' in usage._label:
                     usages.append(
                         Usage.from_revision(
                             client=self.client,
@@ -485,7 +485,11 @@ class ProcessRun(Activity):
                     )
                 else:
                     if not usage.client:
-                        usage.client = self.client
+                        usage.entity.set_client(self.client)
+                    if not usage.commit:
+                        revision = usage._label.rsplit('@')[1]
+                        usage.entity.commit = self.client.repo.commit(revision)
+
                     usages.append(usage)
             self.qualified_usage = usages
 

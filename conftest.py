@@ -404,14 +404,31 @@ def old_bare_repository(request, tmpdir_factory):
     shutil.rmtree(working_dir_path.strpath)
 
 
-@pytest.fixture(scope='function')
-def old_workflow_project(tmp_path_factory):
+@pytest.fixture(
+    scope='function',
+    params=[{
+        'name': 'old-workflows-v0.10.3.git',
+        'log_path': 'catoutput.txt',
+        'expected_strings': [
+            'catoutput.txt', '_cat.yaml', '_echo.yaml', '9ecc28b2 stdin.txt',
+            'bdc801c6 stdout.txt'
+        ]
+    }, {
+        'name': 'old-workflows-complicated-v0.10.3.git',
+        'log_path': 'concat2.txt',
+        'expected_strings': [
+            'concat2.txt', '5828275ae5344eba8bad475e7d3cf2d5.cwl',
+            '_migrated.yaml', '88add2ea output_rand', 'e6fa6bf3 input2.txt'
+        ]
+    }]
+)
+def old_workflow_project(request, tmp_path_factory):
     """Prepares a testing repo created by old version of renku."""
     import tarfile
     from git import Repo
     from pathlib import Path
 
-    name = 'old-workflows-v0.10.3.git'
+    name = request.param['name']
 
     compressed_repo_path = Path(
         __file__
@@ -434,7 +451,12 @@ def old_workflow_project(tmp_path_factory):
     commit = repository.head.commit
 
     os.chdir(repository_path)
-    yield {'repo': repository, 'path': repository_path}
+    yield {
+        'repo': repository,
+        'path': repository_path,
+        'log_path': request.param['log_path'],
+        'expected_strings': request.param['expected_strings']
+    }
     os.chdir(repository_path)
     repository.head.reset(commit, index=True, working_tree=True)
     # remove any extra non-tracked files (.pyc, etc)

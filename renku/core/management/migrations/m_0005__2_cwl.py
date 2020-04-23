@@ -87,7 +87,7 @@ def _migrate_single_step(
     if not commit:
         commit = client.find_previous_commit(path)
 
-    run = Run()
+    run = Run(client=client, path=path, commit=commit)
     run.command = ' '.join(cmd_line_tool.baseCommand)
     run.successcodes = cmd_line_tool.successCodes
 
@@ -232,7 +232,7 @@ def _migrate_single_step(
 def _migrate_composite_step(client, workflow, path):
     """Migrate a composite workflow."""
     commit = client.find_previous_commit(path)
-    run = Run()
+    run = Run(client=client, path=path, commit=commit)
 
     name = '{0}_migrated.yaml'.format(uuid.uuid4().hex)
 

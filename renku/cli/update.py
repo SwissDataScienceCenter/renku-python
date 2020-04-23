@@ -202,6 +202,10 @@ def update(client, revision, no_output, siblings, paths):
 
     path = client.workflow_path / workflow_name
 
+    workflow.update_id_and_label_from_commit_path(
+        client, client.repo.head.commit, path
+    )
+
     with with_reference(path):
         run = WorkflowRun.from_run(workflow, client, path, update_commits=True)
         run.to_yaml()
