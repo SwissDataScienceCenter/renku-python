@@ -162,20 +162,6 @@ class DirtyRenkuDirectory(RenkuException):
         ).format(RENKU_HOME) + '\n\n' + str(repo.git.status()) + '\n\n')
 
 
-class IgnoredFiles(RenkuException):
-    """Raise when trying to work with ignored files."""
-
-    def __init__(self, ignored):
-        """Build a custom message."""
-        super(IgnoredFiles, self).__init__(
-            'The following paths are ignored by one of your .gitignore files:'
-            '\n\n' + '\n'.
-            join('\t' + click.style(path, fg='yellow')
-                 for path in ignored) + '\n'
-            'Please use the "--force" option if you really want to add them.'
-        )
-
-
 class ProtectedFiles(RenkuException):
     """Raise when trying to work with protected files."""
 
