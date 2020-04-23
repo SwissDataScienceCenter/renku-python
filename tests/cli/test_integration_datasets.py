@@ -52,7 +52,7 @@ from renku.core.utils.contexts import chdir
 )
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_import_real_doi(runner, project, doi, sleep_after):
+def test_dataset_import_real_doi(runner, project, doi, client, sleep_after):
     """Test dataset import for existing DOI."""
     result = runner.invoke(
         cli, ['dataset', 'import', doi['doi']], input=doi['input']
@@ -69,6 +69,11 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     result = runner.invoke(cli, ['dataset', 'ls-tags', doi['short_name']])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert doi['version'] in result.output
+
+    with client.with_dataset(doi['short_name']) as dataset:
+        assert doi['doi'] in dataset.same_as.url
+        assert dataset.identifier in dataset.url
+        assert dataset.url == dataset._id
 
 
 @pytest.mark.parametrize(

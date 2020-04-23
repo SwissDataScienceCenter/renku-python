@@ -258,6 +258,25 @@ def test_dataset_creator_is_invalid(client, runner, creator, field):
     assert field + ' is invalid' in result.output
 
 
+def test_dataset_url_in_different_domain(runner, client):
+    """Test URL is set correctly in a different Renku domain."""
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    try:
+        renku_domain = os.environ.get('RENKU_DOMAIN')
+        os.environ['RENKU_DOMAIN'] = 'alternative-domain'
+
+        with client.with_dataset('my-dataset') as dataset:
+            assert dataset.url.startswith('https://alternative-domain')
+            assert dataset.url == dataset._id
+    finally:
+        if renku_domain:
+            os.environ['RENKU_DOMAIN'] = renku_domain
+        else:
+            del os.environ['RENKU_DOMAIN']
+
+
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
