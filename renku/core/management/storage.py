@@ -25,9 +25,11 @@ from shutil import which
 from subprocess import PIPE, STDOUT, call, run
 
 import attr
+import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
+from renku.core.utils.file_size import parse_file_size
 
 from .git import _expand_directories
 from .repository import RepositoryApiMixin
@@ -60,6 +62,9 @@ class StorageApiMixin(RepositoryApiMixin):
 
     use_external_storage = attr.ib(default=True)
     """Use external storage (e.g. LFS)."""
+
+    RENKU_LFS_IGNORE_PATH = '.renkulfsignore'
+    """.gitignore like file specifying paths that are not tracked in LFS."""
 
     _CMD_STORAGE_INSTALL = ['git', 'lfs', 'install', '--local']
 
@@ -94,6 +99,22 @@ class StorageApiMixin(RepositoryApiMixin):
             raise errors.ExternalStorageNotInstalled(self.repo)
 
         return lfs_enabled and self.storage_installed
+
+    @cached_property
+    def renku_lfs_ignore(self):
+        """Gets pathspec for files to not add to LFS."""
+        ignore_path = self.path / self.RENKU_LFS_IGNORE_PATH
+        if not os.path.exists(ignore_path):
+            return pathspec.PathSpec.from_lines('gitwildmatch', [])
+        with ignore_path.open('r') as f:
+            return pathspec.PathSpec.from_lines('gitwildmatch', f)
+
+    @property
+    def minimum_lfs_file_size(self):
+        """The minimum size of a file in bytes to be added to lfs."""
+        size = self.get_value('renku', 'minimum_lfs_size') or '100kb'
+
+        return parse_file_size(size)
 
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
@@ -143,11 +164,17 @@ class StorageApiMixin(RepositoryApiMixin):
             if attrs.get(str(path), {}).get('filter') == 'lfs':
                 continue
 
-            if path.is_dir():
+            if (
+                path.is_dir() and
+                not any(self.renku_lfs_ignore.match_tree(str(path)))
+            ):
                 track_paths.append(str(path / '**'))
-            elif path.suffix != '.ipynb':
-                # TODO create configurable filter and follow .gitattributes
-                track_paths.append(str(path))
+            elif not self.renku_lfs_ignore.match_file(str(path)):
+                file_size = os.path.getsize(
+                    str(os.path.relpath(self.path / path, os.getcwd()))
+                )
+                if file_size >= self.minimum_lfs_file_size:
+                    track_paths.append(str(path))
 
         if track_paths:
             try:

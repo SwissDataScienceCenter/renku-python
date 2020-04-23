@@ -1510,7 +1510,9 @@ def test_add_remove_credentials(runner, client, monkeypatch):
     assert 'https://example.com/index.html' == o[0]['url']
 
 
-def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory):
+def test_pull_data_from_lfs(
+    runner, client, tmpdir, subdirectory, no_lfs_size_limit
+):
     """Test pulling data from LFS using relative paths."""
     data = tmpdir.join('data.txt')
     data.write('DATA')
@@ -1774,7 +1776,8 @@ def test_external_file_update(
 
 
 def test_workflow_with_external_file(
-    runner, client, directory_tree, project, run, subdirectory
+    runner, client, directory_tree, project, run, subdirectory,
+    no_lfs_size_limit
 ):
     """Check using external files in workflows."""
     result = runner.invoke(

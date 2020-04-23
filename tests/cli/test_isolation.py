@@ -53,7 +53,7 @@ def test_run_in_isolation(runner, project, client, run, subdirectory):
 
 
 def test_file_modification_during_run(
-    tmpdir, runner, project, client, run, subdirectory
+    tmpdir, runner, project, client, run, subdirectory, no_lfs_size_limit
 ):
     """Test run in isolation."""
     script = client.path / 'script.py'
