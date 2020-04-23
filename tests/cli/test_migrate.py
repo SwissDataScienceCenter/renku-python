@@ -208,10 +208,10 @@ def test_workflow_migration(isolated_runner, old_workflow_project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    result = isolated_runner.invoke(cli, ['log', 'catoutput.txt'])
+    result = isolated_runner.invoke(
+        cli, ['log', old_workflow_project['log_path']]
+    )
     assert 0 == result.exit_code
-    assert 'catoutput.txt' in result.output
-    assert '_cat.yaml' in result.output
-    assert '_echo.yaml' in result.output
-    assert '9ecc28b2 stdin.txt' in result.output
-    assert 'bdc801c6 stdout.txt' in result.output
+
+    for expected in old_workflow_project['expected_strings']:
+        assert expected in result.output

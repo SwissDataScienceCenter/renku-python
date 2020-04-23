@@ -99,7 +99,7 @@ class CommitMixin:
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if self.path:
+        if self.path and self.client:
             path = pathlib.Path(self.path)
             if path.is_absolute():
                 self.path = str(path.relative_to(self.client.path))
@@ -210,7 +210,17 @@ class Entity(CommitMixin):
     @property
     def entities(self):
         """Yield itself."""
+        if (
+            self.client and not self.commit and self._label and
+            '@UNCOMMITTED' not in self._label
+        ):
+            self.commit = self.client.repo.commit(self._label.rsplit('@')[1])
+
         yield self
+
+    def set_client(self, client):
+        """Sets the clients on this entity."""
+        self.client = client
 
 
 @jsonld.s(
@@ -261,7 +271,21 @@ class Collection(Entity):
         """Recursively return all files."""
         for member in self.members:
             yield from member.entities
+
+        if (
+            self.client and not self.commit and self._label and
+            '@UNCOMMITTED' not in self._label
+        ):
+            self.commit = self.client.repo.commit(self._label.rsplit('@')[1])
+
         yield self
+
+    def set_client(self, client):
+        """Sets the clients on this entity."""
+        super().set_client(client)
+
+        for m in self.members:
+            m.set_client(client)
 
     def __attrs_post_init__(self):
         """Init members."""

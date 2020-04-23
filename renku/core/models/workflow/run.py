@@ -18,7 +18,10 @@
 """Represents a workflow template."""
 
 import os
+from bisect import bisect
 from copy import copy
+from functools import total_ordering
+from pathlib import Path
 
 from renku.core.models import jsonld as jsonld
 from renku.core.models.cwl.types import PATH_OBJECTS
@@ -118,6 +121,7 @@ def _convert_cmd_output(output, factory, client, commit):
     ), input_to_remove
 
 
+@total_ordering
 @jsonld.s(
     type=[
         'renku:Run',
@@ -251,14 +255,34 @@ class Run(CommitMixin):
                 stream_repr.append(output.to_stream_repr())
         return stream_repr
 
+    def update_id_and_label_from_commit_path(self, client, commit, path):
+        """Updates the _id and _label using supplied commit and path."""
+        self.client = client
+
+        if not self.commit:
+            self.commit = commit
+
+            path = Path(os.path.abspath(path)).relative_to(self.client.path)
+            self.path = path
+            self._id = self.default_id()
+            self._label = self.default_label()
+
+        if len(self.subprocesses) > 0:
+            for s in self.subprocesses:
+                s.update_id_and_label_from_commit_path(client, commit, path)
+
     def add_subprocess(self, subprocess, process_order=None):
         """Adds a subprocess to this run."""
         if not process_order:
             process_order = 0
             if self.subprocesses:
-                process_order = max(
-                    s.process_order for s in self.subprocesses
-                ) + 1
+                # sort subprocesses by dependencies
+                process_order = bisect(self.subprocesses, subprocess)
+                if process_order < len(self.subprocesses):
+                    # inserted before end, recalculate orders or rest
+                    for s in self.subprocesses:
+                        if s.process_order >= process_order:
+                            s.process_order += 1
 
         if any(s.process_order == process_order for s in self.subprocesses):
             raise ValueError(
@@ -277,8 +301,15 @@ class Run(CommitMixin):
             ):
                 new_input = copy(input_)
                 new_input.mapped_to = None
-                self.inputs.append(new_input)
-                input_paths.append(new_input.consumes.path)
+
+                matching_output = next((
+                    o for o in self.outputs
+                    if o.produces.path == new_input.consumes.path
+                ), None)
+
+                if not matching_output:
+                    self.inputs.append(new_input)
+                    input_paths.append(new_input.consumes.path)
 
         for output in subprocess.outputs:
             if output.produces.path not in output_paths:
@@ -287,4 +318,23 @@ class Run(CommitMixin):
                 self.outputs.append(new_output)
                 output_paths.append(new_output.produces.path)
 
+                matching_input = next((
+                    i for i in self.inputs
+                    if i.consumes.path == new_output.produces.path
+                ), None)
+                if matching_input:
+                    self.inputs.remove(matching_input)
+                    input_paths.remove(matching_input.consumes.path)
+
         self.subprocesses.append(subprocess)
+
+        self.subprocesses = sorted(
+            self.subprocesses, key=lambda s: s.process_order
+        )
+
+    def __lt__(self, other):
+        """Compares two subprocesses order based on their dependencies."""
+        a_inputs = {i.consumes.path for i in other.inputs}
+        b_outputs = {o.produces.path for o in self.outputs}
+
+        return a_inputs & b_outputs

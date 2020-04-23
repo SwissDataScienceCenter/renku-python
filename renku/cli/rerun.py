@@ -193,6 +193,10 @@ def rerun(client, revision, roots, siblings, inputs, paths):
 
     path = client.workflow_path / workflow_name
 
+    workflow.update_id_and_label_from_commit_path(
+        client, client.repo.head.commit, path
+    )
+
     with with_reference(path):
         run = WorkflowRun.from_run(workflow, client, path)
         run.to_yaml()

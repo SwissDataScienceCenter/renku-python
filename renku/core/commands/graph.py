@@ -292,9 +292,10 @@ class Graph(object):
                         g.commit.hexsha == usage.commit.hexsha
                         for g in other_activity.generated
                     ):
-                        commit_nodes[activity.commit].append(
-                            other_activity.commit
-                        )
+                        parents = commit_nodes[activity.commit]
+                        if other_activity.commit in parents:
+                            continue
+                        parents.append(other_activity.commit)
 
         self._sorted_commits = topological(commit_nodes)
         self._nodes = self.default_nodes()
