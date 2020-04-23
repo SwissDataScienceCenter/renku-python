@@ -1293,7 +1293,7 @@ def test_renku_clone_with_config(tmpdir):
             }
         )
 
-        assert 'master' == str(repo.active_branch)
+        assert 'master' == repo.active_branch.name
         reader = repo.config_reader()
         reader.values()
 
@@ -1303,8 +1303,8 @@ def test_renku_clone_with_config(tmpdir):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_renku_clone_checkout_rev(tmpdir):
-    """Test cloning of a Renku repo checking out a rev."""
+def test_renku_clone_checkout_rev(tmpdir, rev):
+    """Test cloning of a Renku repo checking out a rev with static config."""
     remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with chdir(str(tmpdir)):
@@ -1330,17 +1330,21 @@ def test_renku_clone_checkout_rev(tmpdir):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_renku_clone_checkout_branch(tmpdir):
-    """Test cloning of a Renku repo checking out a branch."""
+@pytest.mark.parametrize('rev', [
+    'test-branch',
+    'my-tag',
+])
+def test_renku_clone_checkout_revs(tmpdir, rev):
+    """Test cloning of a Renku repo checking out a rev."""
     remote = 'https://dev.renku.ch/gitlab/contact/no-renku.git'
 
     with chdir(str(tmpdir)):
         repo = project_clone(
             remote,
-            checkout_rev='test-branch',
+            checkout_rev=rev,
         )
 
-        assert 'test-branch' == str(repo.active_branch)
+        assert rev == repo.active_branch.name
 
 
 @pytest.mark.integration

@@ -64,9 +64,9 @@ def clone(
 
         raise e
 
-    branches = [Path(ref.abspath).name for ref in repo.references]
+    remote_refs = [Path(ref.abspath).name for ref in repo.remote().refs]
 
-    if checkout_rev in branches:
+    if checkout_rev in remote_refs:
         repo.git.checkout(checkout_rev)
     elif checkout_rev:
         repo.git.checkout(checkout_rev, b=checkout_rev)
