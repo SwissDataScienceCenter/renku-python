@@ -112,7 +112,7 @@ def edit_dataset(
     title,
     description,
     creators,
-    keywords,
+    keywords=None,
     commit_message=None
 ):
     """Edit dataset metadata."""
