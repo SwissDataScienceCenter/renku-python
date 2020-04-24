@@ -21,7 +21,7 @@ import urllib
 import attr
 
 from renku.core.commands.providers.api import ProviderApi
-from renku.core.utils.doi import is_doi
+from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.requests import retry
 
 DOI_BASE_URL = 'https://dx.doi.org'
@@ -81,10 +81,7 @@ class DOIProvider(ProviderApi):
     @staticmethod
     def supports(uri):
         """Whether or not this provider supports a given uri."""
-        if is_doi(uri) is not None:
-            return True
-
-        return False
+        return bool(is_doi(uri))
 
     @staticmethod
     def _serialize(response):
@@ -98,9 +95,8 @@ class DOIProvider(ProviderApi):
 
     def _query(self, doi):
         """Retrieve metadata for given doi."""
-        url = doi
-        if doi.startswith('http') is False:
-            url = make_doi_url(doi)
+        doi = extract_doi(doi)
+        url = make_doi_url(doi)
 
         with retry() as session:
             response = session.get(url, headers=self.headers)
