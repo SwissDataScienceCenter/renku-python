@@ -73,6 +73,11 @@ def test_dataset_import_real_doi(runner, project, doi, prefix, sleep_after):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert doi['version'] in result.output
 
+    with client.with_dataset(doi['short_name']) as dataset:
+        assert doi['doi'] in dataset.same_as.url
+        assert dataset.identifier in dataset.url
+        assert dataset.url == dataset._id
+
 
 @pytest.mark.parametrize(
     'doi', [
