@@ -149,7 +149,7 @@ def create(client, output_file, revision, paths):
     graph = Graph(client)
     outputs = graph.build(paths=paths, revision=revision)
 
-    workflow = graph.as_renku_workflow(outputs=outputs, )
+    workflow = graph.as_workflow(outputs=outputs, )
 
     if output_file:
         output_file = Path(output_file)

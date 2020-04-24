@@ -40,7 +40,7 @@ Renku Workflow Conversion
 
 .. py:module:: renku.core.models.workflow.converters
 
-Renku Allows conversion of tracked workflows to runnable workflows in
+Renku allows conversion of tracked workflows to runnable workflows in
 supported tools (Currently CWL)
 
 CWL

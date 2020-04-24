@@ -149,7 +149,7 @@ def rerun(client, revision, roots, siblings, inputs, paths):
     # NOTE The workflow creation is done before opening a new file.
     workflow = inputs(
         client,
-        graph.as_renku_workflow(
+        graph.as_workflow(
             input_paths=roots,
             output_paths=output_paths,
             outputs=outputs,
