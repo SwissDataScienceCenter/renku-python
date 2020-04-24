@@ -435,7 +435,7 @@ class Graph(object):
 
         return set(parent.generated)
 
-    def as_renku_workflow(
+    def as_workflow(
         self,
         input_paths=None,
         output_paths=None,

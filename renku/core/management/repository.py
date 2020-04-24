@@ -133,10 +133,6 @@ class RepositoryApiMixin(GitCore):
     @property
     def lock(self):
         """Create a Renku config lock."""
-        import logging
-
-        logging.getLogger('filelock').setLevel(logging.ERROR)
-
         return filelock.FileLock(
             str(self.renku_path.with_suffix(self.LOCK_SUFFIX)),
             timeout=0,

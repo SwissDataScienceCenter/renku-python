@@ -327,7 +327,6 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
     if (client.path / path).is_dir():
         entity_cls = Collection
 
-    # TODO: use a factory method to generate the entity
     if str(path).startswith(
         os.path.join(client.renku_home, client.DATASETS)
     ) and not deleted:
