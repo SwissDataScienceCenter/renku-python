@@ -56,7 +56,7 @@ from renku.core.utils.contexts import chdir
 )
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_import_real_doi(runner, project, doi, prefix, sleep_after):
+def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     """Test dataset import for existing DOI."""
     uri = prefix + doi['doi']
     result = runner.invoke(cli, ['dataset', 'import', uri], input='y')
