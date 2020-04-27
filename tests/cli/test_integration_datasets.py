@@ -1308,7 +1308,7 @@ def test_renku_clone_with_config(tmpdir):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_renku_clone_checkout_rev(tmpdir, rev):
+def test_renku_clone_checkout_rev(tmpdir):
     """Test cloning of a Renku repo checking out a rev with static config."""
     remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
