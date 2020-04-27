@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
-from git import Repo
+from git import Repo, GitCommandError
 
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
@@ -60,7 +60,13 @@ def repo_sync(repo_path, remote_names=('origin', )):
 
     for remote in repo.remotes:
         if remote.name in remote_names:
-            repo.git.push(remote.name, repo.active_branch)
+            try:
+                repo.git.push(remote.name, repo.active_branch)
+            except GitCommandError as e:
+                if 'Locking support detected' in e.stderr:
+                    repo.git.checkout()
+                    # TODO: checkout new branch
             is_pushed = True
 
+    # TODO: return branch name if true
     return is_pushed
