@@ -87,6 +87,7 @@ jobs:
     - name: Coveralls
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
       run: coveralls
       continue-on-error: true
 
@@ -114,6 +115,8 @@ jobs:
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
+      env:
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
       run: ./run-tests.sh
 
   test-linux-integration:
@@ -143,6 +146,7 @@ jobs:
         DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
       run: pytest -m integration -v
 
   test-macos-integration:
@@ -175,6 +179,7 @@ jobs:
         DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
       run: pytest -m integration -v
 
   publish-pypi:
