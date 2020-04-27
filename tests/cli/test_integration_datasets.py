@@ -36,7 +36,6 @@ from renku.core.utils.contexts import chdir
 @pytest.mark.parametrize(
     'doi', [{
         'doi': '10.5281/zenodo.2658634',
-        'input': 'y',
         'short_name': 'pyndl_naive_discriminat_v064',
         'creator':
             'Konstantin Sering, Marc Weitz, David-Elias Künstle, '
@@ -44,19 +43,23 @@ from renku.core.utils.contexts import chdir
         'version': 'v0.6.4'
     }, {
         'doi': '10.7910/DVN/F4NUMR',
-        'input': 'y',
         'short_name': 'replication_data_for_ca_2',
         'creator': 'James Druckman, Martin Kifer, Michael Parkin',
         'version': '2'
     }]
 )
+@pytest.mark.parametrize(
+    'prefix', [
+        '', 'doi:', 'doi.org/', 'www.doi.org/', 'dx.doi.org/',
+        'http://www.doi.org/', 'https://dx.doi.org/', 'https://doi.org/'
+    ]
+)
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_import_real_doi(runner, project, doi, client, sleep_after):
+def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     """Test dataset import for existing DOI."""
-    result = runner.invoke(
-        cli, ['dataset', 'import', doi['doi']], input=doi['input']
-    )
+    uri = prefix + doi['doi']
+    result = runner.invoke(cli, ['dataset', 'import', uri], input='y')
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'OK' in result.output + str(result.stderr_bytes)
 
