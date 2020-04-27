@@ -716,6 +716,7 @@ def test_export_dataset_unauthorized(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_dataverse_no_dataverse_name(
     runner, project, client, dataverse_demo
 ):
@@ -732,6 +733,7 @@ def test_export_dataverse_no_dataverse_name(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_dataverse_no_dataverse_url(
     runner, client, dataverse_demo, global_config_dir
 ):
@@ -755,6 +757,7 @@ def test_export_dataverse_no_dataverse_url(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_imported_dataset_to_dataverse(
     runner, client, dataverse_demo, zenodo_sandbox
 ):
@@ -1292,7 +1295,7 @@ def test_renku_clone_with_config(tmpdir):
     remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with chdir(str(tmpdir)):
-        project_clone(
+        repo = project_clone(
             remote,
             config={
                 'user.name': 'sam',
@@ -1301,12 +1304,58 @@ def test_renku_clone_with_config(tmpdir):
             }
         )
 
-        repo = git.Repo('datasets-test')
+        assert 'master' == repo.active_branch.name
         reader = repo.config_reader()
         reader.values()
 
         lfs_config = dict(reader.items('filter.lfs'))
         assert '0' == lfs_config.get('custom')
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_renku_clone_checkout_rev(tmpdir):
+    """Test cloning of a Renku repo checking out a rev with static config."""
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with chdir(str(tmpdir)):
+        repo = project_clone(
+            remote,
+            config={
+                'user.name': 'sam',
+                'user.email': 's@m.i',
+                'filter.lfs.custom': '0'
+            },
+            checkout_rev='3d387e64ea25079df8dd43b8875058cf9f4b0315',
+        )
+
+        assert '3d387e64ea25079df8dd43b8875058cf9f4b0315' == str(
+            repo.active_branch
+        )
+        reader = repo.config_reader()
+        reader.values()
+
+        lfs_config = dict(reader.items('filter.lfs'))
+        assert '0' == lfs_config.get('custom')
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize('rev', [
+    'test-branch',
+    'my-tag',
+])
+def test_renku_clone_checkout_revs(tmpdir, rev):
+    """Test cloning of a Renku repo checking out a rev."""
+    remote = 'https://dev.renku.ch/gitlab/contact/no-renku.git'
+
+    with chdir(str(tmpdir)):
+        repo = project_clone(
+            remote,
+            checkout_rev=rev,
+        )
+
+        assert rev == repo.active_branch.name
 
 
 @pytest.mark.integration
@@ -1341,6 +1390,7 @@ def test_add_removes_credentials(runner, client):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_check_disk_space(runner, client, monkeypatch):
     """Check adding to dataset prompts if disk space is not enough."""
     url = 'https://example.com/index.html'
@@ -1366,6 +1416,7 @@ def test_check_disk_space(runner, client, monkeypatch):
 
 @pytest.mark.migration
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_migration_submodule_datasets(
     isolated_runner, old_repository_with_submodules
 ):
