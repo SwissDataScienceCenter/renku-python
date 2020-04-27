@@ -716,6 +716,7 @@ def test_export_dataset_unauthorized(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_dataverse_no_dataverse_name(
     runner, project, client, dataverse_demo
 ):
@@ -732,6 +733,7 @@ def test_export_dataverse_no_dataverse_name(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_dataverse_no_dataverse_url(
     runner, client, dataverse_demo, global_config_dir
 ):
@@ -755,6 +757,7 @@ def test_export_dataverse_no_dataverse_url(
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_export_imported_dataset_to_dataverse(
     runner, client, dataverse_demo, zenodo_sandbox
 ):
@@ -1341,6 +1344,7 @@ def test_add_removes_credentials(runner, client):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_check_disk_space(runner, client, monkeypatch):
     """Check adding to dataset prompts if disk space is not enough."""
     url = 'https://example.com/index.html'
@@ -1366,6 +1370,7 @@ def test_check_disk_space(runner, client, monkeypatch):
 
 @pytest.mark.migration
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 def test_migration_submodule_datasets(
     isolated_runner, old_repository_with_submodules
 ):
