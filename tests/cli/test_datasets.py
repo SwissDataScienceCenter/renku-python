@@ -260,6 +260,25 @@ def test_dataset_creator_is_invalid(client, runner, creator, field):
     assert field + ' is invalid' in result.output
 
 
+def test_dataset_url_in_different_domain(runner, client):
+    """Test URL is set correctly in a different Renku domain."""
+    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    try:
+        renku_domain = os.environ.get('RENKU_DOMAIN')
+        os.environ['RENKU_DOMAIN'] = 'alternative-domain'
+
+        with client.with_dataset('my-dataset') as dataset:
+            assert dataset.url.startswith('https://alternative-domain')
+            assert dataset.url == dataset._id
+    finally:
+        if renku_domain:
+            os.environ['RENKU_DOMAIN'] = renku_domain
+        else:
+            del os.environ['RENKU_DOMAIN']
+
+
 @pytest.mark.parametrize('output_format', DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
@@ -1523,8 +1542,8 @@ def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory):
 
 
 @pytest.mark.parametrize('external', [False, True])
-def test_add_same_filename_multiple(runner, client, directory_tree, external):
-    """Check adding same filename multiple times."""
+def test_add_existing_files(runner, client, directory_tree, external):
+    """Check adding/overwriting existing files."""
     param = ['-e'] if external else []
 
     result = runner.invoke(
@@ -1568,6 +1587,7 @@ def test_add_same_filename_multiple(runner, client, directory_tree, external):
     assert external or 'Warning: No file was added to project' in result.output
     assert external or 'Error: There is nothing to commit.' in result.output
 
+    # Add existing files and files within same project
     result = runner.invoke(
         cli,
         ['dataset', 'add', 'my-dataset', directory_tree.strpath, 'README.md'] +
@@ -1577,6 +1597,51 @@ def test_add_same_filename_multiple(runner, client, directory_tree, external):
     assert 'These existing files were not overwritten' in result.output
     assert str(path) in result.output
     assert 'Warning: No file was added to project' not in result.output
+
+    # Add existing and non-existing files
+    directory_tree.join('new-file').write('new-file')
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset', directory_tree.strpath] + param
+    )
+    assert 0 == result.exit_code
+    assert 'These existing files were not overwritten' in result.output
+    assert str(path) in result.output
+    assert 'OK' in result.output
+
+
+def test_add_ignored_files(runner, client, directory_tree):
+    """Check adding/force-adding ignored files."""
+    directory_tree.join('.DS_Store').write('ignored-file')
+    source_path = directory_tree.join('.DS_Store').strpath
+    path = (
+        client.path / 'data' / 'my-dataset' / directory_tree.basename /
+        '.DS_Store'
+    )
+    relative_path = str(path.relative_to(client.path))
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-dataset', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+    assert 'Theses paths are ignored' in result.output
+    assert str(source_path) in result.output
+    assert 'OK' in result.output
+
+    with client.with_dataset('my-dataset') as dataset:
+        assert dataset.find_file(relative_path) is None
+
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--force', 'my-dataset', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code
+    assert 'Theses paths are ignored' not in result.output
+    assert str(source_path) not in result.output
+    assert 'OK' in result.output
+
+    with client.with_dataset('my-dataset') as dataset:
+        assert dataset.find_file(relative_path) is not None
 
 
 def test_add_external_files(runner, client, directory_tree):

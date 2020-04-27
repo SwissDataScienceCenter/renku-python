@@ -316,11 +316,11 @@ class DatasetsApiMixin(object):
 
         # Remove all files that are under a .git directory
         paths_to_avoid = [
-            d['path']
-            for d in files if '.git' in str(d['path']).split(os.path.sep)
+            f['path']
+            for f in files if '.git' in str(f['path']).split(os.path.sep)
         ]
         if paths_to_avoid:
-            files = [d for d in files if d['path'] not in paths_to_avoid]
+            files = [f for f in files if f['path'] not in paths_to_avoid]
             warning_messages.append(
                 'Ignored adding paths under a .git directory:\n  ' +
                 '\n  '.join(str(p) for p in paths_to_avoid)
@@ -328,11 +328,31 @@ class DatasetsApiMixin(object):
 
         files_to_commit = {str(self.path / f['path']) for f in files}
 
-        ignored = self.find_ignored_paths(*files_to_commit)
-
         if not force:
-            if ignored:
-                raise errors.IgnoredFiles(ignored)
+            ignored_files = self.find_ignored_paths(*files_to_commit)
+            if ignored_files:
+                ignored_files = set(ignored_files)
+                files_to_commit = files_to_commit.difference(ignored_files)
+                ignored_sources = []
+                for file_ in files:
+                    if str(self.path / file_['path']) in ignored_files:
+                        operation = file_.get('operation')
+                        if operation:
+                            src, _, _ = operation
+                            ignored_sources.append(src)
+                        else:
+                            ignored_sources.append(file_['path'])
+
+                files = [
+                    f for f in files
+                    if str(self.path / f['path']) in files_to_commit
+                ]
+                warning_messages.append(
+                    'Theses paths are ignored by one of your .gitignore ' +
+                    'files (use "--force" flag if you really want to add ' +
+                    'them):\n  ' +
+                    '\n  '.join([str(p) for p in ignored_sources])
+                )
 
         # all files at this point can be force-added
 
@@ -340,7 +360,10 @@ class DatasetsApiMixin(object):
             existing_files = dataset.find_files(files_to_commit)
             if existing_files:
                 files_to_commit = files_to_commit.difference(existing_files)
-                files = [f for f in files if f['path'] in files_to_commit]
+                files = [
+                    f for f in files
+                    if str(self.path / f['path']) in files_to_commit
+                ]
                 warning_messages.append(
                     'These existing files were not overwritten ' +
                     '(use "--overwrite" flag to overwrite them):\n  ' +

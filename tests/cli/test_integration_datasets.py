@@ -36,7 +36,6 @@ from renku.core.utils.contexts import chdir
 @pytest.mark.parametrize(
     'doi', [{
         'doi': '10.5281/zenodo.2658634',
-        'input': 'y',
         'short_name': 'pyndl_naive_discriminat_v064',
         'creator':
             'Konstantin Sering, Marc Weitz, David-Elias Künstle, '
@@ -44,19 +43,23 @@ from renku.core.utils.contexts import chdir
         'version': 'v0.6.4'
     }, {
         'doi': '10.7910/DVN/F4NUMR',
-        'input': 'y',
         'short_name': 'replication_data_for_ca_2',
         'creator': 'James Druckman, Martin Kifer, Michael Parkin',
         'version': '2'
     }]
 )
+@pytest.mark.parametrize(
+    'prefix', [
+        '', 'doi:', 'doi.org/', 'www.doi.org/', 'dx.doi.org/',
+        'http://www.doi.org/', 'https://dx.doi.org/', 'https://doi.org/'
+    ]
+)
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_import_real_doi(runner, project, doi, sleep_after):
+def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     """Test dataset import for existing DOI."""
-    result = runner.invoke(
-        cli, ['dataset', 'import', doi['doi']], input=doi['input']
-    )
+    uri = prefix + doi['doi']
+    result = runner.invoke(cli, ['dataset', 'import', uri], input='y')
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'OK' in result.output + str(result.stderr_bytes)
 
@@ -69,6 +72,11 @@ def test_dataset_import_real_doi(runner, project, doi, sleep_after):
     result = runner.invoke(cli, ['dataset', 'ls-tags', doi['short_name']])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert doi['version'] in result.output
+
+    with client.with_dataset(doi['short_name']) as dataset:
+        assert doi['doi'] in dataset.same_as.url
+        assert dataset.identifier in dataset.url
+        assert dataset.url == dataset._id
 
 
 @pytest.mark.parametrize(
@@ -1284,7 +1292,7 @@ def test_renku_clone_with_config(tmpdir):
     remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     with chdir(str(tmpdir)):
-        project_clone(
+        repo = project_clone(
             remote,
             config={
                 'user.name': 'sam',
@@ -1293,12 +1301,58 @@ def test_renku_clone_with_config(tmpdir):
             }
         )
 
-        repo = git.Repo('datasets-test')
+        assert 'master' == repo.active_branch.name
         reader = repo.config_reader()
         reader.values()
 
         lfs_config = dict(reader.items('filter.lfs'))
         assert '0' == lfs_config.get('custom')
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_renku_clone_checkout_rev(tmpdir):
+    """Test cloning of a Renku repo checking out a rev with static config."""
+    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+
+    with chdir(str(tmpdir)):
+        repo = project_clone(
+            remote,
+            config={
+                'user.name': 'sam',
+                'user.email': 's@m.i',
+                'filter.lfs.custom': '0'
+            },
+            checkout_rev='3d387e64ea25079df8dd43b8875058cf9f4b0315',
+        )
+
+        assert '3d387e64ea25079df8dd43b8875058cf9f4b0315' == str(
+            repo.active_branch
+        )
+        reader = repo.config_reader()
+        reader.values()
+
+        lfs_config = dict(reader.items('filter.lfs'))
+        assert '0' == lfs_config.get('custom')
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize('rev', [
+    'test-branch',
+    'my-tag',
+])
+def test_renku_clone_checkout_revs(tmpdir, rev):
+    """Test cloning of a Renku repo checking out a rev."""
+    remote = 'https://dev.renku.ch/gitlab/contact/no-renku.git'
+
+    with chdir(str(tmpdir)):
+        repo = project_clone(
+            remote,
+            checkout_rev=rev,
+        )
+
+        assert rev == repo.active_branch.name
 
 
 @pytest.mark.integration

@@ -613,7 +613,6 @@ def import_dataset(
     if not files:
         raise ParameterError('Dataset {} has no files.'.format(uri))
 
-    dataset.url = remove_credentials(uri)
     dataset.same_as = Url(url_id=remove_credentials(uri))
 
     if not provider.is_git_based:
