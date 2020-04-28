@@ -781,15 +781,12 @@ def integration_lifecycle(svc_client, mock_redis):
     # Teardown step: Delete all branches except master (if needed).
     if integration_repo_path(headers, url_components).exists():
         with integration_repo(headers, url_components) as repo:
-            for repo_branch in repo.references:
-                if repo_branch.name == 'master':
-                    continue
-                try:
-                    repo.remote().push(
-                        refspec=(':{0}'.format(repo_branch.name))
-                    )
-                except git.exc.GitCommandError:
-                    continue
+            try:
+                repo.remote().push(
+                    refspec=(':{0}'.format(repo.active_branch.name))
+                )
+            except git.exc.GitCommandError:
+                pass
 
 
 @pytest.fixture
