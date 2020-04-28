@@ -163,6 +163,9 @@ def repository():
 
         yield project_path
 
+        result = runner.invoke(cli, ['githooks', 'install', '--force'])
+        assert 0 == result.exit_code
+
 
 @pytest.fixture
 def project(repository):
