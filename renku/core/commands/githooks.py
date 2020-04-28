@@ -17,21 +17,15 @@
 # limitations under the License.
 """Install and uninstall Git hooks."""
 
-import click
-
 from renku.core.management.githooks import install, uninstall
 
 from .client import pass_local_client
-from .echo import WARNING
 
 
 @pass_local_client
 def install_githooks(client, force):
     """Install Git hooks."""
-    warning_messages = install(client=client, force=force)
-    if warning_messages:
-        for message in warning_messages:
-            click.echo(WARNING + message)
+    install(client=client, force=force)
 
 
 @pass_local_client

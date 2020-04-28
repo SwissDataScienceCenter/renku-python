@@ -19,12 +19,10 @@ r"""Communicator classes for printing output."""
 
 import threading
 
-import click
-from tqdm import tqdm
-
 
 class CommunicationCallback(object):
     """Base communication class that handles all communication."""
+
     listeners = []
     lock = threading.Lock()
 
@@ -41,6 +39,12 @@ class CommunicationCallback(object):
         with CommunicationCallback.lock:
             if listener in CommunicationCallback.listeners:
                 CommunicationCallback.listeners.remove(listener)
+
+    def echo(self, msg):
+        """Write a message."""
+        with CommunicationCallback.lock:
+            for l in CommunicationCallback.listeners:
+                l.echo(msg)
 
     def info(self, msg):
         """Write an info message."""
@@ -59,6 +63,13 @@ class CommunicationCallback(object):
         with CommunicationCallback.lock:
             for l in CommunicationCallback.listeners:
                 l.error(msg)
+
+    def confirm(self, msg, abort=False):
+        """Get confirmation for an action."""
+        with CommunicationCallback.lock:
+            result = True
+            for l in CommunicationCallback.listeners:
+                result = result and l.confirm(msg, abort)
 
     def start_progress(self, name, total, **kwargs):
         """Create a new progress tracker."""
@@ -79,65 +90,6 @@ class CommunicationCallback(object):
                 l.finalize_progress(name)
 
 
-class ClickCallback(CommunicationCallback):
-    """CommunicationCallback implementation for ``click`` messages."""
-    INFO = click.style('Info: ', bold=True, fg='blue')
-    WARNING = click.style('Warning: ', bold=True, fg='yellow')
-    ERROR = click.style('Error: ', bold=True, fg='red')
-
-    progressbars = {}
-    progress_types = ['download']
-
-    def info(self, msg):
-        """Write an info message."""
-        click.echo(self.INFO + msg)
-
-    def warn(self, msg):
-        """Write a warning message."""
-        click.echo(self.WARNING + msg)
-
-    def error(self, msg):
-        """Write an error message."""
-        click.echo(self.ERROR + msg)
-
-    def start_progress(self, name, total, **kwargs):
-        """Start a new tqdm progressbar."""
-        if name in self.progressbars:
-            raise ValueError(
-                'Name {} is already a registered progressbar.'.format(name)
-            )
-
-        if 'type' not in kwargs:
-            kwargs['type'] = 'download'
-
-        if kwargs['type'] not in self.progress_types:
-            self.progressbars[name] = None
-        elif kwargs['type'] == 'download':
-            self.progressbars[name] = tqdm(
-                total=total,
-                unit='iB',
-                unit_scale=True,
-                desc=name,
-                leave=False,
-                bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
-            )
-
-    def update_progress(self, name, amount):
-        """Update a progressbar."""
-        if name not in self.progressbars or not self.progressbars[name]:
-            return
-
-        self.progressbars[name].update(amount)
-
-    def finalize_progress(self, name):
-        """End a progressbar."""
-        if name not in self.progressbars or not self.progressbars[name]:
-            return
-
-        self.progressbars[name].close()
-        del self.progressbars[name]
-
-
 root = CommunicationCallback()
 CommunicationCallback.root = root
 
@@ -149,8 +101,13 @@ def subscribe(listener):
 
 
 def unsubscribe(listener):
-    """Unsubscribe a communication listener"""
+    """Unsubscribe a communication listener."""
     CommunicationCallback.unsubscribe(listener)
+
+
+def echo(msg):
+    """Write a message to all listeners."""
+    CommunicationCallback.root.echo(msg)
 
 
 def info(msg):
@@ -168,9 +125,14 @@ def error(msg):
     CommunicationCallback.root.error(msg)
 
 
-def start_progress(name, total):
+def confirm(msg, abort=False):
+    """Get confirmation for an action from all listeners."""
+    CommunicationCallback.root.confirm(msg, abort)
+
+
+def start_progress(name, total, **kwargs):
     """Start a progress tracker on all listeners."""
-    CommunicationCallback.root.start_progress(name, total)
+    CommunicationCallback.root.start_progress(name, total, **kwargs)
 
 
 def update_progress(name, amount):
@@ -185,6 +147,5 @@ def finalize_progress(name):
 
 __all__ = [
     'CommunicationCallback', 'subscribe', 'unsubscribe', 'info', 'warn',
-    'error', 'start_progress', 'update_progress', 'finalize_progress',
-    'ClickCallback'
+    'error', 'start_progress', 'update_progress', 'finalize_progress'
 ]

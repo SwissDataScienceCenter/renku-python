@@ -19,8 +19,7 @@
 
 import functools
 
-import click
-
+import renku.core.utils.communication as communication
 from renku.core.errors import SHACLValidationError
 from renku.core.utils.shacl import validate_graph
 
@@ -323,9 +322,11 @@ def makefile(graph, strict=False):
             steps = [activity]
 
         for step in steps:
-            click.echo(' '.join(step.outputs) + ': ' + ' '.join(step.inputs))
+            communication.echo(
+                ' '.join(step.outputs) + ': ' + ' '.join(step.inputs)
+            )
             tool = step.process
-            click.echo(
+            communication.echo(
                 '\t@' + ' '.join(tool.to_argv()) + ' ' + ' '.join(
                     tool.STD_STREAMS_REPR[key] + ' ' + str(path)
                     for key, path in tool._std_streams().items()
@@ -344,14 +345,14 @@ def jsonld(graph, strict=False):
             raise SHACLValidationError(
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
-    click.echo(ld)
+    communication.echo(ld)
 
 
 def jsonld_graph(graph, strict=False):
     """Format graph as JSON-LD graph file."""
     if strict:
         raise SHACLValidationError('--strict not supported for json-ld-graph')
-    click.echo(_jsonld(graph, 'flatten'))
+    communication.echo(_jsonld(graph, 'flatten'))
 
 
 def nt(graph, strict=False):
@@ -365,7 +366,7 @@ def nt(graph, strict=False):
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
 
-    click.echo(nt)
+    communication.echo(nt)
 
 
 def rdf(graph, strict=False):
@@ -379,7 +380,7 @@ def rdf(graph, strict=False):
                 "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
             )
 
-    click.echo(xml)
+    communication.echo(xml)
 
 
 FORMATS = {

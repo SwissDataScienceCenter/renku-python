@@ -22,7 +22,6 @@ import urllib
 from collections import OrderedDict
 from pathlib import Path
 
-import click
 import git
 import requests
 
@@ -42,7 +41,7 @@ from renku.core.utils.doi import is_doi
 from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
-from .echo import INFO, WARNING
+from .echo import WARNING
 from .format.dataset_files import DATASET_FILES_FORMATS
 from .format.datasets import DATASETS_FORMATS
 
@@ -200,7 +199,6 @@ def add_file(
     with_metadata=None,
     urlscontext=contextlib.nullcontext,
     commit_message=None,
-    progress=None,
     interactive=False,
 ):
     """Add data file to a dataset."""
@@ -217,7 +215,6 @@ def add_file(
         ref=ref,
         with_metadata=with_metadata,
         urlscontext=urlscontext,
-        progress=progress,
         interactive=interactive,
     )
 
@@ -239,7 +236,6 @@ def _add_to_dataset(
     extract=False,
     all_at_once=False,
     destination_names=None,
-    progress=None,
     interactive=False,
     total_size=None,
 ):
@@ -273,7 +269,7 @@ def _add_to_dataset(
             short_name=short_name, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
-                warning_messages, messages = client.add_data_to_dataset(
+                client.add_data_to_dataset(
                     dataset,
                     bar,
                     external=external,
@@ -284,17 +280,8 @@ def _add_to_dataset(
                     ref=ref,
                     extract=extract,
                     all_at_once=all_at_once,
-                    destination_names=destination_names,
-                    progress=progress,
+                    destination_names=destination_names
                 )
-
-            if messages:
-                for msg in messages:
-                    click.echo(INFO + msg)
-
-            if warning_messages:
-                for msg in warning_messages:
-                    communication.warn(msg)
 
             if with_metadata:
                 for file_ in dataset.files:
@@ -391,7 +378,7 @@ def file_unlink(
             '\n' + '\n'.join([str(record.full_path) for record in records]) +
             '\nDo you wish to continue?'
         )
-        click.confirm(WARNING + prompt_text, abort=True)
+        communication.confirm(WARNING + prompt_text, abort=True)
 
     for item in records:
         dataset.unlink_file(item.path)
@@ -588,7 +575,7 @@ def import_dataset(
         total_size = 0
 
         if with_prompt and not yes:
-            click.echo(
+            communication.echo(
                 tabulate(
                     files,
                     headers=OrderedDict((
@@ -607,7 +594,7 @@ def import_dataset(
                     record.links.get('latest_html')
                 ) + text_prompt
 
-            click.confirm(text_prompt, abort=True)
+            communication.confirm(text_prompt, abort=True)
 
             for file_ in files:
                 if file_.size_in_mb is not None:
@@ -656,7 +643,6 @@ def import_dataset(
             extract=extract,
             all_at_once=True,
             destination_names=names,
-            progress=progress,
             interactive=with_prompt,
             total_size=total_size,
         )
@@ -733,7 +719,7 @@ def update_datasets(
         if external:
             client.update_external_files(external_files)
         else:
-            click.echo(
+            communication.info(
                 'To update external files run update command with '
                 '"--external" flag.'
             )
@@ -746,7 +732,7 @@ def update_datasets(
         )
 
     if deleted_files and not delete:
-        click.echo(
+        communication.echo(
             'Some files are deleted from remote. To also delete them locally '
             'run update command with `--delete` flag.'
         )

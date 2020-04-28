@@ -24,7 +24,6 @@ import shutil
 import tempfile
 import time
 import uuid
-import warnings
 from collections import OrderedDict
 from configparser import NoSectionError
 from contextlib import contextmanager
@@ -39,6 +38,7 @@ import requests
 from git import GitCommandError, GitError, Repo
 from wcmatch import glob
 
+import renku.core.utils.communication as communication
 from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
@@ -244,12 +244,9 @@ class DatasetsApiMixin(object):
         external=False,
         extract=False,
         all_at_once=False,
-        destination_names=None,
-        progress=None
+        destination_names=None
     ):
         """Import the data into the data directory."""
-        messages = []
-        warning_messages = []
         dataset_datadir = self.path / dataset.datadir
 
         destination = destination or Path('.')
@@ -270,8 +267,7 @@ class DatasetsApiMixin(object):
                 urls=urls,
                 destination_names=destination_names,
                 destination=destination,
-                extract=extract,
-                progress=progress
+                extract=extract
             )
         else:
             for url in urls:
@@ -294,7 +290,7 @@ class DatasetsApiMixin(object):
 
                     if not is_remote:  # Local path, might be git
                         if is_git:
-                            warning_messages.append(
+                            communication.warn(
                                 'Adding data from local Git repository: ' +
                                 'Use remote\'s Git URL instead to enable ' +
                                 'lineage information and updates.'
@@ -311,8 +307,7 @@ class DatasetsApiMixin(object):
                             dataset=dataset,
                             url=url,
                             destination=destination,
-                            extract=extract,
-                            progress=progress
+                            extract=extract
                         )
 
                 files.extend(new_files)
@@ -324,7 +319,7 @@ class DatasetsApiMixin(object):
         ]
         if paths_to_avoid:
             files = [f for f in files if f['path'] not in paths_to_avoid]
-            warning_messages.append(
+            communication.warn(
                 'Ignored adding paths under a .git directory:\n  ' +
                 '\n  '.join(str(p) for p in paths_to_avoid)
             )
@@ -350,7 +345,7 @@ class DatasetsApiMixin(object):
                     f for f in files
                     if str(self.path / f['path']) in files_to_commit
                 ]
-                warning_messages.append(
+                communication.warn(
                     'Theses paths are ignored by one of your .gitignore ' +
                     'files (use "--force" flag if you really want to add ' +
                     'them):\n  ' +
@@ -367,7 +362,7 @@ class DatasetsApiMixin(object):
                     f for f in files
                     if str(self.path / f['path']) in files_to_commit
                 ]
-                warning_messages.append(
+                communication.warn(
                     'These existing files were not overwritten ' +
                     '(use "--overwrite" flag to overwrite them):\n  ' +
                     '\n  '.join([str(p) for p in existing_files])
@@ -401,7 +396,7 @@ class DatasetsApiMixin(object):
             if (
                 lfs_paths and (show_message is None or show_message == 'True')
             ):
-                messages.append((
+                communication.info((
                     'Adding these files to Git LFS:\n' +
                     '\t{}'.format('\n\t'.join(lfs_paths)) +
                     '\nTo disable this message in the future, run:' +
@@ -420,7 +415,7 @@ class DatasetsApiMixin(object):
             skip_hooks = not self.external_storage_requested
             self.repo.index.commit(msg, skip_hooks=skip_hooks)
         else:
-            warning_messages.append('No file was added to project')
+            communication.warn('No file was added to project')
 
         # Generate the DatasetFiles
         dataset_files = []
@@ -433,7 +428,6 @@ class DatasetsApiMixin(object):
             dataset_files.append(dataset_file)
 
         dataset.update_files(dataset_files)
-        return warning_messages, messages
 
     def _check_protected_path(self, path):
         """Checks if a path is a protected path."""
@@ -516,7 +510,7 @@ class DatasetsApiMixin(object):
         }]
 
     def _add_from_urls(
-        self, dataset, urls, destination, destination_names, extract, progress
+        self, dataset, urls, destination, destination_names, extract
     ):
         files = []
         max_workers = min(os.cpu_count() - 1, 4) or 1
@@ -528,8 +522,7 @@ class DatasetsApiMixin(object):
                     url=url,
                     destination=destination,
                     extract=extract,
-                    filename=name,
-                    progress=progress
+                    filename=name
                 )
                 for url, name in zip(urls, destination_names)
             }
@@ -539,19 +532,14 @@ class DatasetsApiMixin(object):
 
         return files
 
-    def _add_from_url(
-        self, dataset, url, destination, extract, filename=None, progress=None
-    ):
+    def _add_from_url(self, dataset, url, destination, extract, filename=None):
         """Process adding from url and return the location on disk."""
         url = self._provider_check(url)
 
         try:
             start = time.time() * 1e+3
             tmp_root, paths = self._download(
-                url=url,
-                filename=filename,
-                extract=extract,
-                progress_class=progress
+                url=url, filename=filename, extract=extract
             )
 
             exec_time = (time.time() * 1e+3 - start) // 1e+3
@@ -801,7 +789,7 @@ class DatasetsApiMixin(object):
         try:
             remote = self.repo.remote(branch_remote)
         except ValueError:
-            warnings.warn(
+            communication.warn(
                 'Remote {} not found, cannot check for relative URL.'.
                 format(branch_remote)
             )
@@ -1234,9 +1222,7 @@ class DatasetsApiMixin(object):
             return label.split('@')[1]
         return label
 
-    def _download(
-        self, url, filename, extract, progress_class=None, chunk_size=16384
-    ):
+    def _download(self, url, filename, extract, chunk_size=16384):
         def extract_dataset(filepath):
             """Extract downloaded file."""
             try:
@@ -1268,35 +1254,19 @@ class DatasetsApiMixin(object):
             download_to = Path(tmp) / filename
             with open(str(download_to), 'wb') as file_:
                 total_size = int(request.headers.get('content-length', 0))
-                progress_class = progress_class or DownloadProgressCallback
-                progress = progress_class(
-                    description=filename, total_size=total_size
-                )
+                communication.start_progress(filename, total_size, type='file')
 
                 try:
                     for chunk in request.iter_content(chunk_size=chunk_size):
                         if chunk:  # ignore keep-alive chunks
                             file_.write(chunk)
-                            progress.update(size=len(chunk))
+                            communication.update_progress(filename, len(chunk))
                 finally:
-                    progress.finalize()
+                    communication.finalize_progress(filename)
         if extract:
             return extract_dataset(download_to)
 
         return download_to.parent, [download_to]
-
-
-class DownloadProgressCallback:
-    """Interface to report various stages of a download."""
-
-    def __init__(self, description, total_size):
-        """Default initializer."""
-
-    def update(self, size):
-        """Update the status."""
-
-    def finalize(self):
-        """Called once when the download is finished."""
 
 
 def _check_url(url):

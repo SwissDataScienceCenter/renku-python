@@ -366,9 +366,8 @@ from functools import partial
 
 import click
 import requests
-from tqdm import tqdm
 
-import renku.core.utils.communication as communication
+from renku.cli.utils import click_callback_communication
 from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_remove, edit_dataset, export_dataset, file_unlink, \
     import_dataset, list_datasets, list_files, list_tags, \
@@ -380,7 +379,6 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
     DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
-from renku.core.management.datasets import DownloadProgressCallback
 
 
 def prompt_access_token(exporter):
@@ -597,13 +595,13 @@ def edit(short_name, title, description, creator, keyword):
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
+@click_callback_communication
 def add(
     short_name, urls, external, force, overwrite, create, sources, destination,
     ref
 ):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
-    communication.subscribe(communication.ClickCallback())
     add_file(
         urls=urls,
         short_name=short_name,
@@ -615,7 +613,6 @@ def add(
         destination=destination,
         ref=ref,
         urlscontext=progress,
-        progress=_DownloadProgressbar,
         interactive=True,
     )
     click.secho('OK', fg='green')
@@ -683,6 +680,7 @@ def ls_files(short_names, creators, include, exclude, format, columns):
 @click.option(
     '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
 )
+@click_callback_communication
 def unlink(short_name, include, exclude, yes):
     """Remove matching files from a dataset."""
     file_unlink(
@@ -807,6 +805,7 @@ def export_(
 @click.option(
     '-y', '--yes', is_flag=True, help='Bypass download confirmation.'
 )
+@click_callback_communication
 def import_(uri, short_name, extract, yes):
     """Import data from a 3rd party provider or another renku project.
 
@@ -817,34 +816,10 @@ def import_(uri, short_name, extract, yes):
         short_name=short_name,
         extract=extract,
         with_prompt=True,
-        yes=yes,
-        progress=_DownloadProgressbar
+        yes=yes
     )
     click.secho(' ' * 79 + '\r', nl=False)
     click.secho('OK', fg='green')
-
-
-class _DownloadProgressbar(DownloadProgressCallback):
-    def __init__(self, description, total_size):
-        """Default initializer."""
-        self._progressbar = tqdm(
-            total=total_size,
-            unit='iB',
-            unit_scale=True,
-            desc=description,
-            leave=False,
-            bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
-        )
-
-    def update(self, size):
-        """Update the status."""
-        if self._progressbar:
-            self._progressbar.update(size)
-
-    def finalize(self):
-        """Called once when the download is finished."""
-        if self._progressbar:
-            self._progressbar.close()
 
 
 @dataset.command('update')

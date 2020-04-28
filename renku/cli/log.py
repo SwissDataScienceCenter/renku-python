@@ -85,6 +85,7 @@ The ``--strict`` option is only supported for the ``jsonld``, ``rdf`` and
 import click
 from git import NULL_TREE
 
+from renku.cli.utils import click_callback_communication
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.format.graph import FORMATS
 from renku.core.commands.graph import Graph
@@ -115,7 +116,8 @@ from renku.core.commands.graph import Graph
     help='Validate triples before output.'
 )
 @click.argument('paths', type=click.Path(exists=False), nargs=-1)
-@pass_local_client(requires_migration=True)
+@pass_local_client
+@click_callback_communication
 def log(client, revision, format, no_output, strict, paths):
     """Show logs for a file."""
     graph = Graph(client)

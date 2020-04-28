@@ -23,6 +23,7 @@ import sys
 
 import click
 
+import renku.core.utils.communication as communication
 from renku.core.errors import WorkflowRerunError
 
 from .echo import progressbar
@@ -109,7 +110,7 @@ def execute(client, output_file, output_paths=None):
 
     unchanged_paths = client.remove_unmodified(output_paths)
     if unchanged_paths:
-        click.echo(
+        communication.echo(
             'Unchanged files:\n\n\t{0}'.format(
                 '\n\t'.join(
                     click.style(path, fg='yellow') for path in unchanged_paths

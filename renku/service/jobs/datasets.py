@@ -25,6 +25,7 @@ from renku.core.errors import DatasetExistsError, ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import JobSchema
+from renku.service.utils.communication import service_callback_communication
 from renku.service.views.decorators import requires_cache
 
 
@@ -79,15 +80,13 @@ def dataset_import(
     with chdir(project.abs_path):
         try:
             user_job.in_progress()
-
-            import_dataset(
-                dataset_uri,
-                short_name,
-                extract,
-                commit_message=f'service: dataset import {dataset_uri}',
-                progress=DatasetImportJobProcess(cache, user_job)
-            )
-
+            with service_callback_communication(user_job):
+                import_dataset(
+                    dataset_uri,
+                    short_name,
+                    extract,
+                    commit_message=f'service: dataset import {dataset_uri}'
+                )
             _, remote_branch = repo_sync(
                 Repo(project.abs_path), remote='origin'
             )

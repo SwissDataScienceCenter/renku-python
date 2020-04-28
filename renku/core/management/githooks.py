@@ -23,17 +23,18 @@ from pathlib import Path
 import pkg_resources
 from git.index.fun import hook_path as get_hook_path
 
+import renku.core.utils.communication as communication
+
 HOOKS = ('pre-commit', )
 
 
 def install(client, force):
     """Install Git hooks."""
-    warning_messages = []
     for hook in HOOKS:
         hook_path = Path(get_hook_path(hook, client.repo.git_dir))
         if hook_path.exists():
             if not force:
-                warning_messages.append(
+                communication.warn(
                     'Hook already exists. Skipping {0}'.format(str(hook_path))
                 )
                 continue
@@ -49,8 +50,6 @@ def install(client, force):
             )
         )
         hook_path.chmod(hook_path.stat().st_mode | stat.S_IEXEC)
-
-    return warning_messages
 
 
 def uninstall(client):
