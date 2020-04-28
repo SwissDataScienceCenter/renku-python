@@ -368,6 +368,7 @@ import click
 import requests
 from tqdm import tqdm
 
+import renku.core.utils.communication as communication
 from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_remove, edit_dataset, export_dataset, file_unlink, \
     import_dataset, list_datasets, list_files, list_tags, \
@@ -602,6 +603,7 @@ def add(
 ):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
+    communication.subscribe(communication.ClickCallback())
     add_file(
         urls=urls,
         short_name=short_name,

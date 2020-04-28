@@ -26,6 +26,7 @@ import click
 import git
 import requests
 
+import renku.core.utils.communication as communication
 from renku.core import errors
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.providers import ProviderFactory
@@ -293,7 +294,7 @@ def _add_to_dataset(
 
             if warning_messages:
                 for msg in warning_messages:
-                    click.echo(WARNING + msg)
+                    communication.warn(msg)
 
             if with_metadata:
                 for file_ in dataset.files:
