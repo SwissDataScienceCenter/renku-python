@@ -331,7 +331,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
 
 @pytest.mark.parametrize('doi', [
-    '10.5281/zenodo.3634052',
+    '10.5281/zenodo.3761586',
 ])
 @pytest.mark.integration
 @pytest.mark.service
