@@ -139,10 +139,10 @@
         },
         "click": {
             "hashes": [
-                "sha256:8a18b4ea89d8820c5d0c7da8a64b2c324b4dabb695804dbfea19b9be9d88c0cc",
-                "sha256:e345d143d80bf5ee7534056164e5e112ea5e22716bbb1ce727941f4c8b471b9a"
+                "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a",
+                "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"
             ],
-            "version": "==7.1.1"
+            "version": "==7.1.2"
         },
         "click-completion": {
             "hashes": [
@@ -832,10 +832,10 @@
         },
         "rq-scheduler": {
             "hashes": [
-                "sha256:06038a42d33d653f89d534ba3bb95694b9d82b39fdd17c6ac6d9bf77d1acdefb",
-                "sha256:9f9f68d0a4749c83f023d903e148b81da2191229e25ac644a9ff9d6eac31bff4"
+                "sha256:de2e2754a05549dadbe7422d2d1fa5ad0c1d556280515af9c3b9c1eba0db5ddb",
+                "sha256:f19486671473eba42095163f2ae829d5dcb046dde01628233871ee830c1c3c2e"
             ],
-            "version": "==0.9.1"
+            "version": "==0.10.0"
         },
         "ruamel.yaml": {
             "hashes": [
