@@ -1530,7 +1530,9 @@ def test_pull_data_from_lfs(
 
 
 @pytest.mark.parametrize('external', [False, True])
-def test_add_existing_files(runner, client, directory_tree, external):
+def test_add_existing_files(
+    runner, client, directory_tree, external, no_lfs_size_limit
+):
     """Check adding/overwriting existing files."""
     param = ['-e'] if external else []
 

@@ -45,8 +45,8 @@ units = {
 
 def parse_file_size(size_str):
     """Parse a human readable filesize to bytes."""
-    res = re.search(r'([0-9.]+)([a-zA-Z]){1,2}', size_str)
-    if not res or res.group(2) not in units:
+    res = re.search(r'([0-9.]+)([a-zA-Z]{1,2})', size_str)
+    if not res or res.group(2).lower() not in units:
         raise ValueError(
             'Supplied file size does not contain a unit. '
             'Valid units are: {}'.format(', '.join(units.keys()))

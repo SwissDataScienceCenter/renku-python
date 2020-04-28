@@ -1235,7 +1235,7 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_files_are_tracked_in_lfs(runner, client):
+def test_files_are_tracked_in_lfs(runner, client, no_lfs_size_limit):
     """Test files added from a Git repo are tacked in Git LFS."""
     filename = 'CHANGES.rst'
     # create a dataset
