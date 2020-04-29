@@ -147,7 +147,7 @@ jobs:
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -m integration -v
+      run: pytest -m integration -v --timeout=600
 
   test-macos-integration:
     runs-on: macos-latest
