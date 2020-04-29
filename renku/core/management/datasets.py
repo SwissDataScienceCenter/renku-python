@@ -396,7 +396,9 @@ class DatasetsApiMixin(object):
         if self.has_external_storage:
             lfs_paths = self.track_paths_in_storage(*files_to_commit)
             show_message = self.get_value('renku', 'show_lfs_message')
-            if (lfs_paths and show_message is None or show_message == 'True'):
+            if (
+                lfs_paths and (show_message is None or show_message == 'True')
+            ):
                 messages.append((
                     'Adding these files to Git LFS:\n' +
                     '\t{}'.format('\n\t'.join(lfs_paths)) +

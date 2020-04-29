@@ -364,8 +364,8 @@ class CommandLineToolFactory(object):
 
                 show_message = client.get_value('renku', 'show_lfs_message')
                 if (
-                    lfs_paths and show_message is None or
-                    show_message == 'True'
+                    lfs_paths and
+                    (show_message is None or show_message == 'True')
                 ):
                     self.messages = (
                         INFO + 'Adding these files to Git LFS:\n' +

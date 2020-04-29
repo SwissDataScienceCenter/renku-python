@@ -116,7 +116,7 @@ def move(ctx, client, sources, destination):
             *(destinations[path] for path in tracked)
         )
         show_message = client.get_value('renku', 'show_lfs_message')
-        if (lfs_paths and show_message is None or show_message == 'True'):
+        if (lfs_paths and (show_message is None or show_message == 'True')):
             click.echo(
                 INFO + 'Adding these files to Git LFS:\n' +
                 '\t{}'.format('\n\t'.join(lfs_paths)) +

@@ -230,12 +230,16 @@ def no_lfs_warning(client):
     yield client
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def client_with_lfs_warning(project):
     """Return a Renku repository with lfs warnings active."""
     from renku.core.management import LocalClient
 
-    yield LocalClient(path=project)
+    client = LocalClient(path=project)
+    client.set_value('renku', 'lfs_threshold', '0b')
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('update renku.ini')
+    yield client
 
 
 @pytest.fixture
