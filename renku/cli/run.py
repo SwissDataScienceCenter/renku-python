@@ -37,6 +37,13 @@ Tracking execution of your command line script is done by simply adding the
 .. warning:: Circular dependencies are not supported for ``renku run``. See
    :ref:`circular-dependencies` for more details.
 
+.. warning:: When using output redirection in ``renku run`` on Windows (with
+   `` > file`` or `` 2> file``), all Renku errors and messages are redirected
+   as well and ``renku run`` produces no output on the terminal. On Linux,
+   this is detected by renku and only the output of the command to be run is
+   actually redirected. Renku specific messages such as errors get printed to
+   the terminal as usual and don't get redirected.
+
 Detecting input paths
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -228,44 +235,100 @@ def run(
     client, inputs, outputs, no_output, success_codes, isolation, command_line
 ):
     """Tracking work on a specific problem."""
-    working_dir = client.repo.working_dir
     mapped_std = _mapped_std_streams(client.candidate_paths)
-    factory = CommandLineToolFactory(
-        command_line=command_line,
-        explicit_inputs=inputs,
-        explicit_outputs=outputs,
-        directory=os.getcwd(),
-        working_dir=working_dir,
-        successCodes=success_codes,
-        **{
-            name: os.path.relpath(path, working_dir)
-            for name, path in mapped_std.items()
-        }
-    )
-    with client.with_workflow_storage() as wf:
-        with factory.watch(client, no_output=no_output) as tool:
-            # Don't compute paths if storage is disabled.
-            if client.has_external_storage:
-                # Make sure all inputs are pulled from a storage.
-                paths_ = (
-                    path
-                    for _, path in tool.iter_input_files(client.workflow_path)
+    system_stdout = None
+    system_stderr = None
+
+    # /dev/tty is a virtual device that points to the terminal
+    # of the currently executed process
+    try:
+        with open('/dev/tty', 'w'):
+            tty_exists = True
+    except OSError:
+        tty_exists = False
+
+    try:
+        stdout_redirected = 'stdout' in mapped_std
+        stderr_redirected = 'stderr' in mapped_std
+
+        if tty_exists:
+            # if renku was called with redirected stdout/stderr, undo the
+            # redirection here so error messages can be printed normally
+            if stdout_redirected:
+                system_stdout = open('/dev/tty', 'w')
+                old_stdout = sys.stdout
+                sys.stdout = system_stdout
+
+            if stderr_redirected:
+                system_stderr = open('/dev/tty', 'w')
+                old_stderr = sys.stderr
+                sys.stderr = system_stderr
+
+        working_dir = client.repo.working_dir
+        factory = CommandLineToolFactory(
+            command_line=command_line,
+            explicit_inputs=inputs,
+            explicit_outputs=outputs,
+            directory=os.getcwd(),
+            working_dir=working_dir,
+            successCodes=success_codes,
+            **{
+                name: os.path.relpath(path, working_dir)
+                for name, path in mapped_std.items()
+            }
+        )
+        with client.with_workflow_storage() as wf:
+            with factory.watch(client, no_output=no_output) as tool:
+                # Don't compute paths if storage is disabled.
+                if client.has_external_storage:
+                    # Make sure all inputs are pulled from a storage.
+                    paths_ = (
+                        path for _, path in
+                        tool.iter_input_files(client.workflow_path)
+                    )
+                    client.pull_paths_from_storage(*paths_)
+
+                if tty_exists:
+                    # apply original output redirection
+                    if stdout_redirected:
+                        sys.stdout = old_stdout
+                    if stderr_redirected:
+                        sys.stderr = old_stderr
+
+                return_code = call(
+                    factory.command_line,
+                    cwd=os.getcwd(),
+                    **{key: getattr(sys, key)
+                       for key in mapped_std.keys()},
                 )
-                client.pull_paths_from_storage(*paths_)
 
-            return_code = call(
-                factory.command_line,
-                cwd=os.getcwd(),
-                **{key: getattr(sys, key)
-                   for key in mapped_std.keys()},
-            )
+                sys.stdout.flush()
+                sys.stderr.flush()
 
-            if return_code not in (success_codes or {0}):
-                raise errors.InvalidSuccessCode(
-                    return_code, success_codes=success_codes
-                )
+                if tty_exists:
+                    # change back to /dev/tty redirection
+                    if stdout_redirected:
+                        sys.stdout = system_stdout
+                    if stderr_redirected:
+                        sys.stderr = system_stderr
 
-            sys.stdout.flush()
-            sys.stderr.flush()
+                if return_code not in (success_codes or {0}):
+                    raise errors.InvalidSuccessCode(
+                        return_code, success_codes=success_codes
+                    )
 
-            wf.add_step(run=tool)
+                wf.add_step(run=tool)
+
+        if factory.messages:
+            click.echo(factory.messages)
+
+        if factory.warnings:
+            click.echo(factory.warnings)
+
+    finally:
+        if system_stdout:
+            sys.stdout = old_stdout
+            system_stdout.close()
+        if system_stderr:
+            sys.stderr = old_stderr
+            system_stderr.close()

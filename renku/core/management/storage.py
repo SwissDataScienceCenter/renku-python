@@ -188,6 +188,8 @@ class StorageApiMixin(RepositoryApiMixin):
                 raise errors.ParameterError(
                     'Couldn\'t run \'git lfs\':\n{0}'.format(e)
                 )
+            return track_paths
+        return []
 
     @ensure_external_storage
     def untrack_paths_from_storage(self, *paths):

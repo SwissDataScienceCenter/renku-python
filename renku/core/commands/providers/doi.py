@@ -101,7 +101,11 @@ class DOIProvider(ProviderApi):
         with retry() as session:
             response = session.get(url, headers=self.headers)
             if response.status_code != 200:
-                raise LookupError('record not found')
+                raise LookupError(
+                    'record not found. Status: {}'.format(
+                        response.status_code
+                    )
+                )
 
             return response
 
