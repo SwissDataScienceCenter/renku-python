@@ -77,6 +77,7 @@ def create_dataset(
     title=None,
     description='',
     creators=None,
+    keywords=None,
     commit_message=None
 ):
     """Create an empty dataset in the current repo.
@@ -92,7 +93,8 @@ def create_dataset(
         short_name=short_name,
         title=title,
         description=description,
-        creators=creators
+        creators=creators,
+        keywords=keywords
     )
 
     return dataset
@@ -105,7 +107,13 @@ def create_dataset(
     commit_only=DATASET_METADATA_PATHS
 )
 def edit_dataset(
-    client, short_name, title, description, creators, commit_message=None
+    client,
+    short_name,
+    title,
+    description,
+    creators,
+    keywords=None,
+    commit_message=None
 ):
     """Edit dataset metadata."""
     creators, no_email_warnings = _construct_creators(
@@ -125,6 +133,9 @@ def edit_dataset(
         if title:
             dataset.name = title
             updated.append('title')
+        if keywords:
+            dataset.keywords = keywords
+            updated.append('keywords')
 
     return updated, no_email_warnings
 

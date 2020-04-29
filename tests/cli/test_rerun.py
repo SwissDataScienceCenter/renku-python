@@ -187,7 +187,7 @@ def test_input_update_and_rerun(cmd, exit_code, runner, project, run):
     assert exit_code == run(args=(cmd, input_.name))
 
 
-def test_output_directory(runner, project, run):
+def test_output_directory(runner, project, run, no_lfs_size_limit):
     """Test detection of output directory."""
     cwd = Path(project)
     data = cwd / 'source' / 'data.txt'

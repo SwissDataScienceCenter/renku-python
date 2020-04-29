@@ -62,6 +62,28 @@ You can provide a KEY to display only its value:
 
     $ renku config registry
     https://registry.gitlab.com/demo/demo
+
+Available configuration values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following values are available for the ``renku config`` command:
+
++------------------------+-------------------------------------+-----------+
+| Name                   | Description                         | Default   |
++========================+=====================================+===========+
+| registry               | The image registry to store Docker  | ``None``  |
+|                        | images in                           |           |
++------------------------+-------------------------------------+-----------+
+| zenodo.access_token    | Access token for Zenodo API         | ``None``  |
++------------------------+-------------------------------------+-----------+
+| dataverse.access_token | Access token for Dataverse API      | ``None``  |
++------------------------+-------------------------------------+-----------+
+| dataverse.server_url   | URL for the Dataverse API server    | ``None``  |
+|                        | to use                              |           |
++------------------------+-------------------------------------+-----------+
+| lfs_threshold          | Threshold file size below which     | ``100kb`` |
+|                        | files are not added to git LFS      |           |
++------------------------+-------------------------------------+-----------+
 """
 import click
 

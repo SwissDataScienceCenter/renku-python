@@ -63,4 +63,5 @@ DATASETS_COLUMNS = {
     'tags': ('tags_csv', 'tags'),
     'version': ('version', None),
     'title': ('name', 'title'),
+    'keywords': ('keywords_csv', 'keywords'),
 }
