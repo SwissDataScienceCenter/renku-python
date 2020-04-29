@@ -391,6 +391,8 @@ def test_file_tracking(isolated_runner):
     os.chdir('test-project')
     result = runner.invoke(cli, ['init', '.', '--template-id', TEMPLATE_ID])
     assert 0 == result.exit_code
+    result = runner.invoke(cli, ['config', 'lfs_threshold', '0b'])
+    assert 0 == result.exit_code
 
     result = runner.invoke(cli, ['run', 'touch', 'tracked'])
     assert 0 == result.exit_code
@@ -853,3 +855,92 @@ def test_config_get_value(client, global_config_dir):
     # Reading non-existing values returns None
     value = client.get_value('non-existing', 'key')
     assert value is None
+
+
+def test_lfs_size_limit(isolated_runner):
+    """Test inclusion of files in lfs by size."""
+    runner = isolated_runner
+
+    os.mkdir('test-project')
+    os.chdir('test-project')
+    result = runner.invoke(cli, ['init', '.', '--template-id', TEMPLATE_ID])
+    assert 0 == result.exit_code
+
+    large = Path('large')
+    with large.open('w') as f:
+        f.write('x' * 1024**2)
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '--create', 'my-dataset',
+              str(large)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert 'large' in Path('.gitattributes').read_text()
+
+    small = Path('small')
+    with small.open('w') as f:
+        f.write('small file')
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset',
+              str(small)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert 'small' not in Path('.gitattributes').read_text()
+
+
+@pytest.mark.parametrize(
+    'ignore,path,tracked',
+    (('file1', 'file1', False), ('!file1', 'file1', True),
+     ('dir1', 'dir1/file1', False), ('dir1/file1', 'dir1/file1', False),
+     ('dir1\n!dir1/file1', 'dir1/file1', True), ('*.test', 'file.test', False),
+     ('*.test', 'file.txt', True), ('*.test', 'dir2/file.test', False),
+     ('dir2\n!*.test', 'dir2/file.test', True))
+)
+def test_lfs_ignore(isolated_runner, ignore, path, tracked):
+    """Test inclusion of files in lfs by size."""
+    runner = isolated_runner
+
+    os.mkdir('test-project')
+    os.chdir('test-project')
+    result = runner.invoke(cli, ['init', '.', '--template-id', TEMPLATE_ID])
+    assert 0 == result.exit_code
+    result = runner.invoke(cli, ['config', 'lfs_threshold', '0b'])
+    assert 0 == result.exit_code
+
+    with Path('.renkulfsignore').open('w') as f:
+        f.write(ignore)
+    subprocess.call(['git', 'commit', '-am', 'Add lfs ignore'])
+
+    # force creation of .gitattributes by adding tracked dummy file
+    with Path('dummy').open('w') as f:
+        f.write('dummy')
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', '--create', 'my-dataset', 'dummy'],
+        catch_exceptions=False
+    )
+
+    # add dataset file
+    filepath = Path(path)
+
+    if str(filepath.parent) != '.':
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+    with filepath.open('w') as f:
+        f.write('x' * 1024**2)
+
+    result = runner.invoke(
+        cli, ['dataset', 'add', 'my-dataset',
+              str(filepath)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+
+    # check if file is tracked or not
+    if tracked:
+        assert str(filepath) in Path('.gitattributes').read_text()
+    else:
+        assert str(filepath) not in Path('.gitattributes').read_text()

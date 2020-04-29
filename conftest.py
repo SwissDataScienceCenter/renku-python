@@ -962,3 +962,12 @@ def dummy_processrun_plugin_hook():
             ]
 
     return _ProcessRunAnnotations()
+
+
+@pytest.fixture
+def no_lfs_size_limit(client):
+    """Configure environment track all files in LFS independent of size."""
+    client.set_value('renku', 'lfs_threshold', '0b')
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('update renku.ini')
+    yield client
