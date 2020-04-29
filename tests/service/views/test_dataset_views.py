@@ -26,7 +26,6 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
-
 from tests.service.views.test_cache_views import IT_GIT_ACCESS_TOKEN
 from tests.utils import make_dataset_add_payload
 
@@ -67,7 +66,8 @@ def test_create_dataset_view(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name'} == set(response.json['result'].keys())
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
 
@@ -99,7 +99,8 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name'} == set(response.json['result'].keys())
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
     params = {
@@ -178,7 +179,8 @@ def test_create_dataset_commit_msg(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name'} == set(response.json['result'].keys())
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
 
@@ -332,8 +334,8 @@ def test_add_file_view(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name', 'project_id',
-            'files'} == set(response.json['result'].keys())
+    assert {'short_name', 'project_id', 'files',
+            'remote_branch'} == set(response.json['result'].keys())
 
     assert 1 == len(response.json['result']['files'])
     assert file_id == response.json['result']['files'][0]['file_id']
@@ -376,8 +378,8 @@ def test_add_file_commit_msg(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name', 'project_id',
-            'files'} == set(response.json['result'].keys())
+    assert {'short_name', 'project_id', 'files',
+            'remote_branch'} == set(response.json['result'].keys())
 
     assert 1 == len(response.json['result']['files'])
     assert file_id == response.json['result']['files'][0]['file_id']
@@ -496,7 +498,8 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     assert response
 
     assert_rpc_response(response)
-    assert {'short_name'} == set(response.json['result'].keys())
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
     params_list = {
@@ -566,8 +569,8 @@ def test_list_dataset_files(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name', 'files',
-            'project_id'} == set(response.json['result'].keys())
+    assert {'short_name', 'files', 'project_id',
+            'remote_branch'} == set(response.json['result'].keys())
     assert file_id == response.json['result']['files'][0]['file_id']
 
     params = {
@@ -643,7 +646,8 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name'} == set(response.json['result'].keys())
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
     payload = {
@@ -663,8 +667,8 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name', 'files',
-            'project_id'} == set(response.json['result'].keys())
+    assert {'short_name', 'files', 'project_id',
+            'remote_branch'} == set(response.json['result'].keys())
     assert file_['file_id'] == response.json['result']['files'][0]['file_id']
 
     params = {
@@ -745,7 +749,8 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name'} == set(response.json['result'].keys())
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
     payload = {
@@ -763,8 +768,8 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name', 'files',
-            'project_id'} == set(response.json['result'].keys())
+    assert {'short_name', 'files', 'project_id',
+            'remote_branch'} == set(response.json['result'].keys())
     assert files == response.json['result']['files']
 
     params = {
@@ -808,7 +813,8 @@ def test_add_existing_file(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name'} == set(response.json['result'].keys())
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
     files = [{'file_path': 'README.md'}]
@@ -827,8 +833,8 @@ def test_add_existing_file(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name', 'files',
-            'project_id'} == set(response.json['result'].keys())
+    assert {'short_name', 'files', 'project_id',
+            'remote_branch'} == set(response.json['result'].keys())
 
     assert files == response.json['result']['files']
 
@@ -1010,8 +1016,8 @@ def test_add_remote_and_local_file(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {'short_name', 'files',
-            'project_id'} == set(response.json['result'].keys())
+    assert {'short_name', 'files', 'project_id',
+            'remote_branch'} == set(response.json['result'].keys())
 
     for pair in zip(response.json['result']['files'], payload['files']):
         if 'job_id' in pair[0]:
@@ -1040,9 +1046,10 @@ def test_edit_datasets_view(svc_client_with_repo):
     )
 
     assert response
-
     assert_rpc_response(response)
-    assert {'short_name'} == set(response.json['result'].keys())
+
+    assert {'short_name',
+            'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
 
     params_list = {
@@ -1109,4 +1116,6 @@ def test_protected_branch(svc_client):
     )
 
     assert response
+
     assert {'result'} == set(response.json.keys())
+    assert 'master' != response.json['result']['remote_branch']

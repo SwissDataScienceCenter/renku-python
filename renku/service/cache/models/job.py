@@ -62,3 +62,10 @@ class Job(Model):
 
         self.extras['error'] = error
         self.save()
+
+    def update_extras(self, key, value):
+        """Update extras field."""
+        if not self.extras:
+            self.extras = {key: value}
+        else:
+            self.extras[key] = value
