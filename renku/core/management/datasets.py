@@ -171,7 +171,12 @@ class DatasetsApiMixin(object):
         dataset.to_yaml()
 
     def create_dataset(
-        self, short_name=None, title=None, description=None, creators=None
+        self,
+        short_name=None,
+        title=None,
+        description=None,
+        creators=None,
+        keywords=None,
     ):
         """Create a dataset."""
         if not short_name:
@@ -204,6 +209,8 @@ class DatasetsApiMixin(object):
         if creators is None:
             creators = [Person.from_git(self.repo)]
 
+        keywords = keywords or ()
+
         with with_reference(path):
             dataset = Dataset(
                 client=self,
@@ -211,7 +218,8 @@ class DatasetsApiMixin(object):
                 short_name=short_name,
                 name=title,
                 description=description,
-                creator=creators
+                creator=creators,
+                keywords=keywords,
             )
 
         dataset_ref = LinkReference.create(
