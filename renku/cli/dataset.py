@@ -27,11 +27,35 @@ Creating an empty dataset inside a Renku project:
     $ renku dataset create my-dataset
     Creating a dataset ... OK
 
-You can provide a title and a description for the dataset by using ``--title``
-and ``--description`` options when creating a dataset. You can also set
-creator of a dataset by passing a ``--creator`` option along with a string
-that defines creator's name, email, and an optional affiliation. Pass multiple
-``--creator`` flags to add a list of creators.
+You can pass the following options to this command to set various metadata for
+the dataset.
+
++-------------------+------------------------------------------------------+
+| Option            | Description                                          |
++===================+======================================================+
+| -t, --title       | A human-readable title for the dataset.              |
++-------------------+------------------------------------------------------+
+| -d, --description | Dataset's description.                               |
++-------------------+------------------------------------------------------+
+| -c, --creator     | Creator's name, email, and an optional affiliation.  |
+|                   | Accepted format is                                   |
+|                   | 'Forename Surname <email> [affiliation]'. Pass       |
+|                   | multiple times for a list of creators.               |
++-------------------+------------------------------------------------------+
+| -k, --keyword     | Dataset's keywords. Pass multiple times for a list   |
+|                   | of keywords.                                         |
++-------------------+------------------------------------------------------+
+
+Editing a dataset's metadata
+
+Use ``edit`` subcommand to change metadata of a dataset. You can edit the same
+set of metadata as the create command by passing the options described in the
+table above.
+
+.. code-block:: console
+
+    $ renku dataset edit my-dataset --title 'New title'
+    Successfully updated: title.
 
 Listing all datasets:
 
@@ -55,17 +79,6 @@ comma-separated list of column names:
     9436e36c  my-dataset     2020-02-28 16:48:09  sam
 
 Displayed results are sorted based on the value of the first column.
-
-Editing a dataset's metadata
-
-Use ``edit`` subcommand to change metadata of a dataset. You can edit title,
-description, and list of creators of a dataset by using ``--title``,
-``--description``, and ``--creator`` flags.
-
-.. code-block:: console
-
-    $ renku dataset edit my-dataset --title 'New title'
-    Successfully updated: title.
 
 Deleting a dataset:
 
@@ -455,7 +468,15 @@ def dataset(ctx, revision, datadir, format, columns):
     help='Creator\'s name, email, and affiliation. '
     'Accepted format is \'Forename Surname <email> [affiliation]\'.'
 )
-def create(short_name, title, description, creator):
+@click.option(
+    '-k',
+    '--keyword',
+    default=None,
+    multiple=True,
+    type=click.STRING,
+    help='List of keywords or tags.'
+)
+def create(short_name, title, description, creator, keyword):
     """Create an empty dataset in the current repo."""
     creators = creator or ()
 
@@ -463,7 +484,8 @@ def create(short_name, title, description, creator):
         short_name=short_name,
         title=title,
         description=description,
-        creators=creators
+        creators=creators,
+        keywords=keyword,
     )
 
     click.echo(
@@ -498,15 +520,25 @@ def create(short_name, title, description, creator):
     help='Creator\'s name, email, and affiliation. '
     'Accepted format is \'Forename Surname <email> [affiliation]\'.'
 )
-def edit(short_name, title, description, creator):
+@click.option(
+    '-k',
+    '--keyword',
+    default=None,
+    multiple=True,
+    type=click.STRING,
+    help='List of keywords or tags.'
+)
+def edit(short_name, title, description, creator, keyword):
     """Edit dataset metadata."""
     creators = creator or ()
+    keywords = keyword or ()
 
     updated, no_email_warnings = edit_dataset(
         short_name=short_name,
         title=title,
         description=description,
-        creators=creators
+        creators=creators,
+        keywords=keywords,
     )
 
     if not updated:
