@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Manage an external storage."""
+import os
 
 import click
 
@@ -38,3 +39,19 @@ def storage():
 def pull(client, paths):
     """Pull the specified paths from external storage."""
     client.pull_paths_from_storage(*paths)
+
+
+@storage.command()
+@click.argument(
+    'paths',
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
+)
+@pass_local_client
+def check(client, paths):
+    """Check specified paths are tracked in external storage."""
+    paths = client.check_requires_tracking(*paths)
+    if paths:
+        click.echo(os.linesep.join(paths))
+        exit(1)
