@@ -19,10 +19,11 @@
 import functools
 import os
 import shlex
+import tempfile
 from collections import defaultdict
 from pathlib import Path
-from shutil import which
-from subprocess import PIPE, STDOUT, call, run
+from shutil import move, which
+from subprocess import PIPE, STDOUT, call, check_output, run
 
 import attr
 import pathspec
@@ -72,9 +73,15 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_UNTRACK = ['git', 'lfs', 'untrack', '--']
 
+    _CMD_STORAGE_CLEAN = ['git', 'lfs', 'clean']
+
     _CMD_STORAGE_CHECKOUT = ['git', 'lfs', 'checkout']
 
     _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', '-I']
+
+    _CMD_STORAGE_LIST = ['git', 'lfs', 'ls-files', '-n']
+
+    _LFS_HEADER = 'version https://git-lfs.github.com/spec/'
 
     @cached_property
     def storage_installed(self):
@@ -207,6 +214,21 @@ class StorageApiMixin(RepositoryApiMixin):
             )
 
     @ensure_external_storage
+    def list_tracked_paths(self, client=None):
+        """List paths tracked in lfs for a client."""
+        client = client or self
+        try:
+            files = check_output(
+                self._CMD_STORAGE_LIST, cwd=str(client.path), encoding='UTF-8'
+            )
+        except (KeyboardInterrupt, OSError) as e:
+            raise errors.ParameterError(
+                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
+            )
+        files = [client.path / Path(f) for f in files.splitlines()]
+        return files
+
+    @ensure_external_storage
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
         import math
@@ -240,6 +262,85 @@ class StorageApiMixin(RepositoryApiMixin):
                     stdout=PIPE,
                     stderr=STDOUT,
                 )
+
+    @ensure_external_storage
+    def clean_storage_cache(self, *paths):
+        """Remove paths from lfs cache."""
+        client_dict = defaultdict(list)
+        clients = {}
+        tracked_paths = defaultdict(list)
+        untracked_paths = []
+
+        for path in _expand_directories(paths):
+            client, commit, path = self.resolve_in_submodules(
+                self.repo.commit(), path
+            )
+            try:
+                absolute_path = Path(path).resolve()
+                relative_path = absolute_path.relative_to(client.path)
+            except ValueError:  # An external file
+                absolute_path = Path(os.path.abspath(path))
+                relative_path = absolute_path.relative_to(client.path)
+
+            if client.path not in tracked_paths:
+                tracked_paths[client.path] = self.list_tracked_paths(client)
+
+            if absolute_path not in tracked_paths[client.path]:
+                untracked_paths.append(str(relative_path))
+
+            client_dict[client.path].append(str(relative_path))
+            clients[client.path] = client
+
+        if untracked_paths:
+            raise errors.ParameterError(
+                'These paths are not in git lfs:\n\t{}'.format(
+                    '\n\t'.join(untracked_paths)
+                )
+            )
+
+        for client_path, paths in client_dict.items():
+            client = clients[client_path]
+
+            for path in paths:
+                with open(path, 'r') as tracked_file:
+                    try:
+                        header = tracked_file.read(len(self._LFS_HEADER))
+                        if header == self._LFS_HEADER:
+                            # file is not pulled
+                            continue
+                    except UnicodeDecodeError:
+                        # likely a binary file, not lfs pointer file
+                        pass
+                with tempfile.NamedTemporaryFile(
+                    mode='w+t', encoding='utf-8', delete=False
+                ) as tmp, open(path, 'r+t') as input_file:
+                    run(
+                        self._CMD_STORAGE_CLEAN,
+                        cwd=str(client_path.absolute()),
+                        stdin=input_file,
+                        stdout=tmp,
+                    )
+
+                    tmp_path = tmp.name
+                move(tmp_path, path)
+
+                # get lfs sha hash
+                old_pointer = client.repo.git.show('HEAD:{}'.format(path))
+                old_pointer = old_pointer.splitlines()[1]
+                old_pointer = old_pointer.split(' ')[1].split(':')[1]
+
+                prefix1 = old_pointer[:2]
+                prefix2 = old_pointer[2:4]
+
+                # remove from lfs cache
+                object_path = (
+                    client.path / '.git' / 'lfs' / 'objects' / prefix1 /
+                    prefix2 / old_pointer
+                )
+                object_path.unlink()
+
+            # add paths so they don't show as modified
+            client.repo.git.add(*paths)
 
     @ensure_external_storage
     def checkout_paths_from_storage(self, *paths):
