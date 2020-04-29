@@ -90,10 +90,8 @@ class CommitMixin:
             hexsha = 'UNCOMMITTED'
         if self.path:
             path = self.path
-            if self.client:
-                path = pathlib.Path(os.path.abspath(path)).relative_to(
-                    self.client.path
-                )
+            if self.client and os.path.isabs(path):
+                path = pathlib.Path(path).relative_to(self.client.path)
             return '{path}@{hexsha}'.format(hexsha=hexsha, path=path)
         return '{hexsha}'.format(hexsha=hexsha, self=self)
 
