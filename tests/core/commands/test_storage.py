@@ -17,8 +17,6 @@
 # limitations under the License.
 """Storage command tests."""
 
-from __future__ import absolute_import, print_function
-
 import os
 import subprocess
 from pathlib import Path
@@ -36,8 +34,8 @@ def test_lfs_storage_clean(runner, project, client):
     result = runner.invoke(
         cli, ['storage', 'clean', 'tracked'], catch_exceptions=False
     )
-    assert 2 == result.exit_code
-    assert 'These paths are not in git lfs' in result.output
+    assert 0 == result.exit_code
+    assert 'These paths were ignored as they are not tracked' in result.output
 
     subprocess.call(['git', 'lfs', 'track', 'tracked'])
     client.repo.git.add('*')
@@ -59,8 +57,9 @@ def test_lfs_storage_clean(runner, project, client):
     )
     assert 0 == result.exit_code
 
-    with (client.path / 'tracked').open('r') as fp:
-        assert 'version https://git-lfs.github.com/spec/v1' in fp.read()
+    assert 'version https://git-lfs.github.com/spec/v1' in (
+        client.path / 'tracked'
+    ).read_text()
 
     lfs_objects = []
     for _, _, files in os.walk(str(client.path / '.git' / 'lfs' / 'objects')):

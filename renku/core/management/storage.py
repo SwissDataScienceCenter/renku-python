@@ -130,7 +130,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 self._CMD_STORAGE_INSTALL + (['--force'] if force else []),
                 stdout=PIPE,
                 stderr=STDOUT,
-                cwd=str(self.path.absolute()),
+                cwd=self.path,
             )
         except (KeyboardInterrupt, OSError) as e:
             raise errors.ParameterError(
@@ -189,7 +189,7 @@ class StorageApiMixin(RepositoryApiMixin):
                     self._CMD_STORAGE_TRACK + track_paths,
                     stdout=PIPE,
                     stderr=STDOUT,
-                    cwd=str(self.path),
+                    cwd=self.path,
                 )
             except (KeyboardInterrupt, OSError) as e:
                 raise errors.ParameterError(
@@ -206,7 +206,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 self._CMD_STORAGE_UNTRACK + list(paths),
                 stdout=PIPE,
                 stderr=STDOUT,
-                cwd=str(self.path),
+                cwd=self.path,
             )
         except (KeyboardInterrupt, OSError) as e:
             raise errors.ParameterError(
@@ -219,13 +219,13 @@ class StorageApiMixin(RepositoryApiMixin):
         client = client or self
         try:
             files = check_output(
-                self._CMD_STORAGE_LIST, cwd=str(client.path), encoding='UTF-8'
+                self._CMD_STORAGE_LIST, cwd=client.path, encoding='UTF-8'
             )
         except (KeyboardInterrupt, OSError) as e:
             raise errors.ParameterError(
                 'Couldn\'t run \'git lfs\':\n{0}'.format(e)
             )
-        files = [client.path / Path(f) for f in files.splitlines()]
+        files = [client.path / f for f in files.splitlines()]
         return files
 
     @ensure_external_storage
@@ -258,7 +258,7 @@ class StorageApiMixin(RepositoryApiMixin):
                             )
                         )
                     ],
-                    cwd=str(client_path.absolute()),
+                    cwd=client_path,
                     stdout=PIPE,
                     stderr=STDOUT,
                 )
@@ -287,16 +287,9 @@ class StorageApiMixin(RepositoryApiMixin):
 
             if absolute_path not in tracked_paths[client.path]:
                 untracked_paths.append(str(relative_path))
-
-            client_dict[client.path].append(str(relative_path))
-            clients[client.path] = client
-
-        if untracked_paths:
-            raise errors.ParameterError(
-                'These paths are not in git lfs:\n\t{}'.format(
-                    '\n\t'.join(untracked_paths)
-                )
-            )
+            else:
+                client_dict[client.path].append(str(relative_path))
+                clients[client.path] = client
 
         for client_path, paths in client_dict.items():
             client = clients[client_path]
@@ -316,7 +309,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 ) as tmp, open(path, 'r+t') as input_file:
                     run(
                         self._CMD_STORAGE_CLEAN,
-                        cwd=str(client_path.absolute()),
+                        cwd=client_path,
                         stdin=input_file,
                         stdout=tmp,
                     )
@@ -342,12 +335,14 @@ class StorageApiMixin(RepositoryApiMixin):
             # add paths so they don't show as modified
             client.repo.git.add(*paths)
 
+        return untracked_paths
+
     @ensure_external_storage
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
         run(
             self._CMD_STORAGE_CHECKOUT + list(paths),
-            cwd=str(self.path.absolute()),
+            cwd=self.path,
             stdout=PIPE,
             stderr=STDOUT,
             check=True,

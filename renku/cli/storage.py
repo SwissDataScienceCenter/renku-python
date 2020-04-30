@@ -54,7 +54,7 @@ This removes any data cached locally for files tracked in in git LFS.
 import click
 
 from renku.core.commands.client import pass_local_client
-from renku.core.errors import ParameterError
+from renku.core.commands.echo import WARNING
 
 
 @click.group()
@@ -85,9 +85,11 @@ def pull(client, paths):
 @pass_local_client
 def clean(client, paths):
     """Remove files from lfs cache/turn them back into pointer files."""
-    try:
-        client.clean_storage_cache(*paths)
-    except (ParameterError) as e:
-        raise click.BadParameter(e)
+    untracked_paths = client.clean_storage_cache(*paths)
 
+    if untracked_paths:
+        click.echo(
+            WARNING + 'These paths were ignored as they are not tracked' +
+            ' in git LFS:\n\t{}'.format('\n\t'.join(untracked_paths))
+        )
     click.secho('OK', fg='green')
