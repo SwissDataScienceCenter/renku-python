@@ -116,6 +116,10 @@ class StorageApiMixin(RepositoryApiMixin):
 
         return parse_file_size(size)
 
+    def check_external_storage(self):
+        """Force computing of has_external_storage property."""
+        return self.has_external_storage
+
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
         try:

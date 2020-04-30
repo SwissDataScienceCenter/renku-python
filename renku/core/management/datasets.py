@@ -261,6 +261,8 @@ class DatasetsApiMixin(object):
                 f'Destination is not a directory: "{destination}"'
             )
 
+        self.check_external_storage()
+
         files = []
         if all_at_once:  # Importing a dataset
             files = self._add_from_urls(

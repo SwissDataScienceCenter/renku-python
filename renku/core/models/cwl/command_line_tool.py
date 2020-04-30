@@ -271,6 +271,8 @@ class CommandLineToolFactory(object):
     @contextmanager
     def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
+        client.check_external_storage()
+
         tool = self.generate_tool()
         repo = client.repo
 
