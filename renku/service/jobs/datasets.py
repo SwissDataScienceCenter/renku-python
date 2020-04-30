@@ -89,7 +89,7 @@ def dataset_import(
             )
 
             remote_branch = repo_sync(project.abs_path)
-            user_job.update_extras = remote_branch
+            user_job.update_extras('remote_branch', remote_branch.name)
 
             user_job.complete()
         except (
@@ -124,7 +124,7 @@ def dataset_add_remote_file(
             )
 
             remote_branch = repo_sync(project.abs_path)
-            user_job.update_extras('remote_branch', remote_branch)
+            user_job.update_extras('remote_branch', remote_branch.name)
 
             user_job.complete()
     except (HTTPError, BaseException, GitCommandError) as e:
