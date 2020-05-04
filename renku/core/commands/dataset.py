@@ -41,7 +41,7 @@ from renku.core.utils.doi import is_doi
 from renku.core.utils.urls import remove_credentials
 
 from .client import pass_local_client
-from .echo import WARNING
+from .echo import INFO, WARNING
 from .format.dataset_files import DATASET_FILES_FORMATS
 from .format.datasets import DATASETS_FORMATS
 
@@ -272,7 +272,7 @@ def add_to_dataset(
             short_name=short_name, create=create
         ) as dataset:
             with urlscontext(urls) as bar:
-                warning_messages = client.add_data_to_dataset(
+                warning_messages, messages = client.add_data_to_dataset(
                     dataset,
                     bar,
                     external=external,
@@ -286,6 +286,10 @@ def add_to_dataset(
                     destination_names=destination_names,
                     progress=progress,
                 )
+
+            if messages:
+                for msg in messages:
+                    click.echo(INFO + msg)
 
             if warning_messages:
                 for msg in warning_messages:

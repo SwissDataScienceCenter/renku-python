@@ -30,7 +30,7 @@ from click.testing import CliRunner
 from renku.cli import cli
 
 
-def test_simple_rerun(runner, project, run):
+def test_simple_rerun(runner, project, run, no_lfs_warning):
     """Test simple file recreation."""
     greetings = {'hello', 'hola', 'ahoj'}
 
@@ -117,7 +117,7 @@ def test_rerun_with_inputs(runner, project, run):
         assert f.read().startswith(first_data)
 
 
-def test_rerun_with_edited_inputs(project, run):
+def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
     """Test input modification."""
     runner = CliRunner(mix_stderr=False)
 

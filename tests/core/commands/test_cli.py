@@ -172,7 +172,7 @@ def test_workflow(runner, project):
     assert result_default.output == result_arg.output
 
 
-def test_streams(runner, project, capsys):
+def test_streams(runner, project, capsys, no_lfs_warning):
     """Test redirection of std streams."""
     repo = git.Repo('.')
 
@@ -266,7 +266,7 @@ def test_streams_cleanup(runner, project, run):
         assert fp.read() == '1'
 
 
-def test_streams_and_args_names(runner, project, capsys):
+def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
     """Test streams and conflicting argument names."""
     with capsys.disabled():
         with open('lalala', 'wb') as stdout:
@@ -528,7 +528,7 @@ def test_unchanged_output(runner, project):
     assert 1 == result.exit_code
 
 
-def test_unchanged_stdout(runner, project, capsys):
+def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
     """Test detection of unchanged stdout."""
     with capsys.disabled():
         with open('output.txt', 'wb') as stdout:
@@ -760,7 +760,7 @@ def test_deleted_input(runner, project, capsys):
     assert Path('input.mv').exists()
 
 
-def test_input_directory(runner, project, run):
+def test_input_directory(runner, project, run, no_lfs_warning):
     """Test detection of input directory."""
     repo = git.Repo(project)
     cwd = Path(project)

@@ -23,6 +23,7 @@ import os
 import click
 from git.remote import RemoteProgress
 
+INFO = click.style('Info: ', bold=True, fg='blue')
 WARNING = click.style('Warning: ', bold=True, fg='yellow')
 ERROR = click.style('Error: ', bold=True, fg='red')
 

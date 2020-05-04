@@ -81,6 +81,9 @@ The following values are available for the ``renku config`` command:
 | dataverse.server_url   | URL for the Dataverse API server    | ``None``  |
 |                        | to use                              |           |
 +------------------------+-------------------------------------+-----------+
+| show_lfs_message       | Whether to show messages about      | ``True``  |
+|                        | files being added to git LFS or not |           |
++------------------------+-------------------------------------+-----------+
 | lfs_threshold          | Threshold file size below which     | ``100kb`` |
 |                        | files are not added to git LFS      |           |
 +------------------------+-------------------------------------+-----------+
