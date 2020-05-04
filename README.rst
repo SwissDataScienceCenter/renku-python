@@ -173,13 +173,20 @@ Developing Renku
 ================
 
 For development it's convenient to install ``renku`` in editable mode. This is
-still possible with ``pipx``. First clone the repository and then do:
+still possible with ``pipx``. First clone the repository and run the setup:
+
+::
+
+    $ python setup.py bdist_wheel
+
+Then install with ``pipx`` in editable mode:
 
 ::
 
     $ pipx install \
         --editable \
-        <path-to-renku-python>[all] \
+        --force \
+        --spec <path-to-renku-python> \
         renku
 
 This will install all the extras for testing and debugging.
