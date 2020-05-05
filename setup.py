@@ -182,7 +182,7 @@ install_requires = [
     'idna==2.8',
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',
-    'tqdm>=4.31.1',
+    'tqdm==4.45.0',
     'walrus>=0.8.0',
     'wcmatch>=6.0.0',
     'werkzeug>=0.15.5',
