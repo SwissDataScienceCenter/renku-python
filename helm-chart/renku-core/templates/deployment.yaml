@@ -122,6 +122,8 @@ spec:
               value: {{ .Values.cacheDirectory }}
             - name: PROJECT_CLONE_DEPTH_DEFAULT
               value: {{ .Values.projectCloneDepth | quote }}
+            - name: TEMPLATE_CLONE_DEPTH_DEFAULT
+              value: {{ .Values.templateCloneDepth | quote }}
             - name: CORE_SERVICE_PREFIX
               value: /renku
             - name: RENKU_SVC_SWAGGER_URL

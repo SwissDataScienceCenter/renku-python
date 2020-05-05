@@ -19,6 +19,7 @@
 
 from marshmallow import Schema, fields, pre_load
 
+from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.cache import ProjectCloneContext
 from renku.service.serializers.rpc import JsonRPCResponse
 
@@ -28,10 +29,11 @@ class ManifestTemplatesRequest(ProjectCloneContext):
 
     url = fields.String(required=True)
     ref = fields.String(missing='master')
+    depth = fields.Integer(missing=TEMPLATE_CLONE_DEPTH_DEFAULT)
 
     @pre_load()
     def set_git_url(self, data, **kwargs):
-        """Set owner and name fields."""
+        """Set git_url field."""
         data['git_url'] = data['url']
 
         return data

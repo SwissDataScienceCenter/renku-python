@@ -849,8 +849,8 @@ def svc_client_with_repo(integration_lifecycle):
 @pytest.fixture(scope='module')
 def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
     """Setup and teardown steps for templates tests."""
-    from tests.core.commands.test_init import TEMPLATE_URL
-    template = {'url': TEMPLATE_URL, 'ref': 'master'}
+    from tests.core.commands.test_init import TEMPLATE_URL, TEMPLATE_REF
+    template = {'url': TEMPLATE_URL, 'ref': TEMPLATE_REF}
 
     yield svc_client, authentication_headers, template
 
