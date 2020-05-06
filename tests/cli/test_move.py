@@ -52,6 +52,7 @@ def test_move_dataset_file(tmpdir, runner, client):
     assert (client.path / 'files' / 'testing' / 'source').exists()
 
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
+
     assert 0 == result.exit_code
 
     src = os.path.join('files', 'testing', 'source')
