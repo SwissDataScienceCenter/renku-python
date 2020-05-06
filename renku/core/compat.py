@@ -23,6 +23,7 @@ import html
 import json
 from pathlib import Path
 
+import pathspec
 import pyld
 
 try:
@@ -77,6 +78,20 @@ class PatchedActiveContextCache(pyld.jsonld.ActiveContextCache):
 pyld.jsonld._cache = {'activeCtx': PatchedActiveContextCache()}
 
 cgi.escape = html.escape
+
+
+class RenkuGitWildMatchPattern(pathspec.patterns.GitWildMatchPattern):
+    """Custom GitWildMatchPattern matcher."""
+
+    __slots__ = ('pattern', )
+
+    def __init__(self, pattern, include=None):
+        """Initialize RenkuRegexPattern."""
+        super().__init__(pattern, include)
+        self.pattern = pattern
+
+
+pathspec.util.register_pattern('renku_gitwildmatch', RenkuGitWildMatchPattern)
 
 __all__ = (
     'FileNotFoundError',

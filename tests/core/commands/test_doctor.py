@@ -67,7 +67,7 @@ def test_git_hooks_modified(runner, project):
 
 def test_lfs_broken_history(runner, client, tmp_path):
     """Test lfs migrate info check on a broken history."""
-    big_file = tmp_path / 'big-file'
+    big_file = tmp_path / 'big-file.ipynb'
     with open(big_file, 'w') as file_:
         file_.seek(client.minimum_lfs_file_size)
         file_.write('some-data')
@@ -85,5 +85,14 @@ def test_lfs_broken_history(runner, client, tmp_path):
 
     result = runner.invoke(cli, ['doctor'])
     assert 1 == result.exit_code
-    assert 'Git history contains files that should be in LFS' in result.output
-    assert 'big-file' in result.output
+    assert 'Git history contains large files' in result.output
+    assert '*.ipynb' in result.output
+
+    # Exclude *.ipynb files from LFS in .renkulfsignore
+    (client.path / client.RENKU_LFS_IGNORE_PATH).write_text(
+        '\n'.join(['*swp', '*ipynb', '.DS_Store'])
+    )
+
+    result = runner.invoke(cli, ['doctor'])
+    assert 0 == result.exit_code
+    assert 'Git history contains large files' not in result.output
