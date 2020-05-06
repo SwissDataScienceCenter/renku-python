@@ -275,10 +275,10 @@
         },
         "fakeredis": {
             "hashes": [
-                "sha256:bcb2faeabb1bd7ff2fecaff9b2a47ebfaf31700ee260a2ef66c6cf041d7a78df",
-                "sha256:d7e8b198ce5cce85374c6bca69bf372cc090d33938f0453c4262df7b281c7c88"
+                "sha256:4d170886865a91dbc8b7f8cbd4e5d488f4c5f2f25dfae127f001617bbe9e8f97",
+                "sha256:647b2593d349d9d4e566c8dadb2e4c71ba35be5bdc4f1f7ac2d565a12a965053"
             ],
-            "version": "==1.4.0"
+            "version": "==1.4.1"
         },
         "filelock": {
             "hashes": [
