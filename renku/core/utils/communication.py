@@ -17,7 +17,10 @@
 # limitations under the License.
 r"""Communicator classes for printing output."""
 
+import sys
 import threading
+
+from tqdm import tqdm
 
 
 class CommunicationCallback(object):
@@ -70,6 +73,7 @@ class CommunicationCallback(object):
             result = True
             for l in CommunicationCallback.listeners:
                 result = result and l.confirm(msg, abort)
+            return result
 
     def start_progress(self, name, total, **kwargs):
         """Create a new progress tracker."""
@@ -88,6 +92,74 @@ class CommunicationCallback(object):
         with CommunicationCallback.lock:
             for l in CommunicationCallback.listeners:
                 l.finalize_progress(name)
+
+
+class StandardOutput(CommunicationCallback):
+    """Communication listener that outputs to stdout/stderr."""
+
+    progressbars = {}
+    progress_types = ['download']
+
+    def echo(self, msg):
+        """Write a message."""
+        with CommunicationCallback.lock:
+            print(msg)
+
+    def info(self, msg):
+        """Write an info message."""
+        with CommunicationCallback.lock:
+            print(msg)
+
+    def warn(self, msg):
+        """Write a warning message."""
+        with CommunicationCallback.lock:
+            print(msg)
+
+    def error(self, msg):
+        """Write an error message."""
+        with CommunicationCallback.lock:
+            print(msg, file=sys.stderr)
+
+    def confirm(self, msg, abort=False):
+        """Get confirmation for an action."""
+        return False
+
+    def start_progress(self, name, total, **kwargs):
+        """Start a new tqdm progressbar."""
+        if name in self.progressbars:
+            raise ValueError(
+                'Name {} is already a registered progressbar.'.format(name)
+            )
+
+        if 'type' not in kwargs:
+            kwargs['type'] = 'download'
+
+        if kwargs['type'] not in self.progress_types:
+            self.progressbars[name] = None
+        elif kwargs['type'] == 'download':
+            self.progressbars[name] = tqdm(
+                total=total,
+                unit='iB',
+                unit_scale=True,
+                desc=name,
+                leave=False,
+                bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
+            )
+
+    def update_progress(self, name, amount):
+        """Update a progressbar."""
+        if name not in self.progressbars or not self.progressbars[name]:
+            return
+
+        self.progressbars[name].update(amount)
+
+    def finalize_progress(self, name):
+        """End a progressbar."""
+        if name not in self.progressbars or not self.progressbars[name]:
+            return
+
+        self.progressbars[name].close()
+        del self.progressbars[name]
 
 
 root = CommunicationCallback()
