@@ -21,9 +21,11 @@
 # RENKU HOOK. DO NOT REMOVE OR MODIFY.
 ######################################
 
-# Find all modified files, and do nothing if there aren't any.
-MODIFIED_FILES=$(git diff --name-only --cached --diff-filter=M)
-ADDED_FILES=$(git diff --name-only --cached --diff-filter=A)
+# Find all modified or added files, and do nothing if there aren't any.
+IFS=$'\n' read -r -d '' -a MODIFIED_FILES \
+  <<< "$(git diff --name-only --cached --diff-filter=M)"
+IFS=$'\n' read -r -d '' -a ADDED_FILES \
+  <<< "$(git diff --name-only --cached --diff-filter=A)"
 
 if [ "$MODIFIED_FILES" ] || [ "$ADDED_FILES" ]; then
   # Verify that renku is installed; if not, warn and exit.
@@ -42,7 +44,7 @@ if [ "$MODIFIED_FILES" ] ; then
     echo
     echo 'Modified files:'
     for file in "${MODIFIED_OUTPUTS[@]}"; do
-      echo "  $file"
+      echo "$file"
     done
     echo
     echo 'To commit anyway, use "git commit --no-verify".'
@@ -51,14 +53,16 @@ if [ "$MODIFIED_FILES" ] ; then
 fi
 
 if [ "$ADDED_FILES" ]; then
-  UNTRACKED_PATHS=$(renku storage check "${ADDED_FILES[@]}")
+  UNTRACKED_PATHS=$(renku storage check-lfs-hook "${ADDED_FILES[@]}")
   if [ "$UNTRACKED_PATHS" ]; then
     echo 'You are trying to commit large files to Git instead of Git-LFS.'
     echo
     echo 'Large files:'
     for file in "${UNTRACKED_PATHS[@]}"; do
-      echo "  $file"
+      echo "$file"
     done
+    echo
+    echo 'To track these files in Git LFS use "git lfs track <FILENAMES>".'
     echo
     echo 'To commit anyway, use "git commit --no-verify".'
     exit 1

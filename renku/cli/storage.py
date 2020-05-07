@@ -41,7 +41,7 @@ def pull(client, paths):
     client.pull_paths_from_storage(*paths)
 
 
-@storage.command()
+@storage.command('check-lfs-hook', hidden=True)
 @click.argument(
     'paths',
     type=click.Path(exists=True, dir_okay=True),
@@ -49,7 +49,7 @@ def pull(client, paths):
     required=True,
 )
 @pass_local_client
-def check(client, paths):
+def check_lfs_hook(client, paths):
     """Check specified paths are tracked in external storage."""
     paths = client.check_requires_tracking(*paths)
     if paths:

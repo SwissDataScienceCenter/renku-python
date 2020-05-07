@@ -259,7 +259,7 @@ class StorageApiMixin(RepositoryApiMixin):
         track_paths = []
 
         for path in paths:
-            absolute_path = (self.path / path).resolve()
+            absolute_path = Path(os.path.abspath(self.path / path))
             path = str(path)
 
             # Do not track symlinks in LFS
