@@ -268,6 +268,8 @@ class StorageApiMixin(RepositoryApiMixin):
                 continue
 
             pattern = p.pattern.replace(os.linesep, '').replace('\n', '')
+            if pattern.startswith('!'):
+                pattern.replace('!', '', 1)
 
             if p.include:  # File ignored by LFS
                 excludes.append(pattern)
