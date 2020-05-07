@@ -367,7 +367,6 @@ from functools import partial
 import click
 import requests
 
-from renku.cli.utils import click_callback_communication
 from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_remove, edit_dataset, export_dataset, file_unlink, \
     import_dataset, list_datasets, list_files, list_tags, \
@@ -595,7 +594,6 @@ def edit(short_name, title, description, creator, keyword):
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
-@click_callback_communication
 def add(
     short_name, urls, external, force, overwrite, create, sources, destination,
     ref
@@ -680,7 +678,6 @@ def ls_files(short_names, creators, include, exclude, format, columns):
 @click.option(
     '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
 )
-@click_callback_communication
 def unlink(short_name, include, exclude, yes):
     """Remove matching files from a dataset."""
     file_unlink(
@@ -805,7 +802,6 @@ def export_(
 @click.option(
     '-y', '--yes', is_flag=True, help='Bypass download confirmation.'
 )
-@click_callback_communication
 def import_(uri, short_name, extract, yes):
     """Import data from a 3rd party provider or another renku project.
 

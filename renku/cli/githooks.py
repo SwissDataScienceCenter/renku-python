@@ -40,7 +40,6 @@ some output file is manually modified.
 
 import click
 
-from renku.cli.utils import click_callback_communication
 from renku.core.commands.githooks import install_githooks, uninstall_githooks
 
 
@@ -51,7 +50,6 @@ def githooks():
 
 @githooks.command()
 @click.option('--force', is_flag=True, help='Override existing hooks.')
-@click_callback_communication
 def install(force):
     """Install Git hooks."""
     install_githooks(force)

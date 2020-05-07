@@ -60,6 +60,7 @@ from urllib.parse import urlencode
 import click
 import filelock
 
+from renku.cli.utils import ClickCallback, communication
 from renku.core.errors import ParameterError, RenkuException, UsageError
 
 _BUG = click.style(
@@ -116,6 +117,10 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
+        # setup logging for cli
+        callback = ClickCallback()
+        communication.subscribe(callback)
+
         try:
             result = super().main(*args, **kwargs)
             return result
@@ -137,6 +142,8 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 raise
 
             self._handle_github()
+        finally:
+            communication.unsubscribe(callback)
 
     def _handle_sentry(self):
         """Handle exceptions using Sentry."""

@@ -24,41 +24,10 @@ from renku.core.commands.save import repo_sync
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
+from renku.service.jobs.contexts import ProjectContext
 from renku.service.cache.serializers.job import JobSchema
 from renku.service.utils.communication import service_callback_communication
 from renku.service.views.decorators import requires_cache
-
-
-class DatasetImportJobProcess(DownloadProgressCallback):
-    """Track dataset import job progress."""
-
-    schema = JobSchema()
-
-    def __init__(self, cache, job):
-        """Construct dataset import job progress."""
-        self.cache = cache
-        self.job = job
-
-        super().__init__(None, None)
-
-    def __call__(self, description, total_size):
-        """Job progress call."""
-        self.job.extras = {
-            'description': description,
-            'total_size': total_size,
-        }
-
-        super().__init__(description, total_size)
-        return self
-
-    def update(self, size):
-        """Update status."""
-        self.job.extras['progress_size'] = size
-        self.job.save()
-
-    def finalize(self):
-        """Finalize job tracking."""
-        self.job.complete()
 
 
 @requires_cache
@@ -73,30 +42,23 @@ def dataset_import(
     timeout=None,
 ):
     """Job for dataset import."""
-    user = cache.ensure_user(user)
-    user_job = cache.get_job(user, user_job_id)
-    project = cache.get_project(user, project_id)
-
-    with chdir(project.abs_path):
+    with ProjectContext(user, user_job_id, project_id) as ctx:
         try:
-            user_job.in_progress()
-            with service_callback_communication(user_job):
-                import_dataset(
-                    dataset_uri,
-                    short_name,
-                    extract,
-                    commit_message=f'service: dataset import {dataset_uri}'
-                )
+            ctx.user_job.in_progress()
+            import_dataset(
+                dataset_uri,
+                short_name,
+                extract,
+                commit_message=f'service: dataset import {dataset_uri}'
+            )
             _, remote_branch = repo_sync(
                 Repo(project.abs_path), remote='origin'
             )
-            user_job.update_extras('remote_branch', remote_branch)
+            ctx.user_job.update_extras('remote_branch', remote_branch)
 
-            user_job.complete()
-        except (
-            HTTPError, ParameterError, DatasetExistsError, GitCommandError
-        ) as exp:
-            user_job.fail_job(str(exp))
+            ctx.user_job.complete()
+        except (HTTPError, ParameterError, DatasetExistsError) as exp:
+            ctx.user_job.fail_job(str(exp))
 
             # Reraise exception, so we see trace in job metadata.
             raise exp
