@@ -81,6 +81,8 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_LIST = ['git', 'lfs', 'ls-files', '-n']
 
+    _CMD_STORAGE_STATUS = ['git', 'lfs', 'status']
+
     _LFS_HEADER = 'version https://git-lfs.github.com/spec/'
 
     @cached_property
@@ -229,6 +231,36 @@ class StorageApiMixin(RepositoryApiMixin):
         return files
 
     @ensure_external_storage
+    def list_unpushed_lfs_paths(self, client=None):
+        """List paths tracked in lfs for a client."""
+        client = client or self
+
+        if (
+            len(client.repo.remotes) < 1 or
+            not client.repo.active_branch.tracking_branch()
+        ):
+            raise errors.ParameterError(
+                'No git remote is configured for {} branch {}. Cleaning lfs'.
+                format(client.path, client.repo.active_branch.name) +
+                ' would lead to a loss of data as it is not on a' + ' server.'
+            )
+        try:
+            status = check_output(
+                self._CMD_STORAGE_STATUS, cwd=client.path, encoding='UTF-8'
+            )
+        except (KeyboardInterrupt, OSError) as e:
+            raise errors.ParameterError(
+                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
+            )
+
+        files = status.split('Objects to be committed:')[0].splitlines()[2:]
+        files = [
+            client.path / f.rsplit('(', 1)[0].strip()
+            for f in files if f.strip()
+        ]
+        return files
+
+    @ensure_external_storage
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
         import math
@@ -269,7 +301,9 @@ class StorageApiMixin(RepositoryApiMixin):
         client_dict = defaultdict(list)
         clients = {}
         tracked_paths = defaultdict(list)
+        unpushed_paths = defaultdict(list)
         untracked_paths = []
+        local_only_paths = []
 
         for path in _expand_directories(paths):
             client, commit, path = self.resolve_in_submodules(
@@ -285,7 +319,13 @@ class StorageApiMixin(RepositoryApiMixin):
             if client.path not in tracked_paths:
                 tracked_paths[client.path] = self.list_tracked_paths(client)
 
-            if absolute_path not in tracked_paths[client.path]:
+            if client.path not in unpushed_paths:
+                u_paths = self.list_unpushed_lfs_paths(client)
+                unpushed_paths[client.path] = u_paths
+
+            if absolute_path in unpushed_paths[client.path]:
+                local_only_paths.append(str(relative_path))
+            elif absolute_path not in tracked_paths[client.path]:
                 untracked_paths.append(str(relative_path))
             else:
                 client_dict[client.path].append(str(relative_path))
@@ -335,7 +375,7 @@ class StorageApiMixin(RepositoryApiMixin):
             # add paths so they don't show as modified
             client.repo.git.add(*paths)
 
-        return untracked_paths
+        return untracked_paths, local_only_paths
 
     @ensure_external_storage
     def checkout_paths_from_storage(self, *paths):

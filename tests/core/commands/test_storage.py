@@ -24,8 +24,23 @@ from pathlib import Path
 from renku.cli import cli
 
 
-def test_lfs_storage_clean(runner, project, client):
+def test_lfs_storage_clean_no_remote(runner, project, client):
+    """Test ``renku storage clean`` command with no remote set."""
+    with (client.path / 'tracked').open('w') as fp:
+        fp.write('tracked file')
+    client.repo.git.add('*')
+    client.repo.index.commit('tracked file')
+
+    result = runner.invoke(
+        cli, ['storage', 'clean', 'tracked'], catch_exceptions=False
+    )
+    assert 2 == result.exit_code
+
+
+def test_lfs_storage_clean(runner, project, client_with_remote):
     """Test ``renku storage clean`` command."""
+    client = client_with_remote['client']
+
     with (client.path / 'tracked').open('w') as fp:
         fp.write('tracked file')
     client.repo.git.add('*')
@@ -40,6 +55,7 @@ def test_lfs_storage_clean(runner, project, client):
     subprocess.call(['git', 'lfs', 'track', 'tracked'])
     client.repo.git.add('*')
     client.repo.index.commit('Tracked in lfs')
+    client.repo.git.push('--no-verify', 'origin')
 
     with (client.path / 'tracked').open('r') as fp:
         assert 'tracked file' in fp.read()
@@ -72,3 +88,23 @@ def test_lfs_storage_clean(runner, project, client):
         cli, ['storage', 'clean', 'tracked'], catch_exceptions=False
     )
     assert 0 == result.exit_code
+
+
+def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
+    """Test ``renku storage clean`` command for unpushed files."""
+    client = client_with_remote['client']
+
+    with (client.path / 'tracked').open('w') as fp:
+        fp.write('tracked file')
+    client.repo.git.add('*')
+    client.repo.index.commit('tracked file')
+    subprocess.call(['git', 'lfs', 'track', 'tracked'])
+    client.repo.git.add('*')
+    client.repo.index.commit('Tracked in lfs')
+
+    result = runner.invoke(
+        cli, ['storage', 'clean', 'tracked'], catch_exceptions=False
+    )
+
+    assert 0 == result.exit_code
+    assert 'These paths were ignored as they are not pushed' in result.output

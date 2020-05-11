@@ -85,11 +85,19 @@ def pull(client, paths):
 @pass_local_client
 def clean(client, paths):
     """Remove files from lfs cache/turn them back into pointer files."""
-    untracked_paths = client.clean_storage_cache(*paths)
+    untracked_paths, local_only_paths = client.clean_storage_cache(*paths)
 
     if untracked_paths:
         click.echo(
             WARNING + 'These paths were ignored as they are not tracked' +
-            ' in git LFS:\n\t{}'.format('\n\t'.join(untracked_paths))
+            ' in git LFS:\n\t{}\n'.format('\n\t'.join(untracked_paths))
         )
+
+    if local_only_paths:
+        click.echo(
+            WARNING + 'These paths were ignored as they are not pushed to ' +
+            'a remote with git LFS:\n\t{}\n'.
+            format('\n\t'.join(local_only_paths))
+        )
+
     click.secho('OK', fg='green')
