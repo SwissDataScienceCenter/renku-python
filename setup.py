@@ -96,7 +96,7 @@ history = open('CHANGES.rst').read()
 tests_require = [
     'check-manifest>=0.37',
     'coverage>=4.5.3',
-    'fakeredis==1.4.0',
+    'fakeredis==1.4.1',
     'flake8>=3.5',
     'flaky==3.6.1',
     'freezegun>=0.3.12',
@@ -178,7 +178,7 @@ install_requires = [
     'rq==1.3.0',
     'rq-scheduler==0.9.1',
     'ndg-httpsclient>=0.5.1',
-    'marshmallow==3.5.1',
+    'marshmallow==3.5.2',
     'idna==2.8',
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',
