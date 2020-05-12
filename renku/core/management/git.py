@@ -17,6 +17,7 @@
 # limitations under the License.
 """Wrap Git client."""
 
+import glob
 import itertools
 import os
 import sys
@@ -83,13 +84,19 @@ def _clean_streams(repo, mapped_streams):
 
 def _expand_directories(paths):
     """Expand directory with all files it contains."""
+    processed_paths = set()
     for path in paths:
-        path_ = Path(path)
-        if path_.is_dir():
-            for expanded in path_.rglob('*'):
-                yield str(expanded)
-        else:
-            yield path
+        for matched_path in glob.glob(path, recursive=True):
+            if matched_path in processed_paths:
+                continue
+            path_ = Path(matched_path)
+            if path_.is_dir():
+                for expanded in path_.rglob('*'):
+                    processed_paths.add(str(expanded))
+                    yield str(expanded)
+            else:
+                processed_paths.add(matched_path)
+                yield matched_path
 
 
 @attr.s
