@@ -239,10 +239,13 @@ class StorageApiMixin(RepositoryApiMixin):
             len(client.repo.remotes) < 1 or
             not client.repo.active_branch.tracking_branch()
         ):
-            raise errors.ParameterError(
-                'No git remote is configured for {} branch {}. Cleaning lfs'.
+            raise errors.ConfigurationError(
+                'No git remote is configured for {} branch {}.'.
                 format(client.path, client.repo.active_branch.name) +
-                ' would lead to a loss of data as it is not on a' + ' server.'
+                'Cleaning the storage cache would lead to a loss of data as ' +
+                'it is not on a server. Please see ' +
+                'https://www.atlassian.com/git/tutorials/syncing for ' +
+                'information on how to sync with a remote.'
             )
         try:
             status = check_output(

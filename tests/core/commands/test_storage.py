@@ -34,7 +34,8 @@ def test_lfs_storage_clean_no_remote(runner, project, client):
     result = runner.invoke(
         cli, ['storage', 'clean', 'tracked'], catch_exceptions=False
     )
-    assert 2 == result.exit_code
+    assert 1 == result.exit_code
+    assert 'No git remote is configured for' in result.output
 
 
 def test_lfs_storage_clean(runner, project, client_with_remote):
@@ -96,11 +97,9 @@ def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
 
     with (client.path / 'tracked').open('w') as fp:
         fp.write('tracked file')
-    client.repo.git.add('*')
-    client.repo.index.commit('tracked file')
     subprocess.call(['git', 'lfs', 'track', 'tracked'])
     client.repo.git.add('*')
-    client.repo.index.commit('Tracked in lfs')
+    client.repo.index.commit('tracked file')
 
     result = runner.invoke(
         cli, ['storage', 'clean', 'tracked'], catch_exceptions=False
