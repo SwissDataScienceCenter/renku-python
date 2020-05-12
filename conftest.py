@@ -218,6 +218,21 @@ def client(project):
     LocalClient.get_value = original_get_value
 
 
+@pytest.fixture(scope='function')
+def client_with_remote(client, tmpdir_factory):
+    """Return a client with a (local) remote set."""
+    # create remote
+    path = str(tmpdir_factory.mktemp('remote'))
+    Repo().init(path, bare=True)
+
+    origin = client.repo.create_remote('origin', path)
+    client.repo.git.push('--set-upstream', 'origin', 'master')
+    yield {'client': client, 'origin': origin}
+    client.repo.git.branch('--unset-upstream')
+    client.repo.delete_remote(origin)
+    shutil.rmtree(path)
+
+
 @pytest.fixture
 def no_lfs_warning(client):
     """Sets show_lfs_message to False.
