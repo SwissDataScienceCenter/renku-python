@@ -27,7 +27,7 @@ IFS=$'\n' read -r -d '' -a MODIFIED_FILES \
 IFS=$'\n' read -r -d '' -a ADDED_FILES \
   <<< "$(git diff --name-only --cached --diff-filter=A)"
 
-if [ "$MODIFIED_FILES" ] || [ "$ADDED_FILES" ]; then
+if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
   # Verify that renku is installed; if not, warn and exit.
   if [ -z "$(command -v renku)" ]; then
     echo 'renku not on path; can not format. Please install renku:'
@@ -37,7 +37,7 @@ if [ "$MODIFIED_FILES" ] || [ "$ADDED_FILES" ]; then
   fi
 fi
 
-if [ "$MODIFIED_FILES" ] ; then
+if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
   MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
   if [ "$MODIFIED_OUTPUTS" ]; then
     echo 'You are trying to update generated files.'
@@ -52,7 +52,7 @@ if [ "$MODIFIED_FILES" ] ; then
   fi
 fi
 
-if [ "$ADDED_FILES" ]; then
+if [ ${#ADDED_FILES[@]} -ne 0 ]; then
   UNTRACKED_PATHS=$(renku storage check-lfs-hook "${ADDED_FILES[@]}")
   if [ "$UNTRACKED_PATHS" ]; then
     echo 'You are trying to commit large files to Git instead of Git-LFS.'
