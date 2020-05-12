@@ -140,7 +140,11 @@ class DataverseProvider(ProviderApi):
         with retry() as session:
             response = session.get(uri, headers={'Accept': self._accept})
             if response.status_code != 200:
-                raise LookupError('record not found')
+                raise LookupError(
+                    'record not found. Status: {}'.format(
+                        response.status_code
+                    )
+                )
             return response
 
     def find_record(self, uri, client=None):

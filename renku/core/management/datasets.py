@@ -248,6 +248,7 @@ class DatasetsApiMixin(object):
         progress=None
     ):
         """Import the data into the data directory."""
+        messages = []
         warning_messages = []
         dataset_datadir = self.path / dataset.datadir
 
@@ -392,7 +393,18 @@ class DatasetsApiMixin(object):
                 raise errors.OperationError(f'Invalid action {action}')
 
         # Track non-symlinks in LFS
-        self.track_paths_in_storage(*files_to_commit)
+        if self.has_external_storage:
+            lfs_paths = self.track_paths_in_storage(*files_to_commit)
+            show_message = self.get_value('renku', 'show_lfs_message')
+            if (
+                lfs_paths and (show_message is None or show_message == 'True')
+            ):
+                messages.append((
+                    'Adding these files to Git LFS:\n' +
+                    '\t{}'.format('\n\t'.join(lfs_paths)) +
+                    '\nTo disable this message in the future, run:' +
+                    '\n\trenku config show_lfs_message False'
+                ))
 
         # Force-add to include possible ignored files
         self.repo.git.add(*files_to_commit, force=True)
@@ -419,7 +431,7 @@ class DatasetsApiMixin(object):
             dataset_files.append(dataset_file)
 
         dataset.update_files(dataset_files)
-        return warning_messages
+        return warning_messages, messages
 
     def _check_protected_path(self, path):
         """Checks if a path is a protected path."""

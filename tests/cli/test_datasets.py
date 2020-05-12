@@ -380,6 +380,24 @@ def test_add_and_create_dataset(
     assert 1 == result.exit_code
 
 
+def test_add_and_create_dataset_with_lfs_warning(
+    directory_tree, runner, project, client_with_lfs_warning
+):
+    """Test add data with lfs warning."""
+
+    # Add succeeds with --create
+    result = runner.invoke(
+        cli,
+        ['dataset', 'add', '--create', 'new-dataset',
+         str(directory_tree)],
+        catch_exceptions=False
+    )
+    assert 0 == result.exit_code
+    assert 'Adding these files to Git LFS' in result.output
+    assert 'dir2/file2' in result.output
+    assert 'file' in result.output
+
+
 def test_add_to_dirty_repo(directory_tree, runner, project, client):
     """Test adding to a dataset in a dirty repo commits only added files."""
     with (client.path / 'tracked').open('w') as fp:
