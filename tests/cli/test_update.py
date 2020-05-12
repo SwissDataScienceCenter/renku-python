@@ -33,7 +33,7 @@ def update_and_commit(data, file_, repo):
     repo.index.commit('Updated source.txt')
 
 
-def test_update(runner, project, run):
+def test_update(runner, project, run, no_lfs_warning):
     """Test automatic file update."""
     from renku.core.utils.shacl import validate_graph
 
@@ -137,7 +137,7 @@ def test_workflow_without_outputs(runner, project, run):
     assert 0 == result.exit_code
 
 
-def test_siblings_update(runner, project, run):
+def test_siblings_update(runner, project, run, no_lfs_warning):
     """Test detection of siblings during update."""
     cwd = Path(project)
     parent = cwd / 'parent.txt'

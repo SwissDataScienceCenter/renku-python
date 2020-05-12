@@ -58,6 +58,7 @@ recursive-include docs *.txt
 recursive-include docs Makefile
 recursive-include examples *.py
 recursive-include examples *.sh
+recursive-include tests *.py *.gz *.yml *.json
 recursive-include renku *.default
 recursive-include renku *.html
 recursive-include renku *.json
@@ -65,6 +66,5 @@ recursive-include renku *.sh
 recursive-include renku *.txt
 recursive-include renku *.yml
 recursive-include renku Dockerfile
-recursive-include tests *.py *.gz *.yml *.json
-recursive-include renku/templates *
 recursive-include renku *.yaml
+recursive-include renku/templates *

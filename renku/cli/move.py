@@ -30,7 +30,7 @@ from subprocess import run
 import click
 
 from renku.core.commands.client import pass_local_client
-from renku.core.commands.echo import WARNING, progressbar
+from renku.core.commands.echo import INFO, WARNING, progressbar
 
 
 @click.command(name='mv')
@@ -112,9 +112,17 @@ def move(ctx, client, sources, destination):
                 click.edit(filename=str(client.path / '.gitattributes'))
 
     if tracked and client.has_external_storage:
-        client.track_paths_in_storage(
+        lfs_paths = client.track_paths_in_storage(
             *(destinations[path] for path in tracked)
         )
+        show_message = client.get_value('renku', 'show_lfs_message')
+        if (lfs_paths and (show_message is None or show_message == 'True')):
+            click.echo(
+                INFO + 'Adding these files to Git LFS:\n' +
+                '\t{}'.format('\n\t'.join(lfs_paths)) +
+                '\nTo disable this message in the future, run:' +
+                '\n\trenku config show_lfs_message False'
+            )
 
     # 4. Handle symlinks.
     dst.parent.mkdir(parents=True, exist_ok=True)

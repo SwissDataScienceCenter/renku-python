@@ -39,10 +39,10 @@
         },
         "appdirs": {
             "hashes": [
-                "sha256:9e5896d1372858f8dd3344faf4e5014d21849c756c8d5701f78f8a103b372d92",
-                "sha256:d8b24664561d0d34ddfaec54636d502d7cea6e29c3eaf68f3df6180863e2166e"
+                "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41",
+                "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"
             ],
-            "version": "==1.4.3"
+            "version": "==1.4.4"
         },
         "attrs": {
             "hashes": [
@@ -132,10 +132,10 @@
         },
         "check-manifest": {
             "hashes": [
-                "sha256:4046b1260e63c139be6441fe8db8d9221f495ff39b81add2a55e5ca35dde7a6a",
-                "sha256:88afe85b751717688f8bc3b63d9543d0d962da98f1f420c554eaeb8d76c571a8"
+                "sha256:0d8e1b0944a667dd4a75274f6763e558f0d268fde2c725e894dfd152aae23300",
+                "sha256:3131d1b32d88ea3eb222a09c6277d78f43d1e780901e5d60e1b4a8d15169e9ee"
             ],
-            "version": "==0.41"
+            "version": "==0.42"
         },
         "click": {
             "hashes": [
@@ -275,10 +275,10 @@
         },
         "fakeredis": {
             "hashes": [
-                "sha256:bcb2faeabb1bd7ff2fecaff9b2a47ebfaf31700ee260a2ef66c6cf041d7a78df",
-                "sha256:d7e8b198ce5cce85374c6bca69bf372cc090d33938f0453c4262df7b281c7c88"
+                "sha256:4d170886865a91dbc8b7f8cbd4e5d488f4c5f2f25dfae127f001617bbe9e8f97",
+                "sha256:647b2593d349d9d4e566c8dadb2e4c71ba35be5bdc4f1f7ac2d565a12a965053"
             ],
-            "version": "==1.4.0"
+            "version": "==1.4.1"
         },
         "filelock": {
             "hashes": [
@@ -330,10 +330,10 @@
         },
         "gitdb": {
             "hashes": [
-                "sha256:6f0ecd46f99bb4874e5678d628c3a198e2b4ef38daea2756a2bfd8df7dd5c1a5",
-                "sha256:ba1132c0912e8c917aa8aa990bee26315064c7b7f171ceaaac0afeb1dc656c6a"
+                "sha256:91f36bfb1ab7949b3b40e23736db18231bf7593edada2ba5c3a174a7b23657ac",
+                "sha256:c9e1f2d0db7ddb9a704c2a0217be31214e91a4fe1dea1efad19ae42ba0c285c9"
             ],
-            "version": "==4.0.4"
+            "version": "==4.0.5"
         },
         "gitdb2": {
             "hashes": [
@@ -492,11 +492,11 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:90854221bbb1498d003a0c3cc9d8390259137551917961c8b5258c64026b2f85",
-                "sha256:ac2e13b30165501b7d41fc0371b8df35944f5849769d136f20e2c5f6cdc6e665"
+                "sha256:56663fa1d5385c14c6a1236badd166d6dee987a5f64d2b6cc099dadf96eb4f09",
+                "sha256:f12203bf8d94c410ab4b8d66edfde4f8a364892bde1f6747179765559f93d62a"
             ],
             "markers": "python_version >= '3'",
-            "version": "==3.5.1"
+            "version": "==3.5.2"
         },
         "mccabe": {
             "hashes": [
@@ -698,10 +698,10 @@
         },
         "pytest": {
             "hashes": [
-                "sha256:0e5b30f5cb04e887b91b1ee519fa3d89049595f428c1db76e73bd7f17b09b172",
-                "sha256:84dde37075b8805f3d1f392cc47e38a0e59518fb46a431cfdaf7cf1ce805f970"
+                "sha256:95c710d0a72d91c13fae35dce195633c929c3792f54125919847fdcdf7caa0d3",
+                "sha256:eb2b5e935f6a019317e455b6da83dd8650ac9ffd2ee73a7b657a30873d67a698"
             ],
-            "version": "==5.4.1"
+            "version": "==5.4.2"
         },
         "pytest-cache": {
             "hashes": [
@@ -920,10 +920,10 @@
         },
         "smmap": {
             "hashes": [
-                "sha256:52ea78b3e708d2c2b0cfe93b6fc3fbeec53db913345c26be6ed84c11ed8bebc1",
-                "sha256:b46d3fc69ba5f367df96d91f8271e8ad667a198d5a28e215a6c3d9acd133a911"
+                "sha256:54c44c197c819d5ef1991799a7e30b662d1e520f2ac75c9efbeb54a742214cf4",
+                "sha256:9c98bbd1f9786d22f14b3d4126894d56befb835ec90cef151af566c7e19b5d24"
             ],
-            "version": "==3.0.2"
+            "version": "==3.0.4"
         },
         "smmap2": {
             "hashes": [

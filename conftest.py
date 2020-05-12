@@ -208,7 +208,45 @@ def client(project):
     """Return a Renku repository."""
     from renku.core.management import LocalClient
 
+    original_get_value = LocalClient.get_value
+
+    def mocked_get_value(
+        self, section, key, local_only=False, global_only=False
+    ):
+        """We don't want lfs warnings in tests."""
+        if key == 'show_lfs_message':
+            return 'False'
+        return original_get_value(self, section, key, local_only, global_only)
+
+    LocalClient.get_value = mocked_get_value
+
     yield LocalClient(path=project)
+
+    LocalClient.get_value = original_get_value
+
+
+@pytest.fixture
+def no_lfs_warning(client):
+    """Sets show_lfs_message to False.
+
+    For those times in life when mocking just isn't enough.
+    """
+    with client.commit():
+        client.set_value('renku', 'show_lfs_message', 'False')
+
+    yield client
+
+
+@pytest.fixture(scope='function')
+def client_with_lfs_warning(project):
+    """Return a Renku repository with lfs warnings active."""
+    from renku.core.management import LocalClient
+
+    client = LocalClient(path=project)
+    client.set_value('renku', 'lfs_threshold', '0b')
+    client.repo.git.add('.renku/renku.ini')
+    client.repo.index.commit('update renku.ini')
+    yield client
 
 
 @pytest.fixture
