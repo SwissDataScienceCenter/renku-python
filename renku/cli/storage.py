@@ -15,12 +15,46 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage an external storage."""
+r"""Manage an external storage.
+
+Pulling files from git LFS
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+LFS works by checking small pointer files into git and saving the actual
+contents of a file in LFS. If instead of your file content, you see
+something like this, it means the file is stored in git LFS and its
+contents are not currently available locally (they are not pulled):
+
+.. code-block:: console
+
+    version https://git-lfs.github.com/spec/v1
+    oid sha256:42b5c7fb2acd54f6d3cd930f18fee3bdcb20598764ca93bdfb38d7989c054bcf
+    size 12
+
+You can manually pull contents of file(s) you want with:
+
+.. code-block:: console
+
+    $ renku storage pull file1 file2
+
+Removing local content of files stored in git LFS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to restore a file back to its pointer file state, for instance
+to free up space locally, you can run:
+
+.. code-block:: console
+
+    $ renku storage clean file1 file2
+
+This removes any data cached locally for files tracked in in git LFS.
+"""
 import os
 
 import click
 
 from renku.core.commands.client import pass_local_client
+from renku.core.commands.echo import WARNING
 
 
 @click.group()
@@ -40,14 +74,36 @@ def pull(client, paths):
     """Pull the specified paths from external storage."""
     client.pull_paths_from_storage(*paths)
 
-
-@storage.command('check-lfs-hook', hidden=True)
+        
+@storage.command()
 @click.argument(
     'paths',
     type=click.Path(exists=True, dir_okay=True),
     nargs=-1,
     required=True,
 )
+@pass_local_client
+def clean(client, paths):
+    """Remove files from lfs cache/turn them back into pointer files."""
+    untracked_paths, local_only_paths = client.clean_storage_cache(*paths)
+
+    if untracked_paths:
+        click.echo(
+            WARNING + 'These paths were ignored as they are not tracked' +
+            ' in git LFS:\n\t{}\n'.format('\n\t'.join(untracked_paths))
+        )
+
+    if local_only_paths:
+        click.echo(
+            WARNING + 'These paths were ignored as they are not pushed to ' +
+            'a remote with git LFS:\n\t{}\n'.
+            format('\n\t'.join(local_only_paths))
+        )
+
+    click.secho('OK', fg='green')
+
+
+@storage.command('check-lfs-hook', hidden=True)
 @pass_local_client
 def check_lfs_hook(client, paths):
     """Check specified paths are tracked in external storage."""
