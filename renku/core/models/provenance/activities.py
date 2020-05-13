@@ -129,13 +129,13 @@ class Activity(CommitMixin):
     )
 
     agent = jsonld.ib(
-        context='prov:agent',
+        context='prov:wasAssociatedWith',
         kw_only=True,
         default=renku_agent,
         type='renku.core.models.provenance.agents.SoftwareAgent'
     )
     person_agent = jsonld.ib(
-        context='prov:agent',
+        context='prov:wasAssociatedWith',
         kw_only=True,
         type='renku.core.models.provenance.agents.Person'
     )
