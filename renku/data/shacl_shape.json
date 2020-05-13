@@ -655,7 +655,7 @@
                "maxCount": 1
             },
             {
-               "path": "prov:agent",
+               "path": "prov:wasAssociatedWith",
                "or": [
                   {
                      "sh:class": {
