@@ -92,7 +92,7 @@ from renku.cli.workflow import workflow
 from renku.core.commands.echo import WARNING
 from renku.core.commands.migrate import check_for_migration
 from renku.core.commands.options import install_completion, \
-    option_use_external_storage
+    option_external_storage_requested
 from renku.core.commands.version import check_version, print_version
 from renku.core.errors import UsageError
 from renku.core.management.client import LocalClient
@@ -175,7 +175,7 @@ def is_allowed_command(ctx):
     default=RENKU_HOME,
     help='Location of the Renku directory.'
 )
-@option_use_external_storage
+@option_external_storage_requested
 @click.option(
     '--disable-version-check',
     envvar='RENKU_DISABLE_VERSION_CHECK',
@@ -186,7 +186,7 @@ def is_allowed_command(ctx):
     help='Do not periodically check PyPI for a new version of renku.',
 )
 @click.pass_context
-def cli(ctx, path, renku_home, use_external_storage):
+def cli(ctx, path, renku_home, external_storage_requested):
     """Check common Renku commands used in various situations."""
     renku_path = Path(path) / renku_home
     if not renku_path.exists() and not is_allowed_command(ctx):
@@ -199,7 +199,7 @@ def cli(ctx, path, renku_home, use_external_storage):
     ctx.obj = LocalClient(
         path=path,
         renku_home=renku_home,
-        use_external_storage=use_external_storage,
+        external_storage_requested=external_storage_requested,
     )
 
     if (

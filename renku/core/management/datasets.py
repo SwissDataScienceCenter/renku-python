@@ -395,7 +395,7 @@ class DatasetsApiMixin(object):
                 raise errors.OperationError(f'Invalid action {action}')
 
         # Track non-symlinks in LFS
-        if self.has_external_storage:
+        if self.check_external_storage():
             lfs_paths = self.track_paths_in_storage(*files_to_commit)
             show_message = self.get_value('renku', 'show_lfs_message')
             if (
