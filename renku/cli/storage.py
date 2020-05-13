@@ -104,6 +104,12 @@ def clean(client, paths):
 
 
 @storage.command('check-lfs-hook', hidden=True)
+@click.argument(
+    'paths',
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
+)
 @pass_local_client
 def check_lfs_hook(client, paths):
     """Check specified paths are tracked in external storage."""
