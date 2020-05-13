@@ -174,7 +174,7 @@ class CommandInput(CommandParameter):
     """An input to a command."""
 
     consumes = jsonld.ib(
-        context='prov:consumes',
+        context='renku:consumes',
         kw_only=True,
         type=[
             'renku.core.models.entities.Entity',
@@ -236,7 +236,7 @@ class CommandOutput(CommandParameter):
     """An output of a command."""
 
     produces = jsonld.ib(
-        context='prov:produces',
+        context='renku:produces',
         kw_only=True,
         type=[
             'renku.core.models.entities.Entity',
