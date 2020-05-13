@@ -74,7 +74,7 @@ def pull(client, paths):
     """Pull the specified paths from external storage."""
     client.pull_paths_from_storage(*paths)
 
-        
+
 @storage.command()
 @click.argument(
     'paths',
