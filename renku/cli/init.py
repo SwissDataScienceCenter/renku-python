@@ -98,8 +98,9 @@ parameter using ``--parameter "param1"="value1"``.
 
     Initializing new Renku repository... OK
 
-If you don't provide the required parameters, the template will use an empty
-strings instead.
+If you don't provide the required parameters through the option
+``-parameter``, you will be asked to provide them. Empty values are allowed
+and passed to the template initialization function.
 
 .. note:: Every project requires a ``name`` that can either be provided using
    ``--name`` or automatically taken from the target folder. This is
@@ -386,6 +387,30 @@ def init(
                 show_choices=False
             )
             template_data = templates[template_num - 1]
+
+    # verify variables have been passed
+    template_variables = template_data.get('variables', {})
+    template_variables_keys = set(template_variables.keys())
+    input_parameters_keys = set(parameter.keys())
+    for key in (template_variables_keys - input_parameters_keys):
+        value = click.prompt(
+            text=(
+                f'The template requires a value for "{key}" '
+                f'({template_variables[key]})'
+            ),
+            default='',
+            show_default=False
+        )
+        parameter[key] = value
+    useless_variables = input_parameters_keys - template_variables_keys
+    if (len(useless_variables) > 0):
+        click.echo(
+            'These parameters are not required by the template: {}'.format(
+                ', '.join(useless_variables)
+            )
+        )
+        for key in useless_variables:
+            del parameter[key]
 
     # set local path and storage
     store_directory(path)

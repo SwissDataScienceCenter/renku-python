@@ -36,8 +36,9 @@ TEMPLATE_URL = (
 TEMPLATE_ID = 'python-minimal'
 TEMPLATE_INDEX = 1
 TEMPLATE_REF = '0.1.10'
-METADATA = {'name': 'myname', 'description': 'nodesc'}
+METADATA = {'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
+NAME = 'myname'
 
 template_local = Path(pkg_resources.resource_filename('renku', 'templates'))
 
@@ -178,11 +179,7 @@ def test_create_from_template(local_client):
         shutil.copytree(str(template_local), str(temppath))
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]['folder']
-        create_from_template(
-            template_path,
-            local_client,
-            METADATA['name'],
-        )
+        create_from_template(template_path, local_client, NAME, METADATA)
         template_files = [
             f
             for f in local_client.path.glob('**/*') if '.git' not in str(f) and

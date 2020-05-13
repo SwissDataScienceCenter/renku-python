@@ -110,8 +110,8 @@ def validate_template_manifest(manifest):
     for template in manifest:
         if not isinstance(template, dict) or 'name' not in template:
             raise errors.InvalidTemplateError((
-                'Every template listed in "{0}"',
-                ' must have a name'.format(TEMPLATE_MANIFEST)
+                f'Every template listed in "{TEMPLATE_MANIFEST}"',
+                ' must have a name'
             ))
         for attribute in ['folder', 'description']:
             if attribute not in template:
