@@ -65,6 +65,7 @@ class DatasetCreateResponse(Schema):
     """Response schema for a dataset create view."""
 
     short_name = fields.String(required=True)
+    remote_branch = fields.String()
 
 
 class DatasetCreateResponseRPC(JsonRPCResponse):
@@ -124,6 +125,7 @@ class DatasetAddResponse(Schema):
     short_name = fields.String(required=True)
 
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
+    remote_branch = fields.String()
 
 
 class DatasetAddResponseRPC(JsonRPCResponse):
