@@ -1031,3 +1031,14 @@ def no_lfs_size_limit(client):
     client.repo.git.add('.renku/renku.ini')
     client.repo.index.commit('update renku.ini')
     yield client
+
+
+@pytest.fixture
+def large_file(tmp_path_factory, client):
+    """A file larger than the minimum LFS file size."""
+    path = tmp_path_factory.mktemp('large-file') / 'large-file'
+    with open(path, 'w') as file_:
+        file_.seek(client.minimum_lfs_file_size)
+        file_.write('some data')
+
+    yield path
