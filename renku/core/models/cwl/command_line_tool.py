@@ -271,6 +271,8 @@ class CommandLineToolFactory(object):
     @contextmanager
     def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
+        client.check_external_storage()
+
         tool = self.generate_tool()
         repo = client.repo
 
@@ -359,7 +361,7 @@ class CommandLineToolFactory(object):
             if not no_output and not paths:
                 raise errors.OutputsNotFound(repo, inputs.values())
 
-            if client.has_external_storage:
+            if client.check_external_storage():
                 lfs_paths = client.track_paths_in_storage(*paths)
 
                 show_message = client.get_value('renku', 'show_lfs_message')

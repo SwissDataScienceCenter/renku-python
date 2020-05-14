@@ -22,7 +22,7 @@ from renku.core.commands.echo import WARNING
 
 def check_lfs_info(client):
     """Checks if files in history should be in LFS."""
-    if not client.has_external_storage:
+    if not client.check_external_storage():
         return True, None
 
     files = client.check_lfs_migrate_info()
