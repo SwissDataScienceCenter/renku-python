@@ -168,6 +168,9 @@ def repository():
 def project(repository):
     """Create a test project."""
     from git import Repo
+    from renku.cli import cli
+
+    runner = CliRunner()
 
     repo = Repo(repository, search_parent_directories=True)
     commit = repo.head.commit
@@ -178,6 +181,10 @@ def project(repository):
     repo.head.reset(commit, index=True, working_tree=True)
     # remove any extra non-tracked files (.pyc, etc)
     repo.git.clean('-xdff')
+
+    assert 0 == runner.invoke(
+        cli, ['githooks', 'install', '--force']
+    ).exit_code
 
 
 @pytest.fixture

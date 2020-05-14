@@ -22,6 +22,7 @@ from .external import check_missing_external_files
 from .githooks import check_git_hooks_installed
 from .migration import check_migration
 from .references import check_missing_references
+from .storage import check_lfs_info
 from .validate_shacl import check_datasets_structure, check_project_structure
 
 # Checks will be executed in the order as they are listed in __all__.
@@ -35,4 +36,5 @@ __all__ = (
     'check_project_structure',
     'check_datasets_structure',
     'check_missing_external_files',
+    'check_lfs_info',
 )
