@@ -15,10 +15,58 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Commit changes and push them to a remote.
+"""Convenience method to save local changes and push them to a remote server.
 
-This command combines git add, git commit and git push, with some extra
-functionality.
+If you have local modification to files, you can save them using
+
+.. code-block:: console
+
+    $ renku save
+    Username for 'https://renkulab.io': my.user
+    Password for 'https://my.user@renkulab.io':
+    Successfully saved:
+        file1
+        file2
+    OK
+
+.. warning:: The username and password for renku save are your gitlab
+   user/password, not your renkulab login!
+
+You can additionally supply a message that describes the changes that you
+made by using the ``-m`` or ``--message`` parameter followed by your
+message.
+
+.. code-block:: console
+
+    $ renku save -m "Updated file1 and 2."
+    Successfully saved:
+        file1
+        file2
+    OK
+
+If no remote server has been configured, you can specify one by using the
+``-d`` or ``--destination`` parameter. Otherwise you will get an error.
+
+.. code-block:: console
+
+    $ renku save
+    Error: No remote has been set up for the current branch
+
+    $ renku save -d https://renkulab.io/gitlab/my.user/my-project.git
+    Successfully saved:
+        file1
+        file2
+    OK
+
+You can also specify which paths to save:
+
+.. code-block:: console
+
+    $ renku save file1
+    Successfully saved:
+        file1
+    OK
+
 """
 
 import datetime
