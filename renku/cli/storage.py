@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage git LFS external storage.
+r"""Manage an external storage.
 
 Pulling files from git LFS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -48,8 +48,8 @@ to free up space locally, you can run:
     $ renku storage clean file1 file2
 
 This removes any data cached locally for files tracked in in git LFS.
-
 """
+import os
 
 import click
 
@@ -101,6 +101,22 @@ def clean(client, paths):
         )
 
     click.secho('OK', fg='green')
+
+
+@storage.command('check-lfs-hook', hidden=True)
+@click.argument(
+    'paths',
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
+)
+@pass_local_client
+def check_lfs_hook(client, paths):
+    """Check specified paths are tracked in external storage."""
+    paths = client.check_requires_tracking(*paths)
+    if paths:
+        click.echo(os.linesep.join(paths))
+        exit(1)
 
 
 @storage.command()

@@ -396,6 +396,36 @@ class StorageApiMixin(RepositoryApiMixin):
             check=True,
         )
 
+    def check_requires_tracking(self, *paths):
+        """Check paths and return a list of those that must be tracked."""
+        if not self.use_external_storage:
+            return
+
+        attrs = self.find_attr(*paths)
+        track_paths = []
+
+        for path in paths:
+            absolute_path = Path(os.path.abspath(self.path / path))
+            path = str(path)
+
+            # Do not track symlinks in LFS
+            if absolute_path.is_symlink():
+                continue
+
+            # Do not add files with filter=lfs in .gitattributes
+            if attrs.get(path, {}).get('filter') == 'lfs':
+                continue
+
+            if not absolute_path.is_dir():
+                if self.renku_lfs_ignore.match_file(path):
+                    continue
+                if os.path.getsize(absolute_path) < self.minimum_lfs_file_size:
+                    continue
+
+                track_paths.append(path)
+
+        return track_paths
+
     def check_lfs_migrate_info(self, everything=False):
         """Return list of file groups in history should be in LFS."""
         ref = ['--everything'] if everything else [
