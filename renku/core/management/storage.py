@@ -18,6 +18,7 @@
 """Client for handling a data storage."""
 import functools
 import os
+import re
 import shlex
 import tempfile
 from collections import defaultdict
@@ -79,6 +80,10 @@ class StorageApiMixin(RepositoryApiMixin):
 
     _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', '-I']
 
+    _CMD_STORAGE_MIGRATE_INFO = [
+        'git', 'lfs', 'migrate', 'info', '--top', '42000'
+    ]
+
     _CMD_STORAGE_LIST = ['git', 'lfs', 'ls-files', '-n']
 
     _CMD_STORAGE_STATUS = ['git', 'lfs', 'status']
@@ -114,9 +119,9 @@ class StorageApiMixin(RepositoryApiMixin):
         """Gets pathspec for files to not add to LFS."""
         ignore_path = self.path / self.RENKU_LFS_IGNORE_PATH
         if not os.path.exists(ignore_path):
-            return pathspec.PathSpec.from_lines('gitwildmatch', [])
+            return pathspec.PathSpec.from_lines('renku_gitwildmatch', [])
         with ignore_path.open('r') as f:
-            return pathspec.PathSpec.from_lines('gitwildmatch', f)
+            return pathspec.PathSpec.from_lines('renku_gitwildmatch', f)
 
     @property
     def minimum_lfs_file_size(self):
@@ -390,3 +395,88 @@ class StorageApiMixin(RepositoryApiMixin):
             stderr=STDOUT,
             check=True,
         )
+
+    def check_requires_tracking(self, *paths):
+        """Check paths and return a list of those that must be tracked."""
+        if not self.use_external_storage:
+            return
+
+        attrs = self.find_attr(*paths)
+        track_paths = []
+
+        for path in paths:
+            absolute_path = Path(os.path.abspath(self.path / path))
+            path = str(path)
+
+            # Do not track symlinks in LFS
+            if absolute_path.is_symlink():
+                continue
+
+            # Do not add files with filter=lfs in .gitattributes
+            if attrs.get(path, {}).get('filter') == 'lfs':
+                continue
+
+            if not absolute_path.is_dir():
+                if self.renku_lfs_ignore.match_file(path):
+                    continue
+                if os.path.getsize(absolute_path) < self.minimum_lfs_file_size:
+                    continue
+
+                track_paths.append(path)
+
+        return track_paths
+
+    def check_lfs_migrate_info(self, everything=False):
+        """Return list of file groups in history should be in LFS."""
+        ref = ['--everything'] if everything else [
+            '--include-ref', self.repo.active_branch.name
+        ]
+
+        includes = []
+        excludes = []
+        for p in self.renku_lfs_ignore.patterns:
+            if p.regex is None:
+                continue
+
+            pattern = p.pattern.replace(os.linesep, '').replace('\n', '')
+            if pattern.startswith('!'):
+                pattern.replace('!', '', 1)
+
+            if p.include:  # File ignored by LFS
+                excludes.append(pattern)
+            else:
+                includes.append(pattern)
+
+        if excludes:
+            excludes = ['--exclude', ','.join(excludes)]
+        if includes:
+            includes = ['--include', ','.join(includes)]
+
+        above = ['--above', str(self.minimum_lfs_file_size)]
+
+        command = (
+            self._CMD_STORAGE_MIGRATE_INFO + ref + above + includes + excludes
+        )
+
+        try:
+            lfs_output = run(
+                command,
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=self.path,
+                universal_newlines=True
+            )
+        except (KeyboardInterrupt, OSError) as e:
+            raise errors.GitError(
+                'Couldn\'t run \'git lfs migrate info\':\n{0}'.format(e)
+            )
+
+        groups = []
+        files_re = re.compile(r'(.*\s+[\d.]+\s+\S+).*')
+
+        for line in lfs_output.stdout.split('\n'):
+            match = files_re.match(line)
+            if match:
+                groups.append(match.groups()[0])
+
+        return groups
