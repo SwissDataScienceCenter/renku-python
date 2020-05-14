@@ -82,7 +82,7 @@ def remove(ctx, client, sources):
                 dataset.to_yaml()
 
     # 2. Manage .gitattributes for external storage.
-    if client.has_external_storage:
+    if client.check_external_storage():
         tracked = tuple(
             path for path, attr in client.find_attr(*files).items()
             if attr.get('filter') == 'lfs'
