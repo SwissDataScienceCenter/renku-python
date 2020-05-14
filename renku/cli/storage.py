@@ -101,3 +101,20 @@ def clean(client, paths):
         )
 
     click.secho('OK', fg='green')
+
+
+@storage.command()
+@click.option('--all', is_flag=True, help='Include all branches.')
+@pass_local_client
+def check(client, all):
+    """Check if large files are committed to Git history."""
+    files = client.check_lfs_migrate_info(everything=all)
+    if files:
+        message = (
+            WARNING + 'Git history contains large files\n\t' +
+            '\n\t'.join(files)
+        )
+        click.echo(message)
+        exit(1)
+    else:
+        click.secho('OK', fg='green')
