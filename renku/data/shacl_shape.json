@@ -529,6 +529,13 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "sdsc:external",
+               "datatype": {
+                  "@id": "xsd:boolean"
+               }
             }
          ]
       },

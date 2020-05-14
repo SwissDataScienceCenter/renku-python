@@ -21,11 +21,13 @@ import datetime
 import os
 
 import attr
+from calamus import fields
+from calamus.schema import JsonLDSchema
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
 from renku.core.models.datastructures import Collection
-from renku.core.models.provenance.agents import Person
+from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
 
 PROJECT_URL_PATH = 'projects'
@@ -68,6 +70,8 @@ class Project(object):
     )
 
     client = attr.ib(default=None, kw_only=True)
+
+    commit = attr.ib(default=None, kw_only=True)
 
     creator = jsonld.ib(
         default=None,
@@ -140,6 +144,25 @@ class Project(object):
         )
         return project_url
 
+    @classmethod
+    def from_yaml(cls, path, client=None, commit=None):
+        """Return an instance from a YAML file."""
+        from marshmallow import INCLUDE
+
+        data = jsonld.read_yaml(path)
+
+        extra = dict(client=client, commit=commit)
+        data.update(extra)
+        self = ProjectSchema().load(data, unknown=INCLUDE)
+        self.__reference__ = path
+
+        return self
+
+    def to_yaml(self):
+        """Store an instance to the referenced YAML file."""
+        data = ProjectSchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
 
 class ProjectCollection(Collection):
     """Represent projects on the server.
@@ -183,3 +206,28 @@ class ProjectCollection(Collection):
             self.Meta.model(data, client=self._client, collection=self)
             for data in self._client.api.list_projects()
         )
+
+
+prov = fields.Namespace('http://www.w3.org/ns/prov#')
+schema = fields.Namespace('http://schema.org/')
+
+
+class ProjectSchema(JsonLDSchema):
+    """Project Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [schema.Project, prov.Location]
+        model = Project
+        translate = {
+            'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
+            'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
+        }
+
+    name = fields.String(schema.name, missing=None)
+    created = fields.DateTime(schema.dateCreated)
+    updated = fields.DateTime(schema.dateUpdated)
+    version = fields.String(schema.schemaVersion)
+    creator = fields.Nested(schema.creator, PersonSchema, missing=None)
+    _id = fields.Id(init_name='id', missing=None)

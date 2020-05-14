@@ -267,13 +267,19 @@ def client_with_lfs_warning(project):
 @pytest.fixture
 def dataset(client):
     """Create a dataset."""
+    from renku.core.models.provenance.agents import Person
+
     with client.with_dataset('dataset', create=True) as dataset:
-        dataset.creator = [{
-            'affiliation': 'xxx',
-            'email': 'me@example.com',
-            '_id': 'me_id',
-            'name': 'me',
-        }]
+        dataset.creator = [
+            Person(
+                **{
+                    'affiliation': 'xxx',
+                    'email': 'me@example.com',
+                    'id': 'me_id',
+                    'name': 'me',
+                }
+            )
+        ]
     return dataset
 
 

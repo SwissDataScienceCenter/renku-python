@@ -553,6 +553,8 @@ class JSONLDMixin(ReferenceMixin):
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
+        assert False, 'this should not be called.'
+
         source = read_yaml(path)
 
         self = cls.from_jsonld(
@@ -574,6 +576,7 @@ class JSONLDMixin(ReferenceMixin):
 
     def to_yaml(self):
         """Store an instance to the referenced YAML file."""
+        assert False, 'this should not be called.'
         jsonld_ = self.asjsonld()
         write_yaml(path=self.__reference__, data=jsonld_)
 

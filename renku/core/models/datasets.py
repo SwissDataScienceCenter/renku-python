@@ -28,10 +28,12 @@ from pathlib import Path
 
 import attr
 from attr.validators import instance_of
+from calamus import fields
+from calamus.schema import JsonLDSchema
 
 from renku.core import errors
-from renku.core.models.entities import Entity
-from renku.core.models.provenance.agents import Person
+from renku.core.models.entities import Entity, EntitySchema
+from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -614,6 +616,130 @@ class Dataset(Entity, CreatorMixin):
             self.short_name = generate_default_short_name(
                 self.name, self.version
             )
+
+    @classmethod
+    def from_yaml(cls, path, client=None, commit=None):
+        """Return an instance from a YAML file."""
+        from marshmallow import INCLUDE
+
+        data = jsonld.read_yaml(path)
+
+        extra = dict(client=client, commit=commit)
+        data.update(extra)
+        self = DatasetSchema().load(data, unknown=INCLUDE)
+        self.__reference__ = path
+
+        return self
+
+    def to_yaml(self):
+        """Store an instance to the referenced YAML file."""
+        data = DatasetSchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
+
+schema = fields.Namespace('http://schema.org/')
+rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
+sdsc = fields.Namespace('sdsc:')
+
+
+class CreatorMixinSchema(JsonLDSchema):
+    """CreatorMixin schema."""
+
+    creator = fields.Nested(schema.creator, PersonSchema, many=True)
+
+
+class UrlSchema(JsonLDSchema):
+    """Url schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.URL
+        model = Url
+
+    url = fields.String(schema.url)
+    _id = fields.Id(init_name='id')
+
+
+class DatasetTagSchema(JsonLDSchema):
+    """DatasetTag schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.PublicationEvent
+        model = DatasetTag
+
+    name = fields.String(schema.name)
+    description = fields.String(schema.description)
+    commit = fields.String(schema.location)
+    created = fields.DateTime(schema.startDate)
+    dataset = fields.String(schema.about)
+    _id = fields.Id(init_name='id')
+
+
+class LanguageSchema(JsonLDSchema):
+    """Language schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.Language
+        model = Language
+
+    alternate_name = fields.String(schema.alternateName)
+    name = fields.String(schema.name)
+
+
+class DatasetFileSchema(EntitySchema, CreatorMixinSchema):
+    """DatasetFile schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.DigitalDocument
+        model = DatasetFile
+
+    added = fields.DateTime(schema.dateCreated)
+    # checksum
+    # filename
+    name = fields.String(schema.name)
+    # filesize
+    # filetype
+    url = fields.String(schema.url, missing=None)
+    based_on = fields.Nested(
+        schema.isBasedOn, 'DatasetFileSchema', missing=None
+    )
+    external = fields.Boolean(sdsc.external, missing=False)
+
+
+class DatasetSchema(EntitySchema, CreatorMixinSchema):
+    """Dataset schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.Dataset
+        model = Dataset
+
+    _id = fields.Id(init_name='id', missing=None)
+    _label = fields.String(rdfs.label, init_name='label', missing=None)
+    date_published = fields.DateTime(schema.datePublished, missing=None)
+    description = fields.String(schema.description, missing=None)
+    identifier = fields.String(schema.identifier)
+    in_language = fields.Nested(
+        schema.inLanguage, LanguageSchema, missing=None
+    )
+    keywords = fields.List(schema.keywords, fields.String())
+    license = fields.String(schema.license, missing=None)
+    name = fields.String(schema.name)
+    url = fields.String(schema.url)
+    version = fields.String(schema.version, missing=None)
+    created = fields.DateTime(schema.dateCreated, missing=None)
+    files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
+    same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
+    short_name = fields.String(schema.alternateName)
 
 
 def is_dataset_short_name_valid(short_name):

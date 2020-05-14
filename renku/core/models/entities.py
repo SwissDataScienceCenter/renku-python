@@ -23,9 +23,11 @@ import urllib
 import weakref
 
 import attr
+from calamus import fields
+from calamus.schema import JsonLDSchema
 
 from renku.core.models import jsonld as jsonld
-from renku.core.models.projects import Project
+from renku.core.models.projects import Project, ProjectSchema
 
 
 def _str_or_none(data):
@@ -228,3 +230,35 @@ class Collection(Entity):
         for member in self.members:
             yield from member.entities
         yield self
+
+
+schema = fields.Namespace('http://schema.org/')
+prov = fields.Namespace('http://www.w3.org/ns/prov#')
+rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
+wfprov = fields.Namespace('http://purl.org/wf4ever/wfprov#')
+
+
+class CommitMixinSchema(JsonLDSchema):
+    """CommitMixin schema."""
+
+    class Meta:
+        """Meta class."""
+
+        model = CommitMixin
+
+    path = fields.String(prov.atLocation)
+    _id = fields.Id(init_name='id')
+    _label = fields.String(rdfs.label, init_name='label')
+    _project = fields.Nested(
+        schema.isPartOf, ProjectSchema, init_name='project', missing=None
+    )
+
+
+class EntitySchema(CommitMixinSchema):
+    """Entity Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Entity, wfprov.Artifact]
+        model = Entity

@@ -37,18 +37,23 @@ def test_dataset_serialization(client, dataset, data_file):
     d_dict = load_dataset('dataset')
 
     expected_fields = [
-        '_id', '_label', '_project', 'created', 'creator', 'date_published',
-        'description', 'files', 'identifier', 'in_language', 'keywords',
-        'license', 'name', 'path', 'url', 'version'
+        '@id', 'http://www.w3.org/2000/01/rdf-schema#label',
+        'http://schema.org/isPartOf', 'http://schema.org/dateCreated',
+        'http://schema.org/creator', 'http://schema.org/datePublished',
+        'http://schema.org/description', 'http://schema.org/hasPart',
+        'http://schema.org/identifier', 'http://schema.org/inLanguage',
+        'http://schema.org/keywords', 'http://schema.org/license',
+        'http://schema.org/name', 'http://www.w3.org/ns/prov#atLocation',
+        'http://schema.org/url', 'http://schema.org/version'
     ]
     for field in expected_fields:
         assert field in d_dict
 
-    assert not d_dict['files']
+    assert not d_dict['http://schema.org/hasPart']
     client.add_data_to_dataset(dataset, [str(data_file)])
     dataset.to_yaml()
     d_dict = load_dataset('dataset')
-    assert d_dict['files']
+    assert d_dict['http://schema.org/hasPart']
 
 
 def test_dataset_deserialization(client, dataset):
@@ -75,7 +80,7 @@ def test_dataset_deserialization(client, dataset):
     creator = dataset.creator[0]
 
     for attribute, type_ in creator_types.items():
-        assert type(creator.get(attribute)) is type_
+        assert type(getattr(creator, attribute)) is type_
 
 
 def test_dataset_files_empty_metadata(dataset_metadata):

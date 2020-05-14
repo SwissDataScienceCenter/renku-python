@@ -21,6 +21,8 @@ import configparser
 import re
 
 from attr.validators import instance_of
+from calamus import fields
+from calamus.schema import JsonLDSchema
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
@@ -159,6 +161,28 @@ class Person:
         # handle the case where ids were improperly set
         if self._id == 'mailto:None':
             self._id = self.default_id()
+
+
+prov = fields.Namespace('http://www.w3.org/ns/prov#')
+rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
+schema = fields.Namespace('http://schema.org/')
+
+
+class PersonSchema(JsonLDSchema):
+    """Person schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Person, schema.Person]
+        model = Person
+
+    name = fields.String(schema.name)
+    email = fields.String(schema.email, missing=None)
+    label = fields.String(rdfs.label)
+    affiliation = fields.String(schema.affiliation, missing=None)
+    alternate_name = fields.String(schema.alternateName, missing=None)
+    _id = fields.Id(init_name='id')
 
 
 @jsonld.s(
