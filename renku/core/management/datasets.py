@@ -261,6 +261,8 @@ class DatasetsApiMixin(object):
                 f'Destination is not a directory: "{destination}"'
             )
 
+        self.check_external_storage()
+
         files = []
         if all_at_once:  # Importing a dataset
             files = self._add_from_urls(
@@ -393,7 +395,7 @@ class DatasetsApiMixin(object):
                 raise errors.OperationError(f'Invalid action {action}')
 
         # Track non-symlinks in LFS
-        if self.has_external_storage:
+        if self.check_external_storage():
             lfs_paths = self.track_paths_in_storage(*files_to_commit)
             show_message = self.get_value('renku', 'show_lfs_message')
             if (
@@ -415,7 +417,7 @@ class DatasetsApiMixin(object):
             msg = 'renku dataset: committing {} newly added files'.format(
                 len(files_to_commit)
             )
-            skip_hooks = not self.use_external_storage
+            skip_hooks = not self.external_storage_requested
             self.repo.index.commit(msg, skip_hooks=skip_hooks)
         else:
             warning_messages.append('No file was added to project')
@@ -969,7 +971,7 @@ class DatasetsApiMixin(object):
         }
         # Force-add to include possible ignored files that are in datasets
         self.repo.git.add(*(file_paths), force=True)
-        skip_hooks = not self.use_external_storage
+        skip_hooks = not self.external_storage_requested
         self.repo.index.commit(
             'renku dataset: updated {} files and deleted {} files'.format(
                 len(updated_files), len(deleted_files), skip_hooks=skip_hooks

@@ -37,7 +37,7 @@ def project_clone(
     checkout_rev=None,
 ):
     """Clone Renku project repo, install Git hooks and LFS."""
-    install_lfs = client.use_external_storage
+    install_lfs = client.external_storage_requested
 
     return clone(
         url=url,

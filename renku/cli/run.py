@@ -280,7 +280,7 @@ def run(
         with client.with_workflow_storage() as wf:
             with factory.watch(client, no_output=no_output) as tool:
                 # Don't compute paths if storage is disabled.
-                if client.has_external_storage:
+                if client.check_external_storage():
                     # Make sure all inputs are pulled from a storage.
                     paths_ = (
                         path for _, path in
