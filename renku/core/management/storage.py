@@ -224,7 +224,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 'Couldn\'t run \'git lfs\':\n{0}'.format(e)
             )
 
-    @ensure_external_storage
+    @check_external_storage_wrapper
     def list_tracked_paths(self, client=None):
         """List paths tracked in lfs for a client."""
         client = client or self
@@ -239,7 +239,7 @@ class StorageApiMixin(RepositoryApiMixin):
         files = [client.path / f for f in files.splitlines()]
         return files
 
-    @ensure_external_storage
+    @check_external_storage_wrapper
     def list_unpushed_lfs_paths(self, client=None):
         """List paths tracked in lfs for a client."""
         client = client or self
@@ -402,7 +402,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def check_requires_tracking(self, *paths):
         """Check paths and return a list of those that must be tracked."""
-        if not self.use_external_storage:
+        if not self.external_storage_requested:
             return
 
         attrs = self.find_attr(*paths)

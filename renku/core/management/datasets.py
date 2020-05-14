@@ -417,7 +417,7 @@ class DatasetsApiMixin(object):
             msg = 'renku dataset: committing {} newly added files'.format(
                 len(files_to_commit)
             )
-            skip_hooks = not self.use_external_storage
+            skip_hooks = not self.external_storage_requested
             self.repo.index.commit(msg, skip_hooks=skip_hooks)
         else:
             warning_messages.append('No file was added to project')
@@ -971,7 +971,7 @@ class DatasetsApiMixin(object):
         }
         # Force-add to include possible ignored files that are in datasets
         self.repo.git.add(*(file_paths), force=True)
-        skip_hooks = not self.use_external_storage
+        skip_hooks = not self.external_storage_requested
         self.repo.index.commit(
             'renku dataset: updated {} files and deleted {} files'.format(
                 len(updated_files), len(deleted_files), skip_hooks=skip_hooks
