@@ -102,7 +102,7 @@ def clean(client, paths):
 
     click.secho('OK', fg='green')
 
-    
+
 @storage.command()
 @click.option('--all', is_flag=True, help='Include all branches.')
 @pass_local_client
