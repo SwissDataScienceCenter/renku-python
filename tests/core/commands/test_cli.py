@@ -387,6 +387,37 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     assert 0 == result.exit_code
 
 
+def test_early_check_of_external_storage(
+    isolated_runner, monkeypatch, directory_tree
+):
+    """Test LFS is checked early."""
+    result = isolated_runner.invoke(
+        cli,
+        ['--no-external-storage', 'init', '.', '--template-id', TEMPLATE_ID]
+    )
+    assert 0 == result.exit_code
+
+    result = isolated_runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+    assert 0 == result.exit_code
+
+    # Pretend that git-lfs is not installed.
+    with monkeypatch.context() as monkey:
+        monkey.setattr(StorageApiMixin, 'storage_installed', False)
+
+        failing_command = [
+            'dataset', 'add', '-s', 'src', 'my-dataset', directory_tree.strpath
+        ]
+        result = isolated_runner.invoke(cli, failing_command)
+        assert 1 == result.exit_code
+        assert 'External storage is not configured' in result.output
+
+        result = isolated_runner.invoke(
+            cli, ['--no-external-storage'] + failing_command
+        )
+        assert 2 == result.exit_code
+        assert 'Cannot use "--source" with URLs' in result.output
+
+
 def test_file_tracking(isolated_runner):
     """Test .gitattribute handling on renku run."""
     runner = isolated_runner

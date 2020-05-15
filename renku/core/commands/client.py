@@ -70,7 +70,7 @@ def pass_local_client(
             client = LocalClient(
                 path=default_path(),
                 renku_home=RENKU_HOME,
-                use_external_storage=True,
+                external_storage_requested=True,
             )
             ctx = click.Context(click.Command(method))
         else:

@@ -148,7 +148,7 @@ from renku.core.commands.client import pass_local_client
 from renku.core.commands.git import set_git_home
 from renku.core.commands.init import create_from_template, fetch_template, \
     read_template_manifest
-from renku.core.commands.options import option_use_external_storage
+from renku.core.commands.options import option_external_storage_requested
 from renku.core.models.tabulate import tabulate
 
 _GITLAB_CI = '.gitlab-ci.yml'
@@ -294,12 +294,13 @@ def check_git_user_config():
     help='List templates available in the template-source.'
 )
 @click.option('--force', is_flag=True, help='Override target path.')
-@option_use_external_storage
+@option_external_storage_requested
 @pass_local_client
 @click.pass_context
 def init(
-    ctx, client, use_external_storage, path, name, template_id, template_index,
-    template_source, template_ref, parameter, list_templates, force
+    ctx, client, external_storage_requested, path, name, template_id,
+    template_index, template_source, template_ref, parameter, list_templates,
+    force
 ):
     """Initialize a project in PATH. Default is current path."""
     # verify dirty path
@@ -414,10 +415,12 @@ def init(
 
     # set local path and storage
     store_directory(path)
-    if not client.use_external_storage:
-        use_external_storage = False
+    if not client.external_storage_requested:
+        external_storage_requested = False
     ctx.obj = client = attr.evolve(
-        client, path=path, use_external_storage=use_external_storage
+        client,
+        path=path,
+        external_storage_requested=external_storage_requested
     )
     if not is_path_empty(path):
         from git import GitCommandError

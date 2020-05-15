@@ -169,6 +169,9 @@ def repository():
 def project(repository):
     """Create a test project."""
     from git import Repo
+    from renku.cli import cli
+
+    runner = CliRunner()
 
     repo = Repo(repository, search_parent_directories=True)
     commit = repo.head.commit
@@ -179,6 +182,10 @@ def project(repository):
     repo.head.reset(commit, index=True, working_tree=True)
     # remove any extra non-tracked files (.pyc, etc)
     repo.git.clean('-xdff')
+
+    assert 0 == runner.invoke(
+        cli, ['githooks', 'install', '--force']
+    ).exit_code
 
 
 @pytest.fixture
@@ -1025,3 +1032,14 @@ def no_lfs_size_limit(client):
     client.repo.git.add('.renku/renku.ini')
     client.repo.index.commit('update renku.ini')
     yield client
+
+
+@pytest.fixture
+def large_file(tmp_path_factory, client):
+    """A file larger than the minimum LFS file size."""
+    path = tmp_path_factory.mktemp('large-file') / 'large-file'
+    with open(path, 'w') as file_:
+        file_.seek(client.minimum_lfs_file_size)
+        file_.write('some data')
+
+    yield path

@@ -205,7 +205,7 @@ def test_output_directory(runner, project, run, no_lfs_size_limit):
 
     repo = git.Repo(project)
     repo.git.add('--all')
-    repo.index.commit('Created source directory')
+    repo.index.commit('Created source directory', skip_hooks=True)
 
     cmd = ['run', 'cp', '-LRf', str(source), str(destination)]
     result = runner.invoke(cli, cmd, catch_exceptions=False)

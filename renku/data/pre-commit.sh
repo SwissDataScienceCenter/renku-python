@@ -21,9 +21,13 @@
 # RENKU HOOK. DO NOT REMOVE OR MODIFY.
 ######################################
 
-# Find all modified files, and do nothing if there aren't any.
-MODIFIED_FILES=$(git diff --name-only --cached --diff-filter=M)
-if [ "$MODIFIED_FILES" ]; then
+# Find all modified or added files, and do nothing if there aren't any.
+IFS=$'\n' read -r -d '' -a MODIFIED_FILES \
+  <<< "$(git diff --name-only --cached --diff-filter=M)"
+IFS=$'\n' read -r -d '' -a ADDED_FILES \
+  <<< "$(git diff --name-only --cached --diff-filter=A)"
+
+if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
   # Verify that renku is installed; if not, warn and exit.
   if [ -z "$(command -v renku)" ]; then
     echo 'renku not on path; can not format. Please install renku:'
@@ -31,15 +35,34 @@ if [ "$MODIFIED_FILES" ]; then
     echo '    pip install renku'
     exit 2
   fi
+fi
 
+if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
   MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
   if [ "$MODIFIED_OUTPUTS" ]; then
     echo 'You are trying to update generated files.'
     echo
     echo 'Modified files:'
     for file in "${MODIFIED_OUTPUTS[@]}"; do
-      echo "  $file"
+      echo "$file"
     done
+    echo
+    echo 'To commit anyway, use "git commit --no-verify".'
+    exit 1
+  fi
+fi
+
+if [ ${#ADDED_FILES[@]} -ne 0 ]; then
+  UNTRACKED_PATHS=$(renku storage check-lfs-hook "${ADDED_FILES[@]}")
+  if [ "$UNTRACKED_PATHS" ]; then
+    echo 'You are trying to commit large files to Git instead of Git-LFS.'
+    echo
+    echo 'Large files:'
+    for file in "${UNTRACKED_PATHS[@]}"; do
+      echo "$file"
+    done
+    echo
+    echo 'To track these files in Git LFS use "git lfs track <FILENAMES>".'
     echo
     echo 'To commit anyway, use "git commit --no-verify".'
     exit 1
