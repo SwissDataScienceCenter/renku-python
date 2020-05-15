@@ -22,7 +22,7 @@ import os
 import uuid
 from pathlib import Path
 
-from cwlgen import CommandLineTool, parse_cwl
+from cwlgen import CommandLineTool, parse_cwl, parse_cwl_dict
 from git import NULL_TREE, Actor
 from werkzeug.utils import secure_filename
 
@@ -247,8 +247,12 @@ def _migrate_composite_step(client, workflow, path):
     run.path = (client.workflow_path / name).relative_to(client.path)
 
     for step in workflow.steps:
-        path = client.workflow_path / step.run
-        subrun = parse_cwl_cached(str(path))
+        if isinstance(step.run, dict):
+            path = (client.workflow_path / name).relative_to(client.path)
+            subrun = parse_cwl_dict(step.run)
+        else:
+            path = client.workflow_path / step.run
+            subrun = parse_cwl_cached(str(path))
 
         subprocess, _ = _migrate_single_step(
             client, subrun, path, commit=commit
