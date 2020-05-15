@@ -235,6 +235,7 @@ def create_dataset_view(user, cache):
             title=ctx.get('name'),
             creators=ctx.get('creator'),
             description=ctx.get('description'),
+            keywords=ctx.get('keywords'),
             commit_message=ctx['commit_message']
         )
 
@@ -331,6 +332,7 @@ def edit_dataset_view(user_data, cache):
             ctx.get('title'),
             ctx.get('description'),
             ctx.get('creators'),
+            keywords=ctx.get('keywords'),
             commit_message=ctx['commit_message']
         )
 
