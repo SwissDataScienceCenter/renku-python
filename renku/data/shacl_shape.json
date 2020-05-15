@@ -1001,7 +1001,7 @@
                }
             },
             {
-               "path": "prov:consumes",
+               "path": "renku:consumes",
                "sh:class": {
                   "@id": "prov:Entity"
                },
@@ -1051,7 +1051,7 @@
                }
             },
             {
-               "path": "prov:produces",
+               "path": "renku:produces",
                "sh:class": {
                   "@id": "prov:Entity"
                },
