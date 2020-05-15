@@ -218,5 +218,5 @@ def test_unlink_default(directory_tree, client):
         create_dataset('dataset')
         add_file([directory_tree.join('dir2').strpath], 'dataset')
 
-    with pytest.raises(ParameterError) as e:
+    with pytest.raises(ParameterError):
         file_unlink('dataset', (), ())
