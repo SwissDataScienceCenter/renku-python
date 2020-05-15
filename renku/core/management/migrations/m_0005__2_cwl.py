@@ -163,24 +163,34 @@ def _migrate_single_step(
 
         path = Path(os.path.abspath(path)).relative_to(client.path)
 
-        prefix = matched_input.inputBinding.prefix
+        prefix = None
+        position = None
 
-        if prefix and matched_input.inputBinding.separate:
-            prefix += ' '
+        if matched_input.inputBinding:
+            prefix = matched_input.inputBinding.prefix
+            position = matched_input.inputBinding.position
+
+            if prefix and matched_input.inputBinding.separate:
+                prefix += ' '
 
         run.outputs.append(
             CommandOutput(
-                position=matched_input.inputBinding.position,
+                position=position,
                 prefix=prefix,
                 produces=_entity_from_path(client, path, commit)
             )
         )
 
     for i in inputs:
-        prefix = i.inputBinding.prefix
+        prefix = None
+        position = None
 
-        if prefix and i.inputBinding.separate:
-            prefix += ' '
+        if i.inputBinding:
+            prefix = i.inputBinding.prefix
+            position = i.inputBinding.position
+
+            if prefix and i.inputBinding.separate:
+                prefix += ' '
 
         if (
             isinstance(i.default, dict) and 'class' in i.default and
@@ -191,7 +201,7 @@ def _migrate_single_step(
 
             run.inputs.append(
                 CommandInput(
-                    position=i.inputBinding.position,
+                    position=position,
                     prefix=prefix,
                     consumes=_entity_from_path(client, path, commit)
                 )
@@ -199,9 +209,7 @@ def _migrate_single_step(
         else:
             run.arguments.append(
                 CommandArgument(
-                    position=i.inputBinding.position,
-                    prefix=prefix,
-                    value=str(i.default)
+                    position=position, prefix=prefix, value=str(i.default)
                 )
             )
 
