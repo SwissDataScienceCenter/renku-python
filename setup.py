@@ -175,7 +175,7 @@ install_requires = [
     'rdflib==4.2.2',
     'rdflib-jsonld>=0.4.0,<0.5.0',
     'requests>=2.21.0',
-    'rq==1.4.0',
+    'rq==1.4.1',
     'rq-scheduler==0.9.1',
     'ndg-httpsclient>=0.5.1',
     'marshmallow==3.6.0',
