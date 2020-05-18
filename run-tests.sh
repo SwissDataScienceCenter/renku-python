@@ -40,7 +40,7 @@ check_styles(){
     isort -rc -c -df
     unify -c -r renku tests conftest.py docs
     check-manifest --ignore ".travis-*,renku/version.py,renku/templates,renku/templates/**"
-    find . -iname \*.sh -print0 | xargs -0 shellcheck
+    find . -path ./.eggs -prune -o -iname \*.sh -print0 | xargs -0 shellcheck
 }
 
 build_docs(){

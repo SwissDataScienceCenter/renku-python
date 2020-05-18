@@ -542,7 +542,11 @@ def edit(short_name, title, description, creator, keyword):
     )
 
     if not updated:
-        click.echo('Nothing to update.')
+        click.echo((
+            'Nothing to update. '
+            'Check available fields with `renku dataset edit --help`\n\n'
+            'Hint: `renku dataset edit --title "new title"`'
+        ))
     else:
         click.echo('Successfully updated: {}.'.format(', '.join(updated)))
         if no_email_warnings:

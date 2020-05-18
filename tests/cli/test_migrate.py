@@ -33,7 +33,7 @@ from renku.core.utils.urls import url_to_string
 @pytest.mark.parametrize(
     'command', [
         'config', 'dataset', 'log', 'mv', 'rerun', 'run', 'show', 'status',
-        'storage', 'update', 'workflow'
+        'update', 'workflow'
     ]
 )
 def test_commands_fail_on_old_repository(

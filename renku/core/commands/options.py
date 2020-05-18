@@ -183,8 +183,8 @@ def option_siblings(func):
     return option_check_siblings(option_with_siblings(func))
 
 
-option_use_external_storage = click.option(
-    'use_external_storage',
+option_external_storage_requested = click.option(
+    'external_storage_requested',
     '--external-storage/--no-external-storage',
     ' /-S',
     is_flag=True,

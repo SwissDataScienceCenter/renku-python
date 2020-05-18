@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,17 +15,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Check for large files in Git history."""
 
-[pytest]
-addopts = --flake8 --pep8 --doctest-glob="*.rst" --doctest-modules --cov=renku --cov-config .coveragerc --cov-report=term-missing --yapf
-doctest_optionflags = ALLOW_UNICODE ALLOW_BYTES DONT_ACCEPT_TRUE_FOR_1 ELLIPSIS IGNORE_EXCEPTION_DETAIL
-pep8ignore = docs/conf.py ALL
-flake8-ignore = docs/conf.py ALL
-testpaths = docs tests renku conftest.py
-markers =
-    integration: mark a test as a integration.
-    service: mark a test as service test.
-    jobs: mark a test as a job test.
-    migration: mark a test as a migration test.
-    shelled: mark a test as a shelled test.
-    pep8: mark a test as a pep8 format test.
+from renku.core.commands.echo import WARNING
+
+
+def check_lfs_info(client):
+    """Checks if files in history should be in LFS."""
+    if not client.check_external_storage():
+        return True, None
+
+    files = client.check_lfs_migrate_info()
+
+    if not files:
+        return True, None
+
+    message = (
+        WARNING + 'Git history contains large files - consider moving them ' +
+        'to external storage like git LFS\n\t' + '\n\t'.join(files) + '\n'
+    )
+
+    return False, message

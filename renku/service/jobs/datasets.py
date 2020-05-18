@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset jobs."""
+from git import GitCommandError
 from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import add_file, import_dataset
@@ -78,6 +79,7 @@ def dataset_import(
     with chdir(project.abs_path):
         try:
             user_job.in_progress()
+
             import_dataset(
                 dataset_uri,
                 short_name,
@@ -85,18 +87,18 @@ def dataset_import(
                 commit_message=f'service: dataset import {dataset_uri}',
                 progress=DatasetImportJobProcess(cache, user_job)
             )
+
+            remote_branch = repo_sync(project.abs_path)
+            user_job.update_extras('remote_branch', remote_branch.name)
+
             user_job.complete()
-        except (HTTPError, ParameterError, DatasetExistsError) as exp:
+        except (
+            HTTPError, ParameterError, DatasetExistsError, GitCommandError
+        ) as exp:
             user_job.fail_job(str(exp))
 
             # Reraise exception, so we see trace in job metadata.
             raise exp
-
-    if not repo_sync(project.abs_path):
-        error = 'failed to push refs'
-        user_job.fail_job(error)
-
-        raise RuntimeError(error)
 
 
 @requires_cache
@@ -121,9 +123,9 @@ def dataset_add_remote_file(
                 commit_message=commit_message
             )
 
-            if not repo_sync(project.abs_path):
-                user_job.fail_job('repo sync failed')
+            remote_branch = repo_sync(project.abs_path)
+            user_job.update_extras('remote_branch', remote_branch.name)
 
             user_job.complete()
-    except (HTTPError, BaseException) as e:
+    except (HTTPError, BaseException, GitCommandError) as e:
         user_job.fail_job(str(e))
