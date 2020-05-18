@@ -365,6 +365,13 @@ def file_unlink(
     commit_message=None
 ):
     """Remove matching files from a dataset."""
+    if not include and not exclude:
+        raise ParameterError((
+            'include or exclude filters not found.\n'
+            'Check available filters with `renku dataset unlink --help`\n'
+            'Hint: `renku dataset unlink mydataset -I myfile`'
+        ))
+
     dataset = client.load_dataset(short_name=short_name)
 
     if not dataset:

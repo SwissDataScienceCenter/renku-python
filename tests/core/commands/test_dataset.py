@@ -27,9 +27,11 @@ from tests.utils import raises
 
 from renku.core import errors
 from renku.core.commands.dataset import add_file, create_dataset, \
-    list_datasets, list_files
+    file_unlink, list_datasets, list_files
+from renku.core.errors import ParameterError
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.models.provenance.agents import Person
+from renku.core.utils.contexts import chdir
 
 
 @pytest.mark.parametrize(
@@ -208,3 +210,13 @@ def test_list_files_default(project, tmpdir):
 
     assert isinstance(files, list)
     assert 'somefile' in [ds.name for ds in files]
+
+
+def test_unlink_default(directory_tree, client):
+    """Test unlink default behaviour."""
+    with chdir(client.path):
+        create_dataset('dataset')
+        add_file([directory_tree.join('dir2').strpath], 'dataset')
+
+    with pytest.raises(ParameterError):
+        file_unlink('dataset', (), ())
