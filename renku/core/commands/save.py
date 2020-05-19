@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku save commands."""
 
+from functools import reduce
 from uuid import uuid4
 
 import git
@@ -27,7 +28,7 @@ from .client import pass_local_client
 
 
 @pass_local_client
-def save_and_push(client, message, remote=None, paths=None):
+def save_and_push(client, message=None, remote=None, paths=None):
     """Save and push local changes."""
     client.setup_credential_helper()
     if not paths:
@@ -64,6 +65,19 @@ def save_and_push(client, message, remote=None, paths=None):
         client.track_paths_in_storage(*paths)
         client.repo.git.add(*paths)
         saved_paths = [d.b_path for d in client.repo.index.diff('HEAD')]
+
+        if not message:
+            # Show saved files in message
+            max_len = 100
+            message = 'Saved changes to: '
+            paths_with_lens = reduce(
+                lambda c, x: c + [(x, c[-1][1] + len(x))], saved_paths,
+                [(None, len(message))]
+            )[1:]
+            message += ' '.join(
+                p if l < max_len else '\n\t' + p for p, l in paths_with_lens
+            )
+
         client.repo.index.commit(message)
     except git.exc.GitCommandError as e:
         raise errors.GitError('Cannot commit changes') from e

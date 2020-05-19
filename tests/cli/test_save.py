@@ -37,12 +37,12 @@ def test_save_without_remote(runner, project, client, tmpdir_factory):
     Repo().init(path, bare=True)
 
     result = runner.invoke(
-        cli, ['save', '-m', 'save changes', '-d', path, 'tracked'],
-        catch_exceptions=False
+        cli, ['save', '-d', path, 'tracked'], catch_exceptions=False
     )
 
     assert 0 == result.exit_code
     assert 'tracked' in result.output
+    assert 'Saved changes to: tracked' in client.repo.head.commit.message
 
     client.repo.delete_remote('origin')
 
@@ -59,3 +59,4 @@ def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
 
     assert 0 == result.exit_code
     assert 'tracked' in result.output
+    assert 'save changes' in client.repo.head.commit.message

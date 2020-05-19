@@ -69,8 +69,6 @@ You can also specify which paths to save:
 
 """
 
-import datetime
-
 import click
 
 from renku.core.commands.save import save_and_push
@@ -78,20 +76,25 @@ from renku.core.commands.save import save_and_push
 
 @click.command(name='save')
 @click.option(
-    '-m',
-    '--message',
-    default=datetime.datetime.now().strftime('%Y.%m.%d %H:%M:%S'),
-    help='The commit message to use'
+    '-m', '--message', default=None, help='The commit message to use'
 )
 @click.option(
-    '-d', '--destination', default=None, help='The git remote to push to'
+    '-d',
+    '--destination',
+    default=None,
+    help=(
+        'The git remote to push to. Defaults to the remote set in git, '
+        'automatically set in interactive environments'
+    )
 )
 @click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @click.pass_context
 def save(ctx, message, destination, paths):
     """Save and push local changes."""
 
-    saved_paths = save_and_push(message, remote=destination, paths=paths)
+    saved_paths = save_and_push(
+        message=message, remote=destination, paths=paths
+    )
 
     if saved_paths:
         click.echo(
