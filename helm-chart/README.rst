@@ -8,8 +8,10 @@ Configuration
 
 - `cacheDirectory` location of the cache on disk
   (default: `/svc/cache`)
-- `projectCloneDepth` git clone depth
+- `projectCloneDepth` git clone depth for standard projects
   (default: `1`)
+- `templateCloneDepth` git clone depth for template projects
+  (default: `0`)
 
 Usage
 -----

@@ -118,6 +118,7 @@ class ProjectCloneContext(ProjectCloneRequest):
     email = fields.String(required=True)
     owner = fields.String(required=True)
     token = fields.String(required=True)
+    ref = fields.String(missing='master')
 
     @validates('git_url')
     def validate_git_url(self, value):
