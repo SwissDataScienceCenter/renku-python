@@ -180,12 +180,13 @@ def _project_clone(cache, user_data, project_data):
     project_clone(
         project_data['url_with_auth'],
         local_path,
-        depth=project_data['depth'],
+        depth=project_data['depth'] if project_data['depth'] != 0 else None,
         raise_git_except=True,
         config={
             'user.name': project_data['fullname'],
             'user.email': project_data['email'],
-        }
+        },
+        checkout_rev=project_data['ref']
     )
 
     project = cache.make_project(user, project_data)

@@ -40,6 +40,9 @@ API_SPEC_URL = os.getenv(
 )
 
 PROJECT_CLONE_DEPTH_DEFAULT = int(os.getenv('PROJECT_CLONE_DEPTH_DEFAULT', 1))
+TEMPLATE_CLONE_DEPTH_DEFAULT = int(
+    os.getenv('TEMPLATE_CLONE_DEPTH_DEFAULT', 0)
+)
 
 CACHE_DIR = os.getenv('CACHE_DIR', tempfile.TemporaryDirectory().name)
 CACHE_UPLOADS_PATH = Path(CACHE_DIR) / Path('uploads')

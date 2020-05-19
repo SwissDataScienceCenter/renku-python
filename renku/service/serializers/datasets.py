@@ -40,6 +40,7 @@ class DatasetDetails(Schema):
     title = fields.String(attribute='name')
     creators = fields.List(fields.Nested(DatasetCreators), attribute='creator')
     description = fields.String()
+    keywords = fields.List(fields.String())
 
 
 class DatasetCreateRequest(DatasetDetails):
@@ -209,6 +210,7 @@ class DatasetEditRequest(Schema):
     title = fields.String(default=None)
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
+    keywords = fields.List(fields.String())
     commit_message = fields.String()
 
 

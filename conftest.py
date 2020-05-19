@@ -808,12 +808,8 @@ def integration_repo(headers, url_components):
 
 
 @pytest.fixture(scope='module')
-def integration_lifecycle(svc_client, mock_redis):
-    """Setup and teardown steps for integration tests."""
-    from renku.core.models.git import GitURL
-    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
-    url_components = GitURL.parse(remote_url)
-
+def authentication_headers():
+    """Get authentication headers."""
     headers = {
         'Content-Type': 'application/json',
         'Renku-User-Id': 'b4b4de0eda0f471ab82702bd5c367fa7',
@@ -822,12 +818,22 @@ def integration_lifecycle(svc_client, mock_redis):
         'Authorization': 'Bearer {0}'.format(os.getenv('IT_OAUTH_GIT_TOKEN')),
     }
 
+    return headers
+
+
+@pytest.fixture(scope='module')
+def integration_lifecycle(svc_client, mock_redis, authentication_headers):
+    """Setup and teardown steps for integration tests."""
+    from renku.core.models.git import GitURL
+    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
+    url_components = GitURL.parse(remote_url)
+
     payload = {'git_url': remote_url}
 
     response = svc_client.post(
         '/cache.project_clone',
         data=json.dumps(payload),
-        headers=headers,
+        headers=authentication_headers,
     )
 
     assert response
@@ -837,11 +843,11 @@ def integration_lifecycle(svc_client, mock_redis):
     project_id = response.json['result']['project_id']
     assert isinstance(uuid.UUID(project_id), uuid.UUID)
 
-    yield svc_client, headers, project_id, url_components
+    yield svc_client, authentication_headers, project_id, url_components
 
     # Teardown step: Delete all branches except master (if needed).
-    if integration_repo_path(headers, url_components).exists():
-        with integration_repo(headers, url_components) as repo:
+    if integration_repo_path(authentication_headers, url_components).exists():
+        with integration_repo(authentication_headers, url_components) as repo:
             try:
                 repo.remote().push(
                     refspec=(':{0}'.format(repo.active_branch.name))
@@ -861,6 +867,15 @@ def svc_client_with_repo(integration_lifecycle):
         current.checkout()
 
     yield svc_client, deepcopy(headers), project_id, url_components
+
+
+@pytest.fixture(scope='module')
+def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
+    """Setup and teardown steps for templates tests."""
+    from tests.core.commands.test_init import TEMPLATE_URL, TEMPLATE_REF
+    template = {'url': TEMPLATE_URL, 'ref': TEMPLATE_REF}
+
+    yield svc_client, authentication_headers, template
 
 
 @pytest.fixture(
@@ -920,6 +935,14 @@ def svc_client_with_repo(integration_lifecycle):
         },
         {
             'url': '/datasets.list',
+            'allowed_method': 'GET',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/templates.read_manifest',
             'allowed_method': 'GET',
             'headers': {
                 'Content-Type': 'application/json',
