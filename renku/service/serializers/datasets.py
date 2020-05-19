@@ -40,6 +40,7 @@ class DatasetDetails(Schema):
     title = fields.String(attribute='name')
     creators = fields.List(fields.Nested(DatasetCreators), attribute='creator')
     description = fields.String()
+    keywords = fields.List(fields.String())
 
 
 class DatasetCreateRequest(DatasetDetails):
@@ -65,6 +66,7 @@ class DatasetCreateResponse(Schema):
     """Response schema for a dataset create view."""
 
     short_name = fields.String(required=True)
+    remote_branch = fields.String()
 
 
 class DatasetCreateResponseRPC(JsonRPCResponse):
@@ -124,6 +126,7 @@ class DatasetAddResponse(Schema):
     short_name = fields.String(required=True)
 
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
+    remote_branch = fields.String()
 
 
 class DatasetAddResponseRPC(JsonRPCResponse):
@@ -207,6 +210,7 @@ class DatasetEditRequest(Schema):
     title = fields.String(default=None)
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
+    keywords = fields.List(fields.String())
     commit_message = fields.String()
 
 

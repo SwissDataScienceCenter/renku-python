@@ -21,6 +21,7 @@ from __future__ import absolute_import, print_function
 
 import json
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -1559,6 +1560,38 @@ def test_pull_data_from_lfs(
 
     result = runner.invoke(cli, ['storage', 'pull', relative_path])
     assert 0 == result.exit_code
+
+
+def test_lfs_hook(runner, client, subdirectory, large_file):
+    """Test committing large files to Git."""
+    import git
+
+    shutil.copy(large_file, client.path)
+    client.repo.git.add('--all')
+
+    # Commit fails when file is not tracked in LFS
+    with pytest.raises(git.exc.HookExecutionError) as e:
+        client.repo.index.commit('large files not in LFS')
+        output = str(e)
+        assert 'You are trying to commit large files to Git' in output
+        assert large_file.name in output
+
+    # Can be committed after being tracked in LFS
+    client.track_paths_in_storage(large_file.name)
+    commit = client.repo.index.commit('large files tracked')
+    assert 'large files tracked' == commit.message
+
+
+def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
+    """Test committing large files to Git."""
+    result = runner.invoke(
+        cli, [
+            '--no-external-storage', 'dataset', 'add', '-c', 'my-dataset',
+            str(large_file)
+        ]
+    )
+    assert 0 == result.exit_code
+    assert 'OK' in result.output
 
 
 @pytest.mark.parametrize('external', [False, True])

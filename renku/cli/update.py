@@ -173,7 +173,7 @@ def update(client, revision, no_output, siblings, paths):
     )
 
     # Don't compute paths if storage is disabled.
-    if client.has_external_storage:
+    if client.check_external_storage():
         # Make sure all inputs are pulled from a storage.
         paths_ = (
             path

@@ -22,6 +22,7 @@ from pathlib import Path
 
 from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
+from git import GitCommandError
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     edit_dataset, list_datasets, list_files
@@ -191,7 +192,9 @@ def add_file_to_dataset_view(user_data, cache):
                 commit_message=ctx['commit_message']
             )
 
-            if not repo_sync(project.abs_path):
+            try:
+                ctx['remote_branch'] = repo_sync(project.abs_path)
+            except GitCommandError:
                 return error_response(
                     INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
                 )
@@ -232,10 +235,13 @@ def create_dataset_view(user, cache):
             title=ctx.get('name'),
             creators=ctx.get('creator'),
             description=ctx.get('description'),
+            keywords=ctx.get('keywords'),
             commit_message=ctx['commit_message']
         )
 
-    if not repo_sync(project.abs_path):
+    try:
+        ctx['remote_branch'] = repo_sync(project.abs_path)
+    except GitCommandError:
         return error_response(
             INTERNAL_FAILURE_ERROR_CODE,
             'push to remote failed silently - try again'
@@ -326,6 +332,7 @@ def edit_dataset_view(user_data, cache):
             ctx.get('title'),
             ctx.get('description'),
             ctx.get('creators'),
+            keywords=ctx.get('keywords'),
             commit_message=ctx['commit_message']
         )
 
