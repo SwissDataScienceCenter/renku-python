@@ -239,5 +239,5 @@ def test_init_with_parameters(isolated_runner):
     for param in set(METADATA.keys()):
         assert param in result.output
     assert (
-        'These parameters are not required by the template:'
+        'These parameters are not used by the template and were ignored:'
     ) in result.output
