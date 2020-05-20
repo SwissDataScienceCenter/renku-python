@@ -407,9 +407,8 @@ def init(
     useless_variables = input_parameters_keys - template_variables_keys
     if (len(useless_variables) > 0):
         click.echo(
-            INFO +
-            'These parameters are not used by the template and were ignored:\n\t{}'
-            .format('\n\t'.join(useless_variables))
+            INFO + 'These parameters are not used by the template and were '
+            'ignored:\n\t{}'.format('\n\t'.join(useless_variables))
         )
         for key in useless_variables:
             del parameter[key]
