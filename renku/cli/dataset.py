@@ -419,7 +419,6 @@ def prompt_tag_selection(tags):
 
 @click.group(invoke_without_command=True)
 @click.option('--revision', default=None)
-@click.option('--datadir', default='data', type=click.Path(dir_okay=True))
 @click.option(
     '--format',
     type=click.Choice(DATASETS_FORMATS),
@@ -438,20 +437,15 @@ def prompt_tag_selection(tags):
     show_default=True
 )
 @click.pass_context
-def dataset(ctx, revision, datadir, format, columns):
+def dataset(ctx, revision, format, columns):
     """Handle datasets."""
-    if isinstance(ctx, click.Context):
-        ctx.meta['renku.datasets.datadir'] = datadir
-
     check_for_migration()
 
     if ctx.invoked_subcommand is not None:
         return
 
     click.echo(
-        list_datasets(
-            revision=revision, datadir=datadir, format=format, columns=columns
-        )
+        list_datasets(revision=revision, format=format, columns=columns)
     )
 
 
