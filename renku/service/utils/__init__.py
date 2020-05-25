@@ -55,7 +55,7 @@ def write_chunk(destination, chunk, byte_offset, chunk_index):
     # If the file exists, it's okay to append to it but not overwrite it.
     # This case should be handled outside of this function.
     if destination.exists() and not current_chunk:
-        raise ParameterError('cannot overwrite existing files')
+        raise ParameterError('cannot overwrite existing file')
 
     with open(destination, 'ab') as f:
         f.seek(int(byte_offset))

@@ -236,6 +236,74 @@ def test_file_upload_with_users(svc_client):
 
 
 @pytest.mark.service
+def test_chunked_upload_progress(svc_client):
+    """Check correct progress tracking during chunked upload."""
+    headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+
+    offset = 0
+    chunks = [b'this ', b'is ', b'a ', b'test']
+    for index, chunk in enumerate(chunks):
+        response = svc_client.post(
+            '/cache.chunked_upload',
+            data=dict(
+                file=(io.BytesIO(chunk), 'datafile1.txt'),
+                dzchunkindex=index,
+                dzchunkbyteoffset=offset,
+                dztotalchunkcount=len(chunks) + 1,
+                dztotalfilesize=14,
+            ),
+            headers=headers_user1
+        )
+        offset += len(chunks[index - 1])
+
+        assert 200 == response.status_code
+        assert {'result'} == set(response.json.keys())
+        received_progress = response.json['result']['progress']
+        expected_progress = (index + 1) / (len(chunks) + 1)
+        assert expected_progress == received_progress
+
+
+@pytest.mark.service
+def test_chunked_upload_override(svc_client):
+    """Check overriding of file during chunked upload."""
+    headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'this is a test'), 'datafile1.txt'),
+            dzchunkindex=0,
+            dzchunkbyteoffset=0,
+            dztotalchunkcount=2,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user1
+    )
+    assert 200 == response.status_code
+    assert {'result'} == set(response.json.keys())
+    assert {'progress'} == set(response.json['result'].keys())
+
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'this is a test'), 'datafile1.txt'),
+            dzchunkindex=0,
+            dzchunkbyteoffset=0,
+            dztotalchunkcount=2,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user1
+    )
+    assert 400 == response.status_code
+
+    assert {'error'} == set(response.json.keys())
+    assert {'code', 'reason'} == set(response.json['error'].keys())
+
+    assert 'cannot overwrite existing file' in response.json['error']['reason']
+    assert INVALID_PARAMS_ERROR_CODE == response.json['error']['code']
+
+
+@pytest.mark.service
 def test_chunked_upload_no_auth(svc_client):
     """Check authorization of chunked upload endpoint."""
     response = svc_client.post(
