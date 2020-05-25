@@ -701,6 +701,7 @@ def list_tags(client, name, format):
     if not dataset_:
         raise ParameterError("Dataset not found.")
 
-    tags = sorted(dataset_.tags, key=lambda t: t.created)
+    tags = [t for t in dataset_.tags if t.is_from_user]
+    tags = sorted(tags, key=lambda t: t.created)
 
     return DATASET_TAGS_FORMATS[format](client, tags)

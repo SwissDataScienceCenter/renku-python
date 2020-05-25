@@ -605,6 +605,15 @@
                },
                "minCount": 1,
                "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:actor",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
