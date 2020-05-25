@@ -35,8 +35,8 @@ from renku.service.serializers.cache import ChunkedUploadRequest, \
     FileUploadResponseRPC, ProjectCloneContext, ProjectCloneRequest, \
     ProjectCloneResponseRPC, ProjectListResponseRPC
 from renku.service.utils import CHUNKED_UPLOAD_INCORRECT_BYTES_OFFSET, \
-    chunk_upload_state, extract_file, make_project_path, write_chunk, \
-    CHUNKED_UPLOAD_SUCCESS
+    CHUNKED_UPLOAD_SUCCESS, chunk_upload_state, extract_file, \
+    make_project_path, write_chunk
 from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
