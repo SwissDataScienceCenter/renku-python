@@ -36,6 +36,7 @@ def chunk_upload_state(
 ):
     """Check if chunked file has been finalized."""
     # Check if upload has finished (current chunk indexing starts at 0).
+    # TODO: This check is probably not sufficient for async upload.
     if (current_chunk + 1) == total_chunks:
 
         if os.path.getsize(destination) != total_filesize:

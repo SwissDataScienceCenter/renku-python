@@ -236,6 +236,45 @@ def test_file_upload_with_users(svc_client):
 
 
 @pytest.mark.service
+def test_chunked_upload_no_auth(svc_client):
+    """Check authorization of chunked upload endpoint."""
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'this is a test'), 'datafile1.txt'),
+            dzchunkindex=0,
+            dzchunkbyteoffset=0,
+            dztotalchunkcount=1,
+            dztotalfilesize=14,
+        )
+    )
+
+    assert response
+    assert 200 == response.status_code
+
+    assert {'error'} == set(response.json.keys())
+    assert INVALID_HEADERS_ERROR_CODE == response.json['error']['code']
+
+    headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'this is a test'), 'datafile1.txt'),
+            dzchunkindex=0,
+            dzchunkbyteoffset=0,
+            dztotalchunkcount=1,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user1
+    )
+    assert {'result'} == set(response.json.keys())
+
+    file_id = response.json['result']['file']['file_id']
+    assert file_id
+    assert 200 == response.status_code
+
+
+@pytest.mark.service
 def test_chunked_upload_with_users(svc_client):
     """Check successful chunked upload."""
     headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
@@ -276,6 +315,72 @@ def test_chunked_upload_with_users(svc_client):
     assert 200 == response.status_code
 
     assert file_id1 != file_id2
+
+
+@pytest.mark.service
+def test_chunked_upload_invalid_arg(svc_client):
+    """Check for invalid argument during chunked upload."""
+    headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'this'), 'datafile1.txt'),
+            dzchunkindex=0,
+            dzchunkbyteoffset=-1,
+            dztotalchunkcount=1,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user1
+    )
+
+    assert 400 == response.status_code
+    assert {'code', 'reason'} == set(response.json['error'].keys())
+    assert INVALID_PARAMS_ERROR_CODE == response.json['error']['code']
+    assert 'Invalid argument' in response.json['error']['reason']
+
+
+@pytest.mark.service
+def test_chunked_upload_fail(svc_client):
+    """Check failed chunked upload."""
+    headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+
+    chunks = [b'this ', b'is ']
+    for index, chunk in enumerate(chunks):
+        response = svc_client.post(
+            '/cache.chunked_upload',
+            data=dict(
+                file=(io.BytesIO(chunk), 'datafile1.txt'),
+                dzchunkindex=index,
+                dzchunkbyteoffset=0,
+                dztotalchunkcount=4,
+                dztotalfilesize=14,
+            ),
+            headers=headers_user1
+        )
+        assert 200 == response.status_code
+        assert {'result'} == set(response.json.keys())
+
+        file = response.json['result'].get('file')
+        assert file is None
+
+    # Upload last chunk and finalize the upload.
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'test'), 'datafile1.txt'),
+            dzchunkindex=3,
+            dzchunkbyteoffset=1,
+            dztotalchunkcount=4,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user1
+    )
+
+    assert 200 == response.status_code
+    assert {'code', 'reason'} == set(response.json['error'].keys())
+    assert INVALID_PARAMS_ERROR_CODE == response.json['error']['code']
+    assert 'expected size is incorrect' in response.json['error']['reason']
 
 
 @pytest.mark.service
@@ -321,7 +426,7 @@ def test_chunked_upload(svc_client):
     assert {'result'} == set(response.json.keys())
 
     file = response.json['result'].get('file')
-    
+
     assert file is not None
     assert file['file_id']
     assert file['name']
@@ -723,4 +828,3 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
     rel_path = response.json['result']['files'][0]['relative_path']
     assert rel_path.startswith(datapack_tar.name) and 'unpacked' in rel_path
-

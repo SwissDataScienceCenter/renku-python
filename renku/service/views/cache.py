@@ -210,8 +210,8 @@ def chunked_upload_view(user, cache):
     if upload_state == CHUNKED_UPLOAD_INCORRECT_BYTES_OFFSET:
         return error_response(
             INVALID_PARAMS_ERROR_CODE, (
-                f'upload finished, but expected size is incorrect '
-                '({os.path.getsize(destination)}/{total_filesize})'
+                'upload finished, but expected size is incorrect '
+                f'({os.path.getsize(destination)}b/{data["total_file_size"]}b)'
             )
         )
 
@@ -228,10 +228,12 @@ def chunked_upload_view(user, cache):
         }
         file_obj = cache.set_file(user, file_metadata)
 
-        return result_response(ChunkedUploadResponseRPC(), {
-            'file': file_obj,
-            'progress': progress,
-        })
+        return result_response(
+            ChunkedUploadResponseRPC(), {
+                'file': file_obj,
+                'progress': progress,
+            }
+        )
 
     return result_response(ChunkedUploadResponseRPC(), {'progress': progress})
 
