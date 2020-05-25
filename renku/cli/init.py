@@ -251,6 +251,7 @@ def check_git_user_config():
     type=click.Path(writable=True, file_okay=False, resolve_path=True),
 )
 @click.option(
+    '-n',
     '--name',
     callback=validate_name,
     help='Provide a custom project name.',

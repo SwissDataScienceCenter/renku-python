@@ -148,9 +148,9 @@ class StorageApiMixin(RepositoryApiMixin):
                 'Couldn\'t run \'git lfs\':\n{0}'.format(e)
             )
 
-    def init_repository(self, force=False):
+    def init_repository(self, force=False, user=None):
         """Initialize a local Renku repository."""
-        result = super().init_repository(force=force)
+        result = super().init_repository(force=force, user=user)
 
         # initialize LFS if it is requested and installed
         if self.external_storage_requested and self.storage_installed:

@@ -17,8 +17,14 @@
 # limitations under the License.
 """Renku service template serializers."""
 
-from marshmallow import Schema, fields, pre_load
+import re
+from urllib.parse import urlparse
 
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load, \
+    validates
+
+from renku.core.errors import ConfigurationError
+from renku.core.models.git import GitURL
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.cache import ProjectCloneContext
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -35,6 +41,66 @@ class ManifestTemplatesRequest(ProjectCloneContext):
     def set_git_url(self, data, **kwargs):
         """Set git_url field."""
         data['git_url'] = data['url']
+
+        return data
+
+
+class TemplateParameterSchema(Schema):
+    """Manifest template schema."""
+
+    key = fields.String(required=True)
+    value = fields.String(missing='')
+
+
+class ProjectTemplateRequest(ManifestTemplatesRequest):
+    """Request schema for listing manifest templates."""
+
+    identifier = fields.String(required=True)
+    parameters = fields.List(
+        fields.Nested(TemplateParameterSchema), missing=[]
+    )
+
+    project_name = fields.String(required=True)
+    project_namespace = fields.String(required=True)
+    project_repository = fields.String(required=True)
+
+    new_project_url = fields.String(required=True)
+    project_name_stripped = fields.String(required=True)
+
+    @pre_load()
+    def create_new_project_url(self, data, **kwargs):
+        """Set owner and name fields."""
+        project_name_stripped = re.sub(
+            r'\s', r'-', data['project_name'].strip()
+        )
+        new_project_url = '{0}/{1}/{2}'.format(
+            data['project_repository'], data['project_namespace'],
+            project_name_stripped
+        )
+        data['new_project_url'] = new_project_url
+        data['project_name_stripped'] = project_name_stripped
+
+        return data
+
+    @validates('new_project_url')
+    def validate_new_project_url(self, value):
+        """Validates git url."""
+        try:
+            GitURL.parse(value)
+        except ConfigurationError as e:
+            raise ValidationError(str(e))
+
+        return value
+
+    @post_load()
+    def format_new_project_url(self, data, **kwargs):
+        """Format URL with a username and password."""
+        new_project_url = urlparse(data['new_project_url'])
+
+        url = 'oauth2:{0}@{1}'.format(data['token'], new_project_url.netloc)
+        data['new_project_url_with_auth'] = new_project_url._replace(
+            netloc=url
+        ).geturl()
 
         return data
 
@@ -60,3 +126,17 @@ class ManifestTemplatesResponseRPC(JsonRPCResponse):
     """RPC schema for listing manifest templates."""
 
     result = fields.Nested(ManifestTemplatesResponse)
+
+
+class ProjectTemplateResponse(Schema):
+    """Response schema for dataset list view."""
+
+    url = fields.String(required=True)
+    namespace = fields.String(required=True)
+    name = fields.String(required=True)
+
+
+class ProjectTemplateResponseRPC(JsonRPCResponse):
+    """RPC schema for project creation."""
+
+    result = fields.Nested(ProjectTemplateResponse)

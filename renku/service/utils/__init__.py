@@ -35,6 +35,16 @@ def make_project_path(user, project):
         )
 
 
+def make_new_project_path(user, project):
+    """Adjust parameters new project path."""
+    new_project = {
+        'owner': project['project_namespace'],
+        'name': project['project_name_stripped'],
+    }
+
+    return make_project_path(user, new_project)
+
+
 def make_file_path(user, cached_file):
     """Construct full path for cache file."""
     valid_user = user and 'user_id' in user
@@ -74,3 +84,13 @@ def repo_sync(repo_path, remote_names=('origin', )):
                 repo.git.push(remote.name, repo.active_branch)
 
     return pushed_branch
+
+
+def new_repo_push(
+    repo_path, source_url, source_name='origin', source_branch='master'
+):
+    """Push a new repo to origin."""
+    repo = Repo(repo_path)
+    origin = repo.create_remote(source_name, source_url)
+    origin.push(source_branch)
+    return True

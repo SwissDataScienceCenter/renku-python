@@ -388,7 +388,7 @@ class RepositoryApiMixin(GitCore):
                     default_flow_style=False
                 )
 
-    def init_repository(self, force=False):
+    def init_repository(self, force=False, user=None):
         """Initialize an empty Renku repository."""
         from git import Repo
         from renku.core.models.provenance.agents import Person
@@ -400,9 +400,14 @@ class RepositoryApiMixin(GitCore):
                 format(self.repo.git_dir)
             )
 
-        # initialize repo
+        # initialize repo and set user data
         path = self.path.absolute()
         self.repo = Repo.init(str(path))
+        if user:
+            config_writer = self.repo.config_writer()
+            for key, value in user.items():
+                config_writer.set_value('user', key, value)
+            config_writer.release()
 
         # verify if author information is available
         Person.from_git(self.repo)
