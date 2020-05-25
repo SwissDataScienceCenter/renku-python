@@ -35,7 +35,7 @@ TEMPLATE_URL = (
 )
 TEMPLATE_ID = 'python-minimal'
 TEMPLATE_INDEX = 1
-TEMPLATE_REF = '0.1.10'
+TEMPLATE_REF = '0.1.11'
 METADATA = {'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 NAME = 'myname'
