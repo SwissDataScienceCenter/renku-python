@@ -711,10 +711,10 @@
         },
         "pytest-cov": {
             "hashes": [
-                "sha256:cc6742d8bac45070217169f5f72ceee1e0e55b0221f54bcf24845972d3a47f2b",
-                "sha256:cdbdef4f870408ebdbfeb44e63e07eb18bb4619fae852f6e760645fa36172626"
+                "sha256:b6a814b8ed6247bd81ff47f038511b57fe1ce7f4cc25b9106f1a4b106f1d9322",
+                "sha256:c87dfd8465d865655a8213859f1b4749b43448b5fae465cb981e16d52a811424"
             ],
-            "version": "==2.8.1"
+            "version": "==2.9.0"
         },
         "pytest-flake8": {
             "hashes": [
@@ -892,10 +892,10 @@
         },
         "setuptools-scm": {
             "hashes": [
-                "sha256:0d23db3d43e0a43eb7196bcf0eb8a4a2eb0561f621ed7ec44b2fdccfd907e38f",
-                "sha256:5bdf21a05792903cafe7ae0c9501182ab52497614fa6b1750d9dbae7b60c1a87"
+                "sha256:a62866cba83065adfd12666e5328e24cd266fc09bbb729c7ac19dce87c1ca93a",
+                "sha256:e8a76e3624c9f1ffbb20c3075fd64edb12e9258884102c5f3ffdb3422961189a"
             ],
-            "version": "==3.5.0"
+            "version": "==4.0.0"
         },
         "shellescape": {
             "hashes": [
