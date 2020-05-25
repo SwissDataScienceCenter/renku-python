@@ -16,11 +16,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
+import os
 import uuid
 
 from git import GitCommandError, Repo
+from marshmallow import ValidationError
+from werkzeug.utils import secure_filename
 
+from renku.core.errors import ParameterError
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
+
+CHUNKED_UPLOAD_IN_PROGRESS = -1
+CHUNKED_UPLOAD_SUCCESS = 0
+CHUNKED_UPLOAD_INCORRECT_BYTES_OFFSET = 1
+
+
+def chunk_upload_state(
+    destination, current_chunk, total_chunks, total_filesize
+):
+    """Check if chunked file has been finalized."""
+    # Check if upload has finished (current chunk indexing starts at 0).
+    if (current_chunk + 1) == total_chunks:
+
+        if os.path.getsize(destination) != total_filesize:
+            return CHUNKED_UPLOAD_INCORRECT_BYTES_OFFSET
+
+        return CHUNKED_UPLOAD_SUCCESS
+
+    # File upload not finished.
+    return CHUNKED_UPLOAD_IN_PROGRESS
+
+
+def write_chunk(destination, chunk, byte_offset, chunk_index):
+    """Persist a chunk of a file to a given destination."""
+    current_chunk = int(chunk_index)
+
+    # If the file exists, it's okay to append to it but not overwrite it.
+    # This case should be handled outside of this function.
+    if destination.exists() and not current_chunk:
+        raise ParameterError('cannot overwrite existing files')
+
+    with open(destination, 'ab') as f:
+        f.seek(int(byte_offset))
+        f.write(chunk.stream.read())
+
+
+def extract_file(request):
+    """Extract file from Flask request.
+
+    :raises: `ValidationError`
+    """
+    files = request.files
+    if 'file' not in files:
+        raise ValidationError('missing key: file')
+
+    file = files['file']
+    if file and not file.filename:
+        raise ValidationError('wrong filename: {0}'.format(file.filename))
+
+    if file:
+        file.filename = secure_filename(file.filename)
+        return file
 
 
 def make_project_path(user, project):

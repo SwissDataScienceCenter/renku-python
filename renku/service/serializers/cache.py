@@ -23,30 +23,11 @@ from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, \
     validates
-from werkzeug.utils import secure_filename
 
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
 from renku.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.rpc import JsonRPCResponse
-
-
-def extract_file(request):
-    """Extract file from Flask request.
-
-    :raises: `ValidationError`
-    """
-    files = request.files
-    if 'file' not in files:
-        raise ValidationError('missing key: file')
-
-    file = files['file']
-    if file and not file.filename:
-        raise ValidationError('wrong filename: {0}'.format(file.filename))
-
-    if file:
-        file.filename = secure_filename(file.filename)
-        return file
 
 
 class FileUploadRequest(Schema):
@@ -96,6 +77,36 @@ class FileListResponseRPC(JsonRPCResponse):
     """RPC response schema for files listing."""
 
     result = fields.Nested(FileListResponse)
+
+
+class ChunkedUploadRequest(Schema):
+    """Request schema for chunked upload."""
+
+    chunk_index = fields.Integer(data_key='dzchunkindex')
+    byte_offset = fields.Integer(data_key='dzchunkbyteoffset')
+    total_chunk_count = fields.Integer(data_key='dztotalchunkcount')
+    total_file_size = fields.Integer(data_key='dztotalfilesize')
+
+
+class ChunkedUploadFileMeta(Schema):
+    """File metadata during chunked upload."""
+
+    file_id = fields.String()
+    name = fields.String(attribute='file_name')
+    size = fields.String(attribute='file_size')
+
+
+class ChunkedUploadContext(Schema):
+    """Context state for chunked upload."""
+
+    progress = fields.Float()
+    file = fields.Nested(ChunkedUploadFileMeta)
+
+
+class ChunkedUploadResponseRPC(JsonRPCResponse):
+    """RPC response schema for chunk upload."""
+
+    result = fields.Nested(ChunkedUploadContext)
 
 
 class ProjectCloneRequest(Schema):

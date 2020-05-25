@@ -29,14 +29,17 @@ def result_response(serializer, data):
     )
 
 
-def error_response(code, reason):
+def error_response(rpc_code, reason, status_code=200):
     """Construct error response."""
-    return current_app.response_class(
+    response = current_app.response_class(
         response=JsonRPCResponse().dumps({
             'error': {
-                'code': code,
+                'code': rpc_code,
                 'reason': reason
             }
         }),
         mimetype='application/json'
     )
+
+    response.status_code = status_code
+    return response

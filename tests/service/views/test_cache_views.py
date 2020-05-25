@@ -236,6 +236,99 @@ def test_file_upload_with_users(svc_client):
 
 
 @pytest.mark.service
+def test_chunked_upload_with_users(svc_client):
+    """Check successful chunked upload."""
+    headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+    headers_user2 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'this is a test'), 'datafile1.txt'),
+            dzchunkindex=0,
+            dzchunkbyteoffset=0,
+            dztotalchunkcount=1,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user1
+    )
+    assert {'result'} == set(response.json.keys())
+
+    file_id1 = response.json['result']['file']['file_id']
+    assert file_id1
+    assert 200 == response.status_code
+
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'this is a test'), 'datafile1.txt'),
+            dzchunkindex=0,
+            dzchunkbyteoffset=0,
+            dztotalchunkcount=1,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user2
+    )
+    assert {'result'} == set(response.json.keys())
+
+    file_id2 = response.json['result']['file']['file_id']
+    assert file_id2
+    assert 200 == response.status_code
+
+    assert file_id1 != file_id2
+
+
+@pytest.mark.service
+def test_chunked_upload(svc_client):
+    """Check successful chunked upload."""
+    headers_user1 = {'Renku-User-Id': '{0}'.format(uuid.uuid4().hex)}
+
+    offset = 0
+    chunks = [b'this ', b'is ', b'a ']
+    for index, chunk in enumerate(chunks):
+        response = svc_client.post(
+            '/cache.chunked_upload',
+            data=dict(
+                file=(io.BytesIO(chunk), 'datafile1.txt'),
+                dzchunkindex=index,
+                dzchunkbyteoffset=offset,
+                dztotalchunkcount=len(chunks) + 1,
+                dztotalfilesize=14,
+            ),
+            headers=headers_user1
+        )
+        assert 200 == response.status_code
+        assert {'result'} == set(response.json.keys())
+
+        file = response.json['result'].get('file')
+        assert file is None
+
+        offset += len(chunks[index - 1])
+
+    # Upload last chunk and finalize upload.
+    response = svc_client.post(
+        '/cache.chunked_upload',
+        data=dict(
+            file=(io.BytesIO(b'test'), 'datafile1.txt'),
+            dzchunkindex=3,
+            dzchunkbyteoffset=offset,
+            dztotalchunkcount=len(chunks) + 1,
+            dztotalfilesize=14,
+        ),
+        headers=headers_user1
+    )
+    assert 200 == response.status_code
+    assert {'result'} == set(response.json.keys())
+
+    file = response.json['result'].get('file')
+    
+    assert file is not None
+    assert file['file_id']
+    assert file['name']
+    assert file['size']
+
+
+@pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 def test_clone_projects_no_auth(svc_client):
@@ -630,3 +723,4 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
     rel_path = response.json['result']['files'][0]['relative_path']
     assert rel_path.startswith(datapack_tar.name) and 'unpacked' in rel_path
+

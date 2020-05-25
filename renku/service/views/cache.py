@@ -27,14 +27,17 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
+from renku.core.errors import ParameterError
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
-from renku.service.serializers.cache import FileListResponseRPC, \
-    FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
-    ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
-    extract_file
-from renku.service.utils import make_project_path
-from renku.service.views import result_response
+from renku.service.serializers.cache import ChunkedUploadRequest, \
+    ChunkedUploadResponseRPC, FileListResponseRPC, FileUploadRequest, \
+    FileUploadResponseRPC, ProjectCloneContext, ProjectCloneRequest, \
+    ProjectCloneResponseRPC, ProjectListResponseRPC
+from renku.service.utils import CHUNKED_UPLOAD_INCORRECT_BYTES_OFFSET, \
+    chunk_upload_state, extract_file, make_project_path, write_chunk, \
+    CHUNKED_UPLOAD_SUCCESS
+from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
     header_doc, requires_cache, requires_identity
@@ -161,6 +164,76 @@ def upload_file_view(user, cache):
 
     files = cache.set_files(user, files)
     return result_response(FileUploadResponseRPC(), {'files': files})
+
+
+@use_kwargs(ChunkedUploadRequest)
+@marshal_with(FileUploadResponseRPC)
+@cache_blueprint.route(
+    '/cache.chunked_upload',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_base_except
+@handle_git_except
+@handle_renku_except
+@handle_validation_except
+@requires_cache
+@requires_identity
+def chunked_upload_view(user, cache):
+    """Upload large files via chunked API."""
+    user = cache.ensure_user(user)
+    file = extract_file(request)
+
+    user_cache_dir = CACHE_UPLOADS_PATH / user.user_id
+    user_cache_dir.mkdir(exist_ok=True)
+
+    destination = user_cache_dir / file.filename
+    data = ChunkedUploadRequest().load(request.form)
+
+    try:
+        write_chunk(
+            destination, file, data['byte_offset'], data['chunk_index']
+        )
+    except (OSError, ParameterError) as e:
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE,
+            str(e),
+            status_code=400,  # dropzone.js will display error in this case
+        )
+
+    upload_state = chunk_upload_state(
+        destination, data['chunk_index'], data['total_chunk_count'],
+        data['total_file_size']
+    )
+    progress = round((data['chunk_index'] + 1) / data['total_chunk_count'], 2)
+
+    if upload_state == CHUNKED_UPLOAD_INCORRECT_BYTES_OFFSET:
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE, (
+                f'upload finished, but expected size is incorrect '
+                '({os.path.getsize(destination)}/{total_filesize})'
+            )
+        )
+
+    if upload_state == CHUNKED_UPLOAD_SUCCESS:
+        relative_path = destination.relative_to(
+            CACHE_UPLOADS_PATH / user.user_id
+        )
+
+        file_metadata = {
+            'file_name': file.filename,
+            'file_size': os.stat(str(destination)).st_size,
+            'relative_path': str(relative_path),
+            'is_dir': False
+        }
+        file_obj = cache.set_file(user, file_metadata)
+
+        return result_response(ChunkedUploadResponseRPC(), {
+            'file': file_obj,
+            'progress': progress,
+        })
+
+    return result_response(ChunkedUploadResponseRPC(), {'progress': progress})
 
 
 @requires_cache
