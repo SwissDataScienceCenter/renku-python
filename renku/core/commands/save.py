@@ -34,62 +34,90 @@ def save_and_push(client, message=None, remote=None, paths=None):
     if not paths:
         paths = client.dirty_paths
 
+    if paths:
+        client.track_paths_in_storage(*paths)
+
+    return repo_sync(client.repo, message, remote, paths)
+
+
+def repo_sync(repo, message=None, remote=None, paths=None):
+    """Commit and push paths."""
     origin = None
+    saved_paths = []
+
+    # get branch that's pushed
+    if repo.active_branch.tracking_branch():
+        pushed_branch = repo.active_branch.tracking_branch().name
+    else:
+        pushed_branch = repo.active_branch.name
 
     if remote:
-        if client.repo.remotes:
-            existing = next(
-                (r for r in client.repo.remotes if r.url == remote), None
-            )
-            origin = next(
-                (r for r in client.repo.remotes if r.name == 'origin'), None
-            )
+        # get/setup supplied remote for pushing
+        if repo.remotes:
+            existing = next((r for r in repo.remotes if r.url == remote), None)
+            if not existing:
+                existing = next((r for r in repo.remotes if r.name == remote),
+                                None)
+            origin = next((r for r in repo.remotes if r.name == 'origin'),
+                          None)
             if existing:
                 origin = existing
             elif origin:
-                origin = client.repo.create_remote(str(uuid4()), remote)
+                pushed_branch = uuid4().hex
+                origin = repo.create_remote(pushed_branch, remote)
         if not origin:
-            origin = client.repo.create_remote('origin', remote)
-    elif not client.repo.active_branch.tracking_branch():
-        if len(client.repo.remotes) == 1:
-            origin = client.repo.remotes[0]
+            origin = repo.create_remote('origin', remote)
+    elif not repo.active_branch.tracking_branch():
+        # No remote set on branch, push to available remote if only a single
+        # one is available
+        if len(repo.remotes) == 1:
+            origin = repo.remotes[0]
         else:
             raise errors.ConfigurationError(
                 'No remote has been set up for the current branch'
             )
     else:
-        origin = client.repo.remotes[
-            client.repo.active_branch.tracking_branch().remote_name]
+        # get remote that's set up to track the local branch
+        origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
+
+    if paths:
+        # commit uncommitted changes
+        try:
+            repo.git.add(*paths)
+            saved_paths = [d.b_path for d in repo.index.diff('HEAD')]
+
+            if not message:
+                # Show saved files in message
+                max_len = 100
+                message = 'Saved changes to: '
+                paths_with_lens = reduce(
+                    lambda c, x: c + [(x, c[-1][1] + len(x))], saved_paths,
+                    [(None, len(message))]
+                )[1:]
+                # limit first line to max_len characters
+                message += ' '.join(
+                    p if l < max_len else '\n\t' + p
+                    for p, l in paths_with_lens
+                )
+
+            repo.index.commit(message)
+        except git.exc.GitCommandError as e:
+            raise errors.GitError('Cannot commit changes') from e
 
     try:
-        client.track_paths_in_storage(*paths)
-        client.repo.git.add(*paths)
-        saved_paths = [d.b_path for d in client.repo.index.diff('HEAD')]
-
-        if not message:
-            # Show saved files in message
-            max_len = 100
-            message = 'Saved changes to: '
-            paths_with_lens = reduce(
-                lambda c, x: c + [(x, c[-1][1] + len(x))], saved_paths,
-                [(None, len(message))]
-            )[1:]
-            message += ' '.join(
-                p if l < max_len else '\n\t' + p for p, l in paths_with_lens
-            )
-
-        client.repo.index.commit(message)
-    except git.exc.GitCommandError as e:
-        raise errors.GitError('Cannot commit changes') from e
-
-    try:
+        # push local changes to remote branch
         origin.fetch()
 
-        if origin.refs and client.repo.active_branch in origin.refs:
-            origin.pull(client.repo.active_branch)
+        if origin.refs and repo.active_branch in origin.refs:
+            origin.pull(repo.active_branch)
 
-        origin.push(client.repo.active_branch)
+        origin.push(repo.active_branch)
     except git.exc.GitCommandError as e:
-        raise errors.GitError('Cannot push changes') from e
+        if 'protected branches' not in e.stderr:
+            raise errors.GitError('Cannot push changes') from e
+        # push to new remote branch if original one is protected
+        pushed_branch = uuid4().hex
+        origin = repo.create_remote(pushed_branch, remote)
+        origin.push(repo.active_branch)
 
-    return saved_paths
+    return saved_paths, pushed_branch

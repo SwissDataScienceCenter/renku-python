@@ -22,10 +22,11 @@ from pathlib import Path
 
 from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
-from git import GitCommandError
+from git import GitCommandError, Repo
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     edit_dataset, list_datasets, list_files
+from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
@@ -39,7 +40,6 @@ from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetEditRequest, DatasetEditResponseRPC, DatasetFilesListRequest, \
     DatasetFilesListResponseRPC, DatasetImportRequest, \
     DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC
-from renku.service.utils import repo_sync
 from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
     handle_git_except, handle_renku_except, handle_validation_except, \
@@ -193,7 +193,9 @@ def add_file_to_dataset_view(user_data, cache):
             )
 
             try:
-                ctx['remote_branch'] = repo_sync(project.abs_path)
+                _, ctx['remote_branch'] = repo_sync(
+                    Repo(project.abs_path), remote='origin'
+                )
             except GitCommandError:
                 return error_response(
                     INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
@@ -240,7 +242,9 @@ def create_dataset_view(user, cache):
         )
 
     try:
-        ctx['remote_branch'] = repo_sync(project.abs_path)
+        _, ctx['remote_branch'] = repo_sync(
+            Repo(project.abs_path), remote='origin'
+        )
     except GitCommandError:
         return error_response(
             INTERNAL_FAILURE_ERROR_CODE,

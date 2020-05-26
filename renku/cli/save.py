@@ -92,13 +92,15 @@ from renku.core.commands.save import save_and_push
 def save(ctx, message, destination, paths):
     """Save and push local changes."""
 
-    saved_paths = save_and_push(
+    saved_paths, branch = save_and_push(
         message=message, remote=destination, paths=paths
     )
 
     if saved_paths:
         click.echo(
-            'Successfully saved: \n\t{}'.format('\n\t'.join(saved_paths))
+            'Successfully saved to branch {}: \n\t{}'.format(
+                branch, '\n\t'.join(saved_paths)
+            )
         )
     else:
         click.echo('There were no changes to save.')
