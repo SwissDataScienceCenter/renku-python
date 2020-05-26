@@ -7,6 +7,7 @@ replicaCount: 1
 cacheDirectory: /svc/cache
 cleanupInterval: 3600
 projectCloneDepth: 1
+templateCloneDepth: 0
 
 datasetsWorkerQueues: datasets.jobs
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects

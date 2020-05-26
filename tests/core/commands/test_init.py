@@ -35,7 +35,7 @@ TEMPLATE_URL = (
 )
 TEMPLATE_ID = 'python-minimal'
 TEMPLATE_INDEX = 1
-TEMPLATE_REF = '0.1.10'
+TEMPLATE_REF = '0.1.11'
 METADATA = {'name': 'myname', 'description': 'nodesc'}
 FAKE = 'NON_EXISTING'
 
@@ -193,3 +193,21 @@ def test_create_from_template(local_client):
                 local_client.path
             )
             assert expected_file.exists()
+
+
+def test_template_filename(local_client):
+    """Test using a template with dynamic filenames.
+    """
+    with TemporaryDirectory() as tempdir:
+        template_folder = Path(tempdir) / 'first'
+
+        template_folder.mkdir(parents=True)
+
+        template_file = template_folder / '{{ name }}.r'
+        template_file.write_text('{{ name }}')
+
+        (local_client.path / '.renku').mkdir()
+
+        create_from_template(template_folder, local_client, name='test')
+
+        assert (local_client.path / 'test.r').exists()
