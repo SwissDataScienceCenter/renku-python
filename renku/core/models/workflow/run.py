@@ -162,9 +162,9 @@ class Run(CommitMixin):
     )
 
     subprocesses = jsonld.container.list(
+        'renku.core.models.workflow.run.Run',
         context='renku:hasSubprocess',
-        kw_only=True,
-        type='renku.core.models.workflow.run.Run'
+        kw_only=True
     )
 
     arguments = jsonld.container.list(

@@ -119,7 +119,7 @@ def attrs(
                 context.setdefault(key, value)
 
         property_context, scoped_properties = _add_class_property_contexts(
-            jsonld_cls, context
+            jsonld_cls, context, cls, types
         )
 
         context.update(property_context)
@@ -179,7 +179,9 @@ def attrs(
     return wrap(maybe_cls)
 
 
-def _add_class_property_contexts(jsonld_cls, context):
+def _add_class_property_contexts(
+    jsonld_cls, context, original_cls, jsonld_ype
+):
     """Adds ``@context`` of a class' properties to the class' ``@context``."""
     scoped_properties = []
 
@@ -188,6 +190,7 @@ def _add_class_property_contexts(jsonld_cls, context):
     for a in attr.fields(jsonld_cls):
         key = a.name
         ctx = a.metadata.get(KEY)
+
         if ctx is None:
             continue
 
@@ -203,7 +206,7 @@ def _add_class_property_contexts(jsonld_cls, context):
         if KEY_CLS in a.metadata:
             t = a.metadata[KEY_CLS]
             current_context, is_scoped = _propagate_reference_contexts(
-                t, current_context, ctx
+                t, current_context, ctx, original_cls, jsonld_ype
             )
 
             if is_scoped:
@@ -216,29 +219,37 @@ def _add_class_property_contexts(jsonld_cls, context):
 
 
 def _propagate_reference_contexts(
-    type_references, current_context, parent_context
+    type_references, current_context, parent_context, parent_cls, parent_types
 ):
     """Get JSON-LD contexts for all types of a reference and propagate them."""
     if not isinstance(type_references, (list, set, tuple)):
         type_references = [type_references]
     classes = [import_class_from_string(c) for c in type_references]
-    classes = [c for c in classes if hasattr(c, '_jsonld_context')]
+    classes = [(c._jsonld_context, c._jsonld_type, c, True)
+               for c in classes if hasattr(c, '_jsonld_context')]
     scoped_properties = False
 
+    parent_cls_string = '{}.{}'.format(
+        parent_cls.__module__, parent_cls.__name__
+    )
+
+    if parent_cls in type_references or parent_cls_string in type_references:
+        # handle cases where a class can be a parent/child of itself
+        classes.append((parent_context, parent_types, parent_cls, False))
+
     if len(classes) == 1:
-        merge_ctx = classes[0]._jsonld_context
+        merge_ctx = classes[0][0]
 
         if not current_context:
             current_context = {'@id': parent_context}
         elif not isinstance(current_context, dict):
             current_context = {'@id': current_context}
-
-        current_context['@context'] = merge_ctx
+        if classes[0][3]:
+            current_context['@context'] = merge_ctx
     else:
         scoped_properties = True
 
-        for cls in classes:
-            merge_ctx = cls._jsonld_context
+        for merge_ctx, subtypes, cls, subcontext in classes:
 
             if not current_context:
                 current_context = {'@id': parent_context}
@@ -247,8 +258,6 @@ def _propagate_reference_contexts(
 
             if '@context' not in current_context:
                 current_context['@context'] = []
-
-            subtypes = cls._jsonld_type
 
             if not isinstance(subtypes, (tuple, list)):
                 subtypes = [subtypes]
@@ -267,14 +276,21 @@ def _propagate_reference_contexts(
                     expanded_subtype = '{}{}'.format(merge_ctx[prefix], suffix)
 
                 subtype = subtype.replace(':', '_')
-
-                current_context['@context'].append({
-                    fullname(cls) + '_' + subtype: {
-                        '@id': expanded_subtype,
-                        '@context': merge_ctx
-                    },
-                    '@version': 1.1
-                })
+                if subcontext:
+                    current_context['@context'].append({
+                        fullname(cls) + '_' + subtype: {
+                            '@id': expanded_subtype,
+                            '@context': merge_ctx
+                        },
+                        '@version': 1.1
+                    })
+                else:
+                    current_context['@context'].append({
+                        fullname(cls) + '_' + subtype: {
+                            '@id': expanded_subtype
+                        },
+                        '@version': 1.1
+                    })
 
     return current_context, scoped_properties
 
