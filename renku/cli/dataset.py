@@ -657,7 +657,7 @@ def add(
 )
 def ls_files(short_names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    echo_via_pager(
+    click.echo(
         list_files(short_names, creators, include, exclude, format, columns)
     )
 
