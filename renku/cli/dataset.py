@@ -80,6 +80,17 @@ comma-separated list of column names:
 
 Displayed results are sorted based on the value of the first column.
 
+To inspect the state of the dataset on a given commit we can use ``--revision``
+flag for it:
+
+.. code-block:: console
+
+    renku dataset --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
+    ID        SHORT_NAME           TITLE               VERSION
+    a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
+    c2d80abe  ds1                  ds1
+
+
 Deleting a dataset:
 
 .. code-block:: console
