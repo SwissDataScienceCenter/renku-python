@@ -832,10 +832,10 @@
         },
         "rq": {
             "hashes": [
-                "sha256:318017229145a40d34c20bc21ecdcd8c217a326eb08c9bee249e8c9e09846e36",
-                "sha256:e6d82156eb43a8fffe451099a716114f5f163ec7603b6e8c8dab16a1b31f4547"
+                "sha256:ef61f4517a1dc499b57bc0fa9e8a8f1c561e1f72abab936dbe9081a4508f8874",
+                "sha256:f680c52c7079266465d5e5c49679fab0d14db11d70fec6f1470423408b6bbcf6"
             ],
-            "version": "==1.4.1"
+            "version": "==1.4.2"
         },
         "rq-scheduler": {
             "hashes": [
@@ -892,10 +892,10 @@
         },
         "setuptools-scm": {
             "hashes": [
-                "sha256:a62866cba83065adfd12666e5328e24cd266fc09bbb729c7ac19dce87c1ca93a",
-                "sha256:e8a76e3624c9f1ffbb20c3075fd64edb12e9258884102c5f3ffdb3422961189a"
+                "sha256:65005ecfde4b2e45370cbc118ff5bbfa2740e7c7ed85c7da574e6fd244c4c7b8",
+                "sha256:a2c0f4e51b3d7fe18303375fff582ca4d8450d4e153e22ef01c71ee3403d93d8"
             ],
-            "version": "==4.0.0"
+            "version": "==4.1.1"
         },
         "shellescape": {
             "hashes": [
@@ -948,10 +948,10 @@
         },
         "sphinx": {
             "hashes": [
-                "sha256:62edfd92d955b868d6c124c0942eba966d54b5f3dcb4ded39e65f74abac3f572",
-                "sha256:f5505d74cf9592f3b997380f9bdb2d2d0320ed74dd69691e3ee0644b956b8d83"
+                "sha256:779a519adbd3a70fc7c468af08c5e74829868b0a5b34587b33340e010291856c",
+                "sha256:ea64df287958ee5aac46be7ac2b7277305b0381d213728c3a49d8bb9b8415807"
             ],
-            "version": "==3.0.3"
+            "version": "==3.0.4"
         },
         "sphinxcontrib-applehelp": {
             "hashes": [
