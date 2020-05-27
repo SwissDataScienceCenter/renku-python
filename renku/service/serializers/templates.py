@@ -94,7 +94,7 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
 
     @post_load()
     def format_new_project_url(self, data, **kwargs):
-        """Format URL with a username and password."""
+        """Format URL with an access token."""
         new_project_url = urlparse(data['new_project_url'])
 
         url = 'oauth2:{0}@{1}'.format(data['token'], new_project_url.netloc)

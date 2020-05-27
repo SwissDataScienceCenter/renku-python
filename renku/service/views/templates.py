@@ -120,9 +120,7 @@ def create_project_from_template(user, cache):
 
     # Verify missing parameters
     template_parameters = template.get('variables', {})
-    provided_parameters = {}
-    for parameter in ctx['parameters']:
-        provided_parameters[parameter['key']] = parameter['value']
+    provided_parameters = {p['key']: p['value'] for p in ctx['parameters']}
     missing_keys = list(
         template_parameters.keys() - provided_parameters.keys()
     )
@@ -139,13 +137,10 @@ def create_project_from_template(user, cache):
 
     # prepare data and init new project
     source_path = template_project.abs_path / ctx['identifier']
-    parameters_dict = {}
-    for parameter in ctx['parameters']:
-        parameters_dict[parameter['key']] = parameter['value']
     git_user = {'email': user['email'], 'name': user['fullname']}
     with chdir(new_project_path):
         create_from_template_local(
-            source_path, ctx['project_name'], parameters_dict, git_user,
+            source_path, ctx['project_name'], provided_parameters, git_user,
             ctx['url'], ctx['ref'], 'service'
         )
     new_repo_push(new_project_path, ctx['new_project_url_with_auth'])
