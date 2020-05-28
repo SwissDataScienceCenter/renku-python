@@ -38,7 +38,7 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
 fi
 
 if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
-  MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
+  MODIFIED_OUTPUTS=$(renku --disable-version-check show outputs "${MODIFIED_FILES[@]}")
   if [ "$MODIFIED_OUTPUTS" ]; then
     echo 'You are trying to update generated files.'
     echo
@@ -53,7 +53,7 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
 fi
 
 if [ ${#ADDED_FILES[@]} -ne 0 ]; then
-  UNTRACKED_PATHS=$(renku storage check-lfs-hook "${ADDED_FILES[@]}")
+  UNTRACKED_PATHS=$(renku --disable-version-check storage check-lfs-hook "${ADDED_FILES[@]}")
   if [ "$UNTRACKED_PATHS" ]; then
     echo 'You are trying to commit large files to Git instead of Git-LFS.'
     echo
