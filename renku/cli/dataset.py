@@ -80,6 +80,17 @@ comma-separated list of column names:
 
 Displayed results are sorted based on the value of the first column.
 
+To inspect the state of the dataset on a given commit we can use ``--revision``
+flag for it:
+
+.. code-block:: console
+
+    $ renku dataset --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
+    ID        SHORT_NAME           TITLE               VERSION
+    a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
+    c2d80abe  ds1                  ds1
+
+
 Deleting a dataset:
 
 .. code-block:: console
@@ -361,7 +372,7 @@ from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_remove, edit_dataset, export_dataset, file_unlink, \
     import_dataset, list_datasets, list_files, list_tags, \
     remove_dataset_tags, tag_dataset_with_client, update_datasets
-from renku.core.commands.echo import WARNING, echo_via_pager, progressbar
+from renku.core.commands.echo import WARNING, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
     DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
@@ -657,7 +668,7 @@ def add(
 )
 def ls_files(short_names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    echo_via_pager(
+    click.echo(
         list_files(short_names, creators, include, exclude, format, columns)
     )
 
