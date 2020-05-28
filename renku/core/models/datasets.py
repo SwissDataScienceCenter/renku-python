@@ -624,9 +624,12 @@ class Dataset(Entity, CreatorMixin):
 
         data = jsonld.read_yaml(path)
 
-        extra = dict(client=client, commit=commit)
-        data.update(extra)
         self = DatasetSchema().load(data, unknown=INCLUDE)
+        # If `client` and `commit` are passed in `data` and JSON-LD expansion
+        #  is needed then they will be lost and not passed to post_load.
+        self.client = client
+        self.commit = commit
+        self.__attrs_post_init__()
         self.__reference__ = path
 
         return self
