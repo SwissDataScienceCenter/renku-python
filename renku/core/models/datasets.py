@@ -635,7 +635,7 @@ class Dataset(Entity, CreatorMixin):
         return self
 
     def to_yaml(self):
-        """Store an instance to the referenced YAML file."""
+        """Write an instance to the referenced YAML file."""
         data = DatasetSchema().dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
 

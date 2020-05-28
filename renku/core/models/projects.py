@@ -71,8 +71,6 @@ class Project(object):
 
     client = attr.ib(default=None, kw_only=True)
 
-    commit = attr.ib(default=None, kw_only=True)
-
     creator = jsonld.ib(
         default=None,
         kw_only=True,
@@ -145,21 +143,25 @@ class Project(object):
         return project_url
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None):
+    def from_yaml(cls, path, client=None):
         """Return an instance from a YAML file."""
         from marshmallow import INCLUDE
 
         data = jsonld.read_yaml(path)
 
-        extra = dict(client=client, commit=commit)
+        extra = dict(client=client)
         data.update(extra)
         self = ProjectSchema().load(data, unknown=INCLUDE)
+        # If `client` is passed in `data` and JSON-LD expansion is needed then
+        # it will be lost and not passed to post_load.
+        self.client = client
+        self.__attrs_post_init__()
         self.__reference__ = path
 
         return self
 
     def to_yaml(self):
-        """Store an instance to the referenced YAML file."""
+        """Write an instance to the referenced YAML file."""
         data = ProjectSchema().dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
 
