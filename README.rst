@@ -187,7 +187,7 @@ production as a Helm chart (see `helm-chart <./helm-chart/README.rst>`_.
 Developing Renku
 ================
 
-For testing the funtionality from source it is convenient to install ``renku``
+For testing the functionality from source it is convenient to install ``renku``
 in editable mode using ``pipx``. Clone the repository and then do:
 
 ::
@@ -200,7 +200,7 @@ in editable mode using ``pipx``. Clone the repository and then do:
 This will install all the extras for testing and debugging.
 
 
-Runing tests
+Running tests
 ------------
 
 To run tests locally with specific version of Python:
