@@ -201,7 +201,7 @@ This will install all the extras for testing and debugging.
 
 
 Running tests
-------------
+-------------
 
 To run tests locally with specific version of Python:
 
