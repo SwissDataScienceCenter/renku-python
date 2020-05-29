@@ -95,7 +95,7 @@ class CommitMixin:
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if self.path:
+        if self.path and self.client:
             path = pathlib.Path(self.path)
             if path.is_absolute():
                 self.path = str(path.relative_to(self.client.path))

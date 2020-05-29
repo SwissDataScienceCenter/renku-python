@@ -222,10 +222,6 @@ class ProjectSchema(JsonLDSchema):
 
         rdf_type = [schema.Project, prov.Location]
         model = Project
-        translate = {
-            'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
-            'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
-        }
 
     name = fields.String(schema.name, missing=None)
     created = fields.DateTime(schema.dateCreated)

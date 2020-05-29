@@ -579,11 +579,9 @@ class Dataset(Entity, CreatorMixin):
 
         self._label = self.identifier
 
-        if not self.path:
-            self.path = str(
-                self.client.renku_datasets_path /
-                quote(str(self.uid), safe='')
-            )
+        if not self.path and self.client:
+            self.path = str(self.client.renku_datasets_path / self.uid)
+
 
         if self.files and self.client is not None:
             for dataset_file in self.files:
