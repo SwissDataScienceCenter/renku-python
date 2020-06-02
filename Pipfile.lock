@@ -662,17 +662,17 @@
         },
         "setuptools-scm": {
             "hashes": [
-                "sha256:21a5f539d42feb1891e05d9fc03099338e5ca409b75c70b2274bf0f56efe36d1",
-                "sha256:25484c46873f35ee5715cc0861c93a37fa4ee9885c6384b284927e40f657d220",
-                "sha256:3ae7a2c889a33c72181b683e3cfd570e00a18b57169139e4ef77a37482c98bb3",
-                "sha256:5e1c7d6cbad00458a6e3d32426203147e072bf49eff1cab426efb3d4d754bdc6",
-                "sha256:65005ecfde4b2e45370cbc118ff5bbfa2740e7c7ed85c7da574e6fd244c4c7b8",
-                "sha256:a2c0f4e51b3d7fe18303375fff582ca4d8450d4e153e22ef01c71ee3403d93d8",
-                "sha256:ae4c33ff8f1ab4eca2dd7e7f7ff8b3f765766230fe13a1d23c41ca976a47b3bc",
-                "sha256:b485b8b8b05fa119c8b67ad3c23e47ee7424fd81a292234e201c5a99830b9017"
+                "sha256:09c659d1d6680811c43f476a33c6d3d9872416580786e96bd29ea03e6a818e41",
+                "sha256:69258e2eeba5f7ce1ed7a5f109519580fa3578250f8e4d6684859f86d1b15826",
+                "sha256:731550a27e3901ee501c3bf99140b5436b8eeba341a9d19911cf364b8d573293",
+                "sha256:892e63b4983f9e30f9e8bf89ad03d2a02a47e6e5ced09b03ae6fe952ade8a579",
+                "sha256:a8994582e716ec690f33fec70cca0f85bd23ec974e3f783233e4879090a7faa8",
+                "sha256:b42c150c34d6120babf3646abd7513e032be2e230b3d2034f27404c65aa0c977",
+                "sha256:eaaec16b7af25c5f532b5af2332213bb6223d15cca4518f6dbc4c055641c86fd",
+                "sha256:efc928d6a64162c88cdc85fa4b84adfbd6dbf9f9b04319bc495eb16dcfaae00a"
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
-            "version": "==4.1.1"
+            "version": "==4.1.2"
         },
         "shellescape": {
             "hashes": [
