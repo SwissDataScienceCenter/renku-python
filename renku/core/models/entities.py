@@ -35,7 +35,14 @@ def _str_or_none(data):
     return str(data) if data is not None else data
 
 
-@attr.s(cmp=False)
+@jsonld.s(
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'schema': 'http://schema.org/',
+    },
+    cmp=False,
+)
 class CommitMixin:
     """Represent a commit mixin."""
 

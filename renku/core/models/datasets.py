@@ -30,6 +30,7 @@ import attr
 from attr.validators import instance_of
 from calamus import fields
 from calamus.schema import JsonLDSchema
+from marshmallow import pre_load
 
 from renku.core import errors
 from renku.core.models.entities import Entity, EntitySchema
@@ -223,6 +224,7 @@ def convert_based_on(v):
     slots=True,
     context={
         'schema': 'http://schema.org/',
+        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
     }
 )
 class DatasetFile(Entity, CreatorMixin):
@@ -251,7 +253,7 @@ class DatasetFile(Entity, CreatorMixin):
         converter=convert_based_on
     )
 
-    external = jsonld.ib(context='sdsc:external', default=False, kw_only=True)
+    external = jsonld.ib(context='renku:external', default=False, kw_only=True)
 
     @added.default
     def _now(self):
@@ -582,7 +584,6 @@ class Dataset(Entity, CreatorMixin):
         if not self.path and self.client:
             self.path = str(self.client.renku_datasets_path / self.uid)
 
-
         if self.files and self.client is not None:
             for dataset_file in self.files:
                 path = Path(dataset_file.path)
@@ -640,7 +641,9 @@ class Dataset(Entity, CreatorMixin):
 
 schema = fields.Namespace('http://schema.org/')
 rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
-sdsc = fields.Namespace('sdsc:')
+sdsc = fields.Namespace(
+    'https://swissdatasciencecenter.github.io/renku-ontology#'
+)
 
 
 class CreatorMixinSchema(JsonLDSchema):
@@ -741,6 +744,22 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
     same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
     short_name = fields.String(schema.alternateName)
+
+    @pre_load
+    def fix_files_context(self, data, **kwargs):
+        """Fix DatasetFile context for _label and external fields."""
+        context = None
+        if '@context' in data:
+            context = data['@context']['files']['@context']
+            context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+            context.setdefault('_label', 'rdfs:label')
+            context.setdefault('external', 'renku:external')
+            context.setdefault(
+                'renku',
+                'https://swissdatasciencecenter.github.io/renku-ontology#'
+            )
+
+        return data
 
 
 def is_dataset_short_name_valid(short_name):
