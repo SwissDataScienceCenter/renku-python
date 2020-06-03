@@ -15,9 +15,9 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-==============================
- Renku CLI and SDK for Python
-==============================
+======================================
+ Renku Python Library, CLI and Service
+======================================
 
 .. image:: https://github.com/SwissDataScienceCenter/renku-python/workflows/Test,%20Integration%20Tests%20and%20Deploy/badge.svg
    :target: https://github.com/SwissDataScienceCenter/renku-python/actions?query=workflow%3A%22Test%2C+Integration+Tests+and+Deploy%22+branch%3Amaster
@@ -43,18 +43,23 @@
    :alt: Pull reminders
 
 A Python library for the `Renku collaborative data science platform
-<https://github.com/SwissDataScienceCenter/renku>`_. It allows the user to
-create projects, manage datasets, and capture data provenance while performing
-analysis tasks.
+<https://github.com/SwissDataScienceCenter/renku>`_. It includes a CLI and SDK
+for end-users as well as a service backend. It provides functionality for the
+creation and management of projects and datasets, and simple utilities to
+capture data provenance while performing analysis tasks.
 
 **NOTE**:
-   ``renku-python`` is the python library for Renku that provides an SDK and a
-   command-line interface (CLI). It *does not* start the Renku platform itself -
-   for that, refer to the Renku docs on `running the platform
+   ``renku-python`` is the python library and core service for Renku - it *does
+   not* start the Renku platform itself - for that, refer to the Renku docs on
+   `running the platform
    <https://renku.readthedocs.io/en/latest/developer/setup.html>`_.
 
+
+Renku for Users
+===============
+
 Installation
-============
+------------
 
 Renku releases and development versions are available from `PyPI
 <https://pypi.org/project/renku/>`_. You can install it using any tool that
@@ -63,7 +68,7 @@ knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
 
 
 ``pipx``
---------
+~~~~~~~~
 
 First, `install pipx <https://github.com/pipxproject/pipx#install-pipx>`_
 and make sure that the ``$PATH`` is correctly configured.
@@ -101,7 +106,7 @@ To install a development release:
 
 
 ``pip``
--------
+~~~~~~~
 
 ::
 
@@ -122,7 +127,7 @@ the Python library to be importable.
 
 
 Docker
-------
+~~~~~~
 
 The containerized version of the CLI can be launched using Docker command.
 
@@ -134,8 +139,8 @@ It makes sure your current directory is mounted to the same place in the
 container.
 
 
-Usage
-=====
+CLI Example
+-----------
 
 Initialize a renku project:
 
@@ -169,11 +174,21 @@ your data analysis workflows. The full documentation will soon be available
 at: https://renku-python.readthedocs.io/
 
 
+Renku as a Service
+==================
+
+This repository includes a ``renku-core`` RPC service written as a `Flask
+<https://flask.palletsprojects.com>`_ application that provides (almost) all of
+the functionality of the Renku CLI. This is used to provide one of the backends
+for the `RenkuLab <https://renkulab.io>`_ web UI. The service can be deployed in
+production as a Helm chart (see `helm-chart <./helm-chart/README.rst>`_.
+
+
 Developing Renku
 ================
 
-For development it's convenient to install ``renku`` in editable mode. This is
-still possible with ``pipx``. First clone the repository and then do:
+For testing the functionality from source it is convenient to install ``renku``
+in editable mode using ``pipx``. Clone the repository and then do:
 
 ::
 
@@ -185,8 +200,8 @@ still possible with ``pipx``. First clone the repository and then do:
 This will install all the extras for testing and debugging.
 
 
-Run tests
----------
+Running tests
+-------------
 
 To run tests locally with specific version of Python:
 

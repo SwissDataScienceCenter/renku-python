@@ -43,20 +43,16 @@ def schedule():
         scheduled_time=datetime.utcnow(),
         queue_name=CLEANUP_QUEUE_FILES,
         func=cache_files_cleanup,
-        args=[],
         interval=cleanup_interval,
         result_ttl=cleanup_interval + 1,
-        repeat=None,
     )
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
         queue_name=CLEANUP_QUEUE_PROJECTS,
         func=cache_project_cleanup,
-        args=[],
         interval=cleanup_interval,
         result_ttl=cleanup_interval + 1,
-        repeat=None,
     )
 
     log_level = os.getenv('RQ_WORKER_LOG_LEVEL', 'INFO')

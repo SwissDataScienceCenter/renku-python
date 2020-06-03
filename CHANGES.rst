@@ -18,6 +18,60 @@
 Changes
 =======
 
+`0.10.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.3...v0.10.4>`__ (2020-05-18)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **dataset:** update default behaviour and messaging on dataset unlink
+   (`#1275 <https://github.com/SwissDataScienceCenter/renku-python/issues/1275>`__)
+   (`98d6728 <https://github.com/SwissDataScienceCenter/renku-python/commit/98d67284668f3f1c0d37aba52dc6a5557e8fc806>`__)
+-  **dataset:** correct url in different domain
+   (`#1211 <https://github.com/SwissDataScienceCenter/renku-python/issues/1211>`__)
+   (`49e8b8b <https://github.com/SwissDataScienceCenter/renku-python/commit/49e8b8bf21c1bacae3eb580f8e3043b79e823ff5>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** Adds warning messages for LFS, fix output redirection
+   (`#1199 <https://github.com/SwissDataScienceCenter/renku-python/issues/1199>`__)
+   (`31969f5 <https://github.com/SwissDataScienceCenter/renku-python/commit/31969f54f36b5fbbf827f81411929b991580e1fa>`__)
+-  **core:** Adds lfs file size limit and lfs ignore file
+   (`#1210 <https://github.com/SwissDataScienceCenter/renku-python/issues/1210>`__)
+   (`1f3c81c <https://github.com/SwissDataScienceCenter/renku-python/commit/1f3c81c9a4faed3e520a01e8881c08f437d871cf>`__)
+-  **core:** Adds renku storage clean command
+   (`#1235 <https://github.com/SwissDataScienceCenter/renku-python/issues/1235>`__)
+   (`7029400 <https://github.com/SwissDataScienceCenter/renku-python/commit/7029400ef2750c0ff6d5ab55387c21353baee4c2>`__)
+-  **core:** git hook to avoid committing large files
+   (`#1238 <https://github.com/SwissDataScienceCenter/renku-python/issues/1238>`__)
+   (`e8f1a8b <https://github.com/SwissDataScienceCenter/renku-python/commit/e8f1a8b811222f80dbc765e177d73ca8db7db290>`__)
+-  **core:** renku doctor check for lfs migrate info
+   (`#1234 <https://github.com/SwissDataScienceCenter/renku-python/issues/1234>`__)
+   (`480da06 <https://github.com/SwissDataScienceCenter/renku-python/commit/480da06e453b3a5770467accec070a5d84ed5951>`__)
+-  **dataset:** fail early when external storage not installed
+   (`#1239 <https://github.com/SwissDataScienceCenter/renku-python/issues/1239>`__)
+   (`e6ea6da <https://github.com/SwissDataScienceCenter/renku-python/commit/e6ea6dade55f928681795395c316cd9de9116845>`__)
+-  **core:** project clone API support for revision checkout
+   (`#1208 <https://github.com/SwissDataScienceCenter/renku-python/issues/1208>`__)
+   (`74116e9 <https://github.com/SwissDataScienceCenter/renku-python/commit/74116e9ae0c37dbb1e5f772695288aaefaac66ec>`__)
+-  **service:** protected branches support
+   (`#1222 <https://github.com/SwissDataScienceCenter/renku-python/issues/1222>`__)
+   (`8405ce5 <https://github.com/SwissDataScienceCenter/renku-python/commit/8405ce5ad1d3aa3f10c583aff2e7ca283db5033e>`__)
+-  **dataset:** doi variations for import
+   (`#1216 <https://github.com/SwissDataScienceCenter/renku-python/issues/1216>`__)
+   (`0f329dd <https://github.com/SwissDataScienceCenter/renku-python/commit/0f329dd1796d61838bef89f66ff1bb88af243059>`__)
+-  **dataset:** keywords in metadata
+   (`#1209 <https://github.com/SwissDataScienceCenter/renku-python/issues/1209>`__)
+   (`f98a800 <https://github.com/SwissDataScienceCenter/renku-python/commit/f98a800c07d901d7461be9250fe6957325b2adcb>`__)
+-  **dataset:** no failure when adding ignored files
+   (`#1213 <https://github.com/SwissDataScienceCenter/renku-python/issues/1213>`__)
+   (`b1e275f <https://github.com/SwissDataScienceCenter/renku-python/commit/b1e275fc59999fe6b146e556b073a65dc1726bb5>`__)
+-  **service:** read template manifest
+   (`#1254 <https://github.com/SwissDataScienceCenter/renku-python/issues/1254>`__)
+   (`7eac85b <https://github.com/SwissDataScienceCenter/renku-python/commit/7eac85b766c9deeaba44e1adbc89900b952bef0d>`__)
+
+
 `0.10.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.2...v0.10.3>`__ (2020-04-22)
 ----------------------------------------------------------------------------------------------------------
 
