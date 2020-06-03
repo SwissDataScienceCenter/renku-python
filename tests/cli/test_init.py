@@ -81,14 +81,12 @@ def test_template_selection_helpers():
     instructions = 'Please choose a template by typing the index'
     sentence = create_template_sentence(templates)
     stripped_sentence = ' '.join(sentence.split())
-    assert (
-        '1 folder_python Template Python: Description Python'
-    ) in stripped_sentence
-    assert '2 folder_R Template R: Description R' in stripped_sentence
+
+    assert '1 folder_python' in stripped_sentence
+    assert '2 folder_R' in stripped_sentence
     assert instructions not in stripped_sentence
-    full_sentence = create_template_sentence(templates, True)
+    full_sentence = create_template_sentence(templates, instructions=True)
     assert instructions in full_sentence
-    assert 'custom: random data' in full_sentence
 
 
 def test_list_templates(isolated_runner):
