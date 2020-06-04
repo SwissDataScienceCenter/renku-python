@@ -91,7 +91,7 @@ def test_project_shacl(project, client):
     project = client.project
     project.creator = Person(email='johndoe@example.com', name='Johnny Doe')
 
-    g = project.asjsonld()
+    g = project.as_jsonld()
     rdf = pyld.jsonld.to_rdf(
         g,
         options={

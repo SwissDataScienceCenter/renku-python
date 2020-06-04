@@ -23,14 +23,13 @@ import pathlib
 import re
 import urllib
 import uuid
-from functools import partial
 from pathlib import Path
 
 import attr
 from attr.validators import instance_of
 from calamus import fields
 from calamus.schema import JsonLDSchema
-from marshmallow import pre_load
+from marshmallow import INCLUDE, pre_load
 
 from renku.core import errors
 from renku.core.models.entities import Entity, EntitySchema
@@ -43,27 +42,17 @@ from . import jsonld as jsonld
 
 NoneType = type(None)
 
-_path_attr = partial(
-    jsonld.ib,
-    converter=Path,
-)
 
-
-@jsonld.s(
-    type='schema:URL',
-    context={
-        'schema': 'http://schema.org/',
-    },
-)
+@attr.s
 class Url:
     """Represents a schema URL reference."""
 
-    url = jsonld.ib(default=None, kw_only=True, context='schema:url')
+    url = attr.ib(default=None, kw_only=True)
 
     url_str = attr.ib(default=None, kw_only=True)
     url_id = attr.ib(default=None, kw_only=True)
 
-    _id = jsonld.ib(kw_only=True, context='@id')
+    _id = attr.ib(kw_only=True)
 
     @_id.default
     def default_id(self):
@@ -117,10 +106,7 @@ class CreatorMixin:
     """Mixin for handling creators container."""
 
     creator = jsonld.container.list(
-        Person,
-        kw_only=True,
-        context='schema:creator',
-        converter=_convert_creators
+        Person, kw_only=True, converter=_convert_creators
     )
 
     @property
@@ -142,9 +128,7 @@ def _extract_doi(value):
     return value
 
 
-@jsonld.s(
-    type='schema:PublicationEvent',
-    context={'schema': 'http://schema.org/'},
+@attr.s(
     frozen=True,
     slots=True,
 )
@@ -153,34 +137,19 @@ class DatasetTag(object):
 
     client = attr.ib(default=None, kw_only=True)
 
-    name = jsonld.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-        context='schema:name'
+    name = attr.ib(default=None, kw_only=True, validator=instance_of(str))
+
+    description = attr.ib(
+        default=None, kw_only=True, validator=instance_of(str)
     )
 
-    description = jsonld.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-        context='schema:description'
-    )
+    commit = attr.ib(default=None, kw_only=True, validator=instance_of(str))
 
-    commit = jsonld.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-        context='schema:location'
-    )
+    created = attr.ib(converter=parse_date, kw_only=True)
 
-    created = jsonld.ib(
-        converter=parse_date, context='schema:startDate', kw_only=True
-    )
+    dataset = attr.ib(default=None, kw_only=True)
 
-    dataset = jsonld.ib(context='schema:about', default=None, kw_only=True)
-
-    _id = jsonld.ib(kw_only=True, context='@id')
+    _id = attr.ib(kw_only=True)
 
     @created.default
     def _now(self):
@@ -192,19 +161,39 @@ class DatasetTag(object):
         """Define default value for id field."""
         return '_:{0}@{1}'.format(self.name, self.commit)
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
 
-@jsonld.s(
-    type='schema:Language',
-    context={'schema': 'http://schema.org/'},
+        return DatasetTagSchema().load(data, unknown=INCLUDE)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetTagSchema().dump(self)
+
+
+@attr.s(
     slots=True,
 )
 class Language:
     """Represent a language of an object."""
 
-    alternate_name = jsonld.ib(
-        default=None, kw_only=True, context='schema:alternateName'
-    )
-    name = jsonld.ib(default=None, kw_only=True, context='schema:name')
+    alternate_name = attr.ib(default=None, kw_only=True)
+    name = attr.ib(default=None, kw_only=True)
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return LanguageSchema().load(data, unknown=INCLUDE)
 
 
 def convert_filename_path(p):
@@ -219,41 +208,27 @@ def convert_based_on(v):
         return DatasetFile.from_jsonld(v)
 
 
-@jsonld.s(
-    type='schema:DigitalDocument',
-    slots=True,
-    context={
-        'schema': 'http://schema.org/',
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-    }
-)
+@attr.s(slots=True)
 class DatasetFile(Entity, CreatorMixin):
     """Represent a file in a dataset."""
 
-    added = jsonld.ib(
-        converter=parse_date, context='schema:dateCreated', kw_only=True
-    )
+    added = attr.ib(converter=parse_date, kw_only=True)
 
     checksum = attr.ib(default=None, kw_only=True)
 
     filename = attr.ib(kw_only=True, converter=convert_filename_path)
 
-    name = jsonld.ib(context='schema:name', kw_only=True, default=None)
+    name = attr.ib(kw_only=True, default=None)
 
     filesize = attr.ib(default=None, kw_only=True)
 
     filetype = attr.ib(default=None, kw_only=True)
 
-    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
+    url = attr.ib(default=None, kw_only=True)
 
-    based_on = jsonld.ib(
-        default=None,
-        context='schema:isBasedOn',
-        kw_only=True,
-        converter=convert_based_on
-    )
+    based_on = attr.ib(default=None, kw_only=True, converter=convert_based_on)
 
-    external = jsonld.ib(context='renku:external', default=False, kw_only=True)
+    external = attr.ib(default=False, kw_only=True)
 
     @added.default
     def _now(self):
@@ -288,6 +263,20 @@ class DatasetFile(Entity, CreatorMixin):
 
         if not parsed_id.scheme:
             self._id = 'file://{}'.format(self._id)
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return DatasetFileSchema().load(data, unknown=INCLUDE)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetFileSchema().dump(self)
 
 
 def _convert_dataset_files(value):
@@ -327,12 +316,7 @@ def _convert_keyword(keywords):
         return keywords.keys()
 
 
-@jsonld.s(
-    type='schema:Dataset',
-    context={
-        'schema': 'http://schema.org/',
-    },
-)
+@attr.s
 class Dataset(Entity, CreatorMixin):
     """Represent a dataset."""
 
@@ -343,58 +327,39 @@ class Dataset(Entity, CreatorMixin):
         'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
-    _id = jsonld.ib(default=None, context='@id', kw_only=True)
-    _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
+    _label = attr.ib(default=None, kw_only=True)
 
-    date_published = jsonld.ib(
-        default=None, context='schema:datePublished', kw_only=True
+    date_published = attr.ib(default=None, kw_only=True)
+
+    description = attr.ib(default=None, kw_only=True)
+
+    identifier = attr.ib(
+        default=attr.Factory(uuid.uuid4), kw_only=True, converter=_extract_doi
     )
 
-    description = jsonld.ib(
-        default=None, context='schema:description', kw_only=True
-    )
-
-    identifier = jsonld.ib(
-        default=attr.Factory(uuid.uuid4),
-        context='schema:identifier',
-        kw_only=True,
-        converter=_extract_doi
-    )
-
-    in_language = jsonld.ib(
-        type=Language,
-        default=None,
-        converter=_convert_language,
-        context='schema:inLanguage',
-        kw_only=True
+    in_language = attr.ib(
+        type=Language, default=None, converter=_convert_language, kw_only=True
     )
 
     keywords = jsonld.container.list(
-        str,
-        converter=_convert_keyword,
-        context='schema:keywords',
-        kw_only=True
+        str, converter=_convert_keyword, kw_only=True
     )
 
-    license = jsonld.ib(default=None, context='schema:license', kw_only=True)
+    license = attr.ib(default=None, kw_only=True)
 
-    name = jsonld.ib(
-        default=None, type=str, context='schema:name', kw_only=True
-    )
+    name = attr.ib(default=None, type=str, kw_only=True)
 
-    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
+    url = attr.ib(default=None, kw_only=True)
 
-    version = jsonld.ib(default=None, context='schema:version', kw_only=True)
+    version = attr.ib(default=None, kw_only=True)
 
-    created = jsonld.ib(
-        converter=parse_date, context='schema:dateCreated', kw_only=True
-    )
+    created = attr.ib(converter=parse_date, kw_only=True)
 
     files = jsonld.container.list(
         DatasetFile,
         default=None,
         converter=_convert_dataset_files,
-        context='schema:hasPart',
         kw_only=True
     )
 
@@ -402,19 +367,12 @@ class Dataset(Entity, CreatorMixin):
         DatasetTag,
         default=None,
         converter=_convert_dataset_tags,
-        context={
-            '@id': 'schema:subjectOf',
-        },
         kw_only=True
     )
 
-    same_as = jsonld.ib(
-        context='schema:sameAs', default=None, kw_only=True, type=Url
-    )
+    same_as = attr.ib(default=None, kw_only=True)
 
-    short_name = jsonld.ib(
-        default=None, context='schema:alternateName', kw_only=True
-    )
+    short_name = attr.ib(default=None, kw_only=True)
 
     @created.default
     def _now(self):
@@ -619,9 +577,20 @@ class Dataset(Entity, CreatorMixin):
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
         """Return an instance from a YAML file."""
-        from marshmallow import INCLUDE
-
         data = jsonld.read_yaml(path)
+
+        self = cls.from_jsonld(data=data, client=client, commit=commit)
+        self.__reference__ = path
+
+        return self
+
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
 
         self = DatasetSchema().load(data, unknown=INCLUDE)
         # If `client` and `commit` are passed in `data` and JSON-LD expansion
@@ -629,7 +598,6 @@ class Dataset(Entity, CreatorMixin):
         self.client = client
         self.commit = commit
         self.__attrs_post_init__()
-        self.__reference__ = path
 
         return self
 
@@ -637,6 +605,10 @@ class Dataset(Entity, CreatorMixin):
         """Write an instance to the referenced YAML file."""
         data = DatasetSchema().dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetSchema().dump(self)
 
 
 schema = fields.Namespace('http://schema.org/')
@@ -767,6 +739,12 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
                 )
 
         return data
+
+    @pre_load
+    def migrate_types(self, data, **kwargs):
+        """Fix types."""
+        from renku.core.utils.migrate import migrate_types
+        return migrate_types(data)
 
 
 def is_dataset_short_name_valid(short_name):

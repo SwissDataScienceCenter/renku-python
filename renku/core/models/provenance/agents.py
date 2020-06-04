@@ -156,6 +156,18 @@ class Person:
         """Create and instance from a dictionary."""
         return cls(**obj)
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        from marshmallow import INCLUDE
+
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return PersonSchema().load(data, unknown=INCLUDE)
+
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set

@@ -88,6 +88,8 @@ def _apply_on_the_fly_jsonld_migrations(
 
     data.setdefault('@context', jsonld_context)
 
+    _migrate_types(data)
+
     if jsonld_migrations:
         schema_type = data.get('@type')
         migrations = []
@@ -254,6 +256,12 @@ def _migrate_dataset_file_id(data, client):
             )
 
     return data
+
+
+def _migrate_types(data):
+    """Fix types."""
+    from renku.core.utils.migrate import migrate_types
+    migrate_types(data)
 
 
 _PROJECT_FIELDS = {'_id', 'created', 'creator', 'name', 'updated', 'version'}

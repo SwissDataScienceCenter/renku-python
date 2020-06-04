@@ -145,12 +145,18 @@ def test_dataset_serialization(dataset):
     assert dataset._project
 
     # check values
-    assert str(dataset.created.isoformat()) == dataset_metadata.get('created')
-    assert dataset.creator[0].email == dataset_metadata.get('creator'
-                                                            )[0].get('email')
-    assert dataset.identifier == dataset_metadata.get('identifier')
-    assert dataset.name == dataset_metadata.get('name')
-    assert dataset.path == dataset_metadata.get('path')
+    assert str(dataset.created.isoformat()
+               ) == dataset_metadata.get('http://schema.org/dateCreated')
+    assert dataset.creator[0].email == dataset_metadata.get(
+        'http://schema.org/creator'
+    )[0].get('http://schema.org/email')
+    assert dataset.identifier == dataset_metadata.get(
+        'http://schema.org/identifier'
+    )
+    assert dataset.name == dataset_metadata.get('http://schema.org/name')
+    assert dataset.path == dataset_metadata.get(
+        'http://www.w3.org/ns/prov#atLocation'
+    )
 
 
 def test_create_dataset_custom_message(project):
