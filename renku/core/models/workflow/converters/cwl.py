@@ -19,12 +19,14 @@
 
 import os
 import tempfile
+from collections import defaultdict
 from pathlib import Path
 from uuid import uuid4
 
 import cwlgen
 
 from renku.core.models.entities import Collection
+from renku.core.models.workflow.parameters import CommandOutput
 
 
 class CommandLineTool(cwlgen.CommandLineTool):
@@ -115,6 +117,33 @@ class CWLConverter(object):
 
         subprocesses, _ = _recurse_subprocesses(run, 1)
 
+        # preprocess to add dummy outputs in case of output directories
+        previous_output_dirs = defaultdict(list)
+        for _, subprocess in subprocesses:
+            for input in subprocess.inputs:
+                entity = input.consumes
+                key = (entity.commit.hexsha, entity.path)
+                if key not in previous_output_dirs:
+                    continue
+
+                for previous_process in previous_output_dirs[key]:
+                    previous_process.outputs.append(
+                        CommandOutput(produces=entity, create_folder=False)
+                    )
+
+            for output in subprocess.outputs:
+                entity = output.produces
+                if not isinstance(entity, Collection):
+                    continue
+
+                for e in entity.entities:
+                    if e.commit.hexsha != entity.commit.hexsha:
+                        continue
+
+                    key = (e.commit.hexsha, e.path)
+                    previous_output_dirs[key].append(subprocess)
+
+        # Convert workflow steps
         for i, subprocess in subprocesses:
             tool, path = CWLConverter._convert_step(
                 subprocess, tmpdir, basedir
@@ -123,6 +152,10 @@ class CWLConverter(object):
 
             for input in subprocess.inputs:
                 input_path = input.consumes.path
+
+                sanitized_id = input.sanitized_id
+                if input.mapped_to:
+                    sanitized_id = 'input_stdin'
                 if input_path in inputs:
                     # already used as top-level input elsewhere, reuse
                     step.inputs.append(
@@ -247,8 +280,9 @@ class CWLConverter(object):
             path = output.produces.path
             if not os.path.isdir(path):
                 path = str(Path(path).parent)
-            if path != '.' and path not in dirents:
-                # workflow needs to create subdirectory for output file
+            if (path != '.' and path not in dirents and output.create_folder):
+                # workflow needs to create subdirectory for output file,
+                # if the directory was not already present
                 workdir_req.listing.append(
                     cwlgen.InitialWorkDirRequirement.Dirent(
                         entry='$({"listing": [], "class": "Directory"})',

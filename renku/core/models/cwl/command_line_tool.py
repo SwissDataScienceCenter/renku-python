@@ -89,6 +89,7 @@ class CommandLineToolFactory(object):
     annotations = attr.ib(default=None)
 
     _had_changes = False
+    existing_directories = set()
 
     messages = attr.ib(default=None)
     warnings = attr.ib(default=None)
@@ -182,6 +183,10 @@ class CommandLineToolFactory(object):
         from renku.core.plugins.pluginmanager import get_plugin_manager
         pm = get_plugin_manager()
         pm.hook.pre_run(tool=self)
+        self.existing_directories = {
+            str(p.relative_to(client.path))
+            for p in client.path.glob('**/')
+        }
 
         yield self
 

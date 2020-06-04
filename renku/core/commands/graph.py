@@ -514,18 +514,12 @@ class Graph(object):
                         stack.append(process_run)
                         processes.add(process_run)
 
-        commit_indices = {
-            c: i
-            for i, c in enumerate(reversed(self._sorted_commits))
-        }
-        processes = sorted(processes, key=lambda x: commit_indices[x.commit])
-
         parent_process = Run()
         input_paths = []
         output_paths = []
 
-        for index, step in enumerate(processes):
+        for step in processes:
             # loop through runs and add them as subprocesses to parent.
-            parent_process.add_subprocess(step.association.plan, index)
+            parent_process.add_subprocess(step.association.plan)
 
         return parent_process

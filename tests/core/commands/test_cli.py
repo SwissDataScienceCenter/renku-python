@@ -28,8 +28,8 @@ from pathlib import Path
 
 import git
 import pytest
-from cwlgen import parse_cwl
 from click.testing import CliRunner
+from cwlgen import parse_cwl
 from tests.cli.test_init import INPUT, METADATA, TEMPLATE_ID
 
 from renku import __version__

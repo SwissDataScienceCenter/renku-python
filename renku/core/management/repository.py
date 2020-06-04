@@ -248,18 +248,30 @@ class RepositoryApiMixin(GitCore):
         """Check if the path is a valid CWL file."""
         return path.startswith(self.cwl_prefix) and path.endswith('.yaml')
 
-    def find_previous_commit(self, paths, revision='HEAD', return_first=False):
+    def find_previous_commit(
+        self, paths, revision='HEAD', return_first=False, full=False
+    ):
         """Return a previous commit for a given path starting from ``revision``.
 
         :param revision: revision to start from, defaults to ``HEAD``
         :param return_first: show the first commit in the history
+        :param full: return full history
         :raises KeyError: if path is not present in the given commit
         """
+        kwargs = {}
+
+        if full:
+            kwargs['full_history'] = True
+
         if return_first:
-            file_commits = list(self.repo.iter_commits(revision, paths=paths))
+            file_commits = list(
+                self.repo.iter_commits(revision, paths=paths, **kwargs)
+            )
         else:
             file_commits = list(
-                self.repo.iter_commits(revision, paths=paths, max_count=1)
+                self.repo.iter_commits(
+                    revision, paths=paths, max_count=1, **kwargs
+                )
             )
 
         if not file_commits:

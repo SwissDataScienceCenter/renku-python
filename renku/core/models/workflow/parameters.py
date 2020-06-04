@@ -235,6 +235,10 @@ class CommandInput(CommandParameter):
 class CommandOutput(CommandParameter):
     """An output of a command."""
 
+    create_folder = jsonld.ib(
+        default=False, context='renku:createFolder', kw_only=True, type=bool
+    )
+
     produces = jsonld.ib(
         context='renku:produces',
         kw_only=True,
