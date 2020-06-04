@@ -268,6 +268,8 @@ class Collection(Entity):
     def entities(self):
         """Recursively return all files."""
         for member in self.members:
+            if not member.client and self.client:
+                member.client = self.client
             yield from member.entities
 
         if (

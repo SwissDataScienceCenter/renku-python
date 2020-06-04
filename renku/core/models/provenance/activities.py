@@ -49,10 +49,19 @@ def _nodes(output, parent=None):
 
             if entity.client:
                 _set_entity_client_commit(member, entity.client, None)
-            yield from _nodes(member)
-        yield output
-    else:
-        yield output
+            if isinstance(output, Generation):
+                child = Generation(
+                    activity=output.activity, entity=member, role=None
+                )
+            elif isinstance(output, Usage):
+                child = Usage(
+                    activity=output.activity, entity=member, role=None
+                )
+            else:
+                child = member
+            yield from _nodes(child)
+
+    yield output
 
 
 def _set_entity_client_commit(entity, client, commit):
@@ -680,10 +689,30 @@ class WorkflowRun(ProcessRun):
             agent=agent, id=id_ + '/association', plan=run
         )
 
+        all_generated = []
+
+        # fix generations in folders
+        for generation in generated:
+            all_generated.append(generation)
+            entity = generation.entity
+
+            if not isinstance(entity, Collection) or not entity.commit:
+                continue
+
+            for e in entity.entities:
+                if e.commit is not entity.commit:
+                    continue
+
+                all_generated.append(
+                    Generation(
+                        activity=generation.activity, entity=e, role=None
+                    )
+                )
+
         wf_run = WorkflowRun(
             id=id_,
             processes=processes,
-            generated=generated,
+            generated=all_generated,
             qualified_usage=usages,
             association=association,
             client=client,

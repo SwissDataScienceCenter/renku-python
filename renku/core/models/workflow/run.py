@@ -96,6 +96,8 @@ def _convert_cmd_output(output, factory, client, commit):
     position = None
     prefix = None
     input_to_remove = None
+    create_folder = False
+
     if output.outputBinding:
         if output.outputBinding.glob.startswith(input_prefix):
             input_id = output.outputBinding.glob[len(input_prefix):-1]
@@ -113,11 +115,19 @@ def _convert_cmd_output(output, factory, client, commit):
         path = getattr(factory, output.type)
         mapped = MappedIOStream(stream_type=output.type)
 
+    if (((client.path / path).is_dir() and
+         path in factory.existing_directories) or (
+             not (client.path / path).is_dir() and
+             str(Path(path).parent) in factory.existing_directories
+         )):
+        create_folder = True
+
     return CommandOutput(
         produces=_entity_from_path(client, path, commit),
         mapped_to=mapped,
         position=position,
-        prefix=prefix
+        prefix=prefix,
+        create_folder=create_folder
     ), input_to_remove
 
 
@@ -334,7 +344,17 @@ class Run(CommitMixin):
 
     def __lt__(self, other):
         """Compares two subprocesses order based on their dependencies."""
-        a_inputs = {i.consumes.path for i in other.inputs}
-        b_outputs = {o.produces.path for o in self.outputs}
+        a_inputs = set()
+        b_outputs = set()
+
+        for i in other.inputs:
+            entity = i.consumes
+            for subentity in entity.entities:
+                a_inputs.add(subentity.path)
+
+        for i in self.outputs:
+            entity = i.produces
+            for subentity in entity.entities:
+                b_outputs.add(subentity.path)
 
         return a_inputs & b_outputs

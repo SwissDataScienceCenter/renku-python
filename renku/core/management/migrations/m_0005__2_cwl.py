@@ -22,7 +22,8 @@ import os
 import uuid
 from pathlib import Path
 
-from cwlgen import CommandLineTool, parse_cwl, parse_cwl_dict
+from cwlgen import CommandLineTool, parse_cwl
+from cwlgen.requirements import InitialWorkDirRequirement
 from git import NULL_TREE, Actor
 from werkzeug.utils import secure_filename
 
@@ -46,12 +47,12 @@ def _migrate_old_workflows(client):
 
     cwl_paths = glob.glob(wf_path)
 
-    cwl_paths = sorted(
-        cwl_paths, key=lambda p: client.find_previous_commit(p).committed_date
-    )
+    cwl_paths = [(p, _find_only_cwl_commit(client, p)) for p in cwl_paths]
 
-    for cwl_file in cwl_paths:
-        path = _migrate_cwl(client, cwl_file)
+    cwl_paths = sorted(cwl_paths, key=lambda p: p[1].committed_date)
+
+    for cwl_file, commit in cwl_paths:
+        path = _migrate_cwl(client, cwl_file, commit)
         os.remove(cwl_file)
 
         client.repo.git.add(cwl_file, path)
@@ -68,14 +69,18 @@ def _migrate_old_workflows(client):
             )
 
 
-def _migrate_cwl(client, path):
+def _migrate_cwl(client, path, commit):
     """Migrate a cwl file."""
     workflow = parse_cwl_cached(str(path))
 
     if isinstance(workflow, CommandLineTool):
-        _, path = _migrate_single_step(client, workflow, path, persist=True)
+        _, path = _migrate_single_step(
+            client, workflow, path, commit=commit, persist=True
+        )
     else:
-        _, path = _migrate_composite_step(client, workflow, path)
+        _, path = _migrate_composite_step(
+            client, workflow, path, commit=commit
+        )
 
     return path
 
@@ -119,7 +124,8 @@ def _migrate_single_step(
                 produces=_entity_from_path(
                     client, cmd_line_tool.stdout, commit
                 ),
-                mapped_to=MappedIOStream(stream_type='stdout')
+                mapped_to=MappedIOStream(stream_type='stdout'),
+                create_folder=False
             )
         )
 
@@ -134,7 +140,8 @@ def _migrate_single_step(
                 produces=_entity_from_path(
                     client, cmd_line_tool.stderr, commit
                 ),
-                mapped_to=MappedIOStream(stream_type='stderr')
+                mapped_to=MappedIOStream(stream_type='stderr'),
+                create_folder=False
             )
         )
 
@@ -142,6 +149,17 @@ def _migrate_single_step(
 
         if matched_output:
             outputs.remove(matched_output)
+
+    created_outputs = []
+    workdir_requirements = [
+        r for r in cmd_line_tool.requirements
+        if isinstance(r, InitialWorkDirRequirement)
+    ]
+
+    for r in workdir_requirements:
+        for l in r.listing:
+            if l.entry == '$({"listing": [], "class": "Directory"})':
+                created_outputs.append(l.entryname)
 
     for o in outputs:
         if not o.outputBinding.glob.startswith('$(inputs.'):
@@ -173,11 +191,17 @@ def _migrate_single_step(
             if prefix and matched_input.inputBinding.separate:
                 prefix += ' '
 
+        create_folder = False
+
+        if str(path) not in created_outputs:
+            create_folder = True
+
         run.outputs.append(
             CommandOutput(
                 position=position,
                 prefix=prefix,
-                produces=_entity_from_path(client, path, commit)
+                produces=_entity_from_path(client, path, commit),
+                create_folder=create_folder
             )
         )
 
@@ -237,9 +261,10 @@ def _migrate_single_step(
         return process_run, path
 
 
-def _migrate_composite_step(client, workflow, path):
+def _migrate_composite_step(client, workflow, path, commit=None):
     """Migrate a composite workflow."""
-    commit = client.find_previous_commit(path)
+    if not commit:
+        commit = client.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
 
     name = '{0}_migrated.yaml'.format(uuid.uuid4().hex)
@@ -248,8 +273,7 @@ def _migrate_composite_step(client, workflow, path):
 
     for step in workflow.steps:
         if isinstance(step.run, dict):
-            path = (client.workflow_path / name).relative_to(client.path)
-            subrun = parse_cwl_dict(step.run)
+            continue
         else:
             path = client.workflow_path / step.run
             subrun = parse_cwl_cached(str(path))
@@ -370,3 +394,25 @@ def parse_cwl_cached(path):
     _cwl_cache[path] = cwl
 
     return cwl
+
+
+def _find_only_cwl_commit(client, path, revision='HEAD'):
+    """Find the most recent isolated commit of a cwl file.
+
+    Commits with multiple cwl files are disregarded
+    """
+    file_commits = list(
+        client.repo.iter_commits(revision, paths=path, full_history=True)
+    )
+
+    for commit in file_commits:
+        cwl_files = [
+            f for f in commit.stats.files.keys()
+            if f.startswith(client.cwl_prefix) and path.endswith('.cwl')
+        ]
+        if len(cwl_files) == 1:
+            return commit
+
+    raise ValueError(
+        "Couldn't find a previous commit for path {}".format(path)
+    )
