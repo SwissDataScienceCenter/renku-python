@@ -159,8 +159,11 @@ class Person:
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
-        if self._id == 'mailto:None':
+        if self._id == 'mailto:None' or self._id is None:
             self._id = self.default_id()
+
+        if self.label is None:
+            self.label = self.default_label()
 
 
 prov = fields.Namespace('http://www.w3.org/ns/prov#')

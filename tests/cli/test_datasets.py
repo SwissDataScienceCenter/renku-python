@@ -848,7 +848,8 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, client):
 
     output = json.loads(result.output)
     for record in output:
-        assert (client.path / record['path']).exists()
+        assert (client.path /
+                record['http://www.w3.org/ns/prov#atLocation']).exists()
 
 
 def test_datasets_ls_files_with_name(directory_tree, runner, project):

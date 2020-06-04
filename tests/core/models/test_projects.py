@@ -22,9 +22,8 @@ import pytest
 import yaml
 from freezegun import freeze_time
 
-from renku.core.models.jsonld import NoDatesSafeLoader, asjsonld
+from renku.core.models.jsonld import NoDatesSafeLoader
 from renku.core.models.projects import Project
-from renku.core.models.provenance.agents import Person
 
 # Do not modify the content so we can ensure backwards compatibility.
 PROJECT_V1 = """
@@ -90,30 +89,28 @@ version: '1'
 """
 
 
-def test_project_context():
-    """Test project context definition."""
-    keys = ['schema', 'created', 'creator', 'name', 'updated']
-    assert all(k in Project._jsonld_context for k in keys)
-
-
 def test_project_serialization():
     """Test project serialization with JSON-LD context."""
+    from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+
     with freeze_time('2017-03-01T08:00:00.000000+00:00') as frozen_time:
+        project_time = frozen_time().replace(tzinfo=timezone.utc)
         project = Project(name='demo')
         assert project.name == 'demo'
-        assert project.created == frozen_time().replace(tzinfo=timezone.utc)
-        assert project.updated == frozen_time().replace(tzinfo=timezone.utc)
+        assert project.created == project_time
+        assert project.updated == project_time
 
-    data = asjsonld(project)
-    assert 'schema:Project' in data['@type']
-    assert 'prov:Location' in data['@type']
+    data = project.as_jsonld()
+    assert 'http://schema.org/Project' in data['@type']
+    assert 'http://www.w3.org/ns/prov#Location' in data['@type']
 
-    context = data['@context']
-    assert 'schema:name' == context['name']
-    assert Person._jsonld_context == context['creator']['@context']
-    assert 'schema:dateUpdated' == context['updated']
-    assert 'schema:dateCreated' == context['created']
-    assert 'schema:schemaVersion' == context['version']
+    assert 'demo' == data['http://schema.org/name']
+    assert project_time.isoformat('T') == data['http://schema.org/dateUpdated']
+    assert project_time.isoformat('T') == data['http://schema.org/dateCreated']
+    assert (
+        str(SUPPORTED_PROJECT_VERSION) ==
+        data['http://schema.org/schemaVersion']
+    )
 
 
 @pytest.mark.parametrize(
@@ -134,12 +131,8 @@ def test_project_metadata_compatibility(project_meta, version, is_broken):
     if not is_broken:
         assert 'demo' == project.name
 
-    assert 'schema:name' == project._jsonld_context['name']
-    main_context_creator = project._jsonld_context['creator']
-    assert Person._jsonld_context == main_context_creator['@context']
-    assert 'schema:dateUpdated' == project._jsonld_context['updated']
-    assert 'schema:dateCreated' == project._jsonld_context['created']
-    assert 'schema:schemaVersion' == project._jsonld_context['version']
+    assert project.updated is not None
+    assert project.created is not None
 
 
 @pytest.mark.parametrize('project_meta', [PROJECT_V1, PROJECT_V2])

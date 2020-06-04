@@ -145,13 +145,11 @@ class Project(object):
     @classmethod
     def from_yaml(cls, path, client=None):
         """Return an instance from a YAML file."""
-        from marshmallow import INCLUDE
-
         data = jsonld.read_yaml(path)
 
         extra = dict(client=client)
         data.update(extra)
-        self = ProjectSchema().load(data, unknown=INCLUDE)
+        self = ProjectSchema().load(data, unknown=EXCLUDE)
         # If `client` is passed in `data` and JSON-LD expansion is needed then
         # it will be lost and not passed to post_load.
         self.client = client
@@ -224,8 +222,8 @@ class ProjectSchema(JsonLDSchema):
         model = Project
 
     name = fields.String(schema.name, missing=None)
-    created = fields.DateTime(schema.dateCreated)
-    updated = fields.DateTime(schema.dateUpdated)
-    version = fields.String(schema.schemaVersion)
+    created = fields.DateTime(schema.dateCreated, missing=None)
+    updated = fields.DateTime(schema.dateUpdated, missing=None)
+    version = fields.String(schema.schemaVersion, missing=1)
     creator = fields.Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name='id', missing=None)

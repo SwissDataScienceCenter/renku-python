@@ -677,7 +677,7 @@ class DatasetTagSchema(JsonLDSchema):
     name = fields.String(schema.name)
     description = fields.String(schema.description)
     commit = fields.String(schema.location)
-    created = fields.DateTime(schema.startDate)
+    created = fields.DateTime(schema.startDate, missing=None)
     dataset = fields.String(schema.about)
     _id = fields.Id(init_name='id')
 
@@ -707,7 +707,7 @@ class DatasetFileSchema(EntitySchema, CreatorMixinSchema):
     added = fields.DateTime(schema.dateCreated)
     # checksum
     # filename
-    name = fields.String(schema.name)
+    name = fields.String(schema.name, missing=None)
     # filesize
     # filetype
     url = fields.String(schema.url, missing=None)
@@ -750,14 +750,21 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         """Fix DatasetFile context for _label and external fields."""
         context = None
         if '@context' in data:
-            context = data['@context']['files']['@context']
+            context = data['@context']
             context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
-            context.setdefault('_label', 'rdfs:label')
-            context.setdefault('external', 'renku:external')
-            context.setdefault(
-                'renku',
-                'https://swissdatasciencecenter.github.io/renku-ontology#'
-            )
+
+            files = data['@context']['files']
+            if isinstance(files, dict) and '@context' in files:
+                context = files['@context']
+                context.setdefault(
+                    'rdfs', 'http://www.w3.org/2000/01/rdf-schema#'
+                )
+                context.setdefault('_label', 'rdfs:label')
+                context.setdefault('external', 'renku:external')
+                context.setdefault(
+                    'renku',
+                    'https://swissdatasciencecenter.github.io/renku-ontology#'
+                )
 
         return data
 

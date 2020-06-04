@@ -255,7 +255,7 @@ class CommitMixinSchema(JsonLDSchema):
 
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name='id')
-    _label = fields.String(rdfs.label, init_name='label')
+    _label = fields.String(rdfs.label, init_name='label', missing=None)
     _project = fields.Nested(
         schema.isPartOf, ProjectSchema, init_name='project', missing=None
     )
