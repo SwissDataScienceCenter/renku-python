@@ -39,6 +39,7 @@ def test_run_log_strict(runner, project, run_shell, format):
     assert '.renku/workflow/' in result.output
 
 
+@pytest.mark.xfail
 @pytest.mark.shelled
 @pytest.mark.parametrize('format', ['json-ld', 'nt', 'rdf'])
 def test_dataset_log_strict(
