@@ -186,7 +186,7 @@ def store_directory(value):
     return value
 
 
-def create_template_sentence(templates, instructions=False):
+def create_template_sentence(templates, describe=False, instructions=False):
     """Create templates choice sentence.
 
     :ref templates: list of templates coming from manifest file
@@ -195,29 +195,42 @@ def create_template_sentence(templates, instructions=False):
     Template = namedtuple(
         'Template', ['index', 'id', 'description', 'variables']
     )
+
+    def extract_description(template_elem):
+        """Extract description from template manifest."""
+        if describe:
+            return template_elem['description']
+        return None
+
+    def extract_variables(template_elem):
+        """Extract variables from tempalte manifest."""
+        if describe:
+            return '\n'.join([
+                f'{variable[0]}: {variable[1]}'
+                for variable in template_elem.get('variables', {}).items()
+            ])
+
+        return ','.join(template_elem.get('variables', {}).keys())
+
     templates_friendly = [
         Template(
             index=index + 1,
             id=template_elem['folder'],
-            description=(
-                f'{template_elem["name"]}: {template_elem["description"]}'
-            ),
-            variables='\n'.join([
-                f'{variable[0]}: {variable[1]}'
-                for variable in template_elem.get('variables', {}).items()
-            ])
+            description=extract_description(template_elem),
+            variables=extract_variables(template_elem),
         ) for index, template_elem in enumerate(templates)
     ]
 
-    text = tabulate(
-        templates_friendly,
-        headers=OrderedDict((
-            ('index', 'Index'),
-            ('id', 'Id'),
-            ('description', 'Description'),
-            ('variables', 'Parameters'),
-        ))
-    )
+    table_headers = OrderedDict((
+        ('index', 'Index'),
+        ('id', 'Id'),
+        ('variables', 'Parameters'),
+    ))
+
+    if describe:
+        table_headers['description'] = 'Description'
+
+    text = tabulate(templates_friendly, headers=table_headers)
 
     if not instructions:
         return text
@@ -295,6 +308,12 @@ def check_git_user_config():
     is_flag=True,
     help='List templates available in the template-source.'
 )
+@click.option(
+    '-d',
+    '--describe',
+    is_flag=True,
+    help='Show description for templates and parameters'
+)
 @click.option('--force', is_flag=True, help='Override target path.')
 @option_external_storage_requested
 @pass_local_client
@@ -302,9 +321,9 @@ def check_git_user_config():
 def init(
     ctx, client, external_storage_requested, path, name, template_id,
     template_index, template_source, template_ref, parameter, list_templates,
-    force
+    force, describe
 ):
-    """Initialize a project in PATH. Default is current path."""
+    """Initialize a project in PATH. Default is the current path."""
     # verify dirty path
     if not is_path_empty(path) and not force and not list_templates:
         raise errors.InvalidFileOperation(
@@ -373,9 +392,13 @@ def init(
 
     if list_templates:
         if template_data:
-            click.echo(create_template_sentence([template_data]))
+            click.echo(
+                create_template_sentence([template_data], describe=describe)
+            )
         else:
-            click.echo(create_template_sentence(template_manifest))
+            click.echo(
+                create_template_sentence(template_manifest, describe=describe)
+            )
         return
 
     if repeat or not (template_id or template_index):
@@ -384,7 +407,9 @@ def init(
             template_data = templates[0]
         else:
             template_num = click.prompt(
-                text=create_template_sentence(templates, True),
+                text=create_template_sentence(
+                    templates, describe=describe, instructions=True
+                ),
                 type=click.IntRange(1, len(templates)),
                 show_default=False,
                 show_choices=False
