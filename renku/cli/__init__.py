@@ -37,8 +37,6 @@ execute ``renku help``:
       --install-completion            Install completion for the current shell.
       --path <path>                   Location of a Renku repository.
                                       [default: (dynamic)]
-      --renku-home <path>             Location of the Renku directory.
-                                      [default: .renku]
       --external-storage / -S, --no-external-storage
                                       Use an external file storage service.
       -h, --help                      Show this message and exit.
@@ -168,14 +166,6 @@ def is_allowed_command(ctx):
     default=default_path,
     help='Location of a Renku repository.'
 )
-@click.option(
-    '--renku-home',
-    envvar='RENKU_HOME',
-    show_default=True,
-    metavar='<path>',
-    default=RENKU_HOME,
-    help='Location of the Renku directory.'
-)
 @option_external_storage_requested
 @click.option(
     '--disable-version-check',
@@ -187,9 +177,9 @@ def is_allowed_command(ctx):
     help='Do not periodically check PyPI for a new version of renku.',
 )
 @click.pass_context
-def cli(ctx, path, renku_home, external_storage_requested):
+def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
-    renku_path = Path(path) / renku_home
+    renku_path = Path(path) / RENKU_HOME
     if not renku_path.exists() and not is_allowed_command(ctx):
         raise UsageError((
             '`{0}` is not a renku repository.\n'
@@ -199,7 +189,6 @@ def cli(ctx, path, renku_home, external_storage_requested):
 
     ctx.obj = LocalClient(
         path=path,
-        renku_home=renku_home,
         external_storage_requested=external_storage_requested,
     )
 

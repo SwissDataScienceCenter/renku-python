@@ -21,7 +21,6 @@ import tempfile
 
 import pytest
 from filelock import FileLock
-from tests.core.commands.test_init import TEMPLATE_ID
 
 from renku.cli import cli
 
@@ -81,7 +80,6 @@ def test_cli_initialization_err(cmd, runner):
         ['storage', '--help'],
         ['update', '--help'],
         ['workflow', '--help'],
-        ['init', '--template-id', TEMPLATE_ID, '--force'],
         ['init', '--help'],
         ['help'],
         ['--help'],

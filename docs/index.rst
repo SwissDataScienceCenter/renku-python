@@ -17,7 +17,7 @@
 
 
 .. include:: ../README.rst
-   :end-before: Usage
+   :end-before: CLI Example
 
 Getting Started
 ===============

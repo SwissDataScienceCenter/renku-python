@@ -1,7 +1,7 @@
 Renku Repository Service Helm Chart
 ===================================
 
-Provide a basic chart for deploying the Renku Repository service.application.
+A basic chart for deploying the Renku Repository service.application.
 
 Configuration
 -------------
