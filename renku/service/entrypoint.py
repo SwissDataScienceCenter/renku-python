@@ -37,7 +37,8 @@ from renku.service.views.cache import CACHE_BLUEPRINT_TAG, cache_blueprint, \
     upload_file_view
 from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
     add_file_to_dataset_view, create_dataset_view, dataset_blueprint, \
-    list_dataset_files_view, list_datasets_view
+    edit_dataset_view, import_dataset_view, list_dataset_files_view, \
+    list_datasets_view
 from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, \
     list_jobs
 from renku.service.views.templates import TEMPLATES_BLUEPRINT_TAG, \
@@ -96,15 +97,17 @@ def build_routes(app):
 
     docs = FlaskApiSpec(app)
 
-    docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(list_uploaded_files_view, blueprint=CACHE_BLUEPRINT_TAG)
+    docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(project_clone_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(list_projects_view, blueprint=CACHE_BLUEPRINT_TAG)
 
-    docs.register(create_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
-    docs.register(add_file_to_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(list_datasets_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(list_dataset_files_view, blueprint=DATASET_BLUEPRINT_TAG)
+    docs.register(add_file_to_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
+    docs.register(create_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
+    docs.register(import_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
+    docs.register(edit_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
 
     docs.register(list_jobs, blueprint=JOBS_BLUEPRINT_TAG)
     docs.register(
