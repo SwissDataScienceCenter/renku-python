@@ -890,6 +890,7 @@ def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
     yield svc_client, authentication_headers, template
 
 
+@pytest.fixture
 def svc_protected_repo(svc_client):
     """Service client with remote protected repository."""
     headers = {
