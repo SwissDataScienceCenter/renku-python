@@ -721,22 +721,27 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     def fix_files_context(self, data, **kwargs):
         """Fix DatasetFile context for _label and external fields."""
         context = None
-        if '@context' in data:
-            context = data['@context']
-            context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+        if '@context' not in data:
+            return data
 
-            files = data['@context']['files']
-            if isinstance(files, dict) and '@context' in files:
-                context = files['@context']
-                context.setdefault(
-                    'rdfs', 'http://www.w3.org/2000/01/rdf-schema#'
-                )
-                context.setdefault('_label', 'rdfs:label')
-                context.setdefault('external', 'renku:external')
-                context.setdefault(
-                    'renku',
-                    'https://swissdatasciencecenter.github.io/renku-ontology#'
-                )
+        context = data['@context']
+        if not isinstance(context, dict):
+            return data
+
+        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+
+        files = data['@context']['files']
+        if not isinstance(files, dict) or '@context' not in files:
+            return data
+
+        context = files['@context']
+        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+        context.setdefault('_label', 'rdfs:label')
+        context.setdefault('external', 'renku:external')
+        context.setdefault(
+            'renku',
+            'https://swissdatasciencecenter.github.io/renku-ontology#'
+        )
 
         return data
 
