@@ -26,7 +26,6 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
-from tests.service.views.test_cache_views import IT_GIT_ACCESS_TOKEN
 from tests.utils import make_dataset_add_payload
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
@@ -203,7 +202,14 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
         data=json.dumps(payload),
         headers=headers,
     )
+    assert response
+    assert 'result' in response.json.keys()
 
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
     assert_rpc_response(response, with_key='error')
 
@@ -1089,24 +1095,9 @@ def test_edit_datasets_view(svc_client_with_repo):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_protected_branch(svc_client):
+def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""
-    headers = {
-        'Content-Type': 'application/json',
-        'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
-        'Renku-User-FullName': 'Just Sam',
-        'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
-    }
-
-    payload = {
-        'git_url': 'https://dev.renku.ch/gitlab/contact/protected-renku.git',
-    }
-
-    response = svc_client.post(
-        '/cache.project_clone', data=json.dumps(payload), headers=headers
-    )
-
+    svc_client, headers, payload, response = svc_protected_repo
     assert response
     assert {'result'} == set(response.json.keys())
 
@@ -1120,7 +1111,6 @@ def test_protected_branch(svc_client):
         data=json.dumps(payload),
         headers=headers,
     )
-
     assert response
 
     assert {'result'} == set(response.json.keys())
