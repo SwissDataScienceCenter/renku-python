@@ -18,18 +18,15 @@
 """Renku service cache view tests."""
 import io
 import json
-import os
 import uuid
 
 import pytest
+from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from flaky import flaky
 
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
-
-REMOTE_URL = 'https://dev.renku.ch/gitlab/contact/integration-test'
-IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
 
 @pytest.mark.service
@@ -507,7 +504,7 @@ def test_chunked_upload(svc_client):
 def test_clone_projects_no_auth(svc_client):
     """Check error on cloning of remote repository."""
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -552,7 +549,7 @@ def test_clone_projects_with_auth(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -579,7 +576,7 @@ def test_clone_projects_multiple(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -640,7 +637,7 @@ def test_clone_projects_list_view_errors(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -688,7 +685,7 @@ def test_clone_projects_invalid_headers(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(

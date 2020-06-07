@@ -19,8 +19,8 @@
 from pathlib import Path
 
 import pytest
-from tests.core.commands.test_init import TEMPLATE_ID, TEMPLATE_INDEX, \
-    TEMPLATE_REF, TEMPLATE_URL
+from tests.core.commands.test_init import METADATA, TEMPLATE_ID, \
+    TEMPLATE_INDEX, TEMPLATE_REF, TEMPLATE_URL
 from tests.utils import raises
 
 from renku.cli import cli
@@ -38,6 +38,7 @@ LIST_TEMPLATES = ['--list-templates']
 PARAMETERS_CORRECT = ['--parameter', 'p1=v1', '--parameter', 'p2=v2']
 PARAMETER_NO_EQUAL = ['--parameter', 'p3:v3']
 PARAMETER_EARLY_EQUAL = ['--parameter', '=p4v3']
+INPUT = len(set(METADATA.keys())) * '\n'
 
 
 def test_parse_parameters():
@@ -80,14 +81,25 @@ def test_template_selection_helpers():
     instructions = 'Please choose a template by typing the index'
     sentence = create_template_sentence(templates)
     stripped_sentence = ' '.join(sentence.split())
-    assert (
-        '1 folder_python Template Python: Description Python'
-    ) in stripped_sentence
-    assert '2 folder_R Template R: Description R' in stripped_sentence
+
+    assert '1 folder_python' in stripped_sentence
+    assert '2 folder_R' in stripped_sentence
     assert instructions not in stripped_sentence
-    full_sentence = create_template_sentence(templates, True)
+    full_sentence = create_template_sentence(templates, instructions=True)
     assert instructions in full_sentence
-    assert 'custom: random data' in full_sentence
+
+    # with describe=True
+    sentence = create_template_sentence(templates, describe=True)
+    stripped_sentence = ' '.join(sentence.split())
+
+    assert '1 folder_python Description Python' in stripped_sentence
+    assert '2 folder_R custom: random data Description R' in stripped_sentence
+    assert instructions not in stripped_sentence
+
+    full_sentence = create_template_sentence(
+        templates, describe=True, instructions=True
+    )
+    assert instructions in full_sentence
 
 
 def test_list_templates(isolated_runner):
@@ -105,7 +117,7 @@ def test_init(isolated_runner):
     # create the project
     new_project = Path('test-new-project')
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT)
+    result = isolated_runner.invoke(cli, INIT, INPUT)
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
@@ -113,11 +125,11 @@ def test_init(isolated_runner):
     assert (new_project / '.renku' / 'metadata.yml').exists()
 
     # try to re-create in the same folder
-    result_re = isolated_runner.invoke(cli, INIT)
+    result_re = isolated_runner.invoke(cli, INIT, INPUT)
     assert 0 != result_re.exit_code
 
     # force re-create in the same folder
-    result_re = isolated_runner.invoke(cli, INIT + INIT_FORCE)
+    result_re = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
@@ -126,7 +138,7 @@ def test_init(isolated_runner):
 
     # init using index instead of id
     new_project_2 = Path('test-new-project-2')
-    result = isolated_runner.invoke(cli, INIT_INDEX)
+    result = isolated_runner.invoke(cli, INIT_INDEX, INPUT)
     assert 0 == result.exit_code
     assert new_project_2.exists()
     assert (new_project_2 / '.renku').exists()
@@ -142,7 +154,9 @@ def test_init(isolated_runner):
         assert expected_file.exists()
 
     # verify providing both index and id fails
-    result = isolated_runner.invoke(cli, INIT_INDEX + INIT_ID + INIT_FORCE)
+    result = isolated_runner.invoke(
+        cli, INIT_INDEX + INIT_ID + INIT_FORCE, INPUT
+    )
     assert 2 == result.exit_code
     assert (
         'Use either --template-id or --template-index, not both'
@@ -153,7 +167,7 @@ def test_init_force_in_empty_dir(isolated_runner):
     """Run init --force in empty directory."""
     new_project = Path('test-new-project')
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT + INIT_FORCE)
+    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
     assert 0 == result.exit_code
 
 
@@ -168,7 +182,7 @@ def test_init_force_in_dirty_dir(isolated_runner):
         dest.writelines(['random text'])
     assert random_file.exists()
 
-    result = isolated_runner.invoke(cli, INIT + INIT_FORCE)
+    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
     assert random_file.exists()
     assert 0 == result.exit_code
 
@@ -181,11 +195,11 @@ def test_init_on_cloned_repo(isolated_runner, data_repository):
     assert new_project.exists()
 
     # try to create in a dirty folder
-    result = isolated_runner.invoke(cli, INIT)
+    result = isolated_runner.invoke(cli, INIT, INPUT)
     assert 0 != result.exit_code
 
     # force re-create in the same folder
-    result = isolated_runner.invoke(cli, INIT + INIT_FORCE)
+    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
@@ -199,7 +213,7 @@ def test_init_remote(isolated_runner):
     # create the project
     new_project = Path('test-new-project')
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT + INIT_REMOTE)
+    result = isolated_runner.invoke(cli, INIT + INIT_REMOTE, INPUT)
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / '.renku').exists()
@@ -230,5 +244,11 @@ def test_init_with_parameters(isolated_runner):
         f'"{PARAMETER_EARLY_EQUAL[1]}"' in result.output
     )
 
-    result = isolated_runner.invoke(cli, INIT + PARAMETERS_CORRECT)
+    result = isolated_runner.invoke(cli, INIT + PARAMETERS_CORRECT, INPUT)
     assert 0 == result.exit_code
+    assert 'The template requires a value for' in result.output
+    for param in set(METADATA.keys()):
+        assert param in result.output
+    assert (
+        'These parameters are not used by the template and were ignored:'
+    ) in result.output

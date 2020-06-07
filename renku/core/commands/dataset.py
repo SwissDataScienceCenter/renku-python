@@ -47,17 +47,12 @@ from .format.datasets import DATASETS_FORMATS
 
 
 @pass_local_client(clean=False, commit=False)
-def list_datasets(
-    client, revision=None, datadir=None, format=None, columns=None
-):
+def list_datasets(client, revision=None, format=None, columns=None):
     """Handle datasets sub commands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
         datasets = client.datasets_from_commit(client.repo.commit(revision))
-
-    if datadir:
-        client.datadir = datadir
 
     if format is None:
         return list(datasets)
