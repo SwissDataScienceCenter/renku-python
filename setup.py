@@ -154,7 +154,7 @@ install_requires = [
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'flask==1.1.2',
-    'flask-apispec==0.8.7',
+    'flask-apispec==0.9.0',
     'flask-swagger-ui==3.25.0',
     'gitdb2==3.0.1',
     'gitpython==3.1.0',
