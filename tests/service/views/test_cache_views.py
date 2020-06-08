@@ -627,3 +627,29 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
     rel_path = response.json['result']['files'][0]['relative_path']
     assert rel_path.startswith(datapack_tar.name) and 'unpacked' in rel_path
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations(svc_client_with_repo):
+    """Check response fields."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    response = svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert {
+        'result': {
+            'was_migrated': True,
+            'messages': [
+                'Applying migration m_0003__1_jsonld...',
+                'Applying migration m_0003__2_initial...',
+                'Applying migration m_0004__submodules...',
+                'Successfully applied 3 migrations.'
+            ]
+        }
+    } == response.json
