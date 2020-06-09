@@ -141,6 +141,7 @@ from renku.core.models.cwl.ascwl import ascwl
 @click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client(
     clean=True,
+    requires_migration=True,
     commit=True,
 )
 def update(client, revision, no_output, siblings, paths):

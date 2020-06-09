@@ -460,6 +460,7 @@ def old_repository_with_submodules(request, tmpdir_factory):
     repo_path = working_dir / name
     repo = Repo(repo_path)
 
+    os.chdir(repo_path.strpath)
     yield repo
 
     shutil.rmtree(repo_path.strpath)
