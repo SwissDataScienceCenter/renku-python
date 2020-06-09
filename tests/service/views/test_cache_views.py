@@ -631,9 +631,9 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations(svc_client_with_repo):
+def test_check_migrations(svc_client_setup):
     """Check response fields."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, _ = svc_client_setup
 
     response = svc_client.post(
         '/cache.migrate',

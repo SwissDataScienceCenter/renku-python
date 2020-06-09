@@ -867,8 +867,8 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
 
 
 @pytest.fixture
-def svc_client_with_repo(integration_lifecycle):
-    """Service client with a remote repository."""
+def svc_client_setup(integration_lifecycle):
+    """Service client setup."""
     svc_client, headers, project_id, url_components = integration_lifecycle
 
     with integration_repo(headers, url_components) as repo:
@@ -877,6 +877,20 @@ def svc_client_with_repo(integration_lifecycle):
         new_branch = uuid.uuid4().hex
         current = repo.create_head(new_branch)
         current.checkout()
+
+    yield svc_client, deepcopy(headers), project_id, url_components
+
+
+@pytest.fixture
+def svc_client_with_repo(svc_client_setup):
+    """Service client with a remote repository."""
+    svc_client, headers, project_id, url_components = svc_client_setup
+
+    svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
 
     yield svc_client, deepcopy(headers), project_id, url_components
 
