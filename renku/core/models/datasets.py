@@ -725,7 +725,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
             return data
 
         context = data['@context']
-        if not isinstance(context, dict):
+        if not isinstance(context, dict) or 'files' not in context:
             return data
 
         context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
