@@ -145,7 +145,7 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'appdirs>=1.4.3',
-    'apispec==3.3.0',
+    'apispec==3.3.1',
     'attrs>=19.3.0',
     'click-completion>=0.5.0',
     'click>=7.0',
@@ -154,7 +154,7 @@ install_requires = [
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'flask==1.1.2',
-    'flask-apispec==0.8.7',
+    'flask-apispec==0.9.0',
     'flask-swagger-ui==3.25.0',
     'gitdb2==3.0.1',
     'gitpython==3.1.0',
@@ -171,7 +171,7 @@ install_requires = [
     'pyshacl>=0.11.3.post1',
     'python-dateutil>=2.6.1',
     'python-editor>=1.0.4',
-    'redis==3.5.2',
+    'redis==3.5.3',
     'rdflib==4.2.2',
     'rdflib-jsonld>=0.4.0,<0.5.0',
     'requests>=2.21.0',
