@@ -585,14 +585,15 @@ class Dataset(Entity, CreatorMixin):
         return self
 
     @classmethod
-    def from_jsonld(cls, data, client=None, commit=None):
+    def from_jsonld(cls, data, client=None, commit=None, schema_class=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
             return data
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        self = DatasetSchema().load(data, unknown=INCLUDE)
+        schema_class = schema_class or DatasetSchema
+        self = schema_class().load(data, unknown=INCLUDE)
         # If `client` and `commit` are passed in `data` and JSON-LD expansion
         #  is needed then they will be lost and not passed to post_load.
         self.client = client
@@ -739,8 +740,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         context.setdefault('_label', 'rdfs:label')
         context.setdefault('external', 'renku:external')
         context.setdefault(
-            'renku',
-            'https://swissdatasciencecenter.github.io/renku-ontology#'
+            'renku', 'https://swissdatasciencecenter.github.io/renku-ontology#'
         )
 
         return data

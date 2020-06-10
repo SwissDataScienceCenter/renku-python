@@ -26,12 +26,16 @@ from string import Template
 
 import attr
 import requests
+from calamus import fields
+from marshmallow import pre_load
 from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
-from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema, \
+    schema
+from renku.core.models.provenance.agents import PersonSchema
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.requests import retry
 
@@ -44,6 +48,39 @@ DATAVERSE_VERSION_API = 'info/version'
 DATAVERSE_METADATA_API = 'datasets/export'
 DATAVERSE_FILE_API = 'access/datafile/:persistentId/'
 DATAVERSE_EXPORTER = 'schema.org'
+
+
+class _DataverseDatasetSchema(DatasetSchema):
+    """Schema for Dataverse datasets."""
+
+    @pre_load
+    def fix_data(self, data, **kwargs):
+        """Fix data that is received from Dataverse."""
+        # Fix context
+        context = data.get('@context')
+        if context and isinstance(context, str):
+            if context == 'http://schema.org':
+                context = 'http://schema.org/'
+            data['@context'] = {'@base': context, '@vocab': context}
+
+        # Add type to creators
+        creators = data.get('creator', [])
+        for c in creators:
+            c['@type'] = [str(t) for t in PersonSchema.opts.rdf_type]
+
+        # Fix license to be a string
+        license = data.get('license')
+        if license and isinstance(license, dict):
+            data['license'] = license.get('url', '')
+
+        return data
+
+    created = fields.DateTime(
+        schema.dateCreated, missing=None, format='%Y-%m-%d'
+    )
+    date_published = fields.DateTime(
+        schema.datePublished, missing=None, format='%Y-%m-%d'
+    )
 
 
 def check_dataverse_uri(url):
@@ -259,12 +296,9 @@ class DataverseRecordSerializer:
     def as_dataset(self, client):
         """Deserialize `DataverseRecordSerializer` to `Dataset`."""
         files = self.get_files()
-        context = self._json.get('@context')
-        if context and isinstance(context, str):
-            if context == 'http://schema.org':
-                context = 'http://schema.org/'
-            self._json['@context'] = {'@base': context, '@vocab': context}
-        dataset = Dataset.from_jsonld(self._json, client=client)
+        dataset = Dataset.from_jsonld(
+            self._json, client=client, schema_class=_DataverseDatasetSchema
+        )
 
         if dataset.description and not dataset.description.strip():
             dataset.description = None
