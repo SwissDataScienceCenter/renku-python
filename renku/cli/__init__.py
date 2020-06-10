@@ -89,7 +89,6 @@ from renku.cli.storage import storage
 from renku.cli.update import update
 from renku.cli.workflow import workflow
 from renku.core.commands.echo import WARNING
-from renku.core.commands.migrate import check_for_migration
 from renku.core.commands.options import install_completion, \
     option_external_storage_requested
 from renku.core.commands.version import check_version, print_version
@@ -201,13 +200,6 @@ def cli(ctx, path, external_storage_requested):
             'Run CLI commands only from project\'s root directory.\n',
             err=True
         )
-
-    if ctx.invoked_subcommand not in SAFE_COMMANDS:
-        check_for_migration()
-
-
-SAFE_COMMANDS = ['clone', 'doctor', 'githooks', 'help', 'migrate', 'storage']
-"""Commands that don't require migration to run."""
 
 
 @cli.command()

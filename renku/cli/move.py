@@ -38,6 +38,7 @@ from renku.core.commands.echo import INFO, WARNING, progressbar
 @click.argument('destination', type=click.Path(), nargs=1)
 @pass_local_client(
     clean=True,
+    requires_migration=True,
     commit=True,
 )
 @click.pass_context

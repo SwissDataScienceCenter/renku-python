@@ -27,6 +27,7 @@ import yaml
 from renku.core.management import LocalClient
 
 from ..management.config import RENKU_HOME
+from ..management.migrate import check_for_migration
 from ..management.repository import default_path
 from .git import get_git_isolation
 
@@ -42,6 +43,7 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
 def pass_local_client(
     method=None,
     clean=None,
+    requires_migration=False,
     up_to_date=None,
     commit=None,
     commit_only=None,
@@ -55,6 +57,7 @@ def pass_local_client(
         return functools.partial(
             pass_local_client,
             clean=clean,
+            requires_migration=requires_migration,
             up_to_date=up_to_date,
             commit=commit,
             commit_only=commit_only,
@@ -81,6 +84,9 @@ def pass_local_client(
         # Handle --isolation option:
         if get_git_isolation():
             client = stack.enter_context(client.worktree())
+
+        if requires_migration:
+            check_for_migration(client)
 
         transaction = client.transaction(
             clean=clean,

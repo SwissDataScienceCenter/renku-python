@@ -42,6 +42,17 @@ from click.testing import CliRunner
 from git import Repo
 from walrus import Database
 
+IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
+    'IT_PROTECTED_REMOTE_REPO',
+    'https://dev.renku.ch/gitlab/contact/protected-renku.git'
+)
+
+IT_REMOTE_REPO_URL = os.getenv(
+    'IT_REMOTE_REPOSITORY',
+    'https://dev.renku.ch/gitlab/contact/integration-test'
+)
+IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
+
 
 @pytest.fixture(scope='module')
 def renku_path(tmpdir_factory):
@@ -449,6 +460,7 @@ def old_repository_with_submodules(request, tmpdir_factory):
     repo_path = working_dir / name
     repo = Repo(repo_path)
 
+    os.chdir(repo_path.strpath)
     yield repo
 
     shutil.rmtree(repo_path.strpath)
@@ -825,10 +837,9 @@ def authentication_headers():
 def integration_lifecycle(svc_client, mock_redis, authentication_headers):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
-    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
-    url_components = GitURL.parse(remote_url)
+    url_components = GitURL.parse(IT_REMOTE_REPO_URL)
 
-    payload = {'git_url': remote_url}
+    payload = {'git_url': IT_REMOTE_REPO_URL}
 
     response = svc_client.post(
         '/cache.project_clone',
@@ -857,14 +868,30 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
 
 
 @pytest.fixture
-def svc_client_with_repo(integration_lifecycle):
-    """Service client with a remote repository."""
+def svc_client_setup(integration_lifecycle):
+    """Service client setup."""
     svc_client, headers, project_id, url_components = integration_lifecycle
 
     with integration_repo(headers, url_components) as repo:
+        repo.git.checkout('master')
+
         new_branch = uuid.uuid4().hex
         current = repo.create_head(new_branch)
         current.checkout()
+
+    yield svc_client, deepcopy(headers), project_id, url_components
+
+
+@pytest.fixture
+def svc_client_with_repo(svc_client_setup):
+    """Service client with a remote repository."""
+    svc_client, headers, project_id, url_components = svc_client_setup
+
+    svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
 
     yield svc_client, deepcopy(headers), project_id, url_components
 
@@ -876,6 +903,28 @@ def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
     template = {'url': TEMPLATE_URL, 'ref': TEMPLATE_REF}
 
     yield svc_client, authentication_headers, template
+
+
+@pytest.fixture
+def svc_protected_repo(svc_client):
+    """Service client with remote protected repository."""
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
+        'Renku-User-FullName': 'Just Sam',
+        'Renku-User-Email': 'contact@justsam.io',
+        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
+    }
+
+    payload = {
+        'git_url': IT_PROTECTED_REMOTE_REPO_URL,
+    }
+
+    response = svc_client.post(
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
+    )
+
+    yield svc_client, headers, payload, response
 
 
 @pytest.fixture(

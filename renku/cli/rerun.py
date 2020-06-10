@@ -131,6 +131,7 @@ def edit_inputs(client, workflow):
 )
 @pass_local_client(
     clean=True,
+    requires_migration=True,
     commit=True,
 )
 def rerun(client, revision, roots, siblings, inputs, paths):

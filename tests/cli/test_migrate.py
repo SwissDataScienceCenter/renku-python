@@ -31,20 +31,41 @@ from renku.core.utils.urls import url_to_string
 
 @pytest.mark.migration
 @pytest.mark.parametrize(
-    'command', [
-        'config', 'dataset', 'log', 'mv', 'rerun', 'run', 'show', 'status',
-        'update', 'workflow'
-    ]
+    'command',
+    [['config', 'key', 'value'], ['dataset', 'create', 'new'],
+     ['dataset', 'add', 'new', 'README.md'], ['dataset', 'edit', 'new'],
+     ['dataset', 'unlink', 'new'], ['dataset', 'rm', 'new'],
+     ['dataset', 'update'], ['dataset', 'export', 'new', 'zenodo'],
+     ['dataset', 'import', 'uri'], ['dataset', 'rm-tags', 'news'], ['log'],
+     ['mv', 'news'], ['rerun', 'data'], ['run', 'echo'], ['show', 'inputs'],
+     ['show', 'outputs'], ['show', 'siblings'], ['status'], ['update'],
+     ['workflow']]
 )
 def test_commands_fail_on_old_repository(
-    isolated_runner, old_project, command
+    isolated_runner, old_repository_with_submodules, command
 ):
     """Test commands that fail on projects created by old version of renku."""
     runner = isolated_runner
-    result = runner.invoke(cli, [command])
-    assert 1 == result.exit_code
+    result = runner.invoke(cli, command)
+    assert 1 == result.exit_code, result.output
     output = result.output
     assert 'Project version is outdated and a migration is required' in output
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize(
+    'command',
+    [['clone', 'uri'], ['config', 'key'], ['dataset'], ['dataset', 'ls-files'],
+     ['dataset', 'ls-tags', 'new'], ['doctor'], ['githooks', 'install'],
+     ['help'], ['init'], ['storage', 'check']]
+)
+def test_commands_work_on_old_repository(
+    isolated_runner, old_repository_with_submodules, command
+):
+    """Test commands that do not require migration."""
+    runner = isolated_runner
+    result = runner.invoke(cli, command)
+    assert 'a migration is required' not in result.output
 
 
 @pytest.mark.migration

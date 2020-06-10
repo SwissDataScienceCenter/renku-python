@@ -18,18 +18,15 @@
 """Renku service cache view tests."""
 import io
 import json
-import os
 import uuid
 
 import pytest
+from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from flaky import flaky
 
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
-
-REMOTE_URL = 'https://dev.renku.ch/gitlab/contact/integration-test'
-IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
 
 @pytest.mark.service
@@ -241,7 +238,7 @@ def test_file_upload_with_users(svc_client):
 def test_clone_projects_no_auth(svc_client):
     """Check error on cloning of remote repository."""
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -286,7 +283,7 @@ def test_clone_projects_with_auth(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -313,7 +310,7 @@ def test_clone_projects_multiple(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -374,7 +371,7 @@ def test_clone_projects_list_view_errors(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -422,7 +419,7 @@ def test_clone_projects_invalid_headers(svc_client):
     }
 
     payload = {
-        'git_url': REMOTE_URL,
+        'git_url': IT_REMOTE_REPO_URL,
     }
 
     response = svc_client.post(
@@ -630,3 +627,29 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
     rel_path = response.json['result']['files'][0]['relative_path']
     assert rel_path.startswith(datapack_tar.name) and 'unpacked' in rel_path
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations(svc_client_setup):
+    """Check response fields."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert {
+        'result': {
+            'was_migrated': True,
+            'messages': [
+                'Applying migration m_0003__1_jsonld...',
+                'Applying migration m_0003__2_initial...',
+                'Applying migration m_0004__submodules...',
+                'Successfully applied 3 migrations.'
+            ]
+        }
+    } == response.json

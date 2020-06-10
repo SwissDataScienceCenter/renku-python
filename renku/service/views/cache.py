@@ -27,12 +27,14 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
+from renku.core.commands.migrate import migrate_project
+from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponseRPC, \
     FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
     ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
-    extract_file
+    ProjectMigrateRequest, ProjectMigrateResponseRPC, extract_file
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, handle_base_except, \
@@ -247,3 +249,43 @@ def list_projects_view(user, cache):
     ]
 
     return result_response(ProjectListResponseRPC(), {'projects': projects})
+
+
+@use_kwargs(ProjectMigrateRequest)
+@marshal_with(ProjectMigrateResponseRPC)
+@header_doc(
+    'Migrate project to the latest version.',
+    tags=(CACHE_BLUEPRINT_TAG, ),
+)
+@cache_blueprint.route(
+    '/cache.migrate',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_base_except
+@handle_git_except
+@handle_renku_except
+@handle_validation_except
+@requires_cache
+@requires_identity
+@accepts_json
+def migrate_project_view(user_data, cache):
+    """Migrate specified project."""
+    user = cache.ensure_user(user_data)
+    project = cache.get_project(user, request.json['project_id'])
+
+    messages = []
+
+    def collect_message(msg):
+        """Collect migration message."""
+        messages.append(msg)
+
+    with chdir(project.abs_path):
+        was_migrated = migrate_project(progress_callback=collect_message)
+
+    return result_response(
+        ProjectMigrateResponseRPC(), {
+            'messages': messages,
+            'was_migrated': was_migrated
+        }
+    )
