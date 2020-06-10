@@ -774,7 +774,7 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def update_dataset_files(self, files, ref, delete=False):
+    def update_dataset_git_files(self, files, ref, delete=False):
         """Update files and dataset metadata according to their remotes.
 
         :param files: List of files to be updated

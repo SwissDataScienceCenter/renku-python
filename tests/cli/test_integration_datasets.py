@@ -864,6 +864,26 @@ def test_dataset_update(client, runner, params):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("doi", ["10.5281/zenodo.2658634"])
+@flaky(max_runs=1, min_passes=1)
+def test_dataset_update_external_provider(client, runner, doi):
+    """Test updating datasets from external providers."""
+    result = runner.invoke(
+        cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
+    )
+    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+
+    before_dataset = client.load_dataset("imported_dataset")
+
+    result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
+    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+
+    after_dataset = client.load_dataset("imported_dataset")
+    assert after_dataset.version != before_dataset.version
+    assert after_dataset.derived_from.url_id == before_dataset._id
+
+
+@pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 def test_dataset_update_remove_file(client, runner):
     """Test local copy is removed when remote file is removed."""
