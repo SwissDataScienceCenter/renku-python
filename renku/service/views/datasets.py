@@ -401,6 +401,7 @@ def unlink_file_view(user_data, cache):
             interactive=False,
             commit_message=ctx['commit_message']
         )
-        unlinked = [record.name for record in records]
+
+        unlinked = [record.path for record in records]
 
     return result_response(DatasetUnlinkResponseRPC(), {'unlinked': unlinked})
