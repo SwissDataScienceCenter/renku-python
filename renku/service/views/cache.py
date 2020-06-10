@@ -37,9 +37,8 @@ from renku.service.serializers.cache import FileListResponseRPC, \
     ProjectMigrateRequest, ProjectMigrateResponseRPC, extract_file
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
-from renku.service.views.decorators import accepts_json, handle_base_except, \
-    handle_git_except, handle_renku_except, handle_validation_except, \
-    header_doc, requires_cache, requires_identity
+from renku.service.views.decorators import accepts_json, \
+    handle_common_except, header_doc, requires_cache, requires_identity
 
 CACHE_BLUEPRINT_TAG = 'cache'
 cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
@@ -52,10 +51,7 @@ cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_uploaded_files_view(user, cache):
@@ -83,10 +79,7 @@ def list_uploaded_files_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def upload_file_view(user, cache):
@@ -207,12 +200,9 @@ def _project_clone(cache, user_data, project_data):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
-@requires_identity
+@handle_common_except
 @accepts_json
+@requires_identity
 def project_clone_view(user_data):
     """Clone a remote repository."""
     project_data = ProjectCloneContext().load({
@@ -235,10 +225,7 @@ def project_clone_view(user_data):
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_projects_view(user, cache):
@@ -262,13 +249,10 @@ def list_projects_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
+@accepts_json
 @requires_cache
 @requires_identity
-@accepts_json
 def migrate_project_view(user_data, cache):
     """Migrate specified project."""
     user = cache.ensure_user(user_data)

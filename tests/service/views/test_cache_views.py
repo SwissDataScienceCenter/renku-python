@@ -242,7 +242,9 @@ def test_clone_projects_no_auth(svc_client):
     }
 
     response = svc_client.post(
-        '/cache.project_clone', data=json.dumps(payload)
+        '/cache.project_clone',
+        data=json.dumps(payload),
+        headers={'Content-Type': 'application/json'}
     )
 
     assert {'error'} == set(response.json.keys())

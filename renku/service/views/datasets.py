@@ -42,9 +42,8 @@ from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC, \
     DatasetUnlinkRequest, DatasetUnlinkResponseRPC
 from renku.service.views import error_response, result_response
-from renku.service.views.decorators import accepts_json, handle_base_except, \
-    handle_git_except, handle_renku_except, handle_validation_except, \
-    header_doc, requires_cache, requires_identity
+from renku.service.views.decorators import accepts_json, \
+    handle_common_except, header_doc, requires_cache, requires_identity
 
 DATASET_BLUEPRINT_TAG = 'datasets'
 dataset_blueprint = Blueprint(
@@ -60,10 +59,7 @@ dataset_blueprint = Blueprint(
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_datasets_view(user, cache):
@@ -90,10 +86,7 @@ def list_datasets_view(user, cache):
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_dataset_files_view(user, cache):
@@ -123,10 +116,7 @@ def list_dataset_files_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -215,10 +205,7 @@ def add_file_to_dataset_view(user_data, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -263,10 +250,7 @@ def create_dataset_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -312,8 +296,8 @@ def import_dataset_view(user_data, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_validation_except
+@handle_common_except
+@accepts_json
 @requires_cache
 @requires_identity
 def edit_dataset_view(user_data, cache):
@@ -361,10 +345,7 @@ def edit_dataset_view(user_data, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
