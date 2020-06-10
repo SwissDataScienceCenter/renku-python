@@ -25,12 +25,16 @@ from urllib.parse import urlparse
 
 import attr
 import requests
+from calamus import fields
+from marshmallow import pre_load
 from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
-from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema, \
+    schema
+from renku.core.models.provenance.agents import PersonSchema
 from renku.core.utils.requests import retry
 
 ZENODO_BASE_URL = 'https://zenodo.org'
@@ -45,6 +49,42 @@ ZENODO_PUBLISH_ACTION_PATH = 'depositions/{0}/actions/publish'
 ZENODO_METADATA_URL = 'depositions/{0}'
 ZENODO_FILES_URL = 'depositions/{0}/files'
 ZENODO_NEW_DEPOSIT_URL = 'depositions'
+
+
+class _ZenodoDatasetSchema(DatasetSchema):
+    """Schema for Dataverse datasets."""
+
+    @pre_load
+    def fix_data(self, data, **kwargs):
+        """Fix data that is received from Dataverse."""
+        # Fix context
+        context = data.get('@context')
+        if context and isinstance(context, str):
+            if context == 'https://schema.org/':
+                context = 'http://schema.org/'
+            data['@context'] = {'@base': context, '@vocab': context}
+
+        # Add type to creators
+        creators = data.get('creator', [])
+        for c in creators:
+            c['@type'] = [str(t) for t in PersonSchema.opts.rdf_type]
+
+        # Fix license to be a string
+        license = data.get('license')
+        if license and isinstance(license, dict):
+            data['license'] = license.get('url', '')
+
+        # Delete existing isPartOf
+        data.pop('isPartOf', None)
+
+        return data
+
+    created = fields.DateTime(
+        schema.dateCreated, missing=None, format='%Y-%m-%d'
+    )
+    date_published = fields.DateTime(
+        schema.datePublished, missing=None, format='%Y-%m-%d'
+    )
 
 
 def make_records_url(record_id):
@@ -247,7 +287,9 @@ class ZenodoRecordSerializer:
         """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
         files = self.get_files()
         metadata = self.get_jsonld()
-        dataset = Dataset.from_jsonld(metadata, client=client)
+        dataset = Dataset.from_jsonld(
+            metadata, client=client, schema_class=_ZenodoDatasetSchema
+        )
 
         serialized_files = []
         for file_ in files:
