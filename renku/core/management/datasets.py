@@ -838,7 +838,7 @@ class DatasetsApiMixin(object):
 
         if not updated_files and (not delete or not deleted_files):
             # Nothing to commit or update
-            return deleted_files
+            return [], deleted_files
 
         # Commit changes in files
 
@@ -870,7 +870,7 @@ class DatasetsApiMixin(object):
         for dataset in modified_datasets.values():
             dataset.to_yaml()
 
-        return deleted_files
+        return updated_files, deleted_files
 
     def _create_external_file(self, src, dst):
         """Create a new external file."""

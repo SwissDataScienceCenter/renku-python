@@ -692,7 +692,7 @@ class _DownloadProgressbar(DownloadProgressCallback):
 @click.option("-e", "--external", is_flag=True, help="Update external data.")
 def update(names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
-    progress_context = partial(progressbar, label="Updating files")
+    progress_context = partial(progressbar, label="Checking files for updates")
     update_datasets(
         names=names,
         creators=creators,
