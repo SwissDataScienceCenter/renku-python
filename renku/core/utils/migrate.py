@@ -25,6 +25,9 @@ def migrate_types(data):
         'schema:Person': ['prov:Person', 'schema:Person'],
         str(sorted(['foaf:Project', 'prov:Location'])): [
             'prov:Location', 'schema:Project'
+        ],
+        'schema:DigitalDocument': [
+            'prov:Entity', 'schema:DigitalDocument', 'wfprov:Artifact'
         ]
     }
 

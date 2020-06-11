@@ -91,6 +91,20 @@ class Url:
         if not self.url:
             self.url = self.default_url()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return UrlSchema().load(data, unknown=INCLUDE)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return UrlSchema().dump(self)
+
 
 def _convert_creators(value):
     """Convert creators."""
@@ -634,8 +648,8 @@ class UrlSchema(JsonLDSchema):
         rdf_type = schema.URL
         model = Url
 
-    url = fields.String(schema.url)
-    _id = fields.Id(init_name='id')
+    url = fields.Uri(schema.url, missing=None)
+    _id = fields.Id(init_name='id', missing=None)
 
 
 class DatasetTagSchema(JsonLDSchema):
@@ -708,7 +722,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         schema.inLanguage, LanguageSchema, missing=None
     )
     keywords = fields.List(schema.keywords, fields.String())
-    license = fields.String(schema.license, missing=None)
+    license = fields.Uri(schema.license, missing=None, allow_none=True)
     name = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)

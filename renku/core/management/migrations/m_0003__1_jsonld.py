@@ -131,6 +131,8 @@ def _apply_on_the_fly_jsonld_migrations(
 
             data[k] = v
 
+    data['@context'] = jsonld_context
+
     write_yaml(path, data)
 
 

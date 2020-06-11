@@ -603,6 +603,7 @@ def import_dataset(
             total_size *= 2**20
 
     except KeyError as e:
+        raise
         raise ParameterError((
             'Could not process {0}.\n'
             'Unable to fetch metadata due to {1}'.format(uri, e)
