@@ -162,34 +162,35 @@ def _migrate_single_step(
                 created_outputs.append(l.entryname)
 
     for o in outputs:
-        if not o.outputBinding.glob.startswith('$(inputs.'):
-            raise NotImplementedError(
-                'Only stdout and outputs mapped to inputs are supported.'
-            )
-        name = o.outputBinding.glob.split('.')[1]
-
-        if name.endswith(')'):
-            name = name[:-1]
-
-        matched_input = next(i for i in inputs if i.id == name)
-        inputs.remove(matched_input)
-
-        if isinstance(matched_input.default, dict):
-            path = client.workflow_path / Path(matched_input.default['path'])
-        else:
-            path = Path(matched_input.default)
-
-        path = Path(os.path.abspath(path)).relative_to(client.path)
-
         prefix = None
         position = None
 
-        if matched_input.inputBinding:
-            prefix = matched_input.inputBinding.prefix
-            position = matched_input.inputBinding.position
+        if o.outputBinding.glob.startswith('$(inputs.'):
+            name = o.outputBinding.glob.split('.')[1]
 
-            if prefix and matched_input.inputBinding.separate:
-                prefix += ' '
+            if name.endswith(')'):
+                name = name[:-1]
+
+            matched_input = next(i for i in inputs if i.id == name)
+            inputs.remove(matched_input)
+
+            if isinstance(matched_input.default, dict):
+                path = client.workflow_path / Path(
+                    matched_input.default['path']
+                )
+            else:
+                path = Path(matched_input.default)
+
+            path = Path(os.path.abspath(path)).relative_to(client.path)
+
+            if matched_input.inputBinding:
+                prefix = matched_input.inputBinding.prefix
+                position = matched_input.inputBinding.position
+
+                if prefix and matched_input.inputBinding.separate:
+                    prefix += ' '
+        else:
+            path = Path(o.outputBinding.glob)
 
         create_folder = False
 
