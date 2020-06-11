@@ -43,6 +43,7 @@ DATAVERSE_API_PATH = "api/v1"
 
 DATAVERSE_VERSION_API = "info/version"
 DATAVERSE_METADATA_API = "datasets/export"
+DATAVERSE_VERSIONS_API = "datasets/:persistentId/versions"
 DATAVERSE_FILE_API = "access/datafile/:persistentId/"
 DATAVERSE_EXPORTER = "schema.org"
 
@@ -114,6 +115,15 @@ def make_records_url(record_id, base_url):
     """Create URL to access record by ID."""
     url_parts = list(urlparse.urlparse(base_url))
     url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
+    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)
+
+
+def make_versions_url(record_id, base_url):
+    """Create URL to access the versions of a record."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSIONS_API)
     args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
@@ -247,6 +257,19 @@ class DataverseRecordSerializer:
             file_list.append(mapped_file)
         return file_list
 
+    @property
+    def version(self):
+        """Get the major and minor version of this dataset."""
+        uri = make_versions_url(DataverseProvider.record_id(self._uri), self._uri)
+        response = self._dataverse._make_request(uri).json()
+        newest_version = response["data"][0]
+        return "{}.{}".format(newest_version["versionNumber"], newest_version["versionMinorNumber"])
+
+    @property
+    def latest_uri(self):
+        """Get uri of latest version."""
+        return self._uri
+
     def get_files(self):
         """Get Dataverse files metadata as ``DataverseFileSerializer``."""
         if not self.files:
@@ -258,6 +281,8 @@ class DataverseRecordSerializer:
         """Deserialize `DataverseRecordSerializer` to `Dataset`."""
         files = self.get_files()
         dataset = Dataset.from_jsonld(self._json, client=client, schema_class=_DataverseDatasetSchema)
+
+        dataset.version = self.version
 
         if dataset.description and not dataset.description.strip():
             dataset.description = None

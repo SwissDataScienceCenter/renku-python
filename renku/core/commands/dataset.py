@@ -493,7 +493,7 @@ def import_dataset_with_client(
             )
 
             text_prompt = "Do you wish to download this version?"
-            if record.is_last_version(uri) is False:
+            if not record.is_last_version(uri):
                 text_prompt = (
                     WARNING + "Newer version found at {}\n".format(record.links.get("latest_html")) + text_prompt
                 )
@@ -617,10 +617,10 @@ def update_datasets(
 
             record = provider.find_record(uri, client)
 
-            if record.is_last_version(uri):
+            if record.is_last_version(uri) and record.version == dataset.version:
                 continue
 
-            uri = record.links.get("latest_html")
+            uri = record.latest_uri
 
             # NOTE: set extract to false if there are any archives present in the dataset
             extract = True
