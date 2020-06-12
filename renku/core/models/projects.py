@@ -31,6 +31,7 @@ from renku.core.models.datastructures import Collection
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
+from renku.core.utils.vocabulary import prov, schema
 
 PROJECT_URL_PATH = 'projects'
 
@@ -118,26 +119,27 @@ class Project(ReferenceMixin):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
 
-        extra = dict(client=client)
-        data.update(extra)
-        self = ProjectSchema().load(data, unknown=EXCLUDE)
-        # If `client` is passed in `data` and JSON-LD expansion is needed then
-        # it will be lost and not passed to post_load.
-        self.client = client
-        self.__attrs_post_init__()
+        self = cls.from_jsonld(data=data, client=client)
         self.__reference__ = path
 
         return self
 
     @classmethod
-    def from_jsonld(cls, data):
+    def from_jsonld(cls, data, client=None):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
             return data
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return ProjectSchema().load(data, unknown=EXCLUDE)
+        self = ProjectSchema().load(data)
+        # If `client` is passed in `data` and JSON-LD expansion is needed then
+        # it will be lost and not passed to post_load.
+        if client:
+            self.client = client
+            self.__attrs_post_init__()
+
+        return self
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""
@@ -193,10 +195,6 @@ class ProjectCollection(Collection):
         )
 
 
-prov = fields.Namespace('http://www.w3.org/ns/prov#')
-schema = fields.Namespace('http://schema.org/')
-
-
 class ProjectSchema(JsonLDSchema):
     """Project Schema."""
 
@@ -205,6 +203,7 @@ class ProjectSchema(JsonLDSchema):
 
         rdf_type = [schema.Project, prov.Location]
         model = Project
+        unknown = EXCLUDE
 
     name = fields.String(schema.name, missing=None)
     created = fields.DateTime(schema.dateCreated, missing=None)

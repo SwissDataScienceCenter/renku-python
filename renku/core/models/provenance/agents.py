@@ -23,9 +23,11 @@ import re
 from attr.validators import instance_of
 from calamus import fields
 from calamus.schema import JsonLDSchema
+from marshmallow import EXCLUDE
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
+from renku.core.utils.vocabulary import prov, rdfs, schema
 from renku.version import __version__, version_url
 
 
@@ -159,14 +161,12 @@ class Person:
     @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD data."""
-        from marshmallow import INCLUDE
-
         if isinstance(data, cls):
             return data
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return PersonSchema().load(data, unknown=INCLUDE)
+        return PersonSchema().load(data)
 
     def __attrs_post_init__(self):
         """Finish object initialization."""
@@ -178,11 +178,6 @@ class Person:
             self.label = self.default_label()
 
 
-prov = fields.Namespace('http://www.w3.org/ns/prov#')
-rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
-schema = fields.Namespace('http://schema.org/')
-
-
 class PersonSchema(JsonLDSchema):
     """Person schema."""
 
@@ -191,6 +186,7 @@ class PersonSchema(JsonLDSchema):
 
         rdf_type = [prov.Person, schema.Person]
         model = Person
+        unknown = EXCLUDE
 
     name = fields.String(schema.name)
     email = fields.String(schema.email, missing=None)

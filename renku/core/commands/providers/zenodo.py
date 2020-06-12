@@ -25,15 +25,13 @@ from urllib.parse import urlparse
 
 import attr
 import requests
-from calamus import fields
 from marshmallow import pre_load
 from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema, \
-    schema
+from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema
 from renku.core.models.provenance.agents import PersonSchema
 from renku.core.utils.requests import retry
 
@@ -78,13 +76,6 @@ class _ZenodoDatasetSchema(DatasetSchema):
         data.pop('isPartOf', None)
 
         return data
-
-    created = fields.DateTime(
-        schema.dateCreated, missing=None, format='%Y-%m-%d'
-    )
-    date_published = fields.DateTime(
-        schema.datePublished, missing=None, format='%Y-%m-%d'
-    )
 
 
 def make_records_url(record_id):

@@ -29,7 +29,7 @@ import attr
 from attr.validators import instance_of
 from calamus import fields
 from calamus.schema import JsonLDSchema
-from marshmallow import INCLUDE, pre_load
+from marshmallow import EXCLUDE, pre_load
 
 from renku.core import errors
 from renku.core.models.entities import Entity, EntitySchema
@@ -37,6 +37,7 @@ from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
+from renku.core.utils.vocabulary import rdfs, renku, schema
 
 from . import jsonld as jsonld
 
@@ -99,7 +100,7 @@ class Url:
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return UrlSchema().load(data, unknown=INCLUDE)
+        return UrlSchema().load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
@@ -113,6 +114,8 @@ def _convert_creators(value):
 
     if isinstance(value, list):
         return [Person.from_jsonld(v) for v in value]
+
+    return value
 
 
 @attr.s
@@ -142,10 +145,7 @@ def _extract_doi(value):
     return value
 
 
-@attr.s(
-    frozen=True,
-    slots=True,
-)
+@attr.s(frozen=True, slots=True)
 class DatasetTag(object):
     """Represents a Tag of an instance of a dataset."""
 
@@ -183,16 +183,14 @@ class DatasetTag(object):
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return DatasetTagSchema().load(data, unknown=INCLUDE)
+        return DatasetTagSchema().load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
         return DatasetTagSchema().dump(self)
 
 
-@attr.s(
-    slots=True,
-)
+@attr.s(slots=True)
 class Language:
     """Represent a language of an object."""
 
@@ -207,7 +205,7 @@ class Language:
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return LanguageSchema().load(data, unknown=INCLUDE)
+        return LanguageSchema().load(data)
 
 
 def convert_filename_path(p):
@@ -286,7 +284,7 @@ class DatasetFile(Entity, CreatorMixin):
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        return DatasetFileSchema().load(data, unknown=INCLUDE)
+        return DatasetFileSchema().load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
@@ -316,9 +314,7 @@ def _convert_dataset_tags(value):
 
 def _convert_language(obj):
     """Convert language object."""
-    if isinstance(obj, dict):
-        language = Language.from_jsonld(obj)
-        return language
+    return Language.from_jsonld(obj) if isinstance(obj, dict) else obj
 
 
 def _convert_keyword(keywords):
@@ -607,7 +603,7 @@ class Dataset(Entity, CreatorMixin):
             raise ValueError(data)
 
         schema_class = schema_class or DatasetSchema
-        self = schema_class().load(data, unknown=INCLUDE)
+        self = schema_class().load(data)
         # If `client` and `commit` are passed in `data` and JSON-LD expansion
         #  is needed then they will be lost and not passed to post_load.
         self.client = client
@@ -626,15 +622,13 @@ class Dataset(Entity, CreatorMixin):
         return DatasetSchema().dump(self)
 
 
-schema = fields.Namespace('http://schema.org/')
-rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
-sdsc = fields.Namespace(
-    'https://swissdatasciencecenter.github.io/renku-ontology#'
-)
-
-
 class CreatorMixinSchema(JsonLDSchema):
     """CreatorMixin schema."""
+
+    class Meta:
+        """Meta class."""
+
+        unknown = EXCLUDE
 
     creator = fields.Nested(schema.creator, PersonSchema, many=True)
 
@@ -647,6 +641,7 @@ class UrlSchema(JsonLDSchema):
 
         rdf_type = schema.URL
         model = Url
+        unknown = EXCLUDE
 
     url = fields.Uri(schema.url, missing=None)
     _id = fields.Id(init_name='id', missing=None)
@@ -660,6 +655,7 @@ class DatasetTagSchema(JsonLDSchema):
 
         rdf_type = schema.PublicationEvent
         model = DatasetTag
+        unknown = EXCLUDE
 
     name = fields.String(schema.name)
     description = fields.String(schema.description)
@@ -677,6 +673,7 @@ class LanguageSchema(JsonLDSchema):
 
         rdf_type = schema.Language
         model = Language
+        unknown = EXCLUDE
 
     alternate_name = fields.String(schema.alternateName)
     name = fields.String(schema.name)
@@ -690,18 +687,15 @@ class DatasetFileSchema(EntitySchema, CreatorMixinSchema):
 
         rdf_type = schema.DigitalDocument
         model = DatasetFile
+        unknown = EXCLUDE
 
     added = fields.DateTime(schema.dateCreated)
-    # checksum
-    # filename
     name = fields.String(schema.name, missing=None)
-    # filesize
-    # filetype
     url = fields.String(schema.url, missing=None)
     based_on = fields.Nested(
         schema.isBasedOn, 'DatasetFileSchema', missing=None
     )
-    external = fields.Boolean(sdsc.external, missing=False)
+    external = fields.Boolean(renku.external, missing=False)
 
 
 class DatasetSchema(EntitySchema, CreatorMixinSchema):
@@ -712,6 +706,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
 
         rdf_type = schema.Dataset
         model = Dataset
+        unknown = EXCLUDE
 
     _id = fields.Id(init_name='id', missing=None)
     _label = fields.String(rdfs.label, init_name='label', missing=None)
