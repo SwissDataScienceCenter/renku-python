@@ -192,12 +192,17 @@ symbolic link in renku commands as a normal file. To add an external file pass
 
 Updating a dataset:
 
-After adding files from a remote Git repository, you can check for updates in
-those files by using ``renku dataset update`` command. This command checks all
-remote files and copies over new content if there is any. It does not delete
-files from the local dataset if they are deleted from the remote Git
+After adding files from a remote Git repository or importing a dataset from a
+provider like Dataverse or Zenodo, you can check for updates in those files by
+using ``renku dataset update`` command. For Git repositories, this command
+checks all remote files and copies over new content if there is any. It does
+not delete files from the local dataset if they are deleted from the remote Git
 repository; to force the delete use ``--delete`` argument. You can update to a
 specific branch, commit, or tag by passing ``--ref`` option.
+For datasets from providers like Dataverse or Zenodo, the whole dataset is
+updated to ensure consistency between the remote and local versions. Due to
+this limitation, the ``--include``, ``--exclude`` and ``--delete`` flag are not
+compatible with those datasets.
 
 You can limit the scope of updated files by specifying dataset names, using
 ``--include`` and ``--exclude`` to filter based on file names, or using
