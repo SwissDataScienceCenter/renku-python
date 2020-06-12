@@ -177,3 +177,83 @@ def test_migrations_no_commit(isolated_runner, old_project):
     assert 0 == result.exit_code
     assert 'OK' in result.output
     assert sha_before == client.repo.head.object.hexsha
+
+
+@pytest.mark.migration
+def test_calamus(isolated_runner, repository_before_calamus):
+    """Check Calamus loads project correctly."""
+    from datetime import datetime
+
+    def str2date(s):
+        return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f%z')
+
+    assert 0 == isolated_runner.invoke(cli, ['migrate']).exit_code
+
+    project_path = repository_before_calamus.working_dir
+    client = LocalClient(path=project_path)
+
+    project = client.project
+    assert 'old-datasets-v0.10.4' == project.name
+    assert str2date('2020-06-12T12:30:56.621721+00:00') == project.created
+    assert str2date('2020-06-12T12:30:56.646982+00:00') == project.updated
+    assert 'mailto:mohammad.alisafaee@' in project.creator._id
+
+    dataverse = client.load_dataset('dataverse')
+    assert 'Open Source at Harvard' == dataverse.name
+    assert 'ecad371b-d03e-4609-a5e9-3774004aaece' == dataverse.identifier
+    assert 'Harvard University' == dataverse.creator[0].affiliation
+    assert str2date('2020-06-12T12:31:05.161363+00:00') == dataverse.created
+    assert dataverse.date_published is None
+    assert 'The tabular file contains information' in dataverse.description
+    assert 'https://doi.org/10.7910/DVN/TJCLKP' == dataverse.same_as.url
+    assert '3' == dataverse.tags[0].name
+
+    file_ = dataverse.find_file('data/dataverse/IQSS-UNF.json')
+    assert (
+        'https://dataverse.harvard.edu/api/access/datafile/3371500' ==
+        file_.url
+    )
+    assert str2date('2020-06-12T12:33:51.828279+00:00') == file_.added
+
+    git = client.load_dataset('git')
+    assert 'git' == git.name
+    assert 'git' == git.short_name
+    assert '22343ecc-329d-4f14-95c5-32c88476f60a' == git.identifier
+    assert '.renku/datasets/22343ecc-329d-4f14-95c5-32c88476f60a' == git.path
+    assert (
+        'https://localhost/datasets/22343ecc-329d-4f14-95c5-32c88476f60a' ==
+        git.url
+    )
+    assert git.same_as is None
+    assert git.license is None
+    assert 0 == len(git.tags)
+    assert 'mailto:mohammad.alisafaee@' in git.creator[0]._id
+    assert str2date('2020-06-12T12:36:30.836352+00:00') == git.created
+    assert (
+        'https://localhost/datasets/22343ecc-329d-4f14-95c5-32c88476f60a' ==
+        git._id
+    )
+
+    file_ = git.files[0]
+    assert (
+        'https://github.com/SwissDataScienceCenter/r10e-ds-py.git' ==
+        file_.based_on.url
+    )
+    assert (
+        'notebooks/index.ipynb@f98325d81c700f4b86ee05c2154e94d43ca068b8' ==
+        file_.based_on._label
+    )
+    assert file_.based_on.based_on is None
+    assert 'mailto:cramakri@' in file_.based_on.creator[0]._id
+
+    local = client.load_dataset('local')
+    assert 'local' == local.name
+    assert '.renku/datasets/61435c1f-bbc7-4dfb-a316-dc86b9c87758' == local.path
+
+    file_ = local.find_file('data/local/data.txt')
+    assert file_.external is True
+    assert 'file://../../../../tmp/data.txt' == file_.url
+
+    file_ = local.find_file('data/local/result.csv')
+    assert file_.external is False
+    assert 'file://../../../../tmp/result.csv' == file_.url

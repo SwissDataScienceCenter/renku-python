@@ -459,6 +459,29 @@ def old_repository_with_submodules(request, tmpdir_factory):
     shutil.rmtree(repo_path.strpath)
 
 
+@pytest.fixture
+def repository_before_calamus(request, tmp_path_factory):
+    """Prepares a testing repo that has datasets using git submodules."""
+    name = 'project-0.10.4-before-calamus'
+    base_path = Path(__file__).parent / 'tests' / 'fixtures' / f'{name}.tar.gz'
+
+    working_dir = tmp_path_factory.mktemp(name)
+
+    with tarfile.open(str(base_path), 'r') as repo:
+        repo.extractall(str(working_dir))
+
+    bare_repo_path = working_dir / f'{name}.git'
+    repo_path = tmp_path_factory.mktemp(name)
+
+    repo = Repo(str(bare_repo_path)).clone(str(repo_path))
+    os.chdir(repo_path)
+
+    yield repo
+
+    shutil.rmtree(str(repo_path))
+    shutil.rmtree(str(bare_repo_path))
+
+
 @pytest.fixture(autouse=True)
 def add_client(doctest_namespace):
     """Add Renku client to doctest namespace."""
