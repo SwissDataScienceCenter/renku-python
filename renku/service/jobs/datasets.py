@@ -16,15 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset jobs."""
-from git import GitCommandError
+from git import GitCommandError, Repo
 from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import add_file, import_dataset
+from renku.core.commands.save import repo_sync
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import JobSchema
-from renku.service.utils import repo_sync
 from renku.service.views.decorators import requires_cache
 
 
@@ -88,8 +88,10 @@ def dataset_import(
                 progress=DatasetImportJobProcess(cache, user_job)
             )
 
-            remote_branch = repo_sync(project.abs_path)
-            user_job.update_extras('remote_branch', remote_branch.name)
+            _, remote_branch = repo_sync(
+                Repo(project.abs_path), remote='origin'
+            )
+            user_job.update_extras('remote_branch', remote_branch)
 
             user_job.complete()
         except (
@@ -123,8 +125,10 @@ def dataset_add_remote_file(
                 commit_message=commit_message
             )
 
-            remote_branch = repo_sync(project.abs_path)
-            user_job.update_extras('remote_branch', remote_branch.name)
+            _, remote_branch = repo_sync(
+                Repo(project.abs_path), remote='origin'
+            )
+            user_job.update_extras('remote_branch', remote_branch)
 
             user_job.complete()
     except (HTTPError, BaseException, GitCommandError) as e:
