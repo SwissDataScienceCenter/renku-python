@@ -164,6 +164,7 @@ class Entity(CommitMixin):
 
             files_in_commit = commit.stats.files
 
+            # update members with commits
             for member in path_.iterdir():
                 if member.name == '.gitkeep':
                     continue
@@ -176,6 +177,8 @@ class Entity(CommitMixin):
                     find_previous = False
 
                 try:
+                    assert all(member_path != m.path for m in entity.members)
+
                     entity.members.append(
                         cls.from_revision(
                             client,
@@ -291,7 +294,7 @@ class Collection(Entity):
         """Init members."""
         super().__attrs_post_init__()
 
-        if not self.members:
+        if self.members is None:
             self.members = self.default_members()
 
         for member in self.members:
