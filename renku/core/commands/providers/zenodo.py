@@ -247,6 +247,11 @@ class ZenodoRecordSerializer:
         """Deserialize `ZenodoRecordSerializer` to `Dataset`."""
         files = self.get_files()
         metadata = self.get_jsonld()
+        context = metadata.get('@context')
+        if context and isinstance(context, str):
+            if context == 'http://schema.org':
+                context = 'http://schema.org/'
+            metadata['@context'] = {'@base': context, '@vocab': context}
         dataset = Dataset.from_jsonld(metadata, client=client)
 
         serialized_files = []
