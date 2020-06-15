@@ -47,17 +47,12 @@ from .format.datasets import DATASETS_FORMATS
 
 
 @pass_local_client(clean=False, commit=False)
-def list_datasets(
-    client, revision=None, datadir=None, format=None, columns=None
-):
+def list_datasets(client, revision=None, format=None, columns=None):
     """Handle datasets sub commands."""
     if revision is None:
         datasets = client.datasets.values()
     else:
         datasets = client.datasets_from_commit(client.repo.commit(revision))
-
-    if datadir:
-        client.datadir = datadir
 
     if format is None:
         return list(datasets)
@@ -69,7 +64,10 @@ def list_datasets(
 
 
 @pass_local_client(
-    clean=False, commit=True, commit_only=DATASET_METADATA_PATHS
+    clean=False,
+    requires_migration=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS
 )
 def create_dataset(
     client,
@@ -102,6 +100,7 @@ def create_dataset(
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_empty=False,
     commit_only=DATASET_METADATA_PATHS
@@ -180,6 +179,7 @@ def _construct_creators(creators, ignore_email=False):
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
     commit_empty=False,
@@ -203,7 +203,7 @@ def add_file(
     interactive=False,
 ):
     """Add data file to a dataset."""
-    add_to_dataset(
+    _add_to_dataset(
         client=client,
         urls=urls,
         short_name=short_name,
@@ -221,7 +221,7 @@ def add_file(
     )
 
 
-def add_to_dataset(
+def _add_to_dataset(
     client,
     urls,
     short_name,
@@ -352,6 +352,7 @@ def list_files(
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
 )
@@ -365,6 +366,13 @@ def file_unlink(
     commit_message=None
 ):
     """Remove matching files from a dataset."""
+    if not include and not exclude:
+        raise ParameterError((
+            'include or exclude filters not found.\n'
+            'Check available filters with `renku dataset unlink --help`\n'
+            'Hint: `renku dataset unlink mydataset -I myfile`'
+        ))
+
     dataset = client.load_dataset(short_name=short_name)
 
     if not dataset:
@@ -392,6 +400,7 @@ def file_unlink(
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
 )
@@ -449,7 +458,7 @@ def dataset_remove(
                 ref.delete()
 
 
-@pass_local_client(clean=True, commit=False)
+@pass_local_client(clean=True, requires_migration=True, commit=False)
 def export_dataset(
     client,
     short_name,
@@ -550,6 +559,7 @@ def export_dataset(
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
 )
@@ -634,7 +644,7 @@ def import_dataset(
 
         urls, names = zip(*[(f.url, f.filename) for f in files])
 
-        add_to_dataset(
+        _add_to_dataset(
             client,
             urls=urls,
             short_name=short_name,
@@ -658,7 +668,7 @@ def import_dataset(
     else:
         short_name = short_name or dataset.short_name
 
-        add_to_dataset(
+        _add_to_dataset(
             client,
             urls=[record.project_url],
             short_name=short_name,
@@ -670,6 +680,7 @@ def import_dataset(
 
 @pass_local_client(
     clean=True,
+    requires_migration=True,
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
     commit_empty=False
@@ -799,6 +810,7 @@ def _filter(
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
 )
@@ -825,6 +837,7 @@ def tag_dataset(client, short_name, tag, description, force=False):
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_only=DATASET_METADATA_PATHS,
 )

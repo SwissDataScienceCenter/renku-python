@@ -55,7 +55,7 @@ def _deref(ref):
 
 
 @click.group(invoke_without_command=True)
-@pass_local_client
+@pass_local_client(requires_migration=True)
 @click.pass_context
 def workflow(ctx, client):
     """List or manage workflows with subcommands."""

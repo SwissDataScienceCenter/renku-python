@@ -97,6 +97,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.workflow
 
+.. _cli-save:
+
+``renku save``
+--------------
+
+.. automodule:: renku.cli.save
+
 .. _cli-show:
 
 ``renku show``

@@ -32,6 +32,7 @@ def _split_section_and_key(key):
 
 @pass_local_client(
     clean=False,
+    requires_migration=True,
     commit=True,
     commit_only=CONFIG_LOCAL_PATH,
     commit_empty=False

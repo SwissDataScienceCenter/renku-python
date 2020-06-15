@@ -1656,7 +1656,6 @@ def test_add_existing_files(
     assert 0 == result.exit_code
     assert 'These existing files were not overwritten' in result.output
     assert str(path) in result.output
-    assert 'Warning: No file was added to project' not in result.output
 
     # Add existing and non-existing files
     directory_tree.join('new-file').write('new-file')

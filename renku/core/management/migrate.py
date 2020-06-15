@@ -34,7 +34,17 @@ from pathlib import Path
 
 import pkg_resources
 
+from renku.core.errors import MigrationRequired, ProjectNotSupported
+
 SUPPORTED_PROJECT_VERSION = 4
+
+
+def check_for_migration(client):
+    """Checks if migration is required."""
+    if is_migration_required(client):
+        raise MigrationRequired
+    elif is_project_unsupported(client):
+        raise ProjectNotSupported
 
 
 def is_migration_required(client):
@@ -69,14 +79,14 @@ def migrate(client, progress_callback=None):
                 progress_callback(f'Applying migration {module_name}...')
             module.migrate(client)
             n_migrations_executed += 1
+    if n_migrations_executed > 0:
+        client.project.version = str(version)
+        client.project.to_yaml()
 
-    client.project.version = str(version)
-    client.project.to_yaml()
-
-    if progress_callback and n_migrations_executed > 0:
-        progress_callback(
-            f'Successfully applied {n_migrations_executed} migrations.'
-        )
+        if progress_callback:
+            progress_callback(
+                f'Successfully applied {n_migrations_executed} migrations.'
+            )
 
     return n_migrations_executed != 0
 

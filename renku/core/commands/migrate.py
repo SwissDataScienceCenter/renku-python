@@ -16,20 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate project to the latest Renku version."""
-from renku.core.errors import MigrationRequired, ProjectNotSupported
-from renku.core.management.migrate import is_migration_required, \
-    is_project_unsupported, migrate
+
+from renku.core.management.migrate import migrate
 
 from .client import pass_local_client
-
-
-@pass_local_client(clean=False, commit=False)
-def check_for_migration(client):
-    """Checks if migration is required."""
-    if is_migration_required(client):
-        raise MigrationRequired
-    elif is_project_unsupported(client):
-        raise ProjectNotSupported
 
 
 @pass_local_client(clean=True, commit=True, commit_empty=False)

@@ -26,7 +26,6 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
-from tests.service.views.test_cache_views import IT_GIT_ACCESS_TOKEN
 from tests.utils import make_dataset_add_payload
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
@@ -88,6 +87,7 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
             'affiliation': 'ethz'
         }],
         'description': 'my little description',
+        'keywords': ['keyword1', 'keyword2']
     }
 
     response = svc_client.post(
@@ -123,6 +123,7 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
     assert payload['short_name'] == ds['short_name']
     assert payload['description'] == ds['description']
     assert payload['creators'] == ds['creators']
+    assert payload['keywords'] == ds['keywords']
 
 
 @pytest.mark.service
@@ -201,7 +202,14 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
         data=json.dumps(payload),
         headers=headers,
     )
+    assert response
+    assert 'result' in response.json.keys()
 
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
     assert_rpc_response(response, with_key='error')
 
@@ -453,7 +461,7 @@ def test_list_datasets_view(svc_client_with_repo):
 
     assert {
         'version', 'description', 'created_at', 'short_name', 'title',
-        'creators'
+        'creators', 'keywords'
     } == set(response.json['result']['datasets'][0].keys())
 
 
@@ -519,7 +527,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     assert 0 != len(response.json['result']['datasets'])
     assert {
         'creators', 'short_name', 'version', 'title', 'description',
-        'created_at'
+        'created_at', 'keywords'
     } == set(response.json['result']['datasets'][0].keys())
 
     assert payload['short_name'] in [
@@ -1069,6 +1077,7 @@ def test_edit_datasets_view(svc_client_with_repo):
         'project_id': project_id,
         'short_name': short_name,
         'title': 'my new title',
+        'keywords': ['keyword1']
     }
     response = svc_client.post(
         '/datasets.edit', data=json.dumps(edit_payload), headers=headers
@@ -1078,29 +1087,17 @@ def test_edit_datasets_view(svc_client_with_repo):
     assert_rpc_response(response)
 
     assert {'warnings', 'edited'} == set(response.json['result'])
-    assert {'title': 'my new title'} == response.json['result']['edited']
+    assert {
+        'title': 'my new title',
+        'keywords': ['keyword1']
+    } == response.json['result']['edited']
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_protected_branch(svc_client):
+def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""
-    headers = {
-        'Content-Type': 'application/json',
-        'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
-        'Renku-User-FullName': 'Just Sam',
-        'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
-    }
-
-    payload = {
-        'git_url': 'https://dev.renku.ch/gitlab/contact/protected-renku.git',
-    }
-
-    response = svc_client.post(
-        '/cache.project_clone', data=json.dumps(payload), headers=headers
-    )
-
+    svc_client, headers, payload, response = svc_protected_repo
     assert response
     assert {'result'} == set(response.json.keys())
 
@@ -1114,7 +1111,6 @@ def test_protected_branch(svc_client):
         data=json.dumps(payload),
         headers=headers,
     )
-
     assert response
 
     assert {'result'} == set(response.json.keys())

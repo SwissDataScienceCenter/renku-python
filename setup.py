@@ -29,7 +29,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
 URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
-REFERENCE = '0.1.10'
+REFERENCE = '0.1.11'
 
 
 class DownloadTemplates(Command):
@@ -145,17 +145,17 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     'appdirs>=1.4.3',
-    'apispec==3.3.0',
+    'apispec==3.3.1',
     'attrs>=19.3.0',
     'calamus @ git+ssh://git@github.com/SwissDataScienceCenter/calamus.git@000-renku-integration#egg=calamus',
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
-    'cwltool==3.0.20200324120055',
+    'cwltool==3.0.20200530110633',
     'environ_config>=18.2.0',
     'filelock>=3.0.0',
     'flask==1.1.2',
-    'flask-apispec==0.8.7',
+    'flask-apispec==0.9.0',
     'flask-swagger-ui==3.25.0',
     'gitdb2==3.0.1',
     'gitpython==3.1.0',
@@ -172,18 +172,18 @@ install_requires = [
     'pyshacl>=0.11.3.post1',
     'python-dateutil>=2.6.1',
     'python-editor>=1.0.4',
-    'redis==3.5.2',
+    'redis==3.5.3',
     'rdflib==4.2.2',
     'rdflib-jsonld>=0.4.0,<0.5.0',
     'requests>=2.21.0',
-    'rq==1.4.0',
-    'rq-scheduler==0.9.1',
+    'rq==1.4.2',
+    'rq-scheduler==0.10.0',
     'ndg-httpsclient>=0.5.1',
-    'marshmallow==3.6.0',
+    'marshmallow==3.6.1',
     'idna==2.8',
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',
-    'tqdm==4.45.0',
+    'tqdm==4.46.1',
     'walrus>=0.8.0',
     'wcmatch>=6.0.0',
     'werkzeug>=0.15.5',
