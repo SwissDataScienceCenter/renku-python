@@ -21,7 +21,6 @@ import uuid
 
 import pytest
 from flaky import flaky
-from tests.service.views.test_dataset_views import assert_rpc_response
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE
 

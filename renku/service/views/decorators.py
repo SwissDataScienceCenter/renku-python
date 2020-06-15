@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service view decorators."""
-import functools
 from functools import wraps
 
 from flask import jsonify, request
