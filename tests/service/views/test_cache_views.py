@@ -675,7 +675,7 @@ def test_check_migrations(svc_client_setup):
 @pytest.mark.service
 @pytest.mark.integration
 def test_check_no_migrations(svc_client_with_repo):
-    """Check if migrations are required."""
+    """Check if migrations are not required."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     response = svc_client.get(
