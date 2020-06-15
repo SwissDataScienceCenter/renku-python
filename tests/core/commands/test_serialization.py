@@ -122,11 +122,6 @@ def test_dataset_creator_email(dataset_metadata):
 
 def test_calamus(client, dataset_metadata_before_calamus):
     """Check Calamus loads project correctly."""
-    from datetime import datetime
-
-    def str2date(s):
-        return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f%z')
-
     dataset = Dataset.from_jsonld(
         dataset_metadata_before_calamus, client=LocalClient('.')
     )
@@ -136,8 +131,8 @@ def test_calamus(client, dataset_metadata_before_calamus):
     assert 'Harvard University' == dataset.creator[0].affiliation
     assert 'Durbin, Philip' == dataset.creator[0].name
     assert 'Durbin, Philip' == dataset.creator[0].label
-    assert str2date('2020-06-15T08:34:03.607590+00:00') == dataset.created
-    assert dataset.date_published is None
+    assert dataset.created is None
+    assert '2019-07-03T00:00:00' == dataset.date_published.isoformat('T')
     assert 'The tabular file contains information' in dataset.description
     assert 'https://doi.org/10.7910/DVN/TJCLKP' == dataset.same_as.url
     assert '3' == dataset.tags[0].name
@@ -154,7 +149,7 @@ def test_calamus(client, dataset_metadata_before_calamus):
         'https://dataverse.harvard.edu/api/access/datafile/3371500' ==
         file_.url
     )
-    assert str2date('2020-06-15T08:37:04.571573+00:00') == file_.added
+    assert '2020-06-15T08:37:04.571573+00:00' == file_.added.isoformat('T')
     assert 'https://orcid.org/0000-0002-9528-9470' == file_.creator[0]._id
     assert file_.based_on is None
 

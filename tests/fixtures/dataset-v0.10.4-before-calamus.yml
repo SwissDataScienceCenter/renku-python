@@ -163,7 +163,9 @@ creator:
   email: null
   label: Durbin, Philip
   name: Durbin, Philip
-date_published: null
+date_published:
+  '@type': schema:Date
+  '@value': '2019-07-03'
 description: The tabular file contains information on known Harvard repositories on
   GitHub, such as the number of stars, programming language, day last updated, number
   of open issues, size, number of forks, repository URL, create date, and description.
