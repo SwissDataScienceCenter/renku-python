@@ -118,3 +118,65 @@ def test_dataset_creator_email(dataset_metadata):
         dataset.asjsonld(), client=LocalClient('.')
     )
     assert 'mailto:None' not in dataset_broken.creator[0]._id
+
+
+def test_calamus(client, dataset_metadata_before_calamus):
+    """Check Calamus loads project correctly."""
+    from datetime import datetime
+
+    def str2date(s):
+        return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f%z')
+
+    dataset = Dataset.from_jsonld(
+        dataset_metadata_before_calamus, client=LocalClient('.')
+    )
+    assert 'Open Source at Harvard' == dataset.name
+    assert '51db02ad-3cba-47e2-84d0-5ee5914bd654' == dataset.identifier
+    assert '51db02ad-3cba-47e2-84d0-5ee5914bd654' == dataset._label
+    assert 'Harvard University' == dataset.creator[0].affiliation
+    assert 'Durbin, Philip' == dataset.creator[0].name
+    assert 'Durbin, Philip' == dataset.creator[0].label
+    assert str2date('2020-06-15T08:34:03.607590+00:00') == dataset.created
+    assert dataset.date_published is None
+    assert 'The tabular file contains information' in dataset.description
+    assert 'https://doi.org/10.7910/DVN/TJCLKP' == dataset.same_as.url
+    assert '3' == dataset.tags[0].name
+    assert 'Tag 3 created by renku import' == dataset.tags[0].description
+    assert isinstance(dataset.license, dict)
+    assert (
+        'https://creativecommons.org/publicdomain/zero/1.0/' in str(
+            dataset.license
+        )
+    )
+
+    file_ = dataset.find_file('data/dataverse/IQSS-UNF.json')
+    assert (
+        'https://dataverse.harvard.edu/api/access/datafile/3371500' ==
+        file_.url
+    )
+    assert str2date('2020-06-15T08:37:04.571573+00:00') == file_.added
+    assert 'https://orcid.org/0000-0002-9528-9470' == file_.creator[0]._id
+    assert file_.based_on is None
+
+    file_ = dataset.find_file('data/dataverse/git/index.ipynb')
+    assert (
+        'https://github.com/SwissDataScienceCenter/r10e-ds-py.git' ==
+        file_.based_on.url
+    )
+    assert (
+        'notebooks/index.ipynb@f98325d81c700f4b86ee05c2154e94d43ca068b8' ==
+        file_.based_on._label
+    )
+    assert file_.based_on.based_on is None
+    assert 'mailto:cramakri@' in file_.based_on.creator[0]._id
+    assert (
+        'https://github.com/SwissDataScienceCenter/r10e-ds-py.git' == file_.url
+    )
+
+    file_ = dataset.find_file('data/dataverse/external/data.txt')
+    assert file_.external is True
+    assert 'file://../../../../tmp/data.txt' == file_.url
+
+    file_ = dataset.find_file('data/dataverse/local/result.csv')
+    assert file_.external is False
+    assert 'file://../../../../tmp/result.csv' == file_.url

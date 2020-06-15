@@ -147,7 +147,7 @@ install_requires = [
     'appdirs>=1.4.3',
     'apispec==3.3.1',
     'attrs>=19.3.0',
-    'calamus @ git+ssh://git@github.com/SwissDataScienceCenter/calamus.git@000-renku-integration#egg=calamus',
+    'calamus @ git+https://github.com/SwissDataScienceCenter/calamus.git@000-renku-integration#egg=calamus',
     'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',

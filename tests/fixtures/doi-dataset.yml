@@ -43,14 +43,14 @@ creator:
   name: Kather, Jakob Nikolas
 date_published:
   '@type': schema:Date
-  '@value': '2019-06-16T14:32:23.123456+02:00'
+  '@value': '2019-06-16'
 description: ""
 files: []
 identifier: f2e6b3f3-5987-4800-9b7c-07d4821aa5c6
 in_language: null
 keywords: []
 license:
-  http://creativecommons.org/licenses/by/4.0/legalcode
+  _id: http://creativecommons.org/licenses/by/4.0/legalcode
 name: Tissue blocks for EBV detection in stomach cancer
 path: .renku/datasets/f2e6b3f3-5987-4800-9b7c-07d4821aa5c6
 url: https://zenodo.org/record/3247009
