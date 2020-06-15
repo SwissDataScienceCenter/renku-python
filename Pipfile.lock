@@ -66,6 +66,10 @@
             ],
             "version": "==0.11.7"
         },
+        "calamus": {
+            "git": "https://github.com/SwissDataScienceCenter/calamus.git",
+            "ref": "764f45f59cd973d659522b7864353057c6d23462"
+        },
         "certifi": {
             "hashes": [
                 "sha256:5ad7e9a056d25ffa5082862e36f119f7f7cec6457fa07ee2f8c339814b80c9b1",
