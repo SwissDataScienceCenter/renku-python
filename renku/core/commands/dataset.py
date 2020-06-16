@@ -397,6 +397,8 @@ def file_unlink(
 
     dataset.to_yaml()
 
+    return records
+
 
 @pass_local_client(
     clean=False,

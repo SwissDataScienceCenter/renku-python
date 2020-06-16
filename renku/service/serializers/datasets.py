@@ -225,3 +225,40 @@ class DatasetEditResponseRPC(JsonRPCResponse):
     """RPC schema for a dataset import."""
 
     result = fields.Nested(DatasetEditResponse)
+
+
+class DatasetUnlinkRequest(Schema):
+    """Dataset unlink file request."""
+
+    project_id = fields.String(required=True)
+    short_name = fields.String(required=True)
+
+    include_filters = fields.List(fields.String())
+    exclude_filters = fields.List(fields.String())
+
+    commit_message = fields.String()
+
+    @post_load()
+    def check_filters(self, data, **kwargs):
+        """Check filters."""
+        include_filter = data.get('include_filters')
+        exclude_filter = data.get('exclude_filters')
+
+        if not include_filter and not exclude_filter:
+            raise marshmallow.ValidationError(
+                'one of the filters must be specified'
+            )
+
+        return data
+
+
+class DatasetUnlinkResponse(Schema):
+    """Dataset unlink files response."""
+
+    unlinked = fields.List(fields.String())
+
+
+class DatasetUnlinkResponseRPC(JsonRPCResponse):
+    """Dataset unlink files RPC response."""
+
+    result = fields.Nested(DatasetUnlinkResponse)
