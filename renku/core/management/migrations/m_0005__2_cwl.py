@@ -194,7 +194,11 @@ def _migrate_single_step(
 
         create_folder = False
 
-        if str(path) not in created_outputs:
+        check_path = path
+        if not (client.path / path).is_dir():
+            check_path = path.parent
+
+        if check_path != '.' and str(check_path) in created_outputs:
             create_folder = True
 
         run.outputs.append(
