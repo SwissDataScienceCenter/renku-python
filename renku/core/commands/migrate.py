@@ -17,9 +17,16 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.management.migrate import migrate
+from renku.core.management.migrate import is_migration_required, \
+    is_project_unsupported, migrate
 
 from .client import pass_local_client
+
+
+@pass_local_client
+def migrations_check(client):
+    """Public function for a migrations check."""
+    return is_migration_required(client), not is_project_unsupported(client)
 
 
 @pass_local_client(clean=True, commit=True, commit_empty=False)
