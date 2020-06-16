@@ -27,14 +27,15 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
-from renku.core.commands.migrate import migrate_project
+from renku.core.commands.migrate import migrate_project, migrations_check
 from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponseRPC, \
     FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
     ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
-    ProjectMigrateRequest, ProjectMigrateResponseRPC, extract_file
+    ProjectMigrateRequest, ProjectMigrateResponseRPC, \
+    ProjectMigrationCheckResponseRPC, extract_file
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, \
@@ -271,5 +272,39 @@ def migrate_project_view(user_data, cache):
         ProjectMigrateResponseRPC(), {
             'messages': messages,
             'was_migrated': was_migrated
+        }
+    )
+
+
+@use_kwargs(ProjectMigrateRequest)
+@marshal_with(ProjectMigrationCheckResponseRPC)
+@header_doc(
+    'Check if project requires migration.',
+    tags=(CACHE_BLUEPRINT_TAG, ),
+)
+@cache_blueprint.route(
+    '/cache.migrations_check',
+    methods=['GET'],
+    provide_automatic_options=False,
+)
+@handle_base_except
+@handle_git_except
+@handle_renku_except
+@handle_validation_except
+@requires_cache
+@requires_identity
+@accepts_json
+def migration_check_project_view(user_data, cache):
+    """Migrate specified project."""
+    user = cache.ensure_user(user_data)
+    project = cache.get_project(user, request.json['project_id'])
+
+    with chdir(project.abs_path):
+        migration_required, project_supported = migrations_check()
+
+    return result_response(
+        ProjectMigrationCheckResponseRPC(), {
+            'migration_required': migration_required,
+            'project_supported': project_supported
         }
     )
