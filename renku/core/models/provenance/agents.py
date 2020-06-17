@@ -179,6 +179,7 @@ class SoftwareAgent:
 
     label = jsonld.ib(context='rdfs:label', kw_only=True)
     was_started_by = jsonld.ib(
+        type=Person,
         context='prov:wasStartedBy',
         default=None,
         kw_only=True,
