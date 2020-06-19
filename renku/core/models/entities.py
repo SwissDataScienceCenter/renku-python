@@ -23,10 +23,9 @@ import urllib
 import weakref
 
 import attr
-from calamus import fields
-from calamus.schema import JsonLDSchema
 
 from renku.core.models import jsonld as jsonld
+from renku.core.models.calamus import JsonLDSchema, fields
 from renku.core.models.projects import Project, ProjectSchema
 
 

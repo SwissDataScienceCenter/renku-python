@@ -21,17 +21,15 @@ import datetime
 import os
 
 import attr
-from calamus import fields
-from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE, pre_load
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
+from renku.core.models.calamus import JsonLDSchema, fields, prov, schema
 from renku.core.models.datastructures import Collection
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
-from renku.core.utils.vocabulary import prov, schema
 
 PROJECT_URL_PATH = 'projects'
 
@@ -132,14 +130,7 @@ class Project(ReferenceMixin):
         if not isinstance(data, dict):
             raise ValueError(data)
 
-        self = ProjectSchema().load(data)
-        # If `client` is passed in `data` and JSON-LD expansion is needed then
-        # it will be lost and not passed to post_load.
-        if client:
-            self.client = client
-            self.__attrs_post_init__()
-
-        return self
+        return ProjectSchema(client=client).load(data)
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""

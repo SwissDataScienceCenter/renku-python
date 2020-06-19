@@ -27,17 +27,15 @@ from pathlib import Path
 
 import attr
 from attr.validators import instance_of
-from calamus import fields
-from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE, pre_load
 
 from renku.core import errors
+from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku, schema
 from renku.core.models.entities import Entity, EntitySchema
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
-from renku.core.utils.vocabulary import rdfs, renku, schema
 
 from . import jsonld as jsonld
 
@@ -430,7 +428,7 @@ class Dataset(Entity, CreatorMixin):
     @property
     def editable(self):
         """Subset of attributes which user can edit."""
-        obj = self.asjsonld()
+        obj = self.as_jsonld()
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
 
@@ -603,14 +601,7 @@ class Dataset(Entity, CreatorMixin):
             raise ValueError(data)
 
         schema_class = schema_class or DatasetSchema
-        self = schema_class().load(data)
-        # If `client` and `commit` are passed in `data` and JSON-LD expansion
-        #  is needed then they will be lost and not passed to post_load.
-        self.client = client
-        self.commit = commit
-        self.__attrs_post_init__()
-
-        return self
+        return schema_class(client=client, commit=commit).load(data)
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""

@@ -21,13 +21,11 @@ import configparser
 import re
 
 from attr.validators import instance_of
-from calamus import fields
-from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
-from renku.core.utils.vocabulary import prov, rdfs, schema
+from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, schema
 from renku.version import __version__, version_url
 
 
