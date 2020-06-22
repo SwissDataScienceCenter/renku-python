@@ -34,7 +34,7 @@ from renku.service.logger import service_log
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views.cache import CACHE_BLUEPRINT_TAG, cache_blueprint, \
     list_projects_view, list_uploaded_files_view, migrate_project_view, \
-    project_clone_view, upload_file_view, migration_check_project_view
+    migration_check_project_view, project_clone_view, upload_file_view
 from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
     add_file_to_dataset_view, create_dataset_view, dataset_blueprint, \
     edit_dataset_view, import_dataset_view, list_dataset_files_view, \
