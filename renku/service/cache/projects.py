@@ -18,6 +18,7 @@
 """Renku service project cache management."""
 from marshmallow import EXCLUDE
 
+from renku.core.errors import RenkuException
 from renku.service.cache.base import BaseCache
 from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
@@ -45,7 +46,11 @@ class ProjectManagementCache(BaseCache):
             record = Project.get((Project.project_id == project_id) &
                                  (Project.user_id == user.user_id))
         except ValueError:
-            return
+            raise RenkuException("project_id reference not found")
+
+        if not record.abs_path.exists():
+            record.delete()
+            raise RenkuException("project_id reference not found")
 
         return record
 

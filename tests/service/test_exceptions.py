@@ -83,4 +83,5 @@ def test_migration_required_flag(svc_client_setup):
         data=json.dumps(payload),
         headers=headers,
     )
+    breakpoint()
     assert response.json['error']['migration_required']

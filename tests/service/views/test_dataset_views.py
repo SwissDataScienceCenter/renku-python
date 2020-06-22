@@ -73,6 +73,32 @@ def test_create_dataset_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
+def test_create_dataset_wrong_ref_view(svc_client_with_repo):
+    """Create a new dataset successfully."""
+    svc_client, headers, _, _ = svc_client_with_repo
+
+    payload = {
+        'project_id': 'ref does not exist',
+        'short_name': '{0}'.format(uuid.uuid4().hex),
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+    assert response
+    assert {
+        'error': {
+            'code': -32100,
+            'reason': 'project_id reference not found'
+        }
+    } == response.json
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
 def test_create_dataset_with_metadata(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
