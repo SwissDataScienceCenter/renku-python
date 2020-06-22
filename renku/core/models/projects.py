@@ -21,7 +21,7 @@ import datetime
 import os
 
 import attr
-from marshmallow import EXCLUDE, pre_load
+from marshmallow import EXCLUDE
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
@@ -75,8 +75,12 @@ class Project(ReferenceMixin):
             self._id = self.project_id
         except ValueError:
             """Fallback to old behaviour."""
-            if not self._id and self.client and self.client.project:
+            if self._id:
+                pass
+            elif self.client and self.client.is_project_set():
                 self._id = self.client.project._id
+            else:
+                raise
 
     @property
     def project_id(self):
@@ -202,24 +206,3 @@ class ProjectSchema(JsonLDSchema):
     version = fields.String(schema.schemaVersion, missing=1)
     creator = fields.Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name='id', missing=None)
-
-    @pre_load
-    def translate_old_project(self, data, **kwargs):
-        """Translate from old project's format."""
-        from pyld import jsonld
-        if '@context' not in data:
-            return data
-
-        translate = {
-            'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
-            'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
-        }
-
-        data = jsonld.expand(data)
-        if isinstance(data, list):
-            data = data[0]
-        data = jsonld.compact(data, translate)
-        # compact using the class json-ld context
-        data.pop('@context', None)
-
-        return data

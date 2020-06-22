@@ -23,13 +23,13 @@ from freezegun import freeze_time
 from renku.core.models.projects import Project
 
 
-def test_project_serialization():
+def test_project_serialization(client):
     """Test project serialization with JSON-LD context."""
     from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 
     with freeze_time('2017-03-01T08:00:00.000000+00:00') as frozen_time:
         project_time = frozen_time().replace(tzinfo=timezone.utc)
-        project = Project(name='demo')
+        project = Project(name='demo', client=client)
         assert project.name == 'demo'
         assert project.created == project_time
         assert project.updated == project_time

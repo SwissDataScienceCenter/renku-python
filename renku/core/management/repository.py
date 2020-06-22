@@ -110,6 +110,8 @@ class RepositoryApiMixin(GitCore):
 
         self._subclients = {}
 
+        self._project = None
+
         super().__attrs_post_init__()
 
         # initialize submodules
@@ -146,11 +148,14 @@ class RepositoryApiMixin(GitCore):
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
 
-    @cached_property
+    @property
     def project(self):
         """Return the Project instance."""
-        if self.renku_metadata_path.exists():
-            return Project.from_yaml(self.renku_metadata_path, client=self)
+        if self.renku_metadata_path.exists() and self._project is None:
+            self._project = Project.from_yaml(
+                self.renku_metadata_path, client=self
+            )
+        return self._project
 
     @property
     def remote(self, remote_name='origin'):
@@ -182,6 +187,10 @@ class RepositoryApiMixin(GitCore):
             owner = url.owner
             name = url.name
         return {'host': host, 'owner': owner, 'name': name}
+
+    def is_project_set(self):
+        """Return if project is set for the client."""
+        return self._project is not None
 
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.core.models.provenance.activities.Activity`.
