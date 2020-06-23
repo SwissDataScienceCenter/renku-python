@@ -102,6 +102,49 @@ def test_update(runner, project, run, no_lfs_warning):
             assert r is True, t
 
 
+def test_update_multiple_steps(runner, project, run, no_lfs_warning):
+    """Test automatic file update."""
+    cwd = Path(project)
+    data = cwd / 'data'
+    data.mkdir(exist_ok=True, parents=True)
+    source = cwd / 'source.txt'
+    intermediate = cwd / 'intermediate.txt'
+    output = cwd / 'result.txt'
+
+    repo = git.Repo(project)
+
+    update_and_commit('1', source, repo)
+
+    assert 0 == run(args=('run', 'cp', str(source), str(intermediate)))
+
+    with intermediate.open('r') as f:
+        assert f.read().strip() == '1'
+
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    assert 0 == run(args=('run', 'cp', str(intermediate), str(output)))
+
+    with output.open('r') as f:
+        assert f.read().strip() == '1'
+
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    update_and_commit('2', source, repo)
+
+    result = runner.invoke(cli, ['status'])
+    assert 1 == result.exit_code
+
+    assert 0 == run()
+
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
+
+
 def test_workflow_without_outputs(runner, project, run):
     """Test workflow without outputs."""
     repo = git.Repo(project)
