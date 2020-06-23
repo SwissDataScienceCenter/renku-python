@@ -87,11 +87,12 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
         data=json.dumps(payload),
         headers=headers,
     )
+
     assert response
     assert {
         'error': {
             'code': -32100,
-            'reason': 'project_id reference not found'
+            'reason': 'project_id "ref does not exist" not found'
         }
     } == response.json
 
