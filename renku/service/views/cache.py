@@ -27,10 +27,13 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
-from renku.core.commands.migrate import migrate_project, migrations_check
+from renku.core.commands.migrate import migrations_check
 from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
+from renku.service.jobs.contexts import enqueue_retry
+from renku.service.jobs.project import execute_migration, migrate_job
+from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
 from renku.service.serializers.cache import FileListResponseRPC, \
     FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
     ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
@@ -256,18 +259,22 @@ def list_projects_view(user, cache):
 @requires_identity
 def migrate_project_view(user_data, cache):
     """Migrate specified project."""
+    ctx = ProjectMigrateRequest().load(request.json)
     user = cache.ensure_user(user_data)
-    project = cache.get_project(user, request.json['project_id'])
+    project = cache.get_project(user, ctx['project_id'])
 
-    messages = []
+    if ctx.get('is_delayed', False):
+        job = cache.make_job(user, locked=project.project_id)
+        with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
+            queue.enqueue(
+                migrate_job,
+                user_data,
+                project.project_id,
+                job.job_id,
+            )
+        return result_response(ProjectMigrateResponseRPC(), job)
 
-    def collect_message(msg):
-        """Collect migration message."""
-        messages.append(msg)
-
-    with chdir(project.abs_path):
-        was_migrated = migrate_project(progress_callback=collect_message)
-
+    messages, was_migrated = execute_migration(project)
     return result_response(
         ProjectMigrateResponseRPC(), {
             'messages': messages,

@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku service datasets view."""
 import os
-import uuid
 from pathlib import Path
 
 from flask import Blueprint, request
@@ -29,7 +28,6 @@ from renku.core.commands.dataset import add_file, create_dataset, \
 from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
-from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
 from renku.service.jobs.contexts import enqueue_retry
@@ -238,18 +236,13 @@ def import_dataset_view(user_data, cache):
     user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
-
-    user_job = {
-        'job_id': uuid.uuid4().hex,
-        'state': USER_JOB_STATE_ENQUEUED,
-    }
-    job = cache.make_job(user, user_job, locked=project.project_id)
+    job = cache.make_job(user, locked=project.project_id)
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
             dataset_import,
             user_data,
-            user_job['job_id'],
+            job.job_id,
             project.project_id,
             ctx['dataset_uri'],
             short_name=ctx.get('short_name'),
