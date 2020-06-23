@@ -18,7 +18,6 @@
 """Renku service project cache management."""
 from marshmallow import EXCLUDE
 
-from renku.core.errors import RenkuException
 from renku.service.cache.base import BaseCache
 from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
