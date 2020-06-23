@@ -143,7 +143,8 @@ def rerun(client, revision, roots, siblings, inputs, paths):
 
     # Normalize and check all starting paths.
     roots = {graph.normalize_path(root) for root in roots}
-    assert not roots & output_paths, '--from colides with output paths'
+    output_paths -= roots
+    outputs = [o for o in outputs if o.path not in roots]
 
     # Generate workflow and check inputs.
     # NOTE The workflow creation is done before opening a new file.

@@ -243,6 +243,7 @@ class Graph(object):
 
         visited = visited or set()
         queue = deque(dependencies)
+        usage_paths = []
 
         while queue:
             processing = queue.popleft()
@@ -271,6 +272,21 @@ class Graph(object):
                                 self.activities[a.commit] = a
                         if member.commit not in visited:
                             queue.append(member)
+                        usage_paths.append(member.path)
+                for entity in activity.generated:
+                    for member in entity.entities:
+                        if (
+                            all(member.path != d.path
+                                for d in dependencies) and
+                            any(
+                                u.startswith(member.path) for u in usage_paths
+                            )
+                        ):
+                            dependencies = [
+                                d for d in dependencies
+                                if not d.path.startswith(member.path)
+                            ]
+                            dependencies.append(member)
 
         from renku.core.models.sort import topological
 
@@ -300,6 +316,8 @@ class Graph(object):
         self._sorted_commits = topological(commit_nodes)
         self._nodes = self.default_nodes()
 
+        return dependencies
+
     def build(
         self, revision='HEAD', paths=None, dependencies=None, can_be_cwl=False
     ):
@@ -313,8 +331,7 @@ class Graph(object):
             commit
             for commit in self.client.repo.iter_commits(interval.start)
         } if interval.start else set()
-
-        self.process_dependencies(dependencies, visited=ignore)
+        dependencies = self.process_dependencies(dependencies, visited=ignore)
 
         return {
             self._nodes.get((dependency.commit, dependency.path), dependency)
@@ -470,6 +487,12 @@ class Graph(object):
             plan = node.activity.association.plan
 
             process_run = plan.activity
+
+            if (
+                input_paths and
+                any(g.path in input_paths for g in process_run.generated)
+            ):
+                continue
 
             if process_run not in processes:
                 stack.append(process_run)
