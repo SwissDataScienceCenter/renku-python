@@ -23,6 +23,7 @@ from renku.service.cache.base import BaseCache
 from renku.service.cache.models.project import Project
 from renku.service.cache.models.user import User
 from renku.service.cache.serializers.project import ProjectSchema
+from renku.service.errors import ProjectNotFound
 
 
 class ProjectManagementCache(BaseCache):
@@ -46,11 +47,11 @@ class ProjectManagementCache(BaseCache):
             record = Project.get((Project.project_id == project_id) &
                                  (Project.user_id == user.user_id))
         except ValueError:
-            raise RenkuException("project_id reference not found")
+            raise ProjectNotFound(project_id)
 
         if not record.abs_path.exists():
             record.delete()
-            raise RenkuException("project_id reference not found")
+            raise ProjectNotFound(project_id)
 
         return record
 
