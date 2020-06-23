@@ -25,7 +25,7 @@ from flask_apispec import marshal_with, use_kwargs
 from git import GitCommandError, Repo
 
 from renku.core.commands.dataset import add_file, create_dataset, \
-    edit_dataset, list_datasets, list_files
+    edit_dataset, file_unlink, list_datasets, list_files
 from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
@@ -39,11 +39,11 @@ from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetAddResponseRPC, DatasetCreateRequest, DatasetCreateResponseRPC, \
     DatasetEditRequest, DatasetEditResponseRPC, DatasetFilesListRequest, \
     DatasetFilesListResponseRPC, DatasetImportRequest, \
-    DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC
+    DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC, \
+    DatasetUnlinkRequest, DatasetUnlinkResponseRPC
 from renku.service.views import error_response, result_response
-from renku.service.views.decorators import accepts_json, handle_base_except, \
-    handle_git_except, handle_renku_except, handle_validation_except, \
-    header_doc, requires_cache, requires_identity
+from renku.service.views.decorators import accepts_json, \
+    handle_common_except, header_doc, requires_cache, requires_identity
 
 DATASET_BLUEPRINT_TAG = 'datasets'
 dataset_blueprint = Blueprint(
@@ -59,10 +59,7 @@ dataset_blueprint = Blueprint(
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_datasets_view(user, cache):
@@ -89,10 +86,7 @@ def list_datasets_view(user, cache):
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_dataset_files_view(user, cache):
@@ -122,10 +116,7 @@ def list_dataset_files_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -214,10 +205,7 @@ def add_file_to_dataset_view(user_data, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -262,8 +250,8 @@ def create_dataset_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_validation_except
+@handle_common_except
+@accepts_json
 @requires_cache
 @requires_identity
 def import_dataset_view(user_data, cache):
@@ -308,8 +296,8 @@ def import_dataset_view(user_data, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_validation_except
+@handle_common_except
+@accepts_json
 @requires_cache
 @requires_identity
 def edit_dataset_view(user_data, cache):
@@ -347,3 +335,54 @@ def edit_dataset_view(user_data, cache):
             'warnings': warnings
         }
     )
+
+
+@use_kwargs(DatasetUnlinkRequest)
+@marshal_with(DatasetUnlinkResponseRPC)
+@header_doc('Unlink a file from a dataset', tags=(DATASET_BLUEPRINT_TAG, ))
+@dataset_blueprint.route(
+    '/datasets.unlink',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_common_except
+@accepts_json
+@requires_cache
+@requires_identity
+def unlink_file_view(user_data, cache):
+    """Unlink a file from a dataset."""
+    ctx = DatasetUnlinkRequest().load(request.json)
+
+    include = ctx.get('include_filter')
+    exclude = ctx.get('exclude_filter')
+
+    user = cache.ensure_user(user_data)
+    project = cache.get_project(user, ctx['project_id'])
+
+    if ctx.get('commit_message') is None:
+        if include and exclude:
+            filters = '-I {0} -X {0}'.format(include, exclude)
+        elif not include and exclude:
+            filters = '-X {0}'.format(exclude)
+        else:
+            filters = '-I {0}'.format(include)
+
+        ctx['commit_message'] = (
+            'service: unlink dataset {0} {1}'.format(
+                ctx['short_name'], filters
+            )
+        )
+
+    with chdir(project.abs_path):
+        records = file_unlink(
+            short_name=ctx['short_name'],
+            include=ctx.get('include_filters'),
+            exclude=ctx.get('exclude_filters'),
+            yes=True,
+            interactive=False,
+            commit_message=ctx['commit_message']
+        )
+
+        unlinked = [record.path for record in records]
+
+    return result_response(DatasetUnlinkResponseRPC(), {'unlinked': unlinked})

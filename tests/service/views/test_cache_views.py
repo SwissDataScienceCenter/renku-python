@@ -242,7 +242,9 @@ def test_clone_projects_no_auth(svc_client):
     }
 
     response = svc_client.post(
-        '/cache.project_clone', data=json.dumps(payload)
+        '/cache.project_clone',
+        data=json.dumps(payload),
+        headers={'Content-Type': 'application/json'}
     )
 
     assert {'error'} == set(response.json.keys())
@@ -631,8 +633,8 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations(svc_client_setup):
-    """Check response fields."""
+def test_execute_migrations(svc_client_setup):
+    """Check execution of all migrations."""
     svc_client, headers, project_id, _ = svc_client_setup
 
     response = svc_client.post(
@@ -653,3 +655,37 @@ def test_check_migrations(svc_client_setup):
             ]
         }
     } == response.json
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations(svc_client_setup):
+    """Check if migrations are required."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.get(
+        '/cache.migrations_check',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json['result']['migration_required']
+    assert response.json['result']['project_supported']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_no_migrations(svc_client_with_repo):
+    """Check if migrations are not required."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    response = svc_client.get(
+        '/cache.migrations_check',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert not response.json['result']['migration_required']
+    assert response.json['result']['project_supported']

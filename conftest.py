@@ -40,6 +40,7 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
+from tests.utils import make_dataset_add_payload
 from walrus import Database
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
@@ -1047,6 +1048,31 @@ def service_job(svc_client, mock_redis):
     finally:
         os.environ.clear()
         os.environ.update(old_environ)
+
+
+@pytest.fixture
+def unlink_file_setup(svc_client_with_repo):
+    """Setup for testing of unlinking of a file."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = make_dataset_add_payload(
+        project_id,
+        [('file_path', 'README.md')],
+    )
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+    assert 200 == response.status_code
+
+    unlink_payload = {
+        'project_id': project_id,
+        'short_name': response.json['result']['short_name'],
+        'include_filters': [response.json['result']['files'][0]['file_path']]
+    }
+
+    yield svc_client, headers, unlink_payload
 
 
 @pytest.fixture
