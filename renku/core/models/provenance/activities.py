@@ -51,11 +51,15 @@ def _nodes(output, parent=None):
                 _set_entity_client_commit(member, entity.client, None)
             if isinstance(output, Generation):
                 child = Generation(
-                    activity=output.activity, entity=member, role=None
+                    activity=output.activity,
+                    entity=member,
+                    role=entity.role if role else None
                 )
             elif isinstance(output, Usage):
                 child = Usage(
-                    activity=output.activity, entity=member, role=None
+                    activity=output.activity,
+                    entity=member,
+                    role=entity.role if role else None
                 )
             else:
                 child = member
@@ -517,7 +521,9 @@ class ProcessRun(Activity):
                 parent=output.produces.parent
             )
 
-            generation = Generation(activity=self, role=None, entity=entity)
+            generation = Generation(
+                activity=self, role=output.sanitized_id, entity=entity
+            )
             generated.append(generation)
         return generated
 
@@ -598,7 +604,7 @@ class ProcessRun(Activity):
             )
 
             generation = Generation(
-                activity=process_run, role=None, entity=entity
+                activity=process_run, role=output.sanitized_id, entity=entity
             )
             generated.append(generation)
 
