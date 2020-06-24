@@ -53,13 +53,13 @@ def _nodes(output, parent=None):
                 child = Generation(
                     activity=output.activity,
                     entity=member,
-                    role=entity.role if role else None
+                    role=entity.role if hasattr(entity, 'role') else None
                 )
             elif isinstance(output, Usage):
                 child = Usage(
                     activity=output.activity,
                     entity=member,
-                    role=entity.role if role else None
+                    role=entity.role if hasattr(entity, 'role') else None
                 )
             else:
                 child = member
