@@ -37,6 +37,7 @@ from renku.core.commands.providers import DataverseProvider, ProviderFactory, \
     ZenodoProvider
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import validate_iso8601
 
@@ -515,10 +516,10 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
     )
     assert 0 == result.exit_code
 
-    assert os.stat(client.path / 'data' / 'dataset' / 'zero.txt')
-    assert os.stat(client.path / 'data' / 'dataset' / 'first' / 'first.txt')
+    assert os.stat(client.path / DATA_DIR / 'dataset' / 'zero.txt')
+    assert os.stat(client.path / DATA_DIR / 'dataset' / 'first' / 'first.txt')
     assert os.stat(
-        client.path / 'data' / 'dataset' / 'first' / 'second' / 'second.txt'
+        client.path / DATA_DIR / 'dataset' / 'first' / 'second' / 'second.txt'
     )
 
 
@@ -1555,7 +1556,7 @@ def test_pull_data_from_lfs(
     attributes = (client.path / '.gitattributes').read_text().split()
     assert 'data/my-data/data.txt' in attributes
 
-    path = client.path / 'data' / 'my-data' / 'data.txt'
+    path = client.path / DATA_DIR / 'my-data' / 'data.txt'
     relative_path = os.path.relpath(path, os.getcwd())
 
     result = runner.invoke(cli, ['storage', 'pull', relative_path])
@@ -1609,7 +1610,8 @@ def test_add_existing_files(
     assert 0 == result.exit_code
 
     path = (
-        client.path / 'data' / 'my-dataset' / directory_tree.basename / 'file'
+        client.path / DATA_DIR / 'my-dataset' / directory_tree.basename /
+        'file'
     )
 
     with client.with_dataset('my-dataset') as dataset:
@@ -1669,7 +1671,7 @@ def test_add_ignored_files(runner, client, directory_tree):
     directory_tree.join('.DS_Store').write('ignored-file')
     source_path = directory_tree.join('.DS_Store').strpath
     path = (
-        client.path / 'data' / 'my-dataset' / directory_tree.basename /
+        client.path / DATA_DIR / 'my-dataset' / directory_tree.basename /
         '.DS_Store'
     )
     relative_path = str(path.relative_to(client.path))
@@ -1708,7 +1710,9 @@ def test_add_external_files(runner, client, directory_tree):
     )
     assert 0 == result.exit_code
 
-    path = client.path / 'data' / 'my-data' / directory_tree.basename / 'file'
+    path = (
+        client.path / DATA_DIR / 'my-data' / directory_tree.basename / 'file'
+    )
     assert path.exists()
     assert path.is_symlink()
     external_path = Path(directory_tree.strpath) / 'file'
@@ -1771,7 +1775,9 @@ def test_remove_external_file(runner, client, directory_tree, subdirectory):
         str(p.resolve())
         for p in client.renku_pointers_path.rglob('*')
     }
-    path = client.path / 'data' / 'my-data' / directory_tree.basename / 'file'
+    path = (
+        client.path / DATA_DIR / 'my-data' / directory_tree.basename / 'file'
+    )
 
     result = runner.invoke(cli, ['rm', str(path)])
     assert 0 == result.exit_code
@@ -1798,7 +1804,7 @@ def test_unavailable_external_files(
     )
     assert 0 == result.exit_code
 
-    path = Path('data') / 'my-data' / directory_tree.basename / 'file'
+    path = Path(DATA_DIR) / 'my-data' / directory_tree.basename / 'file'
     target = (client.path / path).resolve()
 
     directory_tree.join('file').remove()
@@ -1831,7 +1837,9 @@ def test_external_file_update(
 
     directory_tree.join('file').write('some updates')
 
-    path = client.path / 'data' / 'my-data' / directory_tree.basename / 'file'
+    path = (
+        client.path / DATA_DIR / 'my-data' / directory_tree.basename / 'file'
+    )
     previous_commit = client.find_previous_commit(path)
 
     result = runner.invoke(cli, ['dataset', 'update', '--external', 'my-data'])
@@ -1855,9 +1863,9 @@ def test_workflow_with_external_file(
     assert 0 == result.exit_code
 
     source = (
-        client.path / 'data' / 'my-data' / directory_tree.basename / 'file'
+        client.path / DATA_DIR / 'my-data' / directory_tree.basename / 'file'
     )
-    output = client.path / 'data' / 'output.txt'
+    output = client.path / DATA_DIR / 'output.txt'
 
     assert 0 == run(args=('run', 'wc', '-c'), stdin=source, stdout=output)
 

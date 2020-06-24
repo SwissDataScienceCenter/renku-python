@@ -43,6 +43,8 @@ class ConfigManagerMixin:
 
     CONFIG_NAME = 'renku.ini'
 
+    DATA_DIR_CONFIG_KEY = 'data_directory'
+
     _global_config_dir = _get_global_config_dir()
 
     @property
@@ -129,6 +131,10 @@ class ConfigManagerMixin:
     def set_value(self, section, key, value, global_only=False):
         """Set value to specified section and key."""
         local_only = not global_only
+
+        if local_only:
+            self._check_config_is_not_readonly(section, key)
+
         config = self.load_config(
             local_only=local_only, global_only=global_only
         )
@@ -142,10 +148,13 @@ class ConfigManagerMixin:
     def remove_value(self, section, key, global_only=False):
         """Remove key from specified section."""
         local_only = not global_only
+
+        if local_only:
+            self._check_config_is_not_readonly(section, key)
+
         config = self.load_config(
             local_only=local_only, global_only=global_only
         )
-
         if section in config:
             value = config[section].pop(key, None)
 
@@ -154,6 +163,19 @@ class ConfigManagerMixin:
 
             self.store_config(config, global_only=global_only)
             return value
+
+    def _check_config_is_not_readonly(self, section, key):
+        from renku.core import errors
+        readonly_configs = {'renku': [self.DATA_DIR_CONFIG_KEY]}
+
+        value = self.get_value(section, key, local_only=True)
+        if not value:
+            return
+
+        if key in readonly_configs.get(section, []):
+            raise errors.ParameterError(
+                f'Configuration {key} cannot be modified.'
+            )
 
 
 CONFIG_LOCAL_PATH = [Path(RENKU_HOME) / ConfigManagerMixin.CONFIG_NAME]

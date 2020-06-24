@@ -22,6 +22,7 @@ import uuid
 from pathlib import Path
 
 from renku.core.compat import pyld
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.jsonld import read_yaml, write_yaml
 
 
@@ -136,7 +137,7 @@ def _dataset_pre_0_3(client):
     """Return paths of dataset metadata for pre 0.3.4."""
     project_is_pre_0_3 = int(client.project.version) < 2
     if project_is_pre_0_3:
-        return (client.path / 'data').rglob(client.METADATA)
+        return (client.path / DATA_DIR).rglob(client.METADATA)
     return []
 
 

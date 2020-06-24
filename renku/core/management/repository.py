@@ -38,6 +38,8 @@ from renku.core.models.refs import LinkReference
 
 from .git import GitCore
 
+DEFAULT_DATA_DIR = 'data'
+
 
 def default_path():
     """Return default repository path."""
@@ -83,6 +85,13 @@ class RepositoryApiMixin(GitCore):
     parent = attr.ib(default=None)
     """Store a pointer to the parent repository."""
 
+    data_dir = attr.ib(
+        default=DEFAULT_DATA_DIR,
+        kw_only=True,
+        converter=lambda value: str(value) if value else DEFAULT_DATA_DIR
+    )
+    """Define a name of the folder for storing datasets."""
+
     METADATA = 'metadata.yml'
     """Default name of Renku config file."""
 
@@ -107,6 +116,11 @@ class RepositoryApiMixin(GitCore):
 
         path.relative_to(path)
         self.renku_path = path
+
+        data_dir = self.get_value(
+            'renku', self.DATA_DIR_CONFIG_KEY, local_only=True
+        )
+        self.data_dir = data_dir or self.data_dir
 
         self._subclients = {}
 

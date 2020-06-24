@@ -22,6 +22,7 @@ import os
 import pytest
 
 from renku.cli import cli
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 
 
 def test_move_dataset_file(tmpdir, runner, client):
@@ -40,7 +41,7 @@ def test_move_dataset_file(tmpdir, runner, client):
     )
     assert 0 == result.exit_code
 
-    assert (client.path / client.datadir / 'testing' / 'source').exists()
+    assert (client.path / client.data_dir / 'testing' / 'source').exists()
 
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -48,7 +49,7 @@ def test_move_dataset_file(tmpdir, runner, client):
     result = runner.invoke(cli, ['mv', 'data', 'files'])
     assert 0 == result.exit_code
 
-    assert not (client.path / client.datadir / 'testing' / 'source').exists()
+    assert not (client.path / client.data_dir / 'testing' / 'source').exists()
     assert (client.path / 'files' / 'testing' / 'source').exists()
 
     result = runner.invoke(cli, ['doctor'], catch_exceptions=False)
@@ -73,9 +74,9 @@ def test_move_dataset_file(tmpdir, runner, client):
     (
         'destination',  # root
         os.path.join('dir', 'subdir', 'destination'),
-        os.path.join('data', 'destination'),
-        os.path.join('data', 'dataset', 'destination'),  # change name
-        os.path.join('data', 'dataset', 'subdir', 'destination'),
+        os.path.join(DATA_DIR, 'destination'),
+        os.path.join(DATA_DIR, 'dataset', 'destination'),  # change name
+        os.path.join(DATA_DIR, 'dataset', 'subdir', 'destination'),
     )
 )
 def test_move_symlinks(data_repository, runner, project, client, destination):
@@ -96,7 +97,7 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
     )
     assert 0 == result.exit_code
 
-    src = client.path / client.datadir / 'dataset' / 'file'
+    src = client.path / client.data_dir / 'dataset' / 'file'
     assert src.exists()
 
     result = runner.invoke(

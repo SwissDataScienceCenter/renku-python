@@ -22,6 +22,7 @@ from pathlib import Path
 import git
 
 from renku.cli import cli
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 
 
 def update_and_commit(data, file_, repo):
@@ -38,7 +39,7 @@ def test_update(runner, project, run, no_lfs_warning):
     from renku.core.utils.shacl import validate_graph
 
     cwd = Path(project)
-    data = cwd / 'data'
+    data = cwd / DATA_DIR
     data.mkdir(exist_ok=True, parents=True)
     source = cwd / 'source.txt'
     output = data / 'result.txt'
@@ -254,13 +255,13 @@ def test_siblings_in_output_directory(runner, project, run):
 
 def test_relative_path_for_directory_input(client, run, cli):
     """Test having a directory input generates relative path in CWL."""
-    (client.path / 'data' / 'file1').write_text('file1')
+    (client.path / DATA_DIR / 'file1').write_text('file1')
     client.repo.git.add('--all')
     client.repo.index.commit('Add file')
 
-    assert 0 == run(args=['run', 'ls', 'data'], stdout='ls.data')
+    assert 0 == run(args=['run', 'ls', DATA_DIR], stdout='ls.data')
 
-    (client.path / 'data' / 'file2').write_text('file2')
+    (client.path / DATA_DIR / 'file2').write_text('file2')
     client.repo.git.add('--all')
     client.repo.index.commit('Add one more file')
 

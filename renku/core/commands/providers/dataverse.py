@@ -363,7 +363,7 @@ class DataverseExporter(ExporterApi):
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file_ in self.dataset.files:
                 try:
-                    path = Path(file_.path).relative_to(self.dataset.datadir)
+                    path = Path(file_.path).relative_to(self.dataset.data_dir)
                 except ValueError:
                     path = Path(file_.path)
                 deposition.upload_file(
