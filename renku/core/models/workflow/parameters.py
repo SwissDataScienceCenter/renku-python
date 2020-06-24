@@ -70,7 +70,6 @@ class MappedIOStream(object):
 @jsonld.s(
     type=[
         'renku:CommandParameter',
-        'prov:Entity',
     ],
     context={
         'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
