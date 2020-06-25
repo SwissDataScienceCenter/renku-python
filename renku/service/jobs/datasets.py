@@ -22,11 +22,8 @@ from urllib3.exceptions import HTTPError
 from renku.core.commands.dataset import add_file, import_dataset
 from renku.core.commands.save import repo_sync
 from renku.core.errors import DatasetExistsError, ParameterError
-from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.jobs.contexts import ProjectContext
-from renku.service.cache.serializers.job import JobSchema
-from renku.service.utils.communication import service_callback_communication
 from renku.service.views.decorators import requires_cache
 
 
@@ -52,7 +49,7 @@ def dataset_import(
                 commit_message=f'service: dataset import {dataset_uri}'
             )
             _, remote_branch = repo_sync(
-                Repo(project.abs_path), remote='origin'
+                Repo(ctx.project.abs_path), remote='origin'
             )
             ctx.user_job.update_extras('remote_branch', remote_branch)
 
@@ -70,14 +67,9 @@ def dataset_add_remote_file(
     short_name, url
 ):
     """Add a remote file to a specified dataset."""
-    user = cache.ensure_user(user)
-    user_job = cache.get_job(user, user_job_id)
-    project = cache.get_project(user, project_id)
-
-    try:
-        user_job.in_progress()
-
-        with chdir(project.abs_path):
+    with ProjectContext(user, user_job_id, project_id) as ctx:
+        try:
+            ctx.user_job.in_progress()
             urls = url if isinstance(url, list) else [url]
             add_file(
                 urls,
@@ -87,10 +79,10 @@ def dataset_add_remote_file(
             )
 
             _, remote_branch = repo_sync(
-                Repo(project.abs_path), remote='origin'
+                Repo(ctx.project.abs_path), remote='origin'
             )
-            user_job.update_extras('remote_branch', remote_branch)
+            ctx.user_job.update_extras('remote_branch', remote_branch)
 
-            user_job.complete()
-    except (HTTPError, BaseException, GitCommandError) as e:
-        user_job.fail_job(str(e))
+            ctx.user_job.complete()
+        except (HTTPError, BaseException, GitCommandError) as e:
+            ctx.user_job.fail_job(str(e))

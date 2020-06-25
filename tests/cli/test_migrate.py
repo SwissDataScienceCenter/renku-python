@@ -47,6 +47,7 @@ def test_commands_fail_on_old_repository(
     """Test commands that fail on projects created by old version of renku."""
     runner = isolated_runner
     result = runner.invoke(cli, command)
+    breakpoint()
     assert 1 == result.exit_code, result.output
     output = result.output
     assert 'Project version is outdated and a migration is required' in output

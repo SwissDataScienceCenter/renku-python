@@ -17,9 +17,7 @@
 # limitations under the License.
 """Context for jobs."""
 import contextlib
-import os
 import time
-from pathlib import Path
 
 from redis import BusyLoadingError
 
