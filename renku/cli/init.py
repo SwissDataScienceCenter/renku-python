@@ -157,6 +157,9 @@ _DOCKERFILE = 'Dockerfile'
 _REQUIREMENTS = 'requirements.txt'
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
+INVALID_DATA_DIRS = ['.', '.renku', '.git']
+"""Paths that cannot be used as data directory name."""
+
 
 def parse_parameters(ctx, param, value):
     """Parse parameters to dictionary."""
@@ -251,14 +254,21 @@ def resolve_data_directory(data_dir, path):
     if not data_dir:
         return
 
-    absolute_data_dir = Path(path) / data_dir
+    absolute_data_dir = (Path(path) / data_dir).resolve()
 
     try:
-        return absolute_data_dir.relative_to(path)
+        data_dir = absolute_data_dir.relative_to(path)
     except ValueError:
         raise errors.ParameterError(
             f'Data directory {data_dir} is not within project {path}'
         )
+
+    if str(data_dir).rstrip(os.path.sep) in INVALID_DATA_DIRS:
+        raise errors.ParameterError(
+            f'Cannot use {data_dir} as data directory.'
+        )
+
+    return data_dir
 
 
 def check_git_user_config():

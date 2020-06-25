@@ -277,9 +277,20 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree):
             directory_tree.join('file').strpath).exists()
 
 
-@pytest.mark.parametrize('data_dir', ['/absolute/path/outside/repo'])
+@pytest.mark.parametrize(
+    'data_dir', ['/absolute/path/outside', '../relative/path/outside']
+)
 def test_init_with_wrong_data_dir(isolated_runner, data_dir):
     """Test initialization fails with wrong data directory."""
     result = isolated_runner.invoke(cli, INIT + ['--data-dir', data_dir])
     assert 2 == result.exit_code
     assert f'Data directory {data_dir} is not within project' in result.output
+
+
+@pytest.mark.parametrize('data_dir', ['.', '.git', '.renku', '.git/'])
+def test_init_with_invalid_data_dir(isolated_runner, data_dir):
+    """Test initialization fails with invalid data directory."""
+    result = isolated_runner.invoke(cli, INIT + ['--data-dir', data_dir])
+    assert 2 == result.exit_code
+    data_dir = data_dir.rstrip('/')
+    assert f'Cannot use {data_dir} as data directory.' in result.output
