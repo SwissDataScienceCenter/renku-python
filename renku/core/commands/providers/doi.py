@@ -68,6 +68,8 @@ class DOIMetadataSerializer:
 
     container_title = attr.ib(kw_only=True, default=None)
 
+    copyright = attr.ib(kw_only=True, default=None)
+
 
 @attr.s
 class DOIProvider(ProviderApi):
