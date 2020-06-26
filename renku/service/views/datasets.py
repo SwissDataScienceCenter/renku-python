@@ -67,11 +67,6 @@ def list_datasets_view(user, cache):
     ctx = DatasetListRequest().load(request.args)
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
-        )
-
     with chdir(project.abs_path):
         ctx['datasets'] = list_datasets()
 
@@ -93,11 +88,6 @@ def list_dataset_files_view(user, cache):
     """List files in a dataset."""
     ctx = DatasetFilesListRequest().load(request.args)
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
-
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
-        )
 
     with chdir(project.abs_path):
         ctx['files'] = list_files(datasets=[ctx['short_name']])
@@ -125,12 +115,6 @@ def add_file_to_dataset_view(user_data, cache):
     ctx = DatasetAddRequest().load(request.json)
     user = cache.ensure_user(user_data)
     project = cache.get_project(user, ctx['project_id'])
-
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE,
-            'invalid project_id: {0}'.format(ctx['project_id'])
-        )
 
     if not ctx['commit_message']:
         ctx['commit_message'] = 'service: dataset add {0}'.format(
@@ -214,11 +198,6 @@ def create_dataset_view(user, cache):
     ctx = DatasetCreateRequest().load(request.json)
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
-        )
-
     with chdir(project.abs_path):
         create_dataset(
             ctx['short_name'],
@@ -260,24 +239,18 @@ def import_dataset_view(user_data, cache):
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
 
-    if project is None or project.abs_path is False:
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE,
-            'invalid project_id: {0}'.format(ctx['project_id'])
-        )
-
     user_job = {
         'job_id': uuid.uuid4().hex,
         'state': USER_JOB_STATE_ENQUEUED,
     }
-    job = cache.make_job(user, user_job, locked=ctx['project_id'])
+    job = cache.make_job(user, user_job, locked=project.project_id)
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
             dataset_import,
             user_data,
             user_job['job_id'],
-            ctx['project_id'],
+            project.project_id,
             ctx['dataset_uri'],
             short_name=ctx.get('short_name'),
             extract=ctx.get('extract', False),
@@ -306,12 +279,6 @@ def edit_dataset_view(user_data, cache):
 
     user = cache.ensure_user(user_data)
     project = cache.get_project(user, ctx['project_id'])
-
-    if project is None or project.abs_path is False:
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE,
-            'invalid project_id: {0}'.format(ctx['project_id'])
-        )
 
     if ctx.get('commit_message') is None:
         ctx['commit_message'] = 'service: dataset edit {0}'.format(
