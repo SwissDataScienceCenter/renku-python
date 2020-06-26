@@ -748,11 +748,11 @@
         },
         "wcmatch": {
             "hashes": [
-                "sha256:0aba7e0d83122d25df52c45a0288953000cfc5d423d124d5f7012d0cbbcb8b07",
-                "sha256:14d9e6d7ee3f05d31a730b44a72d30e8c33f883c9d0422c8eb652ff87fef6102"
+                "sha256:b9e22cd90ce0505c3b31cc0a89a4042147114c1b90497cac177bac62a007bbf1",
+                "sha256:bf187bae0966eb8085e39c1802308960ff7d9b36a7bbb362e26edb925650de6a"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==6.0.1"
+            "version": "==6.0.2"
         },
         "webargs": {
             "hashes": [
