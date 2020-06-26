@@ -35,8 +35,7 @@ class Association:
     """Assign responsibility to an agent for an activity."""
 
     plan = jsonld.ib(
-        context='prov:hadPlan',
-        type='renku.core.models.provenance.processes.Process'
+        context='prov:hadPlan', type='renku.core.models.workflow.run.Run'
     )
     agent = jsonld.ib(
         context='prov:agent',

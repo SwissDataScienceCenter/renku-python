@@ -22,10 +22,11 @@ from pathlib import Path
 
 from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
-from git import GitCommandError
+from git import GitCommandError, Repo
 
 from renku.core.commands.dataset import add_file, create_dataset, \
-    edit_dataset, list_datasets, list_files
+    edit_dataset, file_unlink, list_datasets, list_files
+from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
@@ -38,12 +39,11 @@ from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetAddResponseRPC, DatasetCreateRequest, DatasetCreateResponseRPC, \
     DatasetEditRequest, DatasetEditResponseRPC, DatasetFilesListRequest, \
     DatasetFilesListResponseRPC, DatasetImportRequest, \
-    DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC
-from renku.service.utils import repo_sync
+    DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC, \
+    DatasetUnlinkRequest, DatasetUnlinkResponseRPC
 from renku.service.views import error_response, result_response
-from renku.service.views.decorators import accepts_json, handle_base_except, \
-    handle_git_except, handle_renku_except, handle_validation_except, \
-    header_doc, requires_cache, requires_identity
+from renku.service.views.decorators import accepts_json, \
+    handle_common_except, header_doc, requires_cache, requires_identity
 
 DATASET_BLUEPRINT_TAG = 'datasets'
 dataset_blueprint = Blueprint(
@@ -59,21 +59,13 @@ dataset_blueprint = Blueprint(
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_datasets_view(user, cache):
     """List all datasets in project."""
     ctx = DatasetListRequest().load(request.args)
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
-
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
-        )
 
     with chdir(project.abs_path):
         ctx['datasets'] = list_datasets()
@@ -89,21 +81,13 @@ def list_datasets_view(user, cache):
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_dataset_files_view(user, cache):
     """List files in a dataset."""
     ctx = DatasetFilesListRequest().load(request.args)
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
-
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
-        )
 
     with chdir(project.abs_path):
         ctx['files'] = list_files(datasets=[ctx['short_name']])
@@ -122,10 +106,7 @@ def list_dataset_files_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -134,12 +115,6 @@ def add_file_to_dataset_view(user_data, cache):
     ctx = DatasetAddRequest().load(request.json)
     user = cache.ensure_user(user_data)
     project = cache.get_project(user, ctx['project_id'])
-
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE,
-            'invalid project_id: {0}'.format(ctx['project_id'])
-        )
 
     if not ctx['commit_message']:
         ctx['commit_message'] = 'service: dataset add {0}'.format(
@@ -193,7 +168,9 @@ def add_file_to_dataset_view(user_data, cache):
             )
 
             try:
-                ctx['remote_branch'] = repo_sync(project.abs_path)
+                _, ctx['remote_branch'] = repo_sync(
+                    Repo(project.abs_path), remote='origin'
+                )
             except GitCommandError:
                 return error_response(
                     INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed'
@@ -212,10 +189,7 @@ def add_file_to_dataset_view(user_data, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -223,11 +197,6 @@ def create_dataset_view(user, cache):
     """Create a new dataset in a project."""
     ctx = DatasetCreateRequest().load(request.json)
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
-
-    if not project.abs_path.exists():
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
-        )
 
     with chdir(project.abs_path):
         create_dataset(
@@ -240,7 +209,9 @@ def create_dataset_view(user, cache):
         )
 
     try:
-        ctx['remote_branch'] = repo_sync(project.abs_path)
+        _, ctx['remote_branch'] = repo_sync(
+            Repo(project.abs_path), remote='origin'
+        )
     except GitCommandError:
         return error_response(
             INTERNAL_FAILURE_ERROR_CODE,
@@ -258,8 +229,8 @@ def create_dataset_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_validation_except
+@handle_common_except
+@accepts_json
 @requires_cache
 @requires_identity
 def import_dataset_view(user_data, cache):
@@ -268,24 +239,18 @@ def import_dataset_view(user_data, cache):
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
 
-    if project is None or project.abs_path is False:
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE,
-            'invalid project_id: {0}'.format(ctx['project_id'])
-        )
-
     user_job = {
         'job_id': uuid.uuid4().hex,
         'state': USER_JOB_STATE_ENQUEUED,
     }
-    job = cache.make_job(user, user_job, locked=ctx['project_id'])
+    job = cache.make_job(user, user_job, locked=project.project_id)
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
             dataset_import,
             user_data,
             user_job['job_id'],
-            ctx['project_id'],
+            project.project_id,
             ctx['dataset_uri'],
             short_name=ctx.get('short_name'),
             extract=ctx.get('extract', False),
@@ -304,8 +269,8 @@ def import_dataset_view(user_data, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_validation_except
+@handle_common_except
+@accepts_json
 @requires_cache
 @requires_identity
 def edit_dataset_view(user_data, cache):
@@ -314,12 +279,6 @@ def edit_dataset_view(user_data, cache):
 
     user = cache.ensure_user(user_data)
     project = cache.get_project(user, ctx['project_id'])
-
-    if project is None or project.abs_path is False:
-        return error_response(
-            INVALID_PARAMS_ERROR_CODE,
-            'invalid project_id: {0}'.format(ctx['project_id'])
-        )
 
     if ctx.get('commit_message') is None:
         ctx['commit_message'] = 'service: dataset edit {0}'.format(
@@ -343,3 +302,54 @@ def edit_dataset_view(user_data, cache):
             'warnings': warnings
         }
     )
+
+
+@use_kwargs(DatasetUnlinkRequest)
+@marshal_with(DatasetUnlinkResponseRPC)
+@header_doc('Unlink a file from a dataset', tags=(DATASET_BLUEPRINT_TAG, ))
+@dataset_blueprint.route(
+    '/datasets.unlink',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_common_except
+@accepts_json
+@requires_cache
+@requires_identity
+def unlink_file_view(user_data, cache):
+    """Unlink a file from a dataset."""
+    ctx = DatasetUnlinkRequest().load(request.json)
+
+    include = ctx.get('include_filter')
+    exclude = ctx.get('exclude_filter')
+
+    user = cache.ensure_user(user_data)
+    project = cache.get_project(user, ctx['project_id'])
+
+    if ctx.get('commit_message') is None:
+        if include and exclude:
+            filters = '-I {0} -X {0}'.format(include, exclude)
+        elif not include and exclude:
+            filters = '-X {0}'.format(exclude)
+        else:
+            filters = '-I {0}'.format(include)
+
+        ctx['commit_message'] = (
+            'service: unlink dataset {0} {1}'.format(
+                ctx['short_name'], filters
+            )
+        )
+
+    with chdir(project.abs_path):
+        records = file_unlink(
+            short_name=ctx['short_name'],
+            include=ctx.get('include_filters'),
+            exclude=ctx.get('exclude_filters'),
+            yes=True,
+            interactive=False,
+            commit_message=ctx['commit_message']
+        )
+
+        unlinked = [record.path for record in records]
+
+    return result_response(DatasetUnlinkResponseRPC(), {'unlinked': unlinked})

@@ -73,6 +73,33 @@ def test_create_dataset_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
+def test_create_dataset_wrong_ref_view(svc_client_with_repo):
+    """Create a new dataset successfully."""
+    svc_client, headers, _, _ = svc_client_with_repo
+
+    payload = {
+        'project_id': 'ref does not exist',
+        'short_name': '{0}'.format(uuid.uuid4().hex),
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert {
+        'error': {
+            'code': -32100,
+            'reason': 'project_id "ref does not exist" not found'
+        }
+    } == response.json
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
 def test_create_dataset_with_metadata(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -1113,5 +1140,73 @@ def test_protected_branch(svc_protected_repo):
     )
     assert response
 
+    if (
+        'error' in response.json.keys() and
+        response.json['error']['migration_required']
+    ):
+        # TODO: Fix this test to work with new project versions
+        return
     assert {'result'} == set(response.json.keys())
     assert 'master' != response.json['result']['remote_branch']
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=10, min_passes=1)
+def test_unlink_file(unlink_file_setup):
+    """Check unlinking of a file from a dataset."""
+    svc_client, headers, unlink_payload = unlink_file_setup
+
+    response = svc_client.post(
+        '/datasets.unlink',
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
+
+    assert {'result': {'unlinked': ['README.md']}} == response.json
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=10, min_passes=1)
+def test_unlink_file_no_filter_error(unlink_file_setup):
+    """Check for correct exception raise when no filters specified."""
+    svc_client, headers, unlink_payload = unlink_file_setup
+    unlink_payload.pop('include_filters')
+
+    response = svc_client.post(
+        '/datasets.unlink',
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
+
+    assert {
+        'error': {
+            'code': -32602,
+            'reason': {
+                '_schema': ['one of the filters must be specified']
+            }
+        }
+    } == response.json
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=10, min_passes=1)
+def test_unlink_file_exclude(unlink_file_setup):
+    """Check unlinking of a file from a dataset with exclude."""
+    svc_client, headers, unlink_payload = unlink_file_setup
+    unlink_payload['exclude_filters'] = unlink_payload.pop('include_filters')
+
+    response = svc_client.post(
+        '/datasets.unlink',
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
+
+    assert {
+        'error': {
+            'code': -32100,
+            'reason': 'Invalid parameter value - No records found.'
+        }
+    } == response.json

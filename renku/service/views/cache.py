@@ -27,17 +27,19 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
+from renku.core.commands.migrate import migrate_project, migrations_check
+from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.serializers.cache import FileListResponseRPC, \
     FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
     ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
-    extract_file
+    ProjectMigrateRequest, ProjectMigrateResponseRPC, \
+    ProjectMigrationCheckResponseRPC, extract_file
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
-from renku.service.views.decorators import accepts_json, handle_base_except, \
-    handle_git_except, handle_renku_except, handle_validation_except, \
-    header_doc, requires_cache, requires_identity
+from renku.service.views.decorators import accepts_json, \
+    handle_common_except, header_doc, requires_cache, requires_identity
 
 CACHE_BLUEPRINT_TAG = 'cache'
 cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
@@ -50,10 +52,7 @@ cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_uploaded_files_view(user, cache):
@@ -81,10 +80,7 @@ def list_uploaded_files_view(user, cache):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def upload_file_view(user, cache):
@@ -205,12 +201,9 @@ def _project_clone(cache, user_data, project_data):
     methods=['POST'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
-@requires_identity
+@handle_common_except
 @accepts_json
+@requires_identity
 def project_clone_view(user_data):
     """Clone a remote repository."""
     project_data = ProjectCloneContext().load({
@@ -233,10 +226,7 @@ def project_clone_view(user_data):
     methods=['GET'],
     provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_projects_view(user, cache):
@@ -247,3 +237,71 @@ def list_projects_view(user, cache):
     ]
 
     return result_response(ProjectListResponseRPC(), {'projects': projects})
+
+
+@use_kwargs(ProjectMigrateRequest)
+@marshal_with(ProjectMigrateResponseRPC)
+@header_doc(
+    'Migrate project to the latest version.',
+    tags=(CACHE_BLUEPRINT_TAG, ),
+)
+@cache_blueprint.route(
+    '/cache.migrate',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_common_except
+@accepts_json
+@requires_cache
+@requires_identity
+def migrate_project_view(user_data, cache):
+    """Migrate specified project."""
+    user = cache.ensure_user(user_data)
+    project = cache.get_project(user, request.json['project_id'])
+
+    messages = []
+
+    def collect_message(msg):
+        """Collect migration message."""
+        messages.append(msg)
+
+    with chdir(project.abs_path):
+        was_migrated = migrate_project(progress_callback=collect_message)
+
+    return result_response(
+        ProjectMigrateResponseRPC(), {
+            'messages': messages,
+            'was_migrated': was_migrated
+        }
+    )
+
+
+@use_kwargs(ProjectMigrateRequest)
+@marshal_with(ProjectMigrationCheckResponseRPC)
+@header_doc(
+    'Check if project requires migration.',
+    tags=(CACHE_BLUEPRINT_TAG, ),
+)
+@cache_blueprint.route(
+    '/cache.migrations_check',
+    methods=['GET'],
+    provide_automatic_options=False,
+)
+@handle_common_except
+@requires_cache
+@requires_identity
+@accepts_json
+def migration_check_project_view(user_data, cache):
+    """Migrate specified project."""
+    user = cache.ensure_user(user_data)
+    project = cache.get_project(user, request.json['project_id'])
+
+    with chdir(project.abs_path):
+        migration_required, project_supported = migrations_check()
+
+    return result_response(
+        ProjectMigrationCheckResponseRPC(), {
+            'migration_required': migration_required,
+            'project_supported': project_supported
+        }
+    )

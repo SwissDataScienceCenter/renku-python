@@ -115,7 +115,7 @@ from renku.core.commands.graph import Graph
     help='Validate triples before output.'
 )
 @click.argument('paths', type=click.Path(exists=False), nargs=-1)
-@pass_local_client
+@pass_local_client(requires_migration=True)
 def log(client, revision, format, no_output, strict, paths):
     """Show logs for a file."""
     graph = Graph(client)
@@ -135,5 +135,4 @@ def log(client, revision, format, no_output, strict, paths):
 
     # NOTE shall we warn when "not no_output and not paths"?
     graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
-
     FORMATS[format](graph, strict=strict)

@@ -17,13 +17,10 @@
 # limitations under the License.
 """Represent the Common Workflow Language types."""
 
-import json
 import os
 from pathlib import Path
 
 import attr
-
-from .ascwl import CWLClass, ascwl
 
 
 class PathFormatterMixin:
@@ -40,14 +37,14 @@ class PathFormatterMixin:
 
 
 @attr.s
-class File(CWLClass, PathFormatterMixin):
+class File(PathFormatterMixin):
     """Represent a file."""
 
     path = attr.ib(converter=Path)
 
 
 @attr.s
-class Directory(CWLClass, PathFormatterMixin):
+class Directory(PathFormatterMixin):
     """Represent a directory."""
 
     # TODO add validation to allow only directories
@@ -55,9 +52,6 @@ class Directory(CWLClass, PathFormatterMixin):
     listing = attr.ib(default=attr.Factory(list))
 
 
-DIRECTORY_EXPRESSION = '$({0})'.format(
-    json.dumps(ascwl(Directory(), filter=lambda _, x: x is not None))
-)
 PATH_OBJECTS = {'File', 'Directory'}
 PATH_TYPES = (File, Directory)
 

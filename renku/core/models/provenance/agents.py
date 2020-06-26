@@ -170,6 +170,7 @@ class Person:
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
         'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        '_label': None,  # stop propagation of _label from parent context
     },
     frozen=True,
     slots=True,
@@ -179,6 +180,7 @@ class SoftwareAgent:
 
     label = jsonld.ib(context='rdfs:label', kw_only=True)
     was_started_by = jsonld.ib(
+        type=Person,
         context='prov:wasStartedBy',
         default=None,
         kw_only=True,

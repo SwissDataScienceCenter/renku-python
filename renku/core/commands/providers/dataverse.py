@@ -259,6 +259,11 @@ class DataverseRecordSerializer:
     def as_dataset(self, client):
         """Deserialize `DataverseRecordSerializer` to `Dataset`."""
         files = self.get_files()
+        context = self._json.get('@context')
+        if context and isinstance(context, str):
+            if context == 'http://schema.org':
+                context = 'http://schema.org/'
+            self._json['@context'] = {'@base': context, '@vocab': context}
         dataset = Dataset.from_jsonld(self._json, client=client)
 
         if dataset.description and not dataset.description.strip():

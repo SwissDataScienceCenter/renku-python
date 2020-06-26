@@ -22,6 +22,7 @@
 ######################################
 
 # Find all modified or added files, and do nothing if there aren't any.
+export RENKU_DISABLE_VERSION_CHECK=true
 IFS=$'\n' read -r -d '' -a MODIFIED_FILES \
   <<< "$(git diff --name-only --cached --diff-filter=M)"
 IFS=$'\n' read -r -d '' -a ADDED_FILES \

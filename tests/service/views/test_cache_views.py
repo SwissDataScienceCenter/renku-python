@@ -242,7 +242,9 @@ def test_clone_projects_no_auth(svc_client):
     }
 
     response = svc_client.post(
-        '/cache.project_clone', data=json.dumps(payload)
+        '/cache.project_clone',
+        data=json.dumps(payload),
+        headers={'Content-Type': 'application/json'}
     )
 
     assert {'error'} == set(response.json.keys())
@@ -627,3 +629,23 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
     rel_path = response.json['result']['files'][0]['relative_path']
     assert rel_path.startswith(datapack_tar.name) and 'unpacked' in rel_path
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_execute_migrations(svc_client_setup):
+    """Check execution of all migrations."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json['result']['was_migrated']
+    assert any(
+        m.startswith('Successfully applied') and m.endswith('migrations.')
+        for m in response.json['result']['messages']
+    )

@@ -17,21 +17,17 @@
 # limitations under the License.
 """Represent workflows from the Common Workflow Language."""
 
-import fnmatch
 import uuid
 
 import attr
 
-from ..sort import topological
-from .ascwl import CWLClass, mapped
-from .parameter import WorkflowOutputParameter
-from .process import Process
+from renku.core.models.workflow.run import Run
 
 
 def convert_run(value):
     """Convert value to CWLClass if dict is given."""
     if isinstance(value, dict):
-        return CWLClass.from_cwl(value)
+        return Run.from_jsonld(value)
     return value
 
 
@@ -47,58 +43,11 @@ class WorkflowStep(object):
 
 
 @attr.s
-class Workflow(Process, CWLClass):
+class Workflow(object):
     """Define a workflow representation."""
 
-    outputs = mapped(WorkflowOutputParameter)
-    steps = mapped(WorkflowStep)
-
-    @property
-    def topological_steps(self):
-        """Return topologically sorted steps."""
-        step_map = {step.id: step for step in self.steps}
-        steps = {
-            step.id: [
-                source.split('/')[0]
-                for source in step.in_.values() if '/' in source
-            ]
-            for step in self.steps
-        }
-        return [step_map[step_id] for step_id in topological(steps)]
-
-    def create_run(self, **kwargs):
-        """Return an instance of process run."""
-        from renku.core.models.provenance.activities import WorkflowRun
-        return WorkflowRun(**kwargs)
+    steps = attr.ib(default=attr.Factory(list))
 
     def add_step(self, **kwargs):
         """Add a workflow step."""
         self.steps.append(WorkflowStep(**kwargs))
-
-    def get_output_id(self, path):  # pragma: no cover
-        """Return an id of the matching path from default values."""
-        for output in self.outputs:
-            if output.type != 'File':
-                continue
-            if output.outputSource:
-                step_id, _, source = output.outputSource.partition('/')
-                for workflow_step in self.steps:
-                    if workflow_step.id == step_id:
-                        break
-                else:
-                    continue
-
-                if source not in workflow_step.out:
-                    continue
-
-                # TODO load step and call get_output_id
-            elif output.outputBinding:
-                glob = output.outputBinding.glob
-                # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
-                    for input_ in self.inputs:
-                        if input_.id == input_id and input_.default == path:
-                            return output.id
-                elif fnmatch.fnmatch(path, glob):
-                    return output.id
