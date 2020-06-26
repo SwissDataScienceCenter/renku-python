@@ -25,7 +25,8 @@ import weakref
 import attr
 
 from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, fields
+from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
+    schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
 
@@ -307,12 +308,6 @@ class Collection(Entity):
 
         for member in self.members:
             member._parent = weakref.ref(self)
-
-
-schema = fields.Namespace('http://schema.org/')
-prov = fields.Namespace('http://www.w3.org/ns/prov#')
-rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
-wfprov = fields.Namespace('http://purl.org/wf4ever/wfprov#')
 
 
 class CommitMixinSchema(JsonLDSchema):

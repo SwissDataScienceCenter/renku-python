@@ -28,6 +28,7 @@ renku = fields.Namespace(
     'https://swissdatasciencecenter.github.io/renku-ontology#'
 )
 schema = fields.Namespace('http://schema.org/')
+wfprov = fields.Namespace('http://purl.org/wf4ever/wfprov#')
 
 
 class JsonLDSchema(CalamusJsonLDSchema):
