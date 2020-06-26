@@ -1882,7 +1882,6 @@ def test_workflow_with_external_file(
     assert 1 == result.exit_code
 
     assert 0 == run(args=('update', ))
-
     result = runner.invoke(cli, ['status'])
     assert 0 == result.exit_code
 

@@ -121,12 +121,16 @@ import sys
 import uuid
 
 import click
+from git import Actor
 
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph, _safe_path
 from renku.core.commands.options import option_siblings
-from renku.core.models.cwl.ascwl import ascwl
+from renku.core.models.locals import with_reference
+from renku.core.models.provenance.activities import WorkflowRun
+from renku.core.models.workflow.converters.cwl import CWLConverter
+from renku.version import __version__, version_url
 
 
 @click.command()
@@ -149,7 +153,6 @@ def update(client, revision, no_output, siblings, paths):
     graph = Graph(client)
     outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
     outputs = {node for node in outputs if graph.need_update(node)}
-
     if not outputs:
         click.secho(
             'All files were generated from the latest inputs.', fg='green'
@@ -164,34 +167,46 @@ def update(client, revision, no_output, siblings, paths):
     input_paths = {node.path for node in graph.nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
-    import yaml
-
-    output_file = client.workflow_path / '{0}.cwl'.format(uuid.uuid4().hex)
-    workflow = graph.ascwl(
+    workflow = graph.as_workflow(
         input_paths=input_paths,
         output_paths=output_paths,
         outputs=outputs,
     )
 
+    wf, path = CWLConverter.convert(workflow, client)
     # Don't compute paths if storage is disabled.
     if client.check_external_storage():
         # Make sure all inputs are pulled from a storage.
-        paths_ = (
-            path
-            for _, path in workflow.iter_input_files(client.workflow_path)
-        )
+        paths_ = (i.consumes.path for i in workflow.inputs)
         client.pull_paths_from_storage(*paths_)
 
-    with output_file.open('w') as f:
-        f.write(
-            yaml.dump(
-                ascwl(
-                    workflow,
-                    filter=lambda _, x: x is not None,
-                    basedir=client.workflow_path,
-                ),
-                default_flow_style=False
-            )
+    execute(client, path, output_paths=output_paths)
+
+    paths = [o.produces.path for o in workflow.outputs]
+
+    client.repo.git.add(*paths)
+
+    if client.repo.is_dirty():
+        commit_msg = ('renku update: '
+                      'committing {} newly added files').format(len(paths))
+
+        committer = Actor('renku {0}'.format(__version__), version_url)
+
+        client.repo.index.commit(
+            commit_msg,
+            committer=committer,
+            skip_hooks=True,
         )
 
-    execute(client, output_file, output_paths=output_paths)
+    workflow_name = '{0}_update.yaml'.format(uuid.uuid4().hex)
+
+    path = client.workflow_path / workflow_name
+
+    workflow.update_id_and_label_from_commit_path(
+        client, client.repo.head.commit, path
+    )
+
+    with with_reference(path):
+        run = WorkflowRun.from_run(workflow, client, path, update_commits=True)
+        run.to_yaml()
+        client.add_to_activity_index(run)

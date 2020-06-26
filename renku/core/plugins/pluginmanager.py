@@ -16,12 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """pluggy Plugin setup."""
+from functools import lru_cache
+
 import pluggy
 
 import renku.core.plugins.implementations as default_implementations
 import renku.core.plugins.run as run_hook_specs
 
 
+@lru_cache(None)
 def get_plugin_manager():
     """The ``pluggy`` plugin manager."""
     pm = pluggy.PluginManager('renku')

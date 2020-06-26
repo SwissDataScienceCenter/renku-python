@@ -662,7 +662,7 @@
                "maxCount": 1
             },
             {
-               "path": "prov:agent",
+               "path": "prov:wasAssociatedWith",
                "or": [
                   {
                      "sh:class": {
@@ -721,6 +721,9 @@
          "property": [
             {
                "path": "prov:hadPlan",
+               "sh:class": {
+                  "@id": "renku:Run"
+               },
                "minCount": 1
             },
             {
@@ -846,6 +849,263 @@
                },
                "path": "prov:wasInvalidatedBy",
                "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuRunShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:Run",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:atLocation",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "schema:isPartOf",
+               "sh:class": {
+                  "@id": "schema:Project"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:Run"
+               },
+               "path": "renku:hasSubprocess"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:command",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:processOrder",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:successCodes",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:CommandArgument"
+               },
+               "path": "renku:hasArguments"
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:CommandInput"
+               },
+               "path": "renku:hasInputs"
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:CommandOutput"
+               },
+               "path": "renku:hasOutputs"
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuCommandArgumentShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:CommandArgument",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:prefix",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:value",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuCommandInputShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:CommandInput",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:prefix",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "renku:consumes",
+               "sh:class": {
+                  "@id": "prov:Entity"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "prov:mappedTo",
+               "sh:class": {
+                  "@id": "renku:IOStream"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuCommandOutputShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:CommandOutput",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:position",
+               "datatype": {
+                  "@id": "xsd:integer"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:prefix",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "path": "renku:produces",
+               "sh:class": {
+                  "@id": "prov:Entity"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "prov:mappedTo",
+               "sh:class": {
+                  "@id": "renku:IOStream"
+               },
+               "minCount": 0,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:createFolder",
+               "datatype": {
+                  "@id": "xsd:boolean"
+               }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuIOStreamShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:IOStream",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:streamType",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
             }
          ]
       }

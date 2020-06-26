@@ -17,11 +17,13 @@
 # limitations under the License.
 """JSON-LD dataset migrations."""
 import itertools
+import json
 import os
 import uuid
 from pathlib import Path
 
-from renku.core.compat import pyld
+import pyld
+
 from renku.core.models.jsonld import read_yaml, write_yaml
 
 
@@ -81,9 +83,12 @@ def _apply_on_the_fly_jsonld_migrations(
 
     if jsonld_translate:
         # perform the translation
-        data = pyld.jsonld.compact(data, jsonld_translate)
-        # compact using the class json-ld context
-        data.pop('@context', None)
+
+        data = pyld.jsonld.expand(data)
+        data_str = json.dumps(data)
+        for k, v in jsonld_translate.items():
+            data_str = data_str.replace(v, k)
+        data = json.loads(data_str)
         data = pyld.jsonld.compact(data, jsonld_context)
 
     data.setdefault('@context', jsonld_context)

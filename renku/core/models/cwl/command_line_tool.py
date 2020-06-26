@@ -15,9 +15,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Represent a ``CommandLineTool`` from the Common Workflow Language."""
+"""Represent a ``CommandLineToolFactory`` for tracking workflows."""
 
-import fnmatch
 import os
 import re
 import shlex
@@ -27,17 +26,16 @@ from pathlib import Path
 
 import attr
 import click
+from git import Actor
 
 from renku.core import errors
 from renku.core.commands.echo import INFO
+from renku.version import __version__, version_url
 
 from ...management.config import RENKU_HOME
 from ..datastructures import DirectoryTree
-from .annotation import Annotation
-from .ascwl import CWLClass, mapped
 from .parameter import CommandInputParameter, CommandLineBinding, \
     CommandOutputParameter
-from .process import Process
 from .types import PATH_OBJECTS, Directory, File
 
 STARTED_AT = int(time.time() * 1000)
@@ -46,130 +44,6 @@ RENKU_TMP_DIR = os.path.join(RENKU_HOME, 'tmp')
 RENKU_FILELIST_PATH = os.getenv('RENKU_FILELIST_PATH', RENKU_TMP_DIR)
 INDIRECT_INPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, 'inputs.txt')
 INDIRECT_OUTPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, 'outputs.txt')
-
-
-def convert_arguments(value):
-    """Convert arguments from various input formats."""
-    if isinstance(value, (list, tuple)):
-        return [
-            CommandLineBinding(**item) if isinstance(item, dict) else item
-            for item in value
-        ]
-    return shlex.split(value)
-
-
-@attr.s
-class CommandLineTool(Process, CWLClass):
-    """Represent a command line tool."""
-
-    STD_STREAMS_REPR = {
-        'stdin': '<',
-        'stdout': '>',
-        'stderr': '2>',
-    }
-    """Format streams for a shell command representation."""
-
-    # specialize inputs and outputs with Command{Input,Output}Parameter
-
-    baseCommand = attr.ib(
-        default='',
-        validator=lambda self, attr, cmd: bool(cmd),
-    )  # str or list(str) -> shutil.split()
-    arguments = attr.ib(
-        default=attr.Factory(list),
-        converter=convert_arguments,
-    )  # list(string, Expression, CommandLineBinding)
-
-    stdin = attr.ib(default=None)
-    stdout = attr.ib(default=None)
-    stderr = attr.ib(default=None)
-
-    inputs = mapped(CommandInputParameter)
-    outputs = mapped(CommandOutputParameter)
-
-    successCodes = attr.ib(default=attr.Factory(list))  # list(int)
-    temporaryFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
-    permanentFailCodes = attr.ib(default=attr.Factory(list))  # list(int)
-
-    annotations = attr.ib(
-        metadata={
-            'cwl_metadata': {
-                'namespace': 'http://www.w3.org/ns/oa#',
-                'prefix': 'oa',
-                'property': 'oa:hasTarget',
-                'reverse': True,
-                'type': Annotation
-            }
-        },
-        default=None
-    )
-
-    def _std_streams(self, basedir=None):
-        """Return mapped standard streams."""
-        streams = {}
-
-        if self.stdin:
-            assert self.stdin.startswith('$(inputs.')
-            input_id = self.stdin.split('.')[1]
-            for input_ in self.inputs:
-                if input_id == input_.id:
-                    streams['stdin'] = os.path.relpath(
-                        str(Path(basedir or '.') / str(input_.default))
-                    )
-                    break
-        if self.stdout:
-            streams['stdout'] = self.stdout
-        if self.stderr:
-            streams['stderr'] = self.stderr
-
-        return streams
-
-    def __str__(self):
-        """Generate a simple representation."""
-        return ' '.join(self.to_argv()) + ' ' + ' '.join(
-            self.STD_STREAMS_REPR[key] + ' ' + str(path)
-            for key, path in self._std_streams().items()
-        )
-
-    def create_run(self, **kwargs):
-        """Return an instance of process run."""
-        from renku.core.models.provenance.activities import ProcessRun
-        return ProcessRun(**kwargs)
-
-    def get_output_id(self, path):  # pragma: no cover
-        """Return an id of the matching path from default values."""
-        for output in self.outputs:
-            if output.type in {'stdout', 'stderr'}:
-                stream = getattr(self, output.type)
-                if stream == path:
-                    return output.id
-            elif output.type in PATH_OBJECTS:
-                glob = output.outputBinding.glob
-                # TODO better support for Expression
-                if glob.startswith('$(inputs.'):
-                    input_id = glob[len('$(inputs.'):-1]
-                    for input_ in self.inputs:
-                        if input_.id == input_id and input_.default == path:
-                            return output.id
-                elif fnmatch.fnmatch(path, glob):
-                    return output.id
-
-    def to_argv(self, job=None):
-        """Generate arguments for system call."""
-        if not isinstance(self.baseCommand, list):
-            argv = [self.baseCommand]
-        else:
-            argv = list(self.baseCommand)
-
-        args = [(a.position, a) for a in self.arguments]
-        for i in self.inputs:
-            if i.inputBinding:
-                args.append((i.inputBinding.position, i))
-
-        for _, v in sorted(args):
-            argv.extend(v.to_argv())
-
-        return argv
 
 
 @attr.s
@@ -211,6 +85,11 @@ class CommandLineToolFactory(object):
     outputs = attr.ib(init=False)
 
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
+
+    annotations = attr.ib(default=None)
+
+    _had_changes = False
+    existing_directories = set()
 
     messages = attr.ib(default=None)
     warnings = attr.ib(default=None)
@@ -255,41 +134,61 @@ class CommandLineToolFactory(object):
             for input in self.find_explicit_inputs():
                 self.inputs.append(input)
 
-    def generate_tool(self):
-        """Return an instance of command line tool."""
-        return CommandLineTool(
-            stdin=self.stdin,
-            stderr=self.stderr,
-            stdout=self.stdout,
-            baseCommand=self.baseCommand,
-            arguments=self.arguments,
-            inputs=self.inputs,
-            outputs=self.outputs,
-            successCodes=self.successCodes,
+    def generate_process_run(self, client, commit, path):
+        """Return an instance of ``ProcessRun``."""
+        from ..provenance.activities import ProcessRun
+        from ..workflow.run import Run
+
+        run = Run.from_factory(
+            factory=self,
+            client=client,
+            commit=commit,
+            path=path,
         )
+
+        process_run = ProcessRun.from_run(run, client, path, commit)
+
+        if not self._had_changes:
+            process_run.invalidated = []
+
+        if (hasattr(self, 'annotations') and self.annotations):
+            process_run.add_annotations(self.annotations)
+
+        return process_run
+
+    def iter_input_files(self, basedir):
+        """Yield tuples with input id and path."""
+        stdin = getattr(self, 'stdin', None)
+        if stdin and stdin[0] != '$':  # pragma: no cover
+            raise NotImplementedError(self.stdin)
+        for input_ in self.inputs:
+            if input_.type in PATH_OBJECTS and input_.default:
+                yield (
+                    input_.id,
+                    os.path.normpath(
+                        os.path.join(basedir, str(input_.default.path))
+                    )
+                )
 
     @contextmanager
     def watch(self, client, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         client.check_external_storage()
 
-        tool = self.generate_tool()
         repo = client.repo
 
         # Remove indirect files list if any
         self.delete_indirect_files_list()
 
-        # NOTE consider to use git index instead
-        existing_directories = {
+        from renku.core.plugins.pluginmanager import get_plugin_manager
+        pm = get_plugin_manager()
+        pm.hook.pre_run(tool=self)
+        self.existing_directories = {
             str(p.relative_to(client.path))
             for p in client.path.glob('**/')
         }
 
-        from renku.core.plugins.pluginmanager import get_plugin_manager
-        pm = get_plugin_manager()
-        pm.hook.pre_run(tool=tool)
-
-        yield tool
+        yield self
 
         if repo:
             # Include indirect inputs and outputs before further processing
@@ -302,7 +201,7 @@ class CommandLineToolFactory(object):
             paths = []
 
             inputs = {input.id: input for input in self.inputs}
-            outputs = list(tool.outputs)
+            outputs = list(self.outputs)
 
             # Keep track of unmodified output files.
             unmodified = set()
@@ -354,6 +253,20 @@ class CommandLineToolFactory(object):
                             raise RuntimeError('Inconsistent input name.')
 
                         inputs[input.id] = input
+                    # remove outputs covered by explicit outputs
+                    output_glob = output.outputBinding.glob
+                    for input_id, input in inputs.items():
+                        if (
+                            input.type == 'string' and
+                            input.default.startswith(output_glob)
+                        ):
+                            input_glob = '$(inputs.{})'.format(input_id)
+                            existing_output = next(
+                                o for o in outputs
+                                if o.outputBinding.glob == input_glob
+                            )
+                            if existing_output:
+                                outputs.remove(existing_output)
 
             if unmodified:
                 raise errors.UnmodifiedOutputs(repo, unmodified)
@@ -376,25 +289,29 @@ class CommandLineToolFactory(object):
                         '\n\trenku config show_lfs_message False'
                     )
 
-            tool.inputs = list(inputs.values())
-            tool.outputs = outputs
+            repo.git.add(*paths)
 
-        # Requirement detection can be done anytime.
-        from .process_requirements import InitialWorkDirRequirement, \
-            InlineJavascriptRequirement
-        initial_work_dir_requirement = InitialWorkDirRequirement.from_tool(
-            tool,
-            existing_directories=existing_directories,
-            working_dir=self.working_dir
-        )
-        if initial_work_dir_requirement:
-            tool.requirements.extend([
-                InlineJavascriptRequirement(),
-                initial_work_dir_requirement,
-            ])
+            if repo.is_dirty():
+                commit_msg = ('renku run: '
+                              'committing {} newly added files').format(
+                                  len(paths)
+                              )
 
-        results = pm.hook.cmdline_tool_annotations(tool=tool)
-        tool.annotations = [a for r in results for a in r]
+                committer = Actor('renku {0}'.format(__version__), version_url)
+
+                repo.index.commit(
+                    commit_msg,
+                    committer=committer,
+                    skip_hooks=True,
+                )
+
+                self._had_changes = True
+
+            self.inputs = list(inputs.values())
+            self.outputs = outputs
+
+        results = pm.hook.cmdline_tool_annotations(tool=self)
+        self.annotations = [a for r in results for a in r]
 
     @command_line.validator
     def validate_command_line(self, attribute, value):

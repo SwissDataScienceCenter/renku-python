@@ -27,12 +27,12 @@ from importlib import import_module
 from pathlib import Path
 
 import attr
+import pyld
 import yaml
 from attr._compat import iteritems
 from attr._funcs import has
 from attr._make import Factory, fields
 
-from renku.core.compat import pyld
 from renku.core.models.locals import ReferenceMixin, with_reference
 
 KEY = '__json_ld'
@@ -50,11 +50,16 @@ DOC_TPL = (
 
 make_type = type
 
+try:
+    from yaml import CSafeLoader as SafeLoader, CDumper as Dumper
+except ImportError:
+    from yaml import SafeLoader, Dumper
+
 
 # Shamelessly copy/pasting from SO:
 # https://stackoverflow.com/questions/34667108/ignore-dates-and-times-while-parsing-yaml
 # This is needed to allow us to load from yaml and use json down the line.
-class NoDatesSafeLoader(yaml.SafeLoader):
+class NoDatesSafeLoader(SafeLoader):
     """Used to safely load basic python objects but ignore datetime strings."""
 
     @classmethod
@@ -119,7 +124,7 @@ def attrs(
                 context.setdefault(key, value)
 
         property_context, scoped_properties = _add_class_property_contexts(
-            jsonld_cls, context
+            jsonld_cls, context, cls, types
         )
 
         context.update(property_context)
@@ -161,7 +166,7 @@ def attrs(
 
         if (
             type_ in jsonld_cls.__type_registry__ and
-            jsonld_cls.__type_registry__[type_] != jsonld_cls
+            str(jsonld_cls.__type_registry__[type_]) != str(jsonld_cls)
         ):
             raise TypeError(
                 'Type {0!r} in {1!r} is already registered for {2!r}.'.format(
@@ -179,7 +184,9 @@ def attrs(
     return wrap(maybe_cls)
 
 
-def _add_class_property_contexts(jsonld_cls, context):
+def _add_class_property_contexts(
+    jsonld_cls, context, original_cls, jsonld_ype
+):
     """Adds ``@context`` of a class' properties to the class' ``@context``."""
     scoped_properties = []
 
@@ -188,6 +195,7 @@ def _add_class_property_contexts(jsonld_cls, context):
     for a in attr.fields(jsonld_cls):
         key = a.name
         ctx = a.metadata.get(KEY)
+
         if ctx is None:
             continue
 
@@ -203,7 +211,7 @@ def _add_class_property_contexts(jsonld_cls, context):
         if KEY_CLS in a.metadata:
             t = a.metadata[KEY_CLS]
             current_context, is_scoped = _propagate_reference_contexts(
-                t, current_context, ctx
+                t, current_context, ctx, original_cls, jsonld_ype
             )
 
             if is_scoped:
@@ -216,29 +224,37 @@ def _add_class_property_contexts(jsonld_cls, context):
 
 
 def _propagate_reference_contexts(
-    type_references, current_context, parent_context
+    type_references, current_context, parent_context, parent_cls, parent_types
 ):
     """Get JSON-LD contexts for all types of a reference and propagate them."""
     if not isinstance(type_references, (list, set, tuple)):
         type_references = [type_references]
     classes = [import_class_from_string(c) for c in type_references]
-    classes = [c for c in classes if hasattr(c, '_jsonld_context')]
+    classes = [(c._jsonld_context, c._jsonld_type, c, True)
+               for c in classes if hasattr(c, '_jsonld_context')]
     scoped_properties = False
 
+    parent_cls_string = '{}.{}'.format(
+        parent_cls.__module__, parent_cls.__name__
+    )
+
+    if parent_cls in type_references or parent_cls_string in type_references:
+        # handle cases where a class can be a parent/child of itself
+        classes.append((parent_context, parent_types, parent_cls, False))
+
     if len(classes) == 1:
-        merge_ctx = classes[0]._jsonld_context
+        merge_ctx = classes[0][0]
 
         if not current_context:
             current_context = {'@id': parent_context}
         elif not isinstance(current_context, dict):
             current_context = {'@id': current_context}
-
-        current_context['@context'] = merge_ctx
+        if classes[0][3]:
+            current_context['@context'] = merge_ctx
     else:
         scoped_properties = True
 
-        for cls in classes:
-            merge_ctx = cls._jsonld_context
+        for merge_ctx, subtypes, cls, subcontext in classes:
 
             if not current_context:
                 current_context = {'@id': parent_context}
@@ -247,8 +263,6 @@ def _propagate_reference_contexts(
 
             if '@context' not in current_context:
                 current_context['@context'] = []
-
-            subtypes = cls._jsonld_type
 
             if not isinstance(subtypes, (tuple, list)):
                 subtypes = [subtypes]
@@ -266,21 +280,57 @@ def _propagate_reference_contexts(
                 if prefix in merge_ctx:
                     expanded_subtype = '{}{}'.format(merge_ctx[prefix], suffix)
 
-                current_context['@context'].append({
-                    fullname(cls) + '_' + subtype: {
-                        '@id': expanded_subtype,
-                        '@context': merge_ctx
-                    }
-                })
+                subtype = subtype.replace(':', '_')
+                if subcontext:
+                    current_context['@context'].append({
+                        fullname(cls) + '_' + subtype: {
+                            '@id': expanded_subtype,
+                            '@context': merge_ctx
+                        },
+                        '@version': 1.1
+                    })
+                else:
+                    current_context['@context'].append({
+                        fullname(cls) + '_' + subtype: {
+                            '@id': expanded_subtype
+                        },
+                        '@version': 1.1
+                    })
 
     return current_context, scoped_properties
 
 
 def _default_converter(cls, value):
     """A default converter method that tries to deserialize objects."""
+    cls = import_class_from_string(cls)
     if isinstance(value, dict):
         return cls.from_jsonld(value)
 
+    return value
+
+
+def _default_multi_converter(types, value):
+    """A default converter for properties that can have several types."""
+    if isinstance(value, dict) and '@type' in value:
+        expanded = pyld.jsonld.expand(value)[0]
+        type_ = expanded['@type']
+        if not isinstance(type_, list):
+            type_ = [type_]
+        # If a json-ld class has multiple types, they are in a
+        # sorted tuple. This is used as the key for the class
+        # registry, so we have to match it here.
+        type_ = tuple(sorted(type_))
+        if type_ in JSONLDMixin.__type_registry__:
+            new_cls = JSONLDMixin.__type_registry__[type_]
+            if all(str(t) not in str(new_cls) for t in types):
+                raise NotImplementedError(
+                    'Unexpected property type {},  expected one of {}'.format(
+                        new_cls, ','.join(types)
+                    )
+                )
+            # expand and compact with relevant context
+            value = pyld.jsonld.compact(value, new_cls._jsonld_context)
+            return new_cls.from_jsonld(value)
     return value
 
 
@@ -291,19 +341,29 @@ def attrib(context=None, type=None, **kwargs):
     if type:
         kwargs['metadata'][KEY_CLS] = type
 
-        if 'converter' not in kwargs and hasattr(type, 'from_jsonld'):
-            kwargs['converter'] = partial(_default_converter, type)
+        if 'converter' not in kwargs:
+            if hasattr(type, 'from_jsonld') or isinstance(type, str):
+                kwargs['converter'] = partial(_default_converter, type)
+            elif isinstance(type, list):
+                kwargs['converter'] = partial(_default_multi_converter, type)
+
     return attr.ib(**kwargs)
 
 
 _container_types = (
-    ('list', list, lambda type, value: [type.from_jsonld(v) for v in value]),
-    ('set', set, lambda type, value: {type.from_jsonld(v)
-                                      for v in value}),
     (
-        'index', dict,
-        lambda type, value: {k: type.from_jsonld(v)
-                             for k, v in value.items()}
+        'list', list,
+        lambda type, value: [_default_converter(type, v) for v in value]
+    ),
+    (
+        'set', set,
+        lambda type, value: {_default_converter(type, v)
+                             for v in value}
+    ),
+    (
+        'index', dict, lambda type, value:
+        {k: _default_converter(type, v)
+         for k, v in value.items()}
     ),
 )
 
@@ -322,6 +382,9 @@ def _container_attrib_builder(name, container, mapper):
             """Convert value to the given type."""
             if isinstance(value, container):
                 return mapper(type, value)
+            elif isinstance(value, dict) and '@type' in value:
+                # Collection might have been compacted away, wrap value
+                return mapper(type, container([value]))
             elif value is None:
                 return value
 
@@ -450,7 +513,8 @@ def asjsonld(
 
         if use_scoped_type_form:
             rv_type = [
-                '{}_{}'.format(inst_cls._renku_type, t) for t in rv_type
+                '{}_{}'.format(inst_cls._renku_type, t.replace(':', '_'))
+                for t in rv_type
             ]
 
         rv['@type'] = rv_type[0] if len(rv_type) == 1 else rv_type
@@ -481,7 +545,8 @@ class JSONLDMixin(ReferenceMixin):
 
         if '@type' in data:
             # @type could be a string or a list - make sure it is a list
-            type_ = data['@type']
+            expanded = pyld.jsonld.expand(data)[0]
+            type_ = expanded['@type']
             if not isinstance(type_, list):
                 type_ = [type_]
             # If a json-ld class has multiple types, they are in a
@@ -593,11 +658,11 @@ def read_yaml(path):
 
 def write_yaml(path, data):
     """Store data to a YAML file."""
-    dumper = yaml.dumper.Dumper
-    dumper.ignore_aliases = lambda _, data: True
+
+    Dumper.ignore_aliases = lambda _, data: True
 
     with Path(path).open('w') as fp:
-        yaml.dump(data, fp, default_flow_style=False, Dumper=dumper)
+        yaml.dump(data, fp, default_flow_style=False, Dumper=Dumper)
 
 
 def fullname(cls):
