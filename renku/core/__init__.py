@@ -42,4 +42,4 @@ class CustomTimeout(TimeoutSauce):
 
 
 requests.adapters.TimeoutSauce = CustomTimeout
-logging.getLogger('py-filelock.filelock').setLevel(logging.ERROR)
+logging.getLogger('filelock').setLevel(logging.ERROR)

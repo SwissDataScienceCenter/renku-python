@@ -33,7 +33,7 @@ def test_workflow_naming(runner, client):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
 
-    tools = list(client.workflow_path.glob('*.cwl'))
+    tools = list(client.workflow_path.glob('*.yaml'))
     assert 1 == len(tools)
 
     cmd = ['workflow', 'set-name', 'group/second', str(tools[0])]

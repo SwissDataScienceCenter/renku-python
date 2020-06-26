@@ -171,8 +171,14 @@ def inputs(ctx, client, revision, paths):
     graph = Graph(client)
     paths = set(paths)
     nodes = graph.build(revision=revision)
-
-    commits = {node.commit for node in nodes}
+    commits = {
+        node.activity.commit if hasattr(node, 'activity') else node.commit
+        for node in nodes
+    }
+    commits |= {
+        node.activity.commit
+        for node in nodes if hasattr(node, 'activity')
+    }
     candidates = {(node.commit, node.path)
                   for node in nodes if not paths or node.path in paths}
 

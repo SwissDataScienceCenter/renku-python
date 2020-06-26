@@ -138,6 +138,11 @@ def check_siblings(graph, outputs):
 
     siblings = {node.path for node in siblings}
     missing = siblings - {node.path for node in outputs}
+    missing = {
+        m
+        for m in missing
+        if all(not m.startswith(node.path) for node in outputs)
+    }
 
     if missing:
         msg = (

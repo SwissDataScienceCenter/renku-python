@@ -66,12 +66,20 @@
             ],
             "version": "==0.11.7"
         },
+        "cachetools": {
+            "hashes": [
+                "sha256:1d057645db16ca7fe1f3bd953558897603d6f0b9c51ed9d11eb4d071ec4e2aab",
+                "sha256:de5d88f87781602201cde465d3afe837546663b168e8b39df67411b0bf10cefc"
+            ],
+            "markers": "python_version ~= '3.5'",
+            "version": "==4.1.0"
+        },
         "certifi": {
             "hashes": [
-                "sha256:5ad7e9a056d25ffa5082862e36f119f7f7cec6457fa07ee2f8c339814b80c9b1",
-                "sha256:9cd41137dc19af6a5e03b630eefe7d1f458d964d406342dd3edf625839b944cc"
+                "sha256:5930595817496dd21bb8dc35dad090f1c2cd0adfaf21204bf6732ca5d8ee34d3",
+                "sha256:8fc0819f1f30ba15bdb34cceffb9ef04d99f420f68eb75d901e9560b8749fc41"
             ],
-            "version": "==2020.4.5.2"
+            "version": "==2020.6.20"
         },
         "cffi": {
             "hashes": [
@@ -137,11 +145,11 @@
         },
         "croniter": {
             "hashes": [
-                "sha256:0d5bf45f12861c1b718c51bd6e2ab056da94e651bf22900658421cdde0ff7088",
-                "sha256:98d725c2a35960247e95d95526b4ce35fd3f9b7fa0e0f5b3c1fd59b8be06f603"
+                "sha256:15597ef0639f8fbab09cbf8c277fa8c65c8b9dbe818c4b2212f95dbc09c6f287",
+                "sha256:7186b9b464f45cf3d3c83a18bc2344cc101d7b9fd35a05f2878437b14967e964"
             ],
             "markers": "python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
-            "version": "==0.3.32"
+            "version": "==0.3.34"
         },
         "cryptography": {
             "hashes": [
@@ -167,6 +175,12 @@
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "version": "==2.9.2"
+        },
+        "cwlgen": {
+            "hashes": [
+                "sha256:8ee26cddc0f352dd485fc11696711b810b7b8bf4f4a39b33f481294fc0b0c2a0"
+            ],
+            "version": "==0.4.2"
         },
         "cwltool": {
             "hashes": [
@@ -217,6 +231,12 @@
                 "sha256:42d098997e06b04f992609c4945cc990738b269c153d8388fc59a91a5dfcee9e"
             ],
             "version": "==3.25.0"
+        },
+        "frozendict": {
+            "hashes": [
+                "sha256:774179f22db2ef8a106e9c38d4d1f8503864603db08de2e33be5b778230f6e45"
+            ],
+            "version": "==1.2"
         },
         "gitdb": {
             "hashes": [
@@ -502,9 +522,9 @@
         },
         "pyld": {
             "hashes": [
-                "sha256:ce6d9cd065fb3a390ec65e665dcb3655ed2aa07431d98e201ea3bc99f56a8bfb"
+                "sha256:d3ac99b9cadeebefbf032ba9951b66bb96438a237273a6c6aead8c15c7564ea9"
             ],
-            "version": "==1.0.5"
+            "version": "==2.0.2"
         },
         "pyopenssl": {
             "hashes": [
@@ -592,11 +612,11 @@
         },
         "requests": {
             "hashes": [
-                "sha256:43999036bfa82904b6af1d99e4882b560e5e2c68e5c4b0aa03b655f3d7d73fee",
-                "sha256:b3f43d496c6daba4493e7c431722aeb7dbc6288f52a6e04e7b6023b0247817e6"
+                "sha256:b3559a131db72c33ee969480840fff4bb6dd111de7dd27c8ee1f820f4f00231b",
+                "sha256:fe75cc94a9443b9246fc7049224f75604b113c36acb93f87b80ed42c44cbb898"
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
-            "version": "==2.23.0"
+            "version": "==2.24.0"
         },
         "rq": {
             "hashes": [
@@ -744,11 +764,11 @@
         },
         "wcmatch": {
             "hashes": [
-                "sha256:0aba7e0d83122d25df52c45a0288953000cfc5d423d124d5f7012d0cbbcb8b07",
-                "sha256:14d9e6d7ee3f05d31a730b44a72d30e8c33f883c9d0422c8eb652ff87fef6102"
+                "sha256:b9e22cd90ce0505c3b31cc0a89a4042147114c1b90497cac177bac62a007bbf1",
+                "sha256:bf187bae0966eb8085e39c1802308960ff7d9b36a7bbb362e26edb925650de6a"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==6.0.1"
+            "version": "==6.0.2"
         },
         "webargs": {
             "hashes": [
