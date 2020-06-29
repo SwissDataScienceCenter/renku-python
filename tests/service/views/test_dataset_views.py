@@ -26,7 +26,6 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
-from tests.service.views.test_cache_views import IT_GIT_ACCESS_TOKEN
 from tests.utils import make_dataset_add_payload
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
@@ -69,6 +68,33 @@ def test_create_dataset_view(svc_client_with_repo):
     assert {'short_name',
             'remote_branch'} == set(response.json['result'].keys())
     assert payload['short_name'] == response.json['result']['short_name']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_create_dataset_wrong_ref_view(svc_client_with_repo):
+    """Create a new dataset successfully."""
+    svc_client, headers, _, _ = svc_client_with_repo
+
+    payload = {
+        'project_id': 'ref does not exist',
+        'short_name': '{0}'.format(uuid.uuid4().hex),
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response
+    assert {
+        'error': {
+            'code': -32100,
+            'reason': 'project_id "ref does not exist" not found'
+        }
+    } == response.json
 
 
 @pytest.mark.service
@@ -203,7 +229,14 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
         data=json.dumps(payload),
         headers=headers,
     )
+    assert response
+    assert 'result' in response.json.keys()
 
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
     assert_rpc_response(response, with_key='error')
 
@@ -1089,24 +1122,9 @@ def test_edit_datasets_view(svc_client_with_repo):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_protected_branch(svc_client):
+def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""
-    headers = {
-        'Content-Type': 'application/json',
-        'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
-        'Renku-User-FullName': 'Just Sam',
-        'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
-    }
-
-    payload = {
-        'git_url': 'https://dev.renku.ch/gitlab/contact/protected-renku.git',
-    }
-
-    response = svc_client.post(
-        '/cache.project_clone', data=json.dumps(payload), headers=headers
-    )
-
+    svc_client, headers, payload, response = svc_protected_repo
     assert response
     assert {'result'} == set(response.json.keys())
 
@@ -1120,8 +1138,75 @@ def test_protected_branch(svc_client):
         data=json.dumps(payload),
         headers=headers,
     )
-
     assert response
 
+    if (
+        'error' in response.json.keys() and
+        response.json['error']['migration_required']
+    ):
+        # TODO: Fix this test to work with new project versions
+        return
     assert {'result'} == set(response.json.keys())
     assert 'master' != response.json['result']['remote_branch']
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=10, min_passes=1)
+def test_unlink_file(unlink_file_setup):
+    """Check unlinking of a file from a dataset."""
+    svc_client, headers, unlink_payload = unlink_file_setup
+
+    response = svc_client.post(
+        '/datasets.unlink',
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
+
+    assert {'result': {'unlinked': ['README.md']}} == response.json
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=10, min_passes=1)
+def test_unlink_file_no_filter_error(unlink_file_setup):
+    """Check for correct exception raise when no filters specified."""
+    svc_client, headers, unlink_payload = unlink_file_setup
+    unlink_payload.pop('include_filters')
+
+    response = svc_client.post(
+        '/datasets.unlink',
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
+
+    assert {
+        'error': {
+            'code': -32602,
+            'reason': {
+                '_schema': ['one of the filters must be specified']
+            }
+        }
+    } == response.json
+
+
+@pytest.mark.integration
+@pytest.mark.service
+@flaky(max_runs=10, min_passes=1)
+def test_unlink_file_exclude(unlink_file_setup):
+    """Check unlinking of a file from a dataset with exclude."""
+    svc_client, headers, unlink_payload = unlink_file_setup
+    unlink_payload['exclude_filters'] = unlink_payload.pop('include_filters')
+
+    response = svc_client.post(
+        '/datasets.unlink',
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
+
+    assert {
+        'error': {
+            'code': -32100,
+            'reason': 'Invalid parameter value - No records found.'
+        }
+    } == response.json

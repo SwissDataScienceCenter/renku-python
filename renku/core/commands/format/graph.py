@@ -40,7 +40,7 @@ def _jsonld(graph, format, *args, **kwargs):
     """Return formatted graph in JSON-LD ``format`` function."""
     import json
 
-    from renku.core.compat import pyld
+    import pyld
     from renku.core.models.jsonld import asjsonld
 
     output = getattr(pyld.jsonld, format)([
@@ -107,7 +107,7 @@ def _rdf2dot_simple(g, stream):
     import re
 
     path_re = re.compile(
-        r'(?P<prefix>https://\w+/|https://\w+/\w+/){0,1}(?P<type>[a-zA-Z]+)/'
+        r'(?P<prefix>https://\w+/\w+/|https://\w+/){0,1}(?P<type>[a-zA-Z]+)/'
         r'(?P<commit>\w+)'
         r'(?P<path>.+)?'
     )
@@ -323,13 +323,13 @@ def makefile(graph, strict=False):
             steps = [activity]
 
         for step in steps:
-            click.echo(' '.join(step.outputs) + ': ' + ' '.join(step.inputs))
-            tool = step.process
+            plan = step.association.plan
+            inputs = [i.consumes.path for i in plan.inputs]
+            outputs = [o.produces.path for o in plan.outputs]
+            click.echo(' '.join(outputs) + ': ' + ' '.join(inputs))
             click.echo(
-                '\t@' + ' '.join(tool.to_argv()) + ' ' + ' '.join(
-                    tool.STD_STREAMS_REPR[key] + ' ' + str(path)
-                    for key, path in tool._std_streams().items()
-                )
+                '\t@' + ' '.join(plan.to_argv()) + ' ' +
+                ' '.join(plan.to_stream_repr())
             )
 
 

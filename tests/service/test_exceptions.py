@@ -16,7 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service exception tests for all endpoints."""
+import json
+import uuid
+
 import pytest
+from flaky import flaky
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE
 
@@ -60,3 +64,24 @@ def test_auth_headers_exc(service_allowed_endpoint):
 
     err_message = 'user identification is incorrect or missing'
     assert err_message == response.json['error']['reason']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_migration_required_flag(svc_client_setup):
+    """Check migration required failure."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    payload = {
+        'project_id': project_id,
+        'short_name': '{0}'.format(uuid.uuid4().hex),
+    }
+
+    response = svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    assert response.json['error']['migration_required']

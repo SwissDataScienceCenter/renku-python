@@ -227,6 +227,7 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 @click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
 @pass_local_client(
     clean=True,
+    requires_migration=True,
     up_to_date=True,
     commit=True,
     ignore_std_streams=True,

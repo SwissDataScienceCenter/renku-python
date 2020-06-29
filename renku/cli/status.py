@@ -54,7 +54,7 @@ from renku.core.commands.graph import Graph
     help='Display commands without output files.'
 )
 @click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_local_client(clean=True, commit=False)
+@pass_local_client(clean=True, requires_migration=True, commit=False)
 @click.pass_context
 def status(ctx, client, revision, no_output, path):
     """Show a status of the repository."""

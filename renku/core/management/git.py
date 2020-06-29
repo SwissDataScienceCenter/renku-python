@@ -234,6 +234,16 @@ class GitCore:
         except gitdb.exc.BadName:
             pass
 
+    def setup_credential_helper(self):
+        """Setup git credential helper to ``cache`` if not set already."""
+        credential_helper = self.repo.config_reader().get_value(
+            'credential', 'helper', ''
+        )
+
+        if not credential_helper:
+            with self.repo.config_writer() as w:
+                w.set_value('credential', 'helper', 'cache')
+
     @contextmanager
     def commit(
         self,

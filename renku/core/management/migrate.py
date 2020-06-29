@@ -34,7 +34,17 @@ from pathlib import Path
 
 import pkg_resources
 
-SUPPORTED_PROJECT_VERSION = 4
+from renku.core.errors import MigrationRequired, ProjectNotSupported
+
+SUPPORTED_PROJECT_VERSION = 5
+
+
+def check_for_migration(client):
+    """Checks if migration is required."""
+    if is_migration_required(client):
+        raise MigrationRequired
+    elif is_project_unsupported(client):
+        raise ProjectNotSupported
 
 
 def is_migration_required(client):

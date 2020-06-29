@@ -26,7 +26,7 @@ from marshmallow import ValidationError
 from redis import RedisError
 from werkzeug.exceptions import HTTPException
 
-from renku.core.errors import RenkuException
+from renku.core.errors import MigrationRequired, RenkuException
 from renku.service.cache import cache
 from renku.service.config import GIT_ACCESS_DENIED_ERROR_CODE, \
     GIT_UNKNOWN_ERROR_CODE, INTERNAL_FAILURE_ERROR_CODE, \
@@ -138,12 +138,15 @@ def handle_renku_except(f):
         try:
             return f(*args, **kwargs)
         except RenkuException as e:
-            return jsonify(
-                error={
-                    'code': RENKU_EXCEPTION_ERROR_CODE,
-                    'reason': str(e),
-                }
-            )
+            err_response = {
+                'code': RENKU_EXCEPTION_ERROR_CODE,
+                'reason': str(e),
+            }
+
+            if isinstance(e, MigrationRequired):
+                err_response['migration_required'] = True
+
+            return jsonify(error=err_response)
 
     return decorated_function
 
@@ -277,3 +280,22 @@ def header_doc(description, tags=()):
         },
         tags=list(tags),
     )
+
+
+def handle_common_except(f):
+    """Handle common exceptions."""
+    # noqa
+    @wraps(f)
+    def dec(*args, **kwargs):
+        """Decorated function."""
+
+        @handle_base_except
+        @handle_validation_except
+        @handle_renku_except
+        @handle_git_except
+        def _wrapped(*args_, **kwargs_):
+            return f(*args_, **kwargs_)
+
+        return _wrapped(*args, **kwargs)
+
+    return dec

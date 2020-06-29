@@ -40,7 +40,19 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
+from tests.utils import make_dataset_add_payload
 from walrus import Database
+
+IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
+    'IT_PROTECTED_REMOTE_REPO',
+    'https://dev.renku.ch/gitlab/contact/protected-renku.git'
+)
+
+IT_REMOTE_REPO_URL = os.getenv(
+    'IT_REMOTE_REPOSITORY',
+    'https://dev.renku.ch/gitlab/contact/integration-test'
+)
+IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
 
 @pytest.fixture(scope='module')
@@ -356,24 +368,19 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture(
-    params=[
-        {
-            'name': 'old-datasets-v0.3.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.1.git',
-            'exit_code': 0
-        },
-        {
-            'name': 'test-renku-v0.3.0.git',
-            'exit_code': 1
-        },
-    ],
+    params=[{
+        'name': 'old-datasets-v0.3.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.1.git',
+        'exit_code': 0
+    }, {
+        'name': 'test-renku-v0.3.0.git',
+        'exit_code': 1
+    }],
     scope='module',
 )
 def old_bare_repository(request, tmpdir_factory):
@@ -395,6 +402,67 @@ def old_bare_repository(request, tmpdir_factory):
     }
 
     shutil.rmtree(working_dir_path.strpath)
+
+
+@pytest.fixture(
+    scope='function',
+    params=[{
+        'name': 'old-workflows-v0.10.3.git',
+        'log_path': 'catoutput.txt',
+        'expected_strings': [
+            'catoutput.txt', '_cat.yaml', '_echo.yaml', '9ecc28b2 stdin.txt',
+            'bdc801c6 stdout.txt'
+        ]
+    }, {
+        'name': 'old-workflows-complicated-v0.10.3.git',
+        'log_path': 'concat2.txt',
+        'expected_strings': [
+            'concat2.txt', '5828275ae5344eba8bad475e7d3cf2d5.cwl',
+            '_migrated.yaml', '88add2ea output_rand', 'e6fa6bf3 input2.txt'
+        ]
+    }]
+)
+def old_workflow_project(request, tmp_path_factory):
+    """Prepares a testing repo created by old version of renku."""
+    import tarfile
+    from git import Repo
+    from pathlib import Path
+
+    name = request.param['name']
+
+    compressed_repo_path = Path(
+        __file__
+    ).parent / 'tests' / 'fixtures' / '{name}.tar.gz'.format(name=name)
+
+    working_dir_path = tmp_path_factory.mktemp(name)
+
+    with tarfile.open(str(compressed_repo_path), 'r') as fixture:
+        fixture.extractall(str(working_dir_path))
+
+    path = working_dir_path / name
+
+    repo_path = tmp_path_factory.mktemp('repo')
+
+    repository = Repo(str(path),
+                      search_parent_directories=True).clone(str(repo_path))
+
+    repository_path = repository.working_dir
+
+    commit = repository.head.commit
+
+    os.chdir(repository_path)
+    yield {
+        'repo': repository,
+        'path': repository_path,
+        'log_path': request.param['log_path'],
+        'expected_strings': request.param['expected_strings']
+    }
+    os.chdir(repository_path)
+    repository.head.reset(commit, index=True, working_tree=True)
+    # remove any extra non-tracked files (.pyc, etc)
+    repository.git.clean('-xdff')
+
+    shutil.rmtree(str(repo_path))
 
 
 @pytest.fixture(scope='module')
@@ -449,6 +517,7 @@ def old_repository_with_submodules(request, tmpdir_factory):
     repo_path = working_dir / name
     repo = Repo(repo_path)
 
+    os.chdir(repo_path.strpath)
     yield repo
 
     shutil.rmtree(repo_path.strpath)
@@ -612,18 +681,22 @@ def cli(client, run):
     It returns the exit code and content of the resulting CWL tool.
     """
     import yaml
-    from renku.core.models.cwl import CWLClass
+    from renku.core.models.provenance.activities import Activity
 
     def renku_cli(*args):
-        before_cwl_files = set(client.workflow_path.glob('*.cwl'))
+        before_wf_files = set(client.workflow_path.glob('*.yaml'))
         exit_code = run(args)
-        after_cwl_files = set(client.workflow_path.glob('*.cwl'))
-        new_files = after_cwl_files - before_cwl_files
+        after_wf_files = set(client.workflow_path.glob('*.yaml'))
+        new_files = after_wf_files - before_wf_files
         assert len(new_files) <= 1
         if new_files:
-            cwl_filepath = new_files.pop()
-            with cwl_filepath.open('r') as f:
-                content = CWLClass.from_cwl(yaml.safe_load(f))
+            wf_filepath = new_files.pop()
+            with wf_filepath.open('r') as f:
+                content = Activity.from_jsonld(
+                    yaml.safe_load(f),
+                    client=client,
+                    commit=client.repo.head.commit
+                )
         else:
             content = None
 
@@ -825,10 +898,9 @@ def authentication_headers():
 def integration_lifecycle(svc_client, mock_redis, authentication_headers):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
-    remote_url = 'https://dev.renku.ch/gitlab/contact/integration-test'
-    url_components = GitURL.parse(remote_url)
+    url_components = GitURL.parse(IT_REMOTE_REPO_URL)
 
-    payload = {'git_url': remote_url}
+    payload = {'git_url': IT_REMOTE_REPO_URL}
 
     response = svc_client.post(
         '/cache.project_clone',
@@ -857,14 +929,30 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
 
 
 @pytest.fixture
-def svc_client_with_repo(integration_lifecycle):
-    """Service client with a remote repository."""
+def svc_client_setup(integration_lifecycle):
+    """Service client setup."""
     svc_client, headers, project_id, url_components = integration_lifecycle
 
     with integration_repo(headers, url_components) as repo:
+        repo.git.checkout('master')
+
         new_branch = uuid.uuid4().hex
         current = repo.create_head(new_branch)
         current.checkout()
+
+    yield svc_client, deepcopy(headers), project_id, url_components
+
+
+@pytest.fixture
+def svc_client_with_repo(svc_client_setup):
+    """Service client with a remote repository."""
+    svc_client, headers, project_id, url_components = svc_client_setup
+
+    svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id)),
+        headers=headers
+    )
 
     yield svc_client, deepcopy(headers), project_id, url_components
 
@@ -919,6 +1007,28 @@ def svc_client_templates_creation(svc_client_with_templates):
         return True
 
     yield svc_client, authentication_headers, payload, remove_project
+
+
+@pytest.fixture
+def svc_protected_repo(svc_client):
+    """Service client with remote protected repository."""
+    headers = {
+        'Content-Type': 'application/json',
+        'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
+        'Renku-User-FullName': 'Just Sam',
+        'Renku-User-Email': 'contact@justsam.io',
+        'Authorization': 'Bearer {0}'.format(IT_GIT_ACCESS_TOKEN),
+    }
+
+    payload = {
+        'git_url': IT_PROTECTED_REMOTE_REPO_URL,
+    }
+
+    response = svc_client.post(
+        '/cache.project_clone', data=json.dumps(payload), headers=headers
+    )
+
+    yield svc_client, headers, payload, response
 
 
 @pytest.fixture(
@@ -1031,6 +1141,31 @@ def service_job(svc_client, mock_redis):
     finally:
         os.environ.clear()
         os.environ.update(old_environ)
+
+
+@pytest.fixture
+def unlink_file_setup(svc_client_with_repo):
+    """Setup for testing of unlinking of a file."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = make_dataset_add_payload(
+        project_id,
+        [('file_path', 'README.md')],
+    )
+    response = svc_client.post(
+        '/datasets.add',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+    assert 200 == response.status_code
+
+    unlink_payload = {
+        'project_id': project_id,
+        'short_name': response.json['result']['short_name'],
+        'include_filters': [response.json['result']['files'][0]['file_path']]
+    }
+
+    yield svc_client, headers, unlink_payload
 
 
 @pytest.fixture

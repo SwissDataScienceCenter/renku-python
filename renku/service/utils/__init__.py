@@ -16,11 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
-import uuid
-
-from git import GitCommandError, Repo
-
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
+
+from git import Repo
 
 
 def make_project_path(user, project):
@@ -63,27 +61,6 @@ def valid_file(user, cached_file):
     if file_path.exists():
         cached_file['is_dir'] = file_path.is_dir()
         return cached_file
-
-
-def repo_sync(repo_path, remote_names=('origin', )):
-    """Sync the repo with the remotes."""
-    repo = Repo(repo_path)
-    pushed_branch = None
-
-    for remote in repo.remotes:
-        if remote.name in remote_names:
-            try:
-                repo.git.push(remote.name, repo.active_branch)
-                pushed_branch = repo.active_branch
-            except GitCommandError as e:
-                if 'protected branches' not in e.stderr:
-                    raise e
-
-                pushed_branch = uuid.uuid4().hex
-                repo.git.checkout(b=pushed_branch)
-                repo.git.push(remote.name, repo.active_branch)
-
-    return pushed_branch
 
 
 def new_repo_push(

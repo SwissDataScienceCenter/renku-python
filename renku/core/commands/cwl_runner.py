@@ -89,6 +89,12 @@ def execute(client, output_file, output_paths=None):
         remove_prefix(output['location'])
         for output in outputs.values()
     }
+    # make sure to not move an output if it's containing directory gets moved
+    locations = {
+        location
+        for location in locations
+        if not any(location.startswith(d) for d in locations if location != d)
+    }
 
     with progressbar(
         locations,

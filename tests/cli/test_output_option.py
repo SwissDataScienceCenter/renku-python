@@ -18,38 +18,33 @@
 """Test behavior of ``--output`` option."""
 
 import os
+from pathlib import Path
 
-import pytest
-import yaml
-
-from renku.core.models.cwl import CWLClass
+from renku.core.models.entities import Collection
+from renku.core.models.provenance.activities import Activity
 
 
-def read_all_cwl_files(client, glob='*.cwl'):
+def read_all_workflow_files(client, glob='*.yaml'):
     """
     Return an array where its elements are content of CWL file
     found in the Renku project.
     """
-    return [read_cwl_file(f) for f in client.workflow_path.glob(glob)]
-
-
-def read_cwl_file(cwl_filepath):
-    with cwl_filepath.open('r') as f:
-        return CWLClass.from_cwl(yaml.safe_load(f))
+    return [
+        Activity.from_yaml(f, client=client)
+        for f in client.workflow_path.glob(glob)
+    ]
 
 
 def test_run_succeeds_normally(cli, client, subdirectory):
     """Test when an output is detected"""
     foo = os.path.relpath(client.path / 'foo', os.getcwd())
     exit_code, cwl = cli('run', 'touch', foo)
+    cwl = cwl.association.plan
 
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
-    assert 'foo' == cwl.inputs[0].default
-    assert 'string' == cwl.inputs[0].type
+    assert 0 == len(cwl.inputs)
     assert 1 == len(cwl.outputs)
-    assert 'File' == cwl.outputs[0].type
-    assert '$(inputs.input_1)' == cwl.outputs[0].outputBinding.glob
+    assert 'foo' == cwl.outputs[0].produces.path
 
 
 def test_when_no_change_in_outputs_is_detected(cli, subdirectory):
@@ -66,37 +61,27 @@ def test_with_no_output_option(cli, client, subdirectory):
     cli('run', 'touch', foo)
     exit_code, cwl = cli('run', '--no-output', 'touch', foo)
 
+    cwl = cwl.association.plan
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
-    assert 'File' == cwl.inputs[0].type
-    assert '../../foo' == str(cwl.inputs[0].default)
+    assert 'foo' == str(cwl.inputs[0].consumes.path)
     assert 0 == len(cwl.outputs)
 
-    cwls = read_all_cwl_files(client)
 
-    # There should be two command line tool.
-    assert 2 == len(cwls)
-    assert cwls[0].inputs != cwls[1].inputs
-    assert cwls[0].outputs != cwls[1].outputs
-
-
-@pytest.mark.parametrize(
-    'command,expected_type', [(('touch', ), 'File'),
-                              (('mkdir', '-p'), 'Directory')]
-)
-def test_explicit_outputs(cli, command, expected_type, client, subdirectory):
+def test_explicit_outputs_directory(cli, client, subdirectory):
     """Test detection of an output file with --output option."""
-    foo = os.path.relpath(client.path / 'foo', os.getcwd())
-    cli('run', *command, foo)
-    exit_code, cwl = cli('run', '--output', foo, *command, foo)
+    foo = Path(os.path.relpath(client.path / 'foo', os.getcwd()))
+    foo.mkdir()
 
+    file_ = foo / 'file'
+
+    exit_code, cwl = cli('run', '--output', str(foo), 'touch', str(file_))
+    cwl = cwl.association.plan
     assert 0 == exit_code
-    assert 1 == len(cwl.inputs)
-    assert 'foo' == cwl.inputs[0].default
-    assert 'string' == cwl.inputs[0].type
+    assert 0 == len(cwl.inputs)
     assert 1 == len(cwl.outputs)
-    assert expected_type == cwl.outputs[0].type
-    assert '$(inputs.input_1)' == cwl.outputs[0].outputBinding.glob
+    assert isinstance(cwl.outputs[0].produces, Collection)
+    assert 'foo' == cwl.outputs[0].produces.path
 
 
 def test_explicit_output_results(cli, client, subdirectory):
@@ -105,12 +90,10 @@ def test_explicit_output_results(cli, client, subdirectory):
     cli('run', 'touch', foo)
     cli('run', '--output', foo, 'touch', foo)
 
-    cwls = read_all_cwl_files(client)
+    cwls = read_all_workflow_files(client)
 
     # There should be two command line tool.
     assert 2 == len(cwls)
-    assert cwls[0].inputs == cwls[1].inputs
-    assert cwls[0].outputs == cwls[1].outputs
 
 
 def test_explicit_outputs_and_normal_outputs(cli, client, subdirectory):
@@ -121,15 +104,11 @@ def test_explicit_outputs_and_normal_outputs(cli, client, subdirectory):
     exit_code, cwl = cli('run', '--output', foo, 'touch', foo, bar)
 
     assert 0 == exit_code
-    cwl.inputs.sort(key=lambda e: e.default)
-    assert 2 == len(cwl.inputs)
-    assert 'string' == cwl.inputs[0].type
-    assert 'bar' == str(cwl.inputs[0].default)
-    assert 'string' == cwl.inputs[1].type
-    assert 'foo' == str(cwl.inputs[1].default)
-
+    cwl = cwl.association.plan
+    cwl.inputs.sort(key=lambda e: e.position)
     assert 2 == len(cwl.outputs)
-    assert cwl.outputs[0].outputBinding != cwl.outputs[1].outputBinding
+    assert 'bar' == str(cwl.outputs[0].produces.path)
+    assert 'foo' == str(cwl.outputs[1].produces.path)
 
 
 def test_explicit_outputs_and_std_output_streams(cli, client, subdirectory):
@@ -165,10 +144,11 @@ def test_output_directory_without_separate_outputs(cli, client):
     """
     a_script = ('sh', '-c', 'mkdir -p "$0"; touch "$0/$1"')
     exit_code, cwl = cli('run', *a_script, 'outdir', 'foo')
+    cwl = cwl.association.plan
 
     assert 0 == exit_code
     assert 1 == len(cwl.outputs)
-    assert 'Directory' == cwl.outputs[0].type
+    assert isinstance(cwl.outputs[0].produces, Collection)
 
 
 def test_explicit_inputs_must_exist(cli):
@@ -187,26 +167,30 @@ def test_explicit_inputs_are_inside_repo(cli):
 
 def test_explicit_inputs_and_outputs_are_listed(cli, client):
     """Test explicit inputs and outputs will be in generated CWL file"""
-    cli('run', 'mkdir', 'foo')
+    foo = Path(os.path.relpath(client.path / 'foo', os.getcwd()))
+    foo.mkdir()
+    cli('run', 'touch', 'foo/file')
     cli('run', 'touch', 'bar', 'baz')
 
     exit_code, cwl = cli(
         'run', '--input', 'foo', '--input', 'bar', '--output', 'baz', 'echo'
     )
-
     assert 0 == exit_code
+
+    cwl = cwl.association.plan
     assert 2 == len(cwl.inputs)
-    cwl.inputs.sort(key=lambda e: e.type)
+    cwl.inputs.sort(key=lambda e: e.consumes.path)
 
-    assert '../../foo' == str(cwl.inputs[0].default)
-    assert 'Directory' == cwl.inputs[0].type
+    assert cwl.inputs[0].position is None
+    assert 'bar' == str(cwl.inputs[0].consumes.path)
 
-    assert cwl.inputs[0].inputBinding is None
-    assert '../../bar' == str(cwl.inputs[1].default)
+    assert cwl.inputs[1].position is None
+    assert 'foo' == str(cwl.inputs[1].consumes.path)
+    assert isinstance(cwl.inputs[1].consumes, Collection)
 
-    assert cwl.inputs[1].inputBinding is None
-    assert 'File' == cwl.inputs[1].type
-    assert 'baz' == cwl.outputs[0].outputBinding.glob
+    assert cwl.outputs[0].position is None
+    assert not isinstance(cwl.outputs[0].produces, Collection)
+    assert 'baz' == cwl.outputs[0].produces.path
 
 
 def test_explicit_inputs_can_be_in_inputs(cli, client, subdirectory):
@@ -215,14 +199,15 @@ def test_explicit_inputs_can_be_in_inputs(cli, client, subdirectory):
     cli('run', 'touch', foo)
 
     exit_code, cwl = cli('run', '--input', foo, '--no-output', 'ls', foo)
+    cwl = cwl.association.plan
 
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
 
-    assert '../../foo' == str(cwl.inputs[0].default)
-    assert 'File' == cwl.inputs[0].type
+    assert 'foo' == str(cwl.inputs[0].consumes.path)
+    assert not isinstance(cwl.inputs[0].consumes, Collection)
 
-    assert cwl.inputs[0].inputBinding is not None
+    assert cwl.inputs[0].position is not None
 
 
 def test_explicit_inputs_in_subdirectories(cli, client):
@@ -244,7 +229,7 @@ def test_explicit_inputs_in_subdirectories(cli, client):
     exit_code, _ = cli('status')
     assert 1 == exit_code
 
-    exit_code, cwl = cli('update')
+    exit_code, _ = cli('update')
     assert 0 == exit_code
     assert (client.path / 'foo' / 'bar').exists()
     assert (client.path / 'script.sh').exists()

@@ -378,7 +378,6 @@ from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
     DATASETS_FORMATS
-from renku.core.commands.migrate import check_for_migration
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 from renku.core.management.datasets import DownloadProgressCallback
 
@@ -439,8 +438,6 @@ def prompt_tag_selection(tags):
 @click.pass_context
 def dataset(ctx, revision, format, columns):
     """Handle datasets."""
-    check_for_migration()
-
     if ctx.invoked_subcommand is not None:
         return
 

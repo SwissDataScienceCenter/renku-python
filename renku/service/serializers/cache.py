@@ -174,3 +174,35 @@ class ProjectListResponseRPC(JsonRPCResponse):
     """RPC response schema for project listing."""
 
     result = fields.Nested(ProjectListResponse)
+
+
+class ProjectMigrateRequest(Schema):
+    """Request schema for project migrate."""
+
+    project_id = fields.String(required=True)
+
+
+class ProjectMigrateResponse(Schema):
+    """Response schema for project migrate."""
+
+    was_migrated = fields.Boolean()
+    messages = fields.List(fields.String, required=True)
+
+
+class ProjectMigrateResponseRPC(JsonRPCResponse):
+    """RPC response schema for project migrate."""
+
+    result = fields.Nested(ProjectMigrateResponse)
+
+
+class ProjectMigrationCheckResponse(Schema):
+    """Response schema for project migration check."""
+
+    migration_required = fields.Boolean()
+    project_supported = fields.Boolean()
+
+
+class ProjectMigrationCheckResponseRPC(JsonRPCResponse):
+    """RPC response schema for project migration check."""
+
+    result = fields.Nested(ProjectMigrationCheckResponse)

@@ -112,7 +112,7 @@ def show():
 @click.argument(
     'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
 )
-@pass_local_client
+@pass_local_client(requires_migration=True)
 def siblings(client, revision, flat, verbose, paths):
     """Show siblings for given paths."""
     graph = Graph(client)
@@ -159,7 +159,7 @@ def siblings(client, revision, flat, verbose, paths):
     type=click.Path(exists=True, dir_okay=False),
     nargs=-1,
 )
-@pass_local_client
+@pass_local_client(requires_migration=True)
 @click.pass_context
 def inputs(ctx, client, revision, paths):
     r"""Show inputs files in the repository.
@@ -171,8 +171,14 @@ def inputs(ctx, client, revision, paths):
     graph = Graph(client)
     paths = set(paths)
     nodes = graph.build(revision=revision)
-
-    commits = {node.commit for node in nodes}
+    commits = {
+        node.activity.commit if hasattr(node, 'activity') else node.commit
+        for node in nodes
+    }
+    commits |= {
+        node.activity.commit
+        for node in nodes if hasattr(node, 'activity')
+    }
     candidates = {(node.commit, node.path)
                   for node in nodes if not paths or node.path in paths}
 
@@ -203,7 +209,7 @@ def inputs(ctx, client, revision, paths):
     type=click.Path(exists=True, dir_okay=True),
     nargs=-1,
 )
-@pass_local_client
+@pass_local_client(requires_migration=True)
 @click.pass_context
 def outputs(ctx, client, revision, paths):
     r"""Show output files in the repository.
