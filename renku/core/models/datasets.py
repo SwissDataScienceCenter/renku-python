@@ -42,16 +42,21 @@ from . import jsonld as jsonld
 NoneType = type(None)
 
 
-@attr.s
+@jsonld.s(
+    type='schema:URL',
+    context={
+        'schema': 'http://schema.org/',
+    },
+)
 class Url:
     """Represents a schema URL reference."""
 
-    url = attr.ib(default=None, kw_only=True)
+    url = jsonld.ib(default=None, kw_only=True, context='schema:url')
 
     url_str = attr.ib(default=None, kw_only=True)
     url_id = attr.ib(default=None, kw_only=True)
 
-    _id = attr.ib(kw_only=True)
+    _id = jsonld.ib(kw_only=True, context='@id')
 
     @_id.default
     def default_id(self):
@@ -121,7 +126,10 @@ class CreatorMixin:
     """Mixin for handling creators container."""
 
     creator = jsonld.container.list(
-        Person, kw_only=True, converter=_convert_creators
+        Person,
+        kw_only=True,
+        context='schema:creator',
+        converter=_convert_creators
     )
 
     @property
@@ -143,25 +151,45 @@ def _extract_doi(value):
     return value
 
 
-@attr.s(frozen=True, slots=True)
+@jsonld.s(
+    type='schema:PublicationEvent',
+    context={'schema': 'http://schema.org/'},
+    frozen=True,
+    slots=True,
+)
 class DatasetTag(object):
     """Represents a Tag of an instance of a dataset."""
 
     client = attr.ib(default=None, kw_only=True)
 
-    name = attr.ib(default=None, kw_only=True, validator=instance_of(str))
-
-    description = attr.ib(
-        default=None, kw_only=True, validator=instance_of(str)
+    name = jsonld.ib(
+        default=None,
+        kw_only=True,
+        validator=instance_of(str),
+        context='schema:name'
     )
 
-    commit = attr.ib(default=None, kw_only=True, validator=instance_of(str))
+    description = jsonld.ib(
+        default=None,
+        kw_only=True,
+        validator=instance_of(str),
+        context='schema:description'
+    )
 
-    created = attr.ib(converter=parse_date, kw_only=True)
+    commit = jsonld.ib(
+        default=None,
+        kw_only=True,
+        validator=instance_of(str),
+        context='schema:location'
+    )
 
-    dataset = attr.ib(default=None, kw_only=True)
+    created = jsonld.ib(
+        converter=parse_date, context='schema:startDate', kw_only=True
+    )
 
-    _id = attr.ib(kw_only=True)
+    dataset = jsonld.ib(context='schema:about', default=None, kw_only=True)
+
+    _id = jsonld.ib(kw_only=True, context='@id')
 
     @created.default
     def _now(self):
@@ -188,12 +216,18 @@ class DatasetTag(object):
         return DatasetTagSchema().dump(self)
 
 
-@attr.s(slots=True)
+@jsonld.s(
+    type='schema:Language',
+    context={'schema': 'http://schema.org/'},
+    slots=True,
+)
 class Language:
     """Represent a language of an object."""
 
-    alternate_name = attr.ib(default=None, kw_only=True)
-    name = attr.ib(default=None, kw_only=True)
+    alternate_name = jsonld.ib(
+        default=None, kw_only=True, context='schema:alternateName'
+    )
+    name = jsonld.ib(default=None, kw_only=True, context='schema:name')
 
     @classmethod
     def from_jsonld(cls, data):
@@ -218,27 +252,41 @@ def convert_based_on(v):
         return DatasetFile.from_jsonld(v)
 
 
-@attr.s(slots=True)
+@jsonld.s(
+    type='schema:DigitalDocument',
+    slots=True,
+    context={
+        'schema': 'http://schema.org/',
+        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#'
+    }
+)
 class DatasetFile(Entity, CreatorMixin):
     """Represent a file in a dataset."""
 
-    added = attr.ib(converter=parse_date, kw_only=True)
+    added = jsonld.ib(
+        converter=parse_date, context='schema:dateCreated', kw_only=True
+    )
 
     checksum = attr.ib(default=None, kw_only=True)
 
     filename = attr.ib(kw_only=True, converter=convert_filename_path)
 
-    name = attr.ib(kw_only=True, default=None)
+    name = jsonld.ib(context='schema:name', kw_only=True, default=None)
 
     filesize = attr.ib(default=None, kw_only=True)
 
     filetype = attr.ib(default=None, kw_only=True)
 
-    url = attr.ib(default=None, kw_only=True)
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
-    based_on = attr.ib(default=None, kw_only=True, converter=convert_based_on)
+    based_on = jsonld.ib(
+        default=None,
+        context='schema:isBasedOn',
+        kw_only=True,
+        converter=convert_based_on
+    )
 
-    external = attr.ib(default=False, kw_only=True)
+    external = jsonld.ib(context='renku:external', default=False, kw_only=True)
 
     @added.default
     def _now(self):
@@ -324,7 +372,10 @@ def _convert_keyword(keywords):
         return keywords.keys()
 
 
-@attr.s
+@jsonld.s(
+    type='schema:Dataset',
+    context={'schema': 'http://schema.org/'},
+)
 class Dataset(Entity, CreatorMixin):
     """Represent a dataset."""
 
@@ -335,39 +386,58 @@ class Dataset(Entity, CreatorMixin):
         'license', 'name', 'url', 'version', 'created', 'files'
     ]
 
-    _id = attr.ib(default=None, kw_only=True)
-    _label = attr.ib(default=None, kw_only=True)
+    _id = jsonld.ib(default=None, context='@id', kw_only=True)
+    _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
 
-    date_published = attr.ib(default=None, kw_only=True)
-
-    description = attr.ib(default=None, kw_only=True)
-
-    identifier = attr.ib(
-        default=attr.Factory(uuid.uuid4), kw_only=True, converter=_extract_doi
+    date_published = jsonld.ib(
+        default=None, context='schema:datePublished', kw_only=True
     )
 
-    in_language = attr.ib(
-        type=Language, default=None, converter=_convert_language, kw_only=True
+    description = jsonld.ib(
+        default=None, context='schema:description', kw_only=True
+    )
+
+    identifier = jsonld.ib(
+        default=attr.Factory(uuid.uuid4),
+        context='schema:identifier',
+        kw_only=True,
+        converter=_extract_doi
+    )
+
+    in_language = jsonld.ib(
+        type=Language,
+        default=None,
+        converter=_convert_language,
+        context='schema:inLanguage',
+        kw_only=True
     )
 
     keywords = jsonld.container.list(
-        str, converter=_convert_keyword, kw_only=True
+        str,
+        converter=_convert_keyword,
+        context='schema:keywords',
+        kw_only=True
     )
 
-    license = attr.ib(default=None, kw_only=True)
+    license = jsonld.ib(default=None, context='schema:license', kw_only=True)
 
-    name = attr.ib(default=None, type=str, kw_only=True)
+    name = jsonld.ib(
+        default=None, type=str, context='schema:name', kw_only=True
+    )
 
-    url = attr.ib(default=None, kw_only=True)
+    url = jsonld.ib(default=None, context='schema:url', kw_only=True)
 
-    version = attr.ib(default=None, kw_only=True)
+    version = jsonld.ib(default=None, context='schema:version', kw_only=True)
 
-    created = attr.ib(converter=parse_date, kw_only=True)
+    created = jsonld.ib(
+        converter=parse_date, context='schema:dateCreated', kw_only=True
+    )
 
     files = jsonld.container.list(
         DatasetFile,
         default=None,
         converter=_convert_dataset_files,
+        context='schema:hasPart',
         kw_only=True
     )
 
@@ -375,12 +445,19 @@ class Dataset(Entity, CreatorMixin):
         DatasetTag,
         default=None,
         converter=_convert_dataset_tags,
+        context={
+            '@id': 'schema:subjectOf',
+        },
         kw_only=True
     )
 
-    same_as = attr.ib(default=None, kw_only=True)
+    same_as = jsonld.ib(
+        context='schema:sameAs', default=None, kw_only=True, type=Url
+    )
 
-    short_name = attr.ib(default=None, kw_only=True)
+    short_name = jsonld.ib(
+        default=None, context='schema:alternateName', kw_only=True
+    )
 
     @created.default
     def _now(self):

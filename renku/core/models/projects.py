@@ -34,23 +34,48 @@ from renku.core.utils.datetime8601 import parse_date
 PROJECT_URL_PATH = 'projects'
 
 
-@attr.s(slots=True)
+@jsonld.s(
+    type=[
+        'schema:Project',
+        'prov:Location',
+    ],
+    context={
+        'schema': 'http://schema.org/',
+        'prov': 'http://www.w3.org/ns/prov#'
+    },
+    translate={
+        'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
+        'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
+    },
+    slots=True,
+)
 class Project(ReferenceMixin):
     """Represent a project."""
 
-    name = attr.ib(default=None)
+    name = jsonld.ib(default=None, context='schema:name')
 
-    created = attr.ib(converter=parse_date)
+    created = jsonld.ib(converter=parse_date, context='schema:dateCreated')
 
-    updated = attr.ib(converter=parse_date)
+    updated = jsonld.ib(converter=parse_date, context='schema:dateUpdated')
 
-    version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION))
+    version = jsonld.ib(
+        converter=str,
+        default=str(SUPPORTED_PROJECT_VERSION),
+        context='schema:schemaVersion'
+    )
 
     client = attr.ib(default=None, kw_only=True)
 
-    creator = attr.ib(default=None, kw_only=True, type=Person)
+    creator = jsonld.ib(
+        default=None,
+        kw_only=True,
+        context={
+            '@id': 'schema:creator',
+        },
+        type=Person
+    )
 
-    _id = attr.ib(kw_only=True, default=None)
+    _id = jsonld.ib(context='@id', kw_only=True, default=None)
 
     @created.default
     @updated.default
