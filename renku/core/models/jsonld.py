@@ -50,11 +50,16 @@ DOC_TPL = (
 
 make_type = type
 
+try:
+    from yaml import CSafeLoader as SafeLoader, CDumper as Dumper
+except ImportError:
+    from yaml import SafeLoader, Dumper
+
 
 # Shamelessly copy/pasting from SO:
 # https://stackoverflow.com/questions/34667108/ignore-dates-and-times-while-parsing-yaml
 # This is needed to allow us to load from yaml and use json down the line.
-class NoDatesSafeLoader(yaml.SafeLoader):
+class NoDatesSafeLoader(SafeLoader):
     """Used to safely load basic python objects but ignore datetime strings."""
 
     @classmethod
@@ -646,11 +651,11 @@ def read_yaml(path):
 
 def write_yaml(path, data):
     """Store data to a YAML file."""
-    dumper = yaml.dumper.Dumper
-    dumper.ignore_aliases = lambda _, data: True
+
+    Dumper.ignore_aliases = lambda _, data: True
 
     with Path(path).open('w') as fp:
-        yaml.dump(data, fp, default_flow_style=False, Dumper=dumper)
+        yaml.dump(data, fp, default_flow_style=False, Dumper=Dumper)
 
 
 def fullname(cls):

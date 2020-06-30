@@ -106,6 +106,8 @@ class RepositoryApiMixin(GitCore):
 
     _activity_index = None
 
+    _remote_cache = {}
+
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         #: Configure Renku path.
@@ -170,6 +172,11 @@ class RepositoryApiMixin(GitCore):
         """Return host, owner and name of the remote if it exists."""
         from renku.core.models.git import GitURL
 
+        original_remote_name = remote_name
+
+        if original_remote_name in self._remote_cache:
+            return self._remote_cache[original_remote_name]
+
         host = owner = name = None
         try:
             remote_branch = \
@@ -194,7 +201,11 @@ class RepositoryApiMixin(GitCore):
             host = url.hostname
             owner = url.owner
             name = url.name
-        return {'host': host, 'owner': owner, 'name': name}
+
+        remote = {'host': host, 'owner': owner, 'name': name}
+        self._remote_cache[original_remote_name] = remote
+
+        return remote
 
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.core.models.provenance.activities.Activity`.

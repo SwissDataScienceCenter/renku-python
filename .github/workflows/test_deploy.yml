@@ -74,6 +74,10 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install system packages
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libyaml-0-2 libyaml-dev
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -135,6 +139,10 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install system packages
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libyaml-0-2 libyaml-dev
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
