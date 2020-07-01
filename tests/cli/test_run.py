@@ -28,15 +28,18 @@ from renku.cli import cli
 def test_run_simple(runner, project):
     """Test tracking of run command."""
     cmd = ['echo', 'test']
+
     result = runner.invoke(cli, ['run', '--no-output'] + cmd)
     assert 0 == result.exit_code
 
     # There are no output files.
     result = runner.invoke(cli, ['log'])
+    assert 0 == result.exit_code
     assert 1 == len(result.output.strip().split('\n'))
 
     # Display tools with no outputs.
     result = runner.invoke(cli, ['log', '--no-output'])
+    assert 0 == result.exit_code
     assert '.renku/workflow/' in result.output
 
 
@@ -68,5 +71,5 @@ def test_run_clean(runner, project, run_shell):
     # Assert created output file.
     result = runner.invoke(cli, ['log'])
     assert 'output' in result.output
-    assert '.cwl' in result.output
+    assert '.yaml' in result.output
     assert '.renku/workflow/' in result.output

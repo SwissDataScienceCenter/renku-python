@@ -23,6 +23,7 @@ import git
 
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.models.entities import Collection
 
 
 def update_and_commit(data, file_, repo):
@@ -102,6 +103,49 @@ def test_update(runner, project, run, no_lfs_warning):
             assert r is True, t
 
 
+def test_update_multiple_steps(runner, project, run, no_lfs_warning):
+    """Test automatic file update."""
+    cwd = Path(project)
+    data = cwd / 'data'
+    data.mkdir(exist_ok=True, parents=True)
+    source = cwd / 'source.txt'
+    intermediate = cwd / 'intermediate.txt'
+    output = cwd / 'result.txt'
+
+    repo = git.Repo(project)
+
+    update_and_commit('1', source, repo)
+
+    assert 0 == run(args=('run', 'cp', str(source), str(intermediate)))
+
+    with intermediate.open('r') as f:
+        assert f.read().strip() == '1'
+
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    assert 0 == run(args=('run', 'cp', str(intermediate), str(output)))
+
+    with output.open('r') as f:
+        assert f.read().strip() == '1'
+
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    update_and_commit('2', source, repo)
+
+    result = runner.invoke(cli, ['status'])
+    assert 1 == result.exit_code
+
+    assert 0 == run()
+
+    result = runner.invoke(cli, ['status'])
+    assert 0 == result.exit_code
+
+    with output.open('r') as f:
+        assert f.read().strip() == '2'
+
+
 def test_workflow_without_outputs(runner, project, run):
     """Test workflow without outputs."""
     repo = git.Repo(project)
@@ -130,7 +174,6 @@ def test_workflow_without_outputs(runner, project, run):
     cmd = ['status', '--no-output']
     result = runner.invoke(cli, cmd)
     assert 1 == result.exit_code
-
     assert 0 == run(args=('update', '--no-output'))
 
     cmd = ['status', '--no-output']
@@ -248,7 +291,6 @@ def test_siblings_in_output_directory(runner, project, run):
         ('fourth', '4'),
     ]
     write_source()
-
     assert 0 == run(args=['update', 'output'])
     check_files()
 
@@ -266,7 +308,8 @@ def test_relative_path_for_directory_input(client, run, cli):
     client.repo.index.commit('Add one more file')
 
     exit_code, cwl = cli('update')
+    cwl = cwl.association.plan
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
-    assert 'Directory' == cwl.inputs[0].type
-    assert '../../data' == cwl.inputs[0].default.path
+    assert isinstance(cwl.inputs[0].consumes, Collection)
+    assert 'data' == cwl.inputs[0].consumes.path

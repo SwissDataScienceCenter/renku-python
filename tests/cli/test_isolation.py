@@ -31,7 +31,7 @@ def test_run_in_isolation(runner, project, client, run, subdirectory):
     cwd = Path(project)
     with client.commit():
         with (cwd / '.gitignore').open('a') as f:
-            f.write('lock')
+            f.write('\nlock')
 
     prefix = [
         'run',

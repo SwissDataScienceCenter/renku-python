@@ -280,13 +280,19 @@ def client_with_lfs_warning(project):
 @pytest.fixture
 def dataset(client):
     """Create a dataset."""
+    from renku.core.models.provenance.agents import Person
+
     with client.with_dataset('dataset', create=True) as dataset:
-        dataset.creator = [{
-            'affiliation': 'xxx',
-            'email': 'me@example.com',
-            '_id': 'me_id',
-            'name': 'me',
-        }]
+        dataset.creator = [
+            Person(
+                **{
+                    'affiliation': 'xxx',
+                    'email': 'me@example.com',
+                    'id': 'me_id',
+                    'name': 'me',
+                }
+            )
+        ]
     return dataset
 
 
@@ -368,24 +374,19 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture(
-    params=[
-        {
-            'name': 'old-datasets-v0.3.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.0.git',
-            'exit_code': 1
-        },
-        {
-            'name': 'old-datasets-v0.5.1.git',
-            'exit_code': 0
-        },
-        {
-            'name': 'test-renku-v0.3.0.git',
-            'exit_code': 1
-        },
-    ],
+    params=[{
+        'name': 'old-datasets-v0.3.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.0.git',
+        'exit_code': 1
+    }, {
+        'name': 'old-datasets-v0.5.1.git',
+        'exit_code': 0
+    }, {
+        'name': 'test-renku-v0.3.0.git',
+        'exit_code': 1
+    }],
     scope='module',
 )
 def old_bare_repository(request, tmpdir_factory):
@@ -407,6 +408,67 @@ def old_bare_repository(request, tmpdir_factory):
     }
 
     shutil.rmtree(working_dir_path.strpath)
+
+
+@pytest.fixture(
+    scope='function',
+    params=[{
+        'name': 'old-workflows-v0.10.3.git',
+        'log_path': 'catoutput.txt',
+        'expected_strings': [
+            'catoutput.txt', '_cat.yaml', '_echo.yaml', '9ecc28b2 stdin.txt',
+            'bdc801c6 stdout.txt'
+        ]
+    }, {
+        'name': 'old-workflows-complicated-v0.10.3.git',
+        'log_path': 'concat2.txt',
+        'expected_strings': [
+            'concat2.txt', '5828275ae5344eba8bad475e7d3cf2d5.cwl',
+            '_migrated.yaml', '88add2ea output_rand', 'e6fa6bf3 input2.txt'
+        ]
+    }]
+)
+def old_workflow_project(request, tmp_path_factory):
+    """Prepares a testing repo created by old version of renku."""
+    import tarfile
+    from git import Repo
+    from pathlib import Path
+
+    name = request.param['name']
+
+    compressed_repo_path = Path(
+        __file__
+    ).parent / 'tests' / 'fixtures' / '{name}.tar.gz'.format(name=name)
+
+    working_dir_path = tmp_path_factory.mktemp(name)
+
+    with tarfile.open(str(compressed_repo_path), 'r') as fixture:
+        fixture.extractall(str(working_dir_path))
+
+    path = working_dir_path / name
+
+    repo_path = tmp_path_factory.mktemp('repo')
+
+    repository = Repo(str(path),
+                      search_parent_directories=True).clone(str(repo_path))
+
+    repository_path = repository.working_dir
+
+    commit = repository.head.commit
+
+    os.chdir(repository_path)
+    yield {
+        'repo': repository,
+        'path': repository_path,
+        'log_path': request.param['log_path'],
+        'expected_strings': request.param['expected_strings']
+    }
+    os.chdir(repository_path)
+    repository.head.reset(commit, index=True, working_tree=True)
+    # remove any extra non-tracked files (.pyc, etc)
+    repository.git.clean('-xdff')
+
+    shutil.rmtree(str(repo_path))
 
 
 @pytest.fixture(scope='module')
@@ -625,18 +687,22 @@ def cli(client, run):
     It returns the exit code and content of the resulting CWL tool.
     """
     import yaml
-    from renku.core.models.cwl import CWLClass
+    from renku.core.models.provenance.activities import Activity
 
     def renku_cli(*args):
-        before_cwl_files = set(client.workflow_path.glob('*.cwl'))
+        before_wf_files = set(client.workflow_path.glob('*.yaml'))
         exit_code = run(args)
-        after_cwl_files = set(client.workflow_path.glob('*.cwl'))
-        new_files = after_cwl_files - before_cwl_files
+        after_wf_files = set(client.workflow_path.glob('*.yaml'))
+        new_files = after_wf_files - before_wf_files
         assert len(new_files) <= 1
         if new_files:
-            cwl_filepath = new_files.pop()
-            with cwl_filepath.open('r') as f:
-                content = CWLClass.from_cwl(yaml.safe_load(f))
+            wf_filepath = new_files.pop()
+            with wf_filepath.open('r') as f:
+                content = Activity.from_jsonld(
+                    yaml.safe_load(f),
+                    client=client,
+                    commit=client.repo.head.commit
+                )
         else:
             content = None
 
@@ -663,6 +729,18 @@ def dataset_metadata(request):
 
     data = yaml.load(file_path.read_text(), Loader=NoDatesSafeLoader)
     yield data
+
+
+@pytest.fixture
+def dataset_metadata_before_calamus():
+    """Return dataset metadata fixture."""
+    from renku.core.models.jsonld import NoDatesSafeLoader
+
+    path = (
+        Path(__file__).parent / 'tests' / 'fixtures' /
+        'dataset-v0.10.4-before-calamus.yml'
+    )
+    yield yaml.load(path.read_text(), Loader=NoDatesSafeLoader)
 
 
 @pytest.fixture()

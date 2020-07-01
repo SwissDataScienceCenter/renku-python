@@ -21,11 +21,14 @@ import datetime
 import os
 
 import attr
+from marshmallow import EXCLUDE
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
+from renku.core.models.calamus import JsonLDSchema, fields, prov, schema
 from renku.core.models.datastructures import Collection
-from renku.core.models.provenance.agents import Person
+from renku.core.models.locals import ReferenceMixin
+from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
 
 PROJECT_URL_PATH = 'projects'
@@ -46,25 +49,19 @@ PROJECT_URL_PATH = 'projects'
     },
     slots=True,
 )
-class Project(object):
+class Project(ReferenceMixin):
     """Represent a project."""
 
     name = jsonld.ib(default=None, context='schema:name')
 
-    created = jsonld.ib(
-        converter=parse_date,
-        context='schema:dateCreated',
-    )
+    created = jsonld.ib(converter=parse_date, context='schema:dateCreated')
 
-    updated = jsonld.ib(
-        converter=parse_date,
-        context='schema:dateUpdated',
-    )
+    updated = jsonld.ib(converter=parse_date, context='schema:dateUpdated')
 
     version = jsonld.ib(
         converter=str,
         default=str(SUPPORTED_PROJECT_VERSION),
-        context='schema:schemaVersion',
+        context='schema:schemaVersion'
     )
 
     client = attr.ib(default=None, kw_only=True)
@@ -103,8 +100,12 @@ class Project(object):
             self._id = self.project_id
         except ValueError:
             """Fallback to old behaviour."""
-            if not self._id and self.client and self.client.project:
+            if self._id:
+                pass
+            elif self.client and self.client.is_project_set():
                 self._id = self.client.project._id
+            else:
+                raise
 
     @property
     def project_id(self):
@@ -139,6 +140,35 @@ class Project(object):
             pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or 'NULL')
         )
         return project_url
+
+    @classmethod
+    def from_yaml(cls, path, client=None):
+        """Return an instance from a YAML file."""
+        data = jsonld.read_yaml(path)
+
+        self = cls.from_jsonld(data=data, client=client)
+        self.__reference__ = path
+
+        return self
+
+    @classmethod
+    def from_jsonld(cls, data, client=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return ProjectSchema(client=client).load(data)
+
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = ProjectSchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return ProjectSchema().dump(self)
 
 
 class ProjectCollection(Collection):
@@ -183,3 +213,21 @@ class ProjectCollection(Collection):
             self.Meta.model(data, client=self._client, collection=self)
             for data in self._client.api.list_projects()
         )
+
+
+class ProjectSchema(JsonLDSchema):
+    """Project Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [schema.Project, prov.Location]
+        model = Project
+        unknown = EXCLUDE
+
+    name = fields.String(schema.name, missing=None)
+    created = fields.DateTime(schema.dateCreated, missing=None)
+    updated = fields.DateTime(schema.dateUpdated, missing=None)
+    version = fields.String(schema.schemaVersion, missing=1)
+    creator = fields.Nested(schema.creator, PersonSchema, missing=None)
+    _id = fields.Id(init_name='id', missing=None)

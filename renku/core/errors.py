@@ -411,6 +411,10 @@ class SHACLValidationError(RenkuException):
     """Raises when SHACL validation of the graph fails."""
 
 
+class CommitProcessingError(RenkuException):
+    """Raised when a commit couldn't be processed during graph build."""
+
+
 class WorkflowRerunError(RenkuException):
     """Raises when a workflow execution fails."""
 

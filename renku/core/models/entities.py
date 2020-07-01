@@ -25,7 +25,9 @@ import weakref
 import attr
 
 from renku.core.models import jsonld as jsonld
-from renku.core.models.projects import Project
+from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
+    schema, wfprov
+from renku.core.models.projects import Project, ProjectSchema
 
 
 def _str_or_none(data):
@@ -33,7 +35,14 @@ def _str_or_none(data):
     return str(data) if data is not None else data
 
 
-@attr.s(cmp=False)
+@jsonld.s(
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'schema': 'http://schema.org/',
+    },
+    cmp=False,
+)
 class CommitMixin:
     """Represent a commit mixin."""
 
@@ -55,7 +64,8 @@ class CommitMixin:
     @property
     def submodules(self):
         """Proxy to client submodules."""
-        return self.client.submodules
+        if self.client:
+            return self.client.submodules
 
     def default_id(self):
         """Configure calculated ID."""
@@ -88,12 +98,15 @@ class CommitMixin:
         else:
             hexsha = 'UNCOMMITTED'
         if self.path:
-            return '{self.path}@{hexsha}'.format(hexsha=hexsha, self=self)
+            path = self.path
+            if self.client and os.path.isabs(path):
+                path = pathlib.Path(path).relative_to(self.client.path)
+            return '{path}@{hexsha}'.format(hexsha=hexsha, path=path)
         return '{hexsha}'.format(hexsha=hexsha, self=self)
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if self.path:
+        if self.path and self.client:
             path = pathlib.Path(self.path)
             if path.is_absolute():
                 self.path = str(path.relative_to(self.client.path))
@@ -115,6 +128,7 @@ class CommitMixin:
         'schema': 'http://schema.org/',
         'prov': 'http://www.w3.org/ns/prov#',
         'wfprov': 'http://purl.org/wf4ever/wfprov#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#'
     },
     cmp=False,
 )
@@ -130,11 +144,20 @@ class Entity(CommitMixin):
 
     @classmethod
     def from_revision(
-        cls, client, path, revision='HEAD', parent=None, **kwargs
+        cls,
+        client,
+        path,
+        revision='HEAD',
+        parent=None,
+        find_previous=True,
+        **kwargs
     ):
         """Return dependency from given path and revision."""
+        if find_previous:
+            revision = client.find_previous_commit(path, revision=revision)
+
         client, commit, path = client.resolve_in_submodules(
-            client.find_previous_commit(path, revision=revision),
+            revision,
             path,
         )
 
@@ -148,17 +171,30 @@ class Entity(CommitMixin):
                 parent=parent,
             )
 
+            files_in_commit = commit.stats.files
+
+            # update members with commits
             for member in path_.iterdir():
                 if member.name == '.gitkeep':
                     continue
 
+                member_path = str(member.relative_to(client.path))
+                find_previous = True
+
+                if member_path in files_in_commit:
+                    # we already know the newest commit, no need to look it up
+                    find_previous = False
+
                 try:
+                    assert all(member_path != m.path for m in entity.members)
+
                     entity.members.append(
                         cls.from_revision(
                             client,
-                            str(member.relative_to(client.path)),
+                            member_path,
                             commit,
                             parent=entity,
+                            find_previous=find_previous,
                             **kwargs
                         )
                     )
@@ -184,7 +220,17 @@ class Entity(CommitMixin):
     @property
     def entities(self):
         """Yield itself."""
+        if (
+            self.client and not self.commit and self._label and
+            '@UNCOMMITTED' not in self._label
+        ):
+            self.commit = self.client.repo.commit(self._label.rsplit('@')[1])
+
         yield self
+
+    def set_client(self, client):
+        """Sets the clients on this entity."""
+        self.client = client
 
 
 @jsonld.s(
@@ -199,12 +245,20 @@ class Entity(CommitMixin):
 class Collection(Entity):
     """Represent a directory with files."""
 
-    members = jsonld.ib(context='prov:hadMember', kw_only=True)
+    members = jsonld.container.list(
+        type=Entity, context='prov:hadMember', kw_only=True
+    )
 
-    @members.default
     def default_members(self):
         """Generate default members as entities from current path."""
+        if not self.client:
+            return []
         dir_path = self.client.path / self.path
+
+        if not dir_path.exists():
+            # likely a directory deleted in a previous commit
+            return []
+
         assert dir_path.is_dir()
 
         members = []
@@ -226,5 +280,57 @@ class Collection(Entity):
     def entities(self):
         """Recursively return all files."""
         for member in self.members:
+            if not member.client and self.client:
+                member.client = self.client
             yield from member.entities
+
+        if (
+            self.client and not self.commit and self._label and
+            '@UNCOMMITTED' not in self._label
+        ):
+            self.commit = self.client.repo.commit(self._label.rsplit('@')[1])
+
         yield self
+
+    def set_client(self, client):
+        """Sets the clients on this entity."""
+        super().set_client(client)
+
+        for m in self.members:
+            m.set_client(client)
+
+    def __attrs_post_init__(self):
+        """Init members."""
+        super().__attrs_post_init__()
+
+        if self.members is None:
+            self.members = self.default_members()
+
+        for member in self.members:
+            member._parent = weakref.ref(self)
+
+
+class CommitMixinSchema(JsonLDSchema):
+    """CommitMixin schema."""
+
+    class Meta:
+        """Meta class."""
+
+        model = CommitMixin
+
+    path = fields.String(prov.atLocation)
+    _id = fields.Id(init_name='id')
+    _label = fields.String(rdfs.label, init_name='label', missing=None)
+    _project = fields.Nested(
+        schema.isPartOf, ProjectSchema, init_name='project', missing=None
+    )
+
+
+class EntitySchema(CommitMixinSchema):
+    """Entity Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Entity, wfprov.Artifact]
+        model = Entity

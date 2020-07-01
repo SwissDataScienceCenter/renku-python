@@ -44,7 +44,9 @@ TEMPLATE_CLONE_DEPTH_DEFAULT = int(
     os.getenv('TEMPLATE_CLONE_DEPTH_DEFAULT', 0)
 )
 
-CACHE_DIR = os.getenv('CACHE_DIR', tempfile.TemporaryDirectory().name)
+CACHE_DIR = os.getenv(
+    'CACHE_DIR', os.path.realpath(tempfile.TemporaryDirectory().name)
+)
 CACHE_UPLOADS_PATH = Path(CACHE_DIR) / Path('uploads')
 CACHE_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
 

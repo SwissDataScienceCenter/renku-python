@@ -36,7 +36,7 @@ import pkg_resources
 
 from renku.core.errors import MigrationRequired, ProjectNotSupported
 
-SUPPORTED_PROJECT_VERSION = 4
+SUPPORTED_PROJECT_VERSION = 5
 
 
 def check_for_migration(client):
@@ -99,7 +99,10 @@ def _get_project_version(client):
 
 
 def _is_renku_project(client):
-    return client.project is not None
+    try:
+        return client.project is not None
+    except ValueError:  # Error in loading due to an older schema
+        return client.renku_metadata_path.exists()
 
 
 def get_migrations():

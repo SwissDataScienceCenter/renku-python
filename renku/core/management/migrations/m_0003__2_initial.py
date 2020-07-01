@@ -170,7 +170,10 @@ def _fix_uncommitted_labels(client):
                     file_.path,
                 )
                 file_.commit = commit
-                if 'UNCOMMITTED' in file_._label or '@' not in file_._label:
+                if (
+                    not file_._label or 'UNCOMMITTED' in file_._label or
+                    '@' not in file_._label
+                ):
                     file_._label = file_.default_label()
                     file_._id = file_.default_id()
             except KeyError:

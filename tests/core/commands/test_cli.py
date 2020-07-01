@@ -28,16 +28,14 @@ from pathlib import Path
 
 import git
 import pytest
-import yaml
 from click.testing import CliRunner
+from cwlgen import parse_cwl
 from tests.cli.test_init import INPUT, METADATA, TEMPLATE_ID
 
 from renku import __version__
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
-from renku.core.models.cwl.ascwl import CWLClass, ascwl
-from renku.core.models.cwl.workflow import Workflow
 from renku.core.utils.contexts import chdir
 
 
@@ -159,10 +157,8 @@ def test_workflow(runner, project):
         catch_exceptions=False,
     )
     assert 0 == result.exit_code
-
-    with open('workflow.cwl', 'r') as f:
-        workflow = Workflow.from_cwl(yaml.safe_load(f))
-        assert workflow.steps[0].run.startswith('.renku/workflow/')
+    workflow = parse_cwl('workflow.cwl')
+    assert 2 == len(workflow.steps)
 
     # Compare default log and log for a specific file.
     result_default = runner.invoke(cli, ['log'])
@@ -646,58 +642,6 @@ def test_modified_output(runner, project, run):
         assert f.read().strip() == '3'
 
 
-def test_modified_tool(runner, project, run):
-    """Test detection of modified tool."""
-    from renku.core.management import LocalClient
-
-    client = LocalClient(project)
-    repo = client.repo
-    greeting = client.path / 'greeting.txt'
-
-    assert 0 == run(args=('run', 'echo', 'hello'), stdout=greeting)
-
-    cmd = ['status']
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-
-    # There should be only one command line tool.
-    tools = list(client.workflow_path.glob('*_echo.cwl'))
-    assert 1 == len(tools)
-
-    tool_path = tools[0]
-    with tool_path.open('r') as f:
-        command_line_tool = CWLClass.from_cwl(yaml.safe_load(f))
-
-    # Simulate a manual edit.
-    command_line_tool.inputs[0].default = 'ahoj'
-    command_line_tool.stdout = 'pozdrav.txt'
-
-    with tool_path.open('w') as f:
-        yaml.dump(
-            ascwl(
-                command_line_tool,
-                filter=lambda _, x: x is not None,
-                basedir=client.workflow_path,
-            ),
-            stream=f,
-            default_flow_style=False
-        )
-
-    repo.git.add('--all')
-    repo.index.commit('Modified tool', skip_hooks=True)
-
-    assert 0 == run()
-
-    output = client.path / 'pozdrav.txt'
-    assert output.exists()
-    with output.open('r') as f:
-        assert 'ahoj\n' == f.read()
-
-    cmd = ['status']
-    result = runner.invoke(cli, cmd)
-    assert 0 == result.exit_code
-
-
 def test_siblings(runner, project):
     """Test detection of siblings."""
     siblings = {'brother', 'sister'}
@@ -836,6 +780,7 @@ def test_input_directory(runner, project, run, no_lfs_warning):
         assert 'first\nsecond\n' == fp.read()
 
     result = runner.invoke(cli, ['show', 'inputs'])
+    assert 0 == result.exit_code
     assert set(
         str(p.relative_to(cwd))
         for p in inputs.rglob('*') if p.name != '.gitkeep'
