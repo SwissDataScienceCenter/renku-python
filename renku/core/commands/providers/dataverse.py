@@ -528,16 +528,16 @@ class _DataverseDeposition:
 
     @staticmethod
     def _check_response(response):
-        if response.status_code not in [200, 201]:
+        if response.status_code not in [200, 201, 202]:
             if response.status_code == 401:
                 raise errors.AuthenticationError(
                     'Access unauthorized - update access token.'
                 )
-
+            json_res = response.json()
             raise errors.ExportError(
                 'HTTP {} - Cannot export dataset: {}'.format(
-                    response.status_code,
-                    response.json()['message']
+                    response.status_code, json_res['message']
+                    if 'message' in json_res else json_res['status']
                 )
             )
 
