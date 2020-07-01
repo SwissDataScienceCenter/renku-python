@@ -257,7 +257,7 @@ class DataverseRecordSerializer:
         return [DataverseFileSerializer(**file_) for file_ in self.files]
 
     def as_dataset(self, client):
-        """Deserialize `DataverseRecordSerializer` to `Dataset`."""'
+        """Deserialize `DataverseRecordSerializer` to `Dataset`."""
         files = self.get_files()
         context = self._json.get('@context')
         if context and isinstance(context, str):
