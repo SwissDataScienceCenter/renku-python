@@ -125,7 +125,7 @@ def _convert_creators(value):
 class CreatorMixin:
     """Mixin for handling creators container."""
 
-    creator = jsonld.container.list(
+    creators = jsonld.container.list(
         Person,
         kw_only=True,
         context='schema:creator',
@@ -135,12 +135,12 @@ class CreatorMixin:
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ', '.join(creator.name for creator in self.creator)
+        return ', '.join(creator.name for creator in self.creators)
 
     @property
     def creators_full_csv(self):
         """Comma-separated list of creators with full identity."""
-        return ', '.join(creator.full_identity for creator in self.creator)
+        return ', '.join(creator.full_identity for creator in self.creators)
 
 
 def _extract_doi(value):
@@ -260,7 +260,7 @@ def convert_based_on(v):
         'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#'
     }
 )
-class DatasetFile(Entity, CreatorMixin):
+class DatasetFile(Entity):
     """Represent a file in a dataset."""
 
     added = jsonld.ib(
@@ -382,8 +382,8 @@ class Dataset(Entity, CreatorMixin):
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
     EDITABLE_FIELDS = [
-        'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files'
+        'creators', 'date_published', 'description', 'in_language', 'keywords',
+        'license', 'title', 'url', 'version', 'date_created', 'files'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
@@ -421,7 +421,7 @@ class Dataset(Entity, CreatorMixin):
 
     license = jsonld.ib(default=None, context='schema:license', kw_only=True)
 
-    name = jsonld.ib(
+    title = jsonld.ib(
         default=None, type=str, context='schema:name', kw_only=True
     )
 
@@ -429,7 +429,7 @@ class Dataset(Entity, CreatorMixin):
 
     version = jsonld.ib(default=None, context='schema:version', kw_only=True)
 
-    created = jsonld.ib(
+    date_created = jsonld.ib(
         converter=parse_date, context='schema:dateCreated', kw_only=True
     )
 
@@ -455,23 +455,21 @@ class Dataset(Entity, CreatorMixin):
         context='schema:sameAs', default=None, kw_only=True, type=Url
     )
 
-    short_name = jsonld.ib(
+    name = jsonld.ib(
         default=None, context='schema:alternateName', kw_only=True
     )
 
-    @created.default
+    @date_created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
 
-    @short_name.validator
-    def short_name_validator(self, attribute, value):
-        """Validate short_name."""
-        # short_name might have been scaped and have '%' in it
-        if value and not is_dataset_short_name_valid(value):
-            raise errors.ParameterError(
-                'Invalid "short_name": {}'.format(value)
-            )
+    @name.validator
+    def name_validator(self, attribute, value):
+        """Validate name."""
+        # name might have been scaped and have '%' in it
+        if value and not is_dataset_name_valid(value):
+            raise errors.ParameterError('Invalid "name": {}'.format(value))
 
     @property
     def uid(self):
@@ -490,7 +488,7 @@ class Dataset(Entity, CreatorMixin):
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ', '.join(creator.name for creator in self.creator)
+        return ', '.join(creator.name for creator in self.creators)
 
     @property
     def keywords_csv(self):
@@ -513,7 +511,7 @@ class Dataset(Entity, CreatorMixin):
     def datadir(self):
         """Directory where dataset files are stored."""
         if self.client:
-            return Path(self.client.datadir) / self.short_name
+            return Path(self.client.datadir) / self.name
         return ''
 
     def contains_any(self, files):
@@ -618,9 +616,9 @@ class Dataset(Entity, CreatorMixin):
         self.url = self._id
 
         # if `date_published` is set, we are probably dealing with
-        # an imported dataset so `created` is not needed
+        # an imported dataset so `date_created` is not needed
         if self.date_published:
-            self.created = None
+            self.date_created = None
 
         self._label = self.identifier
 
@@ -654,10 +652,8 @@ class Dataset(Entity, CreatorMixin):
             # if with_dataset is used, the dataset is not committed yet
             pass
 
-        if not self.short_name:
-            self.short_name = generate_default_short_name(
-                self.name, self.version
-            )
+        if not self.name:
+            self.name = generate_default_name(self.title, self.version)
 
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
@@ -698,7 +694,7 @@ class CreatorMixinSchema(JsonLDSchema):
 
         unknown = EXCLUDE
 
-    creator = fields.Nested(schema.creator, PersonSchema, many=True)
+    creators = fields.Nested(schema.creator, PersonSchema, many=True)
 
 
 class UrlSchema(JsonLDSchema):
@@ -747,7 +743,7 @@ class LanguageSchema(JsonLDSchema):
     name = fields.String(schema.name)
 
 
-class DatasetFileSchema(EntitySchema, CreatorMixinSchema):
+class DatasetFileSchema(EntitySchema):
     """DatasetFile schema."""
 
     class Meta:
@@ -786,14 +782,14 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     )
     keywords = fields.List(schema.keywords, fields.String())
     license = fields.Uri(schema.license, missing=None, allow_none=True)
-    name = fields.String(schema.name)
+    title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
-    created = fields.DateTime(schema.dateCreated, missing=None)
+    date_created = fields.DateTime(schema.dateCreated, missing=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
     tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
     same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
-    short_name = fields.String(schema.alternateName)
+    name = fields.String(schema.alternateName)
 
     @pre_load
     def fix_files_context(self, data, **kwargs):
@@ -829,24 +825,23 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         return migrate_types(data)
 
 
-def is_dataset_short_name_valid(short_name):
-    """A valid short_name is a valid Git reference name with no /."""
-    # TODO make short_name an RFC 3986 compatible and migrate old projects
+def is_dataset_name_valid(name):
+    """A valid name is a valid Git reference name with no /."""
+    # TODO make name an RFC 3986 compatible and migrate old projects
     return (
-        short_name and
-        LinkReference.check_ref_format(short_name, no_slashes=True) and
-        '/' not in short_name
+        name and LinkReference.check_ref_format(name, no_slashes=True) and
+        '/' not in name
     )
 
 
-def generate_default_short_name(dataset_name, dataset_version):
-    """Get dataset short_name."""
-    # For compatibility with older versions use name as short_name
+def generate_default_name(dataset_title, dataset_version):
+    """Get dataset name."""
+    # For compatibility with older versions use name as name
     # if it is valid; otherwise, use encoded name
-    if is_dataset_short_name_valid(dataset_name):
-        return dataset_name
+    if is_dataset_name_valid(dataset_title):
+        return dataset_title
 
-    name = re.sub(r'\s+', ' ', dataset_name)
+    name = re.sub(r'\s+', ' ', dataset_title)
     name = name.lower()[:24]
 
     def to_unix(el):
@@ -855,12 +850,11 @@ def generate_default_short_name(dataset_name, dataset_version):
         parsed_ = re.sub(' .+', '.', parsed_.lower())
         return parsed_
 
-    short_name = [to_unix(el) for el in name.split()]
-    short_name = [el for el in short_name if el]
+    name = [to_unix(el) for el in name.split()]
+    name = [el for el in name if el]
 
     if dataset_version:
         version = to_unix(dataset_version)
-        name = '{0}_{1}'.format('_'.join(short_name), version)
-        return name
+        return '{0}_{1}'.format('_'.join(name), version)
 
-    return '_'.join(short_name)
+    return '_'.join(name)

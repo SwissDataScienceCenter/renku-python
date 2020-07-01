@@ -294,7 +294,7 @@ class DataverseRecordSerializer:
         if dataset.description and not dataset.description.strip():
             dataset.description = None
 
-        for creator in dataset.creator:
+        for creator in dataset.creators:
             if creator.affiliation == '':
                 creator.affiliation = None
 
@@ -410,7 +410,7 @@ class DataverseExporter(ExporterApi):
         authors, contacts = self._get_creators()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
-            name=_escape_json_string(self.dataset.name),
+            name=_escape_json_string(self.dataset.title),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
             description=_escape_json_string(self.dataset.description)
@@ -421,7 +421,7 @@ class DataverseExporter(ExporterApi):
         authors = []
         contacts = []
 
-        for creator in self.dataset.creator:
+        for creator in self.dataset.creators:
             name = creator.name or ''
             affiliation = creator.affiliation or ''
             email = creator.email or ''

@@ -29,7 +29,7 @@ from renku.core import errors
 from renku.core.commands.dataset import add_file, create_dataset, \
     file_unlink, list_datasets, list_files
 from renku.core.errors import ParameterError
-from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.datasets import Dataset
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
 
@@ -54,7 +54,9 @@ def test_data_add(
             path = str(directory_tree)
 
         with client.with_dataset('dataset', create=True) as d:
-            d.creator = [Person(name='me', email='me@example.com', id='me_id')]
+            d.creators = [
+                Person(name='me', email='me@example.com', id='me_id')
+            ]
 
             client.add_data_to_dataset(
                 d, ['{}{}'.format(scheme, path)], overwrite=overwrite
@@ -74,7 +76,7 @@ def test_data_add(
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
             with client.with_dataset('dataset') as d:
-                d.creator = [
+                d.creators = [
                     Person(name='me', email='me@example.com', id='me_id')
                 ]
                 client.add_data_to_dataset(
@@ -86,7 +88,7 @@ def test_data_add(
 def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
     with client.with_dataset('dataset', create=True) as dataset:
-        dataset.creator = [
+        dataset.creators = [
             Person(name='me', email='me@example.com', id='me_id')
         ]
         client.add_data_to_dataset(
@@ -120,9 +122,9 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
 )
 def test_creator_parse(creators, data_file):
     """Test that different options for specifying creators work."""
-    f = DatasetFile(path='file', creator=creators)
+    dataset = Dataset(name='dataset', creators=creators)
     creator = Person(name='me', email='me@example.com')
-    assert creator in f.creator
+    assert creator in dataset.creators
 
     # email check
     with pytest.raises(ValueError):
@@ -130,7 +132,7 @@ def test_creator_parse(creators, data_file):
 
     # creators must be a set or list of dicts or Person
     with pytest.raises(ValueError):
-        f = DatasetFile(path='file', creator=['name'])
+        Dataset(name='dataset', creators=['name'])
 
 
 def test_dataset_serialization(dataset):
@@ -139,23 +141,23 @@ def test_dataset_serialization(dataset):
     dataset = Dataset.from_jsonld(dataset_metadata)
 
     # assert that all attributes found in metadata are set in the instance
-    assert dataset.created
-    assert dataset.creator
+    assert dataset.date_created
+    assert dataset.creators
     assert dataset.identifier
-    assert dataset.name
+    assert dataset.title
     assert dataset.path
     assert dataset._project
 
     # check values
-    assert str(dataset.created.isoformat()
+    assert str(dataset.date_created.isoformat()
                ) == dataset_metadata.get('http://schema.org/dateCreated')
-    assert dataset.creator[0].email == dataset_metadata.get(
+    assert dataset.creators[0].email == dataset_metadata.get(
         'http://schema.org/creator'
     )[0].get('http://schema.org/email')
     assert dataset.identifier == dataset_metadata.get(
         'http://schema.org/identifier'
     )
-    assert dataset.name == dataset_metadata.get('http://schema.org/name')
+    assert dataset.title == dataset_metadata.get('http://schema.org/name')
     assert dataset.path == dataset_metadata.get(
         'http://www.w3.org/ns/prov#atLocation'
     )
@@ -188,7 +190,7 @@ def test_list_datasets_default(project):
     datasets = list_datasets()
 
     assert isinstance(datasets, list)
-    assert 'ds1' in [ds.name for ds in datasets]
+    assert 'ds1' in [dataset.title for dataset in datasets]
 
 
 def test_list_files_default(project, tmpdir):
@@ -207,7 +209,7 @@ def test_list_files_default(project, tmpdir):
     files = list_files(datasets=['ds1'])
 
     assert isinstance(files, list)
-    assert 'somefile' in [ds.name for ds in files]
+    assert 'somefile' in [file_.name for file_ in files]
 
 
 def test_unlink_default(directory_tree, client):

@@ -114,7 +114,7 @@ def _migrate_broken_dataset_paths(client):
         # migrate the refs
         ref = LinkReference.create(
             client=client,
-            name='datasets/{0}'.format(dataset.short_name),
+            name='datasets/{0}'.format(dataset.name),
             force=True,
         )
         ref.set_reference(expected_path / client.METADATA)
