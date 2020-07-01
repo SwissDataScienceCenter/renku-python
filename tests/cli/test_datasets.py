@@ -848,7 +848,8 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, client):
 
     output = json.loads(result.output)
     for record in output:
-        assert (client.path / record['path']).exists()
+        assert (client.path /
+                record['http://www.w3.org/ns/prov#atLocation']).exists()
 
 
 def test_datasets_ls_files_with_name(directory_tree, runner, project):
@@ -1129,9 +1130,10 @@ def test_dataset_date_created_format(runner, client, project):
         import dateutil.parser as dp
         data_yaml = yaml.safe_load(fp)
 
-        assert 'created' in data_yaml
-        assert dp.parse(data_yaml['created'])
-        assert validate_iso8601(data_yaml['created'])
+        created = 'http://schema.org/dateCreated'
+        assert created in data_yaml
+        assert dp.parse(data_yaml[created])
+        assert validate_iso8601(data_yaml[created])
 
 
 def test_dataset_file_date_created_format(tmpdir, runner, client, project):
@@ -1156,12 +1158,15 @@ def test_dataset_file_date_created_format(tmpdir, runner, client, project):
         import dateutil.parser as dp
         data_yaml = yaml.safe_load(fp)
 
-        assert 'created' in data_yaml
-        assert 'files' in data_yaml
-        assert dp.parse(data_yaml['files'][0]['added'])
-        assert dp.parse(data_yaml['created'])
-        assert validate_iso8601(data_yaml['created'])
-        assert validate_iso8601(data_yaml['files'][0]['added'])
+        created = 'http://schema.org/dateCreated'
+        files = 'http://schema.org/hasPart'
+        added = 'http://schema.org/dateCreated'
+        assert created in data_yaml
+        assert files in data_yaml
+        assert dp.parse(data_yaml[files][0][added])
+        assert dp.parse(data_yaml[created])
+        assert validate_iso8601(data_yaml[created])
+        assert validate_iso8601(data_yaml[files][0][added])
 
 
 @pytest.mark.parametrize(

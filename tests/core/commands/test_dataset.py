@@ -54,11 +54,7 @@ def test_data_add(
             path = str(directory_tree)
 
         with client.with_dataset('dataset', create=True) as d:
-            d.creator = [{
-                'name': 'me',
-                'email': 'me@example.com',
-                'identifier': 'me_id'
-            }]
+            d.creator = [Person(name='me', email='me@example.com', id='me_id')]
 
             client.add_data_to_dataset(
                 d, ['{}{}'.format(scheme, path)], overwrite=overwrite
@@ -78,11 +74,9 @@ def test_data_add(
         if scheme in ('', 'file://'):
             shutil.rmtree('./data/dataset')
             with client.with_dataset('dataset') as d:
-                d.creator = [{
-                    'name': 'me',
-                    'email': 'me@example.com',
-                    'identifier': 'me_id'
-                }]
+                d.creator = [
+                    Person(name='me', email='me@example.com', id='me_id')
+                ]
                 client.add_data_to_dataset(
                     d, ['{}{}'.format(scheme, path)], overwrite=True
                 )
@@ -92,11 +86,9 @@ def test_data_add(
 def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
     with client.with_dataset('dataset', create=True) as dataset:
-        dataset.creator = [{
-            'name': 'me',
-            'email': 'me@example.com',
-            'identifier': 'me_id'
-        }]
+        dataset.creator = [
+            Person(name='me', email='me@example.com', id='me_id')
+        ]
         client.add_data_to_dataset(
             dataset, [directory_tree.join('dir2').strpath]
         )
@@ -121,8 +113,8 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
     'creators', [
         [Person(name='me', email='me@example.com')],
         [{
-            'name': 'me',
-            'email': 'me@example.com',
+            'http://schema.org/name': 'me',
+            'http://schema.org/email': 'me@example.com',
         }],
     ]
 )
@@ -155,12 +147,18 @@ def test_dataset_serialization(dataset):
     assert dataset._project
 
     # check values
-    assert str(dataset.created.isoformat()) == dataset_metadata.get('created')
-    assert dataset.creator[0].email == dataset_metadata.get('creator'
-                                                            )[0].get('email')
-    assert dataset.identifier == dataset_metadata.get('identifier')
-    assert dataset.name == dataset_metadata.get('name')
-    assert dataset.path == dataset_metadata.get('path')
+    assert str(dataset.created.isoformat()
+               ) == dataset_metadata.get('http://schema.org/dateCreated')
+    assert dataset.creator[0].email == dataset_metadata.get(
+        'http://schema.org/creator'
+    )[0].get('http://schema.org/email')
+    assert dataset.identifier == dataset_metadata.get(
+        'http://schema.org/identifier'
+    )
+    assert dataset.name == dataset_metadata.get('http://schema.org/name')
+    assert dataset.path == dataset_metadata.get(
+        'http://www.w3.org/ns/prov#atLocation'
+    )
 
 
 def test_create_dataset_custom_message(project):

@@ -93,6 +93,8 @@ def _apply_on_the_fly_jsonld_migrations(
 
     data.setdefault('@context', jsonld_context)
 
+    _migrate_types(data)
+
     if jsonld_migrations:
         schema_type = data.get('@type')
         migrations = []
@@ -133,6 +135,8 @@ def _apply_on_the_fly_jsonld_migrations(
                 v['@context'] = compacted['@context'][k]['@context']
 
             data[k] = v
+
+    data['@context'] = jsonld_context
 
     write_yaml(path, data)
 
@@ -261,6 +265,12 @@ def _migrate_dataset_file_id(data, client):
     return data
 
 
+def _migrate_types(data):
+    """Fix types."""
+    from renku.core.utils.migrate import migrate_types
+    migrate_types(data)
+
+
 _PROJECT_FIELDS = {'_id', 'created', 'creator', 'name', 'updated', 'version'}
 
 _DATASET_FIELDS = {
@@ -372,8 +382,10 @@ _INITIAL_JSONLD_DATASET_CONTEXT = {
             '@version': 1.1,
             'prov': 'http://www.w3.org/ns/prov#',
             'wfprov': 'http://purl.org/wf4ever/wfprov#',
+            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
             'path': 'prov:atLocation',
             '_id': '@id',
+            '_label': 'rdfs:label',
             '_project': {
                 '@id': 'schema:isPartOf',
                 '@context': {
@@ -420,7 +432,9 @@ _INITIAL_JSONLD_DATASET_CONTEXT = {
             'added': 'schema:dateCreated',
             'name': 'schema:name',
             'url': 'schema:url',
-            'based_on': 'schema:isBasedOn'
+            'external': 'renku:external',
+            'based_on': 'schema:isBasedOn',
+            'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#'
         }
     },
     'tags': {

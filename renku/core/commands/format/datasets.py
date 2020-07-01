@@ -17,10 +17,7 @@
 # limitations under the License.
 """Serializers for datasets."""
 
-import os
-
 from renku.core.models.json import dumps
-from renku.core.models.jsonld import asjsonld
 
 from .tabulate import tabulate
 
@@ -37,14 +34,7 @@ def tabular(client, datasets, *, columns=None):
 
 def jsonld(client, datasets, **kwargs):
     """Format datasets as JSON-LD."""
-    data = [
-        asjsonld(
-            dataset,
-            basedir=os.path.relpath(
-                '.', start=str(dataset.__reference__.parent)
-            )
-        ) for dataset in datasets
-    ]
+    data = [dataset.as_jsonld() for dataset in datasets]
     return dumps(data, indent=2)
 
 

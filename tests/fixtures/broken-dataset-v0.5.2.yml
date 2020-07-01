@@ -1401,13 +1401,7 @@ files:
   creator: []
   dataset: Binary black-hole surrogate waveform catalog
   path: ''
-  url:
-  - https
-  - zenodo.org
-  - /api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/remnant_fits/fit_3dq8.h5
-  - ''
-  - ''
-  - ''
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/remnant_fits/fit_3dq8.h5
 - '@type':
   - prov:Entity
   - schema:DigitalDocument
@@ -1419,13 +1413,7 @@ files:
   creator: []
   dataset: Binary black-hole surrogate waveform catalog
   path: ''
-  url:
-  - https
-  - zenodo.org
-  - /api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/remnant_fits/fit_7dq2.h5
-  - ''
-  - ''
-  - ''
+  url: https://zenodo.org/api/files/f6c6c4f3-f63e-43fd-a16b-5629af025bac/remnant_fits/fit_7dq2.h5
 - '@type':
   - prov:Entity
   - schema:DigitalDocument
@@ -1538,7 +1526,7 @@ identifier: dd38afca-0e96-4034-a2e5-dc7505c0af30
 in_language: null
 keywords: []
 license:
-  _id: http://creativecommons.org/licenses/by/4.0/legalcode
+  _ids: http://creativecommons.org/licenses/by/4.0/legalcode
 name: Binary black-hole surrogate waveform catalog
 path: .renku/datasets/dd38afca-0e96-4034-a2e5-dc7505c0af30
 url: https://zenodo.org/record/3348115

@@ -23,15 +23,16 @@ import pathlib
 import re
 import urllib
 import uuid
-from functools import partial
 from pathlib import Path
 
 import attr
 from attr.validators import instance_of
+from marshmallow import EXCLUDE, pre_load
 
 from renku.core import errors
-from renku.core.models.entities import Entity
-from renku.core.models.provenance.agents import Person
+from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku, schema
+from renku.core.models.entities import Entity, EntitySchema
+from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -39,11 +40,6 @@ from renku.core.utils.doi import extract_doi, is_doi
 from . import jsonld as jsonld
 
 NoneType = type(None)
-
-_path_attr = partial(
-    jsonld.ib,
-    converter=Path,
-)
 
 
 @jsonld.s(
@@ -99,6 +95,20 @@ class Url:
         if not self.url:
             self.url = self.default_url()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return UrlSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return UrlSchema().dump(self)
+
 
 def _convert_creators(value):
     """Convert creators."""
@@ -107,6 +117,8 @@ def _convert_creators(value):
 
     if isinstance(value, list):
         return [Person.from_jsonld(v) for v in value]
+
+    return value
 
 
 @attr.s
@@ -189,6 +201,20 @@ class DatasetTag(object):
         """Define default value for id field."""
         return '_:{0}@{1}'.format(self.name, self.commit)
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return DatasetTagSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetTagSchema().dump(self)
+
 
 @jsonld.s(
     type='schema:Language',
@@ -202,6 +228,16 @@ class Language:
         default=None, kw_only=True, context='schema:alternateName'
     )
     name = jsonld.ib(default=None, kw_only=True, context='schema:name')
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return LanguageSchema().load(data)
 
 
 def convert_filename_path(p):
@@ -221,6 +257,7 @@ def convert_based_on(v):
     slots=True,
     context={
         'schema': 'http://schema.org/',
+        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#'
     }
 )
 class DatasetFile(Entity, CreatorMixin):
@@ -249,7 +286,7 @@ class DatasetFile(Entity, CreatorMixin):
         converter=convert_based_on
     )
 
-    external = jsonld.ib(context='sdsc:external', default=False, kw_only=True)
+    external = jsonld.ib(context='renku:external', default=False, kw_only=True)
 
     @added.default
     def _now(self):
@@ -285,6 +322,20 @@ class DatasetFile(Entity, CreatorMixin):
         if not parsed_id.scheme:
             self._id = 'file://{}'.format(self._id)
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return DatasetFileSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetFileSchema().dump(self)
+
 
 def _convert_dataset_files(value):
     """Convert dataset files."""
@@ -309,9 +360,7 @@ def _convert_dataset_tags(value):
 
 def _convert_language(obj):
     """Convert language object."""
-    if isinstance(obj, dict):
-        language = Language.from_jsonld(obj)
-        return language
+    return Language.from_jsonld(obj) if isinstance(obj, dict) else obj
 
 
 def _convert_keyword(keywords):
@@ -325,9 +374,7 @@ def _convert_keyword(keywords):
 
 @jsonld.s(
     type='schema:Dataset',
-    context={
-        'schema': 'http://schema.org/',
-    },
+    context={'schema': 'http://schema.org/'},
 )
 class Dataset(Entity, CreatorMixin):
     """Represent a dataset."""
@@ -458,7 +505,7 @@ class Dataset(Entity, CreatorMixin):
     @property
     def editable(self):
         """Subset of attributes which user can edit."""
-        obj = self.asjsonld()
+        obj = self.as_jsonld()
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
 
@@ -577,11 +624,8 @@ class Dataset(Entity, CreatorMixin):
 
         self._label = self.identifier
 
-        if not self.path:
-            self.path = str(
-                self.client.renku_datasets_path /
-                quote(str(self.uid), safe='')
-            )
+        if not self.path and self.client:
+            self.path = str(self.client.renku_datasets_path / self.uid)
 
         if self.files and self.client is not None:
             for dataset_file in self.files:
@@ -614,6 +658,175 @@ class Dataset(Entity, CreatorMixin):
             self.short_name = generate_default_short_name(
                 self.name, self.version
             )
+
+    @classmethod
+    def from_yaml(cls, path, client=None, commit=None):
+        """Return an instance from a YAML file."""
+        data = jsonld.read_yaml(path)
+
+        self = cls.from_jsonld(data=data, client=client, commit=commit)
+        self.__reference__ = path
+
+        return self
+
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None, schema_class=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        schema_class = schema_class or DatasetSchema
+        return schema_class(client=client, commit=commit).load(data)
+
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = DatasetSchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetSchema().dump(self)
+
+
+class CreatorMixinSchema(JsonLDSchema):
+    """CreatorMixin schema."""
+
+    class Meta:
+        """Meta class."""
+
+        unknown = EXCLUDE
+
+    creator = fields.Nested(schema.creator, PersonSchema, many=True)
+
+
+class UrlSchema(JsonLDSchema):
+    """Url schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.URL
+        model = Url
+        unknown = EXCLUDE
+
+    url = fields.Uri(schema.url, missing=None)
+    _id = fields.Id(init_name='id', missing=None)
+
+
+class DatasetTagSchema(JsonLDSchema):
+    """DatasetTag schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.PublicationEvent
+        model = DatasetTag
+        unknown = EXCLUDE
+
+    name = fields.String(schema.name)
+    description = fields.String(schema.description)
+    commit = fields.String(schema.location)
+    created = fields.DateTime(schema.startDate, missing=None)
+    dataset = fields.String(schema.about)
+    _id = fields.Id(init_name='id')
+
+
+class LanguageSchema(JsonLDSchema):
+    """Language schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.Language
+        model = Language
+        unknown = EXCLUDE
+
+    alternate_name = fields.String(schema.alternateName)
+    name = fields.String(schema.name)
+
+
+class DatasetFileSchema(EntitySchema, CreatorMixinSchema):
+    """DatasetFile schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.DigitalDocument
+        model = DatasetFile
+        unknown = EXCLUDE
+
+    added = fields.DateTime(schema.dateCreated)
+    name = fields.String(schema.name, missing=None)
+    url = fields.String(schema.url, missing=None)
+    based_on = fields.Nested(
+        schema.isBasedOn, 'DatasetFileSchema', missing=None
+    )
+    external = fields.Boolean(renku.external, missing=False)
+
+
+class DatasetSchema(EntitySchema, CreatorMixinSchema):
+    """Dataset schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.Dataset
+        model = Dataset
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name='id', missing=None)
+    _label = fields.String(rdfs.label, init_name='label', missing=None)
+    date_published = fields.DateTime(schema.datePublished, missing=None)
+    description = fields.String(schema.description, missing=None)
+    identifier = fields.String(schema.identifier)
+    in_language = fields.Nested(
+        schema.inLanguage, LanguageSchema, missing=None
+    )
+    keywords = fields.List(schema.keywords, fields.String())
+    license = fields.Uri(schema.license, missing=None, allow_none=True)
+    name = fields.String(schema.name)
+    url = fields.String(schema.url)
+    version = fields.String(schema.version, missing=None)
+    created = fields.DateTime(schema.dateCreated, missing=None)
+    files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
+    same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
+    short_name = fields.String(schema.alternateName)
+
+    @pre_load
+    def fix_files_context(self, data, **kwargs):
+        """Fix DatasetFile context for _label and external fields."""
+        context = None
+        if '@context' not in data:
+            return data
+
+        context = data['@context']
+        if not isinstance(context, dict) or 'files' not in context:
+            return data
+
+        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+
+        files = data['@context']['files']
+        if not isinstance(files, dict) or '@context' not in files:
+            return data
+
+        context = files['@context']
+        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+        context.setdefault('_label', 'rdfs:label')
+        context.setdefault('external', 'renku:external')
+        context.setdefault(
+            'renku', 'https://swissdatasciencecenter.github.io/renku-ontology#'
+        )
+
+        return data
+
+    @pre_load
+    def migrate_types(self, data, **kwargs):
+        """Fix types."""
+        from renku.core.utils.migrate import migrate_types
+        return migrate_types(data)
 
 
 def is_dataset_short_name_valid(short_name):
