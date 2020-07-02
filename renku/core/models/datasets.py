@@ -336,6 +336,15 @@ class DatasetFile(Entity, CreatorMixin):
         """Create JSON-LD."""
         return DatasetFileSchema().dump(self)
 
+    def update_metadata(self, other_datasetfile):
+        """Update some attributes from another file."""
+        updatable_fields = ['added', 'based_on', 'creator', 'external', 'url']
+        for field in updatable_fields:
+            value = getattr(other_datasetfile, field)
+            setattr(self, field, value)
+
+        return self
+
 
 def _convert_dataset_files(value):
     """Convert dataset files."""
@@ -523,10 +532,10 @@ class Dataset(Entity, CreatorMixin):
                 return True
         return False
 
-    def find_files(self, paths):
+    def find_files(self, absolute_paths):
         """Return all paths that are in files container."""
-        files_paths = {str(self.client.path / f.path) for f in self.files}
-        return {p for p in paths if str(p) in files_paths}
+        files_paths = {self.client.path / f.path for f in self.files}
+        return {p for p in absolute_paths if Path(p) in files_paths}
 
     def find_file(self, filename, return_index=False):
         """Find a file in files container."""
@@ -585,13 +594,16 @@ class Dataset(Entity, CreatorMixin):
 
         return renamed
 
-    def unlink_file(self, file_path):
+    def unlink_file(self, file_path, ignore_errors=False):
         """Unlink a file from dataset.
 
         :param file_path: Relative path used as key inside files container.
         """
         index = self.find_file(file_path, return_index=True)
-        return self.files.pop(index)
+        if index is not None:
+            return self.files.pop(index)
+        if not ignore_errors:
+            raise errors.DatasetFileNotFound
 
     def __attrs_post_init__(self):
         """Post-Init hook."""

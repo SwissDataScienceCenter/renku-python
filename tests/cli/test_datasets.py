@@ -482,7 +482,9 @@ def test_repository_file_to_dataset(runner, project, client, subdirectory):
 
     with client.with_dataset('dataset') as dataset:
         assert dataset.name == 'dataset'
-        assert dataset.find_file('a') is not None
+        file_ = dataset.find_file('a')
+        assert file_ is not None
+        assert file_.url.startswith('file://')
 
 
 def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
@@ -1898,3 +1900,253 @@ def test_workflow_with_external_file(
 
     attributes = (client.path / '.gitattributes').read_text().split()
     assert 'data/output.txt' in attributes
+
+
+@pytest.mark.parametrize(
+    'params, src_files, dst_files', [
+        ([], [], ['file', 'file2']),
+        (['-I', 'file'], ['dir2/file2'], ['file']),
+        (['-X', 'file'], ['file'], ['file2']),
+        (['-I', '*'], [], ['file', 'file2']),
+        (['-I', 'file', '-d', 'new-name'], ['dir2/file2'], ['new-name']),
+        (['-I', 'file', '-d', 'dir1/dir2/new-name'
+          ], ['dir2/file2'], ['dir1/dir2/new-name']),
+    ]
+)
+def test_dataset_move(
+    runner, client, directory_tree, subdirectory, no_lfs_size_limit, params,
+    src_files, dst_files
+):
+    """Check moving files between datasets."""
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', '-c', 'src', directory_tree.strpath]
+    ).exit_code
+    assert 0 == runner.invoke(cli, ['dataset', 'create', 'dst']).exit_code
+
+    result = runner.invoke(cli, ['dataset', 'mv', 'src', 'dst'] + params)
+    assert 0 == result.exit_code, result.output
+
+    actual_src_files = {f.path for f in client.load_dataset('src').files}
+    expected_src_files = {
+        str(Path('data/src') / directory_tree.basename / p)
+        for p in src_files
+    }
+    assert actual_src_files == expected_src_files
+
+    actual_dst_files = {f.path for f in client.load_dataset('dst').files}
+    expected_dst_files = {str(Path('data/dst') / p) for p in dst_files}
+    assert actual_dst_files == expected_dst_files
+
+
+def test_dataset_move_rename(
+    runner, client, directory_tree, no_lfs_size_limit
+):
+    """Check renaming file within the same dataset."""
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', '-c', 'src', directory_tree.strpath]
+    ).exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'mv', 'src', '-I', 'file', '-d', 'new-dir/new-name']
+    )
+    assert 0 == result.exit_code
+
+    src_path = os.path.join('data', 'src', directory_tree.basename, 'file')
+    dst_path = os.path.join('data', 'src', 'new-dir', 'new-name')
+    attributes = (client.path / '.gitattributes').read_text()
+
+    assert not (client.path / src_path).exists()
+    assert not client.load_dataset('src').find_file(src_path)
+    assert src_path not in attributes
+
+    assert (client.path / dst_path).exists()
+    assert client.load_dataset('src').find_file(dst_path)
+    assert dst_path in attributes
+
+
+@pytest.mark.parametrize('params', [
+    [],
+    ['-d', 'file'],
+])
+def test_dataset_move_file_to_itself(runner, client, directory_tree, params):
+    """Check renaming file to itself."""
+    assert 0 == runner.invoke(
+        cli,
+        ['dataset', 'add', '-c', 'src',
+         directory_tree.join('file').strpath]
+    ).exit_code
+
+    result = runner.invoke(
+        cli, ['dataset', 'mv', 'src', '-I', 'file'] + params
+    )
+    assert 2 == result.exit_code
+    assert 'Source and destination are the same file' in result.output
+    assert str(client.path / 'data' / 'src' / 'file') in result.output
+
+
+@pytest.mark.parametrize(
+    'dst, params, dst_filepath', [
+        ('dst', [], 'file2'),
+        ('dst', ['-d', 'new-name'], 'new-name'),
+        ('dst', ['-d', 'dir1/dir2/new-name'], 'dir1/dir2/new-name'),
+        ('', ['-d', 'dir1/dir2/new-name'], 'dir1/dir2/new-name'),
+    ]
+)
+@pytest.mark.parametrize('external', [False, True])
+def test_dataset_move_metadata(
+    runner, client, directory_tree, subdirectory, no_lfs_size_limit, dst,
+    params, dst_filepath, external
+):
+    """Check moving files between datasets maintains metadata."""
+    add_params = ['-e'] if external else []
+    assert 0 == runner.invoke(
+        cli,
+        ['dataset', 'add', '-c', 'src', directory_tree.strpath] + add_params
+    ).exit_code
+    assert 0 == runner.invoke(cli, ['dataset', 'create', 'dst']).exit_code
+
+    src_path = os.path.join(
+        'data', 'src', directory_tree.basename, 'dir2', 'file2'
+    )
+    src = client.load_dataset('src').find_file(src_path)
+
+    result = runner.invoke(
+        cli, ['dataset', 'mv', 'src', dst, '-I', 'file2'] + params
+    )
+    assert 0 == result.exit_code, result.output
+
+    dst = dst or 'src'
+    dst_path = os.path.join('data', dst, dst_filepath)
+    dst = client.load_dataset(dst).find_file(dst_path)
+
+    assert src.url == dst.url
+    assert src.external == dst.external
+    assert src.based_on == dst.based_on
+    assert src.added == dst.added
+    assert {p._id for p in src.creator} == {p._id for p in dst.creator}
+    assert Path(dst_filepath).name == dst.name
+    assert dst_path == dst.path
+    assert dst_path in dst._id
+    assert dst_path in dst._label
+    assert not (client.path / src_path).exists()
+    assert (client.path / dst_path).exists()
+
+    if external:
+        # Make sure symlinks are modified correctly
+        actual_target = directory_tree.join('dir2/file2')
+        assert actual_target == (client.path / dst_path).resolve()
+    else:
+        attributes = (client.path / '.gitattributes').read_text()
+        assert src_path not in attributes
+        assert dst_path in attributes
+
+
+@pytest.mark.parametrize(
+    'params, input, exit_code, src_files, dst_files', [
+        ([], 'n', 1, ['file', 'file2'], ['file']),
+        ([], 'y', 0, [], ['file', 'file2']),
+        (['--yes'], 'n', 0, [], ['file', 'file2']),
+    ]
+)
+def test_dataset_move_overwrite(
+    runner, client, directory_tree, params, input, exit_code, src_files,
+    dst_files
+):
+    """Check moving files that exist in the destination."""
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', '-c', 'src', directory_tree.strpath]
+    ).exit_code
+    assert 0 == runner.invoke(
+        cli,
+        ['dataset', 'add', '-c', 'dst',
+         directory_tree.join('file').strpath]
+    ).exit_code
+
+    dst_path = os.path.join('data', 'dst', 'file')
+
+    result = runner.invoke(
+        cli, ['dataset', 'mv', 'src', 'dst'] + params, input=input
+    )
+    assert exit_code == result.exit_code, result.output
+    no_prompt = '--yes' in params
+    if no_prompt:
+        assert 'The following files will be overwritten' not in result.output
+        assert dst_path not in result.output
+    else:
+        assert 'The following files will be overwritten' in result.output
+        assert dst_path in result.output
+
+    actual_src_files = {f.name for f in client.load_dataset('src').files}
+    assert actual_src_files == set(src_files)
+
+    actual_dst_files = {f.name for f in client.load_dataset('dst').files}
+    assert actual_dst_files == set(dst_files)
+
+
+@pytest.mark.parametrize(
+    'params, message', [
+        (['-d', 'file'], 'Cannot move multiple files to a file'),
+        (['-I', 'non-existing'], 'No files found.'),
+        (['-I', 'dir2'], 'No files found.'),
+    ]
+)
+def test_dataset_move_errors(runner, client, directory_tree, params, message):
+    """Check errors in moving files between datasets."""
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', '-c', 'src', directory_tree.strpath]
+    ).exit_code
+    assert 0 == runner.invoke(
+        cli,
+        ['dataset', 'add', '-c', 'dst',
+         directory_tree.join('file').strpath]
+    ).exit_code
+
+    result = runner.invoke(cli, ['dataset', 'mv', 'src', 'dst'] + params)
+    assert 2 == result.exit_code
+    assert message in result.output
+
+
+def test_dataset_move_to_non_existing(runner, client, directory_tree):
+    """Check errors in moving files to a non-existing dataset."""
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', '-c', 'src', directory_tree.strpath]
+    ).exit_code
+
+    result = runner.invoke(cli, ['dataset', 'mv', 'src', 'non-existing'])
+    assert 1 == result.exit_code
+    assert 'Destination does not yet exist.' in result.output
+    assert 'Create with "renku dataset create non-existing"' in result.output
+
+
+def test_dataset_move_shared_files(
+    runner, client, directory_tree, no_lfs_size_limit
+):
+    """Check moving files that exist in the destination."""
+    src_path = os.path.join('data', 'src', directory_tree.basename, 'file')
+
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', '-c', 'src', directory_tree.strpath]
+    ).exit_code
+    assert 0 == runner.invoke(cli, ['dataset', 'create', 'dst']).exit_code
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', '-c', 'share', src_path]
+    ).exit_code
+
+    dst_path = os.path.join('data', 'dst', 'file')
+
+    result = runner.invoke(cli, ['dataset', 'mv', 'src', 'dst'])
+    assert 0 == result.exit_code, result.output
+
+    actual_src_files = {f.name for f in client.load_dataset('src').files}
+    assert actual_src_files == set()
+
+    actual_dst_files = {f.name for f in client.load_dataset('dst').files}
+    assert actual_dst_files == {'file', 'file2'}
+
+    # Because the file was shared, the source won't be deleted
+    assert Path(src_path).exists()
+    assert Path(dst_path).exists()
+
+    attributes = (client.path / '.gitattributes').read_text()
+    assert src_path in attributes
+    assert dst_path in attributes

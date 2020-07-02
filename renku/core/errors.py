@@ -216,6 +216,14 @@ class DatasetFileExists(RenkuException):
         ).__init__('File already exists in dataset. Use --force to add.')
 
 
+class DatasetFileNotFound(RenkuException):
+    """Raise when a file is not in dataset."""
+
+    def __init__(self):
+        """Build a custom message."""
+        super().__init__('File is not in the dataset.')
+
+
 class CommitMessageEmpty(RenkuException):
     """Raise invalid commit message."""
 

@@ -126,12 +126,18 @@ class DatasetsApiMixin(object):
 
         return path
 
-    def load_dataset(self, short_name=None):
+    def load_dataset(self, short_name=None, strict=False):
         """Load dataset reference file."""
+        dataset = None
         if short_name:
             path = self.get_dataset_path(short_name)
             if path and path.exists():
-                return self.load_dataset_from_path(path)
+                dataset = self.load_dataset_from_path(path)
+
+        if not dataset and strict:
+            raise errors.DatasetNotFound(name=short_name)
+
+        return dataset
 
     @contextmanager
     def with_dataset(self, short_name=None, create=False):
@@ -497,7 +503,7 @@ class DatasetsApiMixin(object):
             if path_in_repo:
                 return [{
                     'path': path_in_repo,
-                    'url': path_in_repo,
+                    'url': 'file://' + str(path_in_repo),
                     'creator': dataset.creator,
                     'parent': self
                 }]
@@ -506,7 +512,7 @@ class DatasetsApiMixin(object):
 
         return [{
             'path': dst.relative_to(self.path),
-            'url': 'file://' + os.path.relpath(str(src), str(self.path)),
+            'url': 'file://' + os.path.relpath(src, self.path),
             'creator': dataset.creator,
             'parent': self,
             'operation': (src, dst, action)
@@ -1143,6 +1149,62 @@ class DatasetsApiMixin(object):
             return False
         else:
             return True
+
+    def move_files(self, source_dataset, destination_dataset, files):
+        """Move files and their metadata from a dataset to another."""
+        sources, destinations = zip(*files)
+
+        files_to_keep = set()
+        for dataset in self.datasets.values():
+            if dataset.short_name in [
+                source_dataset.short_name, destination_dataset.short_name
+            ]:
+                continue
+            used_files = dataset.find_files(sources)
+            files_to_keep.update(used_files)
+
+        for src, dst in files:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+
+            if src.is_symlink():
+                link = os.path.abspath(src.parent / os.readlink(src))
+                os.symlink(os.path.relpath(link, dst.parent), dst)
+
+                if src not in files_to_keep:
+                    os.remove(src)
+            elif src in files_to_keep:
+                shutil.copy(src, dst)
+            else:
+                shutil.move(src, dst, copy_function=shutil.copy)
+
+        if self.storage_installed_locally:
+            self.untrack_paths_from_storage(*sources)
+            self.track_paths_in_storage(*files_to_keep)
+            self.track_paths_in_storage(*destinations)
+
+        # Force-add to include possible ignored files
+        self.repo.git.add(*(sources + destinations), force=True)
+        self.repo.git.add(self.renku_pointers_path, force=True)
+
+        staged_files = self.repo.index.diff('HEAD')
+        if staged_files:
+            msg = f'renku dataset: committing {len(sources)} moved files'
+            self.repo.index.commit(msg)
+
+        new_files = []
+
+        for src, dst in files:
+            file_ = source_dataset.unlink_file(src.relative_to(self.path))
+            path = str(dst.relative_to(self.path))
+            new_file = DatasetFile.from_revision(self, path=path)
+            new_file.update_metadata(file_)
+            destination_dataset.unlink_file(new_file.path, ignore_errors=True)
+            new_files.append(new_file)
+
+        destination_dataset.update_files(new_files)
+
+        source_dataset.to_yaml()
+        destination_dataset.to_yaml()
 
     def prepare_git_repo(self, url, ref=None):
         """Clone and cache a Git repo."""

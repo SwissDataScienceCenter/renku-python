@@ -190,6 +190,31 @@ symbolic link in renku commands as a normal file. To add an external file pass
 
     $ renku dataset add my-dataset -e /path/to/external/file
 
+Moving/renaming files
+
+It is possible to move files between datasets or rename a single file.
+``renku dataset mv`` command accepts a source and a destination dataset
+and moves all files that match a specific pattern from source to destination:
+
+.. code-block:: console
+
+    $ renku dataset mv src dst -I '*csv' -X '2020*'
+
+This command moves all CSV files that don't start with 2020 from ``src``
+dataset to ``dst``. If no pattern is given then all files are moved. Note that
+move command works only with files and it moves all files to the root of the
+destination's data directory. You can pass a ``--destination`` or ``-d`` flag
+to specify a different directory as the destination.
+
+If only one file is moved and a destination is passed, then the file will be
+renamed. The following command renames ``data.csv`` to ``old-data.csv`` in the
+same dataset. Note that the destination dataset can be omitted when
+moving/renaming whithin the same dataset:
+
+.. code-block:: console
+
+    $ renku dataset mv my-dataset -I data.csv -d old-data.csv
+
 Updating a dataset:
 
 After adding files from a remote Git repository, you can check for updates in
@@ -370,7 +395,7 @@ from tqdm import tqdm
 
 from renku.core.commands.dataset import add_file, create_dataset, \
     dataset_remove, edit_dataset, export_dataset, file_unlink, \
-    import_dataset, list_datasets, list_files, list_tags, \
+    import_dataset, list_datasets, list_files, list_tags, move_files, \
     remove_dataset_tags, tag_dataset_with_client, update_datasets
 from renku.core.commands.echo import WARNING, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
@@ -591,7 +616,7 @@ def edit(short_name, title, description, creator, keyword):
     '--destination',
     'destination',
     default='',
-    help='Destination file or directory within the dataset path'
+    help='Destination directory within the dataset path'
 )
 @click.option(
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
@@ -889,3 +914,44 @@ def update(short_names, creators, include, exclude, ref, delete, external):
         progress_context=progress_context
     )
     click.secho('OK', fg='green')
+
+
+@dataset.command('mv')
+@click.argument('source-dataset')
+@click.argument('target-dataset', required=False)
+@click.option(
+    '-I',
+    '--include',
+    multiple=True,
+    help='Include files matching given pattern.'
+)
+@click.option(
+    '-X',
+    '--exclude',
+    multiple=True,
+    help='Exclude files matching given pattern.'
+)
+@click.option(
+    '-d',
+    '--dst',
+    '--destination',
+    'destination',
+    default='',
+    help='Destination file or directory within the target dataset'
+)
+@click.option(
+    '-y', '--yes', is_flag=True, help='Confirm overwriting of existing files.'
+)
+def move(source_dataset, target_dataset, include, exclude, destination, yes):
+    """Move matching files between datasets or rename a single file."""
+    target_dataset = target_dataset or source_dataset
+
+    move_files(
+        source_dataset=source_dataset,
+        target_dataset=target_dataset,
+        include=include,
+        exclude=exclude,
+        destination=destination,
+        yes=yes,
+        interactive=True
+    )

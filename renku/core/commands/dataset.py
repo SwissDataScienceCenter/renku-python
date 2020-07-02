@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Repository datasets management."""
+import os
 import re
 import shutil
 import urllib
@@ -398,6 +399,90 @@ def file_unlink(
     dataset.to_yaml()
 
     return records
+
+
+@pass_local_client(
+    commit=True,
+    commit_empty=False,
+    commit_only=DATASET_METADATA_PATHS,
+    raise_if_empty=True
+)
+def move_files(
+    client,
+    source_dataset,
+    target_dataset,
+    include,
+    exclude,
+    destination,
+    yes,
+    interactive=False
+):
+    """Move files between datasets."""
+    source = client.load_dataset(source_dataset, strict=True)
+    target = client.load_dataset(target_dataset)
+
+    if not target:
+        raise DatasetNotFound(
+            message='Destination does not yet exist. Create with '
+            f'"renku dataset create {target_dataset}" before attempting to '
+            'move files from source dataset.'
+        )
+
+    files = _filter(
+        client, short_names=[source_dataset], include=include, exclude=exclude
+    )
+    if not files:
+        raise ParameterError('No files found.')
+
+    if source.short_name == target.short_name:
+        target = source
+
+    # Make sure that target's datadir exists
+    (client.path / target.datadir).mkdir(parents=True, exist_ok=True)
+
+    destination = destination or '.'
+    dst_root = Path(
+        os.path.abspath(client.path / target.datadir / destination)
+    )
+
+    move_single_file = len(files) == 1
+    is_single_file = dst_root.exists() and not dst_root.is_dir()
+
+    if not move_single_file and is_single_file:
+        raise errors.ParameterError(
+            f'Cannot move multiple files to a file: "{dst_root}"'
+        )
+
+    is_rename = move_single_file and (not dst_root.exists() or is_single_file)
+    moves = []
+
+    for file_ in files:
+        src = client.path / file_.path
+        dst = dst_root if is_rename else dst_root / src.name
+        moves.append((src, dst))
+
+    for src, dst in moves:
+        if src == dst:
+            raise errors.ParameterError(
+                f'Source and destination are the same file:\n\t{src}'
+            )
+
+    overwrites = [(src, dst) for src, dst in moves if dst.exists()]
+
+    if overwrites and not yes:
+        if interactive:
+            prompt_text = (
+                'The following files will be overwritten:' + '\n\t' +
+                '\n\t'.join([str(dst) for _, dst in overwrites]) +
+                '\nDo you wish to continue?'
+            )
+            click.confirm(WARNING + prompt_text, abort=True)
+        else:
+            raise errors.ParameterError('Cannot implicitly overwrite files.')
+
+    client.move_files(
+        source_dataset=source, destination_dataset=target, files=moves
+    )
 
 
 @pass_local_client(

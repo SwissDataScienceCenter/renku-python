@@ -1474,3 +1474,44 @@ def test_dataset_add_dropbox(runner, client, project, url, size):
 
     datafile = Path(project) / 'data/my-dropbox-data' / filename
     assert size == len(datafile.read_text())
+
+
+@pytest.mark.integration
+# @flaky(max_runs=10, min_passes=1)
+def test_dataset_move_metadata_remote(
+    runner, client, directory_tree, no_lfs_size_limit
+):
+    """Check moving files maintains metadata from remote sources."""
+    assert 0 == runner.invoke(
+        cli, [
+            'dataset', 'add', 'src', '--create', '-s', 'LICENSE',
+            'https://github.com/SwissDataScienceCenter/renku-jupyter.git'
+        ]
+    ).exit_code
+    assert 0 == runner.invoke(
+        cli, ['dataset', 'add', 'src', '-e', directory_tree.strpath]
+    ).exit_code
+    assert 0 == runner.invoke(cli, ['dataset', 'create', 'dst']).exit_code
+
+    files_map = {f.name: f for f in client.load_dataset('src').files}
+
+    result = runner.invoke(cli, ['dataset', 'mv', 'src', 'dst'])
+    assert 0 == result.exit_code
+
+    for dst in client.load_dataset('dst').files:
+        src = files_map[dst.name]
+
+        assert src.url == dst.url
+        assert src.external == dst.external
+        assert src.added == dst.added
+        assert {p._id for p in src.creator} == {p._id for p in dst.creator}
+        assert Path(dst.path).name == dst.name
+        assert dst.path in dst._id
+        assert dst.path in dst._label
+        assert not (client.path / src.path).exists()
+        assert (client.path / dst.path).exists()
+
+        if src.based_on is not None:
+            assert src.based_on._id == dst.based_on._id
+            assert src.based_on._label == dst.based_on._label
+            assert src.based_on.path == dst.based_on.path

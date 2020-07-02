@@ -212,9 +212,16 @@ class StorageApiMixin(RepositoryApiMixin):
     @check_external_storage_wrapper
     def untrack_paths_from_storage(self, *paths):
         """Untrack paths from the external storage."""
+        relative_paths = []
+        for path in paths:
+            path = Path(path)
+            if path.is_absolute():
+                path = path.relative_to(self.path)
+            relative_paths.append(str(path))
+
         try:
             call(
-                self._CMD_STORAGE_UNTRACK + list(paths),
+                self._CMD_STORAGE_UNTRACK + relative_paths,
                 stdout=PIPE,
                 stderr=STDOUT,
                 cwd=self.path,
