@@ -484,7 +484,7 @@ class RepositoryApiMixin(GitCore):
         # TODO: this is there for performance reasons. Remove once graph
         # is stored as a flat, append-only list (Should be graph query
         # in the future)
-        if self._activity_index:
+        if self._activity_index is not None:
             return self._activity_index
 
         path = self.activity_index_path
@@ -497,7 +497,7 @@ class RepositoryApiMixin(GitCore):
 
         return self._activity_index
 
-    def add_to_activity_index(self, activity):
+    def add_to_activity_index(self, activity, persist=True):
         """Add an activity and it's generations to the cache."""
         for g in activity.generated:
             if g.path not in self.path_activity_cache:
@@ -513,6 +513,33 @@ class RepositoryApiMixin(GitCore):
                 activity.path
             )
 
+        if persist:
+            self.persist_activity_index()
+
+    def remove_from_activity_index(self, activity, persist=True):
+        """Remove an activity and its generation from the cache."""
+        for g in activity.generated:
+            if g.path not in self.path_activity_cache:
+                continue
+
+            commits = self.path_activity_cache[g.path]
+
+            for commit, activities in list(commits.items()):
+                if activity.path not in activities:
+                    continue
+
+                activities.remove(activity.path)
+                if not activities:
+                    del commits[commit]
+
+            if not commits:
+                del self.path_activity_cache[g.path]
+
+        if persist:
+            self.persist_activity_index()
+
+    def persist_activity_index(self):
+        """Persist the cache."""
         if self.path_activity_cache:
             with self.activity_index_path.open('w') as stream:
                 yaml.dump(self.path_activity_cache, stream)
@@ -545,7 +572,7 @@ class RepositoryApiMixin(GitCore):
                     matching_activities = matching[file_commit.hexsha]
                 else:
                     matching_activities = [
-                        a for v in matching.values for a in v
+                        a for v in matching.values() for a in v
                     ]
 
             for a in matching_activities:
@@ -590,3 +617,8 @@ class RepositoryApiMixin(GitCore):
                 destination.mkdir(parents=True, exist_ok=True)
             except TypeError:
                 shutil.copy(file, destination)
+
+
+WORKFLOW_METADATA_PATHS = [
+    Path(RENKU_HOME) / Path(RepositoryApiMixin.ACTIVITY_INDEX),
+]

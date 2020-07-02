@@ -1165,6 +1165,9 @@ class DatasetsApiMixin(object):
             used_files = dataset.find_files(sources)
             files_to_keep.update(used_files)
 
+        if self.storage_installed_locally:
+            self.pull_paths_from_storage(*[str(s) for s in sources])
+
         for src, dst in files:
             dst.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1216,7 +1219,7 @@ class DatasetsApiMixin(object):
             self._replace_paths_in_workflows(files, commit=commit)
 
     def _replace_paths_in_workflows(self, files, commit):
-        """Replace file paths in dataflows after moving files."""
+        """Replace file paths in workflows after moving files."""
 
         def replace_entity_path(entity):
             replaced = False
@@ -1258,8 +1261,10 @@ class DatasetsApiMixin(object):
                 replaced |= replace_entity_path(entity)
 
             for generation in process.generated or []:
+                self.remove_from_activity_index(process, persist=False)
                 entity = generation.entity
                 replaced |= replace_entity_path(entity)
+                self.add_to_activity_index(process, persist=False)
 
             subprocesses = getattr(process, '_processes', [])
             for p in subprocesses:
@@ -1270,13 +1275,7 @@ class DatasetsApiMixin(object):
 
             plan = process.association.plan
 
-            for output in plan.outputs or []:
-                entity = output.produces
-                replaced |= replace_entity_path(entity)
-
-            for input_ in plan.inputs or []:
-                entity = input_.consumes
-                replaced |= replace_entity_path(entity)
+            replaced |= replace_paths_in_run(plan)
 
             subprocesses = getattr(plan, 'subprocesses', [])
             for p in subprocesses:
@@ -1300,6 +1299,8 @@ class DatasetsApiMixin(object):
                     committer=committer,
                     skip_hooks=True,
                 )
+
+                self.persist_activity_index()
 
     def prepare_git_repo(self, url, ref=None):
         """Clone and cache a Git repo."""

@@ -34,6 +34,7 @@ from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, \
     OperationError, ParameterError, UsageError
 from renku.core.management.datasets import DATASET_METADATA_PATHS
+from renku.core.management.repository import WORKFLOW_METADATA_PATHS
 from renku.core.models.datasets import Url, generate_default_short_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
@@ -404,7 +405,7 @@ def file_unlink(
 @pass_local_client(
     commit=True,
     commit_empty=False,
-    commit_only=DATASET_METADATA_PATHS,
+    commit_only=DATASET_METADATA_PATHS + WORKFLOW_METADATA_PATHS,
     raise_if_empty=True
 )
 def move_files(
@@ -437,12 +438,12 @@ def move_files(
     if source.short_name == target.short_name:
         target = source
 
-    # Make sure that target's datadir exists
-    (client.path / target.datadir).mkdir(parents=True, exist_ok=True)
+    # Make sure that target's data_dir exists
+    (client.path / target.data_dir).mkdir(parents=True, exist_ok=True)
 
     destination = destination or '.'
     dst_root = Path(
-        os.path.abspath(client.path / target.datadir / destination)
+        os.path.abspath(client.path / target.data_dir / destination)
     )
 
     move_single_file = len(files) == 1

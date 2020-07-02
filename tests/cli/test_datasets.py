@@ -2162,14 +2162,14 @@ def test_dataset_move_and_workflows(runner, client, directory_tree, run):
     base_src_path = os.path.join('data', 'src', directory_tree.basename)
     file1 = os.path.join(base_src_path, 'file')
     file2 = os.path.join(base_src_path, 'dir2', 'file2')
-    file3 = os.path.join('data', 'src', 'output.txt')
+    output = os.path.join('data', 'src', 'output.txt')
 
-    assert 0 == run(args=['run', 'cat', file1, file2], stdout=file3)
-    assert 0 == runner.invoke(cli, ['dataset', 'add', 'src', file3]).exit_code
+    assert 0 == run(args=['run', 'cat', file1, file2], stdout=output)
+    assert 0 == runner.invoke(cli, ['dataset', 'add', 'src', output]).exit_code
     assert 0 == runner.invoke(cli, ['dataset', 'mv', 'src', 'dst']).exit_code
 
     file1 = os.path.join('data', 'dst', 'file')
-    file3 = os.path.join('data', 'dst', 'output.txt')
+    new_output = os.path.join('data', 'dst', 'output.txt')
 
     # Update inputs and check workflow can be updated
     Path(file1).write_text('Some new changes')
@@ -2178,4 +2178,8 @@ def test_dataset_move_and_workflows(runner, client, directory_tree, run):
 
     assert 0 == run(args=['update'])
 
-    assert 'Some new changes' in Path(file3).read_text()
+    assert 'Some new changes' in Path(new_output).read_text()
+
+    # Check activity cache is updated
+    assert output not in client.activity_index_path.read_text()
+    assert new_output in client.activity_index_path.read_text()
