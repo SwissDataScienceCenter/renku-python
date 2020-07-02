@@ -641,10 +641,11 @@ class JSONLDMixin(ReferenceMixin):
         source.update(asjsonld(self))
         return source
 
-    def to_yaml(self):
+    def to_yaml(self, path=None):
         """Store an instance to the referenced YAML file."""
         jsonld_ = self.asjsonld()
-        write_yaml(path=self.__reference__, data=jsonld_)
+        path = path or self.__reference__
+        write_yaml(path=path, data=jsonld_)
 
 
 def read_yaml(path):

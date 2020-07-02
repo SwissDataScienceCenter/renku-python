@@ -36,7 +36,7 @@ from urllib.parse import ParseResult
 import attr
 import patoolib
 import requests
-from git import GitCommandError, GitError, Repo
+from git import Actor, GitCommandError, GitError, Repo
 from wcmatch import glob
 
 from renku.core import errors
@@ -47,9 +47,11 @@ from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
     is_dataset_short_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
+from renku.core.models.provenance.activities import WorkflowRun
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.utils.urls import remove_credentials
+from renku.version import __version__, version_url
 
 
 @attr.s
@@ -1189,7 +1191,7 @@ class DatasetsApiMixin(object):
         staged_files = self.repo.index.diff('HEAD')
         if staged_files:
             msg = f'renku dataset: committing {len(sources)} moved files'
-            self.repo.index.commit(msg)
+            commit = self.repo.index.commit(msg)
 
         new_files = []
 
@@ -1205,6 +1207,99 @@ class DatasetsApiMixin(object):
 
         source_dataset.to_yaml()
         destination_dataset.to_yaml()
+
+        if staged_files:
+            files = {
+                str(s.relative_to(self.path)): str(d.relative_to(self.path))
+                for s, d in files
+            }
+            self._replace_paths_in_workflows(files, commit=commit)
+
+    def _replace_paths_in_workflows(self, files, commit):
+        """Replace file paths in dataflows after moving files."""
+
+        def replace_entity_path(entity):
+            replaced = False
+            for entity in entity.entities:
+                if entity.path in files:
+                    replaced = True
+                    entity.replace_path(path=files[entity.path], commit=commit)
+
+            return replaced
+
+        processed = set()
+
+        def replace_paths_in_run(run):
+            replaced = False
+
+            if run._id in processed:
+                return False
+            processed.add(run._id)
+
+            for output in run.outputs or []:
+                entity = output.produces
+                replaced |= replace_entity_path(entity)
+
+            for input_ in run.inputs or []:
+                entity = input_.consumes
+                replaced |= replace_entity_path(entity)
+
+            return replaced
+
+        def replace_paths_in_process(process):
+            replaced = False
+
+            if process._id in processed:
+                return False
+            processed.add(process._id)
+
+            for usage in process.qualified_usage or []:
+                entity = usage.entity
+                replaced |= replace_entity_path(entity)
+
+            for generation in process.generated or []:
+                entity = generation.entity
+                replaced |= replace_entity_path(entity)
+
+            subprocesses = getattr(process, '_processes', [])
+            for p in subprocesses:
+                replaced |= replace_paths_in_process(p)
+
+            if not process.association or not process.association.plan:
+                return replaced
+
+            plan = process.association.plan
+
+            for output in plan.outputs or []:
+                entity = output.produces
+                replaced |= replace_entity_path(entity)
+
+            for input_ in plan.inputs or []:
+                entity = input_.consumes
+                replaced |= replace_entity_path(entity)
+
+            subprocesses = getattr(plan, 'subprocesses', [])
+            for p in subprocesses:
+                replaced |= replace_paths_in_run(p)
+
+            return replaced
+
+        for path in self.workflow_path.glob('*.yaml'):
+            workflow = WorkflowRun.from_yaml(path, client=self)
+
+            replaced = replace_paths_in_process(workflow)
+
+            if replaced:
+                workflow.to_yaml(path=path)
+
+                commit_msg = 'renku dataset mv: update workflow'
+                committer = Actor('renku {0}'.format(__version__), version_url)
+                self.repo.git.add(path, force=True)
+                self.repo.index.commit(
+                    commit_msg,
+                    committer=committer,
+                    skip_hooks=True,
+                )
 
     def prepare_git_repo(self, url, ref=None):
         """Clone and cache a Git repo."""

@@ -104,6 +104,13 @@ class CommitMixin:
             return '{path}@{hexsha}'.format(hexsha=hexsha, path=path)
         return '{hexsha}'.format(hexsha=hexsha, self=self)
 
+    def replace_path(self, path, commit=None):
+        """Replace path and commit (if provided) and update _id and _label."""
+        self.path = path
+        self.commit = commit or self.commit
+        self._id = self.default_id()
+        self._label = self.default_label()
+
     def __attrs_post_init__(self):
         """Post-init hook."""
         if self.path and self.client:
