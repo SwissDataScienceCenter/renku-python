@@ -18,77 +18,8 @@
 """Python SDK and CLI for the Renku platform."""
 
 import os
-import shutil
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
-from setuptools import Command, find_packages, setup
-from setuptools.command.bdist_egg import bdist_egg as _bdist_egg
-from setuptools.command.build_ext import build_ext as _build_ext
-from setuptools.command.build_py import build_py as _build_py
-from setuptools.command.develop import develop as _develop
-
-URL = 'https://github.com/SwissDataScienceCenter/renku-project-template'
-REFERENCE = '0.1.11'
-
-
-class DownloadTemplates(Command):
-    description = 'Download renku repository templates'
-
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        from renku.core.commands.init import fetch_template, \
-            read_template_manifest
-
-        with TemporaryDirectory() as tempdir:
-            # download and extract template data
-            temppath = Path(tempdir)
-            print('downloading Renku templates...')
-            fetch_template(URL, REFERENCE, temppath)
-            read_template_manifest(temppath, checkout=True)
-
-            # copy templates
-            current_path = Path.cwd()
-            template_path = current_path / 'renku' / 'templates'
-            if template_path.exists():
-                shutil.rmtree(str(template_path))
-            shutil.copytree(
-                str(temppath),
-                str(template_path),
-                ignore=shutil.ignore_patterns('.git')
-            )
-
-
-class bdist_egg(_bdist_egg):
-    def run(self):
-        self.run_command('DownloadTemplates')
-        _bdist_egg.run(self)
-
-
-class build_ext(_build_ext):
-    def run(self):
-        self.run_command('DownloadTemplates')
-        _build_ext.run(self)
-
-
-class build_py(_build_py):
-    def run(self):
-        self.run_command('DownloadTemplates')
-        _build_py.run(self)
-
-
-class develop(_develop):
-    def run(self):
-        self.run_command('DownloadTemplates')
-        _develop.run(self)
-
+from setuptools import find_packages, setup
 
 readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
@@ -266,13 +197,6 @@ setup(
     install_requires=install_requires,
     setup_requires=complete_setup_requires,
     tests_require=tests_require,
-    cmdclass={
-        'bdist_egg': bdist_egg,
-        'build_py': build_py,
-        'build_ext': build_ext,
-        'develop': develop,
-        'DownloadTemplates': DownloadTemplates,
-    },
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',

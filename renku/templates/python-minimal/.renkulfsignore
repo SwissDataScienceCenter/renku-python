@@ -1,0 +1,22 @@
+# WARNING: editing this file will impact the behavior of renku commands
+# by telling renku to *not track* listed files with git LFS.
+#
+# By default, renku commands track all files above the renku configured lfs_threshold
+# with git LFS to prevent accidentally checking in large files (default=100kb).
+# You can update this threshold by calling 'renku config lfs_threshold <size>kb'.
+#
+# Use this file to specify particular paths to *not track* with LFS regardless of
+# their size. The syntax is the same as .gitignore (https://git-scm.com/docs/gitignore).
+# Remember: files listed here, when generated during renku commands, will add to
+# the size of your repo, and could slow things down.
+#
+# See https://github.com/SwissDataScienceCenter/renku-project-template for proper
+# usage.
+
+# Warning: modifying the next line will check generated ipynb files (e.g. from papermill) into LFS: 
+# they will no longer be displayed in the renku UI
+*.ipynb 
+*.py
+*.r
+*.md
+*.rst

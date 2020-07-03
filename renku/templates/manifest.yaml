@@ -1,0 +1,14 @@
+- folder: python-minimal
+  name: Basic Python Project
+  description: The simplest Python-based renku project with a basic directory structure and necessary supporting files.
+  variables:
+    description: short description added at the beginning of the readme file
+- folder: R-minimal
+  name: Basic R Project
+  description: The simplest R-based renku project with a basic directory structure and necessary supporting files.
+  variables:
+    description: short description added at the beginning of the readme file
+- folder: minimal
+  name: Minimal Renku
+  description: The simplest renku project template with files for renku CLI and launching projects on renkulab.
+  variables: {}

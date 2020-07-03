@@ -1,0 +1,4 @@
+# Renku
+.renku.lock
+.renku/tmp
+.renku/cache

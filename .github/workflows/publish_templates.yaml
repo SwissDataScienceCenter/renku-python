@@ -1,0 +1,39 @@
+name: Publish templates
+
+on:
+  push:
+    branches:
+    - master
+    paths:
+    - 'renku/templates/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout renku-python
+      uses: actions/checkout@v2
+      with:
+        path: renku-python
+    - name: Checkout renku-project-template
+      uses: actions/checkout@v2
+      with:
+        repository: SwissDataScienceCenter/renku-project-template
+        path: renku-project-template
+    - name: Update templates
+      run: |
+        cd renku-project-template
+        git rm -r *
+        cp -r ../renku-python/renku/templates/* .
+    - name: Commit and create/update pull request
+      uses: peter-evans/create-pull-request@v2
+      with:
+        token: ${{ secrets.RENKU_CI_TOKEN }}
+        path: renku-project-template
+        author: RenkuBot <renku@datascience.ch>
+        committer: RenkuBot <renku@datascience.ch>
+        commit-message: "Update templates"
+        title: "Update templates"
+        body: "Auto-generated PR to publish template changes"
+        labels: automerge
+        branch: auto-update-templates
