@@ -29,6 +29,8 @@ renku = fields.Namespace(
 )
 schema = fields.Namespace('http://schema.org/')
 wfprov = fields.Namespace('http://purl.org/wf4ever/wfprov#')
+oa = fields.Namespace('http://www.w3.org/ns/oa#')
+dcterms = fields.Namespace('http://purl.org/dc/terms/')
 
 
 class JsonLDSchema(CalamusJsonLDSchema):

@@ -19,7 +19,11 @@
 
 import uuid
 
+from marshmallow import EXCLUDE
+
 from renku.core.models import jsonld as jsonld
+from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku
+from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
 @jsonld.s(
@@ -65,6 +69,20 @@ class MappedIOStream(object):
         """Post-init hook."""
         if not self._label:
             self._label = self.default_label()
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return MappedIOStreamSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return MappedIOStreamSchema().dump(self)
 
 
 @jsonld.s(
@@ -158,6 +176,20 @@ class CommandArgument(CommandParameter):
         if not self._label:
             self._label = self.default_label()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return CommandArgumentSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return CommandArgumentSchema().dump(self)
+
 
 @jsonld.s(
     type=[
@@ -183,7 +215,7 @@ class CommandInput(CommandParameter):
 
     mapped_to = jsonld.ib(
         default=None,
-        context='prov:mappedTo',
+        context='renku:mappedTo',
         kw_only=True,
         type=MappedIOStream
     )
@@ -220,6 +252,20 @@ class CommandInput(CommandParameter):
         if not self._label:
             self._label = self.default_label()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return CommandInputSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return CommandInputSchema().dump(self)
+
 
 @jsonld.s(
     type=[
@@ -249,7 +295,7 @@ class CommandOutput(CommandParameter):
 
     mapped_to = jsonld.ib(
         default=None,
-        context='prov:mappedTo',
+        context='renku:mappedTo',
         kw_only=True,
         type=MappedIOStream
     )
@@ -288,3 +334,94 @@ class CommandOutput(CommandParameter):
 
         if not self._label:
             self._label = self.default_label()
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return CommandOutputSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return CommandOutputSchema().dump(self)
+
+
+class MappedIOStreamSchema(JsonLDSchema):
+    """MappedIOStream schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.IOStream]
+        model = MappedIOStream
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name='id')
+    _label = fields.String(rdfs.label, init_name='label')
+    stream_type = fields.String(renku.streamType)
+
+
+class CommandParameterSchema(JsonLDSchema):
+    """CommandParameter schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandParameter]
+        model = CommandParameter
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name='id')
+    _label = fields.String(rdfs.label, init_name='label')
+    position = fields.Integer(renku.position, missing=None)
+    prefix = fields.String(renku.prefix, missing=None)
+
+
+class CommandArgumentSchema(CommandParameterSchema):
+    """CommandArgument schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandArgument]
+        model = CommandArgument
+        unknown = EXCLUDE
+
+    value = fields.String(renku.value)
+
+
+class CommandInputSchema(CommandParameterSchema):
+    """CommandArgument schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandInput]
+        model = CommandInput
+        unknown = EXCLUDE
+
+    consumes = fields.Nested(renku.consumes, [EntitySchema, CollectionSchema])
+    mapped_to = fields.Nested(
+        renku.mappedTo, MappedIOStreamSchema, missing=None
+    )
+
+
+class CommandOutputSchema(CommandParameterSchema):
+    """CommandArgument schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandOutput]
+        model = CommandOutput
+        unknown = EXCLUDE
+
+    create_folder = fields.Boolean(renku.createFolder)
+    produces = fields.Nested(renku.produces, [EntitySchema, CollectionSchema])
+    mapped_to = fields.Nested(
+        renku.mappedTo, MappedIOStreamSchema, missing=None
+    )

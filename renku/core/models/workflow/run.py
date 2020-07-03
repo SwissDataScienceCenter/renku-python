@@ -23,11 +23,16 @@ from copy import copy
 from functools import total_ordering
 from pathlib import Path
 
+from marshmallow import EXCLUDE
+
 from renku.core.models import jsonld as jsonld
+from renku.core.models.calamus import fields, prov, renku
 from renku.core.models.cwl.types import PATH_OBJECTS
-from renku.core.models.entities import Collection, CommitMixin, Entity
+from renku.core.models.entities import Collection, CommitMixin, \
+    CommitMixinSchema, Entity
 from renku.core.models.workflow.parameters import CommandArgument, \
-    CommandInput, CommandOutput, MappedIOStream
+    CommandArgumentSchema, CommandInput, CommandInputSchema, CommandOutput, \
+    CommandOutputSchema, MappedIOStream
 
 
 def _entity_from_path(client, path, commit):
@@ -358,3 +363,46 @@ class Run(CommitMixin):
                 b_outputs.add(subentity.path)
 
         return a_inputs & b_outputs
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return RunSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return RunSchema().dump(self)
+
+
+class RunSchema(CommitMixinSchema):
+    """Run schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.Run, prov.Plan, prov.Entity]
+        model = Run
+        unknown = EXCLUDE
+
+    command = fields.String(renku.command, missing=None)
+    process_order = fields.Integer(renku.processOrder, missing=None)
+    successcodes = fields.List(
+        renku.successCodes, fields.Integer(), missing=[0]
+    )
+    subprocesses = fields.Nested(
+        renku.hasSubprocess, 'RunSchema', many=True, missing=None
+    )
+    arguments = fields.Nested(
+        renku.hasArguments, CommandArgumentSchema, many=True, missing=None
+    )
+    inputs = fields.Nested(
+        renku.hasInputs, CommandInputSchema, many=True, missing=None
+    )
+    outputs = fields.Nested(
+        renku.hasOutputs, CommandOutputSchema, many=True, missing=None
+    )

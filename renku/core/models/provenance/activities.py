@@ -26,15 +26,19 @@ from pathlib import Path, posixpath
 
 import attr
 from git import NULL_TREE
+from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
-from renku.core.models.cwl.annotation import Annotation
-from renku.core.models.entities import Collection, CommitMixin, Entity
+from renku.core.models.calamus import fields, oa, prov, rdfs, wfprov
+from renku.core.models.cwl.annotation import Annotation, AnnotationSchema
+from renku.core.models.entities import Collection, CollectionSchema, \
+    CommitMixin, CommitMixinSchema, Entity, EntitySchema
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
 
-from .agents import Person, renku_agent
-from .qualified import Association, Generation, Usage
+from .agents import Person, PersonSchema, SoftwareAgentSchema, renku_agent
+from .qualified import Association, AssociationSchema, Generation, \
+    GenerationSchema, Usage, UsageSchema
 
 
 def _nodes(output, parent=None):
@@ -141,16 +145,10 @@ class Activity(CommitMixin):
         kw_only=True,
     )
 
-    agent = jsonld.ib(
+    agents = jsonld.ib(
         context='prov:wasAssociatedWith',
         kw_only=True,
-        default=renku_agent,
         type='renku.core.models.provenance.agents.SoftwareAgent'
-    )
-    person_agent = jsonld.ib(
-        context='prov:wasAssociatedWith',
-        kw_only=True,
-        type='renku.core.models.provenance.agents.Person'
     )
 
     def default_generated(self):
@@ -347,28 +345,26 @@ class Activity(CommitMixin):
     def default_was_informed_by(self):
         """List parent actions."""
         if self.commit:
-            return [{
-                '@id': self.generate_id(parent),
-            } for parent in self.commit.parents]
+            return [self.generate_id(parent) for parent in self.commit.parents]
 
     @started_at_time.default
     def default_started_at_time(self):
         """Configure calculated properties."""
         if self.commit:
-            return self.commit.authored_datetime.isoformat()
+            return self.commit.authored_datetime
 
     @ended_at_time.default
     def default_ended_at_time(self):
         """Configure calculated properties."""
         if self.commit:
-            return self.commit.committed_datetime.isoformat()
+            return self.commit.committed_datetime
 
-    @person_agent.default
-    def default_person_agent(self):
+    @agents.default
+    def default_agents(self):
         """Set person agent to be the author of the commit."""
         if self.commit:
-            return Person.from_commit(self.commit)
-        return None
+            return [Person.from_commit(self.commit), renku_agent]
+        return [renku_agent]
 
     @property
     def nodes(self):
@@ -411,6 +407,37 @@ class Activity(CommitMixin):
         if self.generated:
             for g in self.generated:
                 g._activity = weakref.ref(self)
+
+    @classmethod
+    def from_yaml(cls, path, client=None, commit=None):
+        """Return an instance from a YAML file."""
+        data = jsonld.read_yaml(path)
+
+        self = cls.from_jsonld(data=data, client=client, commit=commit)
+        self.__reference__ = path
+
+        return self
+
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        schema = ActivitySchema
+
+        if str(wfprov.WorkflowRun) in data['@type']:
+            schema = WorkflowRunSchema
+        elif str(wfprov.ProcessRun) in data['@type']:
+            schema = ProcessRunSchema
+
+        return schema(client=client, commit=commit).load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return ActivitySchema().dump(self)
 
 
 @jsonld.s(
@@ -630,6 +657,20 @@ class ProcessRun(Activity):
         # Activity itself
         yield self.association.plan
 
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return ProcessRunSchema(client=client, commit=commit).load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return ProcessRunSchema().dump(self)
+
 
 @jsonld.s(
     type='wfprov:WorkflowRun',
@@ -755,3 +796,87 @@ class WorkflowRun(ProcessRun):
                 s.part_of = self
 
         super().__attrs_post_init__()
+
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return WorkflowRunSchema(client=client, commit=commit).load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return WorkflowRunSchema().dump(self)
+
+
+class ActivitySchema(CommitMixinSchema):
+    """Activity schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = prov.Activity
+        model = Activity
+        unknown = EXCLUDE
+
+    _message = fields.String(rdfs.comment, init_name='message', missing=None)
+    _was_informed_by = fields.List(
+        prov.wasInformedBy, fields.IRI(), init_name='was_informed_by'
+    )
+    generated = fields.Nested(
+        prov.activity, GenerationSchema, reverse=True, many=True, missing=None
+    )
+    invalidated = fields.Nested(
+        prov.wasInvalidatedBy,
+        EntitySchema,
+        reverse=True,
+        many=True,
+        missing=None
+    )
+    influenced = fields.Nested(prov.influenced, CollectionSchema, many=True)
+    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
+    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
+    agents = fields.Nested(
+        prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True
+    )
+
+
+class ProcessRunSchema(ActivitySchema):
+    """ProcessRun schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = wfprov.ProcessRun
+        model = ProcessRun
+        unknown = EXCLUDE
+
+    association = fields.Nested(prov.qualifiedAssociation, AssociationSchema)
+    annotations = fields.Nested(
+        oa.hasTarget, AnnotationSchema, reverse=True, many=True
+    )
+    qualified_usage = fields.Nested(
+        prov.qualifiedUsage, UsageSchema, many=True
+    )
+
+
+class WorkflowRunSchema(ProcessRunSchema):
+    """WorkflowRun schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = wfprov.WorkflowRun
+        model = WorkflowRun
+        unknown = EXCLUDE
+
+    _processes = fields.Nested(
+        wfprov.wasPartOfWorkflowRun,
+        ProcessRunSchema,
+        reverse=True,
+        many=True,
+        init_name='processes'
+    )

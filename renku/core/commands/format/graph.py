@@ -41,10 +41,9 @@ def _jsonld(graph, format, *args, **kwargs):
     import json
 
     import pyld
-    from renku.core.models.jsonld import asjsonld
 
     output = getattr(pyld.jsonld, format)([
-        asjsonld(action) for action in graph.activities.values()
+        action.as_jsonld() for action in graph.activities.values()
     ])
     return json.dumps(output, indent=2)
 

@@ -20,9 +20,16 @@
 import weakref
 
 import attr
+from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld as jsonld
-from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.calamus import JsonLDSchema, fields, prov
+from renku.core.models.datasets import Dataset, DatasetFile, \
+    DatasetFileSchema, DatasetSchema
+from renku.core.models.entities import CollectionSchema, EntitySchema
+from renku.core.models.provenance.agents import PersonSchema, \
+    SoftwareAgentSchema
+from renku.core.models.workflow.run import RunSchema
 
 
 @jsonld.s(
@@ -61,6 +68,20 @@ class Association:
             agent=agent,
             id=activity._id + '/association',  # add plan and agent
         )
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return AssociationSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return AssociationSchema().dump(self)
 
 
 class EntityProxyMixin:
@@ -108,6 +129,20 @@ class Usage(EntityProxyMixin):
             entity=Entity.from_revision(client, path, revision), **kwargs
         )
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return UsageSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return UsageSchema().dump(self)
+
 
 @jsonld.s(
     type='prov:Generation',
@@ -154,3 +189,69 @@ class Generation(EntityProxyMixin):
         return '{self.activity._id}/tree/{self.entity.path}'.format(
             self=self,
         )
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return GenerationSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return GenerationSchema().dump(self)
+
+
+class AssociationSchema(JsonLDSchema):
+    """Association schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = prov.Association
+        model = Association
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name='id')
+    plan = fields.Nested(prov.hadPlan, RunSchema)
+    agent = fields.Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
+
+
+class UsageSchema(JsonLDSchema):
+    """Usage schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = prov.Usage
+        model = Usage
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name='id')
+    entity = fields.Nested(
+        prov.entity,
+        [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema]
+    )
+    role = fields.String(prov.hadRole)
+
+
+class GenerationSchema(JsonLDSchema):
+    """Generation schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = prov.Generation
+        model = Generation
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name='id')
+    entity = fields.Nested(
+        prov.qualifiedGeneration,
+        [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema],
+        reverse=True
+    )
+    role = fields.String(prov.hadRole)

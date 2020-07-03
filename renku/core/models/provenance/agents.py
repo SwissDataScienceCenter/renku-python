@@ -25,7 +25,8 @@ from marshmallow import EXCLUDE
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, schema
+from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
+    schema, wfprov
 from renku.version import __version__, version_url
 
 
@@ -233,9 +234,40 @@ class SoftwareAgent:
             )
         return author
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return SoftwareAgentSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return SoftwareAgentSchema().dump(self)
+
 
 # set up the default agent
 
 renku_agent = SoftwareAgent(
     label='renku {0}'.format(__version__), id=version_url
 )
+
+
+class SoftwareAgentSchema(JsonLDSchema):
+    """SoftwareAgent schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.SoftwareAgent, wfprov.WorkflowEngine]
+        model = SoftwareAgent
+        unknown = EXCLUDE
+
+    label = fields.String(rdfs.label)
+    _id = fields.Id(init_name='id')
+    was_started_by = fields.Nested(
+        prov.wasStartedBy, PersonSchema, missing=None
+    )

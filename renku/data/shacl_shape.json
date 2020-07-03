@@ -1016,7 +1016,7 @@
                "maxCount": 1
             },
             {
-               "path": "prov:mappedTo",
+               "path": "renku:mappedTo",
                "sh:class": {
                   "@id": "renku:IOStream"
                },
@@ -1066,7 +1066,7 @@
                "maxCount": 1
             },
             {
-               "path": "prov:mappedTo",
+               "path": "renku:mappedTo",
                "sh:class": {
                   "@id": "renku:IOStream"
                },

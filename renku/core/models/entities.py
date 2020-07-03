@@ -334,3 +334,17 @@ class EntitySchema(CommitMixinSchema):
 
         rdf_type = [prov.Entity, wfprov.Artifact]
         model = Entity
+
+
+class CollectionSchema(EntitySchema):
+    """Entity Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Collection]
+        model = Collection
+
+    members = fields.Nested(
+        prov.hadMember, [EntitySchema, 'CollectionSchema'], many=True
+    )
