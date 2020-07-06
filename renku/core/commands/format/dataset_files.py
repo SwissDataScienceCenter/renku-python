@@ -93,9 +93,8 @@ def jsonld(client, records, **kwargs):
     :param records: Filtered collection.
     """
     from renku.core.models.json import dumps
-    from renku.core.models.jsonld import asjsonld
 
-    data = [asjsonld(record) for record in records]
+    data = [record.as_jsonld() for record in records]
     return dumps(data, indent=2)
 
 

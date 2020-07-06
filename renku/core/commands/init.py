@@ -159,7 +159,7 @@ def read_template_manifest(folder, checkout=False):
 
 
 def create_from_template(
-    template_path, client, name=None, metadata={}, force=None
+    template_path, client, name=None, metadata={}, force=None, data_dir=None
 ):
     """Initialize a new project from a template."""
     with client.commit():
@@ -168,3 +168,9 @@ def create_from_template(
         with client.with_metadata(name=name) as project_metadata:
             client.import_from_template(template_path, metadata, force)
             project_metadata.updated = datetime.now(timezone.utc)
+
+        if data_dir:
+            client.set_value('renku', client.DATA_DIR_CONFIG_KEY, data_dir)
+            data_path = client.path / data_dir
+            data_path.mkdir(parents=True, exist_ok=True)
+            (data_path / '.gitkeep').touch(exist_ok=True)

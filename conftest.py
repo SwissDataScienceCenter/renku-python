@@ -280,13 +280,19 @@ def client_with_lfs_warning(project):
 @pytest.fixture
 def dataset(client):
     """Create a dataset."""
+    from renku.core.models.provenance.agents import Person
+
     with client.with_dataset('dataset', create=True) as dataset:
-        dataset.creator = [{
-            'affiliation': 'xxx',
-            'email': 'me@example.com',
-            '_id': 'me_id',
-            'name': 'me',
-        }]
+        dataset.creator = [
+            Person(
+                **{
+                    'affiliation': 'xxx',
+                    'email': 'me@example.com',
+                    'id': 'me_id',
+                    'name': 'me',
+                }
+            )
+        ]
     return dataset
 
 
@@ -723,6 +729,18 @@ def dataset_metadata(request):
 
     data = yaml.load(file_path.read_text(), Loader=NoDatesSafeLoader)
     yield data
+
+
+@pytest.fixture
+def dataset_metadata_before_calamus():
+    """Return dataset metadata fixture."""
+    from renku.core.models.jsonld import NoDatesSafeLoader
+
+    path = (
+        Path(__file__).parent / 'tests' / 'fixtures' /
+        'dataset-v0.10.4-before-calamus.yml'
+    )
+    yield yaml.load(path.read_text(), Loader=NoDatesSafeLoader)
 
 
 @pytest.fixture()

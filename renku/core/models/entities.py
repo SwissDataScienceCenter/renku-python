@@ -25,7 +25,9 @@ import weakref
 import attr
 
 from renku.core.models import jsonld as jsonld
-from renku.core.models.projects import Project
+from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
+    schema, wfprov
+from renku.core.models.projects import Project, ProjectSchema
 
 
 def _str_or_none(data):
@@ -33,7 +35,14 @@ def _str_or_none(data):
     return str(data) if data is not None else data
 
 
-@attr.s(cmp=False)
+@jsonld.s(
+    context={
+        'prov': 'http://www.w3.org/ns/prov#',
+        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+        'schema': 'http://schema.org/',
+    },
+    cmp=False,
+)
 class CommitMixin:
     """Represent a commit mixin."""
 
@@ -299,3 +308,29 @@ class Collection(Entity):
 
         for member in self.members:
             member._parent = weakref.ref(self)
+
+
+class CommitMixinSchema(JsonLDSchema):
+    """CommitMixin schema."""
+
+    class Meta:
+        """Meta class."""
+
+        model = CommitMixin
+
+    path = fields.String(prov.atLocation)
+    _id = fields.Id(init_name='id')
+    _label = fields.String(rdfs.label, init_name='label', missing=None)
+    _project = fields.Nested(
+        schema.isPartOf, ProjectSchema, init_name='project', missing=None
+    )
+
+
+class EntitySchema(CommitMixinSchema):
+    """Entity Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Entity, wfprov.Artifact]
+        model = Entity

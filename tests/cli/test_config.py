@@ -140,3 +140,18 @@ def test_invalid_command_args(
     result = runner.invoke(cli, ['config'] + args)
     assert 2 == result.exit_code
     assert message in result.output
+
+
+@pytest.mark.parametrize('config_key', ['data_directory'])
+def test_readonly_config(client, runner, project, config_key):
+    """Test readonly config can only be set once."""
+    result = runner.invoke(cli, ['config', config_key, 'value'])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ['config', config_key, 'value'])
+    assert 2 == result.exit_code
+    assert f'Configuration {config_key} cannot be modified.' in result.output
+
+    result = runner.invoke(cli, ['config', '--remove', config_key])
+    assert 2 == result.exit_code
+    assert f'Configuration {config_key} cannot be modified.' in result.output

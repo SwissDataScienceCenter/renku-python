@@ -1,0 +1,589 @@
+'@context':
+  '@version': 1.1
+  _id: '@id'
+  _project:
+    '@context':
+      '@version': 1.1
+      _id: '@id'
+      created: schema:dateCreated
+      creator:
+        '@context':
+          '@version': 1.1
+          _id: '@id'
+          affiliation: schema:affiliation
+          alternate_name: schema:alternateName
+          email: schema:email
+          label: rdfs:label
+          name: schema:name
+          prov: http://www.w3.org/ns/prov#
+          rdfs: http://www.w3.org/2000/01/rdf-schema#
+          schema: http://schema.org/
+        '@id': schema:creator
+      name: schema:name
+      prov: http://www.w3.org/ns/prov#
+      schema: http://schema.org/
+      updated: schema:dateUpdated
+      version: schema:schemaVersion
+    '@id': schema:isPartOf
+  created: schema:dateCreated
+  creator:
+    '@context':
+      '@version': 1.1
+      _id: '@id'
+      affiliation: schema:affiliation
+      alternate_name: schema:alternateName
+      email: schema:email
+      label: rdfs:label
+      name: schema:name
+      prov: http://www.w3.org/ns/prov#
+      rdfs: http://www.w3.org/2000/01/rdf-schema#
+      schema: http://schema.org/
+    '@id': schema:creator
+  date_published: schema:datePublished
+  description: schema:description
+  files:
+    '@context':
+      '@version': 1.1
+      _id: '@id'
+      _project:
+        '@context':
+          '@version': 1.1
+          _id: '@id'
+          created: schema:dateCreated
+          creator:
+            '@context':
+              '@version': 1.1
+              _id: '@id'
+              affiliation: schema:affiliation
+              alternate_name: schema:alternateName
+              email: schema:email
+              label: rdfs:label
+              name: schema:name
+              prov: http://www.w3.org/ns/prov#
+              rdfs: http://www.w3.org/2000/01/rdf-schema#
+              schema: http://schema.org/
+            '@id': schema:creator
+          name: schema:name
+          prov: http://www.w3.org/ns/prov#
+          schema: http://schema.org/
+          updated: schema:dateUpdated
+          version: schema:schemaVersion
+        '@id': schema:isPartOf
+      added: schema:dateCreated
+      based_on: schema:isBasedOn
+      creator:
+        '@context':
+          '@version': 1.1
+          _id: '@id'
+          affiliation: schema:affiliation
+          alternate_name: schema:alternateName
+          email: schema:email
+          label: rdfs:label
+          name: schema:name
+          prov: http://www.w3.org/ns/prov#
+          rdfs: http://www.w3.org/2000/01/rdf-schema#
+          schema: http://schema.org/
+        '@id': schema:creator
+      name: schema:name
+      path: prov:atLocation
+      prov: http://www.w3.org/ns/prov#
+      schema: http://schema.org/
+      url: schema:url
+      wfprov: http://purl.org/wf4ever/wfprov#
+    '@id': schema:hasPart
+  identifier: schema:identifier
+  in_language:
+    '@context':
+      '@version': 1.1
+      alternate_name: schema:alternateName
+      name: schema:name
+      schema: http://schema.org/
+    '@id': schema:inLanguage
+  keywords: schema:keywords
+  license: schema:license
+  name: schema:name
+  path: prov:atLocation
+  prov: http://www.w3.org/ns/prov#
+  same_as:
+    '@context':
+      '@version': 1.1
+      _id: '@id'
+      schema: http://schema.org/
+      url: schema:url
+    '@id': schema:sameAs
+  schema: http://schema.org/
+  short_name: schema:alternateName
+  tags:
+    '@context':
+      '@version': 1.1
+      _id: '@id'
+      commit: schema:location
+      created: schema:startDate
+      dataset: schema:about
+      description: schema:description
+      name: schema:name
+      schema: http://schema.org/
+    '@id': schema:subjectOf
+  url: schema:url
+  version: schema:version
+  wfprov: http://purl.org/wf4ever/wfprov#
+'@type':
+- prov:Entity
+- schema:Dataset
+- wfprov:Artifact
+_id: https://localhost/datasets/51db02ad-3cba-47e2-84d0-5ee5914bd654
+_label: 51db02ad-3cba-47e2-84d0-5ee5914bd654
+_project:
+  '@type':
+  - prov:Location
+  - schema:Project
+  _id: https://localhost/projects/mohammad.alisafaee/tmp
+  created: '2020-06-15T08:33:50.672147+00:00'
+  creator:
+    '@type':
+    - prov:Person
+    - schema:Person
+    _id: mailto:mohammad.alisafaee@epfl.ch
+    affiliation: null
+    alternate_name: null
+    email: mohammad.alisafaee@epfl.ch
+    label: Mohammad Alisafaee
+    name: Mohammad Alisafaee
+  name: tmp
+  updated: '2020-06-15T08:33:50.696822+00:00'
+  version: '4'
+created: '2020-06-15T08:34:03.607590+00:00'
+creator:
+- '@type':
+  - prov:Person
+  - schema:Person
+  _id: https://orcid.org/0000-0002-9528-9470
+  affiliation: Harvard University
+  alternate_name: null
+  email: null
+  label: Durbin, Philip
+  name: Durbin, Philip
+date_published:
+  '@type': schema:Date
+  '@value': '2019-07-03'
+description: The tabular file contains information on known Harvard repositories on
+  GitHub, such as the number of stars, programming language, day last updated, number
+  of open issues, size, number of forks, repository URL, create date, and description.
+  Each repository has a corresponding JSON file that was retrieved using the GitHub
+  API with code and a list of repositories available from https://github.com/IQSS/open-source-at-harvard.
+files:
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/3ae788bcaa8eb6056e7d9855bf070f20b094b238/data/dataverse/IQSS-DataTaggingLibrary.json
+  _label: data/dataverse/IQSS-DataTaggingLibrary.json@3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:37:04.556710+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: false
+  name: IQSS-DataTaggingLibrary.json
+  path: data/dataverse/IQSS-DataTaggingLibrary.json
+  url: https://dataverse.harvard.edu/api/access/datafile/3371444
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/3ae788bcaa8eb6056e7d9855bf070f20b094b238/data/dataverse/IQSS-dataverse.json
+  _label: data/dataverse/IQSS-dataverse.json@3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:37:04.560380+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: false
+  name: IQSS-dataverse.json
+  path: data/dataverse/IQSS-dataverse.json
+  url: https://dataverse.harvard.edu/api/access/datafile/3371530
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/3ae788bcaa8eb6056e7d9855bf070f20b094b238/data/dataverse/IQSS-redmine2github.json
+  _label: data/dataverse/IQSS-redmine2github.json@3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:37:04.564089+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: false
+  name: IQSS-redmine2github.json
+  path: data/dataverse/IQSS-redmine2github.json
+  url: https://dataverse.harvard.edu/api/access/datafile/3371465
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/3ae788bcaa8eb6056e7d9855bf070f20b094b238/data/dataverse/IQSS-TwoRavens.json
+  _label: data/dataverse/IQSS-TwoRavens.json@3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:37:04.567837+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: false
+  name: IQSS-TwoRavens.json
+  path: data/dataverse/IQSS-TwoRavens.json
+  url: https://dataverse.harvard.edu/api/access/datafile/3371449
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/3ae788bcaa8eb6056e7d9855bf070f20b094b238/data/dataverse/IQSS-UNF.json
+  _label: data/dataverse/IQSS-UNF.json@3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:37:04.571573+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: false
+  name: IQSS-UNF.json
+  path: data/dataverse/IQSS-UNF.json
+  url: https://dataverse.harvard.edu/api/access/datafile/3371500
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/3ae788bcaa8eb6056e7d9855bf070f20b094b238/data/dataverse/IQSS-Zelig.json
+  _label: data/dataverse/IQSS-Zelig.json@3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:37:04.575493+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: false
+  name: IQSS-Zelig.json
+  path: data/dataverse/IQSS-Zelig.json
+  url: https://dataverse.harvard.edu/api/access/datafile/3371485
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/8bc8a0a180e08822a3960e63d4cfeb25e70822c5/data/dataverse/external/data.txt
+  _label: data/dataverse/external/data.txt@8bc8a0a180e08822a3960e63d4cfeb25e70822c5
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:38:01.859607+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: true
+  name: data.txt
+  path: data/dataverse/external/data.txt
+  url: file://../../../../tmp/data.txt
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/d6afeba51089db197c87a5971a057ac96eaedd1b/data/dataverse/local/result.csv
+  _label: data/dataverse/local/result.csv@d6afeba51089db197c87a5971a057ac96eaedd1b
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T08:38:08.788012+00:00'
+  based_on: null
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: https://orcid.org/0000-0002-9528-9470
+    affiliation: Harvard University
+    alternate_name: null
+    email: null
+    label: Durbin, Philip
+    name: Durbin, Philip
+  external: false
+  name: result.csv
+  path: data/dataverse/local/result.csv
+  url: file://../../../../tmp/result.csv
+- '@type':
+  - prov:Entity
+  - schema:DigitalDocument
+  - wfprov:Artifact
+  _id: https://localhost/blob/0a51ab0f49e59a8bfea40411dbde7a47832bcc74/data/dataverse/git/index.ipynb
+  _label: data/dataverse/git/index.ipynb@0a51ab0f49e59a8bfea40411dbde7a47832bcc74
+  _project:
+    '@type':
+    - prov:Location
+    - schema:Project
+    _id: https://localhost/projects/mohammad.alisafaee/tmp
+    created: '2020-06-15T08:33:50.672147+00:00'
+    creator:
+      '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:mohammad.alisafaee@epfl.ch
+      affiliation: null
+      alternate_name: null
+      email: mohammad.alisafaee@epfl.ch
+      label: Mohammad Alisafaee
+      name: Mohammad Alisafaee
+    name: tmp
+    updated: '2020-06-15T08:33:50.696822+00:00'
+    version: '4'
+  added: '2020-06-15T09:20:09.754978+00:00'
+  based_on:
+    '@type':
+    - prov:Entity
+    - schema:DigitalDocument
+    - wfprov:Artifact
+    _id: https://github.com/blob/f98325d81c700f4b86ee05c2154e94d43ca068b8/notebooks/index.ipynb
+    _label: notebooks/index.ipynb@f98325d81c700f4b86ee05c2154e94d43ca068b8
+    _project: null
+    added: '2020-06-15T09:20:08.715577+00:00'
+    based_on: null
+    creator:
+    - '@type':
+      - prov:Person
+      - schema:Person
+      _id: mailto:cramakri@ethz.ch
+      affiliation: null
+      alternate_name: null
+      email: cramakri@ethz.ch
+      label: Chandrasekhar Ramakrishnan
+      name: Chandrasekhar Ramakrishnan
+    external: false
+    name: index.ipynb
+    path: notebooks/index.ipynb
+    url: https://github.com/SwissDataScienceCenter/r10e-ds-py.git
+  creator:
+  - '@type':
+    - prov:Person
+    - schema:Person
+    _id: mailto:cramakri@ethz.ch
+    affiliation: null
+    alternate_name: null
+    email: cramakri@ethz.ch
+    label: Chandrasekhar Ramakrishnan
+    name: Chandrasekhar Ramakrishnan
+  external: false
+  name: index.ipynb
+  path: data/dataverse/git/index.ipynb
+  url: https://github.com/SwissDataScienceCenter/r10e-ds-py.git
+identifier: 51db02ad-3cba-47e2-84d0-5ee5914bd654
+in_language: null
+keywords: []
+license:
+  '@type': schema:Dataset
+  url: https://creativecommons.org/publicdomain/zero/1.0/
+name: Open Source at Harvard
+path: .renku/datasets/51db02ad-3cba-47e2-84d0-5ee5914bd654
+same_as:
+  '@type': schema:URL
+  _id: _:URL@//doi.org/10.7910/DVN/TJCLKP
+  url: https://doi.org/10.7910/DVN/TJCLKP
+short_name: dataverse
+tags:
+- '@type': schema:PublicationEvent
+  _id: _:3@3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  commit: 3ae788bcaa8eb6056e7d9855bf070f20b094b238
+  created: '2020-06-15T08:37:05.662814+00:00'
+  dataset: Open Source at Harvard
+  description: Tag 3 created by renku import
+  name: '3'
+url: https://localhost/datasets/51db02ad-3cba-47e2-84d0-5ee5914bd654
+version: '3'
