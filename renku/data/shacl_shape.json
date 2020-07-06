@@ -530,6 +530,13 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:external",
+               "datatype": {
+                  "@id": "xsd:boolean"
+               }
             }
          ]
       },

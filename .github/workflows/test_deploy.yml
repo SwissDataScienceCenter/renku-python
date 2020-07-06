@@ -130,6 +130,7 @@ jobs:
       matrix:
         python-version: [3.6, 3.7, 3.8]
     needs: [test-linux]
+    if: "startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'"
     steps:
     - uses: actions/checkout@v2
       with:

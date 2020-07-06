@@ -39,6 +39,8 @@ from renku.core.models.refs import LinkReference
 
 from .git import GitCore
 
+DEFAULT_DATA_DIR = 'data'
+
 
 def default_path():
     """Return default repository path."""
@@ -84,6 +86,13 @@ class RepositoryApiMixin(GitCore):
     parent = attr.ib(default=None)
     """Store a pointer to the parent repository."""
 
+    data_dir = attr.ib(
+        default=DEFAULT_DATA_DIR,
+        kw_only=True,
+        converter=lambda value: str(value) if value else DEFAULT_DATA_DIR
+    )
+    """Define a name of the folder for storing datasets."""
+
     METADATA = 'metadata.yml'
     """Default name of Renku config file."""
 
@@ -118,7 +127,14 @@ class RepositoryApiMixin(GitCore):
         path.relative_to(path)
         self.renku_path = path
 
+        data_dir = self.get_value(
+            'renku', self.DATA_DIR_CONFIG_KEY, local_only=True
+        )
+        self.data_dir = data_dir or self.data_dir
+
         self._subclients = {}
+
+        self._project = None
 
         super().__attrs_post_init__()
 
@@ -161,11 +177,14 @@ class RepositoryApiMixin(GitCore):
         self.workflow_path.mkdir(parents=True, exist_ok=True)  # for Python 3.5
         return str(self.workflow_path.resolve().relative_to(self.path))
 
-    @cached_property
+    @property
     def project(self):
         """Return the Project instance."""
-        if self.renku_metadata_path.exists():
-            return Project.from_yaml(self.renku_metadata_path, client=self)
+        if self.renku_metadata_path.exists() and self._project is None:
+            self._project = Project.from_yaml(
+                self.renku_metadata_path, client=self
+            )
+        return self._project
 
     @property
     def remote(self, remote_name='origin'):
@@ -206,6 +225,10 @@ class RepositoryApiMixin(GitCore):
         self._remote_cache[original_remote_name] = remote
 
         return remote
+
+    def is_project_set(self):
+        """Return if project is set for the client."""
+        return self._project is not None
 
     def process_commit(self, commit=None, path=None):
         """Build an :class:`~renku.core.models.provenance.activities.Activity`.

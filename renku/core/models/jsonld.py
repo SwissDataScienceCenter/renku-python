@@ -416,6 +416,10 @@ def asjsonld(
     basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
+    as_jsonld = getattr(inst, 'as_jsonld', None)
+    if as_jsonld is not None and type(as_jsonld.__self__) in type(inst).mro():
+        return inst.as_jsonld()
+
     jsonld_fields = inst.__class__._jsonld_fields
     attrs = tuple(
         field

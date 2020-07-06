@@ -23,6 +23,7 @@ import uuid
 from pathlib import Path, posixpath
 from urllib.parse import quote
 
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import Dataset
 from renku.core.models.refs import LinkReference
 from renku.core.utils.urls import url_to_string
@@ -66,11 +67,11 @@ def _migrate_datasets_pre_v0_3(client):
         """Return paths of dataset metadata for pre 0.3.4."""
         project_is_pre_0_3 = int(client.project.version) < 2
         if project_is_pre_0_3:
-            return (client.path / 'data').rglob(client.METADATA)
+            return (client.path / DATA_DIR).rglob(client.METADATA)
         return []
 
     for old_path in _dataset_pre_0_3(client):
-        name = str(old_path.parent.relative_to(client.path / 'data'))
+        name = str(old_path.parent.relative_to(client.path / DATA_DIR))
 
         dataset = Dataset.from_yaml(old_path, client=client)
         new_path = (client.renku_datasets_path / dataset.uid / client.METADATA)
@@ -84,7 +85,7 @@ def _migrate_datasets_pre_v0_3(client):
         for file_ in dataset.files:
             if not Path(file_.path).exists():
                 expected_path = (
-                    client.path / 'data' / dataset.name / file_.path
+                    client.path / DATA_DIR / dataset.name / file_.path
                 )
                 if expected_path.exists():
                     file_.path = expected_path.relative_to(client.path)
@@ -169,7 +170,10 @@ def _fix_uncommitted_labels(client):
                     file_.path,
                 )
                 file_.commit = commit
-                if 'UNCOMMITTED' in file_._label or '@' not in file_._label:
+                if (
+                    not file_._label or 'UNCOMMITTED' in file_._label or
+                    '@' not in file_._label
+                ):
                     file_._label = file_.default_label()
                     file_._id = file_.default_id()
             except KeyError:

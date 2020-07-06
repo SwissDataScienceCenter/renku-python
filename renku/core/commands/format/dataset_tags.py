@@ -50,9 +50,8 @@ def jsonld(client, tags):
     :param tags: Dataset tags.
     """
     from renku.core.models.json import dumps
-    from renku.core.models.jsonld import asjsonld
 
-    data = [asjsonld(tag) for tag in tags]
+    data = [tag.as_jsonld() for tag in tags]
     return dumps(data, indent=2)
 
 
