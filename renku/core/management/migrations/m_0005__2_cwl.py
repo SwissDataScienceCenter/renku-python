@@ -181,7 +181,9 @@ def _migrate_single_step(
             else:
                 path = Path(matched_input.default)
 
-            path = Path(os.path.abspath(path)).relative_to(client.path)
+            path = Path(os.path.abspath(client.path / path)).relative_to(
+                client.path
+            )
 
             if matched_input.inputBinding:
                 prefix = matched_input.inputBinding.prefix
@@ -255,15 +257,16 @@ def _migrate_single_step(
         secure_filename('_'.join(cmd_line_tool.baseCommand)),
     )
 
-    path = (client.workflow_path / step_name).relative_to(client.path)
+    absolute_path = client.workflow_path / step_name
+    path = absolute_path.relative_to(client.path)
 
-    with with_reference(path):
+    with with_reference(absolute_path):
         run.path = path
         process_run = ProcessRun.from_run(run, client, path, commit=commit)
         process_run.invalidated = _invalidations_from_commit(client, commit)
         process_run.to_yaml()
         client.add_to_activity_index(process_run)
-        return process_run, path
+        return process_run, absolute_path
 
 
 def _migrate_composite_step(client, workflow, path, commit=None):
