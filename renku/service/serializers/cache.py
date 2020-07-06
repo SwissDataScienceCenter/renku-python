@@ -190,6 +190,12 @@ class ProjectMigrateResponse(Schema):
     messages = fields.List(fields.String)
 
 
+class ProjectMigrateResponseRPC(JsonRPCResponse):
+    """RPC response schema for project migrate."""
+
+    result = fields.Nested(ProjectMigrateResponse)
+
+
 class ProjectMigrateJobResponse(Schema):
     """Response schema for enqueued job of project migration."""
 
@@ -197,10 +203,10 @@ class ProjectMigrateJobResponse(Schema):
     created_at = fields.DateTime()
 
 
-class ProjectMigrateResponseRPC(JsonRPCResponse):
+class ProjectMigrateAsyncResponseRPC(JsonRPCResponse):
     """RPC response schema for project migrate."""
 
-    result = fields.Nested(ProjectMigrateResponse or ProjectMigrateJobResponse)
+    result = fields.Nested(ProjectMigrateJobResponse)
 
 
 class ProjectMigrationCheckResponse(Schema):

@@ -653,6 +653,23 @@ def test_execute_migrations(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
+def test_execute_migrations_job(svc_client_setup):
+    """Check execution of all migrations."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id, is_delayed=True)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json['result']['created_at']
+    assert response.json['result']['job_id']
+
+
+@pytest.mark.service
+@pytest.mark.integration
 def test_check_migrations(svc_client_setup):
     """Check if migrations are required."""
     svc_client, headers, project_id, _ = svc_client_setup

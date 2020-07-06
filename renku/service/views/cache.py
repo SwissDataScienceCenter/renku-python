@@ -37,8 +37,9 @@ from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
 from renku.service.serializers.cache import FileListResponseRPC, \
     FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
     ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
-    ProjectMigrateRequest, ProjectMigrateResponseRPC, \
-    ProjectMigrationCheckResponseRPC, extract_file
+    ProjectMigrateAsyncResponseRPC, ProjectMigrateRequest, \
+    ProjectMigrateResponseRPC, ProjectMigrationCheckResponseRPC, \
+    extract_file
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, \
@@ -265,6 +266,7 @@ def migrate_project_view(user_data, cache):
 
     if ctx.get('is_delayed', False):
         job = cache.make_job(user, locked=project.project_id)
+
         with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
             queue.enqueue(
                 migrate_job,
@@ -272,7 +274,7 @@ def migrate_project_view(user_data, cache):
                 project.project_id,
                 job.job_id,
             )
-        return result_response(ProjectMigrateResponseRPC(), job)
+        return result_response(ProjectMigrateAsyncResponseRPC(), job)
 
     messages, was_migrated = execute_migration(project)
     return result_response(
