@@ -30,6 +30,7 @@ from flaky import flaky
 from renku.cli import cli
 from renku.core import errors
 from renku.core.commands.clone import project_clone
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.utils.contexts import chdir
 
 
@@ -990,7 +991,7 @@ def test_dataset_update_remove_file(client, runner):
         catch_exceptions=False
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-    file_path = client.path / 'data' / 'remote' / 'authors.rst'
+    file_path = client.path / DATA_DIR / 'remote' / 'authors.rst'
     assert file_path.exists()
 
     # docs/authors.rst does not exists in v0.5.0
@@ -1044,8 +1045,8 @@ def test_dataset_update_multiple_datasets(
     client, runner, data_repository, directory_tree, params
 ):
     """Test update with multiple datasets."""
-    path1 = client.path / 'data' / 'dataset-1' / 'CHANGES.rst'
-    path2 = client.path / 'data' / 'dataset-2' / 'CHANGES.rst'
+    path1 = client.path / DATA_DIR / 'dataset-1' / 'CHANGES.rst'
+    path2 = client.path / DATA_DIR / 'dataset-2' / 'CHANGES.rst'
     # Add dataset to project
     result = runner.invoke(
         cli, [
@@ -1162,7 +1163,7 @@ def test_add_specific_refs(ref, runner, client):
         ]
     )
     assert 0 == result.exit_code
-    content = (client.path / 'data' / 'dataset' / FILENAME).read_text()
+    content = (client.path / DATA_DIR / 'dataset' / FILENAME).read_text()
     assert 'v0.3.0' in content
     assert 'v0.3.1' not in content
 
@@ -1187,13 +1188,13 @@ def test_update_specific_refs(ref, runner, client):
         ]
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-    content = (client.path / 'data' / 'dataset' / filename).read_text()
+    content = (client.path / DATA_DIR / 'dataset' / filename).read_text()
     assert 'v0.3.1' not in content
 
     # update data to a later version
     result = runner.invoke(cli, ['dataset', 'update', '--ref', ref])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-    content = (client.path / 'data' / 'dataset' / filename).read_text()
+    content = (client.path / DATA_DIR / 'dataset' / filename).read_text()
     assert 'v0.3.1' in content
     assert 'v0.3.2' not in content
 

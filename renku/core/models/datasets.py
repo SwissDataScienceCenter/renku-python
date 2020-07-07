@@ -508,10 +508,10 @@ class Dataset(Entity, CreatorMixin):
         return data
 
     @property
-    def datadir(self):
+    def data_dir(self):
         """Directory where dataset files are stored."""
         if self.client:
-            return Path(self.client.datadir) / self.name
+            return Path(self.client.data_dir) / self.name
         return ''
 
     def contains_any(self, files):

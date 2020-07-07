@@ -56,9 +56,6 @@ from renku.core.utils.urls import remove_credentials
 class DatasetsApiMixin(object):
     """Client for handling datasets."""
 
-    datadir = attr.ib(default='data', converter=str)
-    """Define a name of the folder for storing datasets."""
-
     DATASETS = 'datasets'
     """Directory for storing dataset metadata in Renku."""
 
@@ -152,8 +149,7 @@ class DatasetsApiMixin(object):
             raise errors.DatasetExistsError(
                 'Dataset exists: "{}".'.format(name)
             )
-
-        dataset_path = self.path / self.datadir / dataset.name
+        dataset_path = self.path / self.data_dir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -248,7 +244,7 @@ class DatasetsApiMixin(object):
         """Import the data into the data directory."""
         messages = []
         warning_messages = []
-        dataset_datadir = self.path / dataset.datadir
+        dataset_datadir = self.path / dataset.data_dir
 
         destination = destination or Path('.')
         destination = self._resolve_path(dataset_datadir, destination)
@@ -462,7 +458,7 @@ class DatasetsApiMixin(object):
                 raise errors.ParameterError(
                     f'Cannot copy directory to a file: "{dst}"'
                 )
-            if src == (self.path / dataset.datadir).resolve():
+            if src == (self.path / dataset.data_dir).resolve():
                 raise errors.ParameterError(
                     f'Cannot add dataset\'s data directory recursively: {path}'
                 )
