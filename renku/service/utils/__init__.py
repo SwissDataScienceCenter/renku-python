@@ -16,9 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
-from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
-
 from git import Repo
+
+from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
 def make_project_path(user, project):
