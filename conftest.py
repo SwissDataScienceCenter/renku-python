@@ -283,7 +283,7 @@ def dataset(client):
     from renku.core.models.provenance.agents import Person
 
     with client.with_dataset('dataset', create=True) as dataset:
-        dataset.creator = [
+        dataset.creators = [
             Person(
                 **{
                     'affiliation': 'xxx',
