@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku service template serializers."""
 
-import re
 from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, \
@@ -25,6 +24,7 @@ from marshmallow import Schema, ValidationError, fields, post_load, pre_load, \
 
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
+from renku.core.utils.scm import strip_and_lower
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.cache import ProjectCloneContext
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -70,9 +70,7 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     @pre_load()
     def create_new_project_url(self, data, **kwargs):
         """Set owner and name fields."""
-        project_name_stripped = re.sub(
-            r'\s', r'-', data['project_name'].strip()
-        )
+        project_name_stripped = strip_and_lower(data['project_name'])
         new_project_url = '{0}/{1}/{2}'.format(
             data['project_repository'], data['project_namespace'],
             project_name_stripped

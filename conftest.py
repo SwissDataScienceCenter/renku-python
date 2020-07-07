@@ -988,6 +988,7 @@ def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
     from tests.core.commands.test_init import TEMPLATE_ID
+    from renku.core.utils.scm import strip_and_lower
     from renku.core.utils.requests import retry
     # ! TODO: import METADATA from test_init once #1272 will be merged
     METADATA = {'description': 'fake description'}
@@ -1001,7 +1002,7 @@ def svc_client_templates_creation(svc_client_with_templates):
         **template,
         'identifier': TEMPLATE_ID,
         'parameters': parameters,
-        'project_name': f'test-svc-{uuid.uuid4().hex[:16]}',
+        'project_name': f'Test renku-core {uuid.uuid4().hex[:12]}',
         'project_namespace': 'contact',
         'project_repository': 'https://dev.renku.ch/gitlab',
     }
@@ -1010,7 +1011,8 @@ def svc_client_templates_creation(svc_client_with_templates):
     # TODO: consider using the project delete endpoint once implemented
     def remove_project():
         project_slug = '{0}/{1}'.format(
-            payload['project_namespace'], payload['project_name']
+            payload['project_namespace'],
+            strip_and_lower(payload['project_name'])
         )
         project_slug_encoded = urllib.parse.quote(project_slug, safe='')
         project_delete_url = '{0}/api/v4/projects/{1}'.format(
