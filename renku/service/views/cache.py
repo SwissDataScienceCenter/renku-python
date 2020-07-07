@@ -28,7 +28,7 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
-from renku.core.commands.migrate import migrations_check
+from renku.core.commands.migrate import migrations_check, migrations_versions
 from renku.core.commands.save import repo_sync
 from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, \
@@ -310,11 +310,14 @@ def migration_check_project_view(user_data, cache):
     project = cache.get_project(user, request.args['project_id'])
 
     with chdir(project.abs_path):
+        current_version, latest_version = migrations_versions()
         migration_required, project_supported = migrations_check()
 
     return result_response(
         ProjectMigrationCheckResponseRPC(), {
             'migration_required': migration_required,
-            'project_supported': project_supported
+            'project_supported': project_supported,
+            'current_version': current_version,
+            'latest_version': latest_version,
         }
     )

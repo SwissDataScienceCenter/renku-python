@@ -37,6 +37,7 @@ from renku.core.models.locals import with_reference
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
 
+from ..models.provenance.agents import SoftwareAgent
 from .git import GitCore
 
 DEFAULT_DATA_DIR = 'data'
@@ -148,6 +149,11 @@ class RepositoryApiMixin(GitCore):
                              cwd=str(self.path))
             except subprocess.CalledProcessError:
                 pass
+
+    @property
+    def latest_agent(self):
+        """Returns latest agent version used in the repository."""
+        return self.project.agent_version
 
     @property
     def lock(self):

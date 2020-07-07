@@ -318,6 +318,11 @@ class GitCore:
         if not commit_only:
             self.repo.git.add('--all')
 
+        #if not commit_empty:
+            # diffs = [d.a_path for d in self.repo.index.diff('HEAD')]
+            # if raise_if_empty and (
+            #     not diffs or diffs == ['.renku/metadata.yml']
+            # ):
         if not commit_empty and not self.repo.index.diff('HEAD'):
             if raise_if_empty:
                 raise errors.NothingToCommit()
@@ -331,6 +336,12 @@ class GitCore:
                     ] + [remove_credentials(arg) for arg in sys.argv[1:]]
 
             commit_message = ' '.join(argv)
+
+        # project = self.project
+        # if project:
+        #     project.to_yaml()
+        #     self.repo.index.add(".renku/metadata.yml")
+        #     breakpoint()
 
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(

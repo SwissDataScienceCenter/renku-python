@@ -214,6 +214,8 @@ class ProjectMigrationCheckResponse(Schema):
 
     migration_required = fields.Boolean()
     project_supported = fields.Boolean()
+    current_version = fields.String()
+    latest_version = fields.String()
 
 
 class ProjectMigrationCheckResponseRPC(JsonRPCResponse):
