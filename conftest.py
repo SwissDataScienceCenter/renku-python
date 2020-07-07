@@ -45,12 +45,12 @@ from walrus import Database
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     'IT_PROTECTED_REMOTE_REPO',
-    'https://tempdev.renku.ch/gitlab/contact/protected-renku.git'
+    'https://dev.renku.ch/gitlab/contact/protected-renku.git'
 )
 
 IT_REMOTE_REPO_URL = os.getenv(
     'IT_REMOTE_REPOSITORY',
-    'https://tempdev.renku.ch/gitlab/contact/integration-test'
+    'https://dev.renku.ch/gitlab/contact/integration-test'
 )
 IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 

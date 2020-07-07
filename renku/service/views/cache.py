@@ -23,14 +23,17 @@ from pathlib import Path
 import patoolib
 from flask import Blueprint, jsonify, request
 from flask_apispec import marshal_with, use_kwargs
+from git import GitCommandError, Repo
 from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
 from renku.core.commands.migrate import migrations_check
+from renku.core.commands.save import repo_sync
 from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, \
-    INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
+    INTERNAL_FAILURE_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, \
+    SUPPORTED_ARCHIVES
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
@@ -41,7 +44,7 @@ from renku.service.serializers.cache import FileListResponseRPC, \
     ProjectMigrateResponseRPC, ProjectMigrationCheckResponseRPC, \
     extract_file
 from renku.service.utils import make_project_path
-from renku.service.views import result_response
+from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, \
     handle_common_except, header_doc, requires_cache, requires_identity
 
@@ -277,12 +280,14 @@ def migrate_project_view(user_data, cache):
         return result_response(ProjectMigrateAsyncResponseRPC(), job)
 
     messages, was_migrated = execute_migration(project)
-    return result_response(
-        ProjectMigrateResponseRPC(), {
-            'messages': messages,
-            'was_migrated': was_migrated
-        }
-    )
+    response = {'messages': messages, 'was_migrated': was_migrated}
+
+    if was_migrated:
+        _, response['remote_branch'] = repo_sync(
+            Repo(project.abs_path), remote='origin'
+        )
+
+    return result_response(ProjectMigrateResponseRPC(), response)
 
 
 @use_kwargs(ProjectMigrateRequest)
