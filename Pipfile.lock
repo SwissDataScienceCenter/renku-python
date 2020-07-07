@@ -192,11 +192,11 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:6a40556d2ac7bea17d78a95ad902794c34a9d23568ae0595545a51e232cd9241",
-                "sha256:b43ecce26c3c7312643e63bcd162e3148764ce5b9ff13f74c1bfcc25db967acd"
+                "sha256:7057bc8378e299e235e5eb807ab50277cd9ff9dd001f3201f8abb61b37c7f7f7",
+                "sha256:a64a64980023509ee3ee2e72b28e0ca2aa02724b77505cb4950e5fea8c00b458"
             ],
             "markers": "python_version >= '3.5' and python_version < '4'",
-            "version": "==3.0.20200530110633"
+            "version": "==3.0.20200706173533"
         },
         "decorator": {
             "hashes": [
@@ -700,11 +700,11 @@
         },
         "schema-salad": {
             "hashes": [
-                "sha256:11928805f04d24902463912ad03ffb54f18219910b55e0c064886dcc3313596b",
-                "sha256:3d59ab3e08a83ff97ea0cf40ceed19e4e48f7cfece6c66d9376b8b59e2337602"
+                "sha256:097930860105b0e401f123b349942691626e7fa0c77311f3f64850721d3ae357",
+                "sha256:3a0d26c5658db4766909ddd3ec0bbb032329c1abd5c272a436cc4d67161daa96"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==6.0.20200601095207"
+            "version": "==7.0.20200612160654"
         },
         "setuptools-scm": {
             "hashes": [
