@@ -308,7 +308,7 @@ def migrate_project_view(user_data, cache):
 def migration_check_project_view(user_data, cache):
     """Migrate specified project."""
     user = cache.ensure_user(user_data)
-    project = cache.get_project(user, request.json['project_id'])
+    project = cache.get_project(user, request.args['project_id'])
 
     with chdir(project.abs_path):
         migration_required, project_supported = migrations_check()
