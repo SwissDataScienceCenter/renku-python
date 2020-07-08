@@ -58,14 +58,13 @@ def test_dataset_serialization(client, dataset, data_file):
 
 def test_dataset_deserialization(client, dataset):
     """Test Dataset deserialization."""
-    from renku.core.models.datasets import Dataset
     dataset_ = Dataset.from_yaml(
         client.get_dataset_path('dataset'), client=client
     )
 
     dataset_types = {
-        'created': [datetime.datetime],
-        'creator': [list],
+        'date_created': [datetime.datetime],
+        'creators': [list],
         'description': [str, type(None)],
         'files': [list],
         'identifier': [str],
@@ -77,7 +76,7 @@ def test_dataset_deserialization(client, dataset):
 
     creator_types = {'email': str, '_id': str, 'name': str, 'affiliation': str}
 
-    creator = dataset.creator[0]
+    creator = dataset.creators[0]
 
     for attribute, type_ in creator_types.items():
         assert type(getattr(creator, attribute)) is type_
@@ -113,11 +112,11 @@ def test_dataset_creator_email(dataset_metadata):
         client=LocalClient('.'),
     )
 
-    dataset.creator[0]._id = 'mailto:None'
+    dataset.creators[0]._id = 'mailto:None'
     dataset_broken = Dataset.from_jsonld(
         dataset.asjsonld(), client=LocalClient('.')
     )
-    assert 'mailto:None' not in dataset_broken.creator[0]._id
+    assert 'mailto:None' not in dataset_broken.creators[0]._id
 
 
 def test_calamus(client, dataset_metadata_before_calamus):
@@ -125,13 +124,13 @@ def test_calamus(client, dataset_metadata_before_calamus):
     dataset = Dataset.from_jsonld(
         dataset_metadata_before_calamus, client=LocalClient('.')
     )
-    assert 'Open Source at Harvard' == dataset.name
+    assert 'Open Source at Harvard' == dataset.title
     assert '51db02ad-3cba-47e2-84d0-5ee5914bd654' == dataset.identifier
     assert '51db02ad-3cba-47e2-84d0-5ee5914bd654' == dataset._label
-    assert 'Harvard University' == dataset.creator[0].affiliation
-    assert 'Durbin, Philip' == dataset.creator[0].name
-    assert 'Durbin, Philip' == dataset.creator[0].label
-    assert dataset.created is None
+    assert 'Harvard University' == dataset.creators[0].affiliation
+    assert 'Durbin, Philip' == dataset.creators[0].name
+    assert 'Durbin, Philip' == dataset.creators[0].label
+    assert dataset.date_created is None
     assert '2019-07-03T00:00:00' == dataset.date_published.isoformat('T')
     assert 'The tabular file contains information' in dataset.description
     assert 'https://doi.org/10.7910/DVN/TJCLKP' == dataset.same_as.url
@@ -150,7 +149,6 @@ def test_calamus(client, dataset_metadata_before_calamus):
         file_.url
     )
     assert '2020-06-15T08:37:04.571573+00:00' == file_.added.isoformat('T')
-    assert 'https://orcid.org/0000-0002-9528-9470' == file_.creator[0]._id
     assert file_.based_on is None
 
     file_ = dataset.find_file('data/dataverse/git/index.ipynb')
@@ -163,7 +161,6 @@ def test_calamus(client, dataset_metadata_before_calamus):
         file_.based_on._label
     )
     assert file_.based_on.based_on is None
-    assert 'mailto:cramakri@' in file_.based_on.creator[0]._id
     assert (
         'https://github.com/SwissDataScienceCenter/r10e-ds-py.git' == file_.url
     )

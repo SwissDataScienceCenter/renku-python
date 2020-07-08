@@ -335,7 +335,7 @@ def unlink_file_view(user_data, cache):
 
     with chdir(project.abs_path):
         records = file_unlink(
-            short_name=ctx['short_name'],
+            name=ctx['short_name'],
             include=ctx.get('include_filters'),
             exclude=ctx.get('exclude_filters'),
             yes=True,
