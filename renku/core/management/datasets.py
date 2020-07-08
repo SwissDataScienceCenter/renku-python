@@ -44,7 +44,7 @@ from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import is_project_unsupported, migrate
 from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, \
-    is_dataset_short_name_valid
+    is_dataset_name_valid
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -113,46 +113,43 @@ class DatasetsApiMixin(object):
             path = self.path / path
         return Dataset.from_yaml(path, client=self, commit=commit)
 
-    def get_dataset_path(self, short_name):
-        """Get dataset path from short_name."""
-        path = self.renku_datasets_path / short_name / self.METADATA
+    def get_dataset_path(self, name):
+        """Get dataset path from name."""
+        path = self.renku_datasets_path / name / self.METADATA
         if not path.exists():
             try:
                 path = LinkReference(
-                    client=self, name='datasets/' + short_name
+                    client=self, name='datasets/' + name
                 ).reference
             except errors.ParameterError:
                 return None
 
         return path
 
-    def load_dataset(self, short_name=None):
+    def load_dataset(self, name=None):
         """Load dataset reference file."""
-        if short_name:
-            path = self.get_dataset_path(short_name)
+        if name:
+            path = self.get_dataset_path(name)
             if path and path.exists():
                 return self.load_dataset_from_path(path)
 
     @contextmanager
-    def with_dataset(self, short_name=None, create=False):
+    def with_dataset(self, name=None, create=False):
         """Yield an editable metadata object for a dataset."""
-        dataset = self.load_dataset(short_name=short_name)
+        dataset = self.load_dataset(name=name)
         clean_up_required = False
 
         if dataset is None:
             if not create:
-                raise errors.DatasetNotFound(name=short_name)
+                raise errors.DatasetNotFound(name=name)
 
             clean_up_required = True
-            dataset, path, dataset_ref = self.create_dataset(
-                short_name=short_name
-            )
+            dataset, path, dataset_ref = self.create_dataset(name=name)
         elif create:
             raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(short_name)
+                'Dataset exists: "{}".'.format(name)
             )
-
-        dataset_path = self.path / self.data_dir / dataset.short_name
+        dataset_path = self.path / self.data_dir / dataset.name
         dataset_path.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -169,28 +166,28 @@ class DatasetsApiMixin(object):
 
     def create_dataset(
         self,
-        short_name=None,
+        name=None,
         title=None,
         description=None,
         creators=None,
         keywords=None,
     ):
         """Create a dataset."""
-        if not short_name:
-            raise errors.ParameterError('Dataset short_name must be provided.')
+        if not name:
+            raise errors.ParameterError('Dataset name must be provided.')
 
-        if not is_dataset_short_name_valid(short_name):
+        if not is_dataset_name_valid(name):
             raise errors.ParameterError(
-                'Dataset short_name "{}" is not valid.'.format(short_name)
+                'Dataset name "{}" is not valid.'.format(name)
             )
 
-        if self.load_dataset(short_name=short_name):
+        if self.load_dataset(name=name):
             raise errors.DatasetExistsError(
-                'Dataset exists: "{}".'.format(short_name)
+                'Dataset exists: "{}".'.format(name)
             )
 
         if not title:
-            title = short_name
+            title = name
 
         identifier = str(uuid.uuid4())
 
@@ -212,15 +209,15 @@ class DatasetsApiMixin(object):
             dataset = Dataset(
                 client=self,
                 identifier=identifier,
-                short_name=short_name,
-                name=title,
+                name=name,
+                title=title,
                 description=description,
-                creator=creators,
+                creators=creators,
                 keywords=keywords,
             )
 
         dataset_ref = LinkReference.create(
-            client=self, name='datasets/' + short_name
+            client=self, name='datasets/' + name
         )
 
         dataset_ref.set_reference(path)
@@ -498,7 +495,6 @@ class DatasetsApiMixin(object):
                 return [{
                     'path': path_in_repo,
                     'url': path_in_repo,
-                    'creator': dataset.creator,
                     'parent': self
                 }]
 
@@ -507,7 +503,6 @@ class DatasetsApiMixin(object):
         return [{
             'path': dst.relative_to(self.path),
             'url': 'file://' + os.path.relpath(str(src), str(self.path)),
-            'creator': dataset.creator,
             'parent': self,
             'operation': (src, dst, action)
         }]
@@ -570,7 +565,6 @@ class DatasetsApiMixin(object):
             'operation': (src, dst, 'move'),
             'path': dst.relative_to(self.path),
             'url': remove_credentials(url),
-            'creator': dataset.creator,
             'parent': self
         } for src, dst in paths]
 
@@ -630,17 +624,9 @@ class DatasetsApiMixin(object):
                 if based_on:
                     based_on.url = url
                     based_on.based_on = None
-                    creators = based_on.creator
                 else:
-                    creators = []
-                    # grab all the creators from the commit history
-                    for commit in repo.iter_commits(paths=path):
-                        creator = Person.from_commit(commit)
-                        if creator not in creators:
-                            creators.append(creator)
-
                     based_on = DatasetFile.from_revision(
-                        remote_client, path=src, url=url, creator=creators
+                        remote_client, path=src, url=url
                     )
 
                 path_in_dst_repo = dst.relative_to(self.path)
@@ -653,7 +639,6 @@ class DatasetsApiMixin(object):
                 results.append({
                     'path': path_in_dst_repo,
                     'url': remove_credentials(url),
-                    'creator': creators,
                     'parent': self,
                     'based_on': based_on,
                     'operation': operation
@@ -866,7 +851,7 @@ class DatasetsApiMixin(object):
             name=tag,
             description=description,
             commit=latest_commit.hexsha,
-            dataset=dataset.name
+            dataset=dataset.title
         )
 
         dataset.tags.append(tag)
@@ -980,19 +965,8 @@ class DatasetsApiMixin(object):
         modified_datasets = {}
 
         for file_ in updated_files:
-            # Re-create list of creators
-            creators = []
-            # grab all the creators from the commit history
-            for commit in repo.iter_commits(paths=file_.path):
-                creator = Person.from_commit(commit)
-                if creator not in creators:
-                    creators.append(creator)
-
             new_file = DatasetFile.from_revision(
-                self,
-                path=file_.path,
-                based_on=file_.based_on,
-                creator=creators
+                self, path=file_.path, based_on=file_.based_on
             )
             file_.dataset.update_files([new_file])
             modified_datasets[file_.dataset.name] = file_.dataset
@@ -1062,7 +1036,7 @@ class DatasetsApiMixin(object):
                     os.remove(path)
                     os.symlink(relative, path)
                     updated_files_paths.append(str(path))
-                    updated_datasets[file_.dataset.short_name] = file_.dataset
+                    updated_datasets[file_.dataset.name] = file_.dataset
 
         if not updated_files_paths:
             return

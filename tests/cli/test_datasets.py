@@ -76,18 +76,18 @@ def test_datasets_create_with_metadata(runner, client, subdirectory):
     assert 'OK' in result.output
 
     dataset = client.load_dataset('my-dataset')
-    assert dataset.name == 'Long Title'
-    assert dataset.short_name == 'my-dataset'
+    assert dataset.title == 'Long Title'
+    assert dataset.name == 'my-dataset'
     assert dataset.description == 'some description here'
-    assert 'John Doe' in [c.name for c in dataset.creator]
-    assert 'john.doe@mail.ch' in [c.email for c in dataset.creator]
-    assert 'John Smiths' in [c.name for c in dataset.creator]
-    assert 'john.smiths@mail.ch' in [c.email for c in dataset.creator]
+    assert 'John Doe' in [c.name for c in dataset.creators]
+    assert 'john.doe@mail.ch' in [c.email for c in dataset.creators]
+    assert 'John Smiths' in [c.name for c in dataset.creators]
+    assert 'john.smiths@mail.ch' in [c.email for c in dataset.creators]
     assert {'keyword-1', 'keyword-2'} == set(dataset.keywords)
 
 
 def test_datasets_create_different_names(runner, client):
-    """Test creating datasets with same title but different short_name."""
+    """Test creating datasets with same title but different name."""
     result = runner.invoke(
         cli, ['dataset', 'create', 'dataset-1', '--title', 'title']
     )
@@ -122,7 +122,7 @@ def test_datasets_invalid_name(runner, client, name):
     """Test creating datasets with invalid name."""
     result = runner.invoke(cli, ['dataset', 'create', name])
     assert 2 == result.exit_code
-    assert 'short_name "{}" is not valid.'.format(name) in result.output
+    assert 'name "{}" is not valid.'.format(name) in result.output
 
 
 def test_datasets_create_dirty(runner, project, client):
@@ -309,10 +309,11 @@ def test_datasets_list_non_empty(output_format, runner, project):
 
 
 @pytest.mark.parametrize(
-    'columns,headers,values', [(
-        'title,short_name', ['TITLE', 'SHORT_NAME'
-                             ], ['my-dataset', 'Long Title']
-    ), ('creators', ['CREATORS'], ['John Doe'])]
+    'columns,headers,values', [
+        ('title,short_name', ['TITLE', 'NAME'], ['my-dataset', 'Long Title']),
+        ('title,name', ['TITLE', 'NAME'], ['my-dataset', 'Long Title']),
+        ('creators', ['CREATORS'], ['John Doe']),
+    ]
 )
 def test_datasets_list_with_columns(runner, project, columns, headers, values):
     """Test listing datasets with custom column name."""
@@ -442,7 +443,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     assert 'OK' in result.output
 
     with client.with_dataset('dataset') as dataset:
-        assert dataset.name == 'dataset'
+        assert dataset.title == 'dataset'
 
     paths = []
     for i in range(3):
@@ -481,7 +482,7 @@ def test_repository_file_to_dataset(runner, project, client, subdirectory):
     assert 0 == result.exit_code
 
     with client.with_dataset('dataset') as dataset:
-        assert dataset.name == 'dataset'
+        assert dataset.title == 'dataset'
         assert dataset.find_file('a') is not None
 
 
@@ -493,7 +494,7 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
     assert 'OK' in result.output
 
     with client.with_dataset('dataset') as dataset:
-        assert dataset.name == 'dataset'
+        assert dataset.title == 'dataset'
 
     zero_data = tmpdir.join('zero.txt')
     zero_data.write('zero')
@@ -597,7 +598,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
 
     received_inodes = []
     with client.with_dataset('my-dataset') as dataset:
-        assert dataset.name == 'my-dataset'
+        assert dataset.title == 'my-dataset'
 
         for file_ in dataset.files:
             path_ = (client.path / file_.path).resolve()
@@ -805,10 +806,10 @@ def test_datasets_ls_files_tabular_creators(tmpdir, runner, project, client):
 
     creator = None
     with client.with_dataset('my-dataset') as dataset:
-        creator = dataset.creator[0].name
+        creator = dataset.creators[0].name
 
     assert creator is not None
-    assert len(dataset.creator) > 0
+    assert len(dataset.creators) > 0
 
     # check creators filters
     result = runner.invoke(
@@ -869,7 +870,7 @@ def test_datasets_ls_files_with_name(directory_tree, runner, project):
     )
     assert 0 == result.exit_code
 
-    # list files with short_name
+    # list files with name
     result = runner.invoke(cli, ['dataset', 'ls-files', 'my-dataset'])
     assert 0 == result.exit_code
     assert 'dir2/file2' in result.output
@@ -1068,8 +1069,8 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
 
     dataset = client.load_dataset('dataset')
     assert ' new description ' == dataset.description
-    assert 'original title' == dataset.name
-    assert {creator1, creator2} == {c.full_identity for c in dataset.creator}
+    assert 'original title' == dataset.title
+    assert {creator1, creator2} == {c.full_identity for c in dataset.creators}
 
     result = runner.invoke(
         cli, ['dataset', 'edit', 'dataset', '-t', ' new title '],
@@ -1088,8 +1089,8 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
 
     dataset = client.load_dataset('dataset')
     assert ' new description ' == dataset.description
-    assert 'new title' == dataset.name
-    assert {creator1, creator2} == {c.full_identity for c in dataset.creator}
+    assert 'new title' == dataset.title
+    assert {creator1, creator2} == {c.full_identity for c in dataset.creators}
     assert {'keyword-2', 'keyword-3'} == set(dataset.keywords)
 
 

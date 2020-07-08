@@ -659,7 +659,7 @@ def test_check_migrations(svc_client_setup):
 
     response = svc_client.get(
         '/cache.migrations_check',
-        data=json.dumps(dict(project_id=project_id)),
+        query_string=dict(project_id=project_id),
         headers=headers
     )
 

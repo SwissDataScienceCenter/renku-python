@@ -38,6 +38,9 @@ def tabular(client, records, *, columns=None):
     if 'size' in columns.split(','):
         _get_lfs_file_sizes(client, records)
 
+    for record in records:
+        record.creators = record.dataset.creators
+
     return tabulate(
         collection=records,
         columns=columns,
@@ -111,7 +114,8 @@ DATASET_FILES_COLUMNS = {
     'dataset': ('title', 'dataset'),
     'full_path': ('full_path', None),
     'path': ('path', None),
-    'short_name': ('short_name', 'dataset short_name'),
+    'short_name': ('dataset_name', 'dataset name'),
+    'dataset_name': ('dataset_name', 'dataset name'),
     'size': ('size', None)
 }
 
