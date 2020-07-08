@@ -23,7 +23,7 @@ from pathlib import Path
 import patoolib
 from flask import Blueprint, jsonify, request
 from flask_apispec import marshal_with, use_kwargs
-from git import GitCommandError, Repo
+from git import Repo
 from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
@@ -32,8 +32,7 @@ from renku.core.commands.migrate import migrations_check
 from renku.core.commands.save import repo_sync
 from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, \
-    INTERNAL_FAILURE_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, \
-    SUPPORTED_ARCHIVES
+    INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
@@ -44,7 +43,7 @@ from renku.service.serializers.cache import FileListResponseRPC, \
     ProjectMigrateResponseRPC, ProjectMigrationCheckResponseRPC, \
     extract_file
 from renku.service.utils import make_project_path
-from renku.service.views import error_response, result_response
+from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, \
     handle_common_except, header_doc, requires_cache, requires_identity
 
