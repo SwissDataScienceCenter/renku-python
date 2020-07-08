@@ -150,7 +150,7 @@ install_requires = [
     'apispec==3.3.1',
     'attrs>=19.3.0',
     'calamus>=0.2.0',
-    'click-completion>=0.5.2',
+    'click-completion>=0.5.0',
     'click>=7.0',
     'cryptography>=2.7',
     'cwlgen>=0.4.0',
