@@ -128,6 +128,7 @@ extras_require = {
 }
 
 setup_requires = [
+    'wheel',
     'pytest-runner>=2.6.2',
     'setuptools_scm>=3.1.0',
 ]
