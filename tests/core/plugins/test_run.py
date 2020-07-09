@@ -17,8 +17,8 @@
 # limitations under the License.
 """Test plugins for the ``run`` command."""
 
-import renku.core.plugins.pluginmanager as pluginmanager
 from renku.cli import cli
+from renku.core.plugins import pluginmanager as pluginmanager
 
 
 def test_renku_pre_run_hook(
