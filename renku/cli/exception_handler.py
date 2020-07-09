@@ -146,6 +146,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         with configure_scope() as scope:
             with capture_internal_exceptions():
                 from git import Repo
+
                 from renku.core.commands import get_git_home
                 from renku.core.models.provenance.agents import Person
 

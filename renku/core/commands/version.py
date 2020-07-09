@@ -89,6 +89,7 @@ class VersionCache:
     def _cache(cls, app_name):
         """Return cache file."""
         from pathlib import Path
+
         from appdirs import user_cache_dir
 
         cache_dir = Path(user_cache_dir(app_name, None))
@@ -133,6 +134,7 @@ def _check_version():
         return
 
     from pkg_resources import parse_version
+
     from renku.version import __version__
 
     version = parse_version(__version__)
