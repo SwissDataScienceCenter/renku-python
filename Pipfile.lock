@@ -430,11 +430,11 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:35ee2fb188f0bd9fc1cf9ac35e45fd394bd1c153cee430745a465ea435514bd5",
-                "sha256:9aa20f9b71c992b4782dad07c51d92884fd0f7c5cb9d3c737bea17ec1bad765f"
+                "sha256:0f3a630f6a2fd124929f1bdcb5df65bd14cc8f49f52a18d0bdcfa0c42414e4a7",
+                "sha256:ba949379cb6ef73655f72075e82b31cf57012a5557ede642fc8614ab0354f869"
             ],
             "markers": "python_version >= '3'",
-            "version": "==3.6.1"
+            "version": "==3.7.0"
         },
         "mistune": {
             "hashes": [
@@ -576,10 +576,10 @@
         },
         "pyshacl": {
             "hashes": [
-                "sha256:bd6ac9faa93c72f74f05c3bfff51cbdb11930e7d832819e240775e0b4aa1c28d",
-                "sha256:c87cc8e6040f215704671eaa98492b9b924c4b25c93569ab74ac0a4fc24b8139"
+                "sha256:04e1b05e045397ce269f6ac0d1040529c38a2d7e8374543fec2dff4df70254b4",
+                "sha256:addb61272ab8487f9476d229cea08f5dde0e52b2f503c03e03090d50be2a61b8"
             ],
-            "version": "==0.11.5"
+            "version": "==0.11.6.post1"
         },
         "python-dateutil": {
             "hashes": [
