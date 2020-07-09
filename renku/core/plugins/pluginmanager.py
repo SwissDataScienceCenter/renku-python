@@ -20,8 +20,8 @@ from functools import lru_cache
 
 import pluggy
 
-import renku.core.plugins.implementations as default_implementations
-import renku.core.plugins.run as run_hook_specs
+from renku.core.plugins import implementations as default_implementations
+from renku.core.plugins import run as run_hook_specs
 
 
 @lru_cache(None)

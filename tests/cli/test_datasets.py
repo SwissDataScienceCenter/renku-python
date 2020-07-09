@@ -1129,7 +1129,7 @@ def test_dataset_date_created_format(runner, client, project):
     assert path.exists()
 
     with path.open(mode='r') as fp:
-        import dateutil.parser as dp
+        from dateutil import parser as dp
         data_yaml = yaml.safe_load(fp)
 
         created = 'http://schema.org/dateCreated'
@@ -1157,7 +1157,7 @@ def test_dataset_file_date_created_format(tmpdir, runner, client, project):
     assert 0 == result.exit_code
 
     with path.open(mode='r') as fp:
-        import dateutil.parser as dp
+        from dateutil import parser as dp
         data_yaml = yaml.safe_load(fp)
 
         created = 'http://schema.org/dateCreated'
