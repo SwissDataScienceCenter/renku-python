@@ -182,7 +182,7 @@ install_requires = [
     'rq==1.4.3',
     'rq-scheduler==0.10.0',
     'ndg-httpsclient>=0.5.1',
-    'marshmallow==3.6.1',
+    'marshmallow==3.7.0',
     'idna==2.10',
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',
