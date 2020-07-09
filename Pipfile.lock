@@ -576,10 +576,10 @@
         },
         "pyshacl": {
             "hashes": [
-                "sha256:bd6ac9faa93c72f74f05c3bfff51cbdb11930e7d832819e240775e0b4aa1c28d",
-                "sha256:c87cc8e6040f215704671eaa98492b9b924c4b25c93569ab74ac0a4fc24b8139"
+                "sha256:2008a7bab3bb021257974badd97232007d36a05eea21e44b63cf2a34d59a671d",
+                "sha256:85072b1bf680f5fa079711e91ff7833180aa9ab5fa87c6831991c904ab26959a"
             ],
-            "version": "==0.11.5"
+            "version": "==0.11.6"
         },
         "python-dateutil": {
             "hashes": [
