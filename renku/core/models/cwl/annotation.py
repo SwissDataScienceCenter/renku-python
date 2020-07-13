@@ -17,29 +17,23 @@
 # limitations under the License.
 """Represent an annotation for a workflow."""
 
+import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models import jsonld
 from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
 
 
-@jsonld.s(
-    type='oa:Annotation',
-    context={
-        'oa': 'http://www.w3.org/ns/oa#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        'dcterms': 'http://purl.org/dc/terms/',
-    },
+@attr.s(
     cmp=False,
 )
 class Annotation:
     """Represents a custom annotation for a research object."""
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = attr.ib(kw_only=True)
 
-    body = jsonld.ib(default=None, context='oa:hasBody', kw_only=True)
+    body = attr.ib(default=None, kw_only=True)
 
-    source = jsonld.ib(default=None, context='dcterms:creator', kw_only=True)
+    source = attr.ib(default=None, kw_only=True)
 
     @classmethod
     def from_jsonld(cls, data):

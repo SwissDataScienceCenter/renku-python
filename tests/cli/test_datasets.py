@@ -1863,7 +1863,6 @@ def test_workflow_with_external_file(
         client.path / 'data' / 'my-data' / directory_tree.basename / 'file'
     )
     output = client.path / 'data' / 'output.txt'
-
     assert 0 == run(args=('run', 'wc', '-c'), stdin=source, stdout=output)
 
     previous_commit = client.find_previous_commit(output)

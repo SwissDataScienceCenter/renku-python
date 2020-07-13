@@ -24,7 +24,6 @@ import weakref
 
 import attr
 
-from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
     schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
@@ -35,12 +34,7 @@ def _str_or_none(data):
     return str(data) if data is not None else data
 
 
-@jsonld.s(
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        'schema': 'http://schema.org/',
-    },
+@attr.s(
     cmp=False,
 )
 class CommitMixin:
@@ -48,18 +42,11 @@ class CommitMixin:
 
     commit = attr.ib(default=None, kw_only=True)
     client = attr.ib(default=None, kw_only=True)
-    path = jsonld.ib(
-        context='prov:atLocation',
-        default=None,
-        kw_only=True,
-        converter=_str_or_none
-    )
+    path = attr.ib(default=None, kw_only=True, converter=_str_or_none)
 
-    _id = jsonld.ib(default=None, context='@id', kw_only=True)
-    _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _project = jsonld.ib(
-        context='schema:isPartOf', type=Project, kw_only=True, default=None
-    )
+    _id = attr.ib(default=None, kw_only=True)
+    _label = attr.ib(kw_only=True)
+    _project = attr.ib(type=Project, kw_only=True, default=None)
 
     @property
     def submodules(self):
@@ -119,17 +106,7 @@ class CommitMixin:
             self._id = self.default_id()
 
 
-@jsonld.s(
-    type=[
-        'prov:Entity',
-        'wfprov:Artifact',
-    ],
-    context={
-        'schema': 'http://schema.org/',
-        'prov': 'http://www.w3.org/ns/prov#',
-        'wfprov': 'http://purl.org/wf4ever/wfprov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#'
-    },
+@attr.s(
     cmp=False,
 )
 class Entity(CommitMixin):
@@ -233,21 +210,13 @@ class Entity(CommitMixin):
         self.client = client
 
 
-@jsonld.s(
-    type=[
-        'prov:Collection',
-    ],
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class Collection(Entity):
     """Represent a directory with files."""
 
-    members = jsonld.container.list(
-        type=Entity, context='prov:hadMember', kw_only=True
-    )
+    members = attr.ib(kw_only=True, default=None)
 
     def default_members(self):
         """Generate default members as entities from current path."""

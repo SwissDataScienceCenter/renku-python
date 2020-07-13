@@ -19,32 +19,22 @@
 
 import weakref
 
-from renku.core.models import jsonld as jsonld
+import attr
+
 from renku.core.models.entities import CommitMixin
 
 
-@jsonld.s(
-    type=[
-        'wfdesc:Process',
-        'prov:Entity',
-        'prov:Plan',
-    ],
-    context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class Process(CommitMixin):
     """Represent a process."""
 
-    _activity = jsonld.ib(
+    _activity = attr.ib(
         default=None,
-        context='prov:activity',
         kw_only=True,
         converter=lambda value: weakref.ref(value)
-        if value is not None else None,
-        type='renku.core.models.provenance.activities.Activity'
+        if value is not None else None
     )
 
     @property
@@ -53,22 +43,13 @@ class Process(CommitMixin):
         return self._activity()
 
 
-@jsonld.s(
-    type=[
-        'wfdesc:Workflow',
-        'prov:Entity',
-        'prov:Plan',
-    ],
-    context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class Workflow(Process):
     """Represent workflow with subprocesses."""
 
-    subprocesses = jsonld.ib(context='wfdesc:hasSubProcess', kw_only=True)
+    subprocesses = attr.ib(kw_only=True)
 
     @subprocesses.default
     def default_subprocesses(self):

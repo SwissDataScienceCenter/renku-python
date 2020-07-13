@@ -23,9 +23,9 @@ from copy import copy
 from functools import total_ordering
 from pathlib import Path
 
+import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import fields, prov, renku
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, \
@@ -137,62 +137,33 @@ def _convert_cmd_output(output, factory, client, commit):
 
 
 @total_ordering
-@jsonld.s(
-    type=[
-        'renku:Run',
-        'prov:Entity',
-        'prov:Plan',
-    ],
-    context={
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class Run(CommitMixin):
     """Represents a `renku run` execution template."""
 
-    command = jsonld.ib(
+    command = attr.ib(
         default=None,
-        context={
-            '@id': 'renku:command',
-            '@type': 'http://www.w3.org/2001/XMLSchema#string',
-        },
         type=str,
         kw_only=True,
     )
 
-    process_order = jsonld.ib(
+    process_order = attr.ib(
         default=None,
-        context={
-            '@id': 'renku:processOrder',
-            '@type': 'http://www.w3.org/2001/XMLSchema#integer',
-        },
         type=int,
         kw_only=True,
     )
 
-    successcodes = jsonld.container.list(
-        context='renku:successCodes', kw_only=True, type=int
-    )
+    successcodes = attr.ib(kw_only=True, type=list, factory=list)
 
-    subprocesses = jsonld.container.list(
-        'renku.core.models.workflow.run.Run',
-        context='renku:hasSubprocess',
-        kw_only=True
-    )
+    subprocesses = attr.ib(kw_only=True, factory=list)
 
-    arguments = jsonld.container.list(
-        context='renku:hasArguments', kw_only=True, type=CommandArgument
-    )
+    arguments = attr.ib(kw_only=True, factory=list)
 
-    inputs = jsonld.container.list(
-        context='renku:hasInputs', kw_only=True, type=CommandInput
-    )
+    inputs = attr.ib(kw_only=True, factory=list)
 
-    outputs = jsonld.container.list(
-        context='renku:hasOutputs', kw_only=True, type=CommandOutput
-    )
+    outputs = attr.ib(kw_only=True, factory=list)
 
     @classmethod
     def from_factory(cls, factory, client, commit, path):

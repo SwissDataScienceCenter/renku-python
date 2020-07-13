@@ -115,7 +115,7 @@ def test_dataset_creator_email(dataset_metadata):
 
     dataset.creator[0]._id = 'mailto:None'
     dataset_broken = Dataset.from_jsonld(
-        dataset.asjsonld(), client=LocalClient('.')
+        dataset.as_jsonld(), client=LocalClient('.')
     )
     assert 'mailto:None' not in dataset_broken.creator[0]._id
 

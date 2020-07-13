@@ -58,11 +58,11 @@ class CommandLineToolFactory(object):
     )
 
     explicit_inputs = attr.ib(
-        default=[],
+        factory=list,
         converter=lambda paths: [Path(os.path.abspath(p)) for p in paths]
     )
     explicit_outputs = attr.ib(
-        default=[],
+        factory=list,
         converter=lambda paths: [Path(os.path.abspath(p)) for p in paths]
     )
 

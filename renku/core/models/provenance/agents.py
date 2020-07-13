@@ -20,43 +20,34 @@
 import configparser
 import re
 
+import attr
 from attr.validators import instance_of
 from marshmallow import EXCLUDE
 
 from renku.core import errors
-from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
     schema, wfprov
 from renku.version import __version__, version_url
 
 
-@jsonld.s(
-    type=[
-        'prov:Person',
-        'schema:Person',
-    ],
-    context={
-        'schema': 'http://schema.org/',
-        'prov': 'http://www.w3.org/ns/prov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#'
-    },
+@attr.s(
     slots=True,
 )
 class Person:
     """Represent a person."""
 
-    name = jsonld.ib(
-        context='schema:name', kw_only=True, validator=instance_of(str)
+    name = attr.ib(kw_only=True, validator=instance_of(str))
+    email = attr.ib(default=None, kw_only=True)
+    label = attr.ib(kw_only=True)
+    affiliation = attr.ib(
+        default=None,
+        kw_only=True,
     )
-    email = jsonld.ib(context='schema:email', default=None, kw_only=True)
-    label = jsonld.ib(context='rdfs:label', kw_only=True)
-    affiliation = jsonld.ib(
-        default=None, kw_only=True, context='schema:affiliation'
+    alternate_name = attr.ib(
+        default=None,
+        kw_only=True,
     )
-    alternate_name = jsonld.ib(
-        default=None, kw_only=True, context='schema:alternateName'
-    )
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = attr.ib(kw_only=True)
 
     @_id.default
     def default_id(self):
@@ -195,32 +186,20 @@ class PersonSchema(JsonLDSchema):
     _id = fields.Id(init_name='id')
 
 
-@jsonld.s(
-    type=[
-        'prov:SoftwareAgent',
-        'wfprov:WorkflowEngine',
-    ],
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-        'wfprov': 'http://purl.org/wf4ever/wfprov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        '_label': None,  # stop propagation of _label from parent context
-    },
+@attr.s(
     frozen=True,
     slots=True,
 )
 class SoftwareAgent:
     """Represent executed software."""
 
-    label = jsonld.ib(context='rdfs:label', kw_only=True)
-    was_started_by = jsonld.ib(
-        type=Person,
-        context='prov:wasStartedBy',
+    label = attr.ib(kw_only=True)
+    was_started_by = attr.ib(
         default=None,
         kw_only=True,
     )
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = attr.ib(kw_only=True)
 
     @classmethod
     def from_commit(cls, commit):

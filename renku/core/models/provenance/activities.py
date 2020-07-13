@@ -30,9 +30,10 @@ from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
 from renku.core.models.calamus import fields, oa, prov, rdfs, wfprov
-from renku.core.models.cwl.annotation import Annotation, AnnotationSchema
+from renku.core.models.cwl.annotation import AnnotationSchema
 from renku.core.models.entities import Collection, CollectionSchema, \
     CommitMixin, CommitMixinSchema, Entity, EntitySchema
+from renku.core.models.locals import ReferenceMixin
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
 
@@ -88,68 +89,32 @@ def _set_entity_client_commit(entity, client, commit):
         entity.commit = commit
 
 
-@jsonld.s(
-    type='prov:Activity',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        'schema': 'http://schema.org/'
-    },
+@attr.s(
     cmp=False,
 )
-class Activity(CommitMixin):
+class Activity(CommitMixin, ReferenceMixin):
     """Represent an activity in the repository."""
 
-    _id = jsonld.ib(default=None, context='@id', kw_only=True)
-    _message = jsonld.ib(context='rdfs:comment', kw_only=True)
-    _was_informed_by = jsonld.ib(
-        context='prov:wasInformedBy',
-        kw_only=True,
-    )
+    _id = attr.ib(default=None, kw_only=True)
+    _message = attr.ib(kw_only=True)
+    _was_informed_by = attr.ib(kw_only=True, )
 
     part_of = attr.ib(default=None, kw_only=True)
 
     _collections = attr.ib(
         default=attr.Factory(OrderedDict), init=False, kw_only=True
     )
-    generated = jsonld.container.list(
-        Generation, context={
-            '@reverse': 'prov:activity',
-        }, kw_only=True
-    )
+    generated = attr.ib(kw_only=True, default=None)
 
-    invalidated = jsonld.container.list(
-        Entity, context={
-            '@reverse': 'prov:wasInvalidatedBy',
-        }, kw_only=True
-    )
+    invalidated = attr.ib(kw_only=True, default=None)
 
-    influenced = jsonld.ib(
-        context='prov:influenced',
-        kw_only=True,
-    )
+    influenced = attr.ib(kw_only=True)
 
-    started_at_time = jsonld.ib(
-        context={
-            '@id': 'prov:startedAtTime',
-            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-        },
-        kw_only=True,
-    )
+    started_at_time = attr.ib(kw_only=True)
 
-    ended_at_time = jsonld.ib(
-        context={
-            '@id': 'prov:endedAtTime',
-            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-        },
-        kw_only=True,
-    )
+    ended_at_time = attr.ib(kw_only=True)
 
-    agents = jsonld.ib(
-        context='prov:wasAssociatedWith',
-        kw_only=True,
-        type='renku.core.models.provenance.agents.SoftwareAgent'
-    )
+    agents = attr.ib(kw_only=True)
 
     def default_generated(self):
         """Create default ``generated``."""
@@ -418,6 +383,11 @@ class Activity(CommitMixin):
 
         return self
 
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = ActivitySchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
     @classmethod
     def from_jsonld(cls, data, client=None, commit=None):
         """Create an instance from JSON-LD data."""
@@ -440,12 +410,7 @@ class Activity(CommitMixin):
         return ActivitySchema().dump(self)
 
 
-@jsonld.s(
-    type='wfprov:ProcessRun',
-    context={
-        'wfprov': 'http://purl.org/wf4ever/wfprov#',
-        'oa': 'http://www.w3.org/ns/oa#',
-    },
+@attr.s(
     cmp=False,
 )
 class ProcessRun(Activity):
@@ -453,31 +418,13 @@ class ProcessRun(Activity):
 
     __association_cls__ = Run
 
-    generated = jsonld.container.list(
-        Generation,
-        context={
-            '@reverse': 'prov:activity',
-        },
-        kw_only=True,
-        default=None
-    )
+    generated = attr.ib(kw_only=True, default=None)
 
-    association = jsonld.ib(
-        context='prov:qualifiedAssociation',
-        default=None,
-        kw_only=True,
-        type=Association
-    )
+    association = attr.ib(default=None, kw_only=True)
 
-    annotations = jsonld.container.list(
-        context={
-            '@reverse': 'oa:hasTarget',
-        }, kw_only=True, type=Annotation
-    )
+    annotations = attr.ib(kw_only=True, default=None)
 
-    qualified_usage = jsonld.container.list(
-        Usage, context='prov:qualifiedUsage', kw_only=True, default=None
-    )
+    qualified_usage = attr.ib(kw_only=True, default=None)
 
     def __attrs_post_init__(self):
         """Calculate properties."""
@@ -657,6 +604,11 @@ class ProcessRun(Activity):
         # Activity itself
         yield self.association.plan
 
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = ProcessRunSchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
     @classmethod
     def from_jsonld(cls, data, client=None, commit=None):
         """Create an instance from JSON-LD data."""
@@ -672,11 +624,7 @@ class ProcessRun(Activity):
         return ProcessRunSchema().dump(self)
 
 
-@jsonld.s(
-    type='wfprov:WorkflowRun',
-    context={
-        'wfprov': 'http://purl.org/wf4ever/wfprov#',
-    },
+@attr.s(
     cmp=False,
 )
 class WorkflowRun(ProcessRun):
@@ -684,14 +632,7 @@ class WorkflowRun(ProcessRun):
 
     __association_cls__ = Run
 
-    _processes = jsonld.container.list(
-        ProcessRun,
-        context={
-            '@reverse': 'wfprov:wasPartOfWorkflowRun',
-        },
-        kw_only=True,
-        default=attr.Factory(list)
-    )
+    _processes = attr.ib(kw_only=True, default=attr.Factory(list))
 
     @property
     def subprocesses(self):
@@ -796,6 +737,11 @@ class WorkflowRun(ProcessRun):
                 s.part_of = self
 
         super().__attrs_post_init__()
+
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = WorkflowRunSchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
 
     @classmethod
     def from_jsonld(cls, data, client=None, commit=None):

@@ -22,35 +22,22 @@ import weakref
 import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, prov
-from renku.core.models.datasets import Dataset, DatasetFile, \
-    DatasetFileSchema, DatasetSchema
+from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
 from renku.core.models.entities import CollectionSchema, EntitySchema
 from renku.core.models.provenance.agents import PersonSchema, \
     SoftwareAgentSchema
 from renku.core.models.workflow.run import RunSchema
 
 
-@jsonld.s(
-    type='prov:Association',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
-)
+@attr.s
 class Association:
     """Assign responsibility to an agent for an activity."""
 
-    plan = jsonld.ib(
-        context='prov:hadPlan', type='renku.core.models.workflow.run.Run'
-    )
-    agent = jsonld.ib(
-        context='prov:agent',
-        default=None,
-        type='renku.core.models.provenance.agents.SoftwareAgent'
-    )
+    plan = attr.ib()
+    agent = attr.ib(default=None, )
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = attr.ib(kw_only=True)
 
     @classmethod
     def from_activity(cls, activity, commit=None):
@@ -98,27 +85,16 @@ class EntityProxyMixin:
         return getattr(entity, name)
 
 
-@jsonld.s(
-    type='prov:Usage',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class Usage(EntityProxyMixin):
     """Represent a dependent path."""
 
-    entity = jsonld.ib(
-        context='prov:entity',
-        kw_only=True,
-        type=[
-            'renku.core.models.entities.Entity',
-            'renku.core.models.entities.Collection', Dataset, DatasetFile
-        ]
-    )
-    role = jsonld.ib(context='prov:hadRole', default=None, kw_only=True)
+    entity = attr.ib(kw_only=True)
+    role = attr.ib(default=None, kw_only=True)
 
-    _id = jsonld.ib(context='@id', default=None, kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
 
     @classmethod
     def from_revision(cls, client, path, revision='HEAD', **kwargs):
@@ -144,27 +120,15 @@ class Usage(EntityProxyMixin):
         return UsageSchema().dump(self)
 
 
-@jsonld.s(
-    type='prov:Generation',
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
-    entity = jsonld.ib(
-        context={
-            '@reverse': 'prov:qualifiedGeneration',
-        },
-        type=[
-            'renku.core.models.entities.Entity',
-            'renku.core.models.entities.Collection', Dataset, DatasetFile
-        ]
-    )
+    entity = attr.ib()
 
-    role = jsonld.ib(context='prov:hadRole', default=None)
+    role = attr.ib(default=None)
 
     _activity = attr.ib(
         default=None,
@@ -172,7 +136,7 @@ class Generation(EntityProxyMixin):
         converter=lambda value: weakref.ref(value)
         if value is not None else None,
     )
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = attr.ib(kw_only=True)
 
     @property
     def activity(self):

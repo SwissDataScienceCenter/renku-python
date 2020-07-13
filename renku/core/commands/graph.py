@@ -538,8 +538,6 @@ class Graph(object):
                         processes.add(process_run)
 
         parent_process = Run()
-        input_paths = []
-        output_paths = []
 
         for step in processes:
             # loop through runs and add them as subprocesses to parent.

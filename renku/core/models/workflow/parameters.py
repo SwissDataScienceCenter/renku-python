@@ -19,36 +19,25 @@
 
 import uuid
 
+import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku
 from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
-@jsonld.s(
-    type=[
-        'renku:IOStream',
-    ],
-    context={
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class MappedIOStream(object):
     """Represents an IO stream (stdin, stdout, stderr)."""
 
-    _id = jsonld.ib(context='@id', kw_only=True)
-    _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
+    _id = attr.ib(kw_only=True)
+    _label = attr.ib(default=None, kw_only=True)
 
     STREAMS = ['stdin', 'stdout', 'stderr']
 
-    stream_type = jsonld.ib(
-        context={
-            '@id': 'renku:streamType',
-            '@type': 'http://www.w3.org/2001/XMLSchema#string',
-        },
+    stream_type = attr.ib(
         type=str,
         kw_only=True,
     )
@@ -85,38 +74,23 @@ class MappedIOStream(object):
         return MappedIOStreamSchema().dump(self)
 
 
-@jsonld.s(
-    type=[
-        'renku:CommandParameter',
-    ],
-    context={
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class CommandParameter(object):
     """Represents a parameter for an execution template."""
 
-    _id = jsonld.ib(default=None, context='@id', kw_only=True)
-    _label = jsonld.ib(default=None, context='rdfs:label', kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
+    _label = attr.ib(default=None, kw_only=True)
 
-    position = jsonld.ib(
+    position = attr.ib(
         default=None,
-        context={
-            '@id': 'renku:position',
-            '@type': 'http://www.w3.org/2001/XMLSchema#integer',
-        },
         type=int,
         kw_only=True,
     )
 
-    prefix = jsonld.ib(
+    prefix = attr.ib(
         default=None,
-        context={
-            '@id': 'renku:prefix',
-            '@type': 'http://www.w3.org/2001/XMLSchema#string',
-        },
         type=str,
         kw_only=True,
     )
@@ -127,25 +101,14 @@ class CommandParameter(object):
         return self._id.split(':', 1)[1].replace('-', '_')
 
 
-@jsonld.s(
-    type=[
-        'renku:CommandArgument',
-    ],
-    context={
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class CommandArgument(CommandParameter):
     """An argument to a command that is neither input nor output."""
 
-    value = jsonld.ib(
+    value = attr.ib(
         default=None,
-        context={
-            '@id': 'renku:value',
-            '@type': 'http://www.w3.org/2001/XMLSchema#string',
-        },
         type=str,
         kw_only=True,
     )
@@ -191,34 +154,15 @@ class CommandArgument(CommandParameter):
         return CommandArgumentSchema().dump(self)
 
 
-@jsonld.s(
-    type=[
-        'renku:CommandInput',
-    ],
-    context={
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class CommandInput(CommandParameter):
     """An input to a command."""
 
-    consumes = jsonld.ib(
-        context='renku:consumes',
-        kw_only=True,
-        type=[
-            'renku.core.models.entities.Entity',
-            'renku.core.models.entities.Collection'
-        ]
-    )
+    consumes = attr.ib(kw_only=True, )
 
-    mapped_to = jsonld.ib(
-        default=None,
-        context='renku:mappedTo',
-        kw_only=True,
-        type=MappedIOStream
-    )
+    mapped_to = attr.ib(default=None, kw_only=True)
 
     def default_id(self):
         """Set default id."""
@@ -267,38 +211,17 @@ class CommandInput(CommandParameter):
         return CommandInputSchema().dump(self)
 
 
-@jsonld.s(
-    type=[
-        'renku:CommandOutput',
-    ],
-    context={
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+@attr.s(
     cmp=False,
 )
 class CommandOutput(CommandParameter):
     """An output of a command."""
 
-    create_folder = jsonld.ib(
-        default=False, context='renku:createFolder', kw_only=True, type=bool
-    )
+    create_folder = attr.ib(default=False, kw_only=True, type=bool)
 
-    produces = jsonld.ib(
-        context='renku:produces',
-        kw_only=True,
-        type=[
-            'renku.core.models.entities.Entity',
-            'renku.core.models.entities.Collection'
-        ]
-    )
+    produces = attr.ib(kw_only=True)
 
-    mapped_to = jsonld.ib(
-        default=None,
-        context='renku:mappedTo',
-        kw_only=True,
-        type=MappedIOStream
-    )
+    mapped_to = attr.ib(default=None, kw_only=True)
 
     def default_id(self):
         """Set default id."""

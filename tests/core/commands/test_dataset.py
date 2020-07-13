@@ -135,7 +135,7 @@ def test_creator_parse(creators, data_file):
 
 def test_dataset_serialization(dataset):
     """Test dataset (de)serialization."""
-    dataset_metadata = dataset.asjsonld()
+    dataset_metadata = dataset.as_jsonld()
     dataset = Dataset.from_jsonld(dataset_metadata)
 
     # assert that all attributes found in metadata are set in the instance
