@@ -840,8 +840,7 @@
                "sh:class": {
                   "@id": "prov:Activity"
                },
-               "path": "prov:wasInvalidatedBy",
-               "maxCount": 1
+               "path": "prov:wasInvalidatedBy"
             }
          ]
       },
