@@ -774,7 +774,9 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
 
     _id = fields.Id(init_name='id', missing=None)
     _label = fields.String(rdfs.label, init_name='label', missing=None)
-    date_published = fields.DateTime(schema.datePublished, missing=None)
+    date_published = fields.DateTime(
+        schema.datePublished, missing=None, allow_none=True
+    )
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
     in_language = fields.Nested(
