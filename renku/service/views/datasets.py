@@ -24,7 +24,7 @@ from flask_apispec import marshal_with, use_kwargs
 from git import GitCommandError, Repo
 
 from renku.core.commands.dataset import add_file, create_dataset, \
-    edit_dataset, file_unlink, list_datasets, list_files
+    dataset_remove, edit_dataset, file_unlink, list_datasets, list_files
 from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
@@ -38,7 +38,8 @@ from renku.service.serializers.datasets import DatasetAddRequest, \
     DatasetEditRequest, DatasetEditResponseRPC, DatasetFilesListRequest, \
     DatasetFilesListResponseRPC, DatasetImportRequest, \
     DatasetImportResponseRPC, DatasetListRequest, DatasetListResponseRPC, \
-    DatasetUnlinkRequest, DatasetUnlinkResponseRPC
+    DatasetRemoveRequest, DatasetRemoveResponseRPC, DatasetUnlinkRequest, \
+    DatasetUnlinkResponseRPC
 from renku.service.views import error_response, result_response
 from renku.service.views.decorators import accepts_json, \
     handle_common_except, header_doc, requires_cache, requires_identity
@@ -211,12 +212,45 @@ def create_dataset_view(user, cache):
             Repo(project.abs_path), remote='origin'
         )
     except GitCommandError:
-        return error_response(
-            INTERNAL_FAILURE_ERROR_CODE,
-            'push to remote failed silently - try again'
-        )
+        return error_response(INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed')
 
     return result_response(DatasetCreateResponseRPC(), ctx)
+
+
+@use_kwargs(DatasetRemoveRequest)
+@marshal_with(DatasetRemoveResponseRPC)
+@header_doc('Remove a dataset from a project.', tags=(DATASET_BLUEPRINT_TAG, ))
+@dataset_blueprint.route(
+    '/datasets.remove',
+    methods=['POST'],
+    provide_automatic_options=False,
+)
+@handle_common_except
+@accepts_json
+@requires_cache
+@requires_identity
+def remove_dataset_view(user, cache):
+    """Remove a dataset from a project."""
+    ctx = DatasetRemoveRequest().load(request.json)
+    project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
+
+    if not project.abs_path.exists():
+        return error_response(
+            INVALID_PARAMS_ERROR_CODE, 'invalid project_id argument'
+        )
+
+    with chdir(project.abs_path):
+        dataset_remove([ctx['short_name']],
+                       commit_message=ctx['commit_message'])
+
+    try:
+        _, ctx['remote_branch'] = repo_sync(
+            Repo(project.abs_path), remote='origin'
+        )
+    except GitCommandError:
+        return error_response(INTERNAL_FAILURE_ERROR_CODE, 'repo sync failed')
+
+    return result_response(DatasetRemoveResponseRPC(), ctx)
 
 
 @use_kwargs(DatasetImportRequest)
