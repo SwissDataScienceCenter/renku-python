@@ -785,7 +785,9 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
-    date_created = fields.DateTime(schema.dateCreated, missing=None)
+    date_created = fields.DateTime(
+        schema.dateCreated, missing=None, allow_none=True
+    )
     files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
     tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
     same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
