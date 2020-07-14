@@ -103,7 +103,7 @@ def test_create_project_from_template(svc_client_templates_creation):
 
     assert response
     assert response.json['error']
-    assert 'Authentication failed' in response.json['error']['reason']
+    assert 'Cannot push changes' in response.json['error']['reason']
 
     # fail: missing parameters
     if len(payload['parameters']) > 0:
@@ -143,7 +143,7 @@ def test_create_project_from_template(svc_client_templates_creation):
 
     assert response
     assert response.json['error']
-    assert 'failed to push' in response.json['error']['reason']
+    assert 'Cannot push changes' in response.json['error']['reason']
 
     # succesfully re-use old name after cleanup
     assert rm_remote() is True

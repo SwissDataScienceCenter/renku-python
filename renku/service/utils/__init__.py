@@ -18,6 +18,7 @@
 """Renku service utility functions."""
 from git import Repo
 
+from renku.core.commands.save import repo_sync
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
@@ -68,6 +69,6 @@ def new_repo_push(
 ):
     """Push a new repo to origin."""
     repo = Repo(repo_path)
-    origin = repo.create_remote(source_name, source_url)
-    origin.push(source_branch)
-    return True
+    repo.create_remote(source_name, source_url)
+    _, branch = repo_sync(repo, remote=source_name)
+    return branch == source_branch
