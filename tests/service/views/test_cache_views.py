@@ -21,9 +21,9 @@ import json
 import uuid
 
 import pytest
-from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from flaky import flaky
 
+from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
@@ -649,6 +649,23 @@ def test_execute_migrations(svc_client_setup):
         m.startswith('Successfully applied') and m.endswith('migrations.')
         for m in response.json['result']['messages']
     )
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_execute_migrations_job(svc_client_setup):
+    """Check execution of all migrations."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id, is_delayed=True)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json['result']['created_at']
+    assert response.json['result']['job_id']
 
 
 @pytest.mark.service

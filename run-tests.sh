@@ -37,7 +37,7 @@ END
 
 check_styles(){
     pydocstyle renku tests conftest.py docs
-    isort -rc -c -df
+    isort -c --df .
     unify -c -r renku tests conftest.py docs
     check-manifest --ignore ".travis-*,renku/version.py,renku/templates,renku/templates/**"
     find . -path ./.eggs -prune -o -iname \*.sh -print0 | xargs -0 shellcheck

@@ -98,9 +98,9 @@ tests_require = [
     'coverage>=4.5.3',
     'fakeredis==1.4.1',
     'flake8>=3.5,<3.8',
-    'flaky==3.6.1',
+    'flaky==3.7.0',
     'freezegun>=0.3.12',
-    'isort==4.3.21',
+    'isort==5.0.5',
     'six>=1.13.0',
     'pydocstyle>=3.0.0',
     'pytest-cache>=1.0',
@@ -128,6 +128,7 @@ extras_require = {
 }
 
 setup_requires = [
+    'wheel',
     'pytest-runner>=2.6.2',
     'setuptools_scm>=3.1.0',
 ]
@@ -161,7 +162,7 @@ install_requires = [
     'flask-swagger-ui==3.25.0',
     'gitdb2==3.0.1',
     'gitpython==3.1.0',
-    'humanize==2.4.1',
+    'humanize==2.5.0',
     'jinja2>=2.10.3',
     'pathspec>=0.7.0',
     'patool>=1.12',
@@ -181,7 +182,7 @@ install_requires = [
     'rq==1.4.3',
     'rq-scheduler==0.10.0',
     'ndg-httpsclient>=0.5.1',
-    'marshmallow==3.6.1',
+    'marshmallow==3.7.0',
     'idna==2.10',
     'setuptools_scm>=3.1.0',
     'tabulate>=0.7.7',

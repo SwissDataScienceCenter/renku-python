@@ -45,6 +45,7 @@ DEFAULT_DATA_DIR = 'data'
 def default_path():
     """Return default repository path."""
     from git import InvalidGitRepositoryError
+
     from renku.core.commands.git import get_git_home
     try:
         return get_git_home()
@@ -462,6 +463,7 @@ class RepositoryApiMixin(GitCore):
     def init_repository(self, force=False, user=None):
         """Initialize an empty Renku repository."""
         from git import Repo
+
         from renku.core.models.provenance.agents import Person
 
         # verify if folder is empty
