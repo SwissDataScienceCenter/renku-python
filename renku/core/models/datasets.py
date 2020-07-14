@@ -724,7 +724,12 @@ class DatasetTagSchema(JsonLDSchema):
     name = fields.String(schema.name)
     description = fields.String(schema.description)
     commit = fields.String(schema.location)
-    created = fields.DateTime(schema.startDate, missing=None)
+    created = fields.DateTime(
+        schema.startDate,
+        missing=None,
+        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        extra_formats=('iso', '%Y-%m-%d')
+    )
     dataset = fields.String(schema.about)
     _id = fields.Id(init_name='id')
 
@@ -753,7 +758,11 @@ class DatasetFileSchema(EntitySchema):
         model = DatasetFile
         unknown = EXCLUDE
 
-    added = fields.DateTime(schema.dateCreated)
+    added = fields.DateTime(
+        schema.dateCreated,
+        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        extra_formats=('iso', '%Y-%m-%d')
+    )
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
     based_on = fields.Nested(
@@ -775,7 +784,11 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     _id = fields.Id(init_name='id', missing=None)
     _label = fields.String(rdfs.label, init_name='label', missing=None)
     date_published = fields.DateTime(
-        schema.datePublished, missing=None, allow_none=True
+        schema.datePublished,
+        missing=None,
+        allow_none=True,
+        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        extra_formats=('iso', '%Y-%m-%d')
     )
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
@@ -788,7 +801,11 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
     date_created = fields.DateTime(
-        schema.dateCreated, missing=None, allow_none=True
+        schema.dateCreated,
+        missing=None,
+        allow_none=True,
+        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        extra_formats=('iso', '%Y-%m-%d')
     )
     files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
     tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)

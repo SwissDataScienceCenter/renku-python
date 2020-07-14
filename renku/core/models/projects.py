@@ -226,8 +226,18 @@ class ProjectSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     name = fields.String(schema.name, missing=None)
-    created = fields.DateTime(schema.dateCreated, missing=None)
-    updated = fields.DateTime(schema.dateUpdated, missing=None)
+    created = fields.DateTime(
+        schema.dateCreated,
+        missing=None,
+        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        extra_formats=('iso', '%Y-%m-%d')
+    )
+    updated = fields.DateTime(
+        schema.dateUpdated,
+        missing=None,
+        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        extra_formats=('iso', '%Y-%m-%d')
+    )
     version = fields.String(schema.schemaVersion, missing=1)
     creator = fields.Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name='id', missing=None)
