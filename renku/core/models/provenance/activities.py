@@ -29,7 +29,7 @@ from git import NULL_TREE
 from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
-from renku.core.models.calamus import fields, oa, prov, rdfs, wfprov
+from renku.core.models.calamus import Nested, fields, oa, prov, rdfs, wfprov
 from renku.core.models.cwl.annotation import AnnotationSchema
 from renku.core.models.entities import Collection, CollectionSchema, \
     CommitMixin, CommitMixinSchema, Entity, EntitySchema
@@ -286,7 +286,6 @@ class Activity(CommitMixin, ReferenceMixin):
             host = cls.client.remote.get('host') or host
         host = os.environ.get('RENKU_DOMAIN') or 'localhost'
 
-        # always set the id by the identifier
         return urllib.parse.urljoin(
             'https://{host}'.format(host=host),
             posixpath.join(
@@ -385,7 +384,7 @@ class Activity(CommitMixin, ReferenceMixin):
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""
-        data = ActivitySchema().dump(self)
+        data = ActivitySchema(flattened=True).dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
 
     @classmethod
@@ -393,21 +392,21 @@ class Activity(CommitMixin, ReferenceMixin):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
             return data
-        if not isinstance(data, dict):
+        if not isinstance(data, list):
             raise ValueError(data)
 
         schema = ActivitySchema
 
-        if str(wfprov.WorkflowRun) in data['@type']:
+        if any(str(wfprov.WorkflowRun) in d['@type'] for d in data):
             schema = WorkflowRunSchema
-        elif str(wfprov.ProcessRun) in data['@type']:
+        elif any(str(wfprov.ProcessRun) in d['@type'] for d in data):
             schema = ProcessRunSchema
 
-        return schema(client=client, commit=commit).load(data)
+        return schema(client=client, commit=commit, flattened=True).load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return ActivitySchema().dump(self)
+        return ActivitySchema(flattened=True).dump(self)
 
 
 @attr.s(
@@ -430,7 +429,8 @@ class ProcessRun(Activity):
         """Calculate properties."""
         super().__attrs_post_init__()
 
-        if not self.commit and self.client:
+        if ((not self.commit or self.commit.hexsha in self._id) and
+            self.client and Path(self.path).exists()):
             self.commit = self.client.find_previous_commit(self.path)
 
         if not self.annotations:
@@ -606,7 +606,7 @@ class ProcessRun(Activity):
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""
-        data = ProcessRunSchema().dump(self)
+        data = ProcessRunSchema(flattened=True).dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
 
     @classmethod
@@ -614,14 +614,15 @@ class ProcessRun(Activity):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
             return data
-        if not isinstance(data, dict):
+        if not isinstance(data, list):
             raise ValueError(data)
 
-        return ProcessRunSchema(client=client, commit=commit).load(data)
+        return ProcessRunSchema(client=client, commit=commit,
+                                flattened=True).load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return ProcessRunSchema().dump(self)
+        return ProcessRunSchema(flattened=True).dump(self)
 
 
 @attr.s(
@@ -670,6 +671,7 @@ class WorkflowRun(ProcessRun):
                 revision=commit,
                 id=usage_id,
             )
+
             usages.append(dependency)
 
         agent = SoftwareAgent.from_commit(commit)
@@ -740,7 +742,7 @@ class WorkflowRun(ProcessRun):
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""
-        data = WorkflowRunSchema().dump(self)
+        data = WorkflowRunSchema(flattened=True).dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
 
     @classmethod
@@ -748,14 +750,15 @@ class WorkflowRun(ProcessRun):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
             return data
-        if not isinstance(data, dict):
+        if not isinstance(data, list):
             raise ValueError(data)
 
-        return WorkflowRunSchema(client=client, commit=commit).load(data)
+        return WorkflowRunSchema(client=client, commit=commit,
+                                 flattened=True).load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return WorkflowRunSchema().dump(self)
+        return WorkflowRunSchema(flattened=True).dump(self)
 
 
 class ActivitySchema(CommitMixinSchema):
@@ -772,20 +775,20 @@ class ActivitySchema(CommitMixinSchema):
     _was_informed_by = fields.List(
         prov.wasInformedBy, fields.IRI(), init_name='was_informed_by'
     )
-    generated = fields.Nested(
+    generated = Nested(
         prov.activity, GenerationSchema, reverse=True, many=True, missing=None
     )
-    invalidated = fields.Nested(
+    invalidated = Nested(
         prov.wasInvalidatedBy,
         EntitySchema,
         reverse=True,
         many=True,
         missing=None
     )
-    influenced = fields.Nested(prov.influenced, CollectionSchema, many=True)
+    influenced = Nested(prov.influenced, CollectionSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
-    agents = fields.Nested(
+    agents = Nested(
         prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True
     )
 
@@ -800,13 +803,11 @@ class ProcessRunSchema(ActivitySchema):
         model = ProcessRun
         unknown = EXCLUDE
 
-    association = fields.Nested(prov.qualifiedAssociation, AssociationSchema)
-    annotations = fields.Nested(
+    association = Nested(prov.qualifiedAssociation, AssociationSchema)
+    annotations = Nested(
         oa.hasTarget, AnnotationSchema, reverse=True, many=True
     )
-    qualified_usage = fields.Nested(
-        prov.qualifiedUsage, UsageSchema, many=True
-    )
+    qualified_usage = Nested(prov.qualifiedUsage, UsageSchema, many=True)
 
 
 class WorkflowRunSchema(ProcessRunSchema):
@@ -819,7 +820,7 @@ class WorkflowRunSchema(ProcessRunSchema):
         model = WorkflowRun
         unknown = EXCLUDE
 
-    _processes = fields.Nested(
+    _processes = Nested(
         wfprov.wasPartOfWorkflowRun,
         ProcessRunSchema,
         reverse=True,

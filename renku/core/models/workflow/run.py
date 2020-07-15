@@ -18,6 +18,9 @@
 """Represents a workflow template."""
 
 import os
+import pathlib
+import urllib.parse
+import uuid
 from bisect import bisect
 from copy import copy
 from functools import total_ordering
@@ -26,7 +29,7 @@ from pathlib import Path
 import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import fields, prov, renku
+from renku.core.models.calamus import Nested, fields, prov, renku
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, \
     CommitMixinSchema, Entity
@@ -56,9 +59,31 @@ def _entity_from_path(client, path, commit):
         )
 
 
-def _convert_cmd_binding(binding):
+def _convert_cmd_binding(binding, client, commit):
     """Convert a cwl argument to ``CommandArgument``."""
-    return CommandArgument(position=binding.position, value=binding.valueFrom)
+
+    host = 'localhost'
+    if client:
+        host = client.remote.get('host') or host
+    host = os.environ.get('RENKU_DOMAIN') or host
+
+    base_id = urllib.parse.urljoin(
+        'https://{host}'.format(host=host),
+        pathlib.posixpath.join(
+            '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
+        )
+    )
+
+    id_ = '{}/{}'.format(
+        base_id,
+        pathlib.posixpath.join(
+            'arguments', urllib.parse.quote(str(binding.position), safe='')
+        )
+    )
+
+    return CommandArgument(
+        id=id_, position=binding.position, value=binding.valueFrom
+    )
 
 
 def _convert_cmd_input(input, client, commit):
@@ -68,28 +93,68 @@ def _convert_cmd_input(input, client, commit):
     if isinstance(val, list):
         val = input.inputBinding.itemSeparator.join(val)
 
+    host = 'localhost'
+    if client:
+        host = client.remote.get('host') or host
+    host = os.environ.get('RENKU_DOMAIN') or host
+
+    base_id = '{}/{}'.format(
+        'https://{host}'.format(host=host),
+        pathlib.posixpath.join(
+            '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
+        )
+    )
+
     if input.type in PATH_OBJECTS and input.default:
         if input.inputBinding:
             prefix = input.inputBinding.prefix
             if prefix and input.inputBinding.separate:
                 prefix += ' '
+            id_ = '{}/{}'.format(
+                base_id,
+                pathlib.posixpath.join(
+                    'inputs',
+                    urllib.parse.quote(
+                        str(input.inputBinding.position), safe=''
+                    )
+                )
+            )
             return CommandInput(
+                id=id_,
                 position=input.inputBinding.position,
                 prefix=prefix,
                 consumes=_entity_from_path(client, input.default.path, commit)
             )
         else:
+            id_ = '{}/{}'.format(
+                base_id, 'inputs/stdin' if input.id == 'input_stdin' else
+                'inputs/{}'.format(uuid.uuid4().hex)
+            )
+
+            mapped_id = '{}/{}'.format(base_id, 'mappedstreams/stdin')
+
             return CommandInput(
+                id=id_,
                 consumes=_entity_from_path(client, input.default.path, commit),
-                mapped_to=MappedIOStream(stream_type='stdin')
+                mapped_to=MappedIOStream(id=mapped_id, stream_type='stdin')
                 if input.id == 'input_stdin' else None
             )
     else:
         prefix = input.inputBinding.prefix
         if prefix and input.inputBinding.separate:
             prefix += ' '
+        id_ = '{}/{}'.format(
+            base_id,
+            pathlib.posixpath.join(
+                'arguments',
+                urllib.parse.quote(str(input.inputBinding.position), safe='')
+            )
+        )
         return CommandArgument(
-            position=input.inputBinding.position, value=val, prefix=prefix
+            id=id_,
+            position=input.inputBinding.position,
+            value=val,
+            prefix=prefix
         )
 
 
@@ -103,12 +168,27 @@ def _convert_cmd_output(output, factory, client, commit):
     input_to_remove = None
     create_folder = False
 
+    host = 'localhost'
+    if client:
+        host = client.remote.get('host') or host
+    host = os.environ.get('RENKU_DOMAIN') or host
+
+    base_id = urllib.parse.urljoin(
+        'https://{host}'.format(host=host),
+        pathlib.posixpath.join(
+            '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
+        )
+    )
+
+    id_ = uuid.uuid4().hex
+
     if output.outputBinding:
         if output.outputBinding.glob.startswith(input_prefix):
             input_id = output.outputBinding.glob[len(input_prefix):-1]
             inp = next(i for i in factory.inputs if i.id == input_id)
             path = inp.default
             position = inp.inputBinding.position
+            id_ = str(position)
             prefix = inp.inputBinding.prefix
             if prefix and inp.inputBinding.separate:
                 prefix += ' '
@@ -118,7 +198,14 @@ def _convert_cmd_output(output, factory, client, commit):
 
     if output.type in MappedIOStream.STREAMS:
         path = getattr(factory, output.type)
-        mapped = MappedIOStream(stream_type=output.type)
+        id_ = output.type
+        mapped_id = '{}/{}'.format(
+            base_id,
+            pathlib.posixpath.join(
+                'mappedstreams', urllib.parse.quote(id_, safe='')
+            )
+        )
+        mapped = MappedIOStream(id=mapped_id, stream_type=output.type)
 
     if (((client.path / path).is_dir() and
          path in factory.existing_directories) or (
@@ -127,7 +214,13 @@ def _convert_cmd_output(output, factory, client, commit):
          )):
         create_folder = True
 
+    id_ = '{}/{}'.format(
+        base_id,
+        pathlib.posixpath.join('outputs', urllib.parse.quote(id_, safe=''))
+    )
+
     return CommandOutput(
+        id=id_,
         produces=_entity_from_path(client, path, commit),
         mapped_to=mapped,
         position=position,
@@ -202,8 +295,10 @@ class Run(CommitMixin):
             path=path,
             command=' '.join(factory.baseCommand),
             successcodes=factory.successCodes,
-            arguments=[_convert_cmd_binding(a)
-                       for a in factory.arguments] + arguments,
+            arguments=[
+                _convert_cmd_binding(a, client, commit)
+                for a in factory.arguments
+            ] + arguments,
             inputs=inputs,
             outputs=outputs
         )
@@ -212,6 +307,25 @@ class Run(CommitMixin):
     def activity(self):
         """Return the activity object."""
         return self._activity()
+
+    def default_id(self):
+        """Define default value for id field."""
+        host = 'localhost'
+        if self.client:
+            host = self.client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
+
+        if self.commit:
+            id_ = self.commit.hexsha
+        else:
+            id_ = str(uuid.uuid4())
+
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join(
+                '/runs/commit', urllib.parse.quote(id_, safe='')
+            )
+        )
 
     def to_argv(self):
         """Convert run into argv list."""
@@ -257,6 +371,45 @@ class Run(CommitMixin):
             for s in self.subprocesses:
                 s.update_id_and_label_from_commit_path(client, commit, path)
 
+    def set_process_order(self, process_order):
+        """Updates the process_order on a subprocess and its parameters."""
+        self.process_order = process_order
+
+        parts = self._id.split('/')
+        if '/step/' in self._id:
+            parts[-1] = str(process_order)
+        else:
+            parts.extend(['step', str(process_order)])
+        self._id = '/'.join(parts)
+
+        for input_ in self.inputs:
+            parts = input_._id.split('/')
+            if '/step/' in input_._id:
+                parts[-3] = str(process_order)
+            else:
+                parts.insert(-2, 'step')
+                parts.insert(-2, str(process_order))
+            input_._id = '/'.join(parts)
+
+        for output in self.outputs:
+            parts = output._id.split('/')
+            if '/step/' in output._id:
+                parts[-3] = str(process_order)
+            else:
+                parts.insert(-2, 'step')
+                parts.insert(-2, str(process_order))
+            output._id = '/'.join(parts)
+
+        for argument in self.arguments:
+            # adjust id to be a subprocess id
+            parts = argument._id.split('/')
+            if '/step/' in argument._id:
+                parts[-3] = str(process_order)
+            else:
+                parts.insert(-2, 'step')
+                parts.insert(-2, str(process_order))
+            argument._id = '/'.join(parts)
+
     def add_subprocess(self, subprocess, process_order=None):
         """Adds a subprocess to this run."""
         if not process_order:
@@ -268,14 +421,12 @@ class Run(CommitMixin):
                     # inserted before end, recalculate orders or rest
                     for s in self.subprocesses:
                         if s.process_order >= process_order:
-                            s.process_order += 1
+                            s.set_process_order(s.process_order + 1)
 
         if any(s.process_order == process_order for s in self.subprocesses):
             raise ValueError(
                 'process_order {} already exists'.format(process_order)
             )
-
-        subprocess.process_order = process_order
 
         input_paths = [i.consumes.path for i in self.inputs]
         output_paths = [o.produces.path for o in self.outputs]
@@ -312,6 +463,8 @@ class Run(CommitMixin):
                     self.inputs.remove(matching_input)
                     input_paths.remove(matching_input.consumes.path)
 
+        subprocess.set_process_order(process_order)
+
         self.subprocesses.append(subprocess)
 
         self.subprocesses = sorted(
@@ -334,6 +487,14 @@ class Run(CommitMixin):
                 b_outputs.add(subentity.path)
 
         return a_inputs & b_outputs
+
+    def __attrs_post_init__(self):
+        """Calculate properties."""
+        super().__attrs_post_init__()
+
+        if ((not self.commit or self.commit.hexsha in self._id) and
+            self.client and Path(self.path).exists()):
+            self.commit = self.client.find_previous_commit(self.path)
 
     @classmethod
     def from_jsonld(cls, data):
@@ -365,15 +526,15 @@ class RunSchema(CommitMixinSchema):
     successcodes = fields.List(
         renku.successCodes, fields.Integer(), missing=[0]
     )
-    subprocesses = fields.Nested(
+    subprocesses = Nested(
         renku.hasSubprocess, 'RunSchema', many=True, missing=None
     )
-    arguments = fields.Nested(
+    arguments = Nested(
         renku.hasArguments, CommandArgumentSchema, many=True, missing=None
     )
-    inputs = fields.Nested(
+    inputs = Nested(
         renku.hasInputs, CommandInputSchema, many=True, missing=None
     )
-    outputs = fields.Nested(
+    outputs = Nested(
         renku.hasOutputs, CommandOutputSchema, many=True, missing=None
     )

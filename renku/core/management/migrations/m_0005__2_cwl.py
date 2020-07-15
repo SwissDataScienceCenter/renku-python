@@ -19,6 +19,8 @@
 
 import glob
 import os
+import pathlib
+import urllib.parse
 import uuid
 from pathlib import Path
 
@@ -99,6 +101,18 @@ def _migrate_single_step(
     inputs = list(cmd_line_tool.inputs)
     outputs = list(cmd_line_tool.outputs)
 
+    host = 'localhost'
+    if client:
+        host = client.remote.get('host') or host
+    host = os.environ.get('RENKU_DOMAIN') or host
+
+    base_id = urllib.parse.urljoin(
+        'https://{host}'.format(host=host),
+        pathlib.posixpath.join(
+            '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
+        )
+    )
+
     if cmd_line_tool.stdin:
         name = cmd_line_tool.stdin.split('.')[1]
 
@@ -110,21 +124,28 @@ def _migrate_single_step(
 
         path = client.workflow_path / Path(matched_input.default['path'])
         stdin = path.resolve().relative_to(client.path)
+        id_ = '{}/{}'.format(base_id, 'inputs/stdin')
 
+        mapped_id = '{}/{}'.format(base_id, 'mappedstreams/stdin')
         run.inputs.append(
             CommandInput(
+                id=id_,
                 consumes=_entity_from_path(client, stdin, commit),
-                mapped_to=MappedIOStream(stream_type='stdin')
+                mapped_to=MappedIOStream(id=mapped_id, stream_type='stdin')
             )
         )
 
     if cmd_line_tool.stdout:
+        id_ = '{}/{}'.format(base_id, 'outputs/stdout')
+
+        mapped_id = '{}/{}'.format(base_id, 'mappedstreams/stdout')
         run.outputs.append(
             CommandOutput(
+                id=id_,
                 produces=_entity_from_path(
                     client, cmd_line_tool.stdout, commit
                 ),
-                mapped_to=MappedIOStream(stream_type='stdout'),
+                mapped_to=MappedIOStream(id=mapped_id, stream_type='stdout'),
                 create_folder=False
             )
         )
@@ -135,12 +156,16 @@ def _migrate_single_step(
             outputs.remove(matched_output)
 
     if cmd_line_tool.stderr:
+        id_ = '{}/{}'.format(base_id, 'outputs/stderr')
+
+        mapped_id = '{}/{}'.format(base_id, 'mappedstreams/stderr')
         run.outputs.append(
             CommandOutput(
+                id=id_,
                 produces=_entity_from_path(
                     client, cmd_line_tool.stderr, commit
                 ),
-                mapped_to=MappedIOStream(stream_type='stderr'),
+                mapped_to=MappedIOStream(id=mapped_id, stream_type='stderr'),
                 create_folder=False
             )
         )
@@ -164,6 +189,7 @@ def _migrate_single_step(
     for o in outputs:
         prefix = None
         position = None
+        id_ = uuid.uuid4().hex
 
         if o.outputBinding.glob.startswith('$(inputs.'):
             name = o.outputBinding.glob.split('.')[1]
@@ -186,6 +212,7 @@ def _migrate_single_step(
             if matched_input.inputBinding:
                 prefix = matched_input.inputBinding.prefix
                 position = matched_input.inputBinding.position
+                id_ = str(position)
 
                 if prefix and matched_input.inputBinding.separate:
                     prefix += ' '
@@ -201,8 +228,16 @@ def _migrate_single_step(
         if check_path != '.' and str(check_path) in created_outputs:
             create_folder = True
 
+        id_ = '{}/{}'.format(
+            base_id,
+            pathlib.posixpath.join(
+                'outputs', urllib.parse.quote(id_, safe='')
+            )
+        )
+
         run.outputs.append(
             CommandOutput(
+                id=id_,
                 position=position,
                 prefix=prefix,
                 produces=_entity_from_path(client, path, commit),
@@ -213,10 +248,12 @@ def _migrate_single_step(
     for i in inputs:
         prefix = None
         position = None
+        id_ = uuid.uuid4().hex
 
         if i.inputBinding:
             prefix = i.inputBinding.prefix
             position = i.inputBinding.position
+            id_ = str(position)
 
             if prefix and i.inputBinding.separate:
                 prefix += ' '
@@ -228,23 +265,49 @@ def _migrate_single_step(
             path = client.workflow_path / Path(i.default['path'])
             path = Path(os.path.abspath(path)).relative_to(client.path)
 
+            id_ = '{}/{}'.format(
+                base_id,
+                pathlib.posixpath.join(
+                    'inputs', urllib.parse.quote(id_, safe='')
+                )
+            )
+
             run.inputs.append(
                 CommandInput(
+                    id=id_,
                     position=position,
                     prefix=prefix,
                     consumes=_entity_from_path(client, path, commit)
                 )
             )
         else:
+            id_ = '{}/{}'.format(
+                base_id,
+                pathlib.posixpath.join(
+                    'arguments', urllib.parse.quote(id_, safe='')
+                )
+            )
+
             run.arguments.append(
                 CommandArgument(
-                    position=position, prefix=prefix, value=str(i.default)
+                    id=id_,
+                    position=position,
+                    prefix=prefix,
+                    value=str(i.default)
                 )
             )
 
     for a in cmd_line_tool.arguments:
+        id_ = '{}/{}'.format(
+            base_id,
+            pathlib.posixpath.join(
+                '/arguments', urllib.parse.quote(str(a['position']), safe='')
+            )
+        )
         run.arguments.append(
-            CommandArgument(position=a['position'], value=a['valueFrom'])
+            CommandArgument(
+                id=id_, position=a['position'], value=a['valueFrom']
+            )
         )
 
     if not persist:

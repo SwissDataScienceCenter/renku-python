@@ -45,7 +45,8 @@ def _format_sha1(graph, node):
             )
     except KeyError:
         pass
-
+    if not node.commit:
+        breakpoint()
     return click.style(node.commit.hexsha[:8], fg='yellow')
 
 

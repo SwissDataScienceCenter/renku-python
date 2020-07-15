@@ -24,6 +24,7 @@ import re
 import urllib
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 
 import attr
 from attr.validators import instance_of
@@ -31,7 +32,8 @@ from marshmallow import EXCLUDE, pre_load
 
 import renku.core.models.jsonld as jsonld
 from renku.core import errors
-from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, \
+    renku, schema
 from renku.core.models.entities import Entity, EntitySchema
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
@@ -46,14 +48,15 @@ NoneType = type(None)
 class Url:
     """Represents a schema URL reference."""
 
+    client = attr.ib(default=None, kw_only=True)
+
     url = attr.ib(default=None, kw_only=True)
 
     url_str = attr.ib(default=None, kw_only=True)
     url_id = attr.ib(default=None, kw_only=True)
 
-    _id = attr.ib(kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
 
-    @_id.default
     def default_id(self):
         """Define default value for id field."""
         if self.url_str:
@@ -64,7 +67,16 @@ class Url:
             id_ = urllib.parse.ParseResult('', *parsed_result[1:]).geturl()
         else:
             id_ = str(uuid.uuid4())
-        return '_:URL@{0}'.format(id_)
+
+        host = 'localhost'
+        if self.client:
+            host = self.client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
+
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join('/urls', quote(id_, safe=''))
+        )
 
     def default_url(self):
         """Define default value for url field."""
@@ -89,6 +101,9 @@ class Url:
         """Post-initialize attributes."""
         if not self.url:
             self.url = self.default_url()
+
+        if not self._id:
+            self._id = self.default_id()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -142,7 +157,6 @@ def _extract_doi(value):
 
 
 @attr.s(
-    frozen=True,
     slots=True,
 )
 class DatasetTag(object):
@@ -172,17 +186,35 @@ class DatasetTag(object):
 
     dataset = attr.ib(default=None, kw_only=True)
 
-    _id = attr.ib(kw_only=True, )
+    _id = attr.ib(
+        default=None,
+        kw_only=True,
+    )
 
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
 
-    @_id.default
     def default_id(self):
         """Define default value for id field."""
-        return '_:{0}@{1}'.format(self.name, self.commit)
+
+        host = 'localhost'
+        if self.client:
+            host = self.client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
+
+        name = '{0}@{1}'.format(self.name, self.commit)
+
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join('/datasettags', quote(name, safe=''))
+        )
+
+    def __attrs_post_init__(self):
+        """Post-Init hook."""
+        if not self._id:
+            self._id = self.default_id()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -527,8 +559,6 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook."""
-        from urllib.parse import quote
-
         super().__attrs_post_init__()
 
         # Determine the hostname for the resource URIs.
@@ -630,7 +660,7 @@ class CreatorMixinSchema(JsonLDSchema):
 
         unknown = EXCLUDE
 
-    creator = fields.Nested(schema.creator, PersonSchema, many=True)
+    creator = Nested(schema.creator, PersonSchema, many=True)
 
 
 class UrlSchema(JsonLDSchema):
@@ -692,9 +722,7 @@ class DatasetFileSchema(EntitySchema, CreatorMixinSchema):
     added = fields.DateTime(schema.dateCreated)
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
-    based_on = fields.Nested(
-        schema.isBasedOn, 'DatasetFileSchema', missing=None
-    )
+    based_on = Nested(schema.isBasedOn, 'DatasetFileSchema', missing=None)
     external = fields.Boolean(renku.external, missing=False)
 
 
@@ -713,9 +741,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     date_published = fields.DateTime(schema.datePublished, missing=None)
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
-    in_language = fields.Nested(
-        schema.inLanguage, LanguageSchema, missing=None
-    )
+    in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
     keywords = fields.List(
         schema.keywords, fields.String(), missing=None, allow_none=True
     )
@@ -724,9 +750,9 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
     created = fields.DateTime(schema.dateCreated, missing=None)
-    files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
-    same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
+    files = Nested(schema.hasPart, DatasetFileSchema, many=True)
+    tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
+    same_as = Nested(schema.sameAs, UrlSchema, missing=None)
     short_name = fields.String(schema.alternateName)
 
     @pre_load

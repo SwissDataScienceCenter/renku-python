@@ -25,7 +25,8 @@ from marshmallow import EXCLUDE
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, \
+    schema
 from renku.core.models.datastructures import Collection
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
@@ -209,5 +210,5 @@ class ProjectSchema(JsonLDSchema):
     created = fields.DateTime(schema.dateCreated, missing=None)
     updated = fields.DateTime(schema.dateUpdated, missing=None)
     version = fields.String(schema.schemaVersion, missing=1)
-    creator = fields.Nested(schema.creator, PersonSchema, missing=None)
+    creator = Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name='id', missing=None)

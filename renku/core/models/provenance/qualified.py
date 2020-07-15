@@ -22,7 +22,7 @@ import weakref
 import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, fields, prov
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
 from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
 from renku.core.models.entities import CollectionSchema, EntitySchema
 from renku.core.models.provenance.agents import PersonSchema, \
@@ -180,8 +180,8 @@ class AssociationSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(init_name='id')
-    plan = fields.Nested(prov.hadPlan, RunSchema)
-    agent = fields.Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
+    plan = Nested(prov.hadPlan, RunSchema)
+    agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
 
 
 class UsageSchema(JsonLDSchema):
@@ -195,11 +195,11 @@ class UsageSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(init_name='id')
-    entity = fields.Nested(
+    entity = Nested(
         prov.entity,
         [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema]
     )
-    role = fields.String(prov.hadRole)
+    role = fields.String(prov.hadRole, missing=None)
 
 
 class GenerationSchema(JsonLDSchema):
@@ -213,9 +213,9 @@ class GenerationSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(init_name='id')
-    entity = fields.Nested(
+    entity = Nested(
         prov.qualifiedGeneration,
         [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema],
         reverse=True
     )
-    role = fields.String(prov.hadRole)
+    role = fields.String(prov.hadRole, missing=None)

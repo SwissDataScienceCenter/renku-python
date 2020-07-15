@@ -17,10 +17,14 @@
 # limitations under the License.
 """Classes for integration with Calamus."""
 
+import copy
+import inspect
+
 import marshmallow
 from calamus import fields
 from calamus.schema import JsonLDSchema as CalamusJsonLDSchema
-from calamus.utils import normalize_value
+from calamus.utils import normalize_type, normalize_value
+from marshmallow.base import SchemaABC
 
 prov = fields.Namespace('http://www.w3.org/ns/prov#')
 rdfs = fields.Namespace('http://www.w3.org/2000/01/rdf-schema#')
@@ -38,14 +42,37 @@ class JsonLDSchema(CalamusJsonLDSchema):
 
     def __init__(self, *args, commit=None, client=None, **kwargs):
         """Create an instance."""
-        super().__init__(*args, **kwargs)
         self._commit = commit
         self._client = client
+        super().__init__(*args, **kwargs)
 
     def _deserialize(self, *args, **kwargs):
         data = super()._deserialize(*args, **kwargs)
-        self._add_field_to_data(data, 'client', self._client)
-        self._add_field_to_data(data, 'commit', self._commit)
+        const_args = inspect.signature(self.opts.model)
+        parameters = const_args.parameters.values()
+
+        if any(p.name == 'client' for p in parameters):
+            self._add_field_to_data(data, 'client', self._client)
+
+        if any(p.name == 'commit' for p in parameters):
+            if self._commit:
+                self._add_field_to_data(data, 'commit', self._commit)
+            elif (
+                self._client and '_label' in data and data['_label'] and
+                '@UNCOMMITTED' not in data['_label'] and '@' in data['_label']
+            ):
+                try:
+                    self._add_field_to_data(
+                        data, 'commit',
+                        self._client.repo.commit(
+                            data['_label'].rsplit('@')[1]
+                        )
+                    )
+                except ValueError as e:
+                    if 'could not be resolved, git returned' not in str(e):
+                        raise
+                    # commit does not exist in local repository.
+                    # Could be an external file?
 
         return data
 
@@ -96,3 +123,94 @@ class Uri(
 
 
 fields.Uri = Uri
+
+
+class Nested(fields.Nested):
+    """Nested field that passes along client and commit info."""
+
+    @property
+    def schema(self):
+        """The nested Schema object.
+
+        This method was copied from marshmallow and modified to support
+        multiple different nested schemes.
+        """
+        if not self._schema:
+            # Inherit context from parent.
+            context = getattr(self.parent, 'context', {})
+            self._schema = {'from': {}, 'to': {}}
+            for nest in self.nested:
+                if isinstance(nest, SchemaABC):
+                    rdf_type = str(normalize_type(nest.opts.rdf_type))
+                    model = nest.opts.model
+                    if not rdf_type or not model:
+                        raise ValueError(
+                            'Both rdf_type and model need to be set on the '
+                            'schema for nested to work'
+                        )
+                    _schema = copy.copy(nest)
+                    _schema.context.update(context)
+                    # Respect only and exclude passed from parent and
+                    # re-initialize fields
+                    set_class = _schema.set_class
+                    if self.only is not None:
+                        if self._schema.only is not None:
+                            original = _schema.only
+                        else:  # only=None -> all fields
+                            original = _schema.fields.keys()
+                        _schema.only = set_class(self.only
+                                                 ).intersection(original)
+                    if self.exclude:
+                        original = _schema.exclude
+                        _schema.exclude = set_class(self.exclude
+                                                    ).union(original)
+                    _schema._init_fields()
+                    _schema._visited = self.root._visited
+                    self._schema['from'][rdf_type] = _schema
+                    self._schema['to'][model] = _schema
+                else:
+                    if isinstance(nest, type) and issubclass(nest, SchemaABC):
+                        schema_class = nest
+                    elif not isinstance(nest, (str, bytes)):
+                        raise ValueError(
+                            'Nested fields must be passed a '
+                            'Schema, not {}.'.format(nest.__class__)
+                        )
+                    elif nest == 'self':
+                        ret = self
+                        while not isinstance(ret, SchemaABC):
+                            ret = ret.parent
+                        schema_class = ret.__class__
+                    else:
+                        schema_class = marshmallow.class_registry.get_class(
+                            nest
+                        )
+
+                    rdf_type = str(normalize_type(schema_class.opts.rdf_type))
+                    model = schema_class.opts.model
+                    if not rdf_type or not model:
+                        raise ValueError(
+                            'Both rdf_type and model need to be set on the '
+                            'schema for nested to work'
+                        )
+
+                    kwargs = {}
+
+                    if hasattr(self.root, '_client'
+                               ) and JsonLDSchema in schema_class.mro():
+                        kwargs = {'client': self.root._client}
+
+                    self._schema['from'][rdf_type] = schema_class(
+                        many=False,
+                        only=self.only,
+                        exclude=self.exclude,
+                        context=context,
+                        load_only=self._nested_normalized_option('load_only'),
+                        dump_only=self._nested_normalized_option('dump_only'),
+                        lazy=self.root.lazy,
+                        flattened=self.root.flattened,
+                        _visited=self.root._visited,
+                        **kwargs
+                    )
+                    self._schema['to'][model] = self._schema['from'][rdf_type]
+        return self._schema

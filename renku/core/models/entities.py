@@ -24,8 +24,8 @@ import weakref
 
 import attr
 
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
-    schema, wfprov
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, \
+    rdfs, schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
 
@@ -69,7 +69,6 @@ class CommitMixin:
             host = self.client.remote.get('host') or host
         host = os.environ.get('RENKU_DOMAIN') or host
 
-        # always set the id by the identifier
         return urllib.parse.urljoin(
             'https://{host}'.format(host=host),
             pathlib.posixpath.join(
@@ -290,7 +289,7 @@ class CommitMixinSchema(JsonLDSchema):
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name='id')
     _label = fields.String(rdfs.label, init_name='label', missing=None)
-    _project = fields.Nested(
+    _project = Nested(
         schema.isPartOf, ProjectSchema, init_name='project', missing=None
     )
 
@@ -314,6 +313,6 @@ class CollectionSchema(EntitySchema):
         rdf_type = [prov.Collection]
         model = Collection
 
-    members = fields.Nested(
+    members = Nested(
         prov.hadMember, [EntitySchema, 'CollectionSchema'], many=True
     )

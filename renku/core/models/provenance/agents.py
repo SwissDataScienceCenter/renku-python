@@ -18,15 +18,21 @@
 """Represent provenance agents."""
 
 import configparser
+import os
+import pathlib
 import re
+import urllib
+import uuid
+from urllib.parse import quote
 
 import attr
 from attr.validators import instance_of
+from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
 from renku.core import errors
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
-    schema, wfprov
+from renku.core.models.calamus import Nested, fields, prov, rdfs, schema, \
+    wfprov
 from renku.version import __version__, version_url
 
 
@@ -35,6 +41,8 @@ from renku.version import __version__, version_url
 )
 class Person:
     """Represent a person."""
+
+    client = attr.ib(default=None, kw_only=True)
 
     name = attr.ib(kw_only=True, validator=instance_of(str))
     email = attr.ib(default=None, kw_only=True)
@@ -47,19 +55,24 @@ class Person:
         default=None,
         kw_only=True,
     )
-    _id = attr.ib(kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
 
-    @_id.default
     def default_id(self):
         """Set the default id."""
-        import string
         if self.email:
             return 'mailto:{email}'.format(email=self.email)
 
-        # prep name to be a valid ntuple string
-        name = self.name.translate(str.maketrans('', '', string.punctuation))
-        name = ''.join(filter(lambda x: x in string.printable, name))
-        return '_:{}'.format(''.join(name.lower().split()))
+        host = 'localhost'
+        if self.client:
+            host = self.client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
+
+        id_ = str(uuid.uuid4())
+
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join('/persons', quote(id_, safe=''))
+        )
 
     @email.validator
     def check_email(self, attribute, value):
@@ -247,6 +260,4 @@ class SoftwareAgentSchema(JsonLDSchema):
 
     label = fields.String(rdfs.label)
     _id = fields.Id(init_name='id')
-    was_started_by = fields.Nested(
-        prov.wasStartedBy, PersonSchema, missing=None
-    )
+    was_started_by = Nested(prov.wasStartedBy, PersonSchema, missing=None)

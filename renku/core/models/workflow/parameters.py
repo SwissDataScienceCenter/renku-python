@@ -17,12 +17,10 @@
 # limitations under the License.
 """Represents a workflow template."""
 
-import uuid
-
 import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku
 from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
@@ -31,6 +29,8 @@ from renku.core.models.entities import CollectionSchema, EntitySchema
 )
 class MappedIOStream(object):
     """Represents an IO stream (stdin, stdout, stderr)."""
+
+    client = attr.ib(default=None, kw_only=True)
 
     _id = attr.ib(kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
@@ -41,14 +41,6 @@ class MappedIOStream(object):
         type=str,
         kw_only=True,
     )
-
-    @_id.default
-    def default_id(self):
-        """Set default id."""
-        # TODO: make bnode ids nicer once this issue is in a release:
-        # https://github.com/RDFLib/rdflib/issues/888
-        # right now it's limited to a-zA-Z0-9 (-_ will work once it's fixed)
-        return '_:MappedIOStream-{}'.format(str(uuid.uuid4())).replace('-', '')
 
     def default_label(self):
         """Set default label."""
@@ -98,7 +90,9 @@ class CommandParameter(object):
     @property
     def sanitized_id(self):
         """Return ``_id`` sanitized for use in non-jsonld contexts."""
-        return self._id.split(':', 1)[1].replace('-', '_')
+        if 'step' in self._id:
+            return '/'.join(self._id.split('/')[-4:])
+        return '/'.join(self._id.split('/')[-1:])
 
 
 @attr.s(
@@ -112,11 +106,6 @@ class CommandArgument(CommandParameter):
         type=str,
         kw_only=True,
     )
-
-    def default_id(self):
-        """Set default id."""
-        return '_:CommandArgument-{}'.format(str(uuid.uuid4())
-                                             ).replace('-', '')
 
     def default_label(self):
         """Set default label."""
@@ -133,9 +122,6 @@ class CommandArgument(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._id:
-            self._id = self.default_id()
-
         if not self._label:
             self._label = self.default_label()
 
@@ -164,10 +150,6 @@ class CommandInput(CommandParameter):
 
     mapped_to = attr.ib(default=None, kw_only=True)
 
-    def default_id(self):
-        """Set default id."""
-        return '_:CommandInput-{}'.format(str(uuid.uuid4())).replace('-', '')
-
     def default_label(self):
         """Set default label."""
         return 'Command Input "{}"'.format(self.consumes.path)
@@ -190,9 +172,6 @@ class CommandInput(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._id:
-            self._id = self.default_id()
-
         if not self._label:
             self._label = self.default_label()
 
@@ -223,10 +202,6 @@ class CommandOutput(CommandParameter):
 
     mapped_to = attr.ib(default=None, kw_only=True)
 
-    def default_id(self):
-        """Set default id."""
-        return '_:CommandOutput-{}'.format(str(uuid.uuid4())).replace('-', '')
-
     def default_label(self):
         """Set default label."""
         return 'Command Output "{}"'.format(self.produces.path)
@@ -252,9 +227,6 @@ class CommandOutput(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._id:
-            self._id = self.default_id()
-
         if not self._label:
             self._label = self.default_label()
 
@@ -327,10 +299,8 @@ class CommandInputSchema(CommandParameterSchema):
         model = CommandInput
         unknown = EXCLUDE
 
-    consumes = fields.Nested(renku.consumes, [EntitySchema, CollectionSchema])
-    mapped_to = fields.Nested(
-        renku.mappedTo, MappedIOStreamSchema, missing=None
-    )
+    consumes = Nested(renku.consumes, [EntitySchema, CollectionSchema])
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
 
 
 class CommandOutputSchema(CommandParameterSchema):
@@ -344,7 +314,5 @@ class CommandOutputSchema(CommandParameterSchema):
         unknown = EXCLUDE
 
     create_folder = fields.Boolean(renku.createFolder)
-    produces = fields.Nested(renku.produces, [EntitySchema, CollectionSchema])
-    mapped_to = fields.Nested(
-        renku.mappedTo, MappedIOStreamSchema, missing=None
-    )
+    produces = Nested(renku.produces, [EntitySchema, CollectionSchema])
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
