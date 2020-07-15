@@ -992,9 +992,9 @@ def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
 @pytest.fixture(scope='module')
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
-    from tests.core.commands.test_init import METADATA, TEMPLATE_ID
-    from renku.core.utils.scm import strip_and_lower
     from renku.core.utils.requests import retry
+    from renku.core.utils.scm import strip_and_lower
+    from tests.core.commands.test_init import METADATA, TEMPLATE_ID
 
     svc_client, authentication_headers, template = svc_client_with_templates
     parameters = []
