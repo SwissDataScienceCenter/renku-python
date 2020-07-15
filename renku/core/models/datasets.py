@@ -727,7 +727,7 @@ class DatasetTagSchema(JsonLDSchema):
     created = fields.DateTime(
         schema.startDate,
         missing=None,
-        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        format='%Y-%m-%dT%H:%M:%SZ',
         extra_formats=('iso', '%Y-%m-%d')
     )
     dataset = fields.String(schema.about)
@@ -760,7 +760,7 @@ class DatasetFileSchema(EntitySchema):
 
     added = fields.DateTime(
         schema.dateCreated,
-        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        format='%Y-%m-%dT%H:%M:%SZ',
         extra_formats=('iso', '%Y-%m-%d')
     )
     name = fields.String(schema.name, missing=None)
@@ -787,7 +787,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         schema.datePublished,
         missing=None,
         allow_none=True,
-        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        format='%Y-%m-%d',
         extra_formats=('iso', '%Y-%m-%d')
     )
     description = fields.String(schema.description, missing=None)
@@ -804,7 +804,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         schema.dateCreated,
         missing=None,
         allow_none=True,
-        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        format='%Y-%m-%dT%H:%M:%SZ',
         extra_formats=('iso', '%Y-%m-%d')
     )
     files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)

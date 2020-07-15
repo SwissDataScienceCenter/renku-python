@@ -229,13 +229,13 @@ class ProjectSchema(JsonLDSchema):
     created = fields.DateTime(
         schema.dateCreated,
         missing=None,
-        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        format='%Y-%m-%dT%H:%M:%SZ',
         extra_formats=('iso', '%Y-%m-%d')
     )
     updated = fields.DateTime(
         schema.dateUpdated,
         missing=None,
-        format='%Y-%m-%dT%H:%M:%S.%f%z',
+        format='%Y-%m-%dT%H:%M:%SZ',
         extra_formats=('iso', '%Y-%m-%d')
     )
     version = fields.String(schema.schemaVersion, missing=1)
