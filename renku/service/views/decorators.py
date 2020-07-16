@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service view decorators."""
+import re
 from functools import wraps
 
 from flask import jsonify, request
@@ -88,6 +89,27 @@ def requires_cache(f):
     return decorated_function
 
 
+def handle_schema_except(f):
+    """Wrapper which handles Schema.load exceptions."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except KeyError as e:
+            if (e.args and len(e.args) > 0):
+                return jsonify(
+                    error={
+                        'code': INVALID_PARAMS_ERROR_CODE,
+                        'reason': f'missing parameter "{e.args[0]}"',
+                    }
+                )
+            raise
+
+    return decorated_function
+
+
 def handle_validation_except(f):
     """Wrapper which handles marshmallow `ValidationError`."""
     # noqa
@@ -142,12 +164,17 @@ def handle_git_except(f):
             error_code = GIT_ACCESS_DENIED_ERROR_CODE \
                 if 'Access denied' in e.stderr else GIT_UNKNOWN_ERROR_CODE
 
+            # strip oauth tokens
+            error_reason = format(' '.join(e.stderr.strip().split('\n')))
+            error_reason_safe = re.sub(
+                '^(.+)(oauth2:)(.+)(@)(.+)$', r'\1\2<token-hidden>\4\5',
+                error_reason
+            )
+
             return jsonify(
                 error={
                     'code': error_code,
-                    'reason':
-                        'git error: {0}'.
-                        format(' '.join(e.stderr.strip().split('\n'))),
+                    'reason': f'git error: {error_reason_safe}'
                 }
             )
 

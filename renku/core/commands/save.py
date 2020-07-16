@@ -106,9 +106,8 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
     try:
         # push local changes to remote branch
-        origin.fetch()
-
         if origin.refs and repo.active_branch in origin.refs:
+            origin.fetch()
             origin.pull(repo.active_branch)
 
         origin.push(repo.active_branch)
