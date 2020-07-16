@@ -17,6 +17,8 @@
 # limitations under the License.
 """Represents a workflow template."""
 
+import uuid
+
 import attr
 from marshmallow import EXCLUDE
 
@@ -41,6 +43,11 @@ class MappedIOStream(object):
         type=str,
         kw_only=True,
     )
+
+    @staticmethod
+    def generate_id(run_id, stream_type):
+        """Generate an id for a mapped stream."""
+        return '{}/mappedstreams/{}'.format(run_id, stream_type)
 
     def default_label(self):
         """Set default label."""
@@ -107,6 +114,15 @@ class CommandArgument(CommandParameter):
         kw_only=True,
     )
 
+    @staticmethod
+    def generate_id(run_id, position=None):
+        """Generate an id for an argument."""
+        if position:
+            id_ = str(position)
+        else:
+            id_ = uuid.uuid4().hex
+        return '{}/arguments/{}'.format(run_id, id_)
+
     def default_label(self):
         """Set default label."""
         return 'Command Argument "{}"'.format(self.value)
@@ -149,6 +165,15 @@ class CommandInput(CommandParameter):
     consumes = attr.ib(kw_only=True, )
 
     mapped_to = attr.ib(default=None, kw_only=True)
+
+    @staticmethod
+    def generate_id(run_id, position=None):
+        """Generate an id for an argument."""
+        if position:
+            id_ = str(position)
+        else:
+            id_ = uuid.uuid4().hex
+        return '{}/inputs/{}'.format(run_id, id_)
 
     def default_label(self):
         """Set default label."""
@@ -201,6 +226,15 @@ class CommandOutput(CommandParameter):
     produces = attr.ib(kw_only=True)
 
     mapped_to = attr.ib(default=None, kw_only=True)
+
+    @staticmethod
+    def generate_id(run_id, position=None):
+        """Generate an id for an argument."""
+        if position:
+            id_ = str(position)
+        else:
+            id_ = uuid.uuid4().hex
+        return '{}/outputs/{}'.format(run_id, id_)
 
     def default_label(self):
         """Set default label."""

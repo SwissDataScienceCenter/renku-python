@@ -51,7 +51,7 @@ def _jsonld(graph, format, *args, **kwargs):
 def _conjunctive_graph(graph):
     """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``."""
     from rdflib import ConjunctiveGraph
-    from rdflib.plugin import register, Parser
+    from rdflib.plugin import Parser, register
 
     register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
@@ -101,9 +101,8 @@ dot_debug = functools.partial(dot, debug=True)
 
 def _rdf2dot_simple(g, stream):
     """Create a simple graph of processes and artifacts."""
-    from itertools import chain
-
     import re
+    from itertools import chain
 
     path_re = re.compile(
         r'(?P<prefix>https://\w+/\w+/|https://\w+/){0,1}(?P<type>[a-zA-Z]+)/'
@@ -198,10 +197,10 @@ def _rdf2dot_reduced(g, stream):
     Adapted from original source:
     https://rdflib.readthedocs.io/en/stable/_modules/rdflib/tools/rdf2dot.html
     """
-    import html
     import collections
-    import rdflib
+    import html
 
+    import rdflib
     from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
 
     types = collections.defaultdict(set)

@@ -254,6 +254,7 @@ class GitCore:
     ):
         """Automatic commit."""
         from git import Actor
+
         from renku.version import __version__, version_url
 
         diff_before = set()
@@ -380,7 +381,8 @@ class GitCore:
         merge_args=('--ff-only', ),
     ):
         """Create new worktree."""
-        from git import GitCommandError, NULL_TREE
+        from git import NULL_TREE, GitCommandError
+
         from renku.core.utils.contexts import Isolation
 
         delete = path is None

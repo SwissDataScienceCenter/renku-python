@@ -20,7 +20,6 @@
 import os
 import pathlib
 import urllib.parse
-import uuid
 from bisect import bisect
 from copy import copy
 from functools import total_ordering
@@ -62,24 +61,9 @@ def _entity_from_path(client, path, commit):
 def _convert_cmd_binding(binding, client, commit):
     """Convert a cwl argument to ``CommandArgument``."""
 
-    host = 'localhost'
-    if client:
-        host = client.remote.get('host') or host
-    host = os.environ.get('RENKU_DOMAIN') or host
+    base_id = Run.generate_id(client, commit)
 
-    base_id = urllib.parse.urljoin(
-        'https://{host}'.format(host=host),
-        pathlib.posixpath.join(
-            '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
-        )
-    )
-
-    id_ = '{}/{}'.format(
-        base_id,
-        pathlib.posixpath.join(
-            'arguments', urllib.parse.quote(str(binding.position), safe='')
-        )
-    )
+    id_ = CommandArgument.generate_id(base_id, binding.position)
 
     return CommandArgument(
         id=id_, position=binding.position, value=binding.valueFrom
@@ -93,48 +77,28 @@ def _convert_cmd_input(input, client, commit):
     if isinstance(val, list):
         val = input.inputBinding.itemSeparator.join(val)
 
-    host = 'localhost'
-    if client:
-        host = client.remote.get('host') or host
-    host = os.environ.get('RENKU_DOMAIN') or host
-
-    base_id = '{}/{}'.format(
-        'https://{host}'.format(host=host),
-        pathlib.posixpath.join(
-            '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
-        )
-    )
+    base_id = Run.generate_id(client, commit)
 
     if input.type in PATH_OBJECTS and input.default:
         if input.inputBinding:
             prefix = input.inputBinding.prefix
             if prefix and input.inputBinding.separate:
                 prefix += ' '
-            id_ = '{}/{}'.format(
-                base_id,
-                pathlib.posixpath.join(
-                    'inputs',
-                    urllib.parse.quote(
-                        str(input.inputBinding.position), safe=''
-                    )
-                )
-            )
             return CommandInput(
-                id=id_,
+                id=CommandInput.generate_id(
+                    base_id, input.inputBinding.position
+                ),
                 position=input.inputBinding.position,
                 prefix=prefix,
                 consumes=_entity_from_path(client, input.default.path, commit)
             )
         else:
-            id_ = '{}/{}'.format(
-                base_id, 'inputs/stdin' if input.id == 'input_stdin' else
-                'inputs/{}'.format(uuid.uuid4().hex)
-            )
-
-            mapped_id = '{}/{}'.format(base_id, 'mappedstreams/stdin')
+            mapped_id = MappedIOStream.generate_id(base_id, 'stdin')
 
             return CommandInput(
-                id=id_,
+                id=CommandInput.generate_id(
+                    base_id, 'stdin' if input.id == 'input_stdin' else None
+                ),
                 consumes=_entity_from_path(client, input.default.path, commit),
                 mapped_to=MappedIOStream(id=mapped_id, stream_type='stdin')
                 if input.id == 'input_stdin' else None
@@ -143,15 +107,10 @@ def _convert_cmd_input(input, client, commit):
         prefix = input.inputBinding.prefix
         if prefix and input.inputBinding.separate:
             prefix += ' '
-        id_ = '{}/{}'.format(
-            base_id,
-            pathlib.posixpath.join(
-                'arguments',
-                urllib.parse.quote(str(input.inputBinding.position), safe='')
-            )
-        )
         return CommandArgument(
-            id=id_,
+            id=CommandArgument.generate_id(
+                base_id, input.inputBinding.position
+            ),
             position=input.inputBinding.position,
             value=val,
             prefix=prefix
@@ -168,19 +127,7 @@ def _convert_cmd_output(output, factory, client, commit):
     input_to_remove = None
     create_folder = False
 
-    host = 'localhost'
-    if client:
-        host = client.remote.get('host') or host
-    host = os.environ.get('RENKU_DOMAIN') or host
-
-    base_id = urllib.parse.urljoin(
-        'https://{host}'.format(host=host),
-        pathlib.posixpath.join(
-            '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
-        )
-    )
-
-    id_ = uuid.uuid4().hex
+    base_id = Run.generate_id(client, commit)
 
     if output.outputBinding:
         if output.outputBinding.glob.startswith(input_prefix):
@@ -188,7 +135,6 @@ def _convert_cmd_output(output, factory, client, commit):
             inp = next(i for i in factory.inputs if i.id == input_id)
             path = inp.default
             position = inp.inputBinding.position
-            id_ = str(position)
             prefix = inp.inputBinding.prefix
             if prefix and inp.inputBinding.separate:
                 prefix += ' '
@@ -198,13 +144,7 @@ def _convert_cmd_output(output, factory, client, commit):
 
     if output.type in MappedIOStream.STREAMS:
         path = getattr(factory, output.type)
-        id_ = output.type
-        mapped_id = '{}/{}'.format(
-            base_id,
-            pathlib.posixpath.join(
-                'mappedstreams', urllib.parse.quote(id_, safe='')
-            )
-        )
+        mapped_id = MappedIOStream.generate_id(base_id, output.type)
         mapped = MappedIOStream(id=mapped_id, stream_type=output.type)
 
     if (((client.path / path).is_dir() and
@@ -214,13 +154,8 @@ def _convert_cmd_output(output, factory, client, commit):
          )):
         create_folder = True
 
-    id_ = '{}/{}'.format(
-        base_id,
-        pathlib.posixpath.join('outputs', urllib.parse.quote(id_, safe=''))
-    )
-
     return CommandOutput(
-        id=id_,
+        id=CommandOutput.generate_id(base_id, position),
         produces=_entity_from_path(client, path, commit),
         mapped_to=mapped,
         position=position,
@@ -257,6 +192,21 @@ class Run(CommitMixin):
     inputs = attr.ib(kw_only=True, factory=list)
 
     outputs = attr.ib(kw_only=True, factory=list)
+
+    @staticmethod
+    def generate_id(client, commit):
+        """Generate an id for an argument."""
+        host = 'localhost'
+        if client:
+            host = client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
+
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join(
+                '/runs/commit', urllib.parse.quote(commit.hexsha, safe='')
+            )
+        )
 
     @classmethod
     def from_factory(cls, factory, client, commit, path):
@@ -308,25 +258,6 @@ class Run(CommitMixin):
         """Return the activity object."""
         return self._activity()
 
-    def default_id(self):
-        """Define default value for id field."""
-        host = 'localhost'
-        if self.client:
-            host = self.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or host
-
-        if self.commit:
-            id_ = self.commit.hexsha
-        else:
-            id_ = str(uuid.uuid4())
-
-        return urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join(
-                '/runs/commit', urllib.parse.quote(id_, safe='')
-            )
-        )
-
     def to_argv(self):
         """Convert run into argv list."""
         argv = []
@@ -364,7 +295,7 @@ class Run(CommitMixin):
 
             path = Path(os.path.abspath(path)).relative_to(self.client.path)
             self.path = path
-            self._id = self.default_id()
+            self._id = self.generate_id(client, commit)
             self._label = self.default_label()
 
         if len(self.subprocesses) > 0:

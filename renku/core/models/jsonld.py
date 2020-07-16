@@ -22,9 +22,10 @@ from pathlib import Path
 import yaml
 
 try:
-    from yaml import CSafeLoader as SafeLoader, CDumper as Dumper
+    from yaml import CDumper as Dumper
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-    from yaml import SafeLoader, Dumper
+    from yaml import Dumper, SafeLoader
 
 
 # Shamelessly copy/pasting from SO:

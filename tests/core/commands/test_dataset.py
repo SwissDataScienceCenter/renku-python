@@ -23,7 +23,6 @@ from pathlib import Path
 
 import pytest
 from git import Repo
-from tests.utils import raises
 
 from renku.core import errors
 from renku.core.commands.dataset import add_file, create_dataset, \
@@ -32,6 +31,7 @@ from renku.core.errors import ParameterError
 from renku.core.models.datasets import Dataset, DatasetFile
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
+from tests.utils import raises
 
 
 @pytest.mark.parametrize(

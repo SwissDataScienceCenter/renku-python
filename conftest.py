@@ -40,8 +40,9 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
-from tests.utils import make_dataset_add_payload
 from walrus import Database
+
+from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     'IT_PROTECTED_REMOTE_REPO',
@@ -181,6 +182,7 @@ def repository():
 def project(repository):
     """Create a test project."""
     from git import Repo
+
     from renku.cli import cli
 
     runner = CliRunner()
@@ -352,7 +354,8 @@ def directory_tree(tmpdir_factory):
 @pytest.fixture(scope='function')
 def data_repository(directory_tree):
     """Create a test repo."""
-    from git import Repo, Actor
+    from git import Actor, Repo
+
     # initialize
     repo = Repo.init(directory_tree.strpath)
 
@@ -431,8 +434,9 @@ def old_bare_repository(request, tmpdir_factory):
 def old_workflow_project(request, tmp_path_factory):
     """Prepares a testing repo created by old version of renku."""
     import tarfile
-    from git import Repo
     from pathlib import Path
+
+    from git import Repo
 
     name = request.param['name']
 
@@ -475,6 +479,7 @@ def old_workflow_project(request, tmp_path_factory):
 def old_repository(tmpdir_factory, old_bare_repository):
     """Create git repo of old repository fixture."""
     import shutil
+
     from git import Repo
 
     repo_path = tmpdir_factory.mktemp('repo')
@@ -605,10 +610,9 @@ def dataverse_demo_cleanup(request):
 @pytest.fixture
 def doi_responses():
     """Responses for doi.org requests."""
+    from renku.core.commands.providers.dataverse import DATAVERSE_API_PATH, \
+        DATAVERSE_VERSION_API
     from renku.core.commands.providers.doi import DOI_BASE_URL
-    from renku.core.commands.providers.dataverse import (
-        DATAVERSE_API_PATH, DATAVERSE_VERSION_API
-    )
 
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
@@ -687,6 +691,7 @@ def cli(client, run):
     It returns the exit code and content of the resulting CWL tool.
     """
     import yaml
+
     from renku.core.models.provenance.activities import Activity
 
     def renku_cli(*args):
@@ -810,10 +815,10 @@ def datapack_tar(directory_tree):
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from renku.service.cache.base import BaseCache
-    from renku.service.cache.models.user import User
-    from renku.service.cache.models.job import Job
     from renku.service.cache.models.file import File
+    from renku.service.cache.models.job import Job
     from renku.service.cache.models.project import Project
+    from renku.service.cache.models.user import User
     from renku.service.jobs.queues import WorkerQueues
 
     monkey_patch = MonkeyPatch()
@@ -979,7 +984,7 @@ def svc_client_with_repo(svc_client_setup):
 @pytest.fixture(scope='module')
 def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
     """Setup and teardown steps for templates tests."""
-    from tests.core.commands.test_init import TEMPLATE_URL, TEMPLATE_REF
+    from tests.core.commands.test_init import TEMPLATE_REF, TEMPLATE_URL
     template = {'url': TEMPLATE_URL, 'ref': TEMPLATE_REF}
 
     yield svc_client, authentication_headers, template

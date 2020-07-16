@@ -30,8 +30,8 @@ import attr
 from attr.validators import instance_of
 from marshmallow import EXCLUDE, pre_load
 
-import renku.core.models.jsonld as jsonld
 from renku.core import errors
+from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, \
     renku, schema
 from renku.core.models.entities import Entity, EntitySchema
