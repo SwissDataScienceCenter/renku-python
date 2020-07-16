@@ -989,6 +989,49 @@ def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
     yield svc_client, authentication_headers, template
 
 
+@pytest.fixture(scope='module')
+def svc_client_templates_creation(svc_client_with_templates):
+    """Setup and teardown steps for templates tests."""
+    from renku.core.utils.requests import retry
+    from renku.core.utils.scm import strip_and_lower
+    from tests.core.commands.test_init import METADATA, TEMPLATE_ID
+
+    svc_client, authentication_headers, template = svc_client_with_templates
+    parameters = []
+    for parameter in METADATA.keys():
+        parameters.append({'key': parameter, 'value': METADATA[parameter]})
+
+    payload = {
+        **template,
+        'identifier': TEMPLATE_ID,
+        'parameters': parameters,
+        'project_name': f'Test renku-core {uuid.uuid4().hex[:12]}',
+        'project_namespace': 'contact',
+        'project_repository': 'https://dev.renku.ch/gitlab',
+    }
+
+    # clenup by invoking the GitLab delete API
+    # TODO: consider using the project delete endpoint once implemented
+    def remove_project():
+        project_slug = '{0}/{1}'.format(
+            payload['project_namespace'],
+            strip_and_lower(payload['project_name'])
+        )
+        project_slug_encoded = urllib.parse.quote(project_slug, safe='')
+        project_delete_url = '{0}/api/v4/projects/{1}'.format(
+            payload['project_repository'], project_slug_encoded
+        )
+        with retry() as session:
+            response = session.delete(
+                url=project_delete_url, headers=authentication_headers
+            )
+        if response.status_code != 200 and response.status_code != 202:
+            raise ConnectionError('Cannot clean up test project')
+        return True
+
+    yield svc_client, authentication_headers, payload, remove_project
+
+
 @pytest.fixture
 def svc_protected_repo(svc_client):
     """Service client with remote protected repository."""
@@ -1077,6 +1120,14 @@ def svc_protected_repo(svc_client):
         {
             'url': '/templates.read_manifest',
             'allowed_method': 'GET',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
+        {
+            'url': '/templates.create_project',
+            'allowed_method': 'POST',
             'headers': {
                 'Content-Type': 'application/json',
                 'accept': 'application/json',
