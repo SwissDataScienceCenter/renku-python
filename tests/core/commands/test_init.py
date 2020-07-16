@@ -23,12 +23,12 @@ from tempfile import TemporaryDirectory
 
 import pkg_resources
 import pytest
+from tests.utils import raises
 
 from renku.core import errors
 from renku.core.commands.init import TEMPLATE_MANIFEST, create_from_template, \
     fetch_template, read_template_manifest, validate_template
 from renku.core.management.config import RENKU_HOME
-from tests.utils import raises
 
 TEMPLATE_URL = (
     'https://github.com/SwissDataScienceCenter/renku-project-template'

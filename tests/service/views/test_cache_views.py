@@ -21,9 +21,9 @@ import json
 import uuid
 
 import pytest
+from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from flaky import flaky
 
-from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
