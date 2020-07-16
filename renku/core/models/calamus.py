@@ -17,6 +17,8 @@
 # limitations under the License.
 """Classes for integration with Calamus."""
 
+from datetime import datetime, timezone
+
 import marshmallow
 from calamus import fields
 from calamus.schema import JsonLDSchema as CalamusJsonLDSchema
@@ -52,6 +54,14 @@ class JsonLDSchema(CalamusJsonLDSchema):
             if name in data:
                 raise ValueError(f'Field {name} is already in data {data}')
             data[name] = value
+
+    def _fix_timezone(self, value):
+        """Fix timezone of non-aware datetime objects."""
+        if isinstance(value, datetime) and not value.tzinfo:
+            # set timezone to local timezone
+            tz = datetime.now(timezone.utc).astimezone().tzinfo
+            value = value.replace(tzinfo=tz)
+        return value
 
 
 class Uri(

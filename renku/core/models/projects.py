@@ -22,6 +22,7 @@ import os
 
 import attr
 from marshmallow import EXCLUDE
+from marshmallow.decorators import pre_dump
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
@@ -229,15 +230,24 @@ class ProjectSchema(JsonLDSchema):
     created = fields.DateTime(
         schema.dateCreated,
         missing=None,
-        format='%Y-%m-%dT%H:%M:%SZ',
-        extra_formats=('iso', '%Y-%m-%d')
+        format='iso',
+        extra_formats=('%Y-%m-%d', )
     )
     updated = fields.DateTime(
         schema.dateUpdated,
         missing=None,
-        format='%Y-%m-%dT%H:%M:%SZ',
-        extra_formats=('iso', '%Y-%m-%d')
+        format='iso',
+        extra_formats=('%Y-%m-%d', )
     )
     version = fields.String(schema.schemaVersion, missing=1)
     creator = fields.Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name='id', missing=None)
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        obj.created = self._fix_timezone(obj.created)
+        obj.updated = self._fix_timezone(obj.updated)
+        return obj
