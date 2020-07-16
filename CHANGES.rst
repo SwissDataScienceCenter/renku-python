@@ -18,6 +18,17 @@
 Changes
 =======
 
+`0.10.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.4...v0.10.5>`__ (2020-07-16)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Pin dependencies to prevent downstream dependency updates from breaking renku. Fix pyshacl dependency.
+   (`#785 <https://github.com/SwissDataScienceCenter/renku-python/issues/785>`__)
+   (`30beedd <https://github.com/SwissDataScienceCenter/renku-python/pull/1391/commits/30beedd44f55e028eec4dbc6c786fd1eb9747d08>`__)
+
+
 `0.10.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.3...v0.10.4>`__ (2020-05-18)
 ----------------------------------------------------------------------------------------------------------
 
