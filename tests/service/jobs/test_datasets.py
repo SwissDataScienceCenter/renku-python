@@ -32,8 +32,9 @@ from tests.service.views.test_dataset_views import assert_rpc_response
 
 @pytest.mark.parametrize(
     'url', [(
-        'https://dev.renku.ch/projects/rokroskar/'
-        'scratch-project/datasets/7eba3f50-1a19-4282-8a86-2497e0f43809/'
+        'https://dev.renku.ch/projects/renku-qa/'
+        'kubas-datascience-in-bash/datasets/'
+        'd3ec7b90-c9bf-4ee0-bd01-a81a8ff3a768/'
     )]
 )
 @pytest.mark.integration

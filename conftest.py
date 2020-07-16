@@ -46,12 +46,12 @@ from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     'IT_PROTECTED_REMOTE_REPO',
-    'https://dev.renku.ch/gitlab/contact/protected-renku.git'
+    'https://dev.renku.ch/gitlab/renku-qa/core-integration-test'
 )
 
 IT_REMOTE_REPO_URL = os.getenv(
     'IT_REMOTE_REPOSITORY',
-    'https://dev.renku.ch/gitlab/contact/integration-test'
+    'https://dev.renku.ch/gitlab/renku-qa/core-integration-test'
 )
 IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
@@ -971,11 +971,12 @@ def svc_client_with_repo(svc_client_setup):
     """Service client with a remote repository."""
     svc_client, headers, project_id, url_components = svc_client_setup
 
-    svc_client.post(
+    response = svc_client.post(
         '/cache.migrate',
         data=json.dumps(dict(project_id=project_id)),
         headers=headers
     )
+    assert response.json['result']
 
     yield svc_client, deepcopy(headers), project_id, url_components
 

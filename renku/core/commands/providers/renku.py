@@ -199,6 +199,7 @@ class RenkuProvider(ProviderApi):
                 'Cannot access knowledge graph: {}'.format(url)
             ) from e
         if response.status_code != 200:
+
             raise errors.OperationError(
                 'Cannot access knowledge graph: {}\nResponse code: {}'.format(
                     url, response.status_code
