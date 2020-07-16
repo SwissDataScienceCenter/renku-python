@@ -518,13 +518,6 @@
                ]
             },
             {
-               "path": "schema:creator",
-               "sh:class": {
-                  "@id": "schema:Person"
-               },
-               "minCount": 1
-            },
-            {
                "nodeKind": "sh:Literal",
                "path": "rdfs:label",
                "datatype": {

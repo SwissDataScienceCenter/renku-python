@@ -39,6 +39,8 @@ from renku.core.models.refs import LinkReference
 
 from .git import GitCore
 
+DEFAULT_DATA_DIR = 'data'
+
 
 def default_path():
     """Return default repository path."""
@@ -85,6 +87,13 @@ class RepositoryApiMixin(GitCore):
     parent = attr.ib(default=None)
     """Store a pointer to the parent repository."""
 
+    data_dir = attr.ib(
+        default=DEFAULT_DATA_DIR,
+        kw_only=True,
+        converter=lambda value: str(value) if value else DEFAULT_DATA_DIR
+    )
+    """Define a name of the folder for storing datasets."""
+
     METADATA = 'metadata.yml'
     """Default name of Renku config file."""
 
@@ -118,6 +127,11 @@ class RepositoryApiMixin(GitCore):
 
         path.relative_to(path)
         self.renku_path = path
+
+        data_dir = self.get_value(
+            'renku', self.DATA_DIR_CONFIG_KEY, local_only=True
+        )
+        self.data_dir = data_dir or self.data_dir
 
         self._subclients = {}
 
@@ -442,7 +456,7 @@ class RepositoryApiMixin(GitCore):
                 run.to_yaml()
                 self.add_to_activity_index(run)
 
-    def init_repository(self, force=False):
+    def init_repository(self, force=False, user=None):
         """Initialize an empty Renku repository."""
         from git import Repo
 
@@ -455,9 +469,14 @@ class RepositoryApiMixin(GitCore):
                 format(self.repo.git_dir)
             )
 
-        # initialize repo
+        # initialize repo and set user data
         path = self.path.absolute()
         self.repo = Repo.init(str(path))
+        if user:
+            config_writer = self.repo.config_writer()
+            for key, value in user.items():
+                config_writer.set_value('user', key, value)
+            config_writer.release()
 
         # verify if author information is available
         Person.from_git(self.repo)

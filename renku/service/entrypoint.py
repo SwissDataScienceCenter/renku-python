@@ -42,7 +42,8 @@ from renku.service.views.datasets import DATASET_BLUEPRINT_TAG, \
 from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, \
     list_jobs
 from renku.service.views.templates import TEMPLATES_BLUEPRINT_TAG, \
-    read_manifest_from_template, templates_blueprint
+    create_project_from_template, read_manifest_from_template, \
+    templates_blueprint
 
 logging.basicConfig(level=os.getenv('SERVICE_LOG_LEVEL', 'WARNING'))
 
@@ -115,6 +116,9 @@ def build_routes(app):
 
     docs.register(
         read_manifest_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG
+    )
+    docs.register(
+        create_project_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG
     )
 
 

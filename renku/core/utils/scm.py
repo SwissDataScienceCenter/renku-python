@@ -15,36 +15,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Job queues."""
-from rq import Queue
-
-from renku.service.cache.base import BaseCache
-
-CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
-CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
-
-DATASETS_JOB_QUEUE = 'datasets.jobs'
-MIGRATIONS_JOB_QUEUE = 'project.migrations'
-
-QUEUES = [
-    CLEANUP_QUEUE_FILES,
-    CLEANUP_QUEUE_PROJECTS,
-    DATASETS_JOB_QUEUE,
-    MIGRATIONS_JOB_QUEUE,
-]
+"""Helpers utils for interacting with remote source code management tools."""
+import re
 
 
-class WorkerQueues:
-    """Worker queues."""
-
-    connection = BaseCache.cache
-
-    @staticmethod
-    def describe():
-        """List possible queues."""
-        return QUEUES
-
-    @staticmethod
-    def get(name):
-        """Get specific queue object."""
-        return Queue(name, connection=WorkerQueues.connection)
+def strip_and_lower(input):
+    """Adjust chars to make the input compatible as scm source."""
+    return re.sub(r'\s', r'-', input.strip()).lower()

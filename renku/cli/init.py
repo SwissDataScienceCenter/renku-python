@@ -157,6 +157,9 @@ _DOCKERFILE = 'Dockerfile'
 _REQUIREMENTS = 'requirements.txt'
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
+INVALID_DATA_DIRS = ['.', '.renku', '.git']
+"""Paths that cannot be used as data directory name."""
+
 
 def parse_parameters(ctx, param, value):
     """Parse parameters to dictionary."""
@@ -246,6 +249,28 @@ def is_path_empty(path):
     return not any(gen)
 
 
+def resolve_data_directory(data_dir, path):
+    """Check data directory is within the project path."""
+    if not data_dir:
+        return
+
+    absolute_data_dir = (Path(path) / data_dir).resolve()
+
+    try:
+        data_dir = absolute_data_dir.relative_to(path)
+    except ValueError:
+        raise errors.ParameterError(
+            f'Data directory {data_dir} is not within project {path}'
+        )
+
+    if str(data_dir).rstrip(os.path.sep) in INVALID_DATA_DIRS:
+        raise errors.ParameterError(
+            f'Cannot use {data_dir} as data directory.'
+        )
+
+    return data_dir
+
+
 def check_git_user_config():
     """Check that git user information is configured."""
     dummy_git_folder = mkdtemp()
@@ -266,9 +291,16 @@ def check_git_user_config():
     type=click.Path(writable=True, file_okay=False, resolve_path=True),
 )
 @click.option(
+    '-n',
     '--name',
     callback=validate_name,
     help='Provide a custom project name.',
+)
+@click.option(
+    '--data-dir',
+    default=None,
+    type=click.Path(writable=True, file_okay=False),
+    help='Data directory within the project'
 )
 @click.option(
     '-t', '--template-id', help='Provide the id of the template to use.'
@@ -320,7 +352,7 @@ def check_git_user_config():
 def init(
     ctx, client, external_storage_requested, path, name, template_id,
     template_index, template_source, template_ref, parameter, list_templates,
-    force, describe
+    force, describe, data_dir
 ):
     """Initialize a project in PATH. Default is the current path."""
     # verify dirty path
@@ -329,6 +361,8 @@ def init(
             'Folder "{0}" is not empty. Please add --force '
             'flag to transform it into a Renku repository.'.format(str(path))
         )
+
+    data_dir = resolve_data_directory(data_dir, path)
 
     if not check_git_user_config():
         raise errors.ConfigurationError(
@@ -445,6 +479,7 @@ def init(
     ctx.obj = client = attr.evolve(
         client,
         path=path,
+        data_dir=data_dir,
         external_storage_requested=external_storage_requested
     )
     if not is_path_empty(path):
@@ -474,7 +509,14 @@ def init(
     click.echo('Initializing new Renku repository... ', nl=False)
     with client.lock:
         try:
-            create_from_template(template_path, client, name, parameter, force)
+            create_from_template(
+                template_path=template_path,
+                client=client,
+                name=name,
+                metadata=parameter,
+                force=force,
+                data_dir=data_dir
+            )
         except FileExistsError as e:
             raise click.UsageError(e)
 

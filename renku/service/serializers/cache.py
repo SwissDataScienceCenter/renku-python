@@ -180,19 +180,33 @@ class ProjectMigrateRequest(Schema):
     """Request schema for project migrate."""
 
     project_id = fields.String(required=True)
+    is_delayed = fields.Boolean(default=False)
 
 
 class ProjectMigrateResponse(Schema):
     """Response schema for project migrate."""
 
     was_migrated = fields.Boolean()
-    messages = fields.List(fields.String, required=True)
+    messages = fields.List(fields.String)
 
 
 class ProjectMigrateResponseRPC(JsonRPCResponse):
     """RPC response schema for project migrate."""
 
     result = fields.Nested(ProjectMigrateResponse)
+
+
+class ProjectMigrateJobResponse(Schema):
+    """Response schema for enqueued job of project migration."""
+
+    job_id = fields.String()
+    created_at = fields.DateTime()
+
+
+class ProjectMigrateAsyncResponseRPC(JsonRPCResponse):
+    """RPC response schema for project migrate."""
+
+    result = fields.Nested(ProjectMigrateJobResponse)
 
 
 class ProjectMigrationCheckResponse(Schema):

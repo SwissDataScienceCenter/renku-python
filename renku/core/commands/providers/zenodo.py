@@ -406,7 +406,7 @@ class ZenodoDeposition:
         """Attach metadata to deposition on Zenodo."""
         request_payload = {
             'metadata': {
-                'title': dataset.name,
+                'title': dataset.title,
                 'upload_type': 'dataset',
                 'description':
                     dataset.description if dataset.description else None,
@@ -414,7 +414,7 @@ class ZenodoDeposition:
                     'name': creator.name,
                     'affiliation':
                         creator.affiliation if creator.affiliation else None
-                } for creator in dataset.creator]
+                } for creator in dataset.creators]
             }
         }
 

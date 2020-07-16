@@ -18,6 +18,7 @@
 """Test ``remove`` command."""
 
 from renku.cli import cli
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 
 
 def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory):
@@ -30,18 +31,18 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory):
     assert 'OK' in result.output
 
     source = tmpdir.join('remove_dataset.file')
-    source.write('data')
+    source.write(DATA_DIR)
 
     result = runner.invoke(cli, ['dataset', 'add', 'testing', source.strpath])
     assert 0 == result.exit_code
 
-    path = client.path / client.datadir / 'testing' / 'remove_dataset.file'
+    path = client.path / client.data_dir / 'testing' / 'remove_dataset.file'
     assert path.exists()
 
     result = runner.invoke(cli, ['doctor'])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['rm', str(client.path / 'data')])
+    result = runner.invoke(cli, ['rm', str(client.path / DATA_DIR)])
     assert 0 == result.exit_code
 
     assert not path.exists()
