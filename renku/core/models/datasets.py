@@ -28,7 +28,7 @@ from urllib.parse import quote
 
 import attr
 from attr.validators import instance_of
-from marshmallow import EXCLUDE, pre_load
+from marshmallow import EXCLUDE, pre_dump, pre_load
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
@@ -677,9 +677,22 @@ class DatasetTagSchema(JsonLDSchema):
     name = fields.String(schema.name)
     description = fields.String(schema.description)
     commit = fields.String(schema.location)
-    created = fields.DateTime(schema.startDate, missing=None)
+    created = fields.DateTime(
+        schema.startDate,
+        missing=None,
+        format='iso',
+        extra_formats=('%Y-%m-%d', )
+    )
     dataset = fields.String(schema.about)
     _id = fields.Id(init_name='id')
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        object.__setattr__(obj, 'created', self._fix_timezone(obj.created))
+        return obj
 
 
 class LanguageSchema(JsonLDSchema):
@@ -706,11 +719,21 @@ class DatasetFileSchema(EntitySchema):
         model = DatasetFile
         unknown = EXCLUDE
 
-    added = fields.DateTime(schema.dateCreated)
+    added = fields.DateTime(
+        schema.dateCreated, format='iso', extra_formats=('%Y-%m-%d', )
+    )
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
     based_on = Nested(schema.isBasedOn, 'DatasetFileSchema', missing=None)
     external = fields.Boolean(renku.external, missing=False)
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        obj.added = self._fix_timezone(obj.added)
+        return obj
 
 
 class DatasetSchema(EntitySchema, CreatorMixinSchema):
@@ -725,7 +748,13 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
 
     _id = fields.Id(init_name='id', missing=None)
     _label = fields.String(rdfs.label, init_name='label', missing=None)
-    date_published = fields.DateTime(schema.datePublished, missing=None)
+    date_published = fields.DateTime(
+        schema.datePublished,
+        missing=None,
+        allow_none=True,
+        format='%Y-%m-%d',
+        extra_formats=('iso', '%Y-%m-%dT%H:%M:%S')
+    )
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
@@ -736,7 +765,13 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
-    date_created = fields.DateTime(schema.dateCreated, missing=None)
+    date_created = fields.DateTime(
+        schema.dateCreated,
+        missing=None,
+        allow_none=True,
+        format='iso',
+        extra_formats=('%Y-%m-%d', )
+    )
     files = Nested(schema.hasPart, DatasetFileSchema, many=True)
     tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
     same_as = Nested(schema.sameAs, UrlSchema, missing=None)
@@ -774,6 +809,15 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         """Fix types."""
         from renku.core.utils.migrate import migrate_types
         return migrate_types(data)
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        obj.date_published = self._fix_timezone(obj.date_published)
+        obj.date_created = self._fix_timezone(obj.date_created)
+        return obj
 
 
 def is_dataset_name_valid(name):
