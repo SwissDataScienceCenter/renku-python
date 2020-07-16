@@ -147,7 +147,7 @@ install_requires = [
     'appdirs>=1.4.3,<=1.4.4 ',
     'apispec==3.3.0',
     'attrs==19.3.0',
-    'click-completion>=0.5.0,<=0.5.3',
+    'click-completion>=0.5.0,<=0.5.2',
     'click>=7.0,<=7.1.2',
     'cryptography>=2.7,<=2.9.2',
     'cwltool==3.0.20200324120055',
