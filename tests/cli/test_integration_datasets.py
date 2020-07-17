@@ -37,14 +37,14 @@ from renku.core.utils.contexts import chdir
 @pytest.mark.parametrize(
     'doi', [{
         'doi': '10.5281/zenodo.2658634',
-        'short_name': 'pyndl_naive_discriminat_v064',
+        'name': 'pyndl_naive_discriminat_v064',
         'creator':
             'Konstantin Sering, Marc Weitz, David-Elias Künstle, '
             'Lennart Schneider',
         'version': 'v0.6.4'
     }, {
         'doi': '10.7910/DVN/F4NUMR',
-        'short_name': 'replication_data_for_ca_2',
+        'name': 'replication_data_for_ca_2',
         'creator': 'James Druckman, Martin Kifer, Michael Parkin',
         'version': '2'
     }]
@@ -64,17 +64,17 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'OK' in result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ['dataset', '-c', 'short_name,creators'])
+    result = runner.invoke(cli, ['dataset', '-c', 'name,creators'])
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert doi['short_name'] in result.output
+    assert doi['name'] in result.output
     assert doi['creator'] in result.output
 
-    result = runner.invoke(cli, ['dataset', 'ls-tags', doi['short_name']])
+    result = runner.invoke(cli, ['dataset', 'ls-tags', doi['name']])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert doi['version'] in result.output
 
-    with client.with_dataset(doi['short_name']) as dataset:
+    with client.with_dataset(doi['name']) as dataset:
         assert doi['doi'] in dataset.same_as.url
         assert dataset.identifier in dataset.url
         assert dataset.url == dataset._id
@@ -413,7 +413,7 @@ def test_dataset_export_upload_file(
 
     with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
-        dataset.creator[0].affiliation = 'eth'
+        dataset.creators[0].affiliation = 'eth'
 
     data_repo = git.Repo(str(project))
     data_repo.git.add(update=True)
@@ -457,7 +457,7 @@ def test_dataset_export_upload_tag(
 
     with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
-        dataset.creator[0].affiliation = 'eth'
+        dataset.creators[0].affiliation = 'eth'
 
     data_repo = git.Repo(str(project))
     data_repo.git.add(update=True)
@@ -544,7 +544,7 @@ def test_dataset_export_upload_multiple(
 
     with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
-        dataset.creator[0].affiliation = 'eth'
+        dataset.creators[0].affiliation = 'eth'
 
     data_repo = git.Repo(str(project))
     data_repo.git.add(update=True)
@@ -619,7 +619,7 @@ def test_dataset_export_published_url(
 
     with client.with_dataset('my-dataset') as dataset:
         dataset.description = 'awesome dataset'
-        dataset.creator[0].affiliation = 'eth'
+        dataset.creators[0].affiliation = 'eth'
 
     data_repo = git.Repo(str(project))
     data_repo.git.add(update=True)
@@ -887,8 +887,6 @@ def test_add_from_git_copies_metadata(runner, client):
 
     dataset = client.load_dataset('remote')
     assert dataset.files[0].name == 'README.rst'
-    assert 'mailto:jiri.kuncar@gmail.com' in str(dataset.files[0].creator)
-    assert 'mailto:rokroskar@gmail.co' in str(dataset.files[0].creator)
 
 
 @pytest.mark.integration
@@ -933,10 +931,10 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
     assert message in result.output
 
 
-def read_dataset_file_metadata(client, short_name, filename):
+def read_dataset_file_metadata(client, name, filename):
     """Return metadata from dataset's YAML file."""
-    with client.with_dataset(short_name) as dataset:
-        assert client.get_dataset_path(dataset.name).exists()
+    with client.with_dataset(name) as dataset:
+        assert client.get_dataset_path(dataset.title).exists()
 
         for file_ in dataset.files:
             if file_.path.endswith(filename):
@@ -1138,7 +1136,6 @@ def test_import_from_renku_project(tmpdir, client, runner):
 
     path = 'new-directory/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
     metadata = read_dataset_file_metadata(client, 'remote-dataset', path)
-    assert metadata.creator[0].name == file_.creator[0].name
     assert metadata.based_on._id == file_._id
     assert metadata.based_on._label == file_._label
     assert metadata.based_on.path == file_.path

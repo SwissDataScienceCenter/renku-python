@@ -115,6 +115,7 @@ jobs:
         brew update
         brew install git-lfs shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
+        python -m pip install setuptools wheel twine
         python -m pip install -e .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
@@ -180,6 +181,7 @@ jobs:
         brew update
         brew install git-lfs shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
+        python -m pip install setuptools wheel twine
         python -m pip install -e .[all]
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"

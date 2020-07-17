@@ -82,13 +82,13 @@ def test_move_dataset_file(tmpdir, runner, client):
 def test_move_symlinks(data_repository, runner, project, client, destination):
     """Test importing data into a dataset."""
     # create a dataset
-    short_name = 'dataset'
-    result = runner.invoke(cli, ['dataset', 'create', short_name])
+    name = 'dataset'
+    result = runner.invoke(cli, ['dataset', 'create', name])
     assert 0 == result.exit_code
     assert 'OK' in result.output
 
-    with client.with_dataset(short_name) as dataset:
-        assert dataset.name == 'dataset'
+    with client.with_dataset(name) as dataset:
+        assert dataset.title == 'dataset'
 
     # add data from local git repo
     filepath = os.path.join(data_repository.working_dir, 'file')

@@ -16,6 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
+from git import Repo
+
+from renku.core.commands.save import repo_sync
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
@@ -29,6 +32,16 @@ def make_project_path(user, project):
             CACHE_PROJECTS_PATH / user['user_id'] / project['owner'] /
             project['name']
         )
+
+
+def make_new_project_path(user, project):
+    """Adjust parameters new project path."""
+    new_project = {
+        'owner': project['project_namespace'],
+        'name': project['project_name_stripped'],
+    }
+
+    return make_project_path(user, new_project)
 
 
 def make_file_path(user, cached_file):
@@ -49,3 +62,13 @@ def valid_file(user, cached_file):
     if file_path.exists():
         cached_file['is_dir'] = file_path.is_dir()
         return cached_file
+
+
+def new_repo_push(
+    repo_path, source_url, source_name='origin', source_branch='master'
+):
+    """Push a new repo to origin."""
+    repo = Repo(repo_path)
+    repo.create_remote(source_name, source_url)
+    _, branch = repo_sync(repo, remote=source_name)
+    return branch == source_branch
