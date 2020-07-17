@@ -198,9 +198,9 @@ def create_dataset_view(user, cache):
 
     with chdir(project.abs_path):
         create_dataset(
-            ctx['short_name'],
-            title=ctx.get('name'),
-            creators=ctx.get('creator'),
+            ctx['name'],
+            title=ctx.get('title'),
+            creators=ctx.get('creators'),
             description=ctx.get('description'),
             keywords=ctx.get('keywords'),
             commit_message=ctx['commit_message']

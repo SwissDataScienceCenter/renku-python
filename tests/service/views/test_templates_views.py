@@ -100,7 +100,6 @@ def test_create_project_from_template(svc_client_templates_creation):
         data=json.dumps(payload),
         headers=anonymous_headers
     )
-
     assert response
     assert response.json['error']
     assert 'Cannot push changes' in response.json['error']['reason']
@@ -120,12 +119,12 @@ def test_create_project_from_template(svc_client_templates_creation):
         assert INVALID_PARAMS_ERROR_CODE == response.json['error']['code']
         assert 'missing parameter' in response.json['error']['reason']
 
-    # succesfully push with proper authentication
+    # successfully push with proper authentication
     response = svc_client.post(
         '/templates.create_project', data=json.dumps(payload), headers=headers
     )
-
     assert response
+
     assert {'result'} == set(response.json.keys())
     stripped_name = strip_and_lower(payload['project_name'])
     assert stripped_name == response.json['result']['name']
@@ -136,16 +135,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     )
     assert expected_url == response.json['result']['url']
 
-    # fail: can't push if the project already exists
-    response = svc_client.post(
-        '/templates.create_project', data=json.dumps(payload), headers=headers
-    )
-
-    assert response
-    assert response.json['error']
-    assert 'Cannot push changes' in response.json['error']['reason']
-
-    # succesfully re-use old name after cleanup
+    # successfully re-use old name after cleanup
     assert rm_remote() is True
     response = svc_client.post(
         '/templates.create_project', data=json.dumps(payload), headers=headers

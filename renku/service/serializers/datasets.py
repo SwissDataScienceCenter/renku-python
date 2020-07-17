@@ -33,12 +33,12 @@ class DatasetCreators(Schema):
 class DatasetDetails(Schema):
     """Serialize a dataset to a response object."""
 
-    short_name = fields.String(required=True)
+    name = fields.String(required=True)
     version = fields.String(allow_none=True)
-    created_at = fields.String(allow_none=True, attribute='created')
+    created_at = fields.String(allow_none=True, attribute='date_created')
 
-    title = fields.String(attribute='name')
-    creators = fields.List(fields.Nested(DatasetCreators), attribute='creator')
+    title = fields.String()
+    creators = fields.List(fields.Nested(DatasetCreators))
     description = fields.String()
     keywords = fields.List(fields.String())
 
@@ -47,7 +47,6 @@ class DatasetCreateRequest(DatasetDetails):
     """Request schema for a dataset create view."""
 
     project_id = fields.String(required=True)
-    short_name = fields.String(required=True)
 
     commit_message = fields.String()
 
@@ -56,7 +55,7 @@ class DatasetCreateRequest(DatasetDetails):
         """Set default commit message."""
         if not data.get('commit_message'):
             data['commit_message'] = 'service: dataset create {0}'.format(
-                data['short_name']
+                data['name']
             )
 
         return data
@@ -65,7 +64,7 @@ class DatasetCreateRequest(DatasetDetails):
 class DatasetCreateResponse(Schema):
     """Response schema for a dataset create view."""
 
-    short_name = fields.String(required=True)
+    name = fields.String(required=True)
     remote_branch = fields.String()
 
 

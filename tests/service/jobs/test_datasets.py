@@ -31,11 +31,8 @@ from renku.service.utils import make_project_path
 
 
 @pytest.mark.parametrize(
-    'url', [(
-        'https://dev.renku.ch/projects/renku-qa/'
-        'kubas-datascience-in-bash/datasets/'
-        'd3ec7b90-c9bf-4ee0-bd01-a81a8ff3a768/'
-    )]
+    'url',
+    [('https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/')]
 )
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)

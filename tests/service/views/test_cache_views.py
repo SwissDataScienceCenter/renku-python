@@ -259,13 +259,13 @@ def test_clone_projects_no_auth(svc_client):
         'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
         'Renku-User-FullName': 'Just Sam',
         'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer notatoken',
+        'Authorization': f'Bearer {IT_GIT_ACCESS_TOKEN}',
     }
 
     response = svc_client.post(
         '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
-
+    breakpoint()
     assert response
     assert {'result'} == set(response.json.keys())
 
@@ -417,7 +417,7 @@ def test_clone_projects_invalid_headers(svc_client):
         'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
         'Renku-User-FullName': 'Not Sam',
         'Renku-User-Email': 'not@sam.io',
-        'Authorization': 'Bearer not-a-token',
+        'Authorization': f'Bearer {IT_GIT_ACCESS_TOKEN}',
     }
 
     payload = {
@@ -436,7 +436,6 @@ def test_clone_projects_invalid_headers(svc_client):
         '/cache.project_list',
         # no auth headers, expected error
     )
-
     assert response
     assert {'error'} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json['error']['code']
@@ -693,7 +692,7 @@ def test_check_no_migrations(svc_client_with_repo):
 
     response = svc_client.get(
         '/cache.migrations_check',
-        data=json.dumps(dict(project_id=project_id)),
+        query_string=dict(project_id=project_id),
         headers=headers
     )
 
