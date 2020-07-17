@@ -81,4 +81,7 @@ renku.rb
 
 .env
 
+# Chart related
 renku-core-*
+requirements.lock
+helm-chart/renku-core/charts
