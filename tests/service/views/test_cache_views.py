@@ -265,7 +265,6 @@ def test_clone_projects_no_auth(svc_client):
     response = svc_client.post(
         '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
-    breakpoint()
     assert response
     assert {'result'} == set(response.json.keys())
 
