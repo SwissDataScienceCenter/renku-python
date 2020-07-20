@@ -40,8 +40,9 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
-from tests.utils import make_dataset_add_payload
 from walrus import Database
+
+from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     'IT_PROTECTED_REMOTE_REPO',

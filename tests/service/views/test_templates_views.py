@@ -23,12 +23,12 @@ from tempfile import TemporaryDirectory
 
 import pytest
 from flaky import flaky
-from tests.core.commands.test_init import TEMPLATE_ID, TEMPLATE_INDEX, \
-    TEMPLATE_REF, TEMPLATE_URL
 
 from renku.core.commands.init import fetch_template, read_template_manifest
 from renku.core.utils.scm import strip_and_lower
 from renku.service.config import INVALID_PARAMS_ERROR_CODE
+from tests.core.commands.test_init import TEMPLATE_ID, TEMPLATE_INDEX, \
+    TEMPLATE_REF, TEMPLATE_URL
 
 
 @pytest.mark.service
