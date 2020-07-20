@@ -489,10 +489,6 @@ def old_project(old_repository):
                 "e6fa6bf3 input2.txt",
             ],
         },
-        {
-            'name': 'old-datasets-v0.10.4.git',
-            'exit_code': 0
-        },
     ],
 )
 def old_workflow_project(request, tmp_path_factory):

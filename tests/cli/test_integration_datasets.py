@@ -865,7 +865,7 @@ def test_dataset_update(client, runner, params):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.2658634"])
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_update_external_provider(client, runner, doi):
     """Test updating datasets from external providers."""
     result = runner.invoke(
@@ -885,7 +885,7 @@ def test_dataset_update_external_provider(client, runner, doi):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("doi", ["10.7910/DVN/F4NUMR"])
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_dataset_update_dataverse(client, runner, doi):
     """Test updating datasets from external providers.
 

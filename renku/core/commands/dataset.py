@@ -441,7 +441,16 @@ def export_dataset(
 
 @pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS)
 def import_dataset(
-    client, uri, name="", extract=False, with_prompt=False, yes=False, commit_message=None, progress=None,
+    client,
+    uri,
+    name="",
+    extract=False,
+    with_prompt=False,
+    yes=False,
+    commit_message=None,
+    progress=None,
+    previous_dataset=None,
+    delete=False,
 ):
     """Import data from a 3rd party provider or another renku project."""
     import_dataset_with_client(
@@ -515,6 +524,8 @@ def import_dataset_with_client(
     if not files:
         raise ParameterError("Dataset {} has no files.".format(uri))
 
+    new_files = list(dataset.files)
+
     if not provider.is_git_based:
         if not name:
             name = generate_default_name(dataset.title, dataset.version)
@@ -541,21 +552,7 @@ def import_dataset_with_client(
         )
 
         if previous_dataset:
-            previous_dataset.update_metadata(dataset)
-            current_files = set(f.url for f in new_files)
-            # remove files not present in the dataset anymore
-            for f in previous_dataset.files:
-                if f.url in current_files:
-                    continue
-
-                previous_dataset.unlink_file(f.path)
-
-                if delete:
-                    client.remove_file(client.path / f.path)
-
-            dataset = previous_dataset
-            client.mutate_dataset(dataset)
-            dataset.to_yaml()
+            dataset = _update_previous_dataset(client, dataset, previous_dataset, new_files, delete)
 
         if dataset.version:
             tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
@@ -574,8 +571,36 @@ def import_dataset_with_client(
                 sources.append(file_.path)
 
         _add_to_dataset(
-            client, urls=[record.project_url], name=name, sources=sources, with_metadata=dataset, create=True,
+            client,
+            urls=[record.project_url],
+            name=name,
+            sources=sources,
+            with_metadata=dataset,
+            create=not previous_dataset,
         )
+
+        if previous_dataset:
+            _update_previous_dataset(client, dataset, previous_dataset, new_files, delete)
+
+
+def _update_previous_dataset(client, new_dataset, previous_dataset, new_files, delete=False):
+    """Update ``previous_dataset`` with changes made to ``new_dataset``."""
+    previous_dataset.update_metadata(new_dataset)
+    current_files = set(f.path for f in new_files)
+    # NOTE: remove files not present in the dataset anymore
+    for f in previous_dataset.files:
+        if f.path in current_files:
+            continue
+
+        previous_dataset.unlink_file(f.path)
+
+        if delete:
+            client.remove_file(client.path / f.path)
+
+    new_dataset = previous_dataset
+    client.mutate_dataset(new_dataset)
+    new_dataset.to_yaml()
+    return new_dataset
 
 
 @pass_local_client(
@@ -637,10 +662,7 @@ def update_datasets(
                 client, uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
             )
 
-            click.echo(
-                "Updated dataset {} from remote provider".format(
-                    dataset.name
-                )
+            click.echo("Updated dataset {} from remote provider".format(dataset.name))
 
             if names:
                 names.remove(dataset.name)
@@ -689,7 +711,7 @@ def update_datasets(
             "Some files are deleted from remote. To also delete them locally "
             "run update command with `--delete` flag."
         )
-    click.echo('Updated {} files'.format(len(updated_files)))
+    click.echo("Updated {} files".format(len(updated_files)))
 
 
 def _include_exclude(file_path, include=None, exclude=None):
@@ -801,7 +823,6 @@ def list_tags(client, name, format):
     if not dataset_:
         raise ParameterError("Dataset not found.")
 
-    tags = [t for t in dataset_.tags if t.is_from_user]
-    tags = sorted(tags, key=lambda t: t.created)
+    tags = sorted(dataset_.tags, key=lambda t: t.created)
 
     return DATASET_TAGS_FORMATS[format](client, tags)
