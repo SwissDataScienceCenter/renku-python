@@ -38,7 +38,7 @@ def raises(error):
         return not_raises()
 
 
-def make_dataset_add_payload(project_id, urls, short_name=None):
+def make_dataset_add_payload(project_id, urls, name=None):
     """Make dataset add request payload."""
     files = []
     for url in urls:
@@ -50,7 +50,7 @@ def make_dataset_add_payload(project_id, urls, short_name=None):
 
     return {
         'project_id': project_id,
-        'short_name': short_name or uuid.uuid4().hex,
+        'name': name or uuid.uuid4().hex,
         'create_dataset': True,
         'force': False,
         'files': files
