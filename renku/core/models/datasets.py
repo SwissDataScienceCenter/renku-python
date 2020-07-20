@@ -410,7 +410,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
     tags = attr.ib(factory=list, converter=_convert_dataset_tags, kw_only=True)
 
-    same_as = attr.ib(default=None, kw_only=True, type=Url)
+    same_as = attr.ib(default=None, kw_only=True)
 
     name = attr.ib(default=None, kw_only=True)
 
