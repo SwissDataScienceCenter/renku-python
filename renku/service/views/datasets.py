@@ -238,7 +238,7 @@ def remove_dataset_view(user, cache):
         )
 
     with chdir(project.abs_path):
-        dataset_remove([ctx['short_name']],
+        dataset_remove([ctx['name']],
                        commit_message=ctx['commit_message'])
 
     try:

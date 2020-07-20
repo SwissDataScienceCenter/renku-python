@@ -78,7 +78,7 @@ class DatasetRemoveRequest(DatasetDetails):
     """Request schema for a dataset create view."""
 
     project_id = fields.String(required=True)
-    short_name = fields.String(required=True)
+    name = fields.String(required=True)
 
     commit_message = fields.String()
 
@@ -87,7 +87,7 @@ class DatasetRemoveRequest(DatasetDetails):
         """Set default commit message."""
         if not data.get('commit_message'):
             data['commit_message'] = 'service: dataset delete {0}'.format(
-                data['short_name']
+                data['name']
             )
 
         return data
@@ -96,7 +96,7 @@ class DatasetRemoveRequest(DatasetDetails):
 class DatasetRemoveResponse(Schema):
     """Response schema for a dataset create view."""
 
-    short_name = fields.String(required=True)
+    name = fields.String(required=True)
     remote_branch = fields.String()
 
 
