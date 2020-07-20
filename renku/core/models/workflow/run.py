@@ -422,9 +422,8 @@ class Run(CommitMixin):
     def __attrs_post_init__(self):
         """Calculate properties."""
         super().__attrs_post_init__()
-
-        if ((not self.commit or self.commit.hexsha in self._id) and
-            self.client and Path(self.path).exists()):
+        commit_not_set = not self.commit or self.commit.hexsha in self._id
+        if commit_not_set and self.client and Path(self.path).exists():
             self.commit = self.client.find_previous_commit(self.path)
 
     @classmethod
