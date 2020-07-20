@@ -77,8 +77,8 @@
         "calamus": {
             "git": "https://github.com/SwissDataScienceCenter/calamus.git",
             "hashes": [
-                "sha256:f8decaeb6905eb6898a2afb3b24713ccbd5dd5447cf1572257d1515790475e65",
-                "sha256:d7e10a87bb2230a67f52d2882d3744a534ef12ca6f440e008708a5ca42661ae8"
+                "sha256:d7e10a87bb2230a67f52d2882d3744a534ef12ca6f440e008708a5ca42661ae8",
+                "sha256:f8decaeb6905eb6898a2afb3b24713ccbd5dd5447cf1572257d1515790475e65"
             ],
             "markers": "python_full_version >= '3.6.1' and python_full_version < '4.0.0'",
             "ref": "12be8be56dd82326465144a1386185ca27bfae52"
