@@ -81,7 +81,7 @@
                 "sha256:d7e10a87bb2230a67f52d2882d3744a534ef12ca6f440e008708a5ca42661ae8"
             ],
             "markers": "python_full_version >= '3.6.1' and python_full_version < '4.0.0'",
-            "ref": "7bf1cb607fdf090c191a743d554379de5ab52a3f"
+            "ref": "12be8be56dd82326465144a1386185ca27bfae52"
         },
         "certifi": {
             "hashes": [
