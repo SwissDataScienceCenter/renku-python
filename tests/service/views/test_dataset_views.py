@@ -117,8 +117,7 @@ def test_remove_dataset_view(svc_client_with_repo):
         '/datasets.remove', data=json.dumps(payload), headers=headers
     )
 
-    assert {'name',
-            'remote_branch'} == set(response.json['result'].keys())
+    assert {'name', 'remote_branch'} == set(response.json['result'].keys())
     assert payload['name'] == response.json['result']['name']
 
 
