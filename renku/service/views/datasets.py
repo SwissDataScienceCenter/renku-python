@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku service datasets view."""
 import os
-import uuid
 from pathlib import Path
 
 from flask import Blueprint, request
@@ -29,7 +28,6 @@ from renku.core.commands.dataset import add_file, create_dataset, \
 from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
-from renku.service.cache.serializers.job import USER_JOB_STATE_ENQUEUED
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
 from renku.service.jobs.contexts import enqueue_retry
@@ -90,7 +88,7 @@ def list_dataset_files_view(user, cache):
     project = cache.get_project(cache.ensure_user(user), ctx['project_id'])
 
     with chdir(project.abs_path):
-        ctx['files'] = list_files(datasets=[ctx['short_name']])
+        ctx['files'] = list_files(datasets=[ctx['name']])
 
     return result_response(DatasetFilesListResponseRPC(), ctx)
 
@@ -117,9 +115,7 @@ def add_file_to_dataset_view(user_data, cache):
     project = cache.get_project(user, ctx['project_id'])
 
     if not ctx['commit_message']:
-        ctx['commit_message'] = 'service: dataset add {0}'.format(
-            ctx['short_name']
-        )
+        ctx['commit_message'] = 'service: dataset add {0}'.format(ctx['name'])
 
     local_paths = []
     for _file in ctx['files']:
@@ -137,7 +133,7 @@ def add_file_to_dataset_view(user_data, cache):
                 queue.enqueue(
                     dataset_add_remote_file, user_data, job.job_id,
                     project.project_id, ctx['create_dataset'], commit_message,
-                    ctx['short_name'], _file['file_url']
+                    ctx['name'], _file['file_url']
                 )
             continue
 
@@ -161,7 +157,7 @@ def add_file_to_dataset_view(user_data, cache):
         with chdir(project.abs_path):
             add_file(
                 local_paths,
-                ctx['short_name'],
+                ctx['name'],
                 create=ctx['create_dataset'],
                 force=ctx['force'],
                 commit_message=ctx['commit_message']
@@ -200,9 +196,9 @@ def create_dataset_view(user, cache):
 
     with chdir(project.abs_path):
         create_dataset(
-            ctx['short_name'],
-            title=ctx.get('name'),
-            creators=ctx.get('creator'),
+            ctx['name'],
+            title=ctx.get('title'),
+            creators=ctx.get('creators'),
             description=ctx.get('description'),
             keywords=ctx.get('keywords'),
             commit_message=ctx['commit_message']
@@ -238,21 +234,16 @@ def import_dataset_view(user_data, cache):
     user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx['project_id'])
-
-    user_job = {
-        'job_id': uuid.uuid4().hex,
-        'state': USER_JOB_STATE_ENQUEUED,
-    }
-    job = cache.make_job(user, user_job, locked=project.project_id)
+    job = cache.make_job(user, locked=project.project_id)
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
             dataset_import,
             user_data,
-            user_job['job_id'],
+            job.job_id,
             project.project_id,
             ctx['dataset_uri'],
-            short_name=ctx.get('short_name'),
+            name=ctx.get('name'),
             extract=ctx.get('extract', False),
             timeout=int(os.getenv('WORKER_DATASET_JOBS_TIMEOUT', 1800)),
             result_ttl=int(os.getenv('WORKER_DATASET_JOBS_RESULT_TTL', 500))
@@ -281,13 +272,11 @@ def edit_dataset_view(user_data, cache):
     project = cache.get_project(user, ctx['project_id'])
 
     if ctx.get('commit_message') is None:
-        ctx['commit_message'] = 'service: dataset edit {0}'.format(
-            ctx['short_name']
-        )
+        ctx['commit_message'] = 'service: dataset edit {0}'.format(ctx['name'])
 
     with chdir(project.abs_path):
         edited, warnings = edit_dataset(
-            ctx['short_name'],
+            ctx['name'],
             ctx.get('title'),
             ctx.get('description'),
             ctx.get('creators'),
@@ -335,14 +324,12 @@ def unlink_file_view(user_data, cache):
             filters = '-I {0}'.format(include)
 
         ctx['commit_message'] = (
-            'service: unlink dataset {0} {1}'.format(
-                ctx['short_name'], filters
-            )
+            'service: unlink dataset {0} {1}'.format(ctx['name'], filters)
         )
 
     with chdir(project.abs_path):
         records = file_unlink(
-            name=ctx['short_name'],
+            name=ctx['name'],
             include=ctx.get('include_filters'),
             exclude=ctx.get('exclude_filters'),
             yes=True,

@@ -41,6 +41,7 @@ def _jsonld(graph, format, *args, **kwargs):
     import json
 
     import pyld
+
     from renku.core.models.jsonld import asjsonld
 
     output = getattr(pyld.jsonld, format)([
@@ -52,7 +53,7 @@ def _jsonld(graph, format, *args, **kwargs):
 def _conjunctive_graph(graph):
     """Convert a renku ``Graph`` to an rdflib ``ConjunctiveGraph``."""
     from rdflib import ConjunctiveGraph
-    from rdflib.plugin import register, Parser
+    from rdflib.plugin import Parser, register
 
     register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
@@ -88,7 +89,7 @@ def dot(graph, simple=True, debug=False, landscape=False, strict=False):
     if landscape:
         sys.stdout.write('rankdir="LR" \n')
     if simple:
-        _rdf2dot_simple(g, sys.stdout)
+        _rdf2dot_simple(g, sys.stdout, graph=graph)
         return
     _rdf2dot_reduced(g, sys.stdout)
 
@@ -100,11 +101,10 @@ dot_full_landscape = functools.partial(dot, simple=False, landscape=True)
 dot_debug = functools.partial(dot, debug=True)
 
 
-def _rdf2dot_simple(g, stream):
+def _rdf2dot_simple(g, stream, graph=None):
     """Create a simple graph of processes and artifacts."""
-    from itertools import chain
-
     import re
+    from itertools import chain
 
     path_re = re.compile(
         r'(?P<prefix>https://\w+/\w+/|https://\w+/){0,1}(?P<type>[a-zA-Z]+)/'
@@ -172,12 +172,39 @@ def _rdf2dot_simple(g, stream):
     # customize the nodes
     for node, content in activity_nodes.items():
         node_path = path_re.match(node).groupdict()
+        comment = content['comment']
+        if graph:
+            activity = None
+            for a in graph.activities.values():
+                if a._id == str(node):
+                    activity = a
+                elif hasattr(a, '_processes'):
+                    activity = next(
+                        (p for p in a._processes if p._id == str(node)), None
+                    )
+                else:
+                    continue
+                if not activity:
+                    continue
+
+                break
+
+            if activity:
+                plan = activity.association.plan
+
+                comment = '{}: {} {}'.format(
+                    comment.split(':', 1)[0], ' '.join(plan.to_argv()),
+                    ' '.join(plan.to_stream_repr())
+                )
+        path = node_path.get('path')
+        if path:
+            path = ':{}'.format(path)
+        else:
+            path = ''
         stream.write(
             '\t"{commit}:{path}" '
-            '[shape=box label="#{commit}:{path}:{comment}"] \n'.format(
-                comment=content['comment'],
-                commit=node_path['commit'][:5],
-                path=node_path.get('path') or ''
+            '[shape=box label="#{commit}{path}:{comment}"] \n'.format(
+                comment=comment, commit=node_path['commit'][:5], path=path
             )
         )
     for node, content in artifact_nodes.items():
@@ -199,10 +226,10 @@ def _rdf2dot_reduced(g, stream):
     Adapted from original source:
     https://rdflib.readthedocs.io/en/stable/_modules/rdflib/tools/rdf2dot.html
     """
-    import html
     import collections
-    import rdflib
+    import html
 
+    import rdflib
     from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR
 
     types = collections.defaultdict(set)

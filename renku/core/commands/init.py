@@ -27,6 +27,8 @@ import yaml
 from renku.core import errors
 from renku.core.management.config import RENKU_HOME
 
+from .client import pass_local_client
+
 TEMPLATE_MANIFEST = 'manifest.yaml'
 
 
@@ -159,11 +161,18 @@ def read_template_manifest(folder, checkout=False):
 
 
 def create_from_template(
-    template_path, client, name=None, metadata={}, force=None, data_dir=None
+    template_path,
+    client,
+    name=None,
+    metadata={},
+    force=None,
+    data_dir=None,
+    user=None,
+    commit_message=None
 ):
     """Initialize a new project from a template."""
-    with client.commit():
-        client.init_repository(force)
+    with client.commit(commit_message=commit_message):
+        client.init_repository(force, user)
         metadata['name'] = name
         with client.with_metadata(name=name) as project_metadata:
             client.import_from_template(template_path, metadata, force)
@@ -174,3 +183,42 @@ def create_from_template(
             data_path = client.path / data_dir
             data_path.mkdir(parents=True, exist_ok=True)
             (data_path / '.gitkeep').touch(exist_ok=True)
+
+
+@pass_local_client
+def create_from_template_local(
+    client,
+    template_path,
+    name,
+    metadata={},
+    user=None,
+    source=None,
+    ref=None,
+    invoked_from=None
+):
+    """Initialize a new project from a template.
+
+    It creates a custom commit message and accepts custom user data.
+    """
+    command = (
+        'renku init'
+        f' -n "{name}"'
+        f' -s "{source}"'
+        f' -r "{ref}"'
+        f' -t "{template_path.name}"'
+    )
+    parameters = ''.join([
+        f' -p "{key}"="{value}"' for key, value in metadata.items()
+    ])
+    prefix = f'{invoked_from}: ' if invoked_from else ''
+    commit_message = f'{prefix}{command}{parameters}'
+
+    create_from_template(
+        template_path=template_path,
+        client=client,
+        name=name,
+        metadata=metadata,
+        force=False,
+        user=user,
+        commit_message=commit_message
+    )

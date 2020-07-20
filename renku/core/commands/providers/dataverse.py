@@ -20,9 +20,9 @@ import json
 import pathlib
 import re
 import urllib
-import urllib.parse as urlparse
 from pathlib import Path
 from string import Template
+from urllib import parse as urlparse
 
 import attr
 import requests
