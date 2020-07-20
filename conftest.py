@@ -1185,7 +1185,7 @@ def unlink_file_setup(svc_client_with_repo):
 
     unlink_payload = {
         'project_id': project_id,
-        'short_name': response.json['result']['short_name'],
+        'name': response.json['result']['name'],
         'include_filters': [response.json['result']['files'][0]['file_path']]
     }
 
