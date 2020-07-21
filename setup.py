@@ -106,7 +106,7 @@ tests_require = [
     'pytest-cache==1.0',
     'pytest-cov>=2.5.1,<=2.10.0',
     'pytest-flake8>=1.0.4,<=1.0.6',
-    'pytest-timeout==1.3.4'
+    'pytest-timeout==1.3.4',
     'pytest-pep8==1.0.6',
     'pytest-yapf==0.1.1',
     'pytest>=4.0.0,<=5.4.3',
@@ -153,6 +153,7 @@ install_requires = [
     'click-completion>=0.5.0,<=0.5.3',
     'click>=7.0,<=7.1.2',
     'cryptography>=2.7,<=2.9.2',
+    'cwlgen>=0.4.0,<=0.4.2',
     'cwltool==3.0.20200706173533',
     'environ_config>=18.2.0,<=20.1.0',
     'filelock>=3.0.0,<=3.0.12',
