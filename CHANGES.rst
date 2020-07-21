@@ -28,6 +28,10 @@ Bug Fixes
    (`#785 <https://github.com/SwissDataScienceCenter/renku-python/issues/785>`__)
    (`30beedd <https://github.com/SwissDataScienceCenter/renku-python/pull/1391/commits/30beedd44f55e028eec4dbc6c786fd1eb9747d08>`__)
 
+- **core:** Fixes SoftwareAgent person context.
+  (`#1323 <https://github.com/SwissDataScienceCenter/renku-python/pull/1323>`__)
+  (`fa62f58 <https://github.com/SwissDataScienceCenter/renku-python/pull/1391/commits/fa62f587d29f413998c1aa04a5cb7585c32700a6>`__)
+
 
 `0.10.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.3...v0.10.4>`__ (2020-05-18)
 ----------------------------------------------------------------------------------------------------------
