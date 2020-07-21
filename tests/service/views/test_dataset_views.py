@@ -99,6 +99,31 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
+def test_remove_dataset_view(svc_client_with_repo):
+    """Create a new dataset successfully."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    payload = {
+        'project_id': project_id,
+        'name': '{0}'.format(uuid.uuid4().hex),
+    }
+
+    svc_client.post(
+        '/datasets.create',
+        data=json.dumps(payload),
+        headers=headers,
+    )
+
+    response = svc_client.post(
+        '/datasets.remove', data=json.dumps(payload), headers=headers
+    )
+
+    assert {'name', 'remote_branch'} == set(response.json['result'].keys())
+    assert payload['name'] == response.json['result']['name']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
 def test_create_dataset_with_metadata(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
