@@ -63,11 +63,20 @@ if:
 
    You can specify extra inputs to your program explicitly by using the
    ``--input`` option. This is useful for specifying hidden dependencies
-   that don't appear on the command line. These input file must exist before
+   that don't appear on the command line. Explicit inputs must exist before
    execution of ``renku run`` command. This option is not a replacement for
    the arguments that are passed on the command line. Files or directories
    specified with this option will not be passed as input arguments to the
    script.
+
+.. topic:: Disabling input detection (``--no-input-detection``)
+
+    Input paths detection can be disabled by passing ``--no-input-detection``
+    flag to ``renku run``. In this case, only the directories/files that are
+    passed as explicit input are considered to be file inputs. Those passed via
+    command arguments are ignored unless they are in the explicit inputs list.
+    This only affects files and directories; command options and flags are
+    still treated as inputs.
 
 Detecting output paths
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -110,6 +119,13 @@ those paths. Therefore:
    ``--output`` option. These output must exist after the execution of the
    ``renku run`` command. However, they do not need to be modified by
    the command.
+
+.. topic:: Disabling output detection (``--no-output-detection``)
+
+    Output paths detection can be disabled by passing ``--no-output-detection``
+    flag to ``renku run``. When disabled, only the directories/files that are
+    passed as explicit output are considered to be outputs and those passed via
+    command arguments are ignored.
 
 .. cli-run-std
 
@@ -177,7 +193,7 @@ lead to problems with circular dependencies. An update command would change the
 input again, leading to renku seeing it as a changed input, which would run
 update again, and so on, without ever stopping.
 
-Due to this, the renku depedency graph has to be *acyclic*. So instead of
+Due to this, the renku dependency graph has to be *acyclic*. So instead of
 appending to an input file or writing an output file to the same directory
 that was used as an input directory, create new files or write to other
 directories, respectively.
@@ -192,20 +208,20 @@ import click
 from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.options import option_isolation
-from renku.core.management.git import _mapped_std_streams
+from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True, ))
 @click.option(
-    'inputs',
     '--input',
+    'explicit_inputs',
     multiple=True,
     help='Force a path to be considered as an input.',
 )
 @click.option(
-    'outputs',
     '--output',
+    'explicit_outputs',
     multiple=True,
     help='Force a path to be considered an output.',
 )
@@ -214,6 +230,18 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
     is_flag=True,
     default=False,
     help='Allow command without output files.',
+)
+@click.option(
+    '--no-input-detection',
+    is_flag=True,
+    default=False,
+    help='Disable auto-detection of inputs.',
+)
+@click.option(
+    '--no-output-detection',
+    is_flag=True,
+    default=False,
+    help='Disable auto-detection of outputs.',
 )
 @click.option(
     '--success-code',
@@ -228,15 +256,39 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 @pass_local_client(
     clean=True,
     requires_migration=True,
-    up_to_date=True,
     commit=True,
     ignore_std_streams=True,
 )
 def run(
-    client, inputs, outputs, no_output, success_codes, isolation, command_line
+    client, explicit_inputs, explicit_outputs, no_output, no_input_detection,
+    no_output_detection, success_codes, isolation, command_line
 ):
     """Tracking work on a specific problem."""
-    mapped_std = _mapped_std_streams(client.candidate_paths)
+    paths = explicit_outputs if no_output_detection else client.candidate_paths
+    mapped_std = get_mapped_std_streams(paths, streams=('stdout', 'stderr'))
+
+    paths = explicit_inputs if no_input_detection else client.candidate_paths
+    mapped_std_in = get_mapped_std_streams(paths, streams=('stdin', ))
+    mapped_std.update(mapped_std_in)
+
+    invalid = get_mapped_std_streams(
+        explicit_inputs, streams=('stdout', 'stderr')
+    )
+    if invalid:
+        raise errors.UsageError(
+            'Explicit input file cannot be used as stdout/stderr:'
+            '\n\t' + click.style('\n\t'.join(invalid.values()), fg='yellow') +
+            '\n'
+        )
+
+    invalid = get_mapped_std_streams(explicit_outputs, streams=('stdin', ))
+    if invalid:
+        raise errors.UsageError(
+            'Explicit output file cannot be used as stdin:'
+            '\n\t' + click.style('\n\t'.join(invalid.values()), fg='yellow') +
+            '\n'
+        )
+
     system_stdout = None
     system_stderr = None
 
@@ -268,10 +320,12 @@ def run(
         working_dir = client.repo.working_dir
         factory = CommandLineToolFactory(
             command_line=command_line,
-            explicit_inputs=inputs,
-            explicit_outputs=outputs,
+            explicit_inputs=explicit_inputs,
+            explicit_outputs=explicit_outputs,
             directory=os.getcwd(),
             working_dir=working_dir,
+            no_input_detection=no_input_detection,
+            no_output_detection=no_output_detection,
             successCodes=success_codes,
             **{
                 name: os.path.relpath(path, working_dir)
