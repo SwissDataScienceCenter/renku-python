@@ -281,7 +281,7 @@ def test_siblings_in_output_directory(runner, project, run):
     base_sh = ['sh', '-c', script, 'output']
 
     assert not output.exists()
-    assert 0 == run(args=['run'] + base_sh + ['output'], stdin=source)
+    assert 0 == run(args=['run'] + base_sh, stdin=source)
     assert output.exists()
     check_files()
 

@@ -99,7 +99,8 @@ def _migrate_single_step(
     inputs = list(cmd_line_tool.inputs)
     outputs = list(cmd_line_tool.outputs)
 
-    base_id = Run.generate_id(client, commit)
+    base_id = Run.generate_id(client)
+    run._id = base_id
 
     if cmd_line_tool.stdin:
         name = cmd_line_tool.stdin.split('.')[1]
@@ -114,24 +115,22 @@ def _migrate_single_step(
         stdin = path.resolve().relative_to(client.path)
         id_ = CommandInput.generate_id(base_id, 'stdin')
 
-        mapped_id = MappedIOStream.generate_id(base_id, 'stdin')
         run.inputs.append(
             CommandInput(
                 id=id_,
                 consumes=_entity_from_path(client, stdin, commit),
-                mapped_to=MappedIOStream(id=mapped_id, stream_type='stdin')
+                mapped_to=MappedIOStream(client=client, stream_type='stdin')
             )
         )
 
     if cmd_line_tool.stdout:
-        mapped_id = MappedIOStream.generate_id(base_id, 'stdout')
         run.outputs.append(
             CommandOutput(
                 id=CommandOutput.generate_id(base_id, 'stdout'),
                 produces=_entity_from_path(
                     client, cmd_line_tool.stdout, commit
                 ),
-                mapped_to=MappedIOStream(id=mapped_id, stream_type='stdout'),
+                mapped_to=MappedIOStream(client=client, stream_type='stdout'),
                 create_folder=False
             )
         )
@@ -142,14 +141,13 @@ def _migrate_single_step(
             outputs.remove(matched_output)
 
     if cmd_line_tool.stderr:
-        mapped_id = MappedIOStream.generate_id(base_id, 'stderr')
         run.outputs.append(
             CommandOutput(
                 id=CommandOutput.generate_id(base_id, 'stderr'),
                 produces=_entity_from_path(
                     client, cmd_line_tool.stderr, commit
                 ),
-                mapped_to=MappedIOStream(id=mapped_id, stream_type='stderr'),
+                mapped_to=MappedIOStream(client=client, stream_type='stderr'),
                 create_folder=False
             )
         )
@@ -291,6 +289,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     if not commit:
         commit = client.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
+    run._id = Run.generate_id(client)
 
     name = '{0}_migrated.yaml'.format(uuid.uuid4().hex)
 
@@ -306,7 +305,6 @@ def _migrate_composite_step(client, workflow, path, commit=None):
         subprocess, _ = _migrate_single_step(
             client, subrun, path, commit=commit
         )
-        subprocess.path = run.path
         run.add_subprocess(subprocess)
 
     with with_reference(run.path):

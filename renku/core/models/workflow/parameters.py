@@ -17,6 +17,9 @@
 # limitations under the License.
 """Represents a workflow template."""
 
+import os
+import pathlib
+import urllib.parse
 import uuid
 
 import attr
@@ -34,7 +37,7 @@ class MappedIOStream(object):
 
     client = attr.ib(default=None, kw_only=True)
 
-    _id = attr.ib(kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
 
     STREAMS = ['stdin', 'stdout', 'stderr']
@@ -44,10 +47,17 @@ class MappedIOStream(object):
         kw_only=True,
     )
 
-    @staticmethod
-    def generate_id(run_id, stream_type):
+    def default_id(self):
         """Generate an id for a mapped stream."""
-        return '{}/mappedstreams/{}'.format(run_id, stream_type)
+        host = 'localhost'
+        if self.client:
+            host = self.client.remote.get('host') or host
+        host = os.environ.get('RENKU_DOMAIN') or host
+
+        return urllib.parse.urljoin(
+            'https://{host}'.format(host=host),
+            pathlib.posixpath.join('/iostreams', self.stream_type)
+        )
 
     def default_label(self):
         """Set default label."""
@@ -55,6 +65,8 @@ class MappedIOStream(object):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
+        if not self._id:
+            self._id = self.default_id()
         if not self._label:
             self._label = self.default_label()
 
@@ -97,9 +109,9 @@ class CommandParameter(object):
     @property
     def sanitized_id(self):
         """Return ``_id`` sanitized for use in non-jsonld contexts."""
-        if 'step' in self._id:
+        if '/steps/' in self._id:
             return '/'.join(self._id.split('/')[-4:])
-        return '/'.join(self._id.split('/')[-1:])
+        return '/'.join(self._id.split('/')[-2:])
 
 
 @attr.s(

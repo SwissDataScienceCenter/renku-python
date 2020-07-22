@@ -519,7 +519,7 @@ class ProcessRun(Activity):
         client,
         path,
         commit=None,
-        is_subprocess=False,
+        subprocess_index=None,
         update_commits=False
     ):
         """Convert a ``Run`` to a ``ProcessRun``."""
@@ -532,11 +532,11 @@ class ProcessRun(Activity):
 
         id_ = ProcessRun.generate_id(commit)
 
-        if is_subprocess:
-            id_ = '{}/steps/step_{}'.format(id_, run.process_order)
+        if subprocess_index is not None:
+            id_ = f'{id_}/steps/step_{subprocess_index}'
 
         for input_ in run.inputs:
-            usage_id = id_ + '/inputs/' + input_.sanitized_id
+            usage_id = f'{id_}/{input_.sanitized_id}'
             revision = commit
             input_path = input_.consumes.path
             entity = input_.consumes
@@ -637,7 +637,7 @@ class WorkflowRun(ProcessRun):
     @property
     def subprocesses(self):
         """Subprocesses of this ``WorkflowRun``."""
-        return {p.association.plan.process_order: p for p in self._processes}
+        return {i: p for i, p in enumerate(self._processes)}
 
     @classmethod
     def from_run(cls, run, client, path, commit=None, update_commits=False):
@@ -652,7 +652,7 @@ class WorkflowRun(ProcessRun):
 
         for s in run.subprocesses:
             proc_run = ProcessRun.from_run(
-                s, client, path, commit, True, update_commits
+                s.process, client, path, commit, s.index, update_commits
             )
             processes.append(proc_run)
             generated.extend(proc_run.generated)
@@ -660,9 +660,10 @@ class WorkflowRun(ProcessRun):
         usages = []
 
         id_ = cls.generate_id(commit)
-
+        input_index = 1
         for input in run.inputs:
-            usage_id = id_ + '/inputs/' + input.sanitized_id
+            usage_id = f'{id_}/inputs/{input_index}'
+
             dependency = Usage.from_revision(
                 client=client,
                 path=input.consumes.path,
@@ -672,6 +673,7 @@ class WorkflowRun(ProcessRun):
             )
 
             usages.append(dependency)
+            input_index += 1
 
         agent = SoftwareAgent.from_commit(commit)
         association = Association(
@@ -689,7 +691,10 @@ class WorkflowRun(ProcessRun):
                 continue
 
             for e in entity.entities:
-                if e.commit is not entity.commit:
+                if (
+                    e.commit is not entity.commit or
+                    any(g.entity._id == e._id for g in all_generated)
+                ):
                     continue
 
                 all_generated.append(

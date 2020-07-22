@@ -880,7 +880,7 @@
             },
             {
                "sh:class": {
-                  "@id": "renku:Run"
+                  "@id": "renku:OrderedSubprocess"
                },
                "path": "renku:hasSubprocess"
             },
@@ -922,6 +922,36 @@
                   "@id": "renku:CommandOutput"
                },
                "path": "renku:hasOutputs"
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuOrderedSubprocessShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:OrderedSubprocess",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:index",
+               "datatype": {
+                  "@id": "xsd:integer"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:Run"
+               },
+               "path": "renku:process",
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },

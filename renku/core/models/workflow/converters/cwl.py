@@ -70,8 +70,8 @@ def _recurse_subprocesses(run, index):
         return [(index, run)], index + 1
 
     processes = []
-    for s in sorted(run.subprocesses, key=lambda x: x.process_order):
-        result, index = _recurse_subprocesses(s, index)
+    for s in sorted(run.subprocesses, key=lambda x: x.index):
+        result, index = _recurse_subprocesses(s.process, index)
         processes.extend(result)
 
     return processes, index

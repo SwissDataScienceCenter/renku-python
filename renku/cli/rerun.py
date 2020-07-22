@@ -83,7 +83,7 @@ def edit_inputs(client, workflow):
         )
 
     for step in workflow.subprocesses:
-        for argument in step.arguments:
+        for argument in step.process.arguments:
             argument.value = click.prompt(
                 '{0._id}'.format(argument),
                 default=argument.value,

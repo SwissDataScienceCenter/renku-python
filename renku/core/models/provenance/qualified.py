@@ -147,9 +147,7 @@ class Generation(EntityProxyMixin):
     def default_id(self):
         """Configure calculated ID."""
         if self.role:
-            return '{self.activity._id}/outputs/{self.role}'.format(
-                self=self,
-            )
+            return '{self.activity._id}/{self.role}'.format(self=self, )
         return '{self.activity._id}/tree/{self.entity.path}'.format(
             self=self,
         )

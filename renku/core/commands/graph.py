@@ -537,7 +537,7 @@ class Graph(object):
                         stack.append(process_run)
                         processes.add(process_run)
 
-        parent_process = Run()
+        parent_process = Run(client=self.client)
 
         for step in processes:
             # loop through runs and add them as subprocesses to parent.
