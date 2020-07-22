@@ -39,7 +39,6 @@ import responses
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
-from flaky import flaky
 from git import Repo
 from walrus import Database
 
@@ -163,7 +162,6 @@ def data_file(tmpdir):
 
 
 @pytest.fixture(scope='module')
-@flaky(max_runs=5)
 def repository():
     """Yield a Renku repository."""
     from renku.cli import cli
