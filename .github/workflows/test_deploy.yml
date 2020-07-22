@@ -160,10 +160,10 @@ jobs:
   test-macos-integration:
     runs-on: macos-latest
     strategy:
-      max-parallel: 1
+      max-parallel: 3
       matrix:
         python-version: [3.6, 3.7, 3.8]
-    needs: [test-linux-integration]
+    if: "startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'"
     steps:
     - uses: actions/checkout@v2
       with:
