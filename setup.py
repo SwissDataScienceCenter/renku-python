@@ -110,6 +110,7 @@ tests_require = [
     'pytest-timeout>=1.3.4',
     'pytest-pep8>=1.0.6',
     'pytest-yapf>=0.1.1',
+    'pytest-rerunfailures>=9.0',
     'pytest>=4.0.0',
     'responses>=0.7.0',
     'unify>=0.4',
