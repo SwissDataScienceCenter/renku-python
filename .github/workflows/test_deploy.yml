@@ -19,7 +19,7 @@ jobs:
   docs-linux:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 4
+      max-parallel: 3
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
@@ -62,7 +62,7 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 4
+      max-parallel: 3
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
@@ -98,7 +98,7 @@ jobs:
   test-macos:
     runs-on: macos-latest
     strategy:
-      max-parallel: 4
+      max-parallel: 3
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
@@ -127,7 +127,7 @@ jobs:
   test-linux-integration:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 4
+      max-parallel: 3
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
@@ -160,9 +160,10 @@ jobs:
   test-macos-integration:
     runs-on: macos-latest
     strategy:
-      max-parallel: 4
+      max-parallel: 1
       matrix:
         python-version: [3.6, 3.7, 3.8]
+    needs: [test-linux-integration]
     steps:
     - uses: actions/checkout@v2
       with:
