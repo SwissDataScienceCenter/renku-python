@@ -56,7 +56,7 @@ IT_REMOTE_REPO_URL = os.getenv(
 IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def renku_path(tmpdir_factory):
     """Temporary instance path."""
     path = str(tmpdir_factory.mktemp('renku'))
@@ -64,7 +64,7 @@ def renku_path(tmpdir_factory):
     shutil.rmtree(path)
 
 
-@pytest.fixture()
+@pytest.fixture
 def instance_path(renku_path, monkeypatch):
     """Temporary instance path."""
     with monkeypatch.context() as m:
@@ -72,7 +72,7 @@ def instance_path(renku_path, monkeypatch):
         yield renku_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def runner():
     """Create a runner on isolated filesystem."""
     return CliRunner()
@@ -90,7 +90,7 @@ def global_config_dir(monkeypatch, tmpdir_factory):
         yield m
 
 
-@pytest.fixture()
+@pytest.fixture
 def run_shell():
     """Create a shell cmd runner."""
     import subprocess
@@ -123,7 +123,7 @@ def run_shell():
     return run_
 
 
-@pytest.fixture()
+@pytest.fixture
 def run(runner, capsys):
     """Return a callable runner."""
     from renku.cli import cli
@@ -145,7 +145,7 @@ def run(runner, capsys):
     return generate
 
 
-@pytest.fixture()
+@pytest.fixture
 def isolated_runner():
     """Create a runner on isolated filesystem."""
     runner_ = CliRunner()
@@ -153,7 +153,7 @@ def isolated_runner():
         yield runner_
 
 
-@pytest.fixture()
+@pytest.fixture
 def data_file(tmpdir):
     """Create a sample data file."""
     p = tmpdir.mkdir('data').join('file')
@@ -161,7 +161,7 @@ def data_file(tmpdir):
     return p
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def repository():
     """Yield a Renku repository."""
     from renku.cli import cli
@@ -240,7 +240,7 @@ def client(project):
     LocalClient.get_value = original_get_value
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def client_with_remote(client, tmpdir_factory):
     """Return a client with a (local) remote set."""
     # create remote
@@ -267,7 +267,7 @@ def no_lfs_warning(client):
     yield client
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def client_with_lfs_warning(project):
     """Return a Renku repository with lfs warnings active."""
     from renku.core.management import LocalClient
@@ -298,7 +298,7 @@ def dataset(client):
     return dataset
 
 
-@pytest.fixture(scope='function', params=['.', 'some/sub/directory'])
+@pytest.fixture(params=['.', 'some/sub/directory'])
 def subdirectory(request):
     """Runs tests in root directory and a subdirectory."""
     from renku.core.utils.contexts import chdir
@@ -340,7 +340,7 @@ def dataset_responses():
         yield rsps
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def directory_tree(tmpdir_factory):
     """Create a test directory tree."""
     # initialize
@@ -351,7 +351,7 @@ def directory_tree(tmpdir_factory):
     return p
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def data_repository(directory_tree):
     """Create a test repo."""
     from git import Actor, Repo
@@ -534,7 +534,7 @@ def old_repository_with_submodules(request, tmpdir_factory):
     shutil.rmtree(repo_path.strpath)
 
 
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(autouse=True)
 def add_client(doctest_namespace):
     """Add Renku client to doctest namespace."""
     from renku.core.management import LocalClient
@@ -748,7 +748,7 @@ def dataset_metadata_before_calamus():
     yield yaml.load(path.read_text(), Loader=NoDatesSafeLoader)
 
 
-@pytest.fixture()
+@pytest.fixture
 def sleep_after():
     """Fixture that causes a delay after executing a test.
 
@@ -788,7 +788,7 @@ def remote_project(data_repository, directory_tree):
         yield runner, project_path
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def datapack_zip(directory_tree):
     """Returns dummy data folder as a zip archive."""
     from renku.core.utils.contexts import chdir
@@ -799,7 +799,7 @@ def datapack_zip(directory_tree):
     yield Path(workspace_dir.name) / 'datapack.zip'
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def datapack_tar(directory_tree):
     """Returns dummy data folder as a tar archive."""
     from renku.core.utils.contexts import chdir
@@ -857,7 +857,7 @@ def svc_client(mock_redis):
     ctx.pop()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def svc_client_cache(mock_redis):
     """Service jobs fixture."""
     from renku.service.entrypoint import create_app

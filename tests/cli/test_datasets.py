@@ -27,7 +27,6 @@ from pathlib import Path
 import pytest
 import requests
 import yaml
-from flaky import flaky
 
 from renku.cli import cli
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
@@ -544,7 +543,6 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
     assert message in result.output
 
 
-@flaky(max_runs=5, min_passes=1)
 def test_add_from_local_repo_warning(
     runner, client, data_repository, directory_tree
 ):
@@ -611,7 +609,6 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
         assert inode not in original_inodes
 
 
-@flaky(max_runs=5, min_passes=1)
 def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
     """Test adding a file into a dataset and check path independent
     of the CWD """
