@@ -39,6 +39,7 @@ import responses
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
+from flaky import flaky
 from git import Repo
 from walrus import Database
 
@@ -162,6 +163,7 @@ def data_file(tmpdir):
 
 
 @pytest.fixture(scope='module')
+@flaky(max_runs=5)
 def repository():
     """Yield a Renku repository."""
     from renku.cli import cli
@@ -298,7 +300,7 @@ def dataset(client):
     return dataset
 
 
-@pytest.fixture(params=['.', 'some/sub/directory'])
+@pytest.fixture(scope='function', params=['.', 'some/sub/directory'])
 def subdirectory(request):
     """Runs tests in root directory and a subdirectory."""
     from renku.core.utils.contexts import chdir
@@ -534,7 +536,7 @@ def old_repository_with_submodules(request, tmpdir_factory):
     shutil.rmtree(repo_path.strpath)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope='function', autouse=True)
 def add_client(doctest_namespace):
     """Add Renku client to doctest namespace."""
     from renku.core.management import LocalClient
@@ -1026,8 +1028,13 @@ def svc_client_templates_creation(svc_client_with_templates):
             response = session.delete(
                 url=project_delete_url, headers=authentication_headers
             )
-        if response.status_code != 200 and response.status_code != 202:
-            raise ConnectionError('Cannot clean up test project')
+
+        if response.status_code >= 300:
+            raise ConnectionError(
+                f'Cannot clean up test project. '
+                f'Status Code: {response.status_code}'
+            )
+
         return True
 
     yield svc_client, authentication_headers, payload, remove_project

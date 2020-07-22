@@ -1503,7 +1503,6 @@ def test_add_protected_file(runner, client, filename, subdirectory):
 )
 def test_add_nonprotected_file(runner, client, tmpdir, filename, subdirectory):
     """Check adding an 'almost' protected file."""
-
     new_file = tmpdir.join(filename)
     new_file.write(str('test'))
 
