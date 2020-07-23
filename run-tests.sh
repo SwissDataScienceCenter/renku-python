@@ -49,7 +49,7 @@ build_docs(){
 }
 
 run_tests(){
-    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py" --dist=each --tx 4*popen//python=python --boxed
+    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py" --dist=each -n 4 --boxed
 }
 
 usage(){
