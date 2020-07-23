@@ -45,11 +45,11 @@ check_styles(){
 
 build_docs(){
     sphinx-build -qnNW docs docs/_build/html
-    pytest -v -m "not integration and not publish" -o testpaths="docs conftest.py" -n 4 --reruns 30 --reruns-delay 3
+    pytest -v -m "not integration and not publish" -o testpaths="docs conftest.py"
 }
 
 run_tests(){
-    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py" -n 4 --reruns 30 --reruns-delay 3
+    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py" --dist=each --tx 4*popen//python=python --boxed
 }
 
 usage(){
