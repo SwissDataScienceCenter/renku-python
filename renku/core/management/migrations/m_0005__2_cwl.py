@@ -20,6 +20,7 @@
 import glob
 import os
 import uuid
+from functools import cmp_to_key
 from pathlib import Path
 
 from cwlgen import CommandLineTool, parse_cwl
@@ -49,7 +50,32 @@ def _migrate_old_workflows(client):
 
     cwl_paths = [(p, _find_only_cwl_commit(client, p)) for p in cwl_paths]
 
-    cwl_paths = sorted(cwl_paths, key=lambda p: p[1].committed_date)
+    def _sort_cwl_commits(e1, e2):
+        """Sorts cwl commits in order of their creation."""
+        commit1 = e1[1]
+        commit2 = e2[1]
+
+        if client.repo.is_ancestor(commit1, commit2):
+            return -1
+        if client.repo.is_ancestor(commit2, commit1):
+            return 1
+
+        if commit1.committed_date < commit2.committed_date:
+            return -1
+        if commit1.committed_date > commit2.committed_date:
+            return 1
+
+        if commit1.author_date < commit2.author_date:
+            return -1
+        if commit1.author_date > commit2.author_date:
+            return 1
+        raise ValueError(
+            f'Cannot order commits {commit1} and {commit2}, there is no '
+            'dependency between them and they have identical commit and '
+            'author dates'
+        )
+
+    cwl_paths = sorted(cwl_paths, key=cmp_to_key(_sort_cwl_commits))
 
     for cwl_file, commit in cwl_paths:
         path = _migrate_cwl(client, cwl_file, commit)
