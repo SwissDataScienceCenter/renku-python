@@ -21,6 +21,7 @@ import os
 import pathlib
 import urllib
 import weakref
+from urllib.parse import quote
 
 import attr
 
@@ -72,7 +73,9 @@ class CommitMixin:
         return urllib.parse.urljoin(
             'https://{host}'.format(host=host),
             pathlib.posixpath.join(
-                '/blob/{hexsha}/{path}'.format(hexsha=hexsha, path=self.path)
+                '/blob/{hexsha}/{path}'.format(
+                    hexsha=hexsha, path=quote(str(self.path))
+                )
             )
         )
 

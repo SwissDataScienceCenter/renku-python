@@ -151,7 +151,7 @@ def _migrate_broken_dataset_paths(client):
                     'https://{host}'.format(host=host),
                     posixpath.join(
                         '/blob/{hexsha}/{path}'.format(
-                            hexsha=commit.hexsha, path=new_path
+                            hexsha=commit.hexsha, path=quote(str(new_path))
                         )
                     )
                 )

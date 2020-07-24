@@ -31,10 +31,16 @@ from werkzeug.utils import secure_filename
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
+from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, \
     CommandInput, CommandOutput, MappedIOStream
 from renku.core.models.workflow.run import Run
 from renku.version import __version__, version_url
+
+default_missing_software_agent = SoftwareAgent(
+    label='renku pre 0.11.0',
+    id='https://github.com/swissdatasciencecenter/renku-python/tree/pre-0.11.0'
+)
 
 
 def migrate(client):
@@ -305,6 +311,12 @@ def _migrate_single_step(
         run.path = path
         process_run = ProcessRun.from_run(run, client, path, commit=commit)
         process_run.invalidated = _invalidations_from_commit(client, commit)
+        if (
+            isinstance(process_run.association.agent, Person) or
+            not process_run.association.agent.label.startswith('renku ')
+        ):
+            # fix broken SoftwareAgent due to rebases
+            process_run.association.agent = default_missing_software_agent
         process_run.to_yaml()
         client.add_to_activity_index(process_run)
         return process_run, absolute_path
@@ -335,6 +347,19 @@ def _migrate_composite_step(client, workflow, path, commit=None):
 
     with with_reference(run.path):
         wf = WorkflowRun.from_run(run, client, run.path, commit=commit)
+
+        # fix broken SoftwareAgent due to rebases
+        if (
+            isinstance(wf.association.agent, Person) or
+            not wf.association.agent.label.startswith('renku ')
+        ):
+            wf.association.agent = default_missing_software_agent
+        for p in wf._processes:
+            if (
+                isinstance(p.association.agent, Person) or
+                not p.association.agent.label.startswith('renku ')
+            ):
+                p.association.agent = default_missing_software_agent
         wf.to_yaml()
         client.add_to_activity_index(wf)
 

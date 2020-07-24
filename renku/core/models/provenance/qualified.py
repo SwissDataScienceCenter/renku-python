@@ -25,7 +25,7 @@ from marshmallow import EXCLUDE
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
 from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
 from renku.core.models.entities import CollectionSchema, EntitySchema
-from renku.core.models.provenance.agents import PersonSchema, \
+from renku.core.models.provenance.agents import Person, PersonSchema, \
     SoftwareAgentSchema
 from renku.core.models.workflow.run import RunSchema
 

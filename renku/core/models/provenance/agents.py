@@ -207,10 +207,6 @@ class SoftwareAgent:
     """Represent executed software."""
 
     label = attr.ib(kw_only=True)
-    was_started_by = attr.ib(
-        default=None,
-        kw_only=True,
-    )
 
     _id = attr.ib(kw_only=True)
 
@@ -219,11 +215,7 @@ class SoftwareAgent:
         """Create an instance from a Git commit."""
         author = Person.from_commit(commit)
         if commit.author != commit.committer:
-            return cls(
-                label=commit.committer.name,
-                id=commit.committer.email,
-                was_started_by=author,
-            )
+            return cls(label=commit.committer.name, id=commit.committer.email)
         return author
 
     @classmethod
@@ -260,4 +252,3 @@ class SoftwareAgentSchema(JsonLDSchema):
 
     label = fields.String(rdfs.label)
     _id = fields.Id(init_name='id')
-    was_started_by = Nested(prov.wasStartedBy, PersonSchema, missing=None)

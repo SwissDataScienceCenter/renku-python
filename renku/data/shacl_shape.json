@@ -628,8 +628,7 @@
             {
                "nodeKind": "sh:IRI",
                "path": "prov:wasInformedBy",
-               "minCount": 0,
-               "maxCount": 1
+               "minCount": 0
             },
             {
                "nodeKind": "sh:Literal",
@@ -771,21 +770,8 @@
                },
                "minCount": 1,
                "maxCount": 1,
-               "sh:pattern": "renku \\d+\\.\\d+\\.\\d+(?:\\.dev\\d+)?",
+               "sh:pattern": "renku (pre )?\\d+\\.\\d+\\.\\d+(?:\\.dev\\d+)?",
                "sh:flags": "i"
-            },
-            {
-               "path": "prov:wasStartedBy",
-               "or": [
-                  {
-                     "nodeKind": "sh:IRI"
-                  },
-                  {
-                     "sh:class": {
-                        "@id": "prov:Person"
-                     }
-                  }],
-               "maxCount": 1
             }
          ]
       },
