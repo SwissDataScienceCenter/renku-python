@@ -16,8 +16,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service headers serializers."""
+import base64
+import binascii
+
 from marshmallow import Schema, ValidationError, fields, pre_load
 from werkzeug.utils import secure_filename
+
+
+def decode_b64(value):
+    """Decode base64 values or return raw value."""
+    try:
+        return base64.b64decode(value, validate=True)
+    except binascii.Error:
+        return value
 
 
 class UserIdentityHeaders(Schema):
@@ -47,7 +58,7 @@ class UserIdentityHeaders(Schema):
         expected_keys = [field.data_key for field in self.fields.values()]
 
         data = {
-            key.lower(): value
+            key.lower(): decode_b64(value)
             for key, value in data.items() if key.lower() in expected_keys
         }
 
