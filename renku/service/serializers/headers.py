@@ -56,11 +56,14 @@ class UserIdentityHeaders(Schema):
     def set_fields(self, data, **kwargs):
         """Set fields for serialization."""
         expected_keys = [field.data_key for field in self.fields.values()]
-
+        
         data = {
-            key.lower(): decode_b64(value)
+            key.lower(): value
             for key, value in data.items() if key.lower() in expected_keys
         }
+
+        data['renku-user-fullname'] = decode_b64(data['renku-user-fullname'])
+        data['renku-user-email'] = decode_b64(data['renku-user-email'])
 
         if {'renku-user-id', 'authorization'}.issubset(set(data.keys())):
             data['renku-user-id'] = secure_filename(data['renku-user-id'])
