@@ -56,7 +56,7 @@ class UserIdentityHeaders(Schema):
     def set_fields(self, data, **kwargs):
         """Set fields for serialization."""
         expected_keys = [field.data_key for field in self.fields.values()]
-        
+
         data = {
             key.lower(): value
             for key, value in data.items() if key.lower() in expected_keys
