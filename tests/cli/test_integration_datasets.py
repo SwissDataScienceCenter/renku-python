@@ -34,6 +34,8 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.utils.contexts import chdir
 
 
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'doi', [{
         'doi': '10.5281/zenodo.2658634',
@@ -55,8 +57,6 @@ from renku.core.utils.contexts import chdir
         'http://www.doi.org/', 'https://dx.doi.org/', 'https://doi.org/'
     ]
 )
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
 def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     """Test dataset import for existing DOI."""
     uri = prefix + doi['doi']
@@ -305,25 +305,26 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'url', [
-        'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62/',
-        'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
-        'datasets/48299db3-8870-4cbe-a480-f75985c42a62'
+        'https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2',
+        (
+            'https://dev.renku.ch/projects/'
+            'renku-testing/project-9/'
+            'datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/'
+        ),
     ]
 )
-def test_dataset_import_renku(runner, project, client, url):
-    """Test dataset import from Renku projects."""
+def test_dataset_import_renkulab_dataset(runner, project, client, url):
+    """Test dataset import from Renkulab projects."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
     assert 0 == result.exit_code
-    checksum = '54751585bb81a0bff32727e46e2aabaa0c8d19f8'
-    assert checksum in result.output
-    size = '66.00'
-    assert size in result.output
+    assert '47316f93d5381e69c0b2ee0e28576e0b38a1f218' in result.output
+
+    assert '1.10' in result.output
     assert 'OK' in result.output
 
     result = runner.invoke(cli, ['dataset', 'ls-files'])
     assert 0 == result.exit_code
-    path = 'zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
-    assert path in result.output
+    assert 'ie_data_with_TRCAPE.xls' in result.output
 
     dataset = [d for d in client.datasets.values()][0]
     assert dataset.same_as.url['@id'] == url
@@ -331,10 +332,14 @@ def test_dataset_import_renku(runner, project, client, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_import_renku_fail(runner, client, monkeypatch):
+@pytest.mark.parametrize(
+    'url', [
+        'https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2',
+    ]
+)
+def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
     from renku.core.management import LocalClient
-    url = 'https://dev.renku.ch/datasets/48299db3-8870-4cbe-a480-f75985c42a62'
 
     def prepare_git_repo(*_):
         raise errors.GitError
@@ -352,13 +357,13 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch):
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     'url,exit_code',
-    [('https://dev.renku.ch/projects/virginiafriedrich/datasets-test/', 2),
+    [('https://dev.renku.ch/projects/renku-testing/project-9/', 2),
      (
-         'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/'
+         'https://dev.renku.ch/projects/renku-testing/project-9/'
          'datasets/b9f7b21b-8b00-42a2-976a-invalid', 2
      ), ('https://dev.renku.ch/datasets/10.5281%2Fzenodo.666', 1)]
 )
-def test_dataset_import_renku_errors(runner, project, url, exit_code):
+def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
     """Test usage errors in Renku dataset import."""
     result = runner.invoke(cli, ['dataset', 'import', url], input='y')
     assert exit_code == result.exit_code
@@ -369,18 +374,19 @@ def test_dataset_import_renku_errors(runner, project, url, exit_code):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_reimport_renku_dataset(runner, project):
+@pytest.mark.parametrize(
+    'url',
+    ['https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2']
+)
+def test_dataset_reimport_renkulab_dataset(runner, project, url):
     """Test dataset import for existing dataset"""
-    URL = 'https://dev.renku.ch/projects/virginiafriedrich/datasets-test/' \
-        'datasets/48299db3-8870-4cbe-a480-f75985c42a62'
-
-    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
     assert 'OK' in result.output
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['dataset', 'import', URL], input='y')
+    result = runner.invoke(cli, ['dataset', 'import', url], input='y')
     assert 1 == result.exit_code
-    assert 'Dataset exists: "zhbikes"' in result.output
+    assert 'Dataset exists' in result.output
 
 
 @pytest.mark.integration
@@ -560,7 +566,7 @@ def test_dataset_export_upload_multiple(
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=30, min_passes=1)
 def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
     """Test failed uploading of a file to Zenodo deposit."""
     result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
@@ -758,7 +764,7 @@ def test_export_dataverse_no_dataverse_url(
 
 
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=30, min_passes=1)
 def test_export_imported_dataset_to_dataverse(
     runner, client, dataverse_demo, zenodo_sandbox
 ):
@@ -1105,42 +1111,43 @@ def test_empty_update(client, runner, data_repository, directory_tree):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_import_from_renku_project(tmpdir, client, runner):
-    """Test an imported dataset from other renku repos will have metadata."""
+@pytest.mark.parametrize(
+    'url', ['https://dev.renku.ch/gitlab/renku-testing/project-9.git']
+)
+def test_import_from_renku_project(tmpdir, client, runner, url):
+    """Check metadata for an imported dataset from other renkulab repo."""
     from renku.core.management import LocalClient
-
-    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
 
     path = tmpdir.strpath
     os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
-    git.Repo.clone_from(remote, path, recursive=True)
+    git.Repo.clone_from(url, path, recursive=True)
 
     remote_client = LocalClient(path)
     with chdir(remote_client.path):
         runner.invoke(cli, ['migrate'])
+
     file_ = read_dataset_file_metadata(
-        remote_client, 'zhbikes',
-        '2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
+        remote_client, 'testing-create-04', 'ie_data_with_TRCAPE.xls'
     )
 
     result = runner.invoke(
         cli,
         [
             'dataset', 'add', '--create', 'remote-dataset', '-s',
-            'data/zhbikes/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv',
-            '-d', 'new-directory', '--ref', 'b973db5', remote
+            'data/testing-create-04/ie_data_with_TRCAPE.xls', '-d',
+            'new-directory', '--ref', '97f907e', url
         ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    path = 'new-directory/2019_verkehrszaehlungen_werte_fussgaenger_velo.csv'
+    path = 'new-directory/ie_data_with_TRCAPE.xls'
     metadata = read_dataset_file_metadata(client, 'remote-dataset', path)
     assert metadata.based_on._id == file_._id
     assert metadata.based_on._label == file_._label
     assert metadata.based_on.path == file_.path
     assert metadata.based_on.based_on is None
-    assert metadata.based_on.url == remote
+    assert metadata.based_on.url == url
 
 
 @pytest.mark.integration
@@ -1150,7 +1157,8 @@ def test_import_from_renku_project(tmpdir, client, runner):
 @flaky(max_runs=10, min_passes=1)
 def test_add_specific_refs(ref, runner, client):
     """Test adding a specific version of files."""
-    FILENAME = 'CHANGES.rst'
+    filename = 'CHANGES.rst'
+
     # create a dataset
     result = runner.invoke(cli, ['dataset', 'create', 'dataset'])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -1158,12 +1166,12 @@ def test_add_specific_refs(ref, runner, client):
     # add data from a git repo
     result = runner.invoke(
         cli, [
-            'dataset', 'add', 'dataset', '-s', FILENAME, '--ref', ref,
+            'dataset', 'add', 'dataset', '-s', filename, '--ref', ref,
             'https://github.com/SwissDataScienceCenter/renku-python.git'
         ]
     )
     assert 0 == result.exit_code
-    content = (client.path / DATA_DIR / 'dataset' / FILENAME).read_text()
+    content = (client.path / DATA_DIR / 'dataset' / filename).read_text()
     assert 'v0.3.0' in content
     assert 'v0.3.1' not in content
 
@@ -1254,14 +1262,15 @@ def test_files_are_tracked_in_lfs(runner, client, no_lfs_size_limit):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_renku_clone(runner, monkeypatch):
+@pytest.mark.parametrize(
+    'url', ['https://dev.renku.ch/gitlab/renku-testing/project-9']
+)
+def test_renkulab_clone(runner, monkeypatch, url):
     """Test cloning of a Renku repo and existence of required settings."""
     from renku.core.management.storage import StorageApiMixin
 
-    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
-
     with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ['clone', remote, project_path])
+        result = runner.invoke(cli, ['clone', url, project_path])
         assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
         assert (Path(project_path) / 'Dockerfile').exists()
 
@@ -1288,13 +1297,14 @@ def test_renku_clone(runner, monkeypatch):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_renku_clone_with_config(tmpdir):
+@pytest.mark.parametrize(
+    'url', ['https://dev.renku.ch/gitlab/renku-testing/project-9']
+)
+def test_renkulab_clone_with_config(tmpdir, url):
     """Test cloning of a Renku repo and existence of required settings."""
-    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
-
     with chdir(str(tmpdir)):
         repo = project_clone(
-            remote,
+            url,
             config={
                 'user.name': 'sam',
                 'user.email': 's@m.i',
@@ -1312,22 +1322,23 @@ def test_renku_clone_with_config(tmpdir):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_renku_clone_checkout_rev(tmpdir):
-    """Test cloning of a Renku repo checking out a rev with static config."""
-    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
-
+@pytest.mark.parametrize(
+    'url', ['https://dev.renku.ch/gitlab/renku-testing/project-9']
+)
+def test_renkulab_clone_checkout_rev(tmpdir, url):
+    """Test cloning of a repo checking out a rev with static config."""
     with chdir(str(tmpdir)):
         repo = project_clone(
-            remote,
+            url,
             config={
                 'user.name': 'sam',
                 'user.email': 's@m.i',
                 'filter.lfs.custom': '0'
             },
-            checkout_rev='3d387e64ea25079df8dd43b8875058cf9f4b0315',
+            checkout_rev='97f907e1a3f992d4acdc97a35df73b8affc917a6',
         )
 
-        assert '3d387e64ea25079df8dd43b8875058cf9f4b0315' == str(
+        assert '97f907e1a3f992d4acdc97a35df73b8affc917a6' == str(
             repo.active_branch
         )
         reader = repo.config_reader()
@@ -1345,11 +1356,9 @@ def test_renku_clone_checkout_rev(tmpdir):
 ])
 def test_renku_clone_checkout_revs(tmpdir, rev):
     """Test cloning of a Renku repo checking out a rev."""
-    remote = 'https://dev.renku.ch/gitlab/contact/no-renku.git'
-
     with chdir(str(tmpdir)):
         repo = project_clone(
-            remote,
+            'https://dev.renku.ch/gitlab/contact/no-renku.git',
             checkout_rev=rev,
         )
 
@@ -1358,7 +1367,7 @@ def test_renku_clone_checkout_revs(tmpdir, rev):
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    'path,expected_path', [('', 'datasets-test'), ('.', '.'),
+    'path,expected_path', [('', 'project-9'), ('.', '.'),
                            ('new-name', 'new-name')]
 )
 @flaky(max_runs=10, min_passes=1)
@@ -1366,7 +1375,7 @@ def test_renku_clone_uses_project_name(
     runner, monkeypatch, path, expected_path
 ):
     """Test renku clone uses project name as target-path by default."""
-    remote = 'https://dev.renku.ch/gitlab/virginiafriedrich/datasets-test.git'
+    remote = 'https://dev.renku.ch/gitlab/renku-testing/project-9'
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli, ['clone', remote, path])
@@ -1376,22 +1385,34 @@ def test_renku_clone_uses_project_name(
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_add_removes_credentials(runner, client):
+@pytest.mark.parametrize(
+    'url', [(
+        'https://username:password@raw.githubusercontent.com/'
+        'SwissDataScienceCenter/renku-python/master/docs/Makefile'
+    )]
+)
+def test_add_removes_credentials(runner, client, url):
     """Check removal of credentials during adding of remote data files."""
-    url = 'https://username:password@example.com/index.html'
+    from urllib.parse import urlparse
     result = runner.invoke(cli, ['dataset', 'add', '-c', 'my-dataset', url])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
     with client.with_dataset('my-dataset') as dataset:
         file_ = dataset.files[0]
-        assert file_.url == 'https://example.com/index.html'
+        url_obj = urlparse(url)
+        assert file_.url == url_obj._replace(netloc=url_obj.hostname).geturl()
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_check_disk_space(runner, client, monkeypatch):
+@pytest.mark.parametrize(
+    'url', [(
+        'https://raw.githubusercontent.com/SwissDataScienceCenter/'
+        'renku-python/master/docs/Makefile'
+    )]
+)
+def test_check_disk_space(runner, client, monkeypatch, url):
     """Check adding to dataset prompts if disk space is not enough."""
-    url = 'https://example.com/index.html'
 
     def disk_usage(_):
         """Mocked response."""
