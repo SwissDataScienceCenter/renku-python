@@ -103,6 +103,7 @@ tests_require = [
     'isort==5.1.4',
     'six>=1.13.0',
     'pydocstyle>=3.0.0',
+    'pytest-xdist==1.33.0',
     'pytest-cache>=1.0',
     'pytest-cov>=2.5.1',
     'pytest-flake8>=1.0.4',
