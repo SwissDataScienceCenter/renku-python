@@ -26,8 +26,10 @@ from werkzeug.utils import secure_filename
 def decode_b64(value):
     """Decode base64 values or return raw value."""
     try:
-        return base64.b64decode(value, validate=True)
+        decoded = base64.b64decode(value, validate=True)
+        return decoded.decode('utf-8')
     except binascii.Error:
+
         return value
 
 
@@ -62,8 +64,13 @@ class UserIdentityHeaders(Schema):
             for key, value in data.items() if key.lower() in expected_keys
         }
 
-        data['renku-user-fullname'] = decode_b64(data['renku-user-fullname'])
-        data['renku-user-email'] = decode_b64(data['renku-user-email'])
+        if 'renku-user-fullname' in data:
+            data['renku-user-fullname'] = decode_b64(
+                data['renku-user-fullname']
+            )
+
+        if 'renku-user-email' in data:
+            data['renku-user-email'] = decode_b64(data['renku-user-email'])
 
         if {'renku-user-id', 'authorization'}.issubset(set(data.keys())):
             data['renku-user-id'] = secure_filename(data['renku-user-id'])
