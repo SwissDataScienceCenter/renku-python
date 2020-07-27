@@ -29,7 +29,6 @@ def decode_b64(value):
         decoded = base64.b64decode(value, validate=True)
         return decoded.decode('utf-8')
     except binascii.Error:
-
         return value
 
 
