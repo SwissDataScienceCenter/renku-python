@@ -170,7 +170,6 @@ class Project(ReferenceMixin):
         from renku import __version__
 
         self.agent_version = __version__
-        self.updated = datetime.datetime.now()
 
         data = ProjectSchema().dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)

@@ -279,6 +279,8 @@ class GitCore:
                 self.ensure_untracked(str(path_))
                 self.ensure_unstaged(str(path_))
 
+        project_metadata_path = str(self.renku_path / self.METADATA)
+
         yield
 
         committer = Actor('renku {0}'.format(__version__), version_url)
@@ -318,12 +320,15 @@ class GitCore:
         if not commit_only:
             self.repo.git.add('--all')
 
-        #if not commit_empty:
-            # diffs = [d.a_path for d in self.repo.index.diff('HEAD')]
-            # if raise_if_empty and (
-            #     not diffs or diffs == ['.renku/metadata.yml']
-            # ):
-        if not commit_empty and not self.repo.index.diff('HEAD'):
+        diffs = []
+        try:
+            diffs = [d.a_path for d in self.repo.index.diff('HEAD')]
+            if project_metadata_path in diffs:
+                diffs.remove(project_metadata_path)
+        except gitdb.exc.BadName:
+            pass
+
+        if not commit_empty and not diffs:
             if raise_if_empty:
                 raise errors.NothingToCommit()
             return
@@ -337,11 +342,13 @@ class GitCore:
 
             commit_message = ' '.join(argv)
 
-        # project = self.project
-        # if project:
-        #     project.to_yaml()
-        #     self.repo.index.add(".renku/metadata.yml")
-        #     breakpoint()
+        try:
+            project = self.project
+            if project:
+                project.to_yaml()
+                self.repo.index.add(project_metadata_path)
+        except ValueError:
+            pass
 
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(
