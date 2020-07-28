@@ -310,14 +310,14 @@ def migration_check_project_view(user_data, cache):
     project = cache.get_project(user, request.args['project_id'])
 
     with chdir(project.abs_path):
-        current_version, latest_version = migrations_versions()
+        latest_version, project_version = migrations_versions()
         migration_required, project_supported = migrations_check()
 
     return result_response(
         ProjectMigrationCheckResponseRPC(), {
             'migration_required': migration_required,
             'project_supported': project_supported,
-            'current_version': current_version,
+            'project_version': project_version,
             'latest_version': latest_version,
         }
     )

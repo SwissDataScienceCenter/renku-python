@@ -681,7 +681,7 @@ def test_check_migrations(svc_client_setup):
     assert 200 == response.status_code
     assert response.json['result']['migration_required']
     assert response.json['result']['project_supported']
-    assert response.json['result']['current_version']
+    assert response.json['result']['project_version']
     assert response.json['result']['latest_version']
 
 
