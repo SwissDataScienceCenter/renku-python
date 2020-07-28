@@ -67,7 +67,7 @@ def dataset_import(
     user_job_id,
     project_id,
     dataset_uri,
-    short_name=None,
+    name=None,
     extract=False,
     timeout=None,
 ):
@@ -82,7 +82,7 @@ def dataset_import(
 
             import_dataset(
                 dataset_uri,
-                short_name,
+                name,
                 extract,
                 commit_message=f'service: dataset import {dataset_uri}',
                 progress=DatasetImportJobProcess(cache, user_job)
@@ -105,8 +105,8 @@ def dataset_import(
 
 @requires_cache
 def dataset_add_remote_file(
-    cache, user, user_job_id, project_id, create_dataset, commit_message,
-    short_name, url
+    cache, user, user_job_id, project_id, create_dataset, commit_message, name,
+    url
 ):
     """Add a remote file to a specified dataset."""
     user = cache.ensure_user(user)
@@ -120,7 +120,7 @@ def dataset_add_remote_file(
             urls = url if isinstance(url, list) else [url]
             add_file(
                 urls,
-                short_name,
+                name,
                 create=create_dataset,
                 commit_message=commit_message
             )

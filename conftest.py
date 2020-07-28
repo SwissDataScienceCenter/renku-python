@@ -46,12 +46,12 @@ from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     'IT_PROTECTED_REMOTE_REPO',
-    'https://dev.renku.ch/gitlab/contact/protected-renku.git'
+    'https://dev.renku.ch/gitlab/renku-qa/core-integration-test'
 )
 
 IT_REMOTE_REPO_URL = os.getenv(
     'IT_REMOTE_REPOSITORY',
-    'https://dev.renku.ch/gitlab/contact/integration-test'
+    'https://dev.renku.ch/gitlab/renku-qa/core-integration-test'
 )
 IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
@@ -971,11 +971,12 @@ def svc_client_with_repo(svc_client_setup):
     """Service client with a remote repository."""
     svc_client, headers, project_id, url_components = svc_client_setup
 
-    svc_client.post(
+    response = svc_client.post(
         '/cache.migrate',
         data=json.dumps(dict(project_id=project_id)),
         headers=headers
     )
+    assert response.json['result']
 
     yield svc_client, deepcopy(headers), project_id, url_components
 
@@ -1017,16 +1018,17 @@ def svc_client_templates_creation(svc_client_with_templates):
             payload['project_namespace'],
             strip_and_lower(payload['project_name'])
         )
+
         project_slug_encoded = urllib.parse.quote(project_slug, safe='')
         project_delete_url = '{0}/api/v4/projects/{1}'.format(
             payload['project_repository'], project_slug_encoded
         )
+
         with retry() as session:
-            response = session.delete(
+            session.delete(
                 url=project_delete_url, headers=authentication_headers
             )
-        if response.status_code != 200 and response.status_code != 202:
-            raise ConnectionError('Cannot clean up test project')
+
         return True
 
     yield svc_client, authentication_headers, payload, remove_project
@@ -1184,7 +1186,7 @@ def unlink_file_setup(svc_client_with_repo):
 
     unlink_payload = {
         'project_id': project_id,
-        'short_name': response.json['result']['short_name'],
+        'name': response.json['result']['name'],
         'include_filters': [response.json['result']['files'][0]['file_path']]
     }
 

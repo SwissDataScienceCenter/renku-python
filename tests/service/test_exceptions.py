@@ -75,7 +75,7 @@ def test_migration_required_flag(svc_client_setup):
 
     payload = {
         'project_id': project_id,
-        'short_name': '{0}'.format(uuid.uuid4().hex),
+        'name': '{0}'.format(uuid.uuid4().hex),
     }
 
     response = svc_client.post(
