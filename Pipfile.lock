@@ -192,11 +192,11 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:7057bc8378e299e235e5eb807ab50277cd9ff9dd001f3201f8abb61b37c7f7f7",
-                "sha256:a64a64980023509ee3ee2e72b28e0ca2aa02724b77505cb4950e5fea8c00b458"
+                "sha256:63e882b2143d45c5bed1512f79a29458fe6e85ccc0b671c411fffe1619b05d82",
+                "sha256:c8d9a77f25155aebb7d4c004bbdc506de1feafeaaf36c12df4b6c95a4d2d8b5f"
             ],
             "markers": "python_version >= '3.5' and python_version < '4'",
-            "version": "==3.0.20200706173533"
+            "version": "==3.0.20200724003302"
         },
         "decorator": {
             "hashes": [
@@ -532,6 +532,14 @@
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
             "version": "==2.20"
+        },
+        "pydot": {
+            "hashes": [
+                "sha256:67be714300c78fda5fd52f79ec994039e3f76f074948c67b5ff539b433ad354f",
+                "sha256:d49c9d4dd1913beec2a997f831543c8cbd53e535b1a739e921642fe416235f01"
+            ],
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+            "version": "==1.4.1"
         },
         "pyld": {
             "hashes": [
