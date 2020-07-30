@@ -124,7 +124,7 @@ extras_require = {
     ],
     'runner': ['cwlref-runner==1.0', ],
     'notebook': [],
-    'sentry': ['sentry-sdk>=0.7.4,<=0.16.1', ],
+    'sentry': ['sentry-sdk>=0.7.4,<0.16.3', ],
     'tests': tests_require,
 }
 
