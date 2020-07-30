@@ -45,10 +45,9 @@ def test_run_simple(runner, project):
 
 def test_run_many_args(client, run):
     """Test a renku run command which implicitly relies on many inputs."""
-
     os.mkdir('files')
     output = 'output.txt'
-    for i in range(5003):
+    for i in range(103):
         os.system('touch files/{}.txt'.format(i))
     client.repo.index.add(['files/'])
     client.repo.index.commit('add many files')

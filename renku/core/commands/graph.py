@@ -479,13 +479,10 @@ class Graph(object):
             if (node.commit, node.path) not in output_keys:
                 continue
 
-            process_run = None
-
             assert hasattr(node, 'activity'), node
             assert isinstance(node.activity, ProcessRun)
 
             plan = node.activity.association.plan
-
             process_run = plan.activity
 
             if (
@@ -540,7 +537,7 @@ class Graph(object):
         parent_process = Run(client=self.client)
 
         for step in processes:
-            # loop through runs and add them as subprocesses to parent.
+            # Loop through runs and add them as sub processes to parent.
             parent_process.add_subprocess(step.association.plan)
 
         return parent_process

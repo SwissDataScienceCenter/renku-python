@@ -804,7 +804,6 @@ def test_datasets_ls_files_tabular_creators(tmpdir, runner, project, client):
     )
     assert 0 == result.exit_code
 
-    creator = None
     with client.with_dataset('my-dataset') as dataset:
         creator = dataset.creators[0].name
 
@@ -1503,7 +1502,6 @@ def test_add_protected_file(runner, client, filename, subdirectory):
 )
 def test_add_nonprotected_file(runner, client, tmpdir, filename, subdirectory):
     """Check adding an 'almost' protected file."""
-
     new_file = tmpdir.join(filename)
     new_file.write(str('test'))
 
