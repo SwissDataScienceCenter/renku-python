@@ -27,7 +27,7 @@ from pathlib import Path
 
 import attr
 from attr.validators import instance_of
-from marshmallow import EXCLUDE, pre_load
+from marshmallow import EXCLUDE
 
 from renku.core import errors
 from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku, schema
@@ -525,31 +525,16 @@ class Dataset(Entity, CreatorMixin):
 
     def __attrs_post_init__(self):
         """Post-Init hook."""
-        from urllib.parse import quote
-
         super().__attrs_post_init__()
 
-        # Determine the hostname for the resource URIs.
-        # If RENKU_DOMAIN is set, it overrides the host from remote.
-        # Default is localhost.
-        host = "localhost"
-        if self.client:
-            host = self.client.remote.get("host") or host
-        host = os.environ.get("RENKU_DOMAIN") or host
-
-        # always set the id by the identifier
-        self._id = urllib.parse.urljoin(
-            "https://{host}".format(host=host), pathlib.posixpath.join("/datasets", quote(self.identifier, safe=""))
-        )
-
+        self._id = generate_dataset_id(client=self.client, identifier=self.identifier)
+        self._label = self.identifier
         self.url = self._id
 
         # if `date_published` is set, we are probably dealing with
         # an imported dataset so `date_created` is not needed
         if self.date_published:
             self.date_created = None
-
-        self._label = self.identifier
 
         if not self.path and self.client:
             self.path = str(self.client.renku_datasets_path / self.uid)
@@ -708,38 +693,6 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
     name = fields.String(schema.alternateName)
 
-    @pre_load
-    def fix_files_context(self, data, **kwargs):
-        """Fix DatasetFile context for _label and external fields."""
-        context = None
-        if "@context" not in data:
-            return data
-
-        context = data["@context"]
-        if not isinstance(context, dict) or "files" not in context:
-            return data
-
-        context.setdefault("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-
-        files = data["@context"]["files"]
-        if not isinstance(files, dict) or "@context" not in files:
-            return data
-
-        context = files["@context"]
-        context.setdefault("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        context.setdefault("_label", "rdfs:label")
-        context.setdefault("external", "renku:external")
-        context.setdefault("renku", "https://swissdatasciencecenter.github.io/renku-ontology#")
-
-        return data
-
-    @pre_load
-    def migrate_types(self, data, **kwargs):
-        """Fix types."""
-        from renku.core.utils.migrate import migrate_types
-
-        return migrate_types(data)
-
 
 def is_dataset_name_valid(name):
     """A valid name is a valid Git reference name with no /."""
@@ -771,3 +724,19 @@ def generate_default_name(dataset_title, dataset_version):
         return "{0}_{1}".format("_".join(name), version)
 
     return "_".join(name)
+
+
+def generate_dataset_id(client, identifier):
+    """Generate @id field."""
+    # Determine the hostname for the resource URIs.
+    # If RENKU_DOMAIN is set, it overrides the host from remote.
+    # Default is localhost.
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    # always set the id by the identifier
+    return urllib.parse.urljoin(
+        f"https://{host}", pathlib.posixpath.join("/datasets", urllib.parse.quote(identifier, safe=""))
+    )

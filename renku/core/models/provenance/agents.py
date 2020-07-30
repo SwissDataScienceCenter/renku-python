@@ -17,15 +17,14 @@
 # limitations under the License.
 """Represent provenance agents."""
 
-import configparser
 import re
 
 from attr.validators import instance_of
 from marshmallow import EXCLUDE
 
-from renku.core import errors
 from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, schema
+from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
 
 
@@ -100,25 +99,7 @@ class Person:
     @classmethod
     def from_git(cls, git):
         """Create an instance from a Git repo."""
-        git_config = git.config_reader()
-        try:
-            name = git_config.get_value("user", "name", None)
-            email = git_config.get_value("user", "email", None)
-        except (configparser.NoOptionError, configparser.NoSectionError):  # pragma: no cover
-            raise errors.ConfigurationError(
-                "The user name and email are not configured. "
-                'Please use the "git config" command to configure them.\n\n'
-                '\tgit config --global --add user.name "John Doe"\n'
-                "\tgit config --global --add user.email "
-                '"john.doe@example.com"\n'
-            )
-
-        # Check the git configuration.
-        if not name:  # pragma: no cover
-            raise errors.MissingUsername()
-        if not email:  # pragma: no cover
-            raise errors.MissingEmail()
-
+        name, email = get_user_info(git)
         return cls(name=name, email=email)
 
     @classmethod

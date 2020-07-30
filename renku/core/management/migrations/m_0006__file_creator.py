@@ -15,27 +15,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Migrate datasets with type scoped contexts for support with pyld 2.0."""
+"""DatasetFile metadata migrations."""
 
-import re
+from renku.core.utils.migrate import get_client_datasets
 
 
 def migrate(client):
     """Migration function."""
-    migrate_datasets_for_pyld2(client)
+    _remove_file_creator(client)
 
 
-def migrate_datasets_for_pyld2(client):
-    """Migrate type scoped contexts of datasets."""
-    paths = (client.path / client.renku_datasets_path).rglob(client.METADATA)
+def _remove_file_creator(client):
+    for dataset in get_client_datasets(client):
+        for file_ in dataset.files:
+            file_.metadata.pop('http://schema.org/creator', None)
 
-    for path in paths:
-        with path.open("r") as dataset:
-            content = dataset.read()
-
-        content = re.sub(r'"([^"])+_prov:([^"]+)":', '"\1_prov_\2":', content)
-        content = re.sub(r'"([^"])+_wfprov:([^"]+)":', '"\1_wfprov_\2":', content)
-        content = re.sub(r'"([^"])+_schema:([^"]+)":', '"\1_schema_\2":', content)
-
-        with path.open("w") as dataset:
-            dataset.write(content)
+        dataset.to_yaml()
