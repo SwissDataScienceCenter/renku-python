@@ -174,9 +174,8 @@ def create_from_template(
     with client.commit(commit_message=commit_message):
         client.init_repository(force, user)
         metadata['name'] = name
-        with client.with_metadata(name=name) as project_metadata:
+        with client.with_metadata(name=name):
             client.import_from_template(template_path, metadata, force)
-            project_metadata.updated = datetime.now(timezone.utc)
 
         if data_dir:
             client.set_value('renku', client.DATA_DIR_CONFIG_KEY, data_dir)

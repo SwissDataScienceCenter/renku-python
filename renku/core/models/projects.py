@@ -46,8 +46,6 @@ class Project(ReferenceMixin):
 
     created = attr.ib(converter=parse_date, )
 
-    updated = attr.ib(converter=parse_date, )
-
     version = attr.ib(
         converter=str,
         default=str(SUPPORTED_PROJECT_VERSION),
@@ -60,7 +58,6 @@ class Project(ReferenceMixin):
     _id = attr.ib(kw_only=True, default=None)
 
     @created.default
-    @updated.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
@@ -214,12 +211,6 @@ class ProjectSchema(JsonLDSchema):
         format='iso',
         extra_formats=('%Y-%m-%d', )
     )
-    updated = fields.DateTime(
-        schema.dateUpdated,
-        missing=None,
-        format='iso',
-        extra_formats=('%Y-%m-%d', )
-    )
     version = fields.String(schema.schemaVersion, missing=1)
     creator = Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name='id', missing=None)
@@ -230,5 +221,4 @@ class ProjectSchema(JsonLDSchema):
         if many:
             return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
         obj.created = self._fix_timezone(obj.created)
-        obj.updated = self._fix_timezone(obj.updated)
         return obj

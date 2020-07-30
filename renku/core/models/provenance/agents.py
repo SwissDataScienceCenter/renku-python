@@ -31,7 +31,7 @@ from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
 from renku.core import errors
-from renku.core.models.calamus import Nested, fields, prov, rdfs, schema, \
+from renku.core.models.calamus import fields, prov, rdfs, schema, \
     wfprov
 from renku.version import __version__, version_url
 
