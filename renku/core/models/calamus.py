@@ -137,6 +137,12 @@ fields.Uri = Uri
 class Nested(fields.Nested):
     """Nested field that passes along client and commit info."""
 
+    def __init__(self, *args, propagate_client=True, **kwargs):
+        """Init method."""
+        super().__init__(*args, **kwargs)
+
+        self.propagate_client = propagate_client
+
     @property
     def schema(self):
         """The nested Schema object.
@@ -205,8 +211,11 @@ class Nested(fields.Nested):
 
                     kwargs = {}
 
-                    if hasattr(self.root, '_client'
-                               ) and JsonLDSchema in schema_class.mro():
+                    if (
+                        self.propagate_client and
+                        hasattr(self.root, '_client') and
+                        JsonLDSchema in schema_class.mro()
+                    ):
                         kwargs = {'client': self.root._client}
 
                     self._schema['from'][rdf_type] = schema_class(

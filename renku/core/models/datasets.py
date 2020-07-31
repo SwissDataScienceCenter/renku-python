@@ -724,7 +724,12 @@ class DatasetFileSchema(EntitySchema):
     )
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
-    based_on = Nested(schema.isBasedOn, 'DatasetFileSchema', missing=None)
+    based_on = Nested(
+        schema.isBasedOn,
+        'DatasetFileSchema',
+        missing=None,
+        propagate_client=False
+    )
     external = fields.Boolean(renku.external, missing=False)
 
     @pre_dump
