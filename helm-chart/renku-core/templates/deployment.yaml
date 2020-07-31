@@ -81,7 +81,7 @@ spec:
               value: {{ .Values.cleanupFilesTTL | quote }}
             - name: RENKU_SVC_CLEANUP_TTL_PROJECTS
               value: {{ .Values.cleanupProjectsTTL | quote }}
-            - name: RQ_WORKER_LOG_LEVEL
+            - name: DEPLOYMENT_LOG_LEVEL
               value: {{ .Values.logLevel }}
           volumeMounts:
             - name: shared-volume
