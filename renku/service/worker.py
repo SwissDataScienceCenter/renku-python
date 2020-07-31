@@ -24,9 +24,8 @@ from rq.logutils import setup_loghandlers
 
 from renku.core.errors import ConfigurationError, UsageError
 from renku.service.jobs.queues import QUEUES, WorkerQueues
-from renku.service.logger import worker_log as log
+from renku.service.logger import worker_log, DEPLOYMENT_LOG_LEVEL
 
-RQ_WORKER_LOG_LEVEL = os.getenv('RQ_WORKER_LOG_LEVEL', 'INFO')
 
 
 @contextmanager
@@ -36,10 +35,12 @@ def worker(queue_list):
     def build_worker():
         """Build worker."""
         # NOTE: logging configuration has been moved to `.work(logging_level=)`
-        log.info('worker log level set to {}'.format(RQ_WORKER_LOG_LEVEL))
+        worker_log.info(
+            'worker log level set to {}'.format(DEPLOYMENT_LOG_LEVEL)
+        )
 
         rq_worker = Worker(queue_list, connection=WorkerQueues.connection)
-        log.info('worker created')
+        worker_log.info('worker created')
 
         return rq_worker
 
@@ -61,13 +62,13 @@ def start_worker(queue_list):
     """Start worker."""
     check_queues(queue_list)
     with worker(queue_list) as rq_worker:
-        log.info('running worker')
-        rq_worker.work(logging_level=RQ_WORKER_LOG_LEVEL)
+        worker_log.info('running worker')
+        rq_worker.work(logging_level=DEPLOYMENT_LOG_LEVEL)
 
 
 if __name__ == '__main__':
     queues = os.getenv('RENKU_SVC_WORKER_QUEUES')
-    log.info('working on queues: {}'.format(queues))
+    worker_log.info('working on queues: {}'.format(queues))
 
     if not queues:
         raise ConfigurationError((
