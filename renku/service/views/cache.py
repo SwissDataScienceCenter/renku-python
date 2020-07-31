@@ -46,6 +46,8 @@ from renku.service.utils import make_project_path
 from renku.service.views import result_response
 from renku.service.views.decorators import accepts_json, \
     handle_common_except, header_doc, requires_cache, requires_identity
+from renku.service.logger import service_log
+
 
 CACHE_BLUEPRINT_TAG = 'cache'
 cache_blueprint = Blueprint('cache', __name__, url_prefix=SERVICE_PREFIX)
@@ -179,7 +181,7 @@ def _project_clone(cache, user_data, project_data):
                 project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
-    project_clone(
+    repo = project_clone(
         project_data['url_with_auth'],
         local_path,
         depth=project_data['depth'] if project_data['depth'] != 0 else None,
@@ -190,6 +192,9 @@ def _project_clone(cache, user_data, project_data):
         },
         checkout_rev=project_data['ref']
     )
+
+    service_log.debug(f'project successfully cloned: {repo}')
+    service_log.debug(f'project folder exists: {local_path.exists()}')
 
     project = cache.make_project(user, project_data)
     return project
