@@ -49,7 +49,7 @@ def migrate_job(cache, user_data, project_id, user_job_id):
     """Execute migrations job."""
     user = cache.ensure_user(user_data)
     worker_log.debug(
-        f'executing dataset import job for {user.id}:{user.fullname}'
+        f'executing dataset import job for {user.user_id}:{user.fullname}'
     )
 
     user_job = cache.get_job(user, user_job_id)
