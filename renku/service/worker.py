@@ -28,6 +28,7 @@ from renku.service.logger import worker_log as log
 
 RQ_WORKER_LOG_LEVEL = os.getenv('RQ_WORKER_LOG_LEVEL', 'INFO')
 
+
 @contextmanager
 def worker(queue_list):
     """Creates worker object."""
