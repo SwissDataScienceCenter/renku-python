@@ -24,8 +24,8 @@ from renku.core.commands.migrate import migrate_project
 from renku.core.commands.save import repo_sync
 from renku.core.errors import ParameterError, RenkuException
 from renku.core.utils.contexts import chdir
-from renku.service.views.decorators import requires_cache
 from renku.service.logger import worker_log
+from renku.service.views.decorators import requires_cache
 
 
 def execute_migration(project):
