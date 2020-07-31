@@ -27,17 +27,36 @@ from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
 from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
     CLEANUP_QUEUE_PROJECTS, WorkerQueues
-from renku.service.logger import scheduler_log as log
+from renku.service.logger import scheduler_log
+
+
+RQ_SCHEDULER_LOG_LEVEL = os.getenv('RQ_SCHEDULER_LOG_LEVEL', 'INFO')
 
 
 @contextmanager
 def schedule():
     """Creates scheduler object."""
+    setup_loghandlers(level=RQ_SCHEDULER_LOG_LEVEL)
+
     build_scheduler = Scheduler(connection=WorkerQueues.connection)
-    log.info('scheduler created')
+    scheduler_log.info('scheduler created')
 
     cleanup_interval = int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 60))
-    log.info('cleanup interval set to {}'.format(cleanup_interval))
+    scheduler_log.info('cleanup interval set to {}'.format(cleanup_interval))
+
+    def requeue(*args, **kwargs):
+        """Inverval check for scheduled jobs."""
+        job = args[0]
+
+        queue = Scheduler.get_queue_for_job(build_scheduler, job)
+        scheduler_log.info(
+            f'job {job.id}:{job.func_name} re/queued to {queue.name}'
+        )
+
+        return queue
+
+    # NOTE: Patch scheduler to have requeing information on INFO log level.
+    build_scheduler.get_queue_for_job = requeue
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
@@ -55,9 +74,7 @@ def schedule():
         result_ttl=cleanup_interval + 1,
     )
 
-    log_level = os.getenv('RQ_WORKER_LOG_LEVEL', 'INFO')
-    setup_loghandlers(log_level)
-    log.info('log level set to {}'.format(log_level))
+    scheduler_log.info('log level set to {}'.format(RQ_SCHEDULER_LOG_LEVEL))
 
     yield build_scheduler
 
@@ -65,7 +82,7 @@ def schedule():
 def start_scheduler():
     """Build and start scheduler."""
     with schedule() as scheduler:
-        log.info('running scheduler')
+        scheduler_log.info('running scheduler')
         scheduler.run()
 
 
