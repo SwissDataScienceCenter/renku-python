@@ -279,7 +279,7 @@ class GitCore:
                 self.ensure_untracked(str(path_))
                 self.ensure_unstaged(str(path_))
 
-        project_metadata_path = str(self.renku_path / self.METADATA)
+        project_metadata_path = str(self.renku_metadata_path)
 
         yield
 
