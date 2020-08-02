@@ -27,7 +27,7 @@ from renku.service.jobs.cleanup import cache_files_cleanup, \
     cache_project_cleanup
 from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
     CLEANUP_QUEUE_PROJECTS, WorkerQueues
-from renku.service.logger import scheduler_log, DEPLOYMENT_LOG_LEVEL
+from renku.service.logger import DEPLOYMENT_LOG_LEVEL, scheduler_log
 
 
 @contextmanager

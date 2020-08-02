@@ -24,8 +24,7 @@ from rq.logutils import setup_loghandlers
 
 from renku.core.errors import ConfigurationError, UsageError
 from renku.service.jobs.queues import QUEUES, WorkerQueues
-from renku.service.logger import worker_log, DEPLOYMENT_LOG_LEVEL
-
+from renku.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
 
 
 @contextmanager

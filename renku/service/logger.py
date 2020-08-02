@@ -18,13 +18,12 @@
 """Service logger."""
 import logging.config
 import os
+
 import yaml
 
 from renku.service.config import LOGGER_CONFIG_FILE
 
-
 DEPLOYMENT_LOG_LEVEL = os.getenv('DEPLOYMENT_LOG_LEVEL', 'INFO')
-
 
 config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
 logging.config.dictConfig(config)

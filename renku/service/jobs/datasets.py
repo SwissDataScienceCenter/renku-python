@@ -121,9 +121,10 @@ def dataset_add_remote_file(
 ):
     """Add a remote file to a specified dataset."""
     user = cache.ensure_user(user)
-    worker_log.debug(
-        f'executing dataset add remote file job for {user.id}:{user.fullname}'
-    )
+    worker_log.debug((
+        f'executing dataset add remote '
+        f'file job for {user.user_id}:{user.fullname}'
+    ))
 
     user_job = cache.get_job(user, user_job_id)
     user_job.in_progress()

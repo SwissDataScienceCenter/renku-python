@@ -301,7 +301,6 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
         data=json.dumps(payload),
         headers=headers,
     )
-
     assert response
     assert_rpc_response(response)
     assert {'files', 'name',
