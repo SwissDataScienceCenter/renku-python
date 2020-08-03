@@ -21,9 +21,9 @@ import json
 import uuid
 
 import pytest
-from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from flaky import flaky
 
+from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, \
     INVALID_PARAMS_ERROR_CODE
@@ -259,13 +259,12 @@ def test_clone_projects_no_auth(svc_client):
         'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
         'Renku-User-FullName': 'Just Sam',
         'Renku-User-Email': 'contact@justsam.io',
-        'Authorization': 'Bearer notatoken',
+        'Authorization': f'Bearer {IT_GIT_ACCESS_TOKEN}',
     }
 
     response = svc_client.post(
         '/cache.project_clone', data=json.dumps(payload), headers=headers
     )
-
     assert response
     assert {'result'} == set(response.json.keys())
 
@@ -417,7 +416,7 @@ def test_clone_projects_invalid_headers(svc_client):
         'Renku-User-Id': '{0}'.format(uuid.uuid4().hex),
         'Renku-User-FullName': 'Not Sam',
         'Renku-User-Email': 'not@sam.io',
-        'Authorization': 'Bearer not-a-token',
+        'Authorization': f'Bearer {IT_GIT_ACCESS_TOKEN}',
     }
 
     payload = {
@@ -436,7 +435,6 @@ def test_clone_projects_invalid_headers(svc_client):
         '/cache.project_list',
         # no auth headers, expected error
     )
-
     assert response
     assert {'error'} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json['error']['code']
@@ -649,3 +647,54 @@ def test_execute_migrations(svc_client_setup):
         m.startswith('Successfully applied') and m.endswith('migrations.')
         for m in response.json['result']['messages']
     )
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_execute_migrations_job(svc_client_setup):
+    """Check execution of all migrations."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.post(
+        '/cache.migrate',
+        data=json.dumps(dict(project_id=project_id, is_delayed=True)),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json['result']['created_at']
+    assert response.json['result']['job_id']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_migrations(svc_client_setup):
+    """Check if migrations are required."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.get(
+        '/cache.migrations_check',
+        query_string=dict(project_id=project_id),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json['result']['migration_required']
+    assert response.json['result']['project_supported']
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_check_no_migrations(svc_client_with_repo):
+    """Check if migrations are not required."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    response = svc_client.get(
+        '/cache.migrations_check',
+        query_string=dict(project_id=project_id),
+        headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert not response.json['result']['migration_required']
+    assert response.json['result']['project_supported']

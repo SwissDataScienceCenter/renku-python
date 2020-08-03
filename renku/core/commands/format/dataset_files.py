@@ -38,6 +38,9 @@ def tabular(client, records, *, columns=None):
     if 'size' in columns.split(','):
         _get_lfs_file_sizes(client, records)
 
+    for record in records:
+        record.creators = record.dataset.creators
+
     return tabulate(
         collection=records,
         columns=columns,
@@ -93,9 +96,8 @@ def jsonld(client, records, **kwargs):
     :param records: Filtered collection.
     """
     from renku.core.models.json import dumps
-    from renku.core.models.jsonld import asjsonld
 
-    data = [asjsonld(record) for record in records]
+    data = [record.as_jsonld() for record in records]
     return dumps(data, indent=2)
 
 
@@ -112,7 +114,8 @@ DATASET_FILES_COLUMNS = {
     'dataset': ('title', 'dataset'),
     'full_path': ('full_path', None),
     'path': ('path', None),
-    'short_name': ('short_name', 'dataset short_name'),
+    'short_name': ('dataset_name', 'dataset name'),
+    'dataset_name': ('dataset_name', 'dataset name'),
     'size': ('size', None)
 }
 

@@ -16,16 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``init`` command."""
+import os
 from pathlib import Path
 
 import pytest
-from tests.core.commands.test_init import METADATA, TEMPLATE_ID, \
-    TEMPLATE_INDEX, TEMPLATE_REF, TEMPLATE_URL
-from tests.utils import raises
 
 from renku.cli import cli
 from renku.cli.init import create_template_sentence, parse_parameters
 from renku.core import errors
+from tests.core.commands.test_init import METADATA, TEMPLATE_ID, \
+    TEMPLATE_INDEX, TEMPLATE_REF, TEMPLATE_URL
+from tests.utils import raises
 
 INIT = ['init', 'test-new-project', '--template-id', TEMPLATE_ID]
 INIT_REMOTE = [
@@ -252,3 +253,44 @@ def test_init_with_parameters(isolated_runner):
     assert (
         'These parameters are not used by the template and were ignored:'
     ) in result.output
+
+
+@pytest.mark.parametrize('data_dir', ['dir', 'nested/dir/s'])
+def test_init_with_data_dir(isolated_runner, data_dir, directory_tree):
+    """Test initializing with data directory."""
+    from git import Repo
+
+    new_project = Path('test-new-project')
+    result = isolated_runner.invoke(cli, INIT + ['--data-dir', data_dir])
+    assert 0 == result.exit_code
+
+    assert (new_project / data_dir).exists()
+    assert (new_project / data_dir / '.gitkeep').exists()
+    assert not Repo(new_project).is_dirty()
+
+    os.chdir(new_project.resolve())
+    result = isolated_runner.invoke(
+        cli, ['dataset', 'add', '-c', 'my-data', directory_tree.strpath]
+    )
+    assert 0 == result.exit_code, result.output
+    assert (Path(data_dir) / 'my-data' /
+            directory_tree.join('file').strpath).exists()
+
+
+@pytest.mark.parametrize(
+    'data_dir', ['/absolute/path/outside', '../relative/path/outside']
+)
+def test_init_with_wrong_data_dir(isolated_runner, data_dir):
+    """Test initialization fails with wrong data directory."""
+    result = isolated_runner.invoke(cli, INIT + ['--data-dir', data_dir])
+    assert 2 == result.exit_code
+    assert f'Data directory {data_dir} is not within project' in result.output
+
+
+@pytest.mark.parametrize('data_dir', ['.', '.git', '.renku', '.git/'])
+def test_init_with_invalid_data_dir(isolated_runner, data_dir):
+    """Test initialization fails with invalid data directory."""
+    result = isolated_runner.invoke(cli, INIT + ['--data-dir', data_dir])
+    assert 2 == result.exit_code
+    data_dir = data_dir.rstrip('/')
+    assert f'Cannot use {data_dir} as data directory.' in result.output

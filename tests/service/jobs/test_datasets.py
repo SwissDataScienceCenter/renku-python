@@ -22,19 +22,17 @@ import uuid
 import pytest
 from flaky import flaky
 from git import Repo
-from tests.service.views.test_dataset_views import assert_rpc_response
 
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.service.jobs.cleanup import cache_project_cleanup
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.utils import make_project_path
+from tests.service.views.test_dataset_views import assert_rpc_response
 
 
 @pytest.mark.parametrize(
-    'url', [(
-        'https://dev.renku.ch/projects/rokroskar/'
-        'scratch-project/datasets/7eba3f50-1a19-4282-8a86-2497e0f43809/'
-    )]
+    'url',
+    [('https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/')]
 )
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
@@ -292,7 +290,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
     payload = {
         'project_id': project_id,
-        'short_name': uuid.uuid4().hex,
+        'name': uuid.uuid4().hex,
         'create_dataset': True,
         'files': [{
             'file_url': url
@@ -306,7 +304,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
     assert response
     assert_rpc_response(response)
-    assert {'files', 'short_name',
+    assert {'files', 'name',
             'project_id'} == set(response.json['result'].keys())
 
     dest = make_project_path(
@@ -320,8 +318,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     commit_message = 'service: dataset add remote file'
 
     dataset_add_remote_file(
-        user, job_id, project_id, True, commit_message, payload['short_name'],
-        url
+        user, job_id, project_id, True, commit_message, payload['name'], url
     )
 
     new_commit = Repo(dest).head.commit

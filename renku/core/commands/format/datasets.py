@@ -17,10 +17,7 @@
 # limitations under the License.
 """Serializers for datasets."""
 
-import os
-
 from renku.core.models.json import dumps
-from renku.core.models.jsonld import asjsonld
 
 from .tabulate import tabulate
 
@@ -28,7 +25,7 @@ from .tabulate import tabulate
 def tabular(client, datasets, *, columns=None):
     """Format datasets with a tabular output."""
     if not columns:
-        columns = 'id,created,short_name,creators,tags,version'
+        columns = 'id,date_created,name,creators,tags,version'
 
     return tabulate(
         collection=datasets, columns=columns, columns_mapping=DATASETS_COLUMNS
@@ -37,14 +34,7 @@ def tabular(client, datasets, *, columns=None):
 
 def jsonld(client, datasets, **kwargs):
     """Format datasets as JSON-LD."""
-    data = [
-        asjsonld(
-            dataset,
-            basedir=os.path.relpath(
-                '.', start=str(dataset.__reference__.parent)
-            )
-        ) for dataset in datasets
-    ]
+    data = [dataset.as_jsonld() for dataset in datasets]
     return dumps(data, indent=2)
 
 
@@ -56,12 +46,14 @@ DATASETS_FORMATS = {
 
 DATASETS_COLUMNS = {
     'id': ('uid', 'id'),
-    'created': ('created', None),
-    'short_name': ('short_name', None),
+    'created': ('date_created', None),
+    'date_created': ('date_created', None),
+    'short_name': ('name', None),
+    'name': ('name', None),
     'creators': ('creators_csv', 'creators'),
     'creators_full': ('creators_full_csv', 'creators'),
     'tags': ('tags_csv', 'tags'),
     'version': ('version', None),
-    'title': ('name', 'title'),
+    'title': ('title', 'title'),
     'keywords': ('keywords_csv', 'keywords'),
 }

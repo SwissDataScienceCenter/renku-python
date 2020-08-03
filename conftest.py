@@ -40,17 +40,18 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import Repo
-from tests.utils import make_dataset_add_payload
 from walrus import Database
+
+from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     'IT_PROTECTED_REMOTE_REPO',
-    'https://dev.renku.ch/gitlab/contact/protected-renku.git'
+    'https://dev.renku.ch/gitlab/renku-qa/core-integration-test'
 )
 
 IT_REMOTE_REPO_URL = os.getenv(
     'IT_REMOTE_REPOSITORY',
-    'https://dev.renku.ch/gitlab/contact/integration-test'
+    'https://dev.renku.ch/gitlab/renku-qa/core-integration-test'
 )
 IT_GIT_ACCESS_TOKEN = os.getenv('IT_OAUTH_GIT_TOKEN')
 
@@ -181,6 +182,7 @@ def repository():
 def project(repository):
     """Create a test project."""
     from git import Repo
+
     from renku.cli import cli
 
     runner = CliRunner()
@@ -280,13 +282,19 @@ def client_with_lfs_warning(project):
 @pytest.fixture
 def dataset(client):
     """Create a dataset."""
+    from renku.core.models.provenance.agents import Person
+
     with client.with_dataset('dataset', create=True) as dataset:
-        dataset.creator = [{
-            'affiliation': 'xxx',
-            'email': 'me@example.com',
-            '_id': 'me_id',
-            'name': 'me',
-        }]
+        dataset.creators = [
+            Person(
+                **{
+                    'affiliation': 'xxx',
+                    'email': 'me@example.com',
+                    'id': 'me_id',
+                    'name': 'me',
+                }
+            )
+        ]
     return dataset
 
 
@@ -346,7 +354,8 @@ def directory_tree(tmpdir_factory):
 @pytest.fixture(scope='function')
 def data_repository(directory_tree):
     """Create a test repo."""
-    from git import Repo, Actor
+    from git import Actor, Repo
+
     # initialize
     repo = Repo.init(directory_tree.strpath)
 
@@ -425,8 +434,9 @@ def old_bare_repository(request, tmpdir_factory):
 def old_workflow_project(request, tmp_path_factory):
     """Prepares a testing repo created by old version of renku."""
     import tarfile
-    from git import Repo
     from pathlib import Path
+
+    from git import Repo
 
     name = request.param['name']
 
@@ -469,6 +479,7 @@ def old_workflow_project(request, tmp_path_factory):
 def old_repository(tmpdir_factory, old_bare_repository):
     """Create git repo of old repository fixture."""
     import shutil
+
     from git import Repo
 
     repo_path = tmpdir_factory.mktemp('repo')
@@ -599,10 +610,9 @@ def dataverse_demo_cleanup(request):
 @pytest.fixture
 def doi_responses():
     """Responses for doi.org requests."""
+    from renku.core.commands.providers.dataverse import DATAVERSE_API_PATH, \
+        DATAVERSE_VERSION_API
     from renku.core.commands.providers.doi import DOI_BASE_URL
-    from renku.core.commands.providers.dataverse import (
-        DATAVERSE_API_PATH, DATAVERSE_VERSION_API
-    )
 
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
@@ -681,6 +691,7 @@ def cli(client, run):
     It returns the exit code and content of the resulting CWL tool.
     """
     import yaml
+
     from renku.core.models.provenance.activities import Activity
 
     def renku_cli(*args):
@@ -723,6 +734,18 @@ def dataset_metadata(request):
 
     data = yaml.load(file_path.read_text(), Loader=NoDatesSafeLoader)
     yield data
+
+
+@pytest.fixture
+def dataset_metadata_before_calamus():
+    """Return dataset metadata fixture."""
+    from renku.core.models.jsonld import NoDatesSafeLoader
+
+    path = (
+        Path(__file__).parent / 'tests' / 'fixtures' /
+        'dataset-v0.10.4-before-calamus.yml'
+    )
+    yield yaml.load(path.read_text(), Loader=NoDatesSafeLoader)
 
 
 @pytest.fixture()
@@ -791,10 +814,10 @@ def datapack_tar(directory_tree):
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
     from renku.service.cache.base import BaseCache
-    from renku.service.cache.models.user import User
-    from renku.service.cache.models.job import Job
     from renku.service.cache.models.file import File
+    from renku.service.cache.models.job import Job
     from renku.service.cache.models.project import Project
+    from renku.service.cache.models.user import User
     from renku.service.jobs.queues import WorkerQueues
 
     monkey_patch = MonkeyPatch()
@@ -948,11 +971,12 @@ def svc_client_with_repo(svc_client_setup):
     """Service client with a remote repository."""
     svc_client, headers, project_id, url_components = svc_client_setup
 
-    svc_client.post(
+    response = svc_client.post(
         '/cache.migrate',
         data=json.dumps(dict(project_id=project_id)),
         headers=headers
     )
+    assert response.json['result']
 
     yield svc_client, deepcopy(headers), project_id, url_components
 
@@ -960,10 +984,54 @@ def svc_client_with_repo(svc_client_setup):
 @pytest.fixture(scope='module')
 def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
     """Setup and teardown steps for templates tests."""
-    from tests.core.commands.test_init import TEMPLATE_URL, TEMPLATE_REF
+    from tests.core.commands.test_init import TEMPLATE_REF, TEMPLATE_URL
     template = {'url': TEMPLATE_URL, 'ref': TEMPLATE_REF}
 
     yield svc_client, authentication_headers, template
+
+
+@pytest.fixture(scope='module')
+def svc_client_templates_creation(svc_client_with_templates):
+    """Setup and teardown steps for templates tests."""
+    from renku.core.utils.requests import retry
+    from renku.core.utils.scm import strip_and_lower
+    from tests.core.commands.test_init import METADATA, TEMPLATE_ID
+
+    svc_client, authentication_headers, template = svc_client_with_templates
+    parameters = []
+    for parameter in METADATA.keys():
+        parameters.append({'key': parameter, 'value': METADATA[parameter]})
+
+    payload = {
+        **template,
+        'identifier': TEMPLATE_ID,
+        'parameters': parameters,
+        'project_name': f'Test renku-core {uuid.uuid4().hex[:12]}',
+        'project_namespace': 'contact',
+        'project_repository': 'https://dev.renku.ch/gitlab',
+    }
+
+    # clenup by invoking the GitLab delete API
+    # TODO: consider using the project delete endpoint once implemented
+    def remove_project():
+        project_slug = '{0}/{1}'.format(
+            payload['project_namespace'],
+            strip_and_lower(payload['project_name'])
+        )
+
+        project_slug_encoded = urllib.parse.quote(project_slug, safe='')
+        project_delete_url = '{0}/api/v4/projects/{1}'.format(
+            payload['project_repository'], project_slug_encoded
+        )
+
+        with retry() as session:
+            session.delete(
+                url=project_delete_url, headers=authentication_headers
+            )
+
+        return True
+
+    yield svc_client, authentication_headers, payload, remove_project
 
 
 @pytest.fixture
@@ -1059,6 +1127,14 @@ def svc_protected_repo(svc_client):
                 'accept': 'application/json',
             }
         },
+        {
+            'url': '/templates.create_project',
+            'allowed_method': 'POST',
+            'headers': {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            }
+        },
     ]
 )
 def service_allowed_endpoint(request, svc_client, mock_redis):
@@ -1110,7 +1186,7 @@ def unlink_file_setup(svc_client_with_repo):
 
     unlink_payload = {
         'project_id': project_id,
-        'short_name': response.json['result']['short_name'],
+        'name': response.json['result']['name'],
         'include_filters': [response.json['result']['files'][0]['file_path']]
     }
 

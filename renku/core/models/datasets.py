@@ -23,15 +23,16 @@ import pathlib
 import re
 import urllib
 import uuid
-from functools import partial
 from pathlib import Path
 
 import attr
 from attr.validators import instance_of
+from marshmallow import EXCLUDE, pre_load
 
 from renku.core import errors
-from renku.core.models.entities import Entity
-from renku.core.models.provenance.agents import Person
+from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku, schema
+from renku.core.models.entities import Entity, EntitySchema
+from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
@@ -39,11 +40,6 @@ from renku.core.utils.doi import extract_doi, is_doi
 from . import jsonld as jsonld
 
 NoneType = type(None)
-
-_path_attr = partial(
-    jsonld.ib,
-    converter=Path,
-)
 
 
 @jsonld.s(
@@ -99,6 +95,20 @@ class Url:
         if not self.url:
             self.url = self.default_url()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return UrlSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return UrlSchema().dump(self)
+
 
 def _convert_creators(value):
     """Convert creators."""
@@ -108,12 +118,14 @@ def _convert_creators(value):
     if isinstance(value, list):
         return [Person.from_jsonld(v) for v in value]
 
+    return value
+
 
 @attr.s
 class CreatorMixin:
     """Mixin for handling creators container."""
 
-    creator = jsonld.container.list(
+    creators = jsonld.container.list(
         Person,
         kw_only=True,
         context='schema:creator',
@@ -123,12 +135,12 @@ class CreatorMixin:
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ', '.join(creator.name for creator in self.creator)
+        return ', '.join(creator.name for creator in self.creators)
 
     @property
     def creators_full_csv(self):
         """Comma-separated list of creators with full identity."""
-        return ', '.join(creator.full_identity for creator in self.creator)
+        return ', '.join(creator.full_identity for creator in self.creators)
 
 
 def _extract_doi(value):
@@ -189,6 +201,20 @@ class DatasetTag(object):
         """Define default value for id field."""
         return '_:{0}@{1}'.format(self.name, self.commit)
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return DatasetTagSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetTagSchema().dump(self)
+
 
 @jsonld.s(
     type='schema:Language',
@@ -202,6 +228,16 @@ class Language:
         default=None, kw_only=True, context='schema:alternateName'
     )
     name = jsonld.ib(default=None, kw_only=True, context='schema:name')
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return LanguageSchema().load(data)
 
 
 def convert_filename_path(p):
@@ -221,9 +257,10 @@ def convert_based_on(v):
     slots=True,
     context={
         'schema': 'http://schema.org/',
+        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#'
     }
 )
-class DatasetFile(Entity, CreatorMixin):
+class DatasetFile(Entity):
     """Represent a file in a dataset."""
 
     added = jsonld.ib(
@@ -249,7 +286,7 @@ class DatasetFile(Entity, CreatorMixin):
         converter=convert_based_on
     )
 
-    external = jsonld.ib(context='sdsc:external', default=False, kw_only=True)
+    external = jsonld.ib(context='renku:external', default=False, kw_only=True)
 
     @added.default
     def _now(self):
@@ -285,6 +322,20 @@ class DatasetFile(Entity, CreatorMixin):
         if not parsed_id.scheme:
             self._id = 'file://{}'.format(self._id)
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return DatasetFileSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetFileSchema().dump(self)
+
 
 def _convert_dataset_files(value):
     """Convert dataset files."""
@@ -309,9 +360,7 @@ def _convert_dataset_tags(value):
 
 def _convert_language(obj):
     """Convert language object."""
-    if isinstance(obj, dict):
-        language = Language.from_jsonld(obj)
-        return language
+    return Language.from_jsonld(obj) if isinstance(obj, dict) else obj
 
 
 def _convert_keyword(keywords):
@@ -325,9 +374,7 @@ def _convert_keyword(keywords):
 
 @jsonld.s(
     type='schema:Dataset',
-    context={
-        'schema': 'http://schema.org/',
-    },
+    context={'schema': 'http://schema.org/'},
 )
 class Dataset(Entity, CreatorMixin):
     """Represent a dataset."""
@@ -335,8 +382,8 @@ class Dataset(Entity, CreatorMixin):
     SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
 
     EDITABLE_FIELDS = [
-        'creator', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'name', 'url', 'version', 'created', 'files'
+        'creators', 'date_published', 'description', 'in_language', 'keywords',
+        'license', 'title', 'url', 'version', 'date_created', 'files'
     ]
 
     _id = jsonld.ib(default=None, context='@id', kw_only=True)
@@ -374,7 +421,7 @@ class Dataset(Entity, CreatorMixin):
 
     license = jsonld.ib(default=None, context='schema:license', kw_only=True)
 
-    name = jsonld.ib(
+    title = jsonld.ib(
         default=None, type=str, context='schema:name', kw_only=True
     )
 
@@ -382,7 +429,7 @@ class Dataset(Entity, CreatorMixin):
 
     version = jsonld.ib(default=None, context='schema:version', kw_only=True)
 
-    created = jsonld.ib(
+    date_created = jsonld.ib(
         converter=parse_date, context='schema:dateCreated', kw_only=True
     )
 
@@ -408,23 +455,21 @@ class Dataset(Entity, CreatorMixin):
         context='schema:sameAs', default=None, kw_only=True, type=Url
     )
 
-    short_name = jsonld.ib(
+    name = jsonld.ib(
         default=None, context='schema:alternateName', kw_only=True
     )
 
-    @created.default
+    @date_created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
 
-    @short_name.validator
-    def short_name_validator(self, attribute, value):
-        """Validate short_name."""
-        # short_name might have been scaped and have '%' in it
-        if value and not is_dataset_short_name_valid(value):
-            raise errors.ParameterError(
-                'Invalid "short_name": {}'.format(value)
-            )
+    @name.validator
+    def name_validator(self, attribute, value):
+        """Validate name."""
+        # name might have been scaped and have '%' in it
+        if value and not is_dataset_name_valid(value):
+            raise errors.ParameterError('Invalid "name": {}'.format(value))
 
     @property
     def uid(self):
@@ -443,7 +488,7 @@ class Dataset(Entity, CreatorMixin):
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ', '.join(creator.name for creator in self.creator)
+        return ', '.join(creator.name for creator in self.creators)
 
     @property
     def keywords_csv(self):
@@ -458,15 +503,15 @@ class Dataset(Entity, CreatorMixin):
     @property
     def editable(self):
         """Subset of attributes which user can edit."""
-        obj = self.asjsonld()
+        obj = self.as_jsonld()
         data = {field_: obj.pop(field_) for field_ in self.EDITABLE_FIELDS}
         return data
 
     @property
-    def datadir(self):
+    def data_dir(self):
         """Directory where dataset files are stored."""
         if self.client:
-            return Path(self.client.datadir) / self.short_name
+            return Path(self.client.data_dir) / self.name
         return ''
 
     def contains_any(self, files):
@@ -571,17 +616,14 @@ class Dataset(Entity, CreatorMixin):
         self.url = self._id
 
         # if `date_published` is set, we are probably dealing with
-        # an imported dataset so `created` is not needed
+        # an imported dataset so `date_created` is not needed
         if self.date_published:
-            self.created = None
+            self.date_created = None
 
         self._label = self.identifier
 
-        if not self.path:
-            self.path = str(
-                self.client.renku_datasets_path /
-                quote(str(self.uid), safe='')
-            )
+        if not self.path and self.client:
+            self.path = str(self.client.renku_datasets_path / self.uid)
 
         if self.files and self.client is not None:
             for dataset_file in self.files:
@@ -610,30 +652,196 @@ class Dataset(Entity, CreatorMixin):
             # if with_dataset is used, the dataset is not committed yet
             pass
 
-        if not self.short_name:
-            self.short_name = generate_default_short_name(
-                self.name, self.version
-            )
+        if not self.name:
+            self.name = generate_default_name(self.title, self.version)
+
+    @classmethod
+    def from_yaml(cls, path, client=None, commit=None):
+        """Return an instance from a YAML file."""
+        data = jsonld.read_yaml(path)
+
+        self = cls.from_jsonld(data=data, client=client, commit=commit)
+        self.__reference__ = path
+
+        return self
+
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None, schema_class=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        schema_class = schema_class or DatasetSchema
+        return schema_class(client=client, commit=commit).load(data)
+
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = DatasetSchema().dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return DatasetSchema().dump(self)
 
 
-def is_dataset_short_name_valid(short_name):
-    """A valid short_name is a valid Git reference name with no /."""
-    # TODO make short_name an RFC 3986 compatible and migrate old projects
+class CreatorMixinSchema(JsonLDSchema):
+    """CreatorMixin schema."""
+
+    class Meta:
+        """Meta class."""
+
+        unknown = EXCLUDE
+
+    creators = fields.Nested(schema.creator, PersonSchema, many=True)
+
+
+class UrlSchema(JsonLDSchema):
+    """Url schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.URL
+        model = Url
+        unknown = EXCLUDE
+
+    url = fields.Uri(schema.url, missing=None)
+    _id = fields.Id(init_name='id', missing=None)
+
+
+class DatasetTagSchema(JsonLDSchema):
+    """DatasetTag schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.PublicationEvent
+        model = DatasetTag
+        unknown = EXCLUDE
+
+    name = fields.String(schema.name)
+    description = fields.String(schema.description)
+    commit = fields.String(schema.location)
+    created = fields.DateTime(schema.startDate, missing=None)
+    dataset = fields.String(schema.about)
+    _id = fields.Id(init_name='id')
+
+
+class LanguageSchema(JsonLDSchema):
+    """Language schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.Language
+        model = Language
+        unknown = EXCLUDE
+
+    alternate_name = fields.String(schema.alternateName)
+    name = fields.String(schema.name)
+
+
+class DatasetFileSchema(EntitySchema):
+    """DatasetFile schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.DigitalDocument
+        model = DatasetFile
+        unknown = EXCLUDE
+
+    added = fields.DateTime(schema.dateCreated)
+    name = fields.String(schema.name, missing=None)
+    url = fields.String(schema.url, missing=None)
+    based_on = fields.Nested(
+        schema.isBasedOn, 'DatasetFileSchema', missing=None
+    )
+    external = fields.Boolean(renku.external, missing=False)
+
+
+class DatasetSchema(EntitySchema, CreatorMixinSchema):
+    """Dataset schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.Dataset
+        model = Dataset
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name='id', missing=None)
+    _label = fields.String(rdfs.label, init_name='label', missing=None)
+    date_published = fields.DateTime(schema.datePublished, missing=None)
+    description = fields.String(schema.description, missing=None)
+    identifier = fields.String(schema.identifier)
+    in_language = fields.Nested(
+        schema.inLanguage, LanguageSchema, missing=None
+    )
+    keywords = fields.List(schema.keywords, fields.String())
+    license = fields.Uri(schema.license, missing=None, allow_none=True)
+    title = fields.String(schema.name)
+    url = fields.String(schema.url)
+    version = fields.String(schema.version, missing=None)
+    date_created = fields.DateTime(schema.dateCreated, missing=None)
+    files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
+    same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
+    name = fields.String(schema.alternateName)
+
+    @pre_load
+    def fix_files_context(self, data, **kwargs):
+        """Fix DatasetFile context for _label and external fields."""
+        context = None
+        if '@context' not in data:
+            return data
+
+        context = data['@context']
+        if not isinstance(context, dict) or 'files' not in context:
+            return data
+
+        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+
+        files = data['@context']['files']
+        if not isinstance(files, dict) or '@context' not in files:
+            return data
+
+        context = files['@context']
+        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+        context.setdefault('_label', 'rdfs:label')
+        context.setdefault('external', 'renku:external')
+        context.setdefault(
+            'renku', 'https://swissdatasciencecenter.github.io/renku-ontology#'
+        )
+
+        return data
+
+    @pre_load
+    def migrate_types(self, data, **kwargs):
+        """Fix types."""
+        from renku.core.utils.migrate import migrate_types
+        return migrate_types(data)
+
+
+def is_dataset_name_valid(name):
+    """A valid name is a valid Git reference name with no /."""
+    # TODO make name an RFC 3986 compatible and migrate old projects
     return (
-        short_name and
-        LinkReference.check_ref_format(short_name, no_slashes=True) and
-        '/' not in short_name
+        name and LinkReference.check_ref_format(name, no_slashes=True) and
+        '/' not in name
     )
 
 
-def generate_default_short_name(dataset_name, dataset_version):
-    """Get dataset short_name."""
-    # For compatibility with older versions use name as short_name
+def generate_default_name(dataset_title, dataset_version):
+    """Get dataset name."""
+    # For compatibility with older versions use name as name
     # if it is valid; otherwise, use encoded name
-    if is_dataset_short_name_valid(dataset_name):
-        return dataset_name
+    if is_dataset_name_valid(dataset_title):
+        return dataset_title
 
-    name = re.sub(r'\s+', ' ', dataset_name)
+    name = re.sub(r'\s+', ' ', dataset_title)
     name = name.lower()[:24]
 
     def to_unix(el):
@@ -642,12 +850,11 @@ def generate_default_short_name(dataset_name, dataset_version):
         parsed_ = re.sub(' .+', '.', parsed_.lower())
         return parsed_
 
-    short_name = [to_unix(el) for el in name.split()]
-    short_name = [el for el in short_name if el]
+    name = [to_unix(el) for el in name.split()]
+    name = [el for el in name if el]
 
     if dataset_version:
         version = to_unix(dataset_version)
-        name = '{0}_{1}'.format('_'.join(short_name), version)
-        return name
+        return '{0}_{1}'.format('_'.join(name), version)
 
-    return '_'.join(short_name)
+    return '_'.join(name)

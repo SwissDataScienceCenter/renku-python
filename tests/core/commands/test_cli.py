@@ -30,12 +30,13 @@ import git
 import pytest
 from click.testing import CliRunner
 from cwlgen import parse_cwl
-from tests.cli.test_init import INPUT, METADATA, TEMPLATE_ID
 
 from renku import __version__
 from renku.cli import cli
+from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
 from renku.core.utils.contexts import chdir
+from tests.cli.test_init import INPUT, METADATA, TEMPLATE_ID
 
 
 def test_version(runner):
@@ -52,7 +53,7 @@ def test_help(arg, runner):
     assert 'Show this message and exit.' in result.output
 
 
-@pytest.mark.parametrize('cwd', ('data', 'notebooks', 'subdir'))
+@pytest.mark.parametrize('cwd', (DATA_DIR, 'notebooks', 'subdir'))
 def test_run_from_non_root(runner, client, cwd):
     path = client.path / cwd
     path.mkdir(parents=True, exist_ok=True)
@@ -309,7 +310,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
     assert 0 == run(args=('dataset', 'create', 'foo'))
     assert 0 == run(args=('dataset', 'add', 'foo', str(woop)))
 
-    imported_woop = Path(project) / 'data' / 'foo' / woop.name
+    imported_woop = Path(project) / DATA_DIR / 'foo' / woop.name
     assert imported_woop.exists()
 
     woop_wc = Path(project) / 'woop.wc'
@@ -595,7 +596,7 @@ def test_modified_output(runner, project, run):
     """Test detection of changed file as output."""
     cwd = Path(project)
     source = cwd / 'source.txt'
-    data = cwd / 'data' / 'results'
+    data = cwd / DATA_DIR / 'results'
     data.mkdir(parents=True)
     output = data / 'result.txt'
 

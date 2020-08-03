@@ -51,9 +51,10 @@ DOC_TPL = (
 make_type = type
 
 try:
-    from yaml import CSafeLoader as SafeLoader, CDumper as Dumper
+    from yaml import CDumper as Dumper
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-    from yaml import SafeLoader, Dumper
+    from yaml import Dumper, SafeLoader
 
 
 # Shamelessly copy/pasting from SO:
@@ -416,6 +417,10 @@ def asjsonld(
     basedir=None,
 ):
     """Dump a JSON-LD class to the JSON with generated ``@context`` field."""
+    as_jsonld = getattr(inst, 'as_jsonld', None)
+    if as_jsonld is not None and type(as_jsonld.__self__) in type(inst).mro():
+        return inst.as_jsonld()
+
     jsonld_fields = inst.__class__._jsonld_fields
     attrs = tuple(
         field

@@ -20,18 +20,20 @@ import json
 import pathlib
 import re
 import urllib
-import urllib.parse as urlparse
 from pathlib import Path
 from string import Template
+from urllib import parse as urlparse
 
 import attr
 import requests
+from marshmallow import pre_load
 from tqdm import tqdm
 
 from renku.core import errors
 from renku.core.commands.providers.api import ExporterApi, ProviderApi
 from renku.core.commands.providers.doi import DOIProvider
-from renku.core.models.datasets import Dataset, DatasetFile
+from renku.core.models.datasets import Dataset, DatasetFile, DatasetSchema
+from renku.core.models.provenance.agents import PersonSchema
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.requests import retry
 
@@ -44,6 +46,32 @@ DATAVERSE_VERSION_API = 'info/version'
 DATAVERSE_METADATA_API = 'datasets/export'
 DATAVERSE_FILE_API = 'access/datafile/:persistentId/'
 DATAVERSE_EXPORTER = 'schema.org'
+
+
+class _DataverseDatasetSchema(DatasetSchema):
+    """Schema for Dataverse datasets."""
+
+    @pre_load
+    def fix_data(self, data, **kwargs):
+        """Fix data that is received from Dataverse."""
+        # Fix context
+        context = data.get('@context')
+        if context and isinstance(context, str):
+            if context == 'http://schema.org':
+                context = 'http://schema.org/'
+            data['@context'] = {'@base': context, '@vocab': context}
+
+        # Add type to creators
+        creators = data.get('creator', [])
+        for c in creators:
+            c['@type'] = [str(t) for t in PersonSchema.opts.rdf_type]
+
+        # Fix license to be a string
+        license = data.get('license')
+        if license and isinstance(license, dict):
+            data['license'] = license.get('url', '')
+
+        return data
 
 
 def check_dataverse_uri(url):
@@ -259,17 +287,14 @@ class DataverseRecordSerializer:
     def as_dataset(self, client):
         """Deserialize `DataverseRecordSerializer` to `Dataset`."""
         files = self.get_files()
-        context = self._json.get('@context')
-        if context and isinstance(context, str):
-            if context == 'http://schema.org':
-                context = 'http://schema.org/'
-            self._json['@context'] = {'@base': context, '@vocab': context}
-        dataset = Dataset.from_jsonld(self._json, client=client)
+        dataset = Dataset.from_jsonld(
+            self._json, client=client, schema_class=_DataverseDatasetSchema
+        )
 
         if dataset.description and not dataset.description.strip():
             dataset.description = None
 
-        for creator in dataset.creator:
+        for creator in dataset.creators:
             if creator.affiliation == '':
                 creator.affiliation = None
 
@@ -368,7 +393,7 @@ class DataverseExporter(ExporterApi):
         with tqdm(total=len(self.dataset.files)) as progressbar:
             for file_ in self.dataset.files:
                 try:
-                    path = Path(file_.path).relative_to(self.dataset.datadir)
+                    path = Path(file_.path).relative_to(self.dataset.data_dir)
                 except ValueError:
                     path = Path(file_.path)
                 deposition.upload_file(
@@ -385,7 +410,7 @@ class DataverseExporter(ExporterApi):
         authors, contacts = self._get_creators()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
-            name=_escape_json_string(self.dataset.name),
+            name=_escape_json_string(self.dataset.title),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
             description=_escape_json_string(self.dataset.description)
@@ -396,7 +421,7 @@ class DataverseExporter(ExporterApi):
         authors = []
         contacts = []
 
-        for creator in self.dataset.creator:
+        for creator in self.dataset.creators:
             name = creator.name or ''
             affiliation = creator.affiliation or ''
             email = creator.email or ''
@@ -503,16 +528,16 @@ class _DataverseDeposition:
 
     @staticmethod
     def _check_response(response):
-        if response.status_code not in [200, 201]:
+        if response.status_code not in [200, 201, 202]:
             if response.status_code == 401:
                 raise errors.AuthenticationError(
                     'Access unauthorized - update access token.'
                 )
-
+            json_res = response.json()
             raise errors.ExportError(
                 'HTTP {} - Cannot export dataset: {}'.format(
-                    response.status_code,
-                    response.json()['message']
+                    response.status_code, json_res['message']
+                    if 'message' in json_res else json_res['status']
                 )
             )
 

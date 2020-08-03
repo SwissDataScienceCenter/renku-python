@@ -4,9 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-renku = {editable = true,extras = ["all"],path = "."}
+renku = {editable = true, extras = ["all"], path = "."}
 
 [dev-packages]
+chartpress = "==0.3.2"
 
 [requires]
 python_version = "3.7"

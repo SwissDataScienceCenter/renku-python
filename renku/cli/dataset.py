@@ -62,7 +62,7 @@ Listing all datasets:
 .. code-block:: console
 
     $ renku dataset
-    ID        SHORT_NAME     TITLE          VERSION
+    ID        NAME           TITLE          VERSION
     --------  -------------  -------------  ---------
     0ad1cb9a  some-dataset   Some Dataset
     9436e36c  my-dataset     My Dataset
@@ -72,8 +72,8 @@ comma-separated list of column names:
 
 .. code-block:: console
 
-    $ renku dataset --columns id,short_name,created,creators
-    ID        SHORT_NAME     CREATED              CREATORS
+    $ renku dataset --columns id,name,date_created,creators
+    ID        NAME           CREATED              CREATORS
     --------  -------------  -------------------  ---------
     0ad1cb9a  some-dataset   2020-03-19 16:39:46  sam
     9436e36c  my-dataset     2020-02-28 16:48:09  sam
@@ -86,7 +86,7 @@ flag for it:
 .. code-block:: console
 
     $ renku dataset --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
-    ID        SHORT_NAME           TITLE               VERSION
+    ID        NAME                 TITLE               VERSION
     a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
     c2d80abe  ds1                  ds1
 
@@ -301,7 +301,7 @@ Listing all files in the project associated with a dataset.
 .. code-block:: console
 
     $ renku dataset ls-files
-    DATASET SHORT_NAME   ADDED                PATH
+    DATASET NAME         ADDED                PATH
     -------------------  -------------------  -----------------------------
     my-dataset           2020-02-28 16:48:09  data/my-dataset/addme
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1
@@ -313,8 +313,8 @@ comma-separated list of column names:
 
 .. code-block:: console
 
-    $ renku dataset ls-files --columns short_name,creators, path
-    DATASET SHORT_NAME   CREATORS   PATH
+    $ renku dataset ls-files --columns name,creators, path
+    DATASET NAME         CREATORS   PATH
     -------------------  ---------  -----------------------------
     my-dataset           sam        data/my-dataset/addme
     my-dataset           sam        data/my-dataset/weather/file1
@@ -329,7 +329,7 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
 .. code-block:: console
 
     $ renku dataset ls-files --include "file*" --exclude "file3"
-    DATASET SHORT_NAME  ADDED                PATH
+    DATASET NAME        ADDED                PATH
     ------------------- -------------------  -----------------------------
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2
@@ -428,7 +428,7 @@ def prompt_tag_selection(tags):
     '-c',
     '--columns',
     type=click.STRING,
-    default='id,short_name,title,version',
+    default='id,name,title,version',
     metavar='<columns>',
     help='Comma-separated list of column to display: {}.'.format(
         ', '.join(DATASETS_COLUMNS.keys())
@@ -447,7 +447,7 @@ def dataset(ctx, revision, format, columns):
 
 
 @dataset.command()
-@click.argument('short_name')
+@click.argument('name')
 @click.option(
     '-t',
     '--title',
@@ -465,6 +465,7 @@ def dataset(ctx, revision, format, columns):
 @click.option(
     '-c',
     '--creator',
+    'creators',
     default=None,
     multiple=True,
     help='Creator\'s name, email, and affiliation. '
@@ -478,28 +479,24 @@ def dataset(ctx, revision, format, columns):
     type=click.STRING,
     help='List of keywords or tags.'
 )
-def create(short_name, title, description, creator, keyword):
+def create(name, title, description, creators, keyword):
     """Create an empty dataset in the current repo."""
-    creators = creator or ()
+    creators = creators or ()
 
     new_dataset = create_dataset(
-        short_name=short_name,
+        name=name,
         title=title,
         description=description,
         creators=creators,
         keywords=keyword,
     )
 
-    click.echo(
-        'Use the name "{0}" to refer to this dataset.'.format(
-            new_dataset.short_name
-        )
-    )
+    click.echo(f'Use the name "{new_dataset.name}" to refer to this dataset.')
     click.secho('OK', fg='green')
 
 
 @dataset.command()
-@click.argument('short_name')
+@click.argument('name')
 @click.option(
     '-t',
     '--title',
@@ -517,6 +514,7 @@ def create(short_name, title, description, creator, keyword):
 @click.option(
     '-c',
     '--creator',
+    'creators',
     default=None,
     multiple=True,
     help='Creator\'s name, email, and affiliation. '
@@ -530,13 +528,13 @@ def create(short_name, title, description, creator, keyword):
     type=click.STRING,
     help='List of keywords or tags.'
 )
-def edit(short_name, title, description, creator, keyword):
+def edit(name, title, description, creators, keyword):
     """Edit dataset metadata."""
-    creators = creator or ()
+    creators = creators or ()
     keywords = keyword or ()
 
     updated, no_email_warnings = edit_dataset(
-        short_name=short_name,
+        name=name,
         title=title,
         description=description,
         creators=creators,
@@ -559,7 +557,7 @@ def edit(short_name, title, description, creator, keyword):
 
 
 @dataset.command()
-@click.argument('short_name')
+@click.argument('name')
 @click.argument('urls', nargs=-1)
 @click.option(
     '-e', '--external', is_flag=True, help='Creates a link to external data.'
@@ -597,14 +595,13 @@ def edit(short_name, title, description, creator, keyword):
     '--ref', default=None, help='Add files from a specific commit/tag/branch.'
 )
 def add(
-    short_name, urls, external, force, overwrite, create, sources, destination,
-    ref
+    name, urls, external, force, overwrite, create, sources, destination, ref
 ):
     """Add data to a dataset."""
     progress = partial(progressbar, label='Adding data to dataset')
     add_file(
         urls=urls,
-        short_name=short_name,
+        name=name,
         external=external,
         force=force,
         overwrite=overwrite,
@@ -620,7 +617,7 @@ def add(
 
 
 @dataset.command('ls-files')
-@click.argument('short_names', nargs=-1)
+@click.argument('names', nargs=-1)
 @click.option(
     '--creators',
     help='Filter files which where authored by specific creators. '
@@ -650,22 +647,20 @@ def add(
     '-c',
     '--columns',
     type=click.STRING,
-    default='short_name,added,size,path',
+    default='dataset_name,added,size,path',
     metavar='<columns>',
     help='Comma-separated list of column to display: {}.'.format(
         ', '.join(DATASET_FILES_COLUMNS.keys())
     ),
     show_default=True
 )
-def ls_files(short_names, creators, include, exclude, format, columns):
+def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    click.echo(
-        list_files(short_names, creators, include, exclude, format, columns)
-    )
+    click.echo(list_files(names, creators, include, exclude, format, columns))
 
 
 @dataset.command()
-@click.argument('short_name')
+@click.argument('name')
 @click.option(
     '-I',
     '--include',
@@ -681,22 +676,18 @@ def ls_files(short_names, creators, include, exclude, format, columns):
 @click.option(
     '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
 )
-def unlink(short_name, include, exclude, yes):
+def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
     file_unlink(
-        short_name=short_name,
-        include=include,
-        exclude=exclude,
-        yes=yes,
-        interactive=True
+        name=name, include=include, exclude=exclude, yes=yes, interactive=True
     )
 
     click.secho('OK', fg='green')
 
 
 @dataset.command('rm')
-@click.argument('short_names', nargs=-1)
-def remove(short_names):
+@click.argument('names', nargs=-1)
+def remove(names):
     """Delete a dataset."""
     datasetscontext = partial(
         progressbar,
@@ -709,7 +700,7 @@ def remove(short_names):
         item_show_func=lambda item: item.name if item else '',
     )
     dataset_remove(
-        short_names,
+        names,
         with_output=True,
         datasetscontext=datasetscontext,
         referencescontext=referencescontext
@@ -718,43 +709,43 @@ def remove(short_names):
 
 
 @dataset.command('tag')
-@click.argument('short_name')
+@click.argument('name')
 @click.argument('tag')
 @click.option(
     '-d', '--description', default='', help='A description for this tag'
 )
 @click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
-def tag(short_name, tag, description, force):
+def tag(name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset_with_client(short_name, tag, description, force)
+    tag_dataset_with_client(name, tag, description, force)
     click.secho('OK', fg='green')
 
 
 @dataset.command('rm-tags')
-@click.argument('short_name')
+@click.argument('name')
 @click.argument('tags', nargs=-1)
-def remove_tags(short_name, tags):
+def remove_tags(name, tags):
     """Remove tags from a dataset."""
-    remove_dataset_tags(short_name, tags)
+    remove_dataset_tags(name, tags)
     click.secho('OK', fg='green')
 
 
 @dataset.command('ls-tags')
-@click.argument('short_name')
+@click.argument('name')
 @click.option(
     '--format',
     type=click.Choice(DATASET_TAGS_FORMATS),
     default='tabular',
     help='Choose an output format.'
 )
-def ls_tags(short_name, format):
+def ls_tags(name, format):
     """List all tags of a dataset."""
-    tags_output = list_tags(short_name, format)
+    tags_output = list_tags(name, format)
     click.echo(tags_output)
 
 
 @dataset.command('export')
-@click.argument('short_name')
+@click.argument('name')
 @click.argument('provider')
 @click.option(
     '-p',
@@ -767,13 +758,11 @@ def ls_tags(short_name, format):
 @click.option(
     '--dataverse-name', default=None, help='Dataverse name to export to.'
 )
-def export_(
-    short_name, provider, publish, tag, dataverse_server, dataverse_name
-):
+def export_(name, provider, publish, tag, dataverse_server, dataverse_name):
     """Export data to 3rd party provider."""
     try:
         output = export_dataset(
-            short_name=short_name,
+            name=name,
             provider=provider,
             publish=publish,
             tag=tag,
@@ -794,7 +783,11 @@ def export_(
 @dataset.command('import')
 @click.argument('uri')
 @click.option(
-    '--short-name', default=None, help='A convenient name for dataset.'
+    '--short-name',
+    '--name',
+    'name',
+    default=None,
+    help='A convenient name for dataset.'
 )
 @click.option(
     '-x',
@@ -805,14 +798,14 @@ def export_(
 @click.option(
     '-y', '--yes', is_flag=True, help='Bypass download confirmation.'
 )
-def import_(uri, short_name, extract, yes):
+def import_(uri, name, extract, yes):
     """Import data from a 3rd party provider or another renku project.
 
     Supported providers: [Dataverse, Renku, Zenodo]
     """
     import_dataset(
         uri=uri,
-        short_name=short_name,
+        name=name,
         extract=extract,
         with_prompt=True,
         yes=yes,
@@ -846,7 +839,7 @@ class _DownloadProgressbar(DownloadProgressCallback):
 
 
 @dataset.command('update')
-@click.argument('short_names', nargs=-1)
+@click.argument('names', nargs=-1)
 @click.option(
     '--creators',
     help='Filter files which where authored by specific creators. '
@@ -875,11 +868,11 @@ class _DownloadProgressbar(DownloadProgressCallback):
     help='Delete local files that are deleted from remote.'
 )
 @click.option('-e', '--external', is_flag=True, help='Update external data.')
-def update(short_names, creators, include, exclude, ref, delete, external):
+def update(names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label='Updating files')
     update_datasets(
-        short_names=short_names,
+        names=names,
         creators=creators,
         include=include,
         exclude=exclude,
