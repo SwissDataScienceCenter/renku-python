@@ -168,9 +168,9 @@ class RenkuProvider(ProviderApi):
 
             def get_project_link(project):
                 links = project.get('_links', [])
-                for l in links:
-                    if l.get('rel') == 'project-details':
-                        return l.get('href', '')
+                for link in links:
+                    if link.get('rel') == 'project-details':
+                        return link.get('href', '')
 
             response = RenkuProvider._query_knowledge_graph(kg_url)
             same_as = response.get('sameAs')

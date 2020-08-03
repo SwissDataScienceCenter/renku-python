@@ -328,7 +328,7 @@ def unlink_file_view(user_data, cache):
 
     if ctx.get('commit_message') is None:
         if include and exclude:
-            filters = '-I {0} -X {0}'.format(include, exclude)
+            filters = '-I {0} -X {1}'.format(include, exclude)
         elif not include and exclude:
             filters = '-X {0}'.format(exclude)
         else:

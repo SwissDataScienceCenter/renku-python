@@ -57,7 +57,7 @@ def test_git_hooks_modified(runner, project):
     assert 'Everything seems to be ok.' in result.output
 
     # Modify Renku hook
-    modified = [l for l in lines if '# END RENKU HOOK.' not in l]
+    modified = [line for line in lines if '# END RENKU HOOK.' not in line]
     hook_path.write_text('\n'.join(modified))
 
     result = runner.invoke(cli, ['doctor'])

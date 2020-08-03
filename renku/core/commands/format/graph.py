@@ -225,13 +225,13 @@ def _rdf2dot_reduced(g, stream):
         except Exception:
             return x
 
-    def formatliteral(l, g):
+    def formatliteral(literal, graph):
         """Format and escape literal."""
-        v = html.escape(l)
-        if l.datatype:
-            return '&quot;%s&quot;^^%s' % (v, qname(l.datatype, g))
-        elif l.language:
-            return '&quot;%s&quot;@%s' % (v, l.language)
+        v = html.escape(literal)
+        if literal.datatype:
+            return '&quot;%s&quot;^^%s' % (v, qname(literal.datatype, graph))
+        elif literal.language:
+            return '&quot;%s&quot;@%s' % (v, literal.language)
         return '&quot;%s&quot;' % v
 
     def qname(x, g):

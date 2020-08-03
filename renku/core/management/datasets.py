@@ -974,8 +974,9 @@ class DatasetsApiMixin(object):
         skip_hooks = not self.external_storage_requested
         self.repo.index.commit(
             'renku dataset: updated {} files and deleted {} files'.format(
-                len(updated_files), len(deleted_files), skip_hooks=skip_hooks
-            )
+                len(updated_files), len(deleted_files)
+            ),
+            skip_hooks=skip_hooks
         )
 
         # Update datasets' metadata
