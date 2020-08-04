@@ -43,11 +43,10 @@ def check_dataset_metadata(client):
         return True, None
 
     problems = (
-        WARNING + 'There are metadata files in the old location.'
-        '\n  (use "renku migrate" to move them)\n\n\t' + '\n\t'.join(
-            click.style(str(path.relative_to(client.path)), fg='yellow')
-            for path in old_metadata
-        ) + '\n'
+        WARNING + "There are metadata files in the old location."
+        '\n  (use "renku migrate" to move them)\n\n\t'
+        + "\n\t".join(click.style(str(path.relative_to(client.path)), fg="yellow") for path in old_metadata)
+        + "\n"
     )
 
     return False, problems
@@ -60,21 +59,21 @@ def check_missing_files(client):
     for dataset in client.datasets.values():
         for file_ in dataset.files:
             path = client.path / file_.path
-            file_exists = (
-                path.exists() or (file_.external and os.path.lexists(path))
-            )
+            file_exists = path.exists() or (file_.external and os.path.lexists(path))
             if not file_exists:
                 missing[dataset.name].append(file_.path)
 
     if not missing:
         return True, None
 
-    problems = (WARNING + 'There are missing files in datasets.')
+    problems = WARNING + "There are missing files in datasets."
 
     for dataset, files in missing.items():
         problems += (
-            '\n\t' + click.style(dataset, fg='yellow') + ':\n\t  ' +
-            '\n\t  '.join(click.style(path, fg='red') for path in files)
+            "\n\t"
+            + click.style(dataset, fg="yellow")
+            + ":\n\t  "
+            + "\n\t  ".join(click.style(path, fg="red") for path in files)
         )
 
     return False, problems

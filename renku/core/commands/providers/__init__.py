@@ -27,11 +27,7 @@ from renku.core.utils.doi import is_doi
 class ProviderFactory:
     """Create a provider type from URI."""
 
-    PROVIDERS = {
-        'dataverse': DataverseProvider,
-        'renku': RenkuProvider,
-        'zenodo': ZenodoProvider
-    }
+    PROVIDERS = {"dataverse": DataverseProvider, "renku": RenkuProvider, "zenodo": ZenodoProvider}
 
     @staticmethod
     def from_uri(uri):
@@ -39,11 +35,11 @@ class ProviderFactory:
         is_doi_ = is_doi(uri)
         if is_doi_ is None:
             url = urlparse(uri)
-            if bool(url.scheme and url.netloc and url.params == '') is False:
-                return None, 'Cannot parse URL.'
+            if bool(url.scheme and url.netloc and url.params == "") is False:
+                return None, "Cannot parse URL."
 
         provider = None
-        warning = ''
+        warning = ""
 
         for _, potential_provider in ProviderFactory.PROVIDERS.items():
             try:
@@ -51,24 +47,27 @@ class ProviderFactory:
                     provider = potential_provider
                     break
             except (Exception, BaseException) as e:
-                warning += 'Couldn\'t test provider {prov}: {err}\n'.format(
-                    prov=potential_provider, err=e
-                )
+                warning += "Couldn't test provider {prov}: {err}\n".format(prov=potential_provider, err=e)
 
-        supported_providers = ', '.join(ProviderFactory.PROVIDERS.keys())
+        supported_providers = ", ".join(ProviderFactory.PROVIDERS.keys())
 
         if is_doi_ and provider is None:
-            return None, (
-                warning + 'Reason: provider {} not found'.format(
-                    uri.split('/')[1].split('.')[0]  # Get DOI provider name.
-                ) + '\nHint: Supported providers are: {}'.
-                format(supported_providers)
+            return (
+                None,
+                (
+                    warning
+                    + "Reason: provider {} not found".format(uri.split("/")[1].split(".")[0])  # Get DOI provider name.
+                    + "\nHint: Supported providers are: {}".format(supported_providers)
+                ),
             )
         elif provider is None:
-            return None, (
-                warning + 'Reason: provider not found for {} '.format(uri) +
-                '\nHint: Supported providers are: {}'.
-                format(supported_providers)
+            return (
+                None,
+                (
+                    warning
+                    + "Reason: provider not found for {} ".format(uri)
+                    + "\nHint: Supported providers are: {}".format(supported_providers)
+                ),
             )
         else:
             return provider(is_doi=is_doi_), warning

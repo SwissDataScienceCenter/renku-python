@@ -21,10 +21,10 @@ from walrus import DateTimeField, JSONField, Model, SetField, TextField
 from renku.service.cache.base import BaseCache
 
 # User job states
-USER_JOB_STATE_ENQUEUED = 'ENQUEUED'
-USER_JOB_STATE_IN_PROGRESS = 'IN_PROGRESS'
-USER_JOB_STATE_COMPLETED = 'COMPLETED'
-USER_JOB_STATE_FAILED = 'FAILED'
+USER_JOB_STATE_ENQUEUED = "ENQUEUED"
+USER_JOB_STATE_IN_PROGRESS = "IN_PROGRESS"
+USER_JOB_STATE_COMPLETED = "COMPLETED"
+USER_JOB_STATE_FAILED = "FAILED"
 
 
 class Job(Model):
@@ -60,7 +60,7 @@ class Job(Model):
         if not self.extras:
             self.extras = {}
 
-        self.extras['error'] = error
+        self.extras["error"] = error
         self.save()
 
     def update_extras(self, key, value):

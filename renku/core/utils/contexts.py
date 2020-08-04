@@ -40,7 +40,7 @@ def chdir(path):
 class redirect_stdin(contextlib.ContextDecorator):
     """Implement missing redirect stdin based on ``contextlib.py``."""
 
-    _stream = 'stdin'
+    _stream = "stdin"
 
     def __init__(self, new_target):
         """Keep the original stream."""
@@ -75,10 +75,10 @@ class Isolation(contextlib.ExitStack):
     """Isolate execution."""
 
     CONTEXTS = {
-        'stdin': _wrap_path_or_stream(redirect_stdin, 'rb'),
-        'stdout': _wrap_path_or_stream(contextlib.redirect_stdout, 'wb'),
-        'stderr': _wrap_path_or_stream(contextlib.redirect_stderr, 'wb'),
-        'cwd': chdir,
+        "stdin": _wrap_path_or_stream(redirect_stdin, "rb"),
+        "stdout": _wrap_path_or_stream(contextlib.redirect_stdout, "wb"),
+        "stderr": _wrap_path_or_stream(contextlib.redirect_stderr, "wb"),
+        "cwd": chdir,
     }
 
     def __init__(self, **kwargs):

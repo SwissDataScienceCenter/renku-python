@@ -28,7 +28,7 @@ from renku.core.utils.shacl import validate_graph
 
 def _shacl_graph_to_string(graph):
     """Converts a shacl validation graph into human readable format."""
-    sh = Namespace('http://www.w3.org/ns/shacl#')
+    sh = Namespace("http://www.w3.org/ns/shacl#")
 
     problems = []
 
@@ -37,21 +37,19 @@ def _shacl_graph_to_string(graph):
         res = graph.value(result, sh.resultMessage)
 
         if res:
-            message = '{0}: {1}'.format(path, res)
+            message = "{0}: {1}".format(path, res)
         else:
             kind = graph.value(result, sh.sourceConstraintComponent)
             focusNode = graph.value(result, sh.focusNode)
 
             if isinstance(focusNode, BNode):
-                focusNode = '<Anonymous>'
+                focusNode = "<Anonymous>"
 
-            message = '{0}: Type: {1}, Node ID: {2}'.format(
-                path, kind, focusNode
-            )
+            message = "{0}: Type: {1}, Node ID: {2}".format(path, kind, focusNode)
 
         problems.append(message)
 
-    return '\n\t'.join(problems)
+    return "\n\t".join(problems)
 
 
 def check_project_structure(client):
@@ -63,9 +61,7 @@ def check_project_structure(client):
     if conform:
         return True, None
 
-    problems = '{0}Invalid structure of project metadata\n\t{1}'.format(
-        WARNING, _shacl_graph_to_string(graph)
-    )
+    problems = "{0}Invalid structure of project metadata\n\t{1}".format(WARNING, _shacl_graph_to_string(graph))
 
     return False, problems
 
@@ -74,14 +70,14 @@ def check_datasets_structure(client):
     """Validate dataset metadata against SHACL."""
     ok = True
 
-    problems = ['{0}Invalid structure of dataset metadata'.format(WARNING)]
+    problems = ["{0}Invalid structure of dataset metadata".format(WARNING)]
 
     for path in client.renku_datasets_path.rglob(client.METADATA):
         try:
             relative_path = path.relative_to(client.path)
             conform, graph, t = check_shacl_structure(path)
         except (Exception, BaseException) as e:
-            problems.append(f'Couldn\'t validate {relative_path}: {e}\n\n')
+            problems.append(f"Couldn't validate {relative_path}: {e}\n\n")
             continue
 
         if conform:
@@ -89,29 +85,19 @@ def check_datasets_structure(client):
 
         ok = False
 
-        problems.append(
-            '{0}\n\t{1}\n'.format(
-                relative_path, _shacl_graph_to_string(graph)
-            )
-        )
+        problems.append("{0}\n\t{1}\n".format(relative_path, _shacl_graph_to_string(graph)))
 
     if ok:
         return True, None
 
-    return False, '\n'.join(problems)
+    return False, "\n".join(problems)
 
 
 def check_shacl_structure(path):
     """Validates all metadata aginst the SHACL schema."""
-    with path.open(mode='r') as fp:
+    with path.open(mode="r") as fp:
         source = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
 
-    rdf = pyld.jsonld.to_rdf(
-        source,
-        options={
-            'format': 'application/n-quads',
-            'produceGeneralizedRdf': True
-        }
-    )
+    rdf = pyld.jsonld.to_rdf(source, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 
     return validate_graph(rdf)

@@ -24,39 +24,33 @@ from renku.cli import cli
 
 def test_save_without_remote(runner, project, client, tmpdir_factory):
     """Test saving local changes."""
-    with (client.path / 'tracked').open('w') as fp:
-        fp.write('tracked file')
+    with (client.path / "tracked").open("w") as fp:
+        fp.write("tracked file")
 
-    result = runner.invoke(
-        cli, ['save', '-m', 'save changes', 'tracked'], catch_exceptions=False
-    )
+    result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
     assert 1 == result.exit_code
-    assert 'No remote has been set up' in result.output
+    assert "No remote has been set up" in result.output
 
-    path = str(tmpdir_factory.mktemp('remote'))
+    path = str(tmpdir_factory.mktemp("remote"))
     Repo().init(path, bare=True)
 
-    result = runner.invoke(
-        cli, ['save', '-d', path, 'tracked'], catch_exceptions=False
-    )
+    result = runner.invoke(cli, ["save", "-d", path, "tracked"], catch_exceptions=False)
 
     assert 0 == result.exit_code
-    assert 'tracked' in result.output
-    assert 'Saved changes to: tracked' in client.repo.head.commit.message
+    assert "tracked" in result.output
+    assert "Saved changes to: tracked" in client.repo.head.commit.message
 
-    client.repo.delete_remote('origin')
+    client.repo.delete_remote("origin")
 
 
 def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
     """Test saving local changes."""
-    client = client_with_remote['client']
-    with (client.path / 'tracked').open('w') as fp:
-        fp.write('tracked file')
+    client = client_with_remote["client"]
+    with (client.path / "tracked").open("w") as fp:
+        fp.write("tracked file")
 
-    result = runner.invoke(
-        cli, ['save', '-m', 'save changes', 'tracked'], catch_exceptions=False
-    )
+    result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
 
     assert 0 == result.exit_code
-    assert 'tracked' in result.output
-    assert 'save changes' in client.repo.head.commit.message
+    assert "tracked" in result.output
+    assert "save changes" in client.repo.head.commit.message

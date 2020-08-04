@@ -35,7 +35,7 @@ class DatasetDetails(Schema):
 
     name = fields.String(required=True)
     version = fields.String(allow_none=True)
-    created_at = fields.String(allow_none=True, attribute='date_created')
+    created_at = fields.String(allow_none=True, attribute="date_created")
 
     title = fields.String()
     creators = fields.List(fields.Nested(DatasetCreators))
@@ -53,10 +53,8 @@ class DatasetCreateRequest(DatasetDetails):
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
-        if not data.get('commit_message'):
-            data['commit_message'] = 'service: dataset create {0}'.format(
-                data['name']
-            )
+        if not data.get("commit_message"):
+            data["commit_message"] = "service: dataset create {0}".format(data["name"])
 
         return data
 
@@ -85,10 +83,8 @@ class DatasetRemoveRequest(DatasetDetails):
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
-        if not data.get('commit_message'):
-            data['commit_message'] = 'service: dataset delete {0}'.format(
-                data['name']
-            )
+        if not data.get("commit_message"):
+            data["commit_message"] = "service: dataset delete {0}".format(data["name"])
 
         return data
 
@@ -130,22 +126,17 @@ class DatasetAddRequest(Schema):
     @post_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
-        if not data.get('commit_message'):
-            data['commit_message'] = 'service: dataset add {0}'.format(
-                data['name']
-            )
+        if not data.get("commit_message"):
+            data["commit_message"] = "service: dataset add {0}".format(data["name"])
 
         return data
 
     @post_load()
     def check_files(self, data, **kwargs):
         """Check serialized file list."""
-        for _file in data['files']:
-            if 'file_id' in _file and 'file_path' in _file:
-                raise marshmallow.ValidationError((
-                    'invalid reference found:'
-                    'use either `file_id` or `file_path`'
-                ))
+        for _file in data["files"]:
+            if "file_id" in _file and "file_path" in _file:
+                raise marshmallow.ValidationError(("invalid reference found:" "use either `file_id` or `file_path`"))
 
         return data
 
@@ -272,13 +263,11 @@ class DatasetUnlinkRequest(Schema):
     @post_load()
     def check_filters(self, data, **kwargs):
         """Check filters."""
-        include_filter = data.get('include_filters')
-        exclude_filter = data.get('exclude_filters')
+        include_filter = data.get("include_filters")
+        exclude_filter = data.get("exclude_filters")
 
         if not include_filter and not exclude_filter:
-            raise marshmallow.ValidationError(
-                'one of the filters must be specified'
-            )
+            raise marshmallow.ValidationError("one of the filters must be specified")
 
         return data
 

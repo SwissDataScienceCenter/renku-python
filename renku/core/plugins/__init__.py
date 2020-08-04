@@ -18,4 +18,4 @@
 """Renku plugins module."""
 import pluggy
 
-hookimpl = pluggy.HookimplMarker('renku')
+hookimpl = pluggy.HookimplMarker("renku")

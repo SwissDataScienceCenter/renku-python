@@ -34,7 +34,7 @@ def detect_registry_url(client, auto_login=True):
     # Find registry URL in .git/config
     remote_url = None
     try:
-        registry_url = config.get_value('renku', 'registry', None)
+        registry_url = config.get_value("renku", "registry", None)
     except NoSectionError:
         registry_url = None
 
@@ -42,13 +42,9 @@ def detect_registry_url(client, auto_login=True):
 
     if remote_branch is not None:
         remote_name = remote_branch.remote_name
-        config_section = 'renku "{remote_name}"'.format(
-            remote_name=remote_name
-        )
+        config_section = 'renku "{remote_name}"'.format(remote_name=remote_name)
         try:
-            registry_url = config.get_value(
-                config_section, 'registry', registry_url
-            )
+            registry_url = config.get_value(config_section, "registry", registry_url)
         except NoSectionError:
             pass
         remote_url = repo.remotes[remote_name].url
@@ -61,31 +57,22 @@ def detect_registry_url(client, auto_login=True):
         url = GitURL.parse(remote_url)
 
         # Replace gitlab. with registry. unless running on gitlab.com.
-        hostname_parts = url.hostname.split('.')
-        if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
+        hostname_parts = url.hostname.split(".")
+        if len(hostname_parts) > 2 and hostname_parts[0] == "gitlab":
             hostname_parts = hostname_parts[1:]
-        hostname = '.'.join(['registry'] + hostname_parts)
+        hostname = ".".join(["registry"] + hostname_parts)
         url = attr.evolve(url, hostname=hostname)
     else:
-        raise errors.ConfigurationError(
-            'Configure renku.repository_url or Git remote.'
-        )
+        raise errors.ConfigurationError("Configure renku.repository_url or Git remote.")
 
     if auto_login and url.username and url.password:
         try:
-            subprocess.run([
-                'docker',
-                'login',
-                url.hostname,
-                '-u',
-                url.username,
-                '--password-stdin',
-            ],
-                           check=True,
-                           input=url.password.encode('utf-8'))
-        except subprocess.CalledProcessError:
-            raise errors.AuthenticationError(
-                'Check configuration of password or token in the registry URL'
+            subprocess.run(
+                ["docker", "login", url.hostname, "-u", url.username, "--password-stdin",],
+                check=True,
+                input=url.password.encode("utf-8"),
             )
+        except subprocess.CalledProcessError:
+            raise errors.AuthenticationError("Check configuration of password or token in the registry URL")
 
     return url

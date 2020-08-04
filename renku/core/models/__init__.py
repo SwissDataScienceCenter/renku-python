@@ -18,4 +18,4 @@
 """Model objects used in Python SDK."""
 from .datastructures import Collection, Model
 
-__all__ = ('Collection', 'Model')
+__all__ = ("Collection", "Model")

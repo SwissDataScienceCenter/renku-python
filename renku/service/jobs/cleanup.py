@@ -17,8 +17,7 @@
 # limitations under the License.
 """Cleanup jobs."""
 from renku.service.cache import ServiceCache
-from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, \
-    USER_JOB_STATE_IN_PROGRESS
+from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS
 
 
 def cache_files_cleanup():
@@ -27,8 +26,7 @@ def cache_files_cleanup():
 
     for user, files in cache.user_files():
         jobs = [
-            job for job in cache.get_jobs(user) if job.state in
-            [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
+            job for job in cache.get_jobs(user) if job.state in [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
         ]
 
         for file in files:
@@ -45,8 +43,7 @@ def cache_project_cleanup():
 
     for user, projects in cache.user_projects():
         jobs = [
-            job for job in cache.get_jobs(user) if job.state in
-            [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
+            job for job in cache.get_jobs(user) if job.state in [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
         ]
 
         for project in projects:

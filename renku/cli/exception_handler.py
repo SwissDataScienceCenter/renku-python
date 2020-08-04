@@ -62,20 +62,16 @@ import filelock
 
 from renku.core.errors import ParameterError, RenkuException, UsageError
 
-_BUG = click.style(
-    'Ahhhhhhhh! You have found a bug. 🐞\n\n',
-    fg='red',
-    bold=True,
-)
+_BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg="red", bold=True,)
 
 HAS_SENTRY = None
-SENTRY_DSN = os.getenv('SENTRY_DSN')
+SENTRY_DSN = os.getenv("SENTRY_DSN")
 
 if SENTRY_DSN:
     import pkg_resources
 
     try:
-        pkg_resources.get_distribution('sentry-sdk')
+        pkg_resources.get_distribution("sentry-sdk")
     except pkg_resources.DistributionNotFound:
         HAS_SENTRY = False
     else:
@@ -90,9 +86,9 @@ class RenkuExceptionsHandler(click.Group):
         try:
             return super().main(*args, **kwargs)
         except RenkuException as e:
-            click.echo('Error: {}'.format(e))
+            click.echo("Error: {}".format(e))
             if e.__cause__ is not None:
-                click.echo('\n{}'.format(traceback.format_exc()))
+                click.echo("\n{}".format(traceback.format_exc()))
             exit_code = 1
             if isinstance(e, (ParameterError, UsageError)):
                 exit_code = 2
@@ -102,9 +98,9 @@ class RenkuExceptionsHandler(click.Group):
 class IssueFromTraceback(RenkuExceptionsHandler):
     """Create an issue with formatted exception."""
 
-    REPO_URL = 'https://github.com/SwissDataScienceCenter/renku-python'
+    REPO_URL = "https://github.com/SwissDataScienceCenter/renku-python"
 
-    ISSUE_SUFFIX = '/issues/new'
+    ISSUE_SUFFIX = "/issues/new"
 
     def __init__(self, *args, **kwargs):
         """Initialize a Sentry client."""
@@ -112,6 +108,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
         if HAS_SENTRY:
             import sentry_sdk
+
             sentry_sdk.init()
 
     def main(self, *args, **kwargs):
@@ -121,13 +118,12 @@ class IssueFromTraceback(RenkuExceptionsHandler):
             return result
 
         except filelock.Timeout:
-            click.echo((
-                click.style(
-                    'Unable to acquire lock.\n',
-                    fg='red',
-                ) + 'Hint: Please wait for another renku '
-                'process to finish and then try again.'
-            ))
+            click.echo(
+                (
+                    click.style("Unable to acquire lock.\n", fg="red",) + "Hint: Please wait for another renku "
+                    "process to finish and then try again."
+                )
+            )
 
         except Exception:
             if HAS_SENTRY:
@@ -153,86 +149,62 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 repo = Repo(get_git_home())
                 user = Person.from_git(repo)
 
-                scope.user = {'name': user.name, 'email': user.email}
+                scope.user = {"name": user.name, "email": user.email}
 
             event_id = capture_exception()
             click.echo(
-                _BUG + 'Recorded in Sentry with ID: {0}\n'.format(event_id),
-                err=True,
+                _BUG + "Recorded in Sentry with ID: {0}\n".format(event_id), err=True,
             )
             raise
 
     def _handle_github(self):
         """Handle exception and submit it as GitHub issue."""
         value = click.prompt(
-            _BUG + click.style(
-                '1. Open an issue by typing "open";\n',
-                fg='green',
-            ) + click.style(
-                '2. Print human-readable information by typing '
-                '"print";\n',
-                fg='yellow',
-            ) + click.style(
-                '3. See the full traceback without submitting details '
-                '(default: "ignore").\n\n',
-                fg='red',
-            ) + 'Please select an action by typing its name',
-            type=click.Choice([
-                'open',
-                'print',
-                'ignore',
-            ], ),
-            default='ignore',
+            _BUG
+            + click.style('1. Open an issue by typing "open";\n', fg="green",)
+            + click.style("2. Print human-readable information by typing " '"print";\n', fg="yellow",)
+            + click.style("3. See the full traceback without submitting details " '(default: "ignore").\n\n', fg="red",)
+            + "Please select an action by typing its name",
+            type=click.Choice(["open", "print", "ignore",],),
+            default="ignore",
         )
-        getattr(self, '_process_' + value)()
+        getattr(self, "_process_" + value)()
 
     def _format_issue_title(self):
         """Return formatted title."""
-        return textwrap.shorten(
-            'cli: renku ' + ' '.join(sys.argv[1:]),
-            width=50,
-        )
+        return textwrap.shorten("cli: renku " + " ".join(sys.argv[1:]), width=50,)
 
     def _format_issue_body(self, limit=-5):
         """Return formatted body."""
         from renku import __version__
 
-        re_paths = r'(' + r'|'.join([path or os.getcwd()
-                                     for path in sys.path]) + r')'
-        tb = re.sub(re_paths, '[...]', traceback.format_exc(limit=limit))
+        re_paths = r"(" + r"|".join([path or os.getcwd() for path in sys.path]) + r")"
+        tb = re.sub(re_paths, "[...]", traceback.format_exc(limit=limit))
 
         return (
-            '## Describe the bug\nA clear and concise description.\n\n'
-            '## Details\n'
-            '*Please verify and redact the details.*\n\n'
-            '**Renku version:** ' + __version__ + '\n'
-            '**OS:** ' + platform.system() + ' (' + platform.version() + ')\n'
-            '**Python:** ' + platform.python_version() + '\n\n'
-            '### Traceback\n\n```\n' + tb + '```\n\n'
-            '## Additional context\nAdd any other context about the problem.'
+            "## Describe the bug\nA clear and concise description.\n\n"
+            "## Details\n"
+            "*Please verify and redact the details.*\n\n"
+            "**Renku version:** " + __version__ + "\n"
+            "**OS:** " + platform.system() + " (" + platform.version() + ")\n"
+            "**Python:** " + platform.python_version() + "\n\n"
+            "### Traceback\n\n```\n" + tb + "```\n\n"
+            "## Additional context\nAdd any other context about the problem."
         )
 
     def _format_issue_url(self):
         """Format full issue URL."""
-        query = urlencode({
-            'title': self._format_issue_title(),
-            'body': self._format_issue_body(),
-        })
-        return self.REPO_URL + self.ISSUE_SUFFIX + '?' + query
+        query = urlencode({"title": self._format_issue_title(), "body": self._format_issue_body(),})
+        return self.REPO_URL + self.ISSUE_SUFFIX + "?" + query
 
     def _process_open(self):
         """Open link in a browser."""
         click.launch(self._format_issue_url())
-        if not click.confirm('Did it work?', default=True):
+        if not click.confirm("Did it work?", default=True):
             click.echo()
             self._process_print()
-            click.secho(
-                '\nOpen the line manually and copy the text above\n',
-                fg='yellow'
-            )
-            click.secho(
-                '  ' + self.REPO_URL + self.ISSUE_SUFFIX + '\n', bold=True
-            )
+            click.secho("\nOpen the line manually and copy the text above\n", fg="yellow")
+            click.secho("  " + self.REPO_URL + self.ISSUE_SUFFIX + "\n", bold=True)
 
     def _process_print(self):
         """Print link in a console."""

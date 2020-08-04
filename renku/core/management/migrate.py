@@ -49,18 +49,12 @@ def check_for_migration(client):
 
 def is_migration_required(client):
     """Check if project requires migration."""
-    return (
-        _is_renku_project(client) and
-        _get_project_version(client) < SUPPORTED_PROJECT_VERSION
-    )
+    return _is_renku_project(client) and _get_project_version(client) < SUPPORTED_PROJECT_VERSION
 
 
 def is_project_unsupported(client):
     """Check if this version of Renku cannot work with the project."""
-    return (
-        _is_renku_project(client) and
-        _get_project_version(client) > SUPPORTED_PROJECT_VERSION
-    )
+    return _is_renku_project(client) and _get_project_version(client) > SUPPORTED_PROJECT_VERSION
 
 
 def migrate(client, progress_callback=None):
@@ -75,8 +69,8 @@ def migrate(client, progress_callback=None):
         if version > project_version:
             module = importlib.import_module(path)
             if progress_callback:
-                module_name = module.__name__.split('.')[-1]
-                progress_callback(f'Applying migration {module_name}...')
+                module_name = module.__name__.split(".")[-1]
+                progress_callback(f"Applying migration {module_name}...")
             module.migrate(client)
             n_migrations_executed += 1
     if n_migrations_executed > 0:
@@ -84,9 +78,7 @@ def migrate(client, progress_callback=None):
         client.project.to_yaml()
 
         if progress_callback:
-            progress_callback(
-                f'Successfully applied {n_migrations_executed} migrations.'
-            )
+            progress_callback(f"Successfully applied {n_migrations_executed} migrations.")
 
     return n_migrations_executed != 0
 
@@ -108,16 +100,14 @@ def _is_renku_project(client):
 def get_migrations():
     """Return a sorted list of versions and migration modules."""
     migrations = []
-    for file_ in pkg_resources.resource_listdir(
-        'renku.core.management', 'migrations'
-    ):
-        match = re.search(r'm_([0-9]{4})__[a-zA-Z0-9_-]*.py', file_)
+    for file_ in pkg_resources.resource_listdir("renku.core.management", "migrations"):
+        match = re.search(r"m_([0-9]{4})__[a-zA-Z0-9_-]*.py", file_)
 
         if match is None:  # migration files match m_0000__[name].py format
             continue
 
         version = int(match.groups()[0])
-        path = 'renku.core.management.migrations.{}'.format(Path(file_).stem)
+        path = "renku.core.management.migrations.{}".format(Path(file_).stem)
         migrations.append((version, path))
 
     migrations = sorted(migrations, key=lambda v: v[1].lower())

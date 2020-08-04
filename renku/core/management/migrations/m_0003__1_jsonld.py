@@ -37,25 +37,27 @@ def migrate(client):
 def _migrate_project_metadata(client):
     """Apply all initial JSON-LD migrations to project."""
     jsonld_translate = {
-        'http://schema.org/name': 'http://xmlns.com/foaf/0.1/name',
-        'http://schema.org/Project': 'http://xmlns.com/foaf/0.1/Project'
+        "http://schema.org/name": "http://xmlns.com/foaf/0.1/name",
+        "http://schema.org/Project": "http://xmlns.com/foaf/0.1/Project",
     }
 
     _apply_on_the_fly_jsonld_migrations(
         path=client.renku_metadata_path,
         jsonld_context=_INITIAL_JSONLD_PROJECT_CONTEXT,
         fields=_PROJECT_FIELDS,
-        jsonld_translate=jsonld_translate
+        jsonld_translate=jsonld_translate,
     )
 
 
 def _migrate_datasets_metadata(client):
     """Apply all initial JSON-LD migrations to datasets."""
     jsonld_migrations = {
-        'dctypes:Dataset': [_migrate_dataset_schema, _migrate_absolute_paths],
-        'schema:Dataset': [
-            _migrate_absolute_paths, _migrate_doi_identifier,
-            _migrate_same_as_structure, _migrate_dataset_file_id
+        "dctypes:Dataset": [_migrate_dataset_schema, _migrate_absolute_paths],
+        "schema:Dataset": [
+            _migrate_absolute_paths,
+            _migrate_doi_identifier,
+            _migrate_same_as_structure,
+            _migrate_dataset_file_id,
         ],
     }
 
@@ -68,17 +70,12 @@ def _migrate_datasets_metadata(client):
             jsonld_context=_INITIAL_JSONLD_DATASET_CONTEXT,
             fields=_DATASET_FIELDS,
             client=client,
-            jsonld_migrations=jsonld_migrations
+            jsonld_migrations=jsonld_migrations,
         )
 
 
 def _apply_on_the_fly_jsonld_migrations(
-    path,
-    jsonld_context,
-    fields,
-    client=None,
-    jsonld_migrations=None,
-    jsonld_translate=None
+    path, jsonld_context, fields, client=None, jsonld_migrations=None, jsonld_translate=None
 ):
     data = read_yaml(path)
 
@@ -92,12 +89,12 @@ def _apply_on_the_fly_jsonld_migrations(
         data = json.loads(data_str)
         data = pyld.jsonld.compact(data, jsonld_context)
 
-    data.setdefault('@context', jsonld_context)
+    data.setdefault("@context", jsonld_context)
 
     _migrate_types(data)
 
     if jsonld_migrations:
-        schema_type = data.get('@type')
+        schema_type = data.get("@type")
         migrations = []
 
         if isinstance(schema_type, list):
@@ -109,12 +106,12 @@ def _apply_on_the_fly_jsonld_migrations(
         for migration in set(migrations):
             data = migration(data, client)
 
-    if data['@context'] != jsonld_context:
+    if data["@context"] != jsonld_context:
         # merge new context into old context to prevent properties
         # getting lost in jsonld expansion
-        if isinstance(data['@context'], str):
-            data['@context'] = {'@base': data['@context']}
-        data['@context'].update(jsonld_context)
+        if isinstance(data["@context"], str):
+            data["@context"] = {"@base": data["@context"]}
+        data["@context"].update(jsonld_context)
         try:
             compacted = pyld.jsonld.compact(data, jsonld_context)
         except Exception:
@@ -126,18 +123,15 @@ def _apply_on_the_fly_jsonld_migrations(
 
     for k, v in compacted.items():
         if k in fields:
-            no_value_context = isinstance(v, dict) and '@context' not in v
-            has_nested_context = (
-                k in compacted['@context'] and
-                '@context' in compacted['@context'][k]
-            )
+            no_value_context = isinstance(v, dict) and "@context" not in v
+            has_nested_context = k in compacted["@context"] and "@context" in compacted["@context"][k]
             if no_value_context and has_nested_context:
                 # Propagate down context
-                v['@context'] = compacted['@context'][k]['@context']
+                v["@context"] = compacted["@context"][k]["@context"]
 
             data[k] = v
 
-    data['@context'] = jsonld_context
+    data["@context"] = jsonld_context
 
     write_yaml(path, data)
 
@@ -152,48 +146,46 @@ def _dataset_pre_0_3(client):
 
 def _migrate_dataset_schema(data, client):
     """Migrate from old dataset formats."""
-    if 'authors' not in data:
+    if "authors" not in data:
         return
 
-    data['@context']['creator'] = data['@context'].pop(
-        'authors', {'@container': 'list'}
-    )
+    data["@context"]["creator"] = data["@context"].pop("authors", {"@container": "list"})
 
-    data['creator'] = data.pop('authors', {})
+    data["creator"] = data.pop("authors", {})
 
-    files = data.get('files', [])
+    files = data.get("files", [])
 
     if isinstance(files, dict):
         files = files.values()
     for file_ in files:
-        file_['creator'] = file_.pop('authors', {})
+        file_["creator"] = file_.pop("authors", {})
 
     return data
 
 
 def _migrate_absolute_paths(data, client):
     """Migrate dataset paths to use relative path."""
-    raw_path = data.get('path', '.')
+    raw_path = data.get("path", ".")
     path = Path(raw_path)
 
     if path.is_absolute():
         try:
-            data['path'] = str(path.relative_to(os.getcwd()))
+            data["path"] = str(path.relative_to(os.getcwd()))
         except ValueError:
-            elements = raw_path.split('/')
-            index = elements.index('.renku')
-            data['path'] = str(Path('/'.join(elements[index:])))
+            elements = raw_path.split("/")
+            index = elements.index(".renku")
+            data["path"] = str(Path("/".join(elements[index:])))
 
-    files = data.get('files', [])
+    files = data.get("files", [])
 
     if isinstance(files, dict):
         files = list(files.values())
 
     for file_ in files:
-        path = Path(file_.get('path'), '.')
+        path = Path(file_.get("path"), ".")
         if path.is_absolute():
-            file_['path'] = str(path.relative_to((os.getcwd())))
-    data['files'] = files
+            file_["path"] = str(path.relative_to((os.getcwd())))
+    data["files"] = files
     return data
 
 
@@ -202,48 +194,42 @@ def _migrate_doi_identifier(data, client):
     from renku.core.utils.doi import is_doi
     from renku.core.utils.uuid import is_uuid
 
-    _id = data.get('_id', '')
-    identifier = data.get('identifier', '')
+    _id = data.get("_id", "")
+    identifier = data.get("identifier", "")
 
     if not is_uuid(_id):
         if not is_uuid(identifier):
-            data['identifier'] = str(uuid.uuid4())
-        if is_doi(data.get('_id', '')):
-            data['same_as'] = {'@type': ['schema:URL'], 'url': data['_id']}
-            if data.get('@context'):
-                data['@context'].setdefault(
-                    'same_as', {
-                        '@id': 'schema:sameAs',
-                        '@type': 'schema:URL',
-                        '@context': {
-                            '@version': '1.1',
-                            'url': 'schema:url',
-                            'schema': 'http://schema.org/'
-                        }
-                    }
+            data["identifier"] = str(uuid.uuid4())
+        if is_doi(data.get("_id", "")):
+            data["same_as"] = {"@type": ["schema:URL"], "url": data["_id"]}
+            if data.get("@context"):
+                data["@context"].setdefault(
+                    "same_as",
+                    {
+                        "@id": "schema:sameAs",
+                        "@type": "schema:URL",
+                        "@context": {"@version": "1.1", "url": "schema:url", "schema": "http://schema.org/"},
+                    },
                 )
-        data['_id'] = data['identifier']
+        data["_id"] = data["identifier"]
     return data
 
 
 def _migrate_same_as_structure(data, client):
     """Changes sameAs string to schema:URL object."""
-    same_as = data.get('same_as')
+    same_as = data.get("same_as")
 
     if same_as and isinstance(same_as, str):
-        data['same_as'] = {'@type': ['schema:URL'], 'url': same_as}
+        data["same_as"] = {"@type": ["schema:URL"], "url": same_as}
 
-        if data.get('@context'):
-            data['@context'].setdefault(
-                'same_as', {
-                    '@id': 'schema:sameAs',
-                    '@type': 'schema:URL',
-                    '@context': {
-                        '@version': '1.1',
-                        'url': 'schema:url',
-                        'schema': 'http://schema.org/'
-                    }
-                }
+        if data.get("@context"):
+            data["@context"].setdefault(
+                "same_as",
+                {
+                    "@id": "schema:sameAs",
+                    "@type": "schema:URL",
+                    "@context": {"@version": "1.1", "url": "schema:url", "schema": "http://schema.org/"},
+                },
             )
 
     return data
@@ -251,17 +237,15 @@ def _migrate_same_as_structure(data, client):
 
 def _migrate_dataset_file_id(data, client):
     """Ensure dataset files have a fully qualified url as id."""
-    host = 'localhost'
+    host = "localhost"
     if client:
-        host = client.remote.get('host') or host
-    host = os.environ.get('RENKU_DOMAIN') or host
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
 
-    files = data.get('files', [])
+    files = data.get("files", [])
     for file_ in files:
-        if not file_['_id'].startswith('http'):
-            file_['_id'] = 'https://{host}/{id}'.format(
-                host=host, id=file_['_id']
-            )
+        if not file_["_id"].startswith("http"):
+            file_["_id"] = "https://{host}/{id}".format(host=host, id=file_["_id"])
 
     return data
 
@@ -269,196 +253,208 @@ def _migrate_dataset_file_id(data, client):
 def _migrate_types(data):
     """Fix types."""
     from renku.core.utils.migrate import migrate_types
+
     migrate_types(data)
 
 
-_PROJECT_FIELDS = {'_id', 'created', 'creator', 'name', 'updated', 'version'}
+_PROJECT_FIELDS = {"_id", "created", "creator", "name", "updated", "version"}
 
 _DATASET_FIELDS = {
-    '_id', '_label', '_project', 'based_on', 'created', 'creator',
-    'date_published', 'description', 'files', 'identifier', 'in_language',
-    'keywords', 'license', 'name', 'path', 'same_as', 'short_name', 'tags',
-    'url', 'version'
+    "_id",
+    "_label",
+    "_project",
+    "based_on",
+    "created",
+    "creator",
+    "date_published",
+    "description",
+    "files",
+    "identifier",
+    "in_language",
+    "keywords",
+    "license",
+    "name",
+    "path",
+    "same_as",
+    "short_name",
+    "tags",
+    "url",
+    "version",
 }
 
 _INITIAL_JSONLD_PROJECT_CONTEXT = {
-    'schema': 'http://schema.org/',
-    'prov': 'http://www.w3.org/ns/prov#',
-    '@version': 1.1,
-    'name': 'schema:name',
-    'created': 'schema:dateCreated',
-    'updated': 'schema:dateUpdated',
-    'version': 'schema:schemaVersion',
-    'creator': {
-        '@id': 'schema:creator',
-        '@context': {
-            'schema': 'http://schema.org/',
-            'prov': 'http://www.w3.org/ns/prov#',
-            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-            '@version': 1.1,
-            'name': 'schema:name',
-            'email': 'schema:email',
-            'label': 'rdfs:label',
-            'affiliation': 'schema:affiliation',
-            'alternate_name': 'schema:alternateName',
-            '_id': '@id'
-        }
+    "schema": "http://schema.org/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "@version": 1.1,
+    "name": "schema:name",
+    "created": "schema:dateCreated",
+    "updated": "schema:dateUpdated",
+    "version": "schema:schemaVersion",
+    "creator": {
+        "@id": "schema:creator",
+        "@context": {
+            "schema": "http://schema.org/",
+            "prov": "http://www.w3.org/ns/prov#",
+            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+            "@version": 1.1,
+            "name": "schema:name",
+            "email": "schema:email",
+            "label": "rdfs:label",
+            "affiliation": "schema:affiliation",
+            "alternate_name": "schema:alternateName",
+            "_id": "@id",
+        },
     },
-    '_id': '@id'
+    "_id": "@id",
 }
 
 _INITIAL_JSONLD_DATASET_CONTEXT = {
-    'schema': 'http://schema.org/',
-    '@version': 1.1,
-    'prov': 'http://www.w3.org/ns/prov#',
-    'wfprov': 'http://purl.org/wf4ever/wfprov#',
-    'path': 'prov:atLocation',
-    '_id': '@id',
-    '_project': {
-        '@id': 'schema:isPartOf',
-        '@context': {
-            'schema': 'http://schema.org/',
-            'prov': 'http://www.w3.org/ns/prov#',
-            '@version': 1.1,
-            'name': 'schema:name',
-            'created': 'schema:dateCreated',
-            'updated': 'schema:dateUpdated',
-            'version': 'schema:schemaVersion',
-            'creator': {
-                '@id': 'schema:creator',
-                '@context': {
-                    'schema': 'http://schema.org/',
-                    'prov': 'http://www.w3.org/ns/prov#',
-                    'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-                    '@version': 1.1,
-                    'name': 'schema:name',
-                    'email': 'schema:email',
-                    'label': 'rdfs:label',
-                    'affiliation': 'schema:affiliation',
-                    'alternate_name': 'schema:alternateName',
-                    '_id': '@id'
-                }
+    "schema": "http://schema.org/",
+    "@version": 1.1,
+    "prov": "http://www.w3.org/ns/prov#",
+    "wfprov": "http://purl.org/wf4ever/wfprov#",
+    "path": "prov:atLocation",
+    "_id": "@id",
+    "_project": {
+        "@id": "schema:isPartOf",
+        "@context": {
+            "schema": "http://schema.org/",
+            "prov": "http://www.w3.org/ns/prov#",
+            "@version": 1.1,
+            "name": "schema:name",
+            "created": "schema:dateCreated",
+            "updated": "schema:dateUpdated",
+            "version": "schema:schemaVersion",
+            "creator": {
+                "@id": "schema:creator",
+                "@context": {
+                    "schema": "http://schema.org/",
+                    "prov": "http://www.w3.org/ns/prov#",
+                    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                    "@version": 1.1,
+                    "name": "schema:name",
+                    "email": "schema:email",
+                    "label": "rdfs:label",
+                    "affiliation": "schema:affiliation",
+                    "alternate_name": "schema:alternateName",
+                    "_id": "@id",
+                },
             },
-            '_id': '@id'
-        }
+            "_id": "@id",
+        },
     },
-    'creator': {
-        '@id': 'schema:creator',
-        '@context': {
-            'schema': 'http://schema.org/',
-            'prov': 'http://www.w3.org/ns/prov#',
-            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-            '@version': 1.1,
-            'name': 'schema:name',
-            'email': 'schema:email',
-            'label': 'rdfs:label',
-            'affiliation': 'schema:affiliation',
-            'alternate_name': 'schema:alternateName',
-            '_id': '@id'
-        }
+    "creator": {
+        "@id": "schema:creator",
+        "@context": {
+            "schema": "http://schema.org/",
+            "prov": "http://www.w3.org/ns/prov#",
+            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+            "@version": 1.1,
+            "name": "schema:name",
+            "email": "schema:email",
+            "label": "rdfs:label",
+            "affiliation": "schema:affiliation",
+            "alternate_name": "schema:alternateName",
+            "_id": "@id",
+        },
     },
-    'date_published': 'schema:datePublished',
-    'description': 'schema:description',
-    'identifier': 'schema:identifier',
-    'in_language': {
-        '@id': 'schema:inLanguage',
-        '@context': {
-            'schema': 'http://schema.org/',
-            '@version': 1.1,
-            'alternate_name': 'schema:alternateName',
-            'name': 'schema:name'
-        }
+    "date_published": "schema:datePublished",
+    "description": "schema:description",
+    "identifier": "schema:identifier",
+    "in_language": {
+        "@id": "schema:inLanguage",
+        "@context": {
+            "schema": "http://schema.org/",
+            "@version": 1.1,
+            "alternate_name": "schema:alternateName",
+            "name": "schema:name",
+        },
     },
-    'keywords': 'schema:keywords',
-    'based_on': 'schema:isBasedOn',
-    'license': 'schema:license',
-    'name': 'schema:name',
-    'url': 'schema:url',
-    'version': 'schema:version',
-    'created': 'schema:dateCreated',
-    'files': {
-        '@id': 'schema:hasPart',
-        '@context': {
-            'schema': 'http://schema.org/',
-            '@version': 1.1,
-            'prov': 'http://www.w3.org/ns/prov#',
-            'wfprov': 'http://purl.org/wf4ever/wfprov#',
-            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-            'path': 'prov:atLocation',
-            '_id': '@id',
-            '_label': 'rdfs:label',
-            '_project': {
-                '@id': 'schema:isPartOf',
-                '@context': {
-                    'schema': 'http://schema.org/',
-                    'prov': 'http://www.w3.org/ns/prov#',
-                    '@version': 1.1,
-                    'name': 'schema:name',
-                    'created': 'schema:dateCreated',
-                    'updated': 'schema:dateUpdated',
-                    'version': 'schema:schemaVersion',
-                    'creator': {
-                        '@id': 'schema:creator',
-                        '@context': {
-                            'schema': 'http://schema.org/',
-                            'prov': 'http://www.w3.org/ns/prov#',
-                            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-                            '@version': 1.1,
-                            'name': 'schema:name',
-                            'email': 'schema:email',
-                            'label': 'rdfs:label',
-                            'affiliation': 'schema:affiliation',
-                            'alternate_name': 'schema:alternateName',
-                            '_id': '@id'
-                        }
+    "keywords": "schema:keywords",
+    "based_on": "schema:isBasedOn",
+    "license": "schema:license",
+    "name": "schema:name",
+    "url": "schema:url",
+    "version": "schema:version",
+    "created": "schema:dateCreated",
+    "files": {
+        "@id": "schema:hasPart",
+        "@context": {
+            "schema": "http://schema.org/",
+            "@version": 1.1,
+            "prov": "http://www.w3.org/ns/prov#",
+            "wfprov": "http://purl.org/wf4ever/wfprov#",
+            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+            "path": "prov:atLocation",
+            "_id": "@id",
+            "_label": "rdfs:label",
+            "_project": {
+                "@id": "schema:isPartOf",
+                "@context": {
+                    "schema": "http://schema.org/",
+                    "prov": "http://www.w3.org/ns/prov#",
+                    "@version": 1.1,
+                    "name": "schema:name",
+                    "created": "schema:dateCreated",
+                    "updated": "schema:dateUpdated",
+                    "version": "schema:schemaVersion",
+                    "creator": {
+                        "@id": "schema:creator",
+                        "@context": {
+                            "schema": "http://schema.org/",
+                            "prov": "http://www.w3.org/ns/prov#",
+                            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                            "@version": 1.1,
+                            "name": "schema:name",
+                            "email": "schema:email",
+                            "label": "rdfs:label",
+                            "affiliation": "schema:affiliation",
+                            "alternate_name": "schema:alternateName",
+                            "_id": "@id",
+                        },
                     },
-                    '_id': '@id'
-                }
+                    "_id": "@id",
+                },
             },
-            'creator': {
-                '@id': 'schema:creator',
-                '@context': {
-                    'schema': 'http://schema.org/',
-                    'prov': 'http://www.w3.org/ns/prov#',
-                    'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-                    '@version': 1.1,
-                    'name': 'schema:name',
-                    'email': 'schema:email',
-                    'label': 'rdfs:label',
-                    'affiliation': 'schema:affiliation',
-                    'alternate_name': 'schema:alternateName',
-                    '_id': '@id'
-                }
+            "creator": {
+                "@id": "schema:creator",
+                "@context": {
+                    "schema": "http://schema.org/",
+                    "prov": "http://www.w3.org/ns/prov#",
+                    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                    "@version": 1.1,
+                    "name": "schema:name",
+                    "email": "schema:email",
+                    "label": "rdfs:label",
+                    "affiliation": "schema:affiliation",
+                    "alternate_name": "schema:alternateName",
+                    "_id": "@id",
+                },
             },
-            'added': 'schema:dateCreated',
-            'name': 'schema:name',
-            'url': 'schema:url',
-            'external': 'renku:external',
-            'based_on': 'schema:isBasedOn',
-            'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#'
-        }
+            "added": "schema:dateCreated",
+            "name": "schema:name",
+            "url": "schema:url",
+            "external": "renku:external",
+            "based_on": "schema:isBasedOn",
+            "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
+        },
     },
-    'tags': {
-        '@id': 'schema:subjectOf',
-        '@context': {
-            'schema': 'http://schema.org/',
-            '@version': 1.1,
-            'name': 'schema:name',
-            'description': 'schema:description',
-            'commit': 'schema:location',
-            'created': 'schema:startDate',
-            'dataset': 'schema:about',
-            '_id': '@id'
-        }
+    "tags": {
+        "@id": "schema:subjectOf",
+        "@context": {
+            "schema": "http://schema.org/",
+            "@version": 1.1,
+            "name": "schema:name",
+            "description": "schema:description",
+            "commit": "schema:location",
+            "created": "schema:startDate",
+            "dataset": "schema:about",
+            "_id": "@id",
+        },
     },
-    'same_as': {
-        '@id': 'schema:sameAs',
-        '@context': {
-            'schema': 'http://schema.org/',
-            '@version': 1.1,
-            'url': 'schema:url',
-            '_id': '@id'
-        }
+    "same_as": {
+        "@id": "schema:sameAs",
+        "@context": {"schema": "http://schema.org/", "@version": 1.1, "url": "schema:url", "_id": "@id"},
     },
-    'short_name': 'schema:alternateName'
+    "short_name": "schema:alternateName",
 }

@@ -63,12 +63,11 @@ class Project(Model):
             # we should mark it for deletion.
             return True
 
-        ttl = ttl or int(os.getenv('RENKU_SVC_CLEANUP_TTL_PROJECTS', 1800))
+        ttl = ttl or int(os.getenv("RENKU_SVC_CLEANUP_TTL_PROJECTS", 1800))
 
-        created_at = (self.created_at -
-                      datetime.utcfromtimestamp(0)).total_seconds() * 1e+3
+        created_at = (self.created_at - datetime.utcfromtimestamp(0)).total_seconds() * 1e3
 
-        age = ((time.time() * 1e+3) - created_at) / 1e+3
+        age = ((time.time() * 1e3) - created_at) / 1e3
         return self.exists() and age >= ttl
 
     def purge(self):
@@ -78,6 +77,4 @@ class Project(Model):
 
     def is_locked(self, jobs):
         """Check if file locked by given jobs."""
-        return bool(
-            next((job for job in jobs if self.project_id in job.locked), False)
-        )
+        return bool(next((job for job in jobs if self.project_id in job.locked), False))

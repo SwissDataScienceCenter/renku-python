@@ -35,16 +35,13 @@ class RenkuProvider(ProviderApi):
     """Renku API provider."""
 
     is_doi = attr.ib(default=False)
-    _accept = attr.ib(default='application/json')
+    _accept = attr.ib(default="application/json")
 
     @staticmethod
     def supports(uri):
         """Whether or not this provider supports a given uri."""
         u = urllib.parse.urlparse(uri)
-        return (
-            RenkuProvider._is_project_dataset(u) or
-            RenkuProvider._is_standalone_dataset(u)
-        )
+        return RenkuProvider._is_project_dataset(u) or RenkuProvider._is_standalone_dataset(u)
 
     def find_record(self, uri, client=None):
         """Retrieves a dataset from Renku.
@@ -60,9 +57,7 @@ class RenkuProvider(ProviderApi):
         failed_urls = []
 
         for kg_url in kg_urls:
-            kg_datasets_url, ssh_url, https_url = self._get_project_urls(
-                kg_url
-            )
+            kg_datasets_url, ssh_url, https_url = self._get_project_urls(kg_url)
 
             # Check if the project contains the dataset
             if same_as is None:  # Dataset is in the project
@@ -70,10 +65,7 @@ class RenkuProvider(ProviderApi):
             else:  # Dataset is sameAs one of the datasets in the project
                 datasets = self._query_knowledge_graph(kg_datasets_url)
 
-                ids = [
-                    ds['identifier']
-                    for ds in datasets if ds['sameAs'] == same_as
-                ]
+                ids = [ds["identifier"] for ds in datasets if ds["sameAs"] == same_as]
                 if not ids:
                     continue
                 dataset_id = ids[0]
@@ -92,32 +84,23 @@ class RenkuProvider(ProviderApi):
 
         if project_url is None:
             if failed_urls:
-                message = 'Cannot clone remote projects:\n\t' + '\n\t'.join(
-                    failed_urls
-                )
+                message = "Cannot clone remote projects:\n\t" + "\n\t".join(failed_urls)
             else:
-                message = 'Cannot find any project for the dataset.'
+                message = "Cannot find any project for the dataset."
 
             raise errors.ParameterError(message, param_hint=uri)
 
         remote_client = LocalClient(repo_path)
         self._migrate_project(remote_client)
 
-        datasets = [
-            d for d in remote_client.datasets.values()
-            if urllib.parse.quote(d.uid, safe='') == dataset_id
-        ]
+        datasets = [d for d in remote_client.datasets.values() if urllib.parse.quote(d.uid, safe="") == dataset_id]
 
         if len(datasets) == 0:
             raise errors.ParameterError(
-                'Cannot find dataset with id "{}" in project "{}"'.format(
-                    dataset_id, project_url
-                )
+                'Cannot find dataset with id "{}" in project "{}"'.format(dataset_id, project_url)
             )
         if len(datasets) > 1:
-            raise errors.ParameterError(
-                'Found multiple datasets with id "{}"'.format(dataset_id)
-            )
+            raise errors.ParameterError('Found multiple datasets with id "{}"'.format(dataset_id))
 
         return _RenkuRecordSerializer(datasets[0], project_url, remote_client)
 
@@ -138,14 +121,14 @@ class RenkuProvider(ProviderApi):
     @staticmethod
     def _is_project_dataset(parsed_url):
         # https://<host>/projects/:namespace/:name/datasets/:id
-        path = parsed_url.path.rstrip('/')
-        return re.match(r'.*?/projects/[^?/]+/[^?/]+/datasets/[^?/]+$', path)
+        path = parsed_url.path.rstrip("/")
+        return re.match(r".*?/projects/[^?/]+/[^?/]+/datasets/[^?/]+$", path)
 
     @staticmethod
     def _is_standalone_dataset(parsed_url):
         # https://<host>/datasets/:id
-        path = parsed_url.path.rstrip('/')
-        return re.match(r'.*?/datasets/[^?/]+$', path)
+        path = parsed_url.path.rstrip("/")
+        return re.match(r".*?/datasets/[^?/]+$", path)
 
     @staticmethod
     def _extract_dataset_id(uri):
@@ -157,8 +140,8 @@ class RenkuProvider(ProviderApi):
     def _get_dataset_info(uri):
         """Return sameAs and urls of all projects that contain the dataset."""
         u = urllib.parse.urlparse(uri)
-        project_id = RenkuProvider._extract_project_id(u).lstrip('/')
-        kg_path = f'/knowledge-graph/{project_id}'
+        project_id = RenkuProvider._extract_project_id(u).lstrip("/")
+        kg_path = f"/knowledge-graph/{project_id}"
         kg_parsed_url = u._replace(path=kg_path)
         kg_url = urllib.parse.urlunparse(kg_parsed_url)
 
@@ -167,24 +150,24 @@ class RenkuProvider(ProviderApi):
         else:
 
             def get_project_link(project):
-                links = project.get('_links', [])
+                links = project.get("_links", [])
                 for l in links:
-                    if l.get('rel') == 'project-details':
-                        return l.get('href', '')
+                    if l.get("rel") == "project-details":
+                        return l.get("href", "")
 
             response = RenkuProvider._query_knowledge_graph(kg_url)
-            same_as = response.get('sameAs')
-            projects = response.get('isPartOf', {})
+            same_as = response.get("sameAs")
+            projects = response.get("isPartOf", {})
             projects_kg_urls = [get_project_link(p) for p in projects]
             return same_as, [u for u in projects_kg_urls if u]
 
     @staticmethod
     def _extract_project_id(parsed_url):
         if RenkuProvider._is_project_dataset(parsed_url):
-            ds_start = parsed_url.path.rindex('/datasets/')
+            ds_start = parsed_url.path.rindex("/datasets/")
             return parsed_url.path[:ds_start]
         else:
-            return parsed_url.path.rstrip('/')
+            return parsed_url.path.rstrip("/")
 
     @staticmethod
     def _get_project_datasets(uri):
@@ -195,14 +178,10 @@ class RenkuProvider(ProviderApi):
         try:
             response = requests.get(url)
         except urllib.error.HTTPError as e:
-            raise errors.OperationError(
-                'Cannot access knowledge graph: {}'.format(url)
-            ) from e
+            raise errors.OperationError("Cannot access knowledge graph: {}".format(url)) from e
         if response.status_code != 200:
             raise errors.OperationError(
-                'Cannot access knowledge graph: {}\nResponse code: {}'.format(
-                    url, response.status_code
-                )
+                "Cannot access knowledge graph: {}\nResponse code: {}".format(url, response.status_code)
             )
 
         return response.json()
@@ -210,16 +189,16 @@ class RenkuProvider(ProviderApi):
     @staticmethod
     def _get_project_urls(project_kg_url):
         json = RenkuProvider._query_knowledge_graph(project_kg_url)
-        urls = json.get('urls', {})
+        urls = json.get("urls", {})
 
         kg_datasets_url = None
-        links = json.get('_links', [])
+        links = json.get("_links", [])
         for link in links:
-            if link['rel'] == 'datasets':
-                kg_datasets_url = link['href']
+            if link["rel"] == "datasets":
+                kg_datasets_url = link["href"]
                 break
 
-        return kg_datasets_url, urls.get('ssh'), urls.get('http')
+        return kg_datasets_url, urls.get("ssh"), urls.get("http")
 
 
 class _RenkuRecordSerializer:
@@ -233,21 +212,23 @@ class _RenkuRecordSerializer:
         for file_ in dataset.files:
             file_.checksum = remote_client.repo.git.hash_object(file_.path)
             file_.filesize = self._get_file_size(remote_client, file_.path)
-            file_.filetype = Path(file_.path).suffix.replace('.', '')
+            file_.filetype = Path(file_.path).suffix.replace(".", "")
 
     def _get_file_size(self, remote_client, path):
         # Try to get file size from Git LFS
         try:
-            lfs_run = run(('git', 'lfs', 'ls-files', '--name-only', '--size'),
-                          stdout=PIPE,
-                          cwd=remote_client.path,
-                          universal_newlines=True)
+            lfs_run = run(
+                ("git", "lfs", "ls-files", "--name-only", "--size"),
+                stdout=PIPE,
+                cwd=remote_client.path,
+                universal_newlines=True,
+            )
         except SubprocessError:
             pass
         else:
-            lfs_output = lfs_run.stdout.split('\n')
+            lfs_output = lfs_run.stdout.split("\n")
             # Example line format: relative/path/to/file (7.9 MB)
-            pattern = re.compile(r'.*\((.*)\)')
+            pattern = re.compile(r".*\((.*)\)")
             for line in lfs_output:
                 if path not in line:
                     continue
@@ -262,7 +243,7 @@ class _RenkuRecordSerializer:
                 except ValueError:
                     continue
                 unit = size_info[1].strip().lower()
-                conversions = {'b': 1, 'kb': 1e3, 'mb': 1e6, 'gb': 1e9}
+                conversions = {"b": 1, "kb": 1e3, "mb": 1e6, "gb": 1e9}
                 multiplier = conversions.get(unit, None)
                 if multiplier is None:
                     continue
