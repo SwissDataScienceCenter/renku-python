@@ -65,40 +65,38 @@ class StorageApiMixin(RepositoryApiMixin):
     external_storage_requested = attr.ib(default=True)
     """External storage (e.g. LFS) requested for Renku command."""
 
-    RENKU_LFS_IGNORE_PATH = '.renkulfsignore'
+    RENKU_LFS_IGNORE_PATH = ".renkulfsignore"
     """.gitignore like file specifying paths that are not tracked in LFS."""
 
-    _CMD_STORAGE_INSTALL = ['git', 'lfs', 'install', '--local']
+    _CMD_STORAGE_INSTALL = ["git", "lfs", "install", "--local"]
 
-    _CMD_STORAGE_TRACK = ['git', 'lfs', 'track', '--']
+    _CMD_STORAGE_TRACK = ["git", "lfs", "track", "--"]
 
-    _CMD_STORAGE_UNTRACK = ['git', 'lfs', 'untrack', '--']
+    _CMD_STORAGE_UNTRACK = ["git", "lfs", "untrack", "--"]
 
-    _CMD_STORAGE_CLEAN = ['git', 'lfs', 'clean']
+    _CMD_STORAGE_CLEAN = ["git", "lfs", "clean"]
 
-    _CMD_STORAGE_CHECKOUT = ['git', 'lfs', 'checkout']
+    _CMD_STORAGE_CHECKOUT = ["git", "lfs", "checkout"]
 
-    _CMD_STORAGE_PULL = ['git', 'lfs', 'pull', '-I']
+    _CMD_STORAGE_PULL = ["git", "lfs", "pull", "-I"]
 
-    _CMD_STORAGE_MIGRATE_INFO = [
-        'git', 'lfs', 'migrate', 'info', '--top', '42000'
-    ]
+    _CMD_STORAGE_MIGRATE_INFO = ["git", "lfs", "migrate", "info", "--top", "42000"]
 
-    _CMD_STORAGE_LIST = ['git', 'lfs', 'ls-files', '-n']
+    _CMD_STORAGE_LIST = ["git", "lfs", "ls-files", "-n"]
 
-    _CMD_STORAGE_STATUS = ['git', 'lfs', 'status']
+    _CMD_STORAGE_STATUS = ["git", "lfs", "status"]
 
-    _LFS_HEADER = 'version https://git-lfs.github.com/spec/'
+    _LFS_HEADER = "version https://git-lfs.github.com/spec/"
 
     @cached_property
     def storage_installed(self):
         """Verify that git-lfs is installed and on system PATH."""
-        return bool(which('git-lfs'))
+        return bool(which("git-lfs"))
 
     @cached_property
     def storage_installed_locally(self):
         """Verify that git-lfs is installed for the project."""
-        repo_config = self.repo.config_reader(config_level='repository')
+        repo_config = self.repo.config_reader(config_level="repository")
         return repo_config.has_section('filter "lfs"')
 
     def check_external_storage(self):
@@ -107,9 +105,7 @@ class StorageApiMixin(RepositoryApiMixin):
         :raises: ``errors.ExternalStorageNotInstalled``
         :raises: ``errors.ExternalStorageDisabled``
         """
-        storage_installed = (
-            self.storage_installed_locally and self.storage_installed
-        )
+        storage_installed = self.storage_installed_locally and self.storage_installed
         if self.external_storage_requested and not storage_installed:
             raise errors.ExternalStorageDisabled(self.repo)
 
@@ -123,14 +119,14 @@ class StorageApiMixin(RepositoryApiMixin):
         """Gets pathspec for files to not add to LFS."""
         ignore_path = self.path / self.RENKU_LFS_IGNORE_PATH
         if not os.path.exists(ignore_path):
-            return pathspec.PathSpec.from_lines('renku_gitwildmatch', [])
-        with ignore_path.open('r') as f:
-            return pathspec.PathSpec.from_lines('renku_gitwildmatch', f)
+            return pathspec.PathSpec.from_lines("renku_gitwildmatch", [])
+        with ignore_path.open("r") as f:
+            return pathspec.PathSpec.from_lines("renku_gitwildmatch", f)
 
     @property
     def minimum_lfs_file_size(self):
         """The minimum size of a file in bytes to be added to lfs."""
-        size = self.get_value('renku', 'lfs_threshold') or '100kb'
+        size = self.get_value("renku", "lfs_threshold") or "100kb"
 
         return parse_file_size(size)
 
@@ -138,15 +134,10 @@ class StorageApiMixin(RepositoryApiMixin):
         """Initialize the external storage for data."""
         try:
             call(
-                self._CMD_STORAGE_INSTALL + (['--force'] if force else []),
-                stdout=PIPE,
-                stderr=STDOUT,
-                cwd=self.path,
+                self._CMD_STORAGE_INSTALL + (["--force"] if force else []), stdout=PIPE, stderr=STDOUT, cwd=self.path,
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError(
-                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-            )
+            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
 
     def init_repository(self, force=False, user=None):
         """Initialize a local Renku repository."""
@@ -179,33 +170,23 @@ class StorageApiMixin(RepositoryApiMixin):
                 path = Path(path).relative_to(self.path)
 
             # Do not add files with filter=lfs in .gitattributes
-            if attrs.get(str(path), {}).get('filter') == 'lfs':
+            if attrs.get(str(path), {}).get("filter") == "lfs":
                 continue
 
-            if (
-                path.is_dir() and
-                not any(self.renku_lfs_ignore.match_tree(str(path)))
-            ):
-                track_paths.append(str(path / '**'))
+            if path.is_dir() and not any(self.renku_lfs_ignore.match_tree(str(path))):
+                track_paths.append(str(path / "**"))
             elif not self.renku_lfs_ignore.match_file(str(path)):
-                file_size = os.path.getsize(
-                    str(os.path.relpath(self.path / path, os.getcwd()))
-                )
+                file_size = os.path.getsize(str(os.path.relpath(self.path / path, os.getcwd())))
                 if file_size >= self.minimum_lfs_file_size:
                     track_paths.append(str(path))
 
         if track_paths:
             try:
                 call(
-                    self._CMD_STORAGE_TRACK + track_paths,
-                    stdout=PIPE,
-                    stderr=STDOUT,
-                    cwd=self.path,
+                    self._CMD_STORAGE_TRACK + track_paths, stdout=PIPE, stderr=STDOUT, cwd=self.path,
                 )
             except (KeyboardInterrupt, OSError) as e:
-                raise errors.ParameterError(
-                    'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-                )
+                raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
             return track_paths
         return []
 
@@ -214,28 +195,19 @@ class StorageApiMixin(RepositoryApiMixin):
         """Untrack paths from the external storage."""
         try:
             call(
-                self._CMD_STORAGE_UNTRACK + list(paths),
-                stdout=PIPE,
-                stderr=STDOUT,
-                cwd=self.path,
+                self._CMD_STORAGE_UNTRACK + list(paths), stdout=PIPE, stderr=STDOUT, cwd=self.path,
             )
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError(
-                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-            )
+            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
 
     @check_external_storage_wrapper
     def list_tracked_paths(self, client=None):
         """List paths tracked in lfs for a client."""
         client = client or self
         try:
-            files = check_output(
-                self._CMD_STORAGE_LIST, cwd=client.path, encoding='UTF-8'
-            )
+            files = check_output(self._CMD_STORAGE_LIST, cwd=client.path, encoding="UTF-8")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError(
-                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-            )
+            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
         files = [client.path / f for f in files.splitlines()]
         return files
 
@@ -244,44 +216,32 @@ class StorageApiMixin(RepositoryApiMixin):
         """List paths tracked in lfs for a client."""
         client = client or self
 
-        if (
-            len(client.repo.remotes) < 1 or
-            not client.repo.active_branch.tracking_branch()
-        ):
+        if len(client.repo.remotes) < 1 or not client.repo.active_branch.tracking_branch():
             raise errors.ConfigurationError(
-                'No git remote is configured for {} branch {}.'.
-                format(client.path, client.repo.active_branch.name) +
-                'Cleaning the storage cache would lead to a loss of data as ' +
-                'it is not on a server. Please see ' +
-                'https://www.atlassian.com/git/tutorials/syncing for ' +
-                'information on how to sync with a remote.'
+                "No git remote is configured for {} branch {}.".format(client.path, client.repo.active_branch.name)
+                + "Cleaning the storage cache would lead to a loss of data as "
+                + "it is not on a server. Please see "
+                + "https://www.atlassian.com/git/tutorials/syncing for "
+                + "information on how to sync with a remote."
             )
         try:
-            status = check_output(
-                self._CMD_STORAGE_STATUS, cwd=client.path, encoding='UTF-8'
-            )
+            status = check_output(self._CMD_STORAGE_STATUS, cwd=client.path, encoding="UTF-8")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError(
-                'Couldn\'t run \'git lfs\':\n{0}'.format(e)
-            )
+            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
 
-        files = status.split('Objects to be committed:')[0].splitlines()[2:]
-        files = [
-            client.path / f.rsplit('(', 1)[0].strip()
-            for f in files if f.strip()
-        ]
+        files = status.split("Objects to be committed:")[0].splitlines()[2:]
+        files = [client.path / f.rsplit("(", 1)[0].strip() for f in files if f.strip()]
         return files
 
     @check_external_storage_wrapper
     def pull_paths_from_storage(self, *paths):
         """Pull paths from LFS."""
         import math
+
         client_dict = defaultdict(list)
 
         for path in _expand_directories(paths):
-            client, commit, path = self.resolve_in_submodules(
-                self.repo.commit(), path
-            )
+            client, commit, path = self.resolve_in_submodules(self.repo.commit(), path)
             try:
                 absolute_path = Path(path).resolve()
                 relative_path = absolute_path.relative_to(client.path)
@@ -294,14 +254,8 @@ class StorageApiMixin(RepositoryApiMixin):
             batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
             for index in range(batch_size):
                 run(
-                    self._CMD_STORAGE_PULL + [
-                        shlex.quote(
-                            ','.join(
-                                paths[index * ARGUMENT_BATCH_SIZE:(index + 1) *
-                                      ARGUMENT_BATCH_SIZE]
-                            )
-                        )
-                    ],
+                    self._CMD_STORAGE_PULL
+                    + [shlex.quote(",".join(paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]))],
                     cwd=client_path,
                     stdout=PIPE,
                     stderr=STDOUT,
@@ -318,9 +272,7 @@ class StorageApiMixin(RepositoryApiMixin):
         local_only_paths = []
 
         for path in _expand_directories(paths):
-            client, commit, path = self.resolve_in_submodules(
-                self.repo.commit(), path
-            )
+            client, commit, path = self.resolve_in_submodules(self.repo.commit(), path)
             try:
                 absolute_path = Path(path).resolve()
                 relative_path = absolute_path.relative_to(client.path)
@@ -347,7 +299,7 @@ class StorageApiMixin(RepositoryApiMixin):
             client = clients[client_path]
 
             for path in paths:
-                with open(path, 'r') as tracked_file:
+                with open(path, "r") as tracked_file:
                     try:
                         header = tracked_file.read(len(self._LFS_HEADER))
                         if header == self._LFS_HEADER:
@@ -356,32 +308,26 @@ class StorageApiMixin(RepositoryApiMixin):
                     except UnicodeDecodeError:
                         # likely a binary file, not lfs pointer file
                         pass
-                with tempfile.NamedTemporaryFile(
-                    mode='w+t', encoding='utf-8', delete=False
-                ) as tmp, open(path, 'r+t') as input_file:
+                with tempfile.NamedTemporaryFile(mode="w+t", encoding="utf-8", delete=False) as tmp, open(
+                    path, "r+t"
+                ) as input_file:
                     run(
-                        self._CMD_STORAGE_CLEAN,
-                        cwd=client_path,
-                        stdin=input_file,
-                        stdout=tmp,
+                        self._CMD_STORAGE_CLEAN, cwd=client_path, stdin=input_file, stdout=tmp,
                     )
 
                     tmp_path = tmp.name
                 move(tmp_path, path)
 
                 # get lfs sha hash
-                old_pointer = client.repo.git.show('HEAD:{}'.format(path))
+                old_pointer = client.repo.git.show("HEAD:{}".format(path))
                 old_pointer = old_pointer.splitlines()[1]
-                old_pointer = old_pointer.split(' ')[1].split(':')[1]
+                old_pointer = old_pointer.split(" ")[1].split(":")[1]
 
                 prefix1 = old_pointer[:2]
                 prefix2 = old_pointer[2:4]
 
                 # remove from lfs cache
-                object_path = (
-                    client.path / '.git' / 'lfs' / 'objects' / prefix1 /
-                    prefix2 / old_pointer
-                )
+                object_path = client.path / ".git" / "lfs" / "objects" / prefix1 / prefix2 / old_pointer
                 object_path.unlink()
 
             # add paths so they don't show as modified
@@ -393,11 +339,7 @@ class StorageApiMixin(RepositoryApiMixin):
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
         run(
-            self._CMD_STORAGE_CHECKOUT + list(paths),
-            cwd=self.path,
-            stdout=PIPE,
-            stderr=STDOUT,
-            check=True,
+            self._CMD_STORAGE_CHECKOUT + list(paths), cwd=self.path, stdout=PIPE, stderr=STDOUT, check=True,
         )
 
     def check_requires_tracking(self, *paths):
@@ -417,7 +359,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 continue
 
             # Do not add files with filter=lfs in .gitattributes
-            if attrs.get(path, {}).get('filter') == 'lfs':
+            if attrs.get(path, {}).get("filter") == "lfs":
                 continue
 
             if not absolute_path.is_dir():
@@ -432,9 +374,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
     def check_lfs_migrate_info(self, everything=False):
         """Return list of file groups in history should be in LFS."""
-        ref = ['--everything'] if everything else [
-            '--include-ref', self.repo.active_branch.name
-        ]
+        ref = ["--everything"] if everything else ["--include-ref", self.repo.active_branch.name]
 
         includes = []
         excludes = []
@@ -442,9 +382,9 @@ class StorageApiMixin(RepositoryApiMixin):
             if p.regex is None:
                 continue
 
-            pattern = p.pattern.replace(os.linesep, '').replace('\n', '')
-            if pattern.startswith('!'):
-                pattern.replace('!', '', 1)
+            pattern = p.pattern.replace(os.linesep, "").replace("\n", "")
+            if pattern.startswith("!"):
+                pattern.replace("!", "", 1)
 
             if p.include:  # File ignored by LFS
                 excludes.append(pattern)
@@ -452,33 +392,23 @@ class StorageApiMixin(RepositoryApiMixin):
                 includes.append(pattern)
 
         if excludes:
-            excludes = ['--exclude', ','.join(excludes)]
+            excludes = ["--exclude", ",".join(excludes)]
         if includes:
-            includes = ['--include', ','.join(includes)]
+            includes = ["--include", ",".join(includes)]
 
-        above = ['--above', str(self.minimum_lfs_file_size)]
+        above = ["--above", str(self.minimum_lfs_file_size)]
 
-        command = (
-            self._CMD_STORAGE_MIGRATE_INFO + ref + above + includes + excludes
-        )
+        command = self._CMD_STORAGE_MIGRATE_INFO + ref + above + includes + excludes
 
         try:
-            lfs_output = run(
-                command,
-                stdout=PIPE,
-                stderr=STDOUT,
-                cwd=self.path,
-                universal_newlines=True
-            )
+            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True)
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.GitError(
-                'Couldn\'t run \'git lfs migrate info\':\n{0}'.format(e)
-            )
+            raise errors.GitError("Couldn't run 'git lfs migrate info':\n{0}".format(e))
 
         groups = []
-        files_re = re.compile(r'(.*\s+[\d.]+\s+\S+).*')
+        files_re = re.compile(r"(.*\s+[\d.]+\s+\S+).*")
 
-        for line in lfs_output.stdout.split('\n'):
+        for line in lfs_output.stdout.split("\n"):
             match = files_re.match(line)
             if match:
                 groups.append(match.groups()[0])

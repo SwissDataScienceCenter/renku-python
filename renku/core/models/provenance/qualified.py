@@ -25,8 +25,7 @@ from marshmallow import EXCLUDE
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
 from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
 from renku.core.models.entities import CollectionSchema, EntitySchema
-from renku.core.models.provenance.agents import PersonSchema, \
-    SoftwareAgentSchema
+from renku.core.models.provenance.agents import PersonSchema, SoftwareAgentSchema
 from renku.core.models.workflow.run import RunSchema
 
 
@@ -35,7 +34,7 @@ class Association:
     """Assign responsibility to an agent for an activity."""
 
     plan = attr.ib()
-    agent = attr.ib(default=None, )
+    agent = attr.ib(default=None,)
 
     _id = attr.ib(kw_only=True)
 
@@ -47,13 +46,10 @@ class Association:
         agent = SoftwareAgent.from_commit(activity.commit)
         return cls(
             plan=activity.__association_cls__(
-                commit=commit or activity.commit,
-                client=activity.client,
-                path=activity.path,
-                activity=activity,
+                commit=commit or activity.commit, client=activity.client, path=activity.path, activity=activity,
             ),
             agent=agent,
-            id=activity._id + '/association',  # add plan and agent
+            id=activity._id + "/association",  # add plan and agent
         )
 
     @classmethod
@@ -76,18 +72,16 @@ class EntityProxyMixin:
 
     def __getattribute__(self, name):
         """Proxy entity attributes."""
-        cls = object.__getattribute__(self, '__class__')
+        cls = object.__getattribute__(self, "__class__")
         names = {field.name for field in attr.fields(cls)}
         names |= set(dir(cls))
         if name in names:
             return object.__getattribute__(self, name)
-        entity = object.__getattribute__(self, 'entity')
+        entity = object.__getattribute__(self, "entity")
         return getattr(entity, name)
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class Usage(EntityProxyMixin):
     """Represent a dependent path."""
 
@@ -97,13 +91,11 @@ class Usage(EntityProxyMixin):
     _id = attr.ib(default=None, kw_only=True)
 
     @classmethod
-    def from_revision(cls, client, path, revision='HEAD', **kwargs):
+    def from_revision(cls, client, path, revision="HEAD", **kwargs):
         """Return dependency from given path and revision."""
         from renku.core.models.entities import Entity
 
-        return cls(
-            entity=Entity.from_revision(client, path, revision), **kwargs
-        )
+        return cls(entity=Entity.from_revision(client, path, revision), **kwargs)
 
     @classmethod
     def from_jsonld(cls, data):
@@ -120,9 +112,7 @@ class Usage(EntityProxyMixin):
         return UsageSchema().dump(self)
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
@@ -131,10 +121,7 @@ class Generation(EntityProxyMixin):
     role = attr.ib(default=None)
 
     _activity = attr.ib(
-        default=None,
-        kw_only=True,
-        converter=lambda value: weakref.ref(value)
-        if value is not None else None,
+        default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None,
     )
     _id = attr.ib(kw_only=True)
 
@@ -147,10 +134,8 @@ class Generation(EntityProxyMixin):
     def default_id(self):
         """Configure calculated ID."""
         if self.role:
-            return '{self.activity._id}/{self.role}'.format(self=self, )
-        return '{self.activity._id}/tree/{self.entity.path}'.format(
-            self=self,
-        )
+            return "{self.activity._id}/{self.role}".format(self=self,)
+        return "{self.activity._id}/tree/{self.entity.path}".format(self=self,)
 
     @classmethod
     def from_jsonld(cls, data):
@@ -177,7 +162,7 @@ class AssociationSchema(JsonLDSchema):
         model = Association
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name='id')
+    _id = fields.Id(init_name="id")
     plan = Nested(prov.hadPlan, RunSchema)
     agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
 
@@ -192,11 +177,8 @@ class UsageSchema(JsonLDSchema):
         model = Usage
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name='id')
-    entity = Nested(
-        prov.entity,
-        [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema]
-    )
+    _id = fields.Id(init_name="id")
+    entity = Nested(prov.entity, [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema])
     role = fields.String(prov.hadRole, missing=None)
 
 
@@ -210,10 +192,8 @@ class GenerationSchema(JsonLDSchema):
         model = Generation
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name='id')
+    _id = fields.Id(init_name="id")
     entity = Nested(
-        prov.qualifiedGeneration,
-        [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema],
-        reverse=True
+        prov.qualifiedGeneration, [EntitySchema, CollectionSchema, DatasetSchema, DatasetFileSchema], reverse=True
     )
     role = fields.String(prov.hadRole, missing=None)

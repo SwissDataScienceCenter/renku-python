@@ -42,18 +42,9 @@ from renku.core.commands.graph import Graph
 
 
 @click.command()
-@click.option(
-    '--revision',
-    default='HEAD',
-    help='Display status as it was in the given revision'
-)
-@click.option(
-    '--no-output',
-    is_flag=True,
-    default=False,
-    help='Display commands without output files.'
-)
-@click.argument('path', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.option("--revision", default="HEAD", help="Display status as it was in the given revision")
+@click.option("--no-output", is_flag=True, default=False, help="Display commands without output files.")
+@click.argument("path", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client(clean=True, requires_migration=True, commit=False)
 @click.pass_context
 def status(ctx, client, revision, no_output, path):
@@ -64,94 +55,73 @@ def status(ctx, client, revision, no_output, path):
 
     if client.has_external_files():
         click.echo(
-            'Changes in external files are not detected automatically. To '
+            "Changes in external files are not detected automatically. To "
             'update external files run "renku dataset update -e".'
         )
 
     try:
-        click.echo('On branch {0}'.format(client.repo.active_branch))
+        click.echo("On branch {0}".format(client.repo.active_branch))
     except TypeError:
+        click.echo("Git HEAD is detached!\n" " Please move back to your working branch to use renku\n")
+    if status["outdated"]:
         click.echo(
-            'Git HEAD is detached!\n'
-            ' Please move back to your working branch to use renku\n'
-        )
-    if status['outdated']:
-        click.echo(
-            'Files generated from newer inputs:\n'
+            "Files generated from newer inputs:\n"
             '  (use "renku log [<file>...]" to see the full lineage)\n'
             '  (use "renku update [<file>...]" to '
-            'generate the file from its latest inputs)\n'
+            "generate the file from its latest inputs)\n"
         )
 
-        for filepath, stts in sorted(status['outdated'].items()):
-            outdated = (
-                ', '.join(
-                    '{0}#{1}'.format(
-                        click.style(
-                            graph._format_path(n.path), fg='blue', bold=True
-                        ),
-                        _format_sha1(graph, n),
-                    ) for n in stts
-                    if n.path and n.path not in status['outdated']
-                )
+        for filepath, stts in sorted(status["outdated"].items()):
+            outdated = ", ".join(
+                "{0}#{1}".format(click.style(graph._format_path(n.path), fg="blue", bold=True), _format_sha1(graph, n),)
+                for n in stts
+                if n.path and n.path not in status["outdated"]
             )
 
-            click.echo(
-                '\t{0}: {1}'.format(
-                    click.style(
-                        graph._format_path(filepath), fg='red', bold=True
-                    ), outdated
-                )
-            )
+            click.echo("\t{0}: {1}".format(click.style(graph._format_path(filepath), fg="red", bold=True), outdated))
 
         click.echo()
 
     else:
-        click.secho(
-            'All files were generated from the latest inputs.', fg='green'
-        )
+        click.secho("All files were generated from the latest inputs.", fg="green")
 
-    if status['multiple-versions']:
+    if status["multiple-versions"]:
         click.echo(
-            'Input files used in different versions:\n'
+            "Input files used in different versions:\n"
             '  (use "renku log --revision <sha1> <file>" to see a lineage '
-            'for the given revision)\n'
+            "for the given revision)\n"
         )
 
-        for filepath, files in sorted(status['multiple-versions'].items()):
+        for filepath, files in sorted(status["multiple-versions"].items()):
             # Do not show duplicated commits!  (see #387)
             commits = {_format_sha1(graph, key) for key in files}
             click.echo(
-                '\t{0}: {1}'.format(
-                    click.style(
-                        graph._format_path(filepath), fg='blue', bold=True
-                    ),
-                    ', '.join(
+                "\t{0}: {1}".format(
+                    click.style(graph._format_path(filepath), fg="blue", bold=True),
+                    ", ".join(
                         # Sort the commit hashes alphanumerically to have a
                         # predictable output.
                         sorted(commits)
-                    )
+                    ),
                 )
             )
 
         click.echo()
 
-    if status['deleted']:
+    if status["deleted"]:
         click.echo(
-            'Deleted files used to generate outputs:\n'
+            "Deleted files used to generate outputs:\n"
             '  (use "git show <sha1>:<file>" to see the file content '
-            'for the given revision)\n'
+            "for the given revision)\n"
         )
 
-        for filepath, node in status['deleted'].items():
+        for filepath, node in status["deleted"].items():
             click.echo(
-                '\t{0}: {1}'.format(
-                    click.style(
-                        graph._format_path(filepath), fg='blue', bold=True
-                    ), _format_sha1(graph, node)
+                "\t{0}: {1}".format(
+                    click.style(graph._format_path(filepath), fg="blue", bold=True), _format_sha1(graph, node)
                 )
             )
 
         click.echo()
 
-    ctx.exit(1 if status['outdated'] else 0)
+    ctx.exit(1 if status["outdated"] else 0)

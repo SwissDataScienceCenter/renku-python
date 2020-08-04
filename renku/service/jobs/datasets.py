@@ -43,8 +43,8 @@ class DatasetImportJobProcess(DownloadProgressCallback):
     def __call__(self, description, total_size):
         """Job progress call."""
         self.job.extras = {
-            'description': description,
-            'total_size': total_size,
+            "description": description,
+            "total_size": total_size,
         }
 
         super().__init__(description, total_size)
@@ -52,7 +52,7 @@ class DatasetImportJobProcess(DownloadProgressCallback):
 
     def update(self, size):
         """Update status."""
-        self.job.extras['progress_size'] = size
+        self.job.extras["progress_size"] = size
         self.job.save()
 
     def finalize(self):
@@ -62,14 +62,7 @@ class DatasetImportJobProcess(DownloadProgressCallback):
 
 @requires_cache
 def dataset_import(
-    cache,
-    user,
-    user_job_id,
-    project_id,
-    dataset_uri,
-    name=None,
-    extract=False,
-    timeout=None,
+    cache, user, user_job_id, project_id, dataset_uri, name=None, extract=False, timeout=None,
 ):
     """Job for dataset import."""
     user = cache.ensure_user(user)
@@ -84,19 +77,15 @@ def dataset_import(
                 dataset_uri,
                 name,
                 extract,
-                commit_message=f'service: dataset import {dataset_uri}',
-                progress=DatasetImportJobProcess(cache, user_job)
+                commit_message=f"service: dataset import {dataset_uri}",
+                progress=DatasetImportJobProcess(cache, user_job),
             )
 
-            _, remote_branch = repo_sync(
-                Repo(project.abs_path), remote='origin'
-            )
-            user_job.update_extras('remote_branch', remote_branch)
+            _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
+            user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
-        except (
-            HTTPError, ParameterError, DatasetExistsError, GitCommandError
-        ) as exp:
+        except (HTTPError, ParameterError, DatasetExistsError, GitCommandError) as exp:
             user_job.fail_job(str(exp))
 
             # Reraise exception, so we see trace in job metadata.
@@ -104,10 +93,7 @@ def dataset_import(
 
 
 @requires_cache
-def dataset_add_remote_file(
-    cache, user, user_job_id, project_id, create_dataset, commit_message, name,
-    url
-):
+def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset, commit_message, name, url):
     """Add a remote file to a specified dataset."""
     user = cache.ensure_user(user)
     user_job = cache.get_job(user, user_job_id)
@@ -118,17 +104,10 @@ def dataset_add_remote_file(
 
         with chdir(project.abs_path):
             urls = url if isinstance(url, list) else [url]
-            add_file(
-                urls,
-                name,
-                create=create_dataset,
-                commit_message=commit_message
-            )
+            add_file(urls, name, create=create_dataset, commit_message=commit_message)
 
-            _, remote_branch = repo_sync(
-                Repo(project.abs_path), remote='origin'
-            )
-            user_job.update_extras('remote_branch', remote_branch)
+            _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
+            user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
     except (HTTPError, BaseException, GitCommandError) as e:

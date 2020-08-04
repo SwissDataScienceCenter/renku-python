@@ -16,30 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataverse unit tests."""
-from renku.core.commands.providers.dataverse import DataverseExporter, \
-    _DataverseDeposition
+from renku.core.commands.providers.dataverse import DataverseExporter, _DataverseDeposition
 
 
 def test_dataverse_exporter_init():
     """Check construction of a dataverse exporter."""
-    exporter = DataverseExporter(
-        dataset='my-dataset',
-        access_token='let-me-in',
-    )
+    exporter = DataverseExporter(dataset="my-dataset", access_token="let-me-in",)
 
     assert exporter
-    assert 'my-dataset' == exporter.dataset
-    assert 'let-me-in' == exporter.access_token
+    assert "my-dataset" == exporter.dataset
+    assert "let-me-in" == exporter.access_token
 
 
 def test_dataverse_deposition_init():
     """Check construction of dataverse deposition."""
-    deposit = _DataverseDeposition(
-        access_token='let-me-in',
-        server_url='http://sss',
-    )
+    deposit = _DataverseDeposition(access_token="let-me-in", server_url="http://sss",)
 
     assert deposit
-    assert 'let-me-in' == deposit.access_token
-    assert 'http://sss' == deposit.server_url
+    assert "let-me-in" == deposit.access_token
+    assert "http://sss" == deposit.server_url
     assert not deposit.dataset_pid

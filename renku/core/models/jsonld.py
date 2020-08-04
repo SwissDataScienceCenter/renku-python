@@ -45,22 +45,21 @@ class NoDatesSafeLoader(SafeLoader):
         go on to serialise as json which doesn't have the advanced types
         of yaml, and leads to incompatibilities down the track.
         """
-        if 'yaml_implicit_resolvers' not in cls.__dict__:
+        if "yaml_implicit_resolvers" not in cls.__dict__:
             cls.yaml_implicit_resolvers = cls.yaml_implicit_resolvers.copy()
 
         for first_letter, mappings in cls.yaml_implicit_resolvers.items():
             cls.yaml_implicit_resolvers[first_letter] = [
-                (tag, regexp)
-                for tag, regexp in mappings if tag != tag_to_remove
+                (tag, regexp) for tag, regexp in mappings if tag != tag_to_remove
             ]
 
 
-NoDatesSafeLoader.remove_implicit_resolver('tag:yaml.org,2002:timestamp')
+NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 
 
 def read_yaml(path):
     """Load YAML file and return its content as a dict."""
-    with Path(path).open(mode='r') as fp:
+    with Path(path).open(mode="r") as fp:
         return yaml.load(fp, Loader=NoDatesSafeLoader) or {}
 
 
@@ -69,5 +68,5 @@ def write_yaml(path, data):
 
     Dumper.ignore_aliases = lambda _, data: True
 
-    with Path(path).open('w') as fp:
+    with Path(path).open("w") as fp:
         yaml.dump(data, fp, default_flow_style=False, Dumper=Dumper)

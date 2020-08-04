@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataverse metadata templates."""
-DATASET_METADATA_TEMPLATE = '''
+DATASET_METADATA_TEMPLATE = """
 {
     "datasetVersion": {
         "metadataBlocks": {
@@ -66,9 +66,9 @@ DATASET_METADATA_TEMPLATE = '''
             }
         }
     }
-}'''
+}"""
 
-AUTHOR_METADATA_TEMPLATE = '''
+AUTHOR_METADATA_TEMPLATE = """
 {
     "authorName": {
         "value": "${name}",
@@ -83,9 +83,9 @@ AUTHOR_METADATA_TEMPLATE = '''
         "typeName": "authorAffiliation"
     }
 }
-'''
+"""
 
-CONTACT_METADATA_TEMPLATE = '''
+CONTACT_METADATA_TEMPLATE = """
 {
     "datasetContactEmail": {
         "typeClass": "primitive",
@@ -100,4 +100,4 @@ CONTACT_METADATA_TEMPLATE = '''
         "value": "${name}"
     }
 }
-'''
+"""

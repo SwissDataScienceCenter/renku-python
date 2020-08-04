@@ -24,36 +24,35 @@ from pathlib import Path
 def test_init_repository(local_client):
     """Test initializing an empty repository."""
     local_client.init_repository()
-    assert (local_client.path / '.git').exists()
-    assert (local_client.path / '.git' / 'HEAD').exists()
-    assert not (local_client.path / '.renku').exists()
+    assert (local_client.path / ".git").exists()
+    assert (local_client.path / ".git" / "HEAD").exists()
+    assert not (local_client.path / ".renku").exists()
 
 
 def test_import_from_template(local_client):
     """Test importing data from template."""
-    output_file = 'metadata.yml'
+    output_file = "metadata.yml"
     local_client.init_repository()
     with tempfile.TemporaryDirectory() as tempdir:
         template_path = Path(tempdir)
         fake_template_file = template_path / output_file
-        with fake_template_file.open('w') as dest:
-            dest.writelines([
-                'name: {{ name }}', 'description: {{ description }}',
-                'created: {{ date_created }}', 'updated: {{ date_updated }}'
-            ])
+        with fake_template_file.open("w") as dest:
+            dest.writelines(
+                [
+                    "name: {{ name }}",
+                    "description: {{ description }}",
+                    "created: {{ date_created }}",
+                    "updated: {{ date_updated }}",
+                ]
+            )
             metadata = {
-                'name': 'name',
-                'description': 'description',
-                'date_created': 'now',
-                'date_updated': 'now',
+                "name": "name",
+                "description": "description",
+                "date_created": "now",
+                "date_updated": "now",
             }
         local_client.import_from_template(template_path, metadata)
         compiled_file = local_client.path / output_file
         compiled_content = compiled_file.read_text()
-        expected_content = (
-            'name: name'
-            'description: description'
-            'created: now'
-            'updated: now'
-        )
+        expected_content = "name: name" "description: description" "created: now" "updated: now"
         assert expected_content == compiled_content

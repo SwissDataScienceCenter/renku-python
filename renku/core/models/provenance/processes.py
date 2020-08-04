@@ -24,17 +24,12 @@ import attr
 from renku.core.models.entities import CommitMixin
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class Process(CommitMixin):
     """Represent a process."""
 
     _activity = attr.ib(
-        default=None,
-        kw_only=True,
-        converter=lambda value: weakref.ref(value)
-        if value is not None else None
+        default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None
     )
 
     @property
@@ -43,9 +38,7 @@ class Process(CommitMixin):
         return self._activity()
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class Workflow(Process):
     """Represent workflow with subprocesses."""
 
@@ -54,7 +47,4 @@ class Workflow(Process):
     @subprocesses.default
     def default_subprocesses(self):
         """Load subprocesses."""
-        return [
-            subprocess.association.plan
-            for subprocess in self.activity.subprocesses.values()
-        ]
+        return [subprocess.association.plan for subprocess in self.activity.subprocesses.values()]

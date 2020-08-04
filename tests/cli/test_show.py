@@ -22,28 +22,25 @@ from renku.cli import cli
 
 def test_show_outputs_with_directory(runner, client, run):
     """Output files in directory are not shown as separate outputs."""
-    base_sh = [
-        'bash', '-c', 'DIR="$0"; mkdir -p "$DIR"; '
-        'for x in "$@"; do touch "$DIR/$x"; done'
-    ]
+    base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']
 
-    assert 0 == run(args=['run'] + base_sh + ['output', 'foo', 'bar'])
-    assert (client.path / 'output' / 'foo').exists()
-    assert (client.path / 'output' / 'bar').exists()
+    assert 0 == run(args=["run"] + base_sh + ["output", "foo", "bar"])
+    assert (client.path / "output" / "foo").exists()
+    assert (client.path / "output" / "bar").exists()
 
-    cmd = ['show', 'outputs']
+    cmd = ["show", "outputs"]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
-    assert {'output'} == set(result.output.strip().split('\n'))
+    assert {"output"} == set(result.output.strip().split("\n"))
 
-    result = runner.invoke(cli, cmd + ['output'])
+    result = runner.invoke(cli, cmd + ["output"])
     assert 0 == result.exit_code
-    assert {'output'} == set(result.output.strip().split('\n'))
+    assert {"output"} == set(result.output.strip().split("\n"))
 
-    result = runner.invoke(cli, cmd + ['output/foo'])
+    result = runner.invoke(cli, cmd + ["output/foo"])
     assert 0 == result.exit_code
-    assert {'output'} == set(result.output.strip().split('\n'))
+    assert {"output"} == set(result.output.strip().split("\n"))
 
-    result = runner.invoke(cli, cmd + ['output/foo', 'output/bar'])
+    result = runner.invoke(cli, cmd + ["output/foo", "output/bar"])
     assert 0 == result.exit_code
-    assert {'output'} == set(result.output.strip().split('\n'))
+    assert {"output"} == set(result.output.strip().split("\n"))

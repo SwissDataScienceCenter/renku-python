@@ -35,9 +35,7 @@ from renku.core.models.calamus import fields, prov, rdfs, schema, wfprov
 from renku.version import __version__, version_url
 
 
-@attr.s(
-    slots=True,
-)
+@attr.s(slots=True,)
 class Person:
     """Represent a person."""
 
@@ -46,40 +44,31 @@ class Person:
     name = attr.ib(kw_only=True, validator=instance_of(str))
     email = attr.ib(default=None, kw_only=True)
     label = attr.ib(kw_only=True)
-    affiliation = attr.ib(
-        default=None,
-        kw_only=True,
-    )
-    alternate_name = attr.ib(
-        default=None,
-        kw_only=True,
-    )
+    affiliation = attr.ib(default=None, kw_only=True,)
+    alternate_name = attr.ib(default=None, kw_only=True,)
     _id = attr.ib(default=None, kw_only=True)
 
     def default_id(self):
         """Set the default id."""
         if self.email:
-            return 'mailto:{email}'.format(email=self.email)
+            return "mailto:{email}".format(email=self.email)
 
-        host = 'localhost'
+        host = "localhost"
         if self.client:
-            host = self.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or host
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
 
         id_ = str(uuid.uuid4())
 
         return urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join('/persons', quote(id_, safe=''))
+            "https://{host}".format(host=host), pathlib.posixpath.join("/persons", quote(id_, safe=""))
         )
 
     @email.validator
     def check_email(self, attribute, value):
         """Check that the email is valid."""
-        if self.email and not (
-            isinstance(value, str) and re.match(r'[^@]+@[^@]+\.[^@]+', value)
-        ):
-            raise ValueError('Email address is invalid.')
+        if self.email and not (isinstance(value, str) and re.match(r"[^@]+@[^@]+\.[^@]+", value)):
+            raise ValueError("Email address is invalid.")
 
     @label.default
     def default_label(self):
@@ -89,10 +78,7 @@ class Person:
     @classmethod
     def from_commit(cls, commit):
         """Create an instance from a Git commit."""
-        return cls(
-            name=commit.author.name,
-            email=commit.author.email,
-        )
+        return cls(name=commit.author.name, email=commit.author.email,)
 
     @property
     def short_name(self):
@@ -105,30 +91,28 @@ class Person:
         initials = [name[0] for name in names]
         initials.pop()
 
-        return '{0}.{1}'.format('.'.join(initials), last_name)
+        return "{0}.{1}".format(".".join(initials), last_name)
 
     @property
     def full_identity(self):
         """Return name, email, and affiliation."""
-        email = f' <{self.email}>' if self.email else ''
-        affiliation = f' [{self.affiliation}]' if self.affiliation else ''
-        return f'{self.name}{email}{affiliation}'
+        email = f" <{self.email}>" if self.email else ""
+        affiliation = f" [{self.affiliation}]" if self.affiliation else ""
+        return f"{self.name}{email}{affiliation}"
 
     @classmethod
     def from_git(cls, git):
         """Create an instance from a Git repo."""
         git_config = git.config_reader()
         try:
-            name = git_config.get_value('user', 'name', None)
-            email = git_config.get_value('user', 'email', None)
-        except (
-            configparser.NoOptionError, configparser.NoSectionError
-        ):  # pragma: no cover
+            name = git_config.get_value("user", "name", None)
+            email = git_config.get_value("user", "email", None)
+        except (configparser.NoOptionError, configparser.NoSectionError):  # pragma: no cover
             raise errors.ConfigurationError(
-                'The user name and email are not configured. '
+                "The user name and email are not configured. "
                 'Please use the "git config" command to configure them.\n\n'
                 '\tgit config --global --add user.name "John Doe"\n'
-                '\tgit config --global --add user.email '
+                "\tgit config --global --add user.email "
                 '"john.doe@example.com"\n'
             )
 
@@ -143,9 +127,7 @@ class Person:
     @classmethod
     def from_string(cls, string):
         """Create an instance from a 'Name <email>' string."""
-        regex_pattern = r'([^<>\[\]]*)' \
-            r'(?:<{1}\s*(\S+@\S+\.\S+){0,1}\s*>{1}){0,1}\s*' \
-            r'(?:\[{1}(.*)\]{1}){0,1}'
+        regex_pattern = r"([^<>\[\]]*)" r"(?:<{1}\s*(\S+@\S+\.\S+){0,1}\s*>{1}){0,1}\s*" r"(?:\[{1}(.*)\]{1}){0,1}"
         name, email, affiliation = re.search(regex_pattern, string).groups()
         if name:
             name = name.strip()
@@ -173,7 +155,7 @@ class Person:
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
-        if self._id == 'mailto:None' or self._id is None:
+        if self._id == "mailto:None" or self._id is None:
             self._id = self.default_id()
 
         if self.label is None:
@@ -195,12 +177,11 @@ class PersonSchema(JsonLDSchema):
     label = fields.String(rdfs.label)
     affiliation = fields.String(schema.affiliation, missing=None)
     alternate_name = fields.String(schema.alternateName, missing=None)
-    _id = fields.Id(init_name='id')
+    _id = fields.Id(init_name="id")
 
 
 @attr.s(
-    frozen=True,
-    slots=True,
+    frozen=True, slots=True,
 )
 class SoftwareAgent:
     """Represent executed software."""
@@ -234,9 +215,7 @@ class SoftwareAgent:
 
 # set up the default agent
 
-renku_agent = SoftwareAgent(
-    label='renku {0}'.format(__version__), id=version_url
-)
+renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)
 
 
 class SoftwareAgentSchema(JsonLDSchema):
@@ -250,4 +229,4 @@ class SoftwareAgentSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     label = fields.String(rdfs.label)
-    _id = fields.Id(init_name='id')
+    _id = fields.Id(init_name="id")

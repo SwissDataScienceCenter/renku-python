@@ -31,21 +31,26 @@ from marshmallow import EXCLUDE
 from renku.core.models import jsonld
 from renku.core.models.calamus import Nested, fields, oa, prov, rdfs, wfprov
 from renku.core.models.cwl.annotation import AnnotationSchema
-from renku.core.models.entities import Collection, CollectionSchema, \
-    CommitMixin, CommitMixinSchema, Entity, EntitySchema
+from renku.core.models.entities import (
+    Collection,
+    CollectionSchema,
+    CommitMixin,
+    CommitMixinSchema,
+    Entity,
+    EntitySchema,
+)
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
 
 from .agents import Person, PersonSchema, SoftwareAgentSchema, renku_agent
-from .qualified import Association, AssociationSchema, Generation, \
-    GenerationSchema, Usage, UsageSchema
+from .qualified import Association, AssociationSchema, Generation, GenerationSchema, Usage, UsageSchema
 
 
 def _nodes(output, parent=None):
     """Yield nodes from entities."""
     # NOTE refactor so all outputs behave the same
-    entity = getattr(output, 'entity', output)
+    entity = getattr(output, "entity", output)
 
     if isinstance(entity, Collection):
         for member in entity.members:
@@ -56,15 +61,11 @@ def _nodes(output, parent=None):
                 _set_entity_client_commit(member, entity.client, None)
             if isinstance(output, Generation):
                 child = Generation(
-                    activity=output.activity,
-                    entity=member,
-                    role=entity.role if hasattr(entity, 'role') else None
+                    activity=output.activity, entity=member, role=entity.role if hasattr(entity, "role") else None
                 )
             elif isinstance(output, Usage):
                 child = Usage(
-                    activity=output.activity,
-                    entity=member,
-                    role=entity.role if hasattr(entity, 'role') else None
+                    activity=output.activity, entity=member, role=entity.role if hasattr(entity, "role") else None
                 )
             else:
                 child = member
@@ -79,31 +80,27 @@ def _set_entity_client_commit(entity, client, commit):
         entity.client = client
 
     if not entity.commit:
-        revision = 'UNCOMMITTED'
+        revision = "UNCOMMITTED"
         if entity._label:
-            revision = entity._label.rsplit('@')[1]
-        if revision == 'UNCOMMITTED':
+            revision = entity._label.rsplit("@")[1]
+        if revision == "UNCOMMITTED":
             commit = commit
         elif client:
             commit = client.repo.commit(revision)
         entity.commit = commit
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class Activity(CommitMixin, ReferenceMixin):
     """Represent an activity in the repository."""
 
     _id = attr.ib(default=None, kw_only=True)
     _message = attr.ib(kw_only=True)
-    _was_informed_by = attr.ib(kw_only=True, )
+    _was_informed_by = attr.ib(kw_only=True,)
 
     part_of = attr.ib(default=None, kw_only=True)
 
-    _collections = attr.ib(
-        default=attr.Factory(OrderedDict), init=False, kw_only=True
-    )
+    _collections = attr.ib(default=attr.Factory(OrderedDict), init=False, kw_only=True)
     generated = attr.ib(kw_only=True, default=None)
 
     invalidated = attr.ib(kw_only=True, default=None)
@@ -123,9 +120,7 @@ class Activity(CommitMixin, ReferenceMixin):
         for path in self.get_output_paths():
             entity = self._get_activity_entity(path)
 
-            generated.append(
-                Generation(activity=self, entity=entity, role=None)
-            )
+            generated.append(Generation(activity=self, entity=entity, role=None))
         return generated
 
     def get_output_paths(self):
@@ -142,7 +137,7 @@ class Activity(CommitMixin, ReferenceMixin):
         for file_ in commit.diff(commit.parents or NULL_TREE):
             # ignore deleted files (note they appear as ADDED)
             # in this backwards diff
-            if file_.change_type == 'A':
+            if file_.change_type == "A":
                 continue
             path_ = Path(file_.a_path)
 
@@ -152,10 +147,7 @@ class Activity(CommitMixin, ReferenceMixin):
 
             if all([is_dataset, not_refs, does_not_exists]):
                 uid = uuid.UUID(path_.parent.name)
-                path_ = (
-                    Path(self.client.renku_home) / self.client.DATASETS /
-                    str(uid) / self.client.METADATA
-                )
+                path_ = Path(self.client.renku_home) / self.client.DATASETS / str(uid) / self.client.METADATA
 
             index.add(str(path_))
 
@@ -163,10 +155,7 @@ class Activity(CommitMixin, ReferenceMixin):
 
     def _get_activity_entity(self, path, deleted=False):
         """Gets the entity associated with this Activity and path."""
-        client, commit, path = self.client.resolve_in_submodules(
-            self.commit,
-            path,
-        )
+        client, commit, path = self.client.resolve_in_submodules(self.commit, path,)
         output_path = client.path / path
         parents = list(output_path.relative_to(client.path).parents)
 
@@ -176,13 +165,7 @@ class Activity(CommitMixin, ReferenceMixin):
             if str(parent) in self._collections:
                 collection = self._collections[str(parent)]
             else:
-                collection = Collection(
-                    client=client,
-                    commit=commit,
-                    path=str(parent),
-                    members=[],
-                    parent=collection,
-                )
+                collection = Collection(client=client, commit=commit, path=str(parent), members=[], parent=collection,)
                 members.append(collection)
                 self._collections[str(parent)] = collection
 
@@ -193,17 +176,10 @@ class Activity(CommitMixin, ReferenceMixin):
             entity_cls = Collection
 
         # TODO: use a factory method to generate the entity
-        if str(path).startswith(
-            os.path.join(client.renku_home, client.DATASETS)
-        ) and not deleted:
+        if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted:
             entity = client.load_dataset_from_path(path, commit=commit)
         else:
-            entity = entity_cls(
-                commit=commit,
-                client=client,
-                path=str(path),
-                parent=collection,
-            )
+            entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection,)
 
         if collection:
             collection.members.append(entity)
@@ -240,7 +216,7 @@ class Activity(CommitMixin, ReferenceMixin):
         for file_ in self.commit.diff(self.commit.parents or NULL_TREE):
             # only process deleted files (note they appear as ADDED)
             # in this backwards diff
-            if file_.change_type != 'A':
+            if file_.change_type != "A":
                 continue
             path_ = Path(file_.a_path)
 
@@ -256,23 +232,17 @@ class Activity(CommitMixin, ReferenceMixin):
         for file_ in self.commit.diff(self.commit.parents or NULL_TREE):
             # ignore deleted files (note they appear as ADDED)
             # in this backwards diff
-            if file_.change_type == 'A':
+            if file_.change_type == "A":
                 continue
             path_ = Path(file_.a_path)
 
             is_dataset = self.client.DATASETS in str(path_)
             not_refs = LinkReference.REFS not in str(path_)
-            does_not_exists = not (
-                path_.exists() or
-                (path_.is_symlink() and os.path.lexists(path_))
-            )
+            does_not_exists = not (path_.exists() or (path_.is_symlink() and os.path.lexists(path_)))
 
             if all([is_dataset, not_refs, does_not_exists]):
                 uid = uuid.UUID(path_.parent.name)
-                path_ = (
-                    Path(self.client.renku_home) / self.client.DATASETS /
-                    str(uid) / self.client.METADATA
-                )
+                path_ = Path(self.client.renku_home) / self.client.DATASETS / str(uid) / self.client.METADATA
 
             index.add(str(path_))
 
@@ -281,23 +251,21 @@ class Activity(CommitMixin, ReferenceMixin):
     @classmethod
     def generate_id(cls, commitsha):
         """Calculate action ID."""
-        host = 'localhost'
-        if hasattr(cls, 'client'):
-            host = cls.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or 'localhost'
+        host = "localhost"
+        if hasattr(cls, "client"):
+            host = cls.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or "localhost"
 
         return urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            posixpath.join(
-                '/activities', 'commit/{commit}'.format(commit=commitsha)
-            )
+            "https://{host}".format(host=host),
+            posixpath.join("/activities", "commit/{commit}".format(commit=commitsha)),
         )
 
     def default_id(self):
         """Configure calculated ID."""
         if self.commit:
             return self.generate_id(self.commit.hexsha)
-        return self.generate_id('UNCOMMITED')
+        return self.generate_id("UNCOMMITED")
 
     @_message.default
     def default_message(self):
@@ -397,9 +365,9 @@ class Activity(CommitMixin, ReferenceMixin):
 
         schema = ActivitySchema
 
-        if any(str(wfprov.WorkflowRun) in d['@type'] for d in data):
+        if any(str(wfprov.WorkflowRun) in d["@type"] for d in data):
             schema = WorkflowRunSchema
-        elif any(str(wfprov.ProcessRun) in d['@type'] for d in data):
+        elif any(str(wfprov.ProcessRun) in d["@type"] for d in data):
             schema = ProcessRunSchema
 
         return schema(client=client, commit=commit, flattened=True).load(data)
@@ -409,9 +377,7 @@ class Activity(CommitMixin, ReferenceMixin):
         return ActivitySchema(flattened=True).dump(self)
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
 
@@ -446,34 +412,26 @@ class ProcessRun(Activity):
 
                 if plan.inputs:
                     for i in plan.inputs:
-                        _set_entity_client_commit(
-                            i.consumes, self.client, self.commit
-                        )
+                        _set_entity_client_commit(i.consumes, self.client, self.commit)
                 if plan.outputs:
                     for o in plan.outputs:
-                        _set_entity_client_commit(
-                            o.produces, self.client, self.commit
-                        )
+                        _set_entity_client_commit(o.produces, self.client, self.commit)
 
         if self.qualified_usage and self.client and self.commit:
             usages = []
-            revision = '{0}'.format(self.commit)
+            revision = "{0}".format(self.commit)
             for usage in self.qualified_usage:
-                if not usage.commit and '@UNCOMMITTED' in usage._label:
+                if not usage.commit and "@UNCOMMITTED" in usage._label:
                     usages.append(
                         Usage.from_revision(
-                            client=self.client,
-                            path=usage.path,
-                            role=usage.role,
-                            revision=revision,
-                            id=usage._id,
+                            client=self.client, path=usage.path, role=usage.role, revision=revision, id=usage._id,
                         )
                     )
                 else:
                     if not usage.client:
                         usage.entity.set_client(self.client)
                     if not usage.commit:
-                        revision = usage._label.rsplit('@')[1]
+                        revision = usage._label.rsplit("@")[1]
                         usage.entity.commit = self.client.repo.commit(revision)
 
                     usages.append(usage)
@@ -488,15 +446,10 @@ class ProcessRun(Activity):
 
         for output in self.association.plan.outputs:
             entity = Entity.from_revision(
-                self.client,
-                output.produces.path,
-                revision=self.commit,
-                parent=output.produces.parent
+                self.client, output.produces.path, revision=self.commit, parent=output.produces.parent
             )
 
-            generation = Generation(
-                activity=self, role=output.sanitized_id, entity=entity
-            )
+            generation = Generation(activity=self, role=output.sanitized_id, entity=entity)
             generated.append(generation)
         return generated
 
@@ -507,21 +460,14 @@ class ProcessRun(Activity):
     def plugin_annotations(self):
         """Adds ``Annotation``s from plugins to a ``ProcessRun``."""
         from renku.core.plugins.pluginmanager import get_plugin_manager
+
         pm = get_plugin_manager()
 
         results = pm.hook.process_run_annotations(run=self)
         return [a for r in results for a in r]
 
     @classmethod
-    def from_run(
-        cls,
-        run,
-        client,
-        path,
-        commit=None,
-        subprocess_index=None,
-        update_commits=False
-    ):
+    def from_run(cls, run, client, path, commit=None, subprocess_index=None, update_commits=False):
         """Convert a ``Run`` to a ``ProcessRun``."""
         from .agents import SoftwareAgent
 
@@ -533,52 +479,34 @@ class ProcessRun(Activity):
         id_ = ProcessRun.generate_id(commit)
 
         if subprocess_index is not None:
-            id_ = f'{id_}/steps/step_{subprocess_index}'
+            id_ = f"{id_}/steps/step_{subprocess_index}"
 
         for input_ in run.inputs:
-            usage_id = f'{id_}/{input_.sanitized_id}'
+            usage_id = f"{id_}/{input_.sanitized_id}"
             revision = commit
             input_path = input_.consumes.path
             entity = input_.consumes
             if update_commits:
-                revision = client.find_previous_commit(
-                    input_path, revision=commit.hexsha
-                )
+                revision = client.find_previous_commit(input_path, revision=commit.hexsha)
                 entity = Entity.from_revision(client, input_path, revision)
 
-            dependency = Usage(
-                entity=entity, role=input_.sanitized_id, id=usage_id
-            )
+            dependency = Usage(entity=entity, role=input_.sanitized_id, id=usage_id)
 
             usages.append(dependency)
 
         agent = SoftwareAgent.from_commit(commit)
-        association = Association(
-            agent=agent, id=id_ + '/association', plan=run
-        )
+        association = Association(agent=agent, id=id_ + "/association", plan=run)
 
         process_run = cls(
-            id=id_,
-            qualified_usage=usages,
-            association=association,
-            client=client,
-            commit=commit,
-            path=path
+            id=id_, qualified_usage=usages, association=association, client=client, commit=commit, path=path
         )
 
         generated = []
 
         for output in run.outputs:
-            entity = Entity.from_revision(
-                client,
-                output.produces.path,
-                revision=commit,
-                parent=output.produces.parent
-            )
+            entity = Entity.from_revision(client, output.produces.path, revision=commit, parent=output.produces.parent)
 
-            generation = Generation(
-                activity=process_run, role=output.sanitized_id, entity=entity
-            )
+            generation = Generation(activity=process_run, role=output.sanitized_id, entity=entity)
             generated.append(generation)
 
         process_run.generated = generated
@@ -589,10 +517,7 @@ class ProcessRun(Activity):
     @property
     def parents(self):
         """Return parent commits."""
-        return [
-            member.commit for usage in self.qualified_usage
-            for member in usage.entity.entities
-        ] + super().parents
+        return [member.commit for usage in self.qualified_usage for member in usage.entity.entities] + super().parents
 
     @property
     def nodes(self):
@@ -616,17 +541,14 @@ class ProcessRun(Activity):
         if not isinstance(data, list):
             raise ValueError(data)
 
-        return ProcessRunSchema(client=client, commit=commit,
-                                flattened=True).load(data)
+        return ProcessRunSchema(client=client, commit=commit, flattened=True).load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
         return ProcessRunSchema(flattened=True).dump(self)
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class WorkflowRun(ProcessRun):
     """A workflow run typically contains several subprocesses."""
 
@@ -651,9 +573,7 @@ class WorkflowRun(ProcessRun):
         generated = []
 
         for s in run.subprocesses:
-            proc_run = ProcessRun.from_run(
-                s.process, client, path, commit, s.index, update_commits
-            )
+            proc_run = ProcessRun.from_run(s.process, client, path, commit, s.index, update_commits)
             processes.append(proc_run)
             generated.extend(proc_run.generated)
 
@@ -662,23 +582,17 @@ class WorkflowRun(ProcessRun):
         id_ = cls.generate_id(commit)
         input_index = 1
         for input in run.inputs:
-            usage_id = f'{id_}/inputs/{input_index}'
+            usage_id = f"{id_}/inputs/{input_index}"
 
             dependency = Usage.from_revision(
-                client=client,
-                path=input.consumes.path,
-                role=input.sanitized_id,
-                revision=commit,
-                id=usage_id,
+                client=client, path=input.consumes.path, role=input.sanitized_id, revision=commit, id=usage_id,
             )
 
             usages.append(dependency)
             input_index += 1
 
         agent = SoftwareAgent.from_commit(commit)
-        association = Association(
-            agent=agent, id=id_ + '/association', plan=run
-        )
+        association = Association(agent=agent, id=id_ + "/association", plan=run)
 
         all_generated = []
 
@@ -691,17 +605,10 @@ class WorkflowRun(ProcessRun):
                 continue
 
             for e in entity.entities:
-                if (
-                    e.commit is not entity.commit or
-                    any(g.entity._id == e._id for g in all_generated)
-                ):
+                if e.commit is not entity.commit or any(g.entity._id == e._id for g in all_generated):
                     continue
 
-                all_generated.append(
-                    Generation(
-                        activity=generation.activity, entity=e, role=None
-                    )
-                )
+                all_generated.append(Generation(activity=generation.activity, entity=e, role=None))
 
         wf_run = WorkflowRun(
             id=id_,
@@ -711,7 +618,7 @@ class WorkflowRun(ProcessRun):
             association=association,
             client=client,
             commit=commit,
-            path=path
+            path=path,
         )
         return wf_run
 
@@ -757,8 +664,7 @@ class WorkflowRun(ProcessRun):
         if not isinstance(data, list):
             raise ValueError(data)
 
-        return WorkflowRunSchema(client=client, commit=commit,
-                                 flattened=True).load(data)
+        return WorkflowRunSchema(client=client, commit=commit, flattened=True).load(data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
@@ -775,26 +681,14 @@ class ActivitySchema(CommitMixinSchema):
         model = Activity
         unknown = EXCLUDE
 
-    _message = fields.String(rdfs.comment, init_name='message', missing=None)
-    _was_informed_by = fields.List(
-        prov.wasInformedBy, fields.IRI(), init_name='was_informed_by'
-    )
-    generated = Nested(
-        prov.activity, GenerationSchema, reverse=True, many=True, missing=None
-    )
-    invalidated = Nested(
-        prov.wasInvalidatedBy,
-        EntitySchema,
-        reverse=True,
-        many=True,
-        missing=None
-    )
+    _message = fields.String(rdfs.comment, init_name="message", missing=None)
+    _was_informed_by = fields.List(prov.wasInformedBy, fields.IRI(), init_name="was_informed_by")
+    generated = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
+    invalidated = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
     influenced = Nested(prov.influenced, CollectionSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
-    agents = Nested(
-        prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True
-    )
+    agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
 
 
 class ProcessRunSchema(ActivitySchema):
@@ -808,9 +702,7 @@ class ProcessRunSchema(ActivitySchema):
         unknown = EXCLUDE
 
     association = Nested(prov.qualifiedAssociation, AssociationSchema)
-    annotations = Nested(
-        oa.hasTarget, AnnotationSchema, reverse=True, many=True
-    )
+    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     qualified_usage = Nested(prov.qualifiedUsage, UsageSchema, many=True)
 
 
@@ -824,10 +716,4 @@ class WorkflowRunSchema(ProcessRunSchema):
         model = WorkflowRun
         unknown = EXCLUDE
 
-    _processes = Nested(
-        wfprov.wasPartOfWorkflowRun,
-        ProcessRunSchema,
-        reverse=True,
-        many=True,
-        init_name='processes'
-    )
+    _processes = Nested(wfprov.wasPartOfWorkflowRun, ProcessRunSchema, reverse=True, many=True, init_name="processes")

@@ -22,27 +22,21 @@ from renku.cli import cli
 def test_dataset_add(tmpdir, runner, client, subdirectory):
     """Test importing data into a dataset."""
     # create a dataset
-    result = runner.invoke(cli, ['dataset', 'create', 'testing'])
+    result = runner.invoke(cli, ["dataset", "create", "testing"])
     assert 0 == result.exit_code
-    assert 'OK' in result.output
+    assert "OK" in result.output
 
     # Using an extension from gitignore.default defined as *.spec
-    ignored_file = tmpdir.join('my.spec')
-    ignored_file.write('My Specification')
+    ignored_file = tmpdir.join("my.spec")
+    ignored_file.write("My Specification")
 
     # The file should be ignored and command fail
-    result = runner.invoke(
-        cli,
-        ['dataset', 'add', 'testing', ignored_file.strpath],
-        catch_exceptions=False,
-    )
+    result = runner.invoke(cli, ["dataset", "add", "testing", ignored_file.strpath], catch_exceptions=False,)
 
     assert 1 == result.exit_code
 
-    client.repo.git.clean('-dff')
+    client.repo.git.clean("-dff")
 
     # Use the --force ;)
-    result = runner.invoke(
-        cli, ['dataset', 'add', 'testing', '--force', ignored_file.strpath]
-    )
+    result = runner.invoke(cli, ["dataset", "add", "testing", "--force", ignored_file.strpath])
     assert 0 == result.exit_code

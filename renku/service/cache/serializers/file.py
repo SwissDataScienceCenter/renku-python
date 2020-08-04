@@ -32,7 +32,7 @@ class FileSchema(Schema):
     file_id = fields.String(missing=lambda: uuid.uuid4().hex)
     user_id = fields.String(required=True)
 
-    content_type = fields.String(missing='unknown')
+    content_type = fields.String(missing="unknown")
     file_name = fields.String(required=True)
 
     # measured in bytes (comes from stat() - st_size)

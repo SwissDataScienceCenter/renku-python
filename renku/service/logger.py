@@ -25,12 +25,12 @@ from renku.service.config import LOGGER_CONFIG_FILE
 config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
 logging.config.dictConfig(config)
 
-service_log = logging.getLogger('service')
-worker_log = logging.getLogger('worker')
-scheduler_log = logging.getLogger('scheduler')
+service_log = logging.getLogger("service")
+worker_log = logging.getLogger("worker")
+scheduler_log = logging.getLogger("scheduler")
 
 __all__ = [
-    'service_log',
-    'worker_log',
-    'scheduler_log',
+    "service_log",
+    "worker_log",
+    "scheduler_log",
 ]

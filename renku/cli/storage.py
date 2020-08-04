@@ -64,10 +64,7 @@ def storage():
 
 @storage.command()
 @click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=True),
-    nargs=-1,
-    required=True,
+    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )
 @pass_local_client
 def pull(client, paths):
@@ -77,10 +74,7 @@ def pull(client, paths):
 
 @storage.command()
 @click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=True),
-    nargs=-1,
-    required=True,
+    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )
 @pass_local_client
 def clean(client, paths):
@@ -89,26 +83,24 @@ def clean(client, paths):
 
     if untracked_paths:
         click.echo(
-            WARNING + 'These paths were ignored as they are not tracked' +
-            ' in git LFS:\n\t{}\n'.format('\n\t'.join(untracked_paths))
+            WARNING
+            + "These paths were ignored as they are not tracked"
+            + " in git LFS:\n\t{}\n".format("\n\t".join(untracked_paths))
         )
 
     if local_only_paths:
         click.echo(
-            WARNING + 'These paths were ignored as they are not pushed to ' +
-            'a remote with git LFS:\n\t{}\n'.
-            format('\n\t'.join(local_only_paths))
+            WARNING
+            + "These paths were ignored as they are not pushed to "
+            + "a remote with git LFS:\n\t{}\n".format("\n\t".join(local_only_paths))
         )
 
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@storage.command('check-lfs-hook', hidden=True)
+@storage.command("check-lfs-hook", hidden=True)
 @click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=True),
-    nargs=-1,
-    required=True,
+    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )
 @pass_local_client
 def check_lfs_hook(client, paths):
@@ -120,17 +112,14 @@ def check_lfs_hook(client, paths):
 
 
 @storage.command()
-@click.option('--all', is_flag=True, help='Include all branches.')
+@click.option("--all", is_flag=True, help="Include all branches.")
 @pass_local_client
 def check(client, all):
     """Check if large files are committed to Git history."""
     files = client.check_lfs_migrate_info(everything=all)
     if files:
-        message = (
-            WARNING + 'Git history contains large files\n\t' +
-            '\n\t'.join(files)
-        )
+        message = WARNING + "Git history contains large files\n\t" + "\n\t".join(files)
         click.echo(message)
         exit(1)
     else:
-        click.secho('OK', fg='green')
+        click.secho("OK", fg="green")

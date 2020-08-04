@@ -31,8 +31,11 @@ def check_lfs_info(client):
         return True, None
 
     message = (
-        WARNING + 'Git history contains large files - consider moving them ' +
-        'to external storage like git LFS\n\t' + '\n\t'.join(files) + '\n'
+        WARNING
+        + "Git history contains large files - consider moving them "
+        + "to external storage like git LFS\n\t"
+        + "\n\t".join(files)
+        + "\n"
     )
 
     return False, message

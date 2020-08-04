@@ -29,9 +29,7 @@ from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku
 from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class MappedIOStream(object):
     """Represents an IO stream (stdin, stdout, stderr)."""
 
@@ -40,23 +38,19 @@ class MappedIOStream(object):
     _id = attr.ib(default=None, kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
 
-    STREAMS = ['stdin', 'stdout', 'stderr']
+    STREAMS = ["stdin", "stdout", "stderr"]
 
-    stream_type = attr.ib(
-        type=str,
-        kw_only=True,
-    )
+    stream_type = attr.ib(type=str, kw_only=True,)
 
     def default_id(self):
         """Generate an id for a mapped stream."""
-        host = 'localhost'
+        host = "localhost"
         if self.client:
-            host = self.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or host
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
 
         return urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join('/iostreams', self.stream_type)
+            "https://{host}".format(host=host), pathlib.posixpath.join("/iostreams", self.stream_type)
         )
 
     def default_label(self):
@@ -85,46 +79,30 @@ class MappedIOStream(object):
         return MappedIOStreamSchema().dump(self)
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class CommandParameter(object):
     """Represents a parameter for an execution template."""
 
     _id = attr.ib(default=None, kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
 
-    position = attr.ib(
-        default=None,
-        type=int,
-        kw_only=True,
-    )
+    position = attr.ib(default=None, type=int, kw_only=True,)
 
-    prefix = attr.ib(
-        default=None,
-        type=str,
-        kw_only=True,
-    )
+    prefix = attr.ib(default=None, type=str, kw_only=True,)
 
     @property
     def sanitized_id(self):
         """Return ``_id`` sanitized for use in non-jsonld contexts."""
-        if '/steps/' in self._id:
-            return '/'.join(self._id.split('/')[-4:])
-        return '/'.join(self._id.split('/')[-2:])
+        if "/steps/" in self._id:
+            return "/".join(self._id.split("/")[-4:])
+        return "/".join(self._id.split("/")[-2:])
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class CommandArgument(CommandParameter):
     """An argument to a command that is neither input nor output."""
 
-    value = attr.ib(
-        default=None,
-        type=str,
-        kw_only=True,
-    )
+    value = attr.ib(default=None, type=str, kw_only=True,)
 
     @staticmethod
     def generate_id(run_id, position=None):
@@ -133,7 +111,7 @@ class CommandArgument(CommandParameter):
             id_ = str(position)
         else:
             id_ = uuid.uuid4().hex
-        return '{}/arguments/{}'.format(run_id, id_)
+        return "{}/arguments/{}".format(run_id, id_)
 
     def default_label(self):
         """Set default label."""
@@ -142,9 +120,9 @@ class CommandArgument(CommandParameter):
     def to_argv(self):
         """String representation (sames as cmd argument)."""
         if self.prefix:
-            if self.prefix.endswith(' '):
+            if self.prefix.endswith(" "):
                 return [self.prefix[:-1], self.value]
-            return ['{}{}'.format(self.prefix, self.value)]
+            return ["{}{}".format(self.prefix, self.value)]
 
         return [self.value]
 
@@ -168,13 +146,11 @@ class CommandArgument(CommandParameter):
         return CommandArgumentSchema().dump(self)
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class CommandInput(CommandParameter):
     """An input to a command."""
 
-    consumes = attr.ib(kw_only=True, )
+    consumes = attr.ib(kw_only=True,)
 
     mapped_to = attr.ib(default=None, kw_only=True)
 
@@ -185,7 +161,7 @@ class CommandInput(CommandParameter):
             id_ = str(position)
         else:
             id_ = uuid.uuid4().hex
-        return '{}/inputs/{}'.format(run_id, id_)
+        return "{}/inputs/{}".format(run_id, id_)
 
     def default_label(self):
         """Set default label."""
@@ -194,18 +170,18 @@ class CommandInput(CommandParameter):
     def to_argv(self):
         """String representation (sames as cmd argument)."""
         if self.prefix:
-            if self.prefix.endswith(' '):
+            if self.prefix.endswith(" "):
                 return [self.prefix[:-1], self.consumes.path]
-            return ['{}{}'.format(self.prefix, self.consumes.path)]
+            return ["{}{}".format(self.prefix, self.consumes.path)]
 
         return [self.consumes.path]
 
     def to_stream_repr(self):
         """Input stream representation."""
         if not self.mapped_to:
-            return ''
+            return ""
 
-        return ' < {}'.format(self.consumes.path)
+        return " < {}".format(self.consumes.path)
 
     def __attrs_post_init__(self):
         """Post-init hook."""
@@ -227,9 +203,7 @@ class CommandInput(CommandParameter):
         return CommandInputSchema().dump(self)
 
 
-@attr.s(
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class CommandOutput(CommandParameter):
     """An output of a command."""
 
@@ -246,7 +220,7 @@ class CommandOutput(CommandParameter):
             id_ = str(position)
         else:
             id_ = uuid.uuid4().hex
-        return '{}/outputs/{}'.format(run_id, id_)
+        return "{}/outputs/{}".format(run_id, id_)
 
     def default_label(self):
         """Set default label."""
@@ -255,21 +229,21 @@ class CommandOutput(CommandParameter):
     def to_argv(self):
         """String representation (sames as cmd argument)."""
         if self.prefix:
-            if self.prefix.endswith(' '):
+            if self.prefix.endswith(" "):
                 return [self.prefix[:-1], self.produces.path]
-            return ['{}{}'.format(self.prefix, self.produces.path)]
+            return ["{}{}".format(self.prefix, self.produces.path)]
 
         return [self.produces.path]
 
     def to_stream_repr(self):
         """Input stream representation."""
         if not self.mapped_to:
-            return ''
+            return ""
 
-        if self.mapped_to.stream_type == 'stdout':
-            return ' > {}'.format(self.produces.path)
+        if self.mapped_to.stream_type == "stdout":
+            return " > {}".format(self.produces.path)
 
-        return ' 2> {}'.format(self.produces.path)
+        return " 2> {}".format(self.produces.path)
 
     def __attrs_post_init__(self):
         """Post-init hook."""
@@ -301,8 +275,8 @@ class MappedIOStreamSchema(JsonLDSchema):
         model = MappedIOStream
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name='id')
-    _label = fields.String(rdfs.label, init_name='label')
+    _id = fields.Id(init_name="id")
+    _label = fields.String(rdfs.label, init_name="label")
     stream_type = fields.String(renku.streamType)
 
 
@@ -316,8 +290,8 @@ class CommandParameterSchema(JsonLDSchema):
         model = CommandParameter
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name='id')
-    _label = fields.String(rdfs.label, init_name='label')
+    _id = fields.Id(init_name="id")
+    _label = fields.String(rdfs.label, init_name="label")
     position = fields.Integer(renku.position, missing=None)
     prefix = fields.String(renku.prefix, missing=None)
 

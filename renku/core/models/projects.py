@@ -26,30 +26,24 @@ from marshmallow.decorators import pre_dump
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, \
-    schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, schema
 from renku.core.models.datastructures import Collection
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
 
-PROJECT_URL_PATH = 'projects'
+PROJECT_URL_PATH = "projects"
 
 
-@attr.s(
-    slots=True,
-)
+@attr.s(slots=True,)
 class Project(ReferenceMixin):
     """Represent a project."""
 
-    name = attr.ib(default=None, )
+    name = attr.ib(default=None,)
 
-    created = attr.ib(converter=parse_date, )
+    created = attr.ib(converter=parse_date,)
 
-    version = attr.ib(
-        converter=str,
-        default=str(SUPPORTED_PROJECT_VERSION),
-    )
+    version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION),)
 
     client = attr.ib(default=None, kw_only=True)
 
@@ -67,9 +61,7 @@ class Project(ReferenceMixin):
         if not self.creator and self.client:
             if self.client.renku_metadata_path.exists():
                 self.creator = Person.from_commit(
-                    self.client.find_previous_commit(
-                        self.client.renku_metadata_path, return_first=True
-                    ),
+                    self.client.find_previous_commit(self.client.renku_metadata_path, return_first=True),
                 )
             else:
                 # this assumes the project is being newly created
@@ -95,28 +87,27 @@ class Project(ReferenceMixin):
         # Determine the hostname for the resource URIs.
         # If RENKU_DOMAIN is set, it overrides the host from remote.
         # Default is localhost.
-        host = 'localhost'
+        host = "localhost"
 
         if not self.creator:
-            raise ValueError('Project Creator not set')
+            raise ValueError("Project Creator not set")
 
-        owner = self.creator.email.split('@')[0]
+        owner = self.creator.email.split("@")[0]
         name = self.name
 
         if self.client:
             remote = self.client.remote
-            host = self.client.remote.get('host') or host
-            owner = remote.get('owner') or owner
-            name = remote.get('name') or name
-        host = os.environ.get('RENKU_DOMAIN') or host
+            host = self.client.remote.get("host") or host
+            owner = remote.get("owner") or owner
+            name = remote.get("name") or name
+        host = os.environ.get("RENKU_DOMAIN") or host
         if name:
-            name = urllib.parse.quote(name, safe='')
+            name = urllib.parse.quote(name, safe="")
         else:
-            raise ValueError('Project name not set')
+            raise ValueError("Project name not set")
 
         project_url = urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or 'NULL')
+            "https://{host}".format(host=host), pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or "NULL")
         )
         return project_url
 
@@ -175,22 +166,17 @@ class ProjectCollection(Collection):
         :returns: An instance of the newly create project.
         :rtype: renku.core.models.projects.Project
         """
-        data = self._client.api.create_project({'name': name})
+        data = self._client.api.create_project({"name": name})
         return self.Meta.model(data, client=self._client, collection=self)
 
     def __getitem__(self, project_id):
         """Get an existing project by its id."""
-        return self.Meta.model(
-            self._client.api.get_project(project_id),
-            client=self._client,
-            collection=self
-        )
+        return self.Meta.model(self._client.api.get_project(project_id), client=self._client, collection=self)
 
     def __iter__(self):
         """Return all projects."""
         return (
-            self.Meta.model(data, client=self._client, collection=self)
-            for data in self._client.api.list_projects()
+            self.Meta.model(data, client=self._client, collection=self) for data in self._client.api.list_projects()
         )
 
 
@@ -205,15 +191,10 @@ class ProjectSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     name = fields.String(schema.name, missing=None)
-    created = fields.DateTime(
-        schema.dateCreated,
-        missing=None,
-        format='iso',
-        extra_formats=('%Y-%m-%d', )
-    )
+    created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     version = fields.String(schema.schemaVersion, missing=1)
     creator = Nested(schema.creator, PersonSchema, missing=None)
-    _id = fields.Id(init_name='id', missing=None)
+    _id = fields.Id(init_name="id", missing=None)
 
     @pre_dump
     def fix_datetimes(self, obj, many=False, **kwargs):

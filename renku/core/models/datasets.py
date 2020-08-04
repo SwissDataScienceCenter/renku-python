@@ -32,8 +32,7 @@ from marshmallow import EXCLUDE, pre_dump, pre_load
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, \
-    renku, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
 from renku.core.models.entities import Entity, EntitySchema
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
@@ -61,21 +60,20 @@ class Url:
         """Define default value for id field."""
         if self.url_str:
             parsed_result = urllib.parse.urlparse(self.url_str)
-            id_ = urllib.parse.ParseResult('', *parsed_result[1:]).geturl()
+            id_ = urllib.parse.ParseResult("", *parsed_result[1:]).geturl()
         elif self.url_id:
             parsed_result = urllib.parse.urlparse(self.url_id)
-            id_ = urllib.parse.ParseResult('', *parsed_result[1:]).geturl()
+            id_ = urllib.parse.ParseResult("", *parsed_result[1:]).geturl()
         else:
             id_ = str(uuid.uuid4())
 
-        host = 'localhost'
+        host = "localhost"
         if self.client:
-            host = self.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or host
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
 
         return urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join('/urls', quote(id_, safe=''))
+            "https://{host}".format(host=host), pathlib.posixpath.join("/urls", quote(id_, safe=""))
         )
 
     def default_url(self):
@@ -83,9 +81,9 @@ class Url:
         if self.url_str:
             return self.url_str
         elif self.url_id:
-            return {'@id': self.url_id}
+            return {"@id": self.url_id}
         else:
-            raise NotImplementedError('Either url_id or url_str has to be set')
+            raise NotImplementedError("Either url_id or url_str has to be set")
 
     @property
     def value(self):
@@ -95,7 +93,7 @@ class Url:
         elif self.url_id:
             return self.url_id
         else:
-            raise NotImplementedError('Either url_id or url_str has to be set')
+            raise NotImplementedError("Either url_id or url_str has to be set")
 
     def __attrs_post_init__(self):
         """Post-initialize attributes."""
@@ -140,12 +138,12 @@ class CreatorMixin:
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ', '.join(creator.name for creator in self.creators)
+        return ", ".join(creator.name for creator in self.creators)
 
     @property
     def creators_full_csv(self):
         """Comma-separated list of creators with full identity."""
-        return ', '.join(creator.full_identity for creator in self.creators)
+        return ", ".join(creator.full_identity for creator in self.creators)
 
 
 def _extract_doi(value):
@@ -156,31 +154,17 @@ def _extract_doi(value):
     return value
 
 
-@attr.s(
-    slots=True,
-)
+@attr.s(slots=True,)
 class DatasetTag(object):
     """Represents a Tag of an instance of a dataset."""
 
     client = attr.ib(default=None, kw_only=True)
 
-    name = attr.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-    )
+    name = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
 
-    description = attr.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-    )
+    description = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
 
-    commit = attr.ib(
-        default=None,
-        kw_only=True,
-        validator=instance_of(str),
-    )
+    commit = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
 
     created = attr.ib(converter=parse_date, kw_only=True)
 
@@ -196,16 +180,15 @@ class DatasetTag(object):
     def default_id(self):
         """Define default value for id field."""
 
-        host = 'localhost'
+        host = "localhost"
         if self.client:
-            host = self.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or host
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
 
-        name = '{0}@{1}'.format(self.name, self.commit)
+        name = "{0}@{1}".format(self.name, self.commit)
 
         return urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join('/datasettags', quote(name, safe=''))
+            "https://{host}".format(host=host), pathlib.posixpath.join("/datasettags", quote(name, safe=""))
         )
 
     def __attrs_post_init__(self):
@@ -228,9 +211,7 @@ class DatasetTag(object):
         return DatasetTagSchema().dump(self)
 
 
-@attr.s(
-    slots=True,
-)
+@attr.s(slots=True,)
 class Language:
     """Represent a language of an object."""
 
@@ -314,7 +295,7 @@ class DatasetFile(Entity):
         parsed_id = urllib.parse.urlparse(self._id)
 
         if not parsed_id.scheme:
-            self._id = 'file://{}'.format(self._id)
+            self._id = "file://{}".format(self._id)
 
     @classmethod
     def from_jsonld(cls, data):
@@ -336,7 +317,7 @@ def _convert_dataset_files(value):
     coll = value
 
     if isinstance(coll, dict):  # compatibility with previous versions
-        if any([key.startswith('@') for key in coll.keys()]):
+        if any([key.startswith("@") for key in coll.keys()]):
             return [DatasetFile.from_jsonld(coll)]
         else:
             coll = value.values()
@@ -370,11 +351,20 @@ def _convert_keyword(keywords):
 class Dataset(Entity, CreatorMixin, ReferenceMixin):
     """Represent a dataset."""
 
-    SUPPORTED_SCHEMES = ('', 'file', 'http', 'https', 'git+https', 'git+ssh')
+    SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
 
     EDITABLE_FIELDS = [
-        'creators', 'date_published', 'description', 'in_language', 'keywords',
-        'license', 'title', 'url', 'version', 'date_created', 'files'
+        "creators",
+        "date_published",
+        "description",
+        "in_language",
+        "keywords",
+        "license",
+        "title",
+        "url",
+        "version",
+        "date_created",
+        "files",
     ]
 
     _id = attr.ib(default=None, kw_only=True)
@@ -384,15 +374,11 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
     description = attr.ib(default=None, kw_only=True)
 
-    identifier = attr.ib(
-        default=attr.Factory(uuid.uuid4), kw_only=True, converter=_extract_doi
-    )
+    identifier = attr.ib(default=attr.Factory(uuid.uuid4), kw_only=True, converter=_extract_doi)
 
-    in_language = attr.ib(
-        default=None, converter=_convert_language, kw_only=True
-    )
+    in_language = attr.ib(default=None, converter=_convert_language, kw_only=True)
 
-    keywords = attr.ib(converter=_convert_keyword, kw_only=True, default='')
+    keywords = attr.ib(converter=_convert_keyword, kw_only=True, default="")
 
     license = attr.ib(default=None, kw_only=True)
 
@@ -404,9 +390,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
     date_created = attr.ib(converter=parse_date, kw_only=True)
 
-    files = attr.ib(
-        factory=list, converter=_convert_dataset_files, kw_only=True
-    )
+    files = attr.ib(factory=list, converter=_convert_dataset_files, kw_only=True)
 
     tags = attr.ib(factory=list, converter=_convert_dataset_tags, kw_only=True)
 
@@ -431,7 +415,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         """UUID part of identifier."""
         if is_doi(self.identifier):
             return self.identifier
-        return self.identifier.split('/')[-1]
+        return self.identifier.split("/")[-1]
 
     @property
     def short_id(self):
@@ -443,17 +427,17 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
     @property
     def creators_csv(self):
         """Comma-separated list of creators associated with dataset."""
-        return ', '.join(creator.name for creator in self.creators)
+        return ", ".join(creator.name for creator in self.creators)
 
     @property
     def keywords_csv(self):
         """Comma-separated list of keywords associated with dataset."""
-        return ', '.join(self.keywords)
+        return ", ".join(self.keywords)
 
     @property
     def tags_csv(self):
         """Comma-separated list of tags associated with dataset."""
-        return ','.join(tag.name for tag in self.tags)
+        return ",".join(tag.name for tag in self.tags)
 
     @property
     def editable(self):
@@ -467,12 +451,12 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         """Directory where dataset files are stored."""
         if self.client:
             return Path(self.client.data_dir) / self.name
-        return ''
+        return ""
 
     def contains_any(self, files):
         """Check if files are already within a dataset."""
         for file_ in files:
-            if self.find_file(file_['path']):
+            if self.find_file(file_["path"]):
                 return True
         return False
 
@@ -531,10 +515,10 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
                 raise FileExistsError
 
         renamed = attr.evolve(self, files=files)
-        setattr(renamed, '__reference__', self.__reference__)
+        setattr(renamed, "__reference__", self.__reference__)
 
         if self.__source__:
-            setattr(renamed, '__source__', self.__source__.copy())
+            setattr(renamed, "__source__", self.__source__.copy())
 
         return renamed
 
@@ -553,17 +537,14 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         # Determine the hostname for the resource URIs.
         # If RENKU_DOMAIN is set, it overrides the host from remote.
         # Default is localhost.
-        host = 'localhost'
+        host = "localhost"
         if self.client:
-            host = self.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or host
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
 
         # always set the id by the identifier
         self._id = urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join(
-                '/datasets', quote(self.identifier, safe='')
-            )
+            "https://{host}".format(host=host), pathlib.posixpath.join("/datasets", quote(self.identifier, safe=""))
         )
 
         self.url = self._id
@@ -581,26 +562,18 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         if self.files and self.client is not None:
             for dataset_file in self.files:
                 path = Path(dataset_file.path)
-                file_exists = (
-                    path.exists() or
-                    (path.is_symlink() and os.path.lexists(path))
-                )
+                file_exists = path.exists() or (path.is_symlink() and os.path.lexists(path))
 
                 if dataset_file.client is None and file_exists:
                     client, _, _ = self.client.resolve_in_submodules(
-                        self.client.find_previous_commit(
-                            dataset_file.path, revision='HEAD'
-                        ),
-                        dataset_file.path,
+                        self.client.find_previous_commit(dataset_file.path, revision="HEAD"), dataset_file.path,
                     )
 
                     dataset_file.client = client
 
         try:
             if self.client:
-                self.commit = self.client.find_previous_commit(
-                    self.path, revision=self.commit or 'HEAD'
-                )
+                self.commit = self.client.find_previous_commit(self.path, revision=self.commit or "HEAD")
         except KeyError:
             # if with_dataset is used, the dataset is not committed yet
             pass
@@ -661,7 +634,7 @@ class UrlSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     url = fields.Uri(schema.url, missing=None)
-    _id = fields.Id(init_name='id', missing=None)
+    _id = fields.Id(init_name="id", missing=None)
 
 
 class DatasetTagSchema(JsonLDSchema):
@@ -677,21 +650,16 @@ class DatasetTagSchema(JsonLDSchema):
     name = fields.String(schema.name)
     description = fields.String(schema.description)
     commit = fields.String(schema.location)
-    created = fields.DateTime(
-        schema.startDate,
-        missing=None,
-        format='iso',
-        extra_formats=('%Y-%m-%d', )
-    )
+    created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     dataset = fields.String(schema.about)
-    _id = fields.Id(init_name='id')
+    _id = fields.Id(init_name="id")
 
     @pre_dump
     def fix_datetimes(self, obj, many=False, **kwargs):
         """Pre dump hook."""
         if many:
             return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
-        object.__setattr__(obj, 'created', self._fix_timezone(obj.created))
+        object.__setattr__(obj, "created", self._fix_timezone(obj.created))
         return obj
 
 
@@ -719,17 +687,10 @@ class DatasetFileSchema(EntitySchema):
         model = DatasetFile
         unknown = EXCLUDE
 
-    added = fields.DateTime(
-        schema.dateCreated, format='iso', extra_formats=('%Y-%m-%d', )
-    )
+    added = fields.DateTime(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
-    based_on = Nested(
-        schema.isBasedOn,
-        'DatasetFileSchema',
-        missing=None,
-        propagate_client=False
-    )
+    based_on = Nested(schema.isBasedOn, "DatasetFileSchema", missing=None, propagate_client=False)
     external = fields.Boolean(renku.external, missing=False)
 
     @pre_dump
@@ -751,31 +712,25 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
         model = Dataset
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name='id', missing=None)
-    _label = fields.String(rdfs.label, init_name='label', missing=None)
+    _id = fields.Id(init_name="id", missing=None)
+    _label = fields.String(rdfs.label, init_name="label", missing=None)
     date_published = fields.DateTime(
         schema.datePublished,
         missing=None,
         allow_none=True,
-        format='%Y-%m-%d',
-        extra_formats=('iso', '%Y-%m-%dT%H:%M:%S')
+        format="%Y-%m-%d",
+        extra_formats=("iso", "%Y-%m-%dT%H:%M:%S"),
     )
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
-    keywords = fields.List(
-        schema.keywords, fields.String(), missing=None, allow_none=True
-    )
+    keywords = fields.List(schema.keywords, fields.String(), missing=None, allow_none=True)
     license = fields.Uri(schema.license, missing=None, allow_none=True)
     title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
     date_created = fields.DateTime(
-        schema.dateCreated,
-        missing=None,
-        allow_none=True,
-        format='iso',
-        extra_formats=('%Y-%m-%d', )
+        schema.dateCreated, missing=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",)
     )
     files = Nested(schema.hasPart, DatasetFileSchema, many=True)
     tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
@@ -786,26 +741,24 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     def fix_files_context(self, data, **kwargs):
         """Fix DatasetFile context for _label and external fields."""
         context = None
-        if '@context' not in data:
+        if "@context" not in data:
             return data
 
-        context = data['@context']
-        if not isinstance(context, dict) or 'files' not in context:
+        context = data["@context"]
+        if not isinstance(context, dict) or "files" not in context:
             return data
 
-        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
+        context.setdefault("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
 
-        files = data['@context']['files']
-        if not isinstance(files, dict) or '@context' not in files:
+        files = data["@context"]["files"]
+        if not isinstance(files, dict) or "@context" not in files:
             return data
 
-        context = files['@context']
-        context.setdefault('rdfs', 'http://www.w3.org/2000/01/rdf-schema#')
-        context.setdefault('_label', 'rdfs:label')
-        context.setdefault('external', 'renku:external')
-        context.setdefault(
-            'renku', 'https://swissdatasciencecenter.github.io/renku-ontology#'
-        )
+        context = files["@context"]
+        context.setdefault("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        context.setdefault("_label", "rdfs:label")
+        context.setdefault("external", "renku:external")
+        context.setdefault("renku", "https://swissdatasciencecenter.github.io/renku-ontology#")
 
         return data
 
@@ -813,6 +766,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     def migrate_types(self, data, **kwargs):
         """Fix types."""
         from renku.core.utils.migrate import migrate_types
+
         return migrate_types(data)
 
     @pre_dump
@@ -828,10 +782,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
 def is_dataset_name_valid(name):
     """A valid name is a valid Git reference name with no /."""
     # TODO make name an RFC 3986 compatible and migrate old projects
-    return (
-        name and LinkReference.check_ref_format(name, no_slashes=True) and
-        '/' not in name
-    )
+    return name and LinkReference.check_ref_format(name, no_slashes=True) and "/" not in name
 
 
 def generate_default_name(dataset_title, dataset_version):
@@ -841,13 +792,13 @@ def generate_default_name(dataset_title, dataset_version):
     if is_dataset_name_valid(dataset_title):
         return dataset_title
 
-    name = re.sub(r'\s+', ' ', dataset_title)
+    name = re.sub(r"\s+", " ", dataset_title)
     name = name.lower()[:24]
 
     def to_unix(el):
         """Parse string to unix friendly name."""
-        parsed_ = re.sub('[^a-zA-Z0-9]', '', re.sub(r'\s+', ' ', el))
-        parsed_ = re.sub(' .+', '.', parsed_.lower())
+        parsed_ = re.sub("[^a-zA-Z0-9]", "", re.sub(r"\s+", " ", el))
+        parsed_ = re.sub(" .+", ".", parsed_.lower())
         return parsed_
 
     name = [to_unix(el) for el in name.split()]
@@ -855,6 +806,6 @@ def generate_default_name(dataset_title, dataset_version):
 
     if dataset_version:
         version = to_unix(dataset_version)
-        return '{0}_{1}'.format('_'.join(name), version)
+        return "{0}_{1}".format("_".join(name), version)
 
-    return '_'.join(name)
+    return "_".join(name)

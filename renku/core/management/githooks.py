@@ -23,7 +23,7 @@ from pathlib import Path
 import pkg_resources
 from git.index.fun import hook_path as get_hook_path
 
-HOOKS = ('pre-commit', )
+HOOKS = ("pre-commit",)
 
 
 def install(client, force):
@@ -33,9 +33,7 @@ def install(client, force):
         hook_path = Path(get_hook_path(hook, client.repo.git_dir))
         if hook_path.exists():
             if not force:
-                warning_messages.append(
-                    'Hook already exists. Skipping {0}'.format(str(hook_path))
-                )
+                warning_messages.append("Hook already exists. Skipping {0}".format(str(hook_path)))
                 continue
             else:
                 hook_path.unlink()
@@ -43,11 +41,7 @@ def install(client, force):
         # Make sure the hooks directory exists.
         hook_path.parent.mkdir(parents=True, exist_ok=True)
 
-        Path(hook_path).write_bytes(
-            pkg_resources.resource_string(
-                'renku.data', '{hook}.sh'.format(hook=hook)
-            )
-        )
+        Path(hook_path).write_bytes(pkg_resources.resource_string("renku.data", "{hook}.sh".format(hook=hook)))
         hook_path.chmod(hook_path.stat().st_mode | stat.S_IEXEC)
 
     return warning_messages

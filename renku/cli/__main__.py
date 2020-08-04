@@ -21,6 +21,6 @@ import sys
 
 from renku.cli import cli
 
-if __name__ == '__main__':  # pragma: no cover
-    sys.argv[0] = 'python -m renku.cli'
+if __name__ == "__main__":  # pragma: no cover
+    sys.argv[0] = "python -m renku.cli"
     cli()

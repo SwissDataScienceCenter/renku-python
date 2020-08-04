@@ -38,13 +38,13 @@ def _safe_path(filepath, can_be_cwl=False):
         filepath = str(filepath)
 
     # Should not be in ignore paths.
-    if filepath in {'.gitignore', '.gitattributes'}:
+    if filepath in {".gitignore", ".gitattributes"}:
         return False
 
     # Ignore everything in .renku ...
-    if filepath.startswith('.renku'):
+    if filepath.startswith(".renku"):
         # ... unless it can be a CWL.
-        if can_be_cwl and filepath.startswith('.renku/workflow/'):
+        if can_be_cwl and filepath.startswith(".renku/workflow/"):
             return True
         return False
 
@@ -79,14 +79,10 @@ class Graph(object):
         for commit in reversed(self._sorted_commits):
             try:
                 activity = self.activities[commit]
-                nodes.update(((node.commit, node.path), node)
-                             for node in reversed(list(activity.nodes)))
+                nodes.update(((node.commit, node.path), node) for node in reversed(list(activity.nodes)))
 
                 if isinstance(activity, ProcessRun):
-                    self.generated.update({
-                        generation.entity._id: generation
-                        for generation in activity.generated
-                    })
+                    self.generated.update({generation.entity._id: generation for generation in activity.generated})
 
             except KeyError:
                 pass
@@ -150,15 +146,14 @@ class Graph(object):
             return _from_entity(node.entity)
         elif isinstance(node, Entity):
             # Link files and directories and generations.
-            return ([node.parent] if node.parent is not None else
-                    []) + _from_entity(node, check_parents=False)
+            return ([node.parent] if node.parent is not None else []) + _from_entity(node, check_parents=False)
         elif isinstance(node, Process) or isinstance(node, Run):
             # warnings.warn('Called on run {0}'.format(node), stacklevel=2)
             return self.parents(node.activity)
         elif isinstance(node, ProcessRun):
             return node.qualified_usage
         elif isinstance(node, Activity):
-            warnings.warn('Called parents on {0}'.format(node), stacklevel=2)
+            warnings.warn("Called parents on {0}".format(node), stacklevel=2)
             return []
 
         raise NotImplementedError(node)
@@ -204,30 +199,25 @@ class Graph(object):
         """Return a relative path based on the client configuration."""
         return os.path.relpath(str(self.client.path / path))
 
-    def dependencies(self, revision='HEAD', paths=None):
+    def dependencies(self, revision="HEAD", paths=None):
         """Return dependencies from a revision or paths."""
         result = []
 
         if paths:
             paths = (self.normalize_path(path) for path in paths)
         else:
-            if revision == 'HEAD':
+            if revision == "HEAD":
                 index = self.client.repo.index
             else:
                 from git import IndexFile
+
                 index = IndexFile.from_tree(self.client.repo, revision)
 
             paths = (path for path, _ in index.entries.keys())
 
         for path in paths:
             try:
-                result.append(
-                    Usage.from_revision(
-                        self.client,
-                        path=path,
-                        revision=revision,
-                    )
-                )
+                result.append(Usage.from_revision(self.client, path=path, revision=revision,))
             except KeyError:
                 continue
 
@@ -264,9 +254,7 @@ class Graph(object):
             if isinstance(activity, ProcessRun):
                 for entity in activity.qualified_usage:
                     for member in entity.entities:
-                        parent_activities = self.client.activities_for_paths(
-                            member.path, revision='HEAD'
-                        )
+                        parent_activities = self.client.activities_for_paths(member.path, revision="HEAD")
                         for a in parent_activities:
                             if a.commit and a.commit not in visited:
                                 self.activities[a.commit] = a
@@ -275,25 +263,15 @@ class Graph(object):
                         usage_paths.append(member.path)
                 for entity in activity.generated:
                     for member in entity.entities:
-                        if (
-                            all(member.path != d.path
-                                for d in dependencies) and
-                            any(
-                                u.startswith(member.path) for u in usage_paths
-                            )
+                        if all(member.path != d.path for d in dependencies) and any(
+                            u.startswith(member.path) for u in usage_paths
                         ):
-                            dependencies = [
-                                d for d in dependencies
-                                if not d.path.startswith(member.path)
-                            ]
+                            dependencies = [d for d in dependencies if not d.path.startswith(member.path)]
                             dependencies.append(member)
 
         from renku.core.models.sort import topological
 
-        commit_nodes = {
-            commit: activity.parents
-            for commit, activity in self.activities.items()
-        }
+        commit_nodes = {commit: activity.parents for commit, activity in self.activities.items()}
 
         # add dependencies between processes
         for activity in self.activities.values():
@@ -304,8 +282,7 @@ class Graph(object):
                     if other_activity == activity:
                         continue
                     if any(
-                        g.path == usage.path and
-                        g.commit.hexsha == usage.commit.hexsha
+                        g.path == usage.path and g.commit.hexsha == usage.commit.hexsha
                         for g in other_activity.generated
                     ):
                         parents = commit_nodes[activity.commit]
@@ -318,19 +295,14 @@ class Graph(object):
 
         return dependencies
 
-    def build(
-        self, revision='HEAD', paths=None, dependencies=None, can_be_cwl=False
-    ):
+    def build(self, revision="HEAD", paths=None, dependencies=None, can_be_cwl=False):
         """Build graph from paths and/or revision."""
         interval = Range.rev_parse(self.client.repo, revision)
 
         if dependencies is None:
             dependencies = self.dependencies(revision=revision, paths=paths)
 
-        ignore = {
-            commit
-            for commit in self.client.repo.iter_commits(interval.start)
-        } if interval.start else set()
+        ignore = {commit for commit in self.client.repo.iter_commits(interval.start)} if interval.start else set()
         dependencies = self.process_dependencies(dependencies, visited=ignore)
 
         return {
@@ -344,31 +316,21 @@ class Graph(object):
         """Return all output paths."""
         paths = set()
         for activity in self.activities.values():
-            if (
-                isinstance(activity, ProcessRun) and activity.association and
-                activity.association.plan
-            ):
-                paths |= {
-                    o.produces.path
-                    for o in activity.association.plan.outputs
-                    if o.produces.path
-                }
+            if isinstance(activity, ProcessRun) and activity.association and activity.association.plan:
+                paths |= {o.produces.path for o in activity.association.plan.outputs if o.produces.path}
         return paths
 
-    def build_status(self, revision='HEAD', can_be_cwl=False):
+    def build_status(self, revision="HEAD", can_be_cwl=False):
         """Return files from the revision grouped by their status."""
         status = {
-            'up-to-date': {},
-            'outdated': {},
-            'multiple-versions': {},
-            'deleted': {},
+            "up-to-date": {},
+            "outdated": {},
+            "multiple-versions": {},
+            "deleted": {},
         }
 
         dependencies = self.dependencies(revision=revision)
-        current_files = self.build(
-            dependencies=dependencies,
-            can_be_cwl=can_be_cwl,
-        )
+        current_files = self.build(dependencies=dependencies, can_be_cwl=can_be_cwl,)
 
         # TODO check only outputs
         paths = {}
@@ -384,20 +346,17 @@ class Graph(object):
         # First find all up-to-date nodes.
         for node in paths.values():
             # for node in current_files:
-            need_update = [
-                dependency for dependency in self.need_update(node)
-                if dependency.path != node.path
-            ]
+            need_update = [dependency for dependency in self.need_update(node) if dependency.path != node.path]
 
             if need_update:
-                status['outdated'][node.path] = need_update
+                status["outdated"][node.path] = need_update
             else:
-                status['up-to-date'][node.path] = node.commit
+                status["up-to-date"][node.path] = node.commit
 
         # Merge all versions of used inputs in outdated file.
         multiple_versions = defaultdict(set)
 
-        for need_update in status['outdated'].values():
+        for need_update in status["outdated"].values():
             for node in need_update:
                 multiple_versions[node.path].add(node)
 
@@ -405,20 +364,16 @@ class Graph(object):
             if node.path in multiple_versions:
                 multiple_versions[node.path].add(node)
 
-        status['multiple-versions'] = {
-            key: value
-            for key, value in multiple_versions.items() if len(value) > 1
-        }
+        status["multiple-versions"] = {key: value for key, value in multiple_versions.items() if len(value) > 1}
 
         # Build a list of used files that have been deleted.
         current_paths = {node.path for node in current_files}
-        status['deleted'] = {
+        status["deleted"] = {
             node.path: node
             for node in self.nodes
-            if _safe_path(node.path, can_be_cwl=can_be_cwl) and
-            node.path not in current_paths and
-            not ((self.client.path / node.path).exists() or
-                 (self.client.path / node.path).is_dir())
+            if _safe_path(node.path, can_be_cwl=can_be_cwl)
+            and node.path not in current_paths
+            and not ((self.client.path / node.path).exists() or (self.client.path / node.path).is_dir())
         }
         return status
 
@@ -445,29 +400,20 @@ class Graph(object):
         if parent is None or not isinstance(parent, ProcessRun):
             raise errors.InvalidOutputPath(
                 'The file "{0}" was not created by a renku command. \n\n'
-                'Check the file history using: git log --follow "{0}"'.format(
-                    node.path
-                )
+                'Check the file history using: git log --follow "{0}"'.format(node.path)
             )
 
         return set(parent.generated)
 
     def as_workflow(
-        self,
-        input_paths=None,
-        output_paths=None,
-        outputs=None,
-        use_latest=True,
+        self, input_paths=None, output_paths=None, outputs=None, use_latest=True,
     ):
         """Serialize graph to renku ``Run`` workflow.
 
         :param global_step_outputs: Make all step outputs global.
         """
         if output_paths is None:
-            output_paths = {
-                node.path
-                for node in outputs if _safe_path(node.path)
-            }
+            output_paths = {node.path for node in outputs if _safe_path(node.path)}
 
         processes = set()
         stack = []
@@ -479,16 +425,13 @@ class Graph(object):
             if (node.commit, node.path) not in output_keys:
                 continue
 
-            assert hasattr(node, 'activity'), node
+            assert hasattr(node, "activity"), node
             assert isinstance(node.activity, ProcessRun)
 
             plan = node.activity.association.plan
             process_run = plan.activity
 
-            if (
-                input_paths and
-                any(g.path in input_paths for g in process_run.generated)
-            ):
+            if input_paths and any(g.path in input_paths for g in process_run.generated):
                 continue
 
             if process_run not in processes:
@@ -498,10 +441,7 @@ class Graph(object):
         while stack:
             action = stack.pop()
 
-            if (
-                not hasattr(action, 'association') or
-                not hasattr(action.association.plan, 'inputs')
-            ):
+            if not hasattr(action, "association") or not hasattr(action.association.plan, "inputs"):
                 continue
 
             for inp in action.association.plan.inputs:
@@ -511,13 +451,12 @@ class Graph(object):
                 if input_paths and path in input_paths:
                     continue
 
-                node = nodes.get((dependency.commit, dependency.path),
-                                 dependency)
+                node = nodes.get((dependency.commit, dependency.path), dependency)
 
                 if isinstance(node, Generation):
                     process_run = node.activity
                 elif isinstance(node, Collection) and node.parent:
-                    raise NotImplementedError('Can not connect subdirectory')
+                    raise NotImplementedError("Can not connect subdirectory")
                 else:
                     process_run = None
 

@@ -106,12 +106,10 @@ def show():
 
 
 @show.command()
-@click.option('--revision', default='HEAD')
-@click.option('-f', '--flat', is_flag=True)
-@click.option('-v', '--verbose', is_flag=True)
-@click.argument(
-    'paths', type=click.Path(exists=True, dir_okay=False), nargs=-1
-)
+@click.option("--revision", default="HEAD")
+@click.option("-f", "--flat", is_flag=True)
+@click.option("-v", "--verbose", is_flag=True)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client(requires_migration=True)
 def siblings(client, revision, flat, verbose, paths):
     """Show siblings for given paths."""
@@ -143,21 +141,18 @@ def siblings(client, revision, flat, verbose, paths):
         result_sets = new_result
         result_sets.append(candidate)
 
-    result = [[sibling_name(graph, node, verbose) for node in r]
-              for r in result_sets]
+    result = [[sibling_name(graph, node, verbose) for node in r] for r in result_sets]
 
     if flat:
-        click.echo('\n'.join({n for r in result for n in r}))
+        click.echo("\n".join({n for r in result for n in r}))
     else:
-        click.echo('\n---\n'.join('\n'.join(r) for r in result))
+        click.echo("\n---\n".join("\n".join(r) for r in result))
 
 
 @show.command()
-@click.option('--revision', default='HEAD')
+@click.option("--revision", default="HEAD")
 @click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=False),
-    nargs=-1,
+    "paths", type=click.Path(exists=True, dir_okay=False), nargs=-1,
 )
 @pass_local_client(requires_migration=True)
 @click.pass_context
@@ -171,16 +166,9 @@ def inputs(ctx, client, revision, paths):
     graph = Graph(client)
     paths = set(paths)
     nodes = graph.build(revision=revision)
-    commits = {
-        node.activity.commit if hasattr(node, 'activity') else node.commit
-        for node in nodes
-    }
-    commits |= {
-        node.activity.commit
-        for node in nodes if hasattr(node, 'activity')
-    }
-    candidates = {(node.commit, node.path)
-                  for node in nodes if not paths or node.path in paths}
+    commits = {node.activity.commit if hasattr(node, "activity") else node.commit for node in nodes}
+    commits |= {node.activity.commit for node in nodes if hasattr(node, "activity")}
+    candidates = {(node.commit, node.path) for node in nodes if not paths or node.path in paths}
 
     input_paths = set()
 
@@ -190,24 +178,20 @@ def inputs(ctx, client, revision, paths):
         if isinstance(activity, ProcessRun):
             for usage in activity.qualified_usage:
                 for entity in usage.entity.entities:
-                    path = str((usage.client.path / entity.path).relative_to(
-                        client.path
-                    ))
+                    path = str((usage.client.path / entity.path).relative_to(client.path))
                     usage_key = (entity.commit, entity.path)
 
                     if path not in input_paths and usage_key in candidates:
                         input_paths.add(path)
 
-    click.echo('\n'.join(graph._format_path(path) for path in input_paths))
+    click.echo("\n".join(graph._format_path(path) for path in input_paths))
     ctx.exit(0 if not paths or len(input_paths) == len(paths) else 1)
 
 
 @show.command()
-@click.option('--revision', default='HEAD')
+@click.option("--revision", default="HEAD")
 @click.argument(
-    'paths',
-    type=click.Path(exists=True, dir_okay=True),
-    nargs=-1,
+    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1,
 )
 @pass_local_client(requires_migration=True)
 @click.pass_context
@@ -220,13 +204,14 @@ def outputs(ctx, client, revision, paths):
     filter = graph.build(paths=paths, revision=revision)
     output_paths = graph.output_paths
 
-    click.echo('\n'.join(graph._format_path(path) for path in output_paths))
+    click.echo("\n".join(graph._format_path(path) for path in output_paths))
 
     if paths:
         if not output_paths:
             ctx.exit(1)
 
         from renku.core.models.datastructures import DirectoryTree
+
         tree = DirectoryTree.from_list(item.path for item in filter)
 
         for output in output_paths:
@@ -240,6 +225,6 @@ def sibling_name(graph, node, verbose=False):
     name = graph._format_path(node.path)
 
     if verbose:
-        name = '{} @ {}'.format(name, node.commit)
+        name = "{} @ {}".format(name, node.commit)
 
     return name

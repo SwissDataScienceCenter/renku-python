@@ -33,12 +33,12 @@ def worker(queue_list):
 
     def build_worker():
         """Build worker."""
-        log_level = os.getenv('RQ_WORKER_LOG_LEVEL', 'WARNING')
+        log_level = os.getenv("RQ_WORKER_LOG_LEVEL", "WARNING")
         setup_loghandlers(log_level)
-        log.info('worker log level set to {}'.format(log_level))
+        log.info("worker log level set to {}".format(log_level))
 
         rq_worker = Worker(queue_list, connection=WorkerQueues.connection)
-        log.info('worker created')
+        log.info("worker created")
 
         return rq_worker
 
@@ -49,10 +49,7 @@ def check_queues(queue_list):
     """Check if listening on specified queues is possible."""
     for queue in queue_list:
         if queue not in QUEUES:
-            err_msg = (
-                'invalid queue name: {0}\n\n'
-                'valid queue names: \n{1}'.format(queue, '\n'.join(QUEUES))
-            )
+            err_msg = "invalid queue name: {0}\n\n" "valid queue names: \n{1}".format(queue, "\n".join(QUEUES))
             raise UsageError(err_msg)
 
 
@@ -60,20 +57,17 @@ def start_worker(queue_list):
     """Start worker."""
     check_queues(queue_list)
     with worker(queue_list) as rq_worker:
-        log.info('running worker')
+        log.info("running worker")
         rq_worker.work()
 
 
-if __name__ == '__main__':
-    queues = os.getenv('RENKU_SVC_WORKER_QUEUES')
-    log.info('working on queues: {}'.format(queues))
+if __name__ == "__main__":
+    queues = os.getenv("RENKU_SVC_WORKER_QUEUES")
+    log.info("working on queues: {}".format(queues))
 
     if not queues:
-        raise ConfigurationError((
-            'Worker queues not specified. '
-            'Please, set RENKU_SVC_WORKER_QUEUES environment variable.'
-        ))
+        raise ConfigurationError(
+            ("Worker queues not specified. " "Please, set RENKU_SVC_WORKER_QUEUES environment variable.")
+        )
 
-    start_worker([
-        queue_name.strip() for queue_name in queues.strip().split(',')
-    ])
+    start_worker([queue_name.strip() for queue_name in queues.strip().split(",")])
