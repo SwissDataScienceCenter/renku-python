@@ -23,10 +23,8 @@ from datetime import datetime
 from rq_scheduler import Scheduler
 from rq_scheduler.utils import setup_loghandlers
 
-from renku.service.jobs.cleanup import cache_files_cleanup, \
-    cache_project_cleanup
-from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
-    CLEANUP_QUEUE_PROJECTS, WorkerQueues
+from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
+from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, CLEANUP_QUEUE_PROJECTS, WorkerQueues
 from renku.service.logger import scheduler_log as log
 
 
@@ -34,10 +32,10 @@ from renku.service.logger import scheduler_log as log
 def schedule():
     """Creates scheduler object."""
     build_scheduler = Scheduler(connection=WorkerQueues.connection)
-    log.info('scheduler created')
+    log.info("scheduler created")
 
-    cleanup_interval = int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 60))
-    log.info('cleanup interval set to {}'.format(cleanup_interval))
+    cleanup_interval = int(os.getenv("RENKU_SVC_CLEANUP_INTERVAL", 60))
+    log.info("cleanup interval set to {}".format(cleanup_interval))
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
@@ -55,9 +53,9 @@ def schedule():
         result_ttl=cleanup_interval + 1,
     )
 
-    log_level = os.getenv('RQ_WORKER_LOG_LEVEL', 'INFO')
+    log_level = os.getenv("RQ_WORKER_LOG_LEVEL", "INFO")
     setup_loghandlers(log_level)
-    log.info('log level set to {}'.format(log_level))
+    log.info("log level set to {}".format(log_level))
 
     yield build_scheduler
 
@@ -65,9 +63,9 @@ def schedule():
 def start_scheduler():
     """Build and start scheduler."""
     with schedule() as scheduler:
-        log.info('running scheduler')
+        log.info("running scheduler")
         scheduler.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     start_scheduler()

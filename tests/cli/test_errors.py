@@ -26,23 +26,24 @@ from renku.cli import cli
 
 
 @pytest.mark.parametrize(
-    'cmd', [
-        ['config'],
-        ['dataset'],
-        ['doctor'],
-        ['githooks'],
-        ['log'],
-        ['migrate'],
-        ['mv'],
-        ['rerun'],
-        ['rm'],
-        ['run'],
-        ['show'],
-        ['status'],
-        ['storage'],
-        ['update'],
-        ['workflow'],
-    ]
+    "cmd",
+    [
+        ["config"],
+        ["dataset"],
+        ["doctor"],
+        ["githooks"],
+        ["log"],
+        ["migrate"],
+        ["mv"],
+        ["rerun"],
+        ["rm"],
+        ["run"],
+        ["show"],
+        ["status"],
+        ["storage"],
+        ["update"],
+        ["workflow"],
+    ],
 )
 def test_cli_initialization_err(cmd, runner):
     """Test correct exception raise within non-renku repository."""
@@ -54,40 +55,41 @@ def test_cli_initialization_err(cmd, runner):
             assert 2 == result.exit_code
 
             expected_output = (
-                'Error: `.` is not a renku repository.\n'
-                'To initialize this as a '
-                'renku repository use: `renku init`\n'
+                "Error: `.` is not a renku repository.\n"
+                "To initialize this as a "
+                "renku repository use: `renku init`\n"
             )
             assert expected_output == result.output
 
 
 @pytest.mark.parametrize(
-    'cmd',
+    "cmd",
     [
         # NOTE: Clone command covered through integration tests.
-        ['config', '--help'],
-        ['dataset', '--help'],
-        ['doctor', '--help'],
-        ['githooks', '--help'],
-        ['log', '--help'],
-        ['migrate', '--help'],
-        ['mv', '--help'],
-        ['rerun', '--help'],
-        ['rm', '--help'],
-        ['run', '--help'],
-        ['show', '--help'],
-        ['status', '--help'],
-        ['storage', '--help'],
-        ['update', '--help'],
-        ['workflow', '--help'],
-        ['init', '--help'],
-        ['help'],
-        ['--help'],
-    ]
+        ["config", "--help"],
+        ["dataset", "--help"],
+        ["doctor", "--help"],
+        ["githooks", "--help"],
+        ["log", "--help"],
+        ["migrate", "--help"],
+        ["mv", "--help"],
+        ["rerun", "--help"],
+        ["rm", "--help"],
+        ["run", "--help"],
+        ["show", "--help"],
+        ["status", "--help"],
+        ["storage", "--help"],
+        ["update", "--help"],
+        ["workflow", "--help"],
+        ["init", "--help"],
+        ["help"],
+        ["--help"],
+    ],
 )
 def test_cli_initialization_no_err_help(cmd, runner):
     """Test allowed commands within non-renku repository."""
     from renku.core.utils.contexts import chdir
+
     sys.argv = cmd
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
@@ -97,9 +99,7 @@ def test_cli_initialization_no_err_help(cmd, runner):
 
 def test_file_lock_timeout_error(project, runner):
     """Test file lock timeout."""
-    with FileLock('.renku.lock'):
-        result = runner.invoke(
-            cli, ['dataset', 'import', '10.5281/zenodo.3715335']
-        )
+    with FileLock(".renku.lock"):
+        result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.3715335"])
 
-        assert 'Unable to acquire lock.' in result.output
+        assert "Unable to acquire lock." in result.output

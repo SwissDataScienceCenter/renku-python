@@ -25,10 +25,10 @@ import attr
 import click
 import filelock
 
-APP_NAME = 'Renku'
+APP_NAME = "Renku"
 """Application name for storing configuration."""
 
-RENKU_HOME = '.renku'
+RENKU_HOME = ".renku"
 """Project directory name."""
 
 
@@ -41,9 +41,9 @@ def _get_global_config_dir():
 class ConfigManagerMixin:
     """Client for handling global configuration."""
 
-    CONFIG_NAME = 'renku.ini'
+    CONFIG_NAME = "renku.ini"
 
-    DATA_DIR_CONFIG_KEY = 'data_directory'
+    DATA_DIR_CONFIG_KEY = "data_directory"
 
     _global_config_dir = _get_global_config_dir()
 
@@ -69,13 +69,11 @@ class ConfigManagerMixin:
     @property
     def global_config_lock(self):
         """Create a user-level config lock."""
-        lock_file = '{0}/{1}.lock'.format(
-            self.global_config_dir, self.CONFIG_NAME
-        )
+        lock_file = "{0}/{1}.lock".format(self.global_config_dir, self.CONFIG_NAME)
 
         import logging
 
-        logging.getLogger('filelock').setLevel(logging.ERROR)
+        logging.getLogger("filelock").setLevel(logging.ERROR)
 
         return filelock.FileLock(lock_file, timeout=0)
 
@@ -102,35 +100,30 @@ class ConfigManagerMixin:
         Global configuration is updated only when :global_only: is True,
         otherwise, updates are written to local project configuration
         """
-        filepath = self.global_config_path if global_only else \
-            self.local_config_path
+        filepath = self.global_config_path if global_only else self.local_config_path
 
         if global_only:
             os.umask(0)
             fd = os.open(filepath, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
             with self.global_config_lock:
-                with open(fd, 'w+') as file:
+                with open(fd, "w+") as file:
                     config.write(file)
         else:
-            with open(filepath, 'w+') as file:
+            with open(filepath, "w+") as file:
                 config.write(file)
 
         return self.load_config(local_only=True, global_only=True)
 
     def get_config(self, local_only=False, global_only=False):
         """Read all configurations."""
-        config = self.load_config(
-            local_only=local_only, global_only=global_only
-        )
+        config = self.load_config(local_only=local_only, global_only=global_only)
         with StringIO() as output:
             config.write(output)
             return output.getvalue()
 
     def get_value(self, section, key, local_only=False, global_only=False):
         """Get value from specified section and key."""
-        config = self.load_config(
-            local_only=local_only, global_only=global_only
-        )
+        config = self.load_config(local_only=local_only, global_only=global_only)
         return config.get(section, key, fallback=None)
 
     def set_value(self, section, key, value, global_only=False):
@@ -140,9 +133,7 @@ class ConfigManagerMixin:
         if local_only:
             self._check_config_is_not_readonly(section, key)
 
-        config = self.load_config(
-            local_only=local_only, global_only=global_only
-        )
+        config = self.load_config(local_only=local_only, global_only=global_only)
         if section in config:
             config[section][key] = value
         else:
@@ -157,9 +148,7 @@ class ConfigManagerMixin:
         if local_only:
             self._check_config_is_not_readonly(section, key)
 
-        config = self.load_config(
-            local_only=local_only, global_only=global_only
-        )
+        config = self.load_config(local_only=local_only, global_only=global_only)
         if section in config:
             value = config[section].pop(key, None)
 
@@ -171,16 +160,15 @@ class ConfigManagerMixin:
 
     def _check_config_is_not_readonly(self, section, key):
         from renku.core import errors
-        readonly_configs = {'renku': [self.DATA_DIR_CONFIG_KEY]}
+
+        readonly_configs = {"renku": [self.DATA_DIR_CONFIG_KEY]}
 
         value = self.get_value(section, key, local_only=True)
         if not value:
             return
 
         if key in readonly_configs.get(section, []):
-            raise errors.ParameterError(
-                f'Configuration {key} cannot be modified.'
-            )
+            raise errors.ParameterError(f"Configuration {key} cannot be modified.")
 
 
 CONFIG_LOCAL_PATH = [Path(RENKU_HOME) / ConfigManagerMixin.CONFIG_NAME]

@@ -24,5 +24,5 @@ class ProjectNotFound(RenkuException):
 
     def __init__(self, project_id):
         """Build a custom message."""
-        message = (f'project_id "{project_id}" not found')
+        message = f'project_id "{project_id}" not found'
         super(ProjectNotFound, self).__init__(message)

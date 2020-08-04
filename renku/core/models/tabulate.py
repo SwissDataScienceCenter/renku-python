@@ -30,24 +30,21 @@ def format_cell(cell, datetime_fmt=None):
             cell = cell.astimezone()
         return cell.strftime(datetime_fmt)
     elif isinstance(cell, int):
-        return f'{cell:,}'
+        return f"{cell:,}"
     return cell
 
 
-def tabulate(collection, headers, datetime_fmt='%Y-%m-%d %H:%M:%S', **kwargs):
+def tabulate(collection, headers, datetime_fmt="%Y-%m-%d %H:%M:%S", **kwargs):
     """Pretty-print a collection."""
     if isinstance(headers, dict):
         attrs = headers.keys()
         # if mapping is not specified keep original
-        names = [
-            key if value is None else value for key, value in headers.items()
-        ]
+        names = [key if value is None else value for key, value in headers.items()]
     else:
         attrs = names = headers
-    table = [(
-        format_cell(cell, datetime_fmt=datetime_fmt)
-        for cell in _to_list(attrgetter(*attrs)(c))
-    ) for c in collection]
+    table = [
+        (format_cell(cell, datetime_fmt=datetime_fmt) for cell in _to_list(attrgetter(*attrs)(c))) for c in collection
+    ]
     return tblte(table, headers=[h.upper() for h in names], **kwargs)
 
 

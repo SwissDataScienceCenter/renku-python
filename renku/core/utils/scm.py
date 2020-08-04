@@ -21,4 +21,4 @@ import re
 
 def strip_and_lower(input):
     """Adjust chars to make the input compatible as scm source."""
-    return re.sub(r'\s', r'-', input.strip()).lower()
+    return re.sub(r"\s", r"-", input.strip()).lower()

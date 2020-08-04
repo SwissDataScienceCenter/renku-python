@@ -41,12 +41,12 @@ def doctor_check(client):
             ok, problems_ = getattr(checks, check)(client)
         except Exception:
             ok = False
-            tb = '\n\t'.join(traceback.format_exc().split('\n'))
-            problems_ = f'{ERROR}Exception raised when running {check}\n\t{tb}'
+            tb = "\n\t".join(traceback.format_exc().split("\n"))
+            problems_ = f"{ERROR}Exception raised when running {check}\n\t{tb}"
 
         is_ok &= ok
 
         if problems_:
             problems.append(problems_)
 
-    return is_ok, '\n'.join(problems)
+    return is_ok, "\n".join(problems)

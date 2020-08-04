@@ -25,8 +25,7 @@ import weakref
 import attr
 
 from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, \
-    schema, wfprov
+from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
 
@@ -37,9 +36,9 @@ def _str_or_none(data):
 
 @jsonld.s(
     context={
-        'prov': 'http://www.w3.org/ns/prov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        'schema': 'http://schema.org/',
+        "prov": "http://www.w3.org/ns/prov#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "schema": "http://schema.org/",
     },
     cmp=False,
 )
@@ -48,18 +47,11 @@ class CommitMixin:
 
     commit = attr.ib(default=None, kw_only=True)
     client = attr.ib(default=None, kw_only=True)
-    path = jsonld.ib(
-        context='prov:atLocation',
-        default=None,
-        kw_only=True,
-        converter=_str_or_none
-    )
+    path = jsonld.ib(context="prov:atLocation", default=None, kw_only=True, converter=_str_or_none)
 
-    _id = jsonld.ib(default=None, context='@id', kw_only=True)
-    _label = jsonld.ib(context='rdfs:label', kw_only=True)
-    _project = jsonld.ib(
-        context='schema:isPartOf', type=Project, kw_only=True, default=None
-    )
+    _id = jsonld.ib(default=None, context="@id", kw_only=True)
+    _label = jsonld.ib(context="rdfs:label", kw_only=True)
+    _project = jsonld.ib(context="schema:isPartOf", type=Project, kw_only=True, default=None)
 
     @property
     def submodules(self):
@@ -72,22 +64,20 @@ class CommitMixin:
         if self.commit:
             hexsha = self.commit.hexsha
         else:
-            hexsha = 'UNCOMMITTED'
+            hexsha = "UNCOMMITTED"
 
         # Determine the hostname for the resource URIs.
         # If RENKU_DOMAIN is set, it overrides the host from remote.
         # Default is localhost.
-        host = 'localhost'
+        host = "localhost"
         if self.client:
-            host = self.client.remote.get('host') or host
-        host = os.environ.get('RENKU_DOMAIN') or host
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
 
         # always set the id by the identifier
         return urllib.parse.urljoin(
-            'https://{host}'.format(host=host),
-            pathlib.posixpath.join(
-                '/blob/{hexsha}/{path}'.format(hexsha=hexsha, path=self.path)
-            )
+            "https://{host}".format(host=host),
+            pathlib.posixpath.join("/blob/{hexsha}/{path}".format(hexsha=hexsha, path=self.path)),
         )
 
     @_label.default
@@ -96,13 +86,13 @@ class CommitMixin:
         if self.commit:
             hexsha = self.commit.hexsha
         else:
-            hexsha = 'UNCOMMITTED'
+            hexsha = "UNCOMMITTED"
         if self.path:
             path = self.path
             if self.client and os.path.isabs(path):
                 path = pathlib.Path(path).relative_to(self.client.path)
-            return '{path}@{hexsha}'.format(hexsha=hexsha, path=path)
-        return '{hexsha}'.format(hexsha=hexsha, self=self)
+            return "{path}@{hexsha}".format(hexsha=hexsha, path=path)
+        return "{hexsha}".format(hexsha=hexsha, self=self)
 
     def __attrs_post_init__(self):
         """Post-init hook."""
@@ -120,15 +110,12 @@ class CommitMixin:
 
 
 @jsonld.s(
-    type=[
-        'prov:Entity',
-        'wfprov:Artifact',
-    ],
+    type=["prov:Entity", "wfprov:Artifact",],
     context={
-        'schema': 'http://schema.org/',
-        'prov': 'http://www.w3.org/ns/prov#',
-        'wfprov': 'http://purl.org/wf4ever/wfprov#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#'
+        "schema": "http://schema.org/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "wfprov": "http://purl.org/wf4ever/wfprov#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     },
     cmp=False,
 )
@@ -136,46 +123,26 @@ class Entity(CommitMixin):
     """Represent a data value or item."""
 
     _parent = attr.ib(
-        default=None,
-        kw_only=True,
-        converter=lambda value: weakref.ref(value)
-        if value is not None else None,
+        default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None,
     )
 
     @classmethod
-    def from_revision(
-        cls,
-        client,
-        path,
-        revision='HEAD',
-        parent=None,
-        find_previous=True,
-        **kwargs
-    ):
+    def from_revision(cls, client, path, revision="HEAD", parent=None, find_previous=True, **kwargs):
         """Return dependency from given path and revision."""
         if find_previous:
             revision = client.find_previous_commit(path, revision=revision)
 
-        client, commit, path = client.resolve_in_submodules(
-            revision,
-            path,
-        )
+        client, commit, path = client.resolve_in_submodules(revision, path,)
 
         path_ = client.path / path
-        if path != '.' and path_.is_dir():
-            entity = Collection(
-                client=client,
-                commit=commit,
-                path=path,
-                members=[],
-                parent=parent,
-            )
+        if path != "." and path_.is_dir():
+            entity = Collection(client=client, commit=commit, path=path, members=[], parent=parent,)
 
             files_in_commit = commit.stats.files
 
             # update members with commits
             for member in path_.iterdir():
-                if member.name == '.gitkeep':
+                if member.name == ".gitkeep":
                     continue
 
                 member_path = str(member.relative_to(client.path))
@@ -190,25 +157,14 @@ class Entity(CommitMixin):
 
                     entity.members.append(
                         cls.from_revision(
-                            client,
-                            member_path,
-                            commit,
-                            parent=entity,
-                            find_previous=find_previous,
-                            **kwargs
+                            client, member_path, commit, parent=entity, find_previous=find_previous, **kwargs
                         )
                     )
                 except KeyError:
                     pass
 
         else:
-            entity = cls(
-                client=client,
-                commit=commit,
-                path=str(path),
-                parent=parent,
-                **kwargs
-            )
+            entity = cls(client=client, commit=commit, path=str(path), parent=parent, **kwargs)
 
         return entity
 
@@ -220,11 +176,8 @@ class Entity(CommitMixin):
     @property
     def entities(self):
         """Yield itself."""
-        if (
-            self.client and not self.commit and self._label and
-            '@UNCOMMITTED' not in self._label
-        ):
-            self.commit = self.client.repo.commit(self._label.rsplit('@')[1])
+        if self.client and not self.commit and self._label and "@UNCOMMITTED" not in self._label:
+            self.commit = self.client.repo.commit(self._label.rsplit("@")[1])
 
         yield self
 
@@ -234,20 +187,12 @@ class Entity(CommitMixin):
 
 
 @jsonld.s(
-    type=[
-        'prov:Collection',
-    ],
-    context={
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
-    cmp=False,
+    type=["prov:Collection",], context={"prov": "http://www.w3.org/ns/prov#",}, cmp=False,
 )
 class Collection(Entity):
     """Represent a directory with files."""
 
-    members = jsonld.container.list(
-        type=Entity, context='prov:hadMember', kw_only=True
-    )
+    members = jsonld.container.list(type=Entity, context="prov:hadMember", kw_only=True)
 
     def default_members(self):
         """Generate default members as entities from current path."""
@@ -263,16 +208,11 @@ class Collection(Entity):
 
         members = []
         for path in dir_path.iterdir():
-            if path.name == '.gitkeep':
+            if path.name == ".gitkeep":
                 continue  # ignore empty directories in Git repository
             cls = Collection if path.is_dir() else Entity
             members.append(
-                cls(
-                    commit=self.commit,
-                    client=self.client,
-                    path=str(path.relative_to(self.client.path)),
-                    parent=self,
-                )
+                cls(commit=self.commit, client=self.client, path=str(path.relative_to(self.client.path)), parent=self,)
             )
         return members
 
@@ -284,11 +224,8 @@ class Collection(Entity):
                 member.client = self.client
             yield from member.entities
 
-        if (
-            self.client and not self.commit and self._label and
-            '@UNCOMMITTED' not in self._label
-        ):
-            self.commit = self.client.repo.commit(self._label.rsplit('@')[1])
+        if self.client and not self.commit and self._label and "@UNCOMMITTED" not in self._label:
+            self.commit = self.client.repo.commit(self._label.rsplit("@")[1])
 
         yield self
 
@@ -319,11 +256,9 @@ class CommitMixinSchema(JsonLDSchema):
         model = CommitMixin
 
     path = fields.String(prov.atLocation)
-    _id = fields.Id(init_name='id')
-    _label = fields.String(rdfs.label, init_name='label', missing=None)
-    _project = fields.Nested(
-        schema.isPartOf, ProjectSchema, init_name='project', missing=None
-    )
+    _id = fields.Id(init_name="id")
+    _label = fields.String(rdfs.label, init_name="label", missing=None)
+    _project = fields.Nested(schema.isPartOf, ProjectSchema, init_name="project", missing=None)
 
 
 class EntitySchema(CommitMixinSchema):

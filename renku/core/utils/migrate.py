@@ -21,19 +21,15 @@
 def migrate_types(data):
     """Fix data types."""
     type_mapping = {
-        'dcterms:creator': ['prov:Person', 'schema:Person'],
-        'schema:Person': ['prov:Person', 'schema:Person'],
-        str(sorted(['foaf:Project', 'prov:Location'])): [
-            'prov:Location', 'schema:Project'
-        ],
-        'schema:DigitalDocument': [
-            'prov:Entity', 'schema:DigitalDocument', 'wfprov:Artifact'
-        ]
+        "dcterms:creator": ["prov:Person", "schema:Person"],
+        "schema:Person": ["prov:Person", "schema:Person"],
+        str(sorted(["foaf:Project", "prov:Location"])): ["prov:Location", "schema:Project"],
+        "schema:DigitalDocument": ["prov:Entity", "schema:DigitalDocument", "wfprov:Artifact"],
     }
 
     def replace_types(data):
         for key, value in data.items():
-            if key == '@type':
+            if key == "@type":
                 if not isinstance(value, str):
                     value = str(sorted(value))
                 new_type = type_mapping.get(value)

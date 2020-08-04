@@ -35,16 +35,12 @@ def _migrate_datasets(client):
     paths = (client.path / client.renku_datasets_path).rglob(client.METADATA)
 
     for path in paths:
-        with path.open('r') as dataset:
+        with path.open("r") as dataset:
             content = dataset.read()
 
         content = re.sub(r'"([^"])+_prov:([^"]+)":', '"\1_prov_\2":', content)
-        content = re.sub(
-            r'"([^"])+_wfprov:([^"]+)":', '"\1_wfprov_\2":', content
-        )
-        content = re.sub(
-            r'"([^"])+_schema:([^"]+)":', '"\1_schema_\2":', content
-        )
+        content = re.sub(r'"([^"])+_wfprov:([^"]+)":', '"\1_wfprov_\2":', content)
+        content = re.sub(r'"([^"])+_schema:([^"]+)":', '"\1_schema_\2":', content)
 
-        with path.open('w') as dataset:
+        with path.open("w") as dataset:
             dataset.write(content)

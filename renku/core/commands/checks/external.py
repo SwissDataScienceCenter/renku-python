@@ -36,11 +36,12 @@ def check_missing_external_files(client):
         return True, None
 
     problems = (
-        '\n' + WARNING + 'There are missing external files.\n'
-        '  (make sure that external paths are accessible)' + '\n\n\t' +
-        '\n\t'.join(
-            click.style(path, fg='yellow') + ' -> ' +
-            click.style(target, fg='red') for path, target in missing
-        ) + '\n'
+        "\n" + WARNING + "There are missing external files.\n"
+        "  (make sure that external paths are accessible)"
+        + "\n\n\t"
+        + "\n\t".join(
+            click.style(path, fg="yellow") + " -> " + click.style(target, fg="red") for path, target in missing
+        )
+        + "\n"
     )
     return False, problems
