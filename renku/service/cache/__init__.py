@@ -23,10 +23,7 @@ from renku.service.cache.users import UserManagementCache
 from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
-class ServiceCache(
-    FileManagementCache, ProjectManagementCache, JobManagementCache,
-    UserManagementCache
-):
+class ServiceCache(FileManagementCache, ProjectManagementCache, JobManagementCache, UserManagementCache):
     """Service cache manager."""
 
     pass
@@ -44,4 +41,4 @@ def make_cache():
 
 cache = make_cache()
 
-__all__ = ['cache', 'ServiceCache']
+__all__ = ["cache", "ServiceCache"]

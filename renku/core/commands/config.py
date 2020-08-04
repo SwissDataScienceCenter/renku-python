@@ -24,34 +24,18 @@ from .client import pass_local_client
 
 def _split_section_and_key(key):
     """Return a tuple with config section and key."""
-    parts = key.split('.')
+    parts = key.split(".")
     if len(parts) > 1:
-        return 'renku "{0}"'.format(parts[0]), '.'.join(parts[1:])
-    return 'renku', key
+        return 'renku "{0}"'.format(parts[0]), ".".join(parts[1:])
+    return "renku", key
 
 
-@pass_local_client(
-    clean=False,
-    requires_migration=True,
-    commit=True,
-    commit_only=CONFIG_LOCAL_PATH,
-    commit_empty=False
-)
-def update_config(
-    client,
-    key,
-    *,
-    value=None,
-    remove=False,
-    global_only=False,
-    commit_message=None
-):
+@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=CONFIG_LOCAL_PATH, commit_empty=False)
+def update_config(client, key, *, value=None, remove=False, global_only=False, commit_message=None):
     """Add, update, or remove configuration values."""
     section, section_key = _split_section_and_key(key)
     if remove:
-        value = client.remove_value(
-            section, section_key, global_only=global_only
-        )
+        value = client.remove_value(section, section_key, global_only=global_only)
         if value is None:
             raise errors.ParameterError('Key "{}" not found.'.format(key))
     else:
@@ -64,12 +48,7 @@ def read_config(client, key, local_only, global_only):
     """Read configuration."""
     if key:
         section, section_key = _split_section_and_key(key)
-        value = client.get_value(
-            section,
-            section_key,
-            local_only=local_only,
-            global_only=global_only
-        )
+        value = client.get_value(section, section_key, local_only=local_only, global_only=global_only)
         if value is None:
             raise errors.ParameterError('Key "{}" not found.'.format(key))
         return value

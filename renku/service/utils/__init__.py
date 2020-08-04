@@ -24,21 +24,18 @@ from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 def make_project_path(user, project):
     """Construct full path for cached project."""
-    valid_user = user and 'user_id' in user
-    valid_project = project and 'owner' in project and 'name' in project
+    valid_user = user and "user_id" in user
+    valid_project = project and "owner" in project and "name" in project
 
     if valid_user and valid_project:
-        return (
-            CACHE_PROJECTS_PATH / user['user_id'] / project['owner'] /
-            project['name']
-        )
+        return CACHE_PROJECTS_PATH / user["user_id"] / project["owner"] / project["name"]
 
 
 def make_new_project_path(user, project):
     """Adjust parameters new project path."""
     new_project = {
-        'owner': project['project_namespace'],
-        'name': project['project_name_stripped'],
+        "owner": project["project_namespace"],
+        "name": project["project_name_stripped"],
     }
 
     return make_project_path(user, new_project)
@@ -46,13 +43,11 @@ def make_new_project_path(user, project):
 
 def make_file_path(user, cached_file):
     """Construct full path for cache file."""
-    valid_user = user and 'user_id' in user
-    valid_file = cached_file and 'file_name' in cached_file
+    valid_user = user and "user_id" in user
+    valid_file = cached_file and "file_name" in cached_file
 
     if valid_user and valid_file:
-        return (
-            CACHE_UPLOADS_PATH / user['user_id'] / cached_file['relative_path']
-        )
+        return CACHE_UPLOADS_PATH / user["user_id"] / cached_file["relative_path"]
 
 
 def valid_file(user, cached_file):
@@ -60,13 +55,11 @@ def valid_file(user, cached_file):
     file_path = make_file_path(user, cached_file)
 
     if file_path.exists():
-        cached_file['is_dir'] = file_path.is_dir()
+        cached_file["is_dir"] = file_path.is_dir()
         return cached_file
 
 
-def new_repo_push(
-    repo_path, source_url, source_name='origin', source_branch='master'
-):
+def new_repo_push(repo_path, source_url, source_name="origin", source_branch="master"):
     """Push a new repo to origin."""
     repo = Repo(repo_path)
     repo.create_remote(source_name, source_url)

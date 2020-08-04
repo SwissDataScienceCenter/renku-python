@@ -49,15 +49,15 @@ def githooks():
 
 
 @githooks.command()
-@click.option('--force', is_flag=True, help='Override existing hooks.')
+@click.option("--force", is_flag=True, help="Override existing hooks.")
 def install(force):
     """Install Git hooks."""
     install_githooks(force)
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
 @githooks.command()
 def uninstall():
     """Uninstall Git hooks."""
     uninstall_githooks()
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")

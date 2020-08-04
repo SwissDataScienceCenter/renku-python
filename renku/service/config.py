@@ -30,36 +30,30 @@ INVALID_HEADERS_ERROR_CODE = -32601
 INVALID_PARAMS_ERROR_CODE = -32602
 INTERNAL_FAILURE_ERROR_CODE = -32603
 
-SERVICE_NAME = 'Renku Service'
-OPENAPI_VERSION = '2.0'
-API_VERSION = 'v1'
+SERVICE_NAME = "Renku Service"
+OPENAPI_VERSION = "2.0"
+API_VERSION = "v1"
 
-SWAGGER_URL = '/api/docs'
-API_SPEC_URL = os.getenv(
-    'RENKU_SVC_SWAGGER_URL', '/api/{0}/spec'.format(API_VERSION)
-)
+SWAGGER_URL = "/api/docs"
+API_SPEC_URL = os.getenv("RENKU_SVC_SWAGGER_URL", "/api/{0}/spec".format(API_VERSION))
 
-PROJECT_CLONE_DEPTH_DEFAULT = int(os.getenv('PROJECT_CLONE_DEPTH_DEFAULT', 1))
-TEMPLATE_CLONE_DEPTH_DEFAULT = int(
-    os.getenv('TEMPLATE_CLONE_DEPTH_DEFAULT', 0)
-)
+PROJECT_CLONE_DEPTH_DEFAULT = int(os.getenv("PROJECT_CLONE_DEPTH_DEFAULT", 1))
+TEMPLATE_CLONE_DEPTH_DEFAULT = int(os.getenv("TEMPLATE_CLONE_DEPTH_DEFAULT", 0))
 
-CACHE_DIR = os.getenv(
-    'CACHE_DIR', os.path.realpath(tempfile.TemporaryDirectory().name)
-)
-CACHE_UPLOADS_PATH = Path(CACHE_DIR) / Path('uploads')
+CACHE_DIR = os.getenv("CACHE_DIR", os.path.realpath(tempfile.TemporaryDirectory().name))
+CACHE_UPLOADS_PATH = Path(CACHE_DIR) / Path("uploads")
 CACHE_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
-CACHE_PROJECTS_PATH = Path(CACHE_DIR) / Path('projects')
+CACHE_PROJECTS_PATH = Path(CACHE_DIR) / Path("projects")
 CACHE_PROJECTS_PATH.mkdir(parents=True, exist_ok=True)
 
-TAR_ARCHIVE_CONTENT_TYPE = 'application/x-tar'
-ZIP_ARCHIVE_CONTENT_TYPE = 'application/zip'
+TAR_ARCHIVE_CONTENT_TYPE = "application/x-tar"
+ZIP_ARCHIVE_CONTENT_TYPE = "application/zip"
 
 SUPPORTED_ARCHIVES = [
     TAR_ARCHIVE_CONTENT_TYPE,
     ZIP_ARCHIVE_CONTENT_TYPE,
 ]
 
-SERVICE_PREFIX = os.getenv('CORE_SERVICE_PREFIX', '/')
-LOGGER_CONFIG_FILE = Path('renku') / 'service' / 'logging.yaml'
+SERVICE_PREFIX = os.getenv("CORE_SERVICE_PREFIX", "/")
+LOGGER_CONFIG_FILE = Path("renku") / "service" / "logging.yaml"

@@ -17,8 +17,7 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.management.migrate import is_migration_required, \
-    is_project_unsupported, migrate
+from renku.core.management.migrate import is_migration_required, is_project_unsupported, migrate
 
 from .client import pass_local_client
 

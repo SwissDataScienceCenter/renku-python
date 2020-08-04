@@ -23,6 +23,6 @@ from renku.core.management import LocalClient
 from renku.version import __version__
 
 __all__ = (
-    'LocalClient',
-    '__version__',
+    "LocalClient",
+    "__version__",
 )

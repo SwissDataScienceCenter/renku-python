@@ -368,16 +368,25 @@ import click
 import requests
 from tqdm import tqdm
 
-from renku.core.commands.dataset import add_file, create_dataset, \
-    dataset_remove, edit_dataset, export_dataset, file_unlink, \
-    import_dataset, list_datasets, list_files, list_tags, \
-    remove_dataset_tags, tag_dataset_with_client, update_datasets
+from renku.core.commands.dataset import (
+    add_file,
+    create_dataset,
+    dataset_remove,
+    edit_dataset,
+    export_dataset,
+    file_unlink,
+    import_dataset,
+    list_datasets,
+    list_files,
+    list_tags,
+    remove_dataset_tags,
+    tag_dataset_with_client,
+    update_datasets,
+)
 from renku.core.commands.echo import WARNING, progressbar
-from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, \
-    DATASET_FILES_FORMATS
+from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
-from renku.core.commands.format.datasets import DATASETS_COLUMNS, \
-    DATASETS_FORMATS
+from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 from renku.core.management.datasets import DownloadProgressCallback
 
@@ -387,9 +396,9 @@ def prompt_access_token(exporter):
 
     :return: The new access token
     """
-    text_prompt = ('You must configure an access token\n')
-    text_prompt += 'Create one at: {0}\n'.format(exporter.access_token_url())
-    text_prompt += 'Access token'
+    text_prompt = "You must configure an access token\n"
+    text_prompt += "Create one at: {0}\n".format(exporter.access_token_url())
+    text_prompt += "Access token"
 
     return click.prompt(text_prompt, type=str)
 
@@ -399,17 +408,12 @@ def prompt_tag_selection(tags):
     # Prompt user to select a tag to export
     tags = sorted(tags, key=lambda t: t.created)
 
-    text_prompt = 'Tag to export: \n\n<HEAD>\t[1]\n'
+    text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
 
-    text_prompt += '\n'.join(
-        '{}\t[{}]'.format(t.name, i) for i, t in enumerate(tags, start=2)
-    )
+    text_prompt += "\n".join("{}\t[{}]".format(t.name, i) for i, t in enumerate(tags, start=2))
 
-    text_prompt += '\n\nTag'
-    selection = click.prompt(
-        text_prompt, type=click.IntRange(1,
-                                         len(tags) + 1), default=1
-    )
+    text_prompt += "\n\nTag"
+    selection = click.prompt(text_prompt, type=click.IntRange(1, len(tags) + 1), default=1)
 
     if selection > 1:
         return tags[selection - 2]
@@ -417,23 +421,16 @@ def prompt_tag_selection(tags):
 
 
 @click.group(invoke_without_command=True)
-@click.option('--revision', default=None)
+@click.option("--revision", default=None)
+@click.option("--format", type=click.Choice(DATASETS_FORMATS), default="tabular", help="Choose an output format.")
 @click.option(
-    '--format',
-    type=click.Choice(DATASETS_FORMATS),
-    default='tabular',
-    help='Choose an output format.'
-)
-@click.option(
-    '-c',
-    '--columns',
+    "-c",
+    "--columns",
     type=click.STRING,
-    default='id,name,title,version',
-    metavar='<columns>',
-    help='Comma-separated list of column to display: {}.'.format(
-        ', '.join(DATASETS_COLUMNS.keys())
-    ),
-    show_default=True
+    default="id,name,title,version",
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
+    show_default=True,
 )
 @click.pass_context
 def dataset(ctx, revision, format, columns):
@@ -441,164 +438,90 @@ def dataset(ctx, revision, format, columns):
     if ctx.invoked_subcommand is not None:
         return
 
-    click.echo(
-        list_datasets(revision=revision, format=format, columns=columns)
-    )
+    click.echo(list_datasets(revision=revision, format=format, columns=columns))
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument("name")
+@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
+@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
 @click.option(
-    '-t',
-    '--title',
-    default=None,
-    type=click.STRING,
-    help='Title of the dataset.'
-)
-@click.option(
-    '-d',
-    '--description',
-    default=None,
-    type=click.STRING,
-    help='Dataset\'s description.'
-)
-@click.option(
-    '-c',
-    '--creator',
-    'creators',
+    "-c",
+    "--creator",
+    "creators",
     default=None,
     multiple=True,
-    help='Creator\'s name, email, and affiliation. '
-    'Accepted format is \'Forename Surname <email> [affiliation]\'.'
+    help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
-@click.option(
-    '-k',
-    '--keyword',
-    default=None,
-    multiple=True,
-    type=click.STRING,
-    help='List of keywords or tags.'
-)
+@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
 def create(name, title, description, creators, keyword):
     """Create an empty dataset in the current repo."""
     creators = creators or ()
 
-    new_dataset = create_dataset(
-        name=name,
-        title=title,
-        description=description,
-        creators=creators,
-        keywords=keyword,
-    )
+    new_dataset = create_dataset(name=name, title=title, description=description, creators=creators, keywords=keyword,)
 
     click.echo(f'Use the name "{new_dataset.name}" to refer to this dataset.')
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
 @dataset.command()
-@click.argument('name')
+@click.argument("name")
+@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
+@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
 @click.option(
-    '-t',
-    '--title',
-    default=None,
-    type=click.STRING,
-    help='Title of the dataset.'
-)
-@click.option(
-    '-d',
-    '--description',
-    default=None,
-    type=click.STRING,
-    help='Dataset\'s description.'
-)
-@click.option(
-    '-c',
-    '--creator',
-    'creators',
+    "-c",
+    "--creator",
+    "creators",
     default=None,
     multiple=True,
-    help='Creator\'s name, email, and affiliation. '
-    'Accepted format is \'Forename Surname <email> [affiliation]\'.'
+    help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
-@click.option(
-    '-k',
-    '--keyword',
-    default=None,
-    multiple=True,
-    type=click.STRING,
-    help='List of keywords or tags.'
-)
+@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
 def edit(name, title, description, creators, keyword):
     """Edit dataset metadata."""
     creators = creators or ()
     keywords = keyword or ()
 
     updated, no_email_warnings = edit_dataset(
-        name=name,
-        title=title,
-        description=description,
-        creators=creators,
-        keywords=keywords,
+        name=name, title=title, description=description, creators=creators, keywords=keywords,
     )
 
     if not updated:
-        click.echo((
-            'Nothing to update. '
-            'Check available fields with `renku dataset edit --help`\n\n'
-            'Hint: `renku dataset edit --title "new title"`'
-        ))
-    else:
-        click.echo('Successfully updated: {}.'.format(', '.join(updated)))
-        if no_email_warnings:
-            click.echo(
-                WARNING + 'No email or wrong format for: ' +
-                ', '.join(no_email_warnings)
+        click.echo(
+            (
+                "Nothing to update. "
+                "Check available fields with `renku dataset edit --help`\n\n"
+                'Hint: `renku dataset edit --title "new title"`'
             )
+        )
+    else:
+        click.echo("Successfully updated: {}.".format(", ".join(updated)))
+        if no_email_warnings:
+            click.echo(WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
 
 
 @dataset.command()
-@click.argument('name')
-@click.argument('urls', nargs=-1)
+@click.argument("name")
+@click.argument("urls", nargs=-1)
+@click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
+@click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
+@click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
+@click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
 @click.option(
-    '-e', '--external', is_flag=True, help='Creates a link to external data.'
+    "-s", "--src", "--source", "sources", default=None, multiple=True, help="Path(s) within remote git repo to be added"
 )
 @click.option(
-    '--force', is_flag=True, help='Allow adding otherwise ignored files.'
+    "-d",
+    "--dst",
+    "--destination",
+    "destination",
+    default="",
+    help="Destination file or directory within the dataset path",
 )
-@click.option(
-    '-o', '--overwrite', is_flag=True, help='Overwrite existing files.'
-)
-@click.option(
-    '-c',
-    '--create',
-    is_flag=True,
-    help='Create dataset if it does not exist.'
-)
-@click.option(
-    '-s',
-    '--src',
-    '--source',
-    'sources',
-    default=None,
-    multiple=True,
-    help='Path(s) within remote git repo to be added'
-)
-@click.option(
-    '-d',
-    '--dst',
-    '--destination',
-    'destination',
-    default='',
-    help='Destination file or directory within the dataset path'
-)
-@click.option(
-    '--ref', default=None, help='Add files from a specific commit/tag/branch.'
-)
-def add(
-    name, urls, external, force, overwrite, create, sources, destination, ref
-):
+@click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
+def add(name, urls, external, force, overwrite, create, sources, destination, ref):
     """Add data to a dataset."""
-    progress = partial(progressbar, label='Adding data to dataset')
+    progress = partial(progressbar, label="Adding data to dataset")
     add_file(
         urls=urls,
         name=name,
@@ -613,46 +536,26 @@ def add(
         progress=_DownloadProgressbar,
         interactive=True,
     )
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('ls-files')
-@click.argument('names', nargs=-1)
+@dataset.command("ls-files")
+@click.argument("names", nargs=-1)
 @click.option(
-    '--creators',
-    help='Filter files which where authored by specific creators. '
-    'Multiple creators are specified by comma.'
+    "--creators",
+    help="Filter files which where authored by specific creators. " "Multiple creators are specified by comma.",
 )
+@click.option("-I", "--include", default=None, multiple=True, help="Include files matching given pattern.")
+@click.option("-X", "--exclude", default=None, multiple=True, help="Exclude files matching given pattern.")
+@click.option("--format", type=click.Choice(DATASET_FILES_FORMATS), default="tabular", help="Choose an output format.")
 @click.option(
-    '-I',
-    '--include',
-    default=None,
-    multiple=True,
-    help='Include files matching given pattern.'
-)
-@click.option(
-    '-X',
-    '--exclude',
-    default=None,
-    multiple=True,
-    help='Exclude files matching given pattern.'
-)
-@click.option(
-    '--format',
-    type=click.Choice(DATASET_FILES_FORMATS),
-    default='tabular',
-    help='Choose an output format.'
-)
-@click.option(
-    '-c',
-    '--columns',
+    "-c",
+    "--columns",
     type=click.STRING,
-    default='dataset_name,added,size,path',
-    metavar='<columns>',
-    help='Comma-separated list of column to display: {}.'.format(
-        ', '.join(DATASET_FILES_COLUMNS.keys())
-    ),
-    show_default=True
+    default="dataset_name,added,size,path",
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
+    show_default=True,
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
@@ -660,104 +563,67 @@ def ls_files(names, creators, include, exclude, format, columns):
 
 
 @dataset.command()
-@click.argument('name')
-@click.option(
-    '-I',
-    '--include',
-    multiple=True,
-    help='Include files matching given pattern.'
-)
-@click.option(
-    '-X',
-    '--exclude',
-    multiple=True,
-    help='Exclude files matching given pattern.'
-)
-@click.option(
-    '-y', '--yes', is_flag=True, help='Confirm unlinking of all files.'
-)
+@click.argument("name")
+@click.option("-I", "--include", multiple=True, help="Include files matching given pattern.")
+@click.option("-X", "--exclude", multiple=True, help="Exclude files matching given pattern.")
+@click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
 def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
-    file_unlink(
-        name=name, include=include, exclude=exclude, yes=yes, interactive=True
-    )
+    file_unlink(name=name, include=include, exclude=exclude, yes=yes, interactive=True)
 
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('rm')
-@click.argument('names', nargs=-1)
+@dataset.command("rm")
+@click.argument("names", nargs=-1)
 def remove(names):
     """Delete a dataset."""
     datasetscontext = partial(
-        progressbar,
-        label='Removing metadata files'.ljust(30),
-        item_show_func=lambda item: str(item) if item else ''
+        progressbar, label="Removing metadata files".ljust(30), item_show_func=lambda item: str(item) if item else ""
     )
     referencescontext = partial(
-        progressbar,
-        label='Removing aliases'.ljust(30),
-        item_show_func=lambda item: item.name if item else '',
+        progressbar, label="Removing aliases".ljust(30), item_show_func=lambda item: item.name if item else "",
     )
-    dataset_remove(
-        names,
-        with_output=True,
-        datasetscontext=datasetscontext,
-        referencescontext=referencescontext
-    )
-    click.secho('OK', fg='green')
+    dataset_remove(names, with_output=True, datasetscontext=datasetscontext, referencescontext=referencescontext)
+    click.secho("OK", fg="green")
 
 
-@dataset.command('tag')
-@click.argument('name')
-@click.argument('tag')
-@click.option(
-    '-d', '--description', default='', help='A description for this tag'
-)
-@click.option('--force', is_flag=True, help='Allow overwriting existing tags.')
+@dataset.command("tag")
+@click.argument("name")
+@click.argument("tag")
+@click.option("-d", "--description", default="", help="A description for this tag")
+@click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
     tag_dataset_with_client(name, tag, description, force)
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('rm-tags')
-@click.argument('name')
-@click.argument('tags', nargs=-1)
+@dataset.command("rm-tags")
+@click.argument("name")
+@click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
     remove_dataset_tags(name, tags)
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('ls-tags')
-@click.argument('name')
-@click.option(
-    '--format',
-    type=click.Choice(DATASET_TAGS_FORMATS),
-    default='tabular',
-    help='Choose an output format.'
-)
+@dataset.command("ls-tags")
+@click.argument("name")
+@click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
     tags_output = list_tags(name, format)
     click.echo(tags_output)
 
 
-@dataset.command('export')
-@click.argument('name')
-@click.argument('provider')
-@click.option(
-    '-p',
-    '--publish',
-    is_flag=True,
-    help='Automatically publish exported dataset.'
-)
-@click.option('-t', '--tag', help='Dataset tag to export')
-@click.option('--dataverse-server', default=None, help='Dataverse server URL.')
-@click.option(
-    '--dataverse-name', default=None, help='Dataverse name to export to.'
-)
+@dataset.command("export")
+@click.argument("name")
+@click.argument("provider")
+@click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
+@click.option("-t", "--tag", help="Dataset tag to export")
+@click.option("--dataverse-server", default=None, help="Dataverse server URL.")
+@click.option("--dataverse-name", default=None, help="Dataverse name to export to.")
 def export_(name, provider, publish, tag, dataverse_server, dataverse_name):
     """Export data to 3rd party provider."""
     try:
@@ -771,48 +637,26 @@ def export_(name, provider, publish, tag, dataverse_server, dataverse_name):
             dataverse_server_url=dataverse_server,
             dataverse_name=dataverse_name,
         )
-    except (
-        ValueError, InvalidAccessToken, DatasetNotFound, requests.HTTPError
-    ) as e:
+    except (ValueError, InvalidAccessToken, DatasetNotFound, requests.HTTPError) as e:
         raise click.BadParameter(e)
 
     click.echo(output)
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")
 
 
-@dataset.command('import')
-@click.argument('uri')
-@click.option(
-    '--short-name',
-    '--name',
-    'name',
-    default=None,
-    help='A convenient name for dataset.'
-)
-@click.option(
-    '-x',
-    '--extract',
-    is_flag=True,
-    help='Extract files before importing to dataset.'
-)
-@click.option(
-    '-y', '--yes', is_flag=True, help='Bypass download confirmation.'
-)
+@dataset.command("import")
+@click.argument("uri")
+@click.option("--short-name", "--name", "name", default=None, help="A convenient name for dataset.")
+@click.option("-x", "--extract", is_flag=True, help="Extract files before importing to dataset.")
+@click.option("-y", "--yes", is_flag=True, help="Bypass download confirmation.")
 def import_(uri, name, extract, yes):
     """Import data from a 3rd party provider or another renku project.
 
     Supported providers: [Dataverse, Renku, Zenodo]
     """
-    import_dataset(
-        uri=uri,
-        name=name,
-        extract=extract,
-        with_prompt=True,
-        yes=yes,
-        progress=_DownloadProgressbar
-    )
-    click.secho(' ' * 79 + '\r', nl=False)
-    click.secho('OK', fg='green')
+    import_dataset(uri=uri, name=name, extract=extract, with_prompt=True, yes=yes, progress=_DownloadProgressbar)
+    click.secho(" " * 79 + "\r", nl=False)
+    click.secho("OK", fg="green")
 
 
 class _DownloadProgressbar(DownloadProgressCallback):
@@ -820,11 +664,11 @@ class _DownloadProgressbar(DownloadProgressCallback):
         """Default initializer."""
         self._progressbar = tqdm(
             total=total_size,
-            unit='iB',
+            unit="iB",
             unit_scale=True,
             desc=description,
             leave=False,
-            bar_format='{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}'
+            bar_format="{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}",
         )
 
     def update(self, size):
@@ -838,39 +682,20 @@ class _DownloadProgressbar(DownloadProgressCallback):
             self._progressbar.close()
 
 
-@dataset.command('update')
-@click.argument('names', nargs=-1)
+@dataset.command("update")
+@click.argument("names", nargs=-1)
 @click.option(
-    '--creators',
-    help='Filter files which where authored by specific creators. '
-    'Multiple creators are specified by comma.'
+    "--creators",
+    help="Filter files which where authored by specific creators. " "Multiple creators are specified by comma.",
 )
-@click.option(
-    '-I',
-    '--include',
-    default=None,
-    multiple=True,
-    help='Include files matching given pattern.'
-)
-@click.option(
-    '-X',
-    '--exclude',
-    default=None,
-    multiple=True,
-    help='Exclude files matching given pattern.'
-)
-@click.option(
-    '--ref', default=None, help='Update to a specific commit/tag/branch.'
-)
-@click.option(
-    '--delete',
-    is_flag=True,
-    help='Delete local files that are deleted from remote.'
-)
-@click.option('-e', '--external', is_flag=True, help='Update external data.')
+@click.option("-I", "--include", default=None, multiple=True, help="Include files matching given pattern.")
+@click.option("-X", "--exclude", default=None, multiple=True, help="Exclude files matching given pattern.")
+@click.option("--ref", default=None, help="Update to a specific commit/tag/branch.")
+@click.option("--delete", is_flag=True, help="Delete local files that are deleted from remote.")
+@click.option("-e", "--external", is_flag=True, help="Update external data.")
 def update(names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
-    progress_context = partial(progressbar, label='Updating files')
+    progress_context = partial(progressbar, label="Updating files")
     update_datasets(
         names=names,
         creators=creators,
@@ -879,6 +704,6 @@ def update(names, creators, include, exclude, ref, delete, external):
         ref=ref,
         delete=delete,
         external=external,
-        progress_context=progress_context
+        progress_context=progress_context,
     )
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")

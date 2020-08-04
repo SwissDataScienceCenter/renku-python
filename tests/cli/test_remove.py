@@ -26,26 +26,26 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory):
     runner = isolated_runner
 
     # create a dataset
-    result = runner.invoke(cli, ['dataset', 'create', 'testing'])
+    result = runner.invoke(cli, ["dataset", "create", "testing"])
     assert 0 == result.exit_code
-    assert 'OK' in result.output
+    assert "OK" in result.output
 
-    source = tmpdir.join('remove_dataset.file')
+    source = tmpdir.join("remove_dataset.file")
     source.write(DATA_DIR)
 
-    result = runner.invoke(cli, ['dataset', 'add', 'testing', source.strpath])
+    result = runner.invoke(cli, ["dataset", "add", "testing", source.strpath])
     assert 0 == result.exit_code
 
-    path = client.path / client.data_dir / 'testing' / 'remove_dataset.file'
+    path = client.path / client.data_dir / "testing" / "remove_dataset.file"
     assert path.exists()
 
-    result = runner.invoke(cli, ['doctor'])
+    result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['rm', str(client.path / DATA_DIR)])
+    result = runner.invoke(cli, ["rm", str(client.path / DATA_DIR)])
     assert 0 == result.exit_code
 
     assert not path.exists()
 
-    result = runner.invoke(cli, ['doctor'])
+    result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code

@@ -95,31 +95,21 @@ from renku.core.commands.config import read_config, update_config
 
 
 @click.command()
-@click.argument('key', required=False, default=None)
-@click.argument('value', required=False, default=None)
-@click.option('--remove', is_flag=True, help='Remove specified key.')
-@click.option(
-    '--local',
-    'local_only',
-    is_flag=True,
-    help='Read/store from/to local configuration only.'
-)
-@click.option(
-    '--global',
-    'global_only',
-    is_flag=True,
-    help='Read/store from/to global configuration only.'
-)
+@click.argument("key", required=False, default=None)
+@click.argument("value", required=False, default=None)
+@click.option("--remove", is_flag=True, help="Remove specified key.")
+@click.option("--local", "local_only", is_flag=True, help="Read/store from/to local configuration only.")
+@click.option("--global", "global_only", is_flag=True, help="Read/store from/to global configuration only.")
 def config(key, value, remove, local_only, global_only):
     """Manage configuration options."""
     is_write = value is not None
 
     if is_write and remove:
-        raise errors.UsageError('Cannot remove and set at the same time.')
+        raise errors.UsageError("Cannot remove and set at the same time.")
     if remove and not key:
-        raise errors.UsageError('KEY is missing.')
+        raise errors.UsageError("KEY is missing.")
     if local_only and global_only:
-        raise errors.UsageError('Cannot use --local and --global together.')
+        raise errors.UsageError("Cannot use --local and --global together.")
 
     if remove:
         update_config(key, remove=remove, global_only=global_only)

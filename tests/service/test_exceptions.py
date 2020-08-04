@@ -30,15 +30,15 @@ def test_allowed_methods_exc(service_allowed_endpoint):
     """Check allowed methods for every endpoint."""
     methods, request, svc_client = service_allowed_endpoint
 
-    method = request['allowed_method']
-    if method == 'GET':  # if GET remove sister method HEAD
+    method = request["allowed_method"]
+    if method == "GET":  # if GET remove sister method HEAD
         methods.pop(method)
-        methods.pop('HEAD')
+        methods.pop("HEAD")
     else:
         methods.pop(method)
 
     for method, fn in methods.items():
-        response = fn(request['url'])
+        response = fn(request["url"])
         assert 405 == response.status_code
 
 
@@ -47,23 +47,20 @@ def test_auth_headers_exc(service_allowed_endpoint):
     """Check correct headers for every endpoint."""
     methods, request, svc_client = service_allowed_endpoint
 
-    method = request['allowed_method']
-    if method == 'GET':  # if GET remove sister method HEAD
+    method = request["allowed_method"]
+    if method == "GET":  # if GET remove sister method HEAD
         client_method = methods.pop(method)
-        methods.pop('HEAD')
+        methods.pop("HEAD")
     else:
         client_method = methods.pop(method)
 
-    response = client_method(
-        request['url'],
-        headers=request['headers'],
-    )
+    response = client_method(request["url"], headers=request["headers"],)
 
     assert 200 == response.status_code
-    assert INVALID_HEADERS_ERROR_CODE == response.json['error']['code']
+    assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
-    err_message = 'user identification is incorrect or missing'
-    assert err_message == response.json['error']['reason']
+    err_message = "user identification is incorrect or missing"
+    assert err_message == response.json["error"]["reason"]
 
 
 @pytest.mark.service
@@ -74,14 +71,10 @@ def test_migration_required_flag(svc_client_setup):
     svc_client, headers, project_id, _ = svc_client_setup
 
     payload = {
-        'project_id': project_id,
-        'name': '{0}'.format(uuid.uuid4().hex),
+        "project_id": project_id,
+        "name": "{0}".format(uuid.uuid4().hex),
     }
 
-    response = svc_client.post(
-        '/datasets.create',
-        data=json.dumps(payload),
-        headers=headers,
-    )
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
 
-    assert response.json['error']['migration_required']
+    assert response.json["error"]["migration_required"]

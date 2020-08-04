@@ -23,21 +23,19 @@ import redis
 from redis import RedisError
 from walrus import Database
 
-from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, \
-    REDIS_PASSWORD, REDIS_PORT
+from renku.service.cache.config import REDIS_DATABASE, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
 
 
 class BaseCache:
     """Cache management."""
 
     config_ = {
-        'host': REDIS_HOST,
-        'port': REDIS_PORT,
-        'db': REDIS_DATABASE,
-        'password': REDIS_PASSWORD,
-        'retry_on_timeout': True,
-        'health_check_interval':
-            int(os.getenv('CACHE_HEALTH_CHECK_INTERVAL', 60))
+        "host": REDIS_HOST,
+        "port": REDIS_PORT,
+        "db": REDIS_DATABASE,
+        "password": REDIS_PASSWORD,
+        "retry_on_timeout": True,
+        "health_check_interval": int(os.getenv("CACHE_HEALTH_CHECK_INTERVAL", 60)),
     }
 
     cache = redis.Redis(**config_)
@@ -61,14 +59,11 @@ class BaseCache:
         """Return record values from hash set."""
         result = self.cache.hget(name, key)
         if result:
-            return json.loads(result.decode('utf-8'))
+            return json.loads(result.decode("utf-8"))
 
     def get_all_records(self, name):
         """Return all record values from hash set."""
-        return [
-            json.loads(record.decode('utf-8'))
-            for record in self.cache.hgetall(name).values()
-        ]
+        return [json.loads(record.decode("utf-8")) for record in self.cache.hgetall(name).values()]
 
     def scan_iter(self, pattern):
         """Scan keys to return all user cached elements."""
