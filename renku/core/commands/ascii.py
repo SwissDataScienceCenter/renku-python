@@ -241,9 +241,8 @@ class DAG(object):
             # multi-line text when it is shrinking and
             len(text) > 2
             and columns_size_diff == -1
-            and
             # it has a horizontal line.
-            [start for (start, end) in edges if start + 1 < end]
+            and [start for (start, end) in edges if start + 1 < end]
         )
 
         # Fix slope of edges after the node for single line text.

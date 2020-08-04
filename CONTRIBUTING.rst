@@ -105,20 +105,26 @@ encourage usage of `pipenv` and `pyenv`:
    (code style), PEP257 (documentation), flake8 as well as build the Sphinx
    documentation and run doctests.
 
-   Before you submit a pull request, please reformat the code using yapf_.
+   Before you submit a pull request, please reformat the code using black_.
 
    .. code-block:: console
 
-      $ yapf -irp .
+      $ black .
 
-   You may want to set up yapf_ styling as a pre-commit hook to do this
-   automatically:
+   You may want to set up black_ styling as a pre-commit hook to do this
+   automatically. Install pre-commit_ and run the following command in the
+   root of the `renku-python` repository:
 
    .. code-block:: console
 
-      $ curl https://raw.githubusercontent.com/google/yapf/master/plugins/pre-commit.sh -o .git/hooks/pre-commit
-      $ chmod u+x .git/hooks/pre-commit
+      $ pre-commit install
 
+   See https://github.com/psf/black#version-control-integration for more
+   information. Make sure to remove other formatting hooks (e.g. yapf_) if you
+   already have them set up.
+
+   .. _pre-commit: https://pre-commit.com/
+   .. _black: https://github.com/psf/black/
    .. _yapf: https://github.com/google/yapf/
 
 6. Commit your changes and push your branch to GitHub:

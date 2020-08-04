@@ -89,8 +89,9 @@ readme = open("README.rst").read()
 history = open("CHANGES.rst").read()
 
 tests_require = [
+    "black==19.10b0",
     "check-manifest>=0.37,<=0.42",
-    "coverage>=4.5.3,<=5.2",
+    "coverage>=4.5.3,<5.3",
     "fakeredis==1.4.1",
     "flake8>=3.5,<3.8",
     "flaky==3.7.0",
@@ -98,24 +99,23 @@ tests_require = [
     "isort==5.2.0",
     "six>=1.13.0,<=1.15.0",
     "pydocstyle>=3.0.0,<=5.0.2",
+    "pytest-black==0.3.10",
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<=2.10.0",
     "pytest-flake8>=1.0.4,<=1.0.6",
-    "pytest-timeout==1.3.4",
+    "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
-    "pytest-xdist==1.33.0",
+    "pytest-xdist==1.34.0",
     "pytest-yapf==0.1.1",
     "pytest>=4.0.0,<=5.4.3",
     "responses>=0.7.0,<=0.10.15",
-    "unify>=0.4,<=0.5",
-    "yapf==0.27.0",
 ]
 
 extras_require = {
     "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<=3.1.2", "renku-sphinx-theme==0.1.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk>=0.7.4,<=0.16.1",],
+    "sentry": ["sentry-sdk>=0.7.4,<0.16.4",],
     "tests": tests_require,
 }
 
@@ -177,7 +177,7 @@ install_requires = [
     "marshmallow==3.7.1",
     "setuptools_scm>=3.1.0,<=4.1.2",
     "tabulate>=0.7.7,<=0.8.7",
-    "tqdm==4.48.0",
+    "tqdm==4.48.1",
     "walrus==0.8.1",
     "wcmatch>=6.0.0,<=6.1",
     "werkzeug>=0.15.5,<=1.0.1",

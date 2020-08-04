@@ -624,7 +624,6 @@ def cli(client, run):
         if new_files:
             wf_filepath = new_files.pop()
             with wf_filepath.open("r") as f:
-
                 content = Activity.from_jsonld(yaml.safe_load(f), client=client, commit=client.repo.head.commit)
         else:
             content = None

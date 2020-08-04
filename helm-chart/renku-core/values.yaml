@@ -13,7 +13,7 @@ datasetsWorkerQueues: datasets.jobs
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects
 cleanupFilesTTL: 1800
 cleanupProjectsTTL: 1800
-logLevel: WARNING
+logLevel: INFO
 
 image:
   repository: renku/renku-core
