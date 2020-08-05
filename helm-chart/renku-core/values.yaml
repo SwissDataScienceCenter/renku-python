@@ -66,3 +66,8 @@ redis:
   networkPolicy:
     enabled: true
     allowExternal: false
+
+## Add sentry configuration
+sentry:
+  dsn:
+  environment:
