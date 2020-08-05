@@ -61,7 +61,7 @@ jobs:
       run: twine check dist/*
 
   test-linux-cli:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     strategy:
       max-parallel: 3
       matrix:
@@ -97,7 +97,7 @@ jobs:
       continue-on-error: true
 
   test-linux-core:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     strategy:
       max-parallel: 3
       matrix:
@@ -133,7 +133,7 @@ jobs:
         continue-on-error: true
 
   test-linux-service:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     strategy:
       max-parallel: 3
       matrix:
@@ -256,7 +256,7 @@ jobs:
         run: pytest -v -m "not integration and not publish" tests/service
 
   test-linux-integration:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     strategy:
       max-parallel: 3
       matrix:
