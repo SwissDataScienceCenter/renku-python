@@ -100,10 +100,3 @@ def normalize(value):
             return {k: normalize(v) for k, v in value.items()}
 
     return value
-
-
-def get_client_datasets(client):
-    """Return Dataset migration models for a client."""
-    from renku.core.models.migration import Dataset
-    paths = client.renku_datasets_path.rglob(client.METADATA)
-    return [Dataset.from_yaml(path) for path in paths]

@@ -50,15 +50,7 @@ class Person:
     @_id.default
     def default_id(self):
         """Set the default id."""
-        import string
-
-        if self.email:
-            return "mailto:{email}".format(email=self.email)
-
-        # prep name to be a valid ntuple string
-        name = self.name.translate(str.maketrans("", "", string.punctuation))
-        name = "".join(filter(lambda x: x in string.printable, name))
-        return "_:{}".format("".join(name.lower().split()))
+        return generat_person_id(email=self.email, name=self.name)
 
     @email.validator
     def check_email(self, attribute, value):
@@ -189,3 +181,16 @@ class SoftwareAgent:
 # set up the default agent
 
 renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)
+
+
+def generat_person_id(email, name):
+    """Generate Person default id."""
+    import string
+
+    if email:
+        return f"mailto:{email}"
+
+    # prep name to be a valid ntuple string
+    name = name.translate(str.maketrans("", "", string.punctuation))
+    name = "".join(filter(lambda x: x in string.printable, name))
+    return "_:{}".format("".join(name.lower().split()))

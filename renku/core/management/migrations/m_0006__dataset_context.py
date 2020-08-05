@@ -17,17 +17,14 @@
 # limitations under the License.
 """DatasetFile metadata migrations."""
 
-from renku.core.utils.migrate import get_client_datasets
+from renku.core.management.migrations.models.v6 import get_client_datasets
 
 
 def migrate(client):
     """Migration function."""
-    _remove_file_creator(client)
+    _fix_dataset_metadata(client)
 
 
-def _remove_file_creator(client):
+def _fix_dataset_metadata(client):
     for dataset in get_client_datasets(client):
-        for file_ in dataset.files:
-            file_.metadata.pop('http://schema.org/creator', None)
-
         dataset.to_yaml()

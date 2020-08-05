@@ -23,8 +23,8 @@ from pathlib import Path
 from git import GitError, Repo
 
 from renku.core import errors
+from renku.core.management.migrations.models.v3 import get_client_datasets
 from renku.core.models.datasets import DatasetFile
-from renku.core.utils.migrate import get_client_datasets
 from renku.core.utils.urls import remove_credentials
 
 
