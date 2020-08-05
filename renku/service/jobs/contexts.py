@@ -32,6 +32,6 @@ def enqueue_retry(queue, retry=3):
         try:
             yield WorkerQueues.get(queue)
         except (OSError, IOError, BusyLoadingError):
-            time.sleep(2 ** count)
+            time.sleep(2**count)
             count += 1
         break
