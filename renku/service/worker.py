@@ -20,7 +20,6 @@ import os
 from contextlib import contextmanager
 
 from rq import Worker
-from rq.logutils import setup_loghandlers
 
 from renku.core.errors import ConfigurationError, UsageError
 from renku.service.jobs.queues import QUEUES, WorkerQueues
