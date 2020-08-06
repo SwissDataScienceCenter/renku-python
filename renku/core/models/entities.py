@@ -84,7 +84,7 @@ class CommitMixin:
             if self.client and os.path.isabs(path):
                 path = pathlib.Path(path).relative_to(self.client.path)
             return "{path}@{hexsha}".format(hexsha=hexsha, path=path)
-        return "{hexsha}".format(hexsha=hexsha, self=self)
+        return hexsha
 
     def __attrs_post_init__(self):
         """Post-init hook."""
