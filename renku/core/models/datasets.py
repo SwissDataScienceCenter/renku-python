@@ -378,7 +378,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
     in_language = attr.ib(default=None, converter=_convert_language, kw_only=True)
 
-    keywords = attr.ib(converter=_convert_keyword, kw_only=True, default="")
+    keywords = attr.ib(converter=_convert_keyword, kw_only=True, default=None)
 
     license = attr.ib(default=None, kw_only=True)
 
