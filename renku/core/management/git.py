@@ -39,7 +39,7 @@ COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
 
 
-def _mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
+def get_mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
     """Get a mapping of standard streams to given paths."""
     # FIXME add device number too
     standard_inos = {}
@@ -62,6 +62,8 @@ def _mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
                     yield standard_inos[key], path
             except FileNotFoundError:  # pragma: no cover
                 pass
+
+        return []
 
     return dict(stream_inos(lookup_paths)) if standard_inos else {}
 
@@ -183,7 +185,7 @@ class GitCore:
     def ensure_clean(self, ignore_std_streams=False):
         """Make sure the repository is clean."""
         dirty_paths = self.dirty_paths
-        mapped_streams = _mapped_std_streams(dirty_paths)
+        mapped_streams = get_mapped_std_streams(dirty_paths)
 
         if ignore_std_streams:
             if dirty_paths - set(mapped_streams.values()):
@@ -316,17 +318,10 @@ class GitCore:
         commit_only=None,
         ignore_std_streams=False,
         raise_if_empty=False,
-        up_to_date=False,
     ):
         """Perform Git checks and operations."""
         if clean:
             self.ensure_clean(ignore_std_streams=ignore_std_streams)
-
-        if up_to_date:
-            # TODO
-            # Fetch origin/master
-            # is_ancestor('origin/master', 'HEAD')
-            pass
 
         if commit:
             with self.commit(
@@ -376,7 +371,7 @@ class GitCore:
         relative = Path(".").resolve().relative_to(self.path)
 
         # Reroute standard streams
-        original_mapped_std = _mapped_std_streams(self.candidate_paths)
+        original_mapped_std = get_mapped_std_streams(self.candidate_paths)
         mapped_std = {}
         for name, stream in original_mapped_std.items():
             stream_path = Path(path) / (Path(stream).relative_to(self.path))
