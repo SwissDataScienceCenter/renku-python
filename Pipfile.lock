@@ -75,12 +75,13 @@
             "version": "==4.1.1"
         },
         "calamus": {
+            "git": "https://github.com/SwissDataScienceCenter/calamus.git",
             "hashes": [
-                "sha256:13c1bfccf815a5c3113c2f9aac70d32daddc8304717806e07436c8bd17397084",
-                "sha256:597660302a2f37fa0f917030aa6a95a40efd8134d448eb10dcd4b080a67515c2"
+                "sha256:597660302a2f37fa0f917030aa6a95a40efd8134d448eb10dcd4b080a67515c2",
+                "sha256:13c1bfccf815a5c3113c2f9aac70d32daddc8304717806e07436c8bd17397084"
             ],
             "markers": "python_full_version >= '3.6.1' and python_full_version < '4.0.0'",
-            "version": "==0.3.1"
+            "ref": "ac76866d76ca87ce94daf6e86bd44d501a55b5aa"
         },
         "certifi": {
             "hashes": [
