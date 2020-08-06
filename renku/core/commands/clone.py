@@ -50,5 +50,5 @@ def project_clone(
         progress=progress,
         config=config,
         raise_git_except=raise_git_except,
-        checkout_rev=checkout_rev
+        checkout_rev=checkout_rev,
     )

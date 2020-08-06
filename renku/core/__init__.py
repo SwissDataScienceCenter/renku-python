@@ -22,9 +22,7 @@ import os
 import requests
 from requests.adapters import TimeoutSauce
 
-RENKU_REQUESTS_TIMEOUT_SECONDS = float(
-    os.getenv('RENKU_REQUESTS_TIMEOUT_SECONDS', 1200)
-)
+RENKU_REQUESTS_TIMEOUT_SECONDS = float(os.getenv("RENKU_REQUESTS_TIMEOUT_SECONDS", 1200))
 
 
 class CustomTimeout(TimeoutSauce):
@@ -32,14 +30,14 @@ class CustomTimeout(TimeoutSauce):
 
     def __init__(self, *args, **kwargs):
         """Construct CustomTimeout."""
-        if kwargs['connect'] is None:
-            kwargs['connect'] = RENKU_REQUESTS_TIMEOUT_SECONDS
+        if kwargs["connect"] is None:
+            kwargs["connect"] = RENKU_REQUESTS_TIMEOUT_SECONDS
 
-        if kwargs['read'] is None:
-            kwargs['read'] = RENKU_REQUESTS_TIMEOUT_SECONDS
+        if kwargs["read"] is None:
+            kwargs["read"] = RENKU_REQUESTS_TIMEOUT_SECONDS
 
         super().__init__(*args, **kwargs)
 
 
 requests.adapters.TimeoutSauce = CustomTimeout
-logging.getLogger('filelock').setLevel(logging.ERROR)
+logging.getLogger("filelock").setLevel(logging.ERROR)

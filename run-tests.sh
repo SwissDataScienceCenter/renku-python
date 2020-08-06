@@ -38,18 +38,17 @@ END
 check_styles(){
     pydocstyle renku tests conftest.py docs
     isort -c --df .
-    unify -c -r renku tests conftest.py docs
     check-manifest --ignore ".travis-*,renku/version.py,renku/templates,renku/templates/**"
     find . -path ./.eggs -prune -o -iname \*.sh -print0 | xargs -0 shellcheck
 }
 
 build_docs(){
     sphinx-build -qnNW docs docs/_build/html
-    pytest -v -m "not integration and not publish" -o testpaths="docs conftest.py"
+    pytest -v -m "not integration and not publish" -o testpaths="docs conftest.py" --ignore=docs/conf.py
 }
 
 run_tests(){
-    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py"
+    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py" --ignore=renku/version.py
 }
 
 usage(){
@@ -71,7 +70,6 @@ while [ "${1-}" != "" ]; do
             docs=1
             all=0
             ;;
-
         -s | --styles )
             styles=1
             all=0

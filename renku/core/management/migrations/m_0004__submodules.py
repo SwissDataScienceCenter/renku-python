@@ -59,7 +59,7 @@ def _migrate_submodule_based_datasets(client):
 
             target = path.resolve()
 
-            if '/.renku/vendors/' not in str(target):
+            if "/.renku/vendors/" not in str(target):
                 continue
 
             repo = Repo(target.parent, search_parent_directories=True)
@@ -84,11 +84,11 @@ def _migrate_submodule_based_datasets(client):
         remote_client = remote_clients[repo_path]
         path_within_repo = target.relative_to(repo_path)
 
-        repo_is_remote = '.renku/vendors/local' not in repo_path
+        repo_is_remote = ".renku/vendors/local" not in repo_path
         based_on = None
         submodule_path = Path(repo_path).relative_to(client.path)
 
-        url = submodules_urls.get(str(submodule_path), '')
+        url = submodules_urls.get(str(submodule_path), "")
 
         if repo_is_remote:
             based_on = _fetch_file_metadata(remote_client, path_within_repo)
@@ -96,14 +96,12 @@ def _migrate_submodule_based_datasets(client):
                 based_on.url = url
                 based_on.based_on = None
             else:
-                based_on = DatasetFile.from_revision(
-                    remote_client, path=path_within_repo, url=url
-                )
+                based_on = DatasetFile.from_revision(remote_client, path=path_within_repo, url=url)
         else:
             if url:
                 full_path = Path(url) / path_within_repo
                 rel_path = os.path.relpath(full_path, client.path)
-                url = f'file://{rel_path}'
+                url = f"file://{rel_path}"
 
         metadata[path] = (based_on, url)
 
@@ -113,10 +111,10 @@ def _migrate_submodule_based_datasets(client):
         try:
             shutil.move(target, path)
         except FileNotFoundError:
-            raise errors.InvalidFileOperation(f'File was not found: {target}')
+            raise errors.InvalidFileOperation(f"File was not found: {target}")
 
     for s in submodules:
-        if s.path.startswith('.renku/vendors/'):
+        if s.path.startswith(".renku/vendors/"):
             try:
                 s.remove(force=True)
             except ValueError:

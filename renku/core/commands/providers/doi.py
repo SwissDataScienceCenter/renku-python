@@ -24,14 +24,14 @@ from renku.core.commands.providers.api import ProviderApi
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.requests import retry
 
-DOI_BASE_URL = 'https://dx.doi.org'
+DOI_BASE_URL = "https://dx.doi.org"
 
 
 def make_doi_url(doi):
     """Create URL to access DOI metadata."""
     urlparts = urllib.parse.urlparse(doi)
-    if urlparts.scheme == 'doi':
-        urlparts = urlparts._replace(scheme='')
+    if urlparts.scheme == "doi":
+        urlparts = urlparts._replace(scheme="")
         doi = urlparts.geturl()
     return urllib.parse.urljoin(DOI_BASE_URL, doi)
 
@@ -75,9 +75,7 @@ class DOIMetadataSerializer:
 class DOIProvider(ProviderApi):
     """doi.org registry API provider."""
 
-    headers = attr.ib(
-        default={'accept': 'application/vnd.citationstyles.csl+json'}
-    )
+    headers = attr.ib(default={"accept": "application/vnd.citationstyles.csl+json"})
     timeout = attr.ib(default=3)
 
     @staticmethod
@@ -88,12 +86,7 @@ class DOIProvider(ProviderApi):
     @staticmethod
     def _serialize(response):
         """Serialize HTTP response for DOI."""
-        return DOIMetadataSerializer(
-            **{
-                key.replace('-', '_').lower(): value
-                for key, value in response.items()
-            }
-        )
+        return DOIMetadataSerializer(**{key.replace("-", "_").lower(): value for key, value in response.items()})
 
     def _query(self, doi):
         """Retrieve metadata for given doi."""
@@ -103,11 +96,7 @@ class DOIProvider(ProviderApi):
         with retry() as session:
             response = session.get(url, headers=self.headers)
             if response.status_code != 200:
-                raise LookupError(
-                    'record not found. Status: {}'.format(
-                        response.status_code
-                    )
-                )
+                raise LookupError("record not found. Status: {}".format(response.status_code))
 
             return response
 

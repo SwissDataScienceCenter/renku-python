@@ -23,90 +23,82 @@ from renku.cli import cli
 
 def test_config_value_locally(client, runner, project, global_config_dir):
     """Check setting/getting from local configuration."""
-    result = runner.invoke(cli, ['config', 'key', 'local-value'])
+    result = runner.invoke(cli, ["config", "key", "local-value"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['config', 'key'])
+    result = runner.invoke(cli, ["config", "key"])
     assert 0 == result.exit_code
-    assert result.output == 'local-value\n'
+    assert result.output == "local-value\n"
     # Value set locally is not visible globally
-    result = runner.invoke(cli, ['config', 'key', '--global'])
+    result = runner.invoke(cli, ["config", "key", "--global"])
     assert 2 == result.exit_code
 
     # Reading non-existing values is an error
-    result = runner.invoke(cli, ['config', 'non-existing'])
+    result = runner.invoke(cli, ["config", "non-existing"])
     assert 2 == result.exit_code
 
 
 def test_config_value_globally(client, runner, project, global_config_dir):
     """Check setting/getting from global configuration."""
-    result = runner.invoke(cli, ['config', 'key', 'global-value', '--global'])
+    result = runner.invoke(cli, ["config", "key", "global-value", "--global"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['config', 'key'])
+    result = runner.invoke(cli, ["config", "key"])
     assert 0 == result.exit_code
-    assert result.output == 'global-value\n'
-    result = runner.invoke(cli, ['config', 'key', '--global'])
+    assert result.output == "global-value\n"
+    result = runner.invoke(cli, ["config", "key", "--global"])
     assert 0 == result.exit_code
-    assert result.output == 'global-value\n'
+    assert result.output == "global-value\n"
     # Value set globally is not visible in local config
-    result = runner.invoke(cli, ['config', 'key', '--local'])
+    result = runner.invoke(cli, ["config", "key", "--local"])
     assert 2 == result.exit_code
 
 
-def test_config_get_non_existing_value(
-    client, runner, project, global_config_dir
-):
+def test_config_get_non_existing_value(client, runner, project, global_config_dir):
     """Check getting non-existing value is an error."""
-    result = runner.invoke(cli, ['config', 'non-existing'])
+    result = runner.invoke(cli, ["config", "non-existing"])
     assert 2 == result.exit_code
 
 
-def test_local_overrides_global_config(
-    client, runner, project, global_config_dir
-):
+def test_local_overrides_global_config(client, runner, project, global_config_dir):
     """Test setting config both global and locally."""
-    result = runner.invoke(cli, ['config', 'key', 'global-value', '--global'])
+    result = runner.invoke(cli, ["config", "key", "global-value", "--global"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['config', 'key'])
+    result = runner.invoke(cli, ["config", "key"])
     assert 0 == result.exit_code
-    assert result.output == 'global-value\n'
+    assert result.output == "global-value\n"
 
-    result = runner.invoke(cli, ['config', 'key', 'local-value'])
+    result = runner.invoke(cli, ["config", "key", "local-value"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['config', 'key'])
+    result = runner.invoke(cli, ["config", "key"])
     assert 0 == result.exit_code
-    assert result.output == 'local-value\n'
+    assert result.output == "local-value\n"
 
 
-@pytest.mark.parametrize('global_only', (False, True))
-def test_config_remove_value_locally(
-    client, runner, project, global_config_dir, global_only
-):
+@pytest.mark.parametrize("global_only", (False, True))
+def test_config_remove_value_locally(client, runner, project, global_config_dir, global_only):
     """Check removing value from local configuration."""
-    param = ['--global'] if global_only else ['--local']
-    result = runner.invoke(cli, ['config', 'key', 'some-value'] + param)
+    param = ["--global"] if global_only else ["--local"]
+    result = runner.invoke(cli, ["config", "key", "some-value"] + param)
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['config', 'key'] + param)
-    assert 'some-value\n' == result.output
+    result = runner.invoke(cli, ["config", "key"] + param)
+    assert "some-value\n" == result.output
 
-    result = runner.invoke(cli, ['config', '--remove', 'key'] + param)
+    result = runner.invoke(cli, ["config", "--remove", "key"] + param)
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['config', 'key'] + param)
-    assert 'some-value' not in result.output
+    result = runner.invoke(cli, ["config", "key"] + param)
+    assert "some-value" not in result.output
 
 
-def test_local_config_committed(
-    client, runner, data_repository, directory_tree, global_config_dir
-):
+def test_local_config_committed(client, runner, data_repository, directory_tree, global_config_dir):
     """Test local configuration update is committed only when it is changed."""
     commit_sha_before = client.repo.head.object.hexsha
 
-    result = runner.invoke(cli, ['config', 'local-key', 'value'])
+    result = runner.invoke(cli, ["config", "local-key", "value"])
     assert 0 == result.exit_code
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after != commit_sha_before
@@ -114,44 +106,43 @@ def test_local_config_committed(
     # Adding the same config should not create a new commit
     commit_sha_before = client.repo.head.object.hexsha
 
-    result = runner.invoke(cli, ['config', 'local-key', 'value'])
+    result = runner.invoke(cli, ["config", "local-key", "value"])
     assert 0 == result.exit_code
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
 
     # Adding a global config should not create a new commit
-    result = runner.invoke(cli, ['config', 'global-key', 'value', '--global'])
+    result = runner.invoke(cli, ["config", "global-key", "value", "--global"])
     assert 0 == result.exit_code
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
 
 
 @pytest.mark.parametrize(
-    'args,message',
-    [(['--remove', 'key', 'value'], 'Cannot remove and set at the same time.'),
-     (['--remove'], 'KEY is missing'),
-     (['--local', '--global', 'key', 'value'
-       ], 'Cannot use --local and --global together.')]
+    "args,message",
+    [
+        (["--remove", "key", "value"], "Cannot remove and set at the same time."),
+        (["--remove"], "KEY is missing"),
+        (["--local", "--global", "key", "value"], "Cannot use --local and --global together."),
+    ],
 )
-def test_invalid_command_args(
-    client, runner, project, global_config_dir, args, message
-):
+def test_invalid_command_args(client, runner, project, global_config_dir, args, message):
     """Test invalid combination of command-line arguments."""
-    result = runner.invoke(cli, ['config'] + args)
+    result = runner.invoke(cli, ["config"] + args)
     assert 2 == result.exit_code
     assert message in result.output
 
 
-@pytest.mark.parametrize('config_key', ['data_directory'])
+@pytest.mark.parametrize("config_key", ["data_directory"])
 def test_readonly_config(client, runner, project, config_key):
     """Test readonly config can only be set once."""
-    result = runner.invoke(cli, ['config', config_key, 'value'])
+    result = runner.invoke(cli, ["config", config_key, "value"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ['config', config_key, 'value'])
+    result = runner.invoke(cli, ["config", config_key, "value"])
     assert 2 == result.exit_code
-    assert f'Configuration {config_key} cannot be modified.' in result.output
+    assert f"Configuration {config_key} cannot be modified." in result.output
 
-    result = runner.invoke(cli, ['config', '--remove', config_key])
+    result = runner.invoke(cli, ["config", "--remove", config_key])
     assert 2 == result.exit_code
-    assert f'Configuration {config_key} cannot be modified.' in result.output
+    assert f"Configuration {config_key} cannot be modified." in result.output

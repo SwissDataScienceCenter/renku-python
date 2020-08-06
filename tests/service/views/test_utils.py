@@ -23,30 +23,30 @@ from renku.service.views import error_response, result_response
 def test_error_response(svc_client):
     """Test error response utility."""
     err_code = 0
-    err_reason = 'test error'
+    err_reason = "test error"
     response = error_response(err_code, err_reason).json
 
     assert response
-    assert {'error'} == set(response.keys())
-    assert {'code', 'reason'} == set(response['error'].keys())
+    assert {"error"} == set(response.keys())
+    assert {"code", "reason"} == set(response["error"].keys())
 
-    assert err_code == response['error']['code']
-    assert err_reason == response['error']['reason']
+    assert err_code == response["error"]["code"]
+    assert err_reason == response["error"]["reason"]
 
 
 def test_result_response(svc_client):
     """Test result response utility."""
-    ctx = {'datasets': [{'name': 'my-dataset'}]}
+    ctx = {"datasets": [{"name": "my-dataset"}]}
     response = result_response(DatasetListResponseRPC(), ctx).json
 
     assert response
-    assert {'result'} == set(response.keys())
-    assert {'datasets'} == set(response['result'].keys())
+    assert {"result"} == set(response.keys())
+    assert {"datasets"} == set(response["result"].keys())
 
-    expected = ctx['datasets'][0]
-    received = response['result']['datasets'][0]
+    expected = ctx["datasets"][0]
+    received = response["result"]["datasets"][0]
 
-    assert expected['name'] == received['name']
+    assert expected["name"] == received["name"]
 
 
 def test_result_response_with_none(svc_client):
@@ -54,8 +54,8 @@ def test_result_response_with_none(svc_client):
     response = result_response(DatasetListResponseRPC(), None).json
 
     assert response
-    assert {'result'} == set(response.keys())
-    assert response['result'] is None
+    assert {"result"} == set(response.keys())
+    assert response["result"] is None
 
 
 def test_result_response_with_empty_dict(svc_client):
@@ -63,8 +63,8 @@ def test_result_response_with_empty_dict(svc_client):
     response = result_response(DatasetListResponseRPC(), {}).json
 
     assert response
-    assert {'result'} == set(response.keys())
-    assert {} == response['result']
+    assert {"result"} == set(response.keys())
+    assert {} == response["result"]
 
 
 def test_result_response_with_empty_tuple(svc_client):
@@ -72,5 +72,5 @@ def test_result_response_with_empty_tuple(svc_client):
     response = result_response(DatasetListResponseRPC(), ()).json
 
     assert response
-    assert {'result'} == set(response.keys())
-    assert {} == response['result']
+    assert {"result"} == set(response.keys())
+    assert {} == response["result"]

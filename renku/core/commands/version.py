@@ -33,15 +33,14 @@ def print_version(ctx, param, value):
         return
 
     from renku.version import __version__
+
     click.echo(__version__)
     ctx.exit()
 
 
 def find_latest_version(name, allow_prereleases=False):
     """Find a latest version on PyPI."""
-    response = requests.get(
-        'https://pypi.org/pypi/{name}/json'.format(name=name)
-    )
+    response = requests.get("https://pypi.org/pypi/{name}/json".format(name=name))
 
     if response.status_code != 200:
         return
@@ -49,9 +48,10 @@ def find_latest_version(name, allow_prereleases=False):
     description = response.json()
 
     from pkg_resources import parse_version
+
     return max(
-        version for version in
-        (parse_version(version) for version in description['releases'].keys())
+        version
+        for version in (parse_version(version) for version in description["releases"].keys())
         if allow_prereleases or not version.is_prerelease
     )
 
@@ -60,9 +60,9 @@ def find_latest_version(name, allow_prereleases=False):
 class VersionCache:
     """Cache information about package version."""
 
-    STATE_NAME = 'selfcheck.json'
+    STATE_NAME = "selfcheck.json"
 
-    DATE_FMT = '%Y-%m-%dT%H:%M:%SZ'
+    DATE_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
     MAX_AGE = 24 * 60 * 60  # 1 day
 
@@ -80,9 +80,7 @@ class VersionCache:
         """Check if we need to refresh the state."""
         if self.last_check and self.pypi_version:
             current_time = datetime.datetime.utcnow()
-            last_check = datetime.datetime.strptime(
-                self.last_check, self.DATE_FMT
-            )
+            last_check = datetime.datetime.strptime(self.last_check, self.DATE_FMT)
             return (current_time - last_check).total_seconds() < self.MAX_AGE
 
     @classmethod
@@ -122,7 +120,7 @@ class VersionCache:
 
             state[sys.prefix] = attr.asdict(self)
 
-            with cache.open('w') as fp:
+            with cache.open("w") as fp:
                 json.dump(state, fp, sort_keys=True)
 
 
@@ -140,19 +138,14 @@ def _check_version():
     version = parse_version(__version__)
     allow_prereleases = version.is_prerelease
 
-    latest_version = find_latest_version(
-        'renku', allow_prereleases=allow_prereleases
-    )
+    latest_version = find_latest_version("renku", allow_prereleases=allow_prereleases)
 
     if version < latest_version:
         click.secho(
-            'You are using renku version {version}, however version '
-            '{latest_version} is available.\n'
-            'You should consider upgrading ...'.format(
-                version=__version__,
-                latest_version=latest_version,
-            ),
-            fg='yellow',
+            "You are using renku version {version}, however version "
+            "{latest_version} is available.\n"
+            "You should consider upgrading ...".format(version=__version__, latest_version=latest_version,),
+            fg="yellow",
             bold=True,
         )
 
@@ -164,5 +157,5 @@ def check_version(ctx, param, value):
     if ctx.resilient_parsing:
         return
 
-    if not value and ctx.invoked_subcommand != 'run':
+    if not value and ctx.invoked_subcommand != "run":
         ctx.call_on_close(_check_version)

@@ -27,9 +27,9 @@ from renku.core.plugins import run as run_hook_specs
 @lru_cache(None)
 def get_plugin_manager():
     """The ``pluggy`` plugin manager."""
-    pm = pluggy.PluginManager('renku')
+    pm = pluggy.PluginManager("renku")
     pm.add_hookspecs(run_hook_specs)
-    pm.load_setuptools_entrypoints('renku')
+    pm.load_setuptools_entrypoints("renku")
 
     for cls in default_implementations.__dict__.values():
         if not isinstance(cls, type):

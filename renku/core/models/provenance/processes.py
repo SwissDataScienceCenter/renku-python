@@ -24,15 +24,8 @@ from renku.core.models.entities import CommitMixin
 
 
 @jsonld.s(
-    type=[
-        'wfdesc:Process',
-        'prov:Entity',
-        'prov:Plan',
-    ],
-    context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+    type=["wfdesc:Process", "prov:Entity", "prov:Plan",],
+    context={"wfdesc": "http://purl.org/wf4ever/wfdesc#", "prov": "http://www.w3.org/ns/prov#",},
     cmp=False,
 )
 class Process(CommitMixin):
@@ -40,11 +33,10 @@ class Process(CommitMixin):
 
     _activity = jsonld.ib(
         default=None,
-        context='prov:activity',
+        context="prov:activity",
         kw_only=True,
-        converter=lambda value: weakref.ref(value)
-        if value is not None else None,
-        type='renku.core.models.provenance.activities.Activity'
+        converter=lambda value: weakref.ref(value) if value is not None else None,
+        type="renku.core.models.provenance.activities.Activity",
     )
 
     @property
@@ -54,26 +46,16 @@ class Process(CommitMixin):
 
 
 @jsonld.s(
-    type=[
-        'wfdesc:Workflow',
-        'prov:Entity',
-        'prov:Plan',
-    ],
-    context={
-        'wfdesc': 'http://purl.org/wf4ever/wfdesc#',
-        'prov': 'http://www.w3.org/ns/prov#',
-    },
+    type=["wfdesc:Workflow", "prov:Entity", "prov:Plan",],
+    context={"wfdesc": "http://purl.org/wf4ever/wfdesc#", "prov": "http://www.w3.org/ns/prov#",},
     cmp=False,
 )
 class Workflow(Process):
     """Represent workflow with subprocesses."""
 
-    subprocesses = jsonld.ib(context='wfdesc:hasSubProcess', kw_only=True)
+    subprocesses = jsonld.ib(context="wfdesc:hasSubProcess", kw_only=True)
 
     @subprocesses.default
     def default_subprocesses(self):
         """Load subprocesses."""
-        return [
-            subprocess.association.plan
-            for subprocess in self.activity.subprocesses.values()
-        ]
+        return [subprocess.association.plan for subprocess in self.activity.subprocesses.values()]

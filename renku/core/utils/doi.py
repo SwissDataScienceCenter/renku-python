@@ -19,9 +19,7 @@
 import re
 
 doi_regexp = re.compile(
-    r'(doi:\s*|(?:(?:https|http)://)?(?:(?:dx|www)\.)?doi\.org/)?' +
-    r'(10\.\d+(.\d+)*/.+)$',
-    flags=re.I
+    r"(doi:\s*|(?:(?:https|http)://)?(?:(?:dx|www)\.)?doi\.org/)?" + r"(10\.\d+(.\d+)*/.+)$", flags=re.I
 )
 """See http://en.wikipedia.org/wiki/Digital_object_identifier."""
 

@@ -23,34 +23,25 @@ from renku.core.models.entities import Collection, Entity
 def test_indirect_inputs(renku_cli, client):
     """Test indirect inputs that are programmatically created."""
     # Set up a script that creates indirect inputs
-    renku_cli('run', '--no-output', 'mkdir', 'foo')
-    renku_cli('run', '--no-output', 'mkdir', '.renku/tmp')
-    renku_cli('run', 'touch', 'foo/bar')
-    renku_cli('run', 'touch', 'baz')
-    renku_cli('run', 'touch', 'qux')
-    renku_cli(
-        'run', 'sh', '-c',
-        'echo "echo foo > .renku/tmp/inputs.txt" > script.sh'
-    )
-    renku_cli(
-        'run', 'sh', '-c',
-        'echo "echo baz >> .renku/tmp/inputs.txt" >> script.sh'
-    )
-    renku_cli(
-        'run', 'sh', '-c',
-        'echo "echo qux > .renku/tmp/outputs.txt" >> script.sh'
-    )
-    exit_code, plan = renku_cli('run', 'sh', '-c', 'sh script.sh')
+    renku_cli("run", "--no-output", "mkdir", "foo")
+    renku_cli("run", "--no-output", "mkdir", ".renku/tmp")
+    renku_cli("run", "touch", "foo/bar")
+    renku_cli("run", "touch", "baz")
+    renku_cli("run", "touch", "qux")
+    renku_cli("run", "sh", "-c", 'echo "echo foo > .renku/tmp/inputs.txt" > script.sh')
+    renku_cli("run", "sh", "-c", 'echo "echo baz >> .renku/tmp/inputs.txt" >> script.sh')
+    renku_cli("run", "sh", "-c", 'echo "echo qux > .renku/tmp/outputs.txt" >> script.sh')
+    exit_code, plan = renku_cli("run", "sh", "-c", "sh script.sh")
     assert 0 == exit_code
     assert 2 == len(plan.inputs)
     assert 1 == len(plan.arguments)
     plan.inputs.sort(key=lambda e: e.consumes.path)
-    assert 'baz' == str(plan.inputs[0].consumes.path)
+    assert "baz" == str(plan.inputs[0].consumes.path)
     assert isinstance(plan.inputs[0].consumes, Entity)
     assert plan.inputs[0].position is None
-    assert 'foo' == str(plan.inputs[1].consumes.path)
+    assert "foo" == str(plan.inputs[1].consumes.path)
     assert isinstance(plan.inputs[1].consumes, Collection)
     assert plan.inputs[1].position is None
 
     assert 1 == len(plan.outputs)
-    assert 'qux' == plan.outputs[0].produces.path
+    assert "qux" == plan.outputs[0].produces.path

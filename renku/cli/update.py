@@ -134,19 +134,12 @@ from renku.version import __version__, version_url
 
 
 @click.command()
-@click.option('--revision', default='HEAD')
-@click.option(
-    '--no-output',
-    is_flag=True,
-    default=False,
-    help='Display commands without output files.'
-)
+@click.option("--revision", default="HEAD")
+@click.option("--no-output", is_flag=True, default=False, help="Display commands without output files.")
 @option_siblings
-@click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client(
-    clean=True,
-    requires_migration=True,
-    commit=True,
+    clean=True, requires_migration=True, commit=True,
 )
 def update(client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
@@ -154,9 +147,7 @@ def update(client, revision, no_output, siblings, paths):
     outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
     outputs = {node for node in outputs if graph.need_update(node)}
     if not outputs:
-        click.secho(
-            'All files were generated from the latest inputs.', fg='green'
-        )
+        click.secho("All files were generated from the latest inputs.", fg="green")
         sys.exit(0)
 
     # Check or extend siblings of outputs.
@@ -167,11 +158,7 @@ def update(client, revision, no_output, siblings, paths):
     input_paths = {node.path for node in graph.nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
-    workflow = graph.as_workflow(
-        input_paths=input_paths,
-        output_paths=output_paths,
-        outputs=outputs,
-    )
+    workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs,)
 
     wf, path = CWLConverter.convert(workflow, client)
     # Don't compute paths if storage is disabled.
@@ -187,24 +174,19 @@ def update(client, revision, no_output, siblings, paths):
     client.repo.git.add(*paths)
 
     if client.repo.is_dirty():
-        commit_msg = ('renku update: '
-                      'committing {} newly added files').format(len(paths))
+        commit_msg = ("renku update: " "committing {} newly added files").format(len(paths))
 
-        committer = Actor('renku {0}'.format(__version__), version_url)
+        committer = Actor("renku {0}".format(__version__), version_url)
 
         client.repo.index.commit(
-            commit_msg,
-            committer=committer,
-            skip_hooks=True,
+            commit_msg, committer=committer, skip_hooks=True,
         )
 
-    workflow_name = '{0}_update.yaml'.format(uuid.uuid4().hex)
+    workflow_name = "{0}_update.yaml".format(uuid.uuid4().hex)
 
     path = client.workflow_path / workflow_name
 
-    workflow.update_id_and_label_from_commit_path(
-        client, client.repo.head.commit, path
-    )
+    workflow.update_id_and_label_from_commit_path(client, client.repo.head.commit, path)
 
     with with_reference(path):
         run = WorkflowRun.from_run(workflow, client, path, update_commits=True)

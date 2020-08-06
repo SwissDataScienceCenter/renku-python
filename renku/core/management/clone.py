@@ -50,17 +50,13 @@ def clone(
 
     # Clone the project
     if skip_smudge:
-        os.environ['GIT_LFS_SKIP_SMUDGE'] = '1'
+        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
 
     try:
-        repo = Repo.clone_from(
-            url, path, recursive=recursive, depth=depth, progress=progress
-        )
+        repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress)
     except GitCommandError as e:
         if not raise_git_except:
-            raise errors.GitError(
-                'Cannot clone remote Renku project: {}'.format(url)
-            ) from e
+            raise errors.GitError("Cannot clone remote Renku project: {}".format(url)) from e
 
         raise e
 
@@ -75,15 +71,13 @@ def clone(
         config_writer = repo.config_writer()
 
         for key, value in config.items():
-            key_path = key.split('.')
+            key_path = key.split(".")
             key = key_path.pop()
 
             if not key_path or not key:
-                raise errors.GitError(
-                    'Cannot write to config. Section path or key is invalid.'
-                )
+                raise errors.GitError("Cannot write to config. Section path or key is invalid.")
 
-            config_writer.set_value('.'.join(key_path), key, value)
+            config_writer.set_value(".".join(key_path), key, value)
 
         config_writer.release()
 
@@ -93,12 +87,12 @@ def clone(
         install(client=client, force=True)
 
     if install_lfs:
-        command = ['git', 'lfs', 'install', '--local', '--force']
+        command = ["git", "lfs", "install", "--local", "--force"]
         if skip_smudge:
-            command += ['--skip-smudge']
+            command += ["--skip-smudge"]
         try:
             repo.git.execute(command=command, with_exceptions=True)
         except GitCommandError as e:
-            raise errors.GitError('Cannot install Git LFS') from e
+            raise errors.GitError("Cannot install Git LFS") from e
 
     return repo

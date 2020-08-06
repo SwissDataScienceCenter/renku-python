@@ -212,81 +212,66 @@ from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 
 
-@click.command(context_settings=dict(ignore_unknown_options=True, ))
+@click.command(context_settings=dict(ignore_unknown_options=True,))
 @click.option(
-    '--input',
-    'explicit_inputs',
-    multiple=True,
-    help='Force a path to be considered as an input.',
+    "explicit_inputs", "--input", multiple=True, help="Force a path to be considered as an input.",
 )
 @click.option(
-    '--output',
-    'explicit_outputs',
-    multiple=True,
-    help='Force a path to be considered an output.',
+    "explicit_outputs", "--output", multiple=True, help="Force a path to be considered an output.",
 )
 @click.option(
-    '--no-output',
-    is_flag=True,
-    default=False,
-    help='Allow command without output files.',
+    "--no-output", is_flag=True, default=False, help="Allow command without output files.",
 )
 @click.option(
-    '--no-input-detection',
-    is_flag=True,
-    default=False,
-    help='Disable auto-detection of inputs.',
+    "--no-input-detection", is_flag=True, default=False, help="Disable auto-detection of inputs.",
 )
 @click.option(
-    '--no-output-detection',
-    is_flag=True,
-    default=False,
-    help='Disable auto-detection of outputs.',
+    "--no-output-detection", is_flag=True, default=False, help="Disable auto-detection of outputs.",
 )
 @click.option(
-    '--success-code',
-    'success_codes',
+    "--success-code",
+    "success_codes",
     type=int,
     multiple=True,
     callback=lambda _, __, values: [int(value) % 256 for value in values],
-    help='Allowed command exit-code.',
+    help="Allowed command exit-code.",
 )
 @option_isolation
-@click.argument('command_line', nargs=-1, type=click.UNPROCESSED)
+@click.argument("command_line", nargs=-1, type=click.UNPROCESSED)
 @pass_local_client(
-    clean=True,
-    requires_migration=True,
-    commit=True,
-    ignore_std_streams=True,
+    clean=True, requires_migration=True, commit=True, ignore_std_streams=True,
 )
 def run(
-    client, explicit_inputs, explicit_outputs, no_output, no_input_detection,
-    no_output_detection, success_codes, isolation, command_line
+    client,
+    explicit_inputs,
+    explicit_outputs,
+    no_output,
+    no_input_detection,
+    no_output_detection,
+    success_codes,
+    isolation,
+    command_line,
 ):
     """Tracking work on a specific problem."""
     paths = explicit_outputs if no_output_detection else client.candidate_paths
-    mapped_std = get_mapped_std_streams(paths, streams=('stdout', 'stderr'))
+    mapped_std = get_mapped_std_streams(paths, streams=("stdout", "stderr"))
 
     paths = explicit_inputs if no_input_detection else client.candidate_paths
-    mapped_std_in = get_mapped_std_streams(paths, streams=('stdin', ))
+    mapped_std_in = get_mapped_std_streams(paths, streams=("stdin",))
     mapped_std.update(mapped_std_in)
 
-    invalid = get_mapped_std_streams(
-        explicit_inputs, streams=('stdout', 'stderr')
-    )
+    invalid = get_mapped_std_streams(explicit_inputs, streams=("stdout", "stderr"))
     if invalid:
         raise errors.UsageError(
-            'Explicit input file cannot be used as stdout/stderr:'
-            '\n\t' + click.style('\n\t'.join(invalid.values()), fg='yellow') +
-            '\n'
+            "Explicit input file cannot be used as stdout/stderr:"
+            "\n\t" + click.style("\n\t".join(invalid.values()), fg="yellow") + "\n"
         )
 
-    invalid = get_mapped_std_streams(explicit_outputs, streams=('stdin', ))
+    invalid = get_mapped_std_streams(explicit_outputs, streams=("stdin",))
     if invalid:
         raise errors.UsageError(
-            'Explicit output file cannot be used as stdin:'
-            '\n\t' + click.style('\n\t'.join(invalid.values()), fg='yellow') +
-            '\n'
+            "Explicit output file cannot be used as stdin:"
+            "\n\t" + click.style("\n\t".join(invalid.values()), fg="yellow") + "\n"
         )
 
     system_stdout = None
@@ -295,25 +280,25 @@ def run(
     # /dev/tty is a virtual device that points to the terminal
     # of the currently executed process
     try:
-        with open('/dev/tty', 'w'):
+        with open("/dev/tty", "w"):
             tty_exists = True
     except OSError:
         tty_exists = False
 
     try:
-        stdout_redirected = 'stdout' in mapped_std
-        stderr_redirected = 'stderr' in mapped_std
+        stdout_redirected = "stdout" in mapped_std
+        stderr_redirected = "stderr" in mapped_std
 
         if tty_exists:
             # if renku was called with redirected stdout/stderr, undo the
             # redirection here so error messages can be printed normally
             if stdout_redirected:
-                system_stdout = open('/dev/tty', 'w')
+                system_stdout = open("/dev/tty", "w")
                 old_stdout = sys.stdout
                 sys.stdout = system_stdout
 
             if stderr_redirected:
-                system_stderr = open('/dev/tty', 'w')
+                system_stderr = open("/dev/tty", "w")
                 old_stderr = sys.stderr
                 sys.stderr = system_stderr
 
@@ -327,20 +312,14 @@ def run(
             no_input_detection=no_input_detection,
             no_output_detection=no_output_detection,
             successCodes=success_codes,
-            **{
-                name: os.path.relpath(path, working_dir)
-                for name, path in mapped_std.items()
-            }
+            **{name: os.path.relpath(path, working_dir) for name, path in mapped_std.items()},
         )
         with client.with_workflow_storage() as wf:
             with factory.watch(client, no_output=no_output) as tool:
                 # Don't compute paths if storage is disabled.
                 if client.check_external_storage():
                     # Make sure all inputs are pulled from a storage.
-                    paths_ = (
-                        path for _, path in
-                        tool.iter_input_files(client.workflow_path)
-                    )
+                    paths_ = (path for _, path in tool.iter_input_files(client.workflow_path))
                     client.pull_paths_from_storage(*paths_)
 
                 if tty_exists:
@@ -351,10 +330,7 @@ def run(
                         sys.stderr = old_stderr
 
                 return_code = call(
-                    factory.command_line,
-                    cwd=os.getcwd(),
-                    **{key: getattr(sys, key)
-                       for key in mapped_std.keys()},
+                    factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()},
                 )
 
                 sys.stdout.flush()
@@ -368,9 +344,7 @@ def run(
                         sys.stderr = system_stderr
 
                 if return_code not in (success_codes or {0}):
-                    raise errors.InvalidSuccessCode(
-                        return_code, success_codes=success_codes
-                    )
+                    raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
 
                 wf.add_step(run=tool)
 

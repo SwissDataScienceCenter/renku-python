@@ -31,29 +31,23 @@ def test_migrations_job(svc_client_setup):
     svc_client, headers, project_id, _ = svc_client_setup
 
     response = svc_client.post(
-        '/cache.migrate',
-        data=json.dumps(dict(project_id=project_id, is_delayed=True)),
-        headers=headers
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, is_delayed=True)), headers=headers
     )
 
     assert 200 == response.status_code
-    job_id = response.json['result']['job_id']
+    job_id = response.json["result"]["job_id"]
 
     user_data = {
-        'email': headers['Renku-User-Email'],
-        'user_id': headers['Renku-User-Id'],
-        'fullname': headers['Renku-User-FullName'],
-        'token': os.getenv('IT_OAUTH_GIT_TOKEN')
+        "email": headers["Renku-User-Email"],
+        "user_id": headers["Renku-User-Id"],
+        "fullname": headers["Renku-User-FullName"],
+        "token": os.getenv("IT_OAUTH_GIT_TOKEN"),
     }
 
     assert migrate_job(user_data, project_id, job_id) is None
 
-    response = svc_client.get(
-        '/cache.migrations_check',
-        query_string=dict(project_id=project_id),
-        headers=headers
-    )
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
     assert 200 == response.status_code
-    assert not response.json['result']['migration_required']
-    assert response.json['result']['project_supported']
+    assert not response.json["result"]["migration_required"]
+    assert response.json["result"]["project_supported"]

@@ -9,21 +9,27 @@ handlers:
     level: DEBUG
     stream: "ext://sys.stdout"
 loggers:
-  service:
+  renku.service:
     handlers:
       - console
     level: DEBUG
     propagate: false
-  worker:
+  renku.worker:
     handlers:
       - console
     level: DEBUG
     propagate: false
-  scheduler:
+  renku.scheduler:
     handlers:
       - console
     level: DEBUG
     propagate: false
+  rq.worker:
+    level: INFO
+  rq_scheduler.scheduler:
+    handlers:
+      - console
+    level: INFO
 root:
   handlers:
     - console
