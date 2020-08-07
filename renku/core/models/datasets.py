@@ -258,6 +258,8 @@ class DatasetFile(Entity):
 
     external = attr.ib(default=False, kw_only=True)
 
+    source = jsonld.ib(context="renku:source", default=None, kw_only=True)
+
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
@@ -268,6 +270,10 @@ class DatasetFile(Entity):
         """Generate default filename based on path."""
         if self.path:
             return Path(self.path).name
+
+    def default_url(self):
+        """Generate default url based on project's ID."""
+        return generate_dataset_file_url(client=self.client, filepath=self.path)
 
     @property
     def full_path(self):
@@ -291,6 +297,9 @@ class DatasetFile(Entity):
 
         if not parsed_id.scheme:
             self._id = "file://{}".format(self._id)
+
+        if not self.url and self.client:
+            self.url = self.default_url()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -674,6 +683,7 @@ class DatasetFileSchema(EntitySchema):
     url = fields.String(schema.url, missing=None)
     based_on = Nested(schema.isBasedOn, "DatasetFileSchema", missing=None, propagate_client=False)
     external = fields.Boolean(renku.external, missing=False)
+    source = fields.String(renku.source, missing=None)
 
     @pre_dump
     def fix_datetimes(self, obj, many=False, **kwargs):
@@ -773,3 +783,16 @@ def generate_dataset_id(client, identifier):
 
     # always set the id by the identifier
     return urljoin(f"https://{host}", pathlib.posixpath.join("/datasets", quote(identifier, safe="")))
+
+
+def generate_dataset_file_url(client, filepath):
+    """Generate url for DatasetFile."""
+    if not client or not client.project:
+        return
+
+    project_id = urllib.parse.urlparse(client.project._id)
+    filepath = urllib.parse.quote(filepath, safe="/")
+    path = pathlib.posixpath.join(project_id.path, "files", "blob", filepath)
+    project_id = project_id._replace(path=path)
+
+    return project_id.geturl()

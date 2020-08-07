@@ -97,7 +97,6 @@ tests_require = [
     "flaky==3.7.0",
     "freezegun>=0.3.12,<=0.3.15",
     "isort>=5.2.0,<=5.3.0",
-    "six>=1.13.0,<=1.15.0",
     "pydocstyle>=3.0.0,<=5.0.2",
     "pytest-black==0.3.10",
     "pytest-cache==1.0",
@@ -106,7 +105,6 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
     "pytest-xdist==1.34.0",
-    "pytest-yapf==0.1.1",
     "pytest>=4.0.0,<6.0.2",
     "responses>=0.7.0,<=0.10.15",
 ]

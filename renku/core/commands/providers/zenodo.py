@@ -267,7 +267,7 @@ class ZenodoRecordSerializer:
         for file_ in files:
             remote_ = file_.remote_url
             dataset_file = DatasetFile(
-                url=remote_.geturl(),
+                source=remote_.geturl(),
                 id=file_.id,
                 checksum=file_.checksum,
                 filename=file_.filename,

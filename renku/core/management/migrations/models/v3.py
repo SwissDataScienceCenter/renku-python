@@ -23,7 +23,6 @@ from marshmallow import EXCLUDE, post_load, pre_load
 
 from renku.core.models import jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, renku, schema, wfprov
-from renku.core.models.datasets import DatasetFileSchema
 from renku.core.models.git import get_user_info
 from renku.core.models.projects import generate_project_id
 from renku.core.models.provenance.agents import generate_person_id
@@ -96,14 +95,26 @@ class DatasetFile(Base):
     """DatasetFile migration model."""
 
 
+class DatasetTag(Base):
+    """DatasetTag migration model."""
+
+
+class Language(Base):
+    """Language migration model."""
+
+
+class Url(Base):
+    """Url migration model."""
+
+
 class Dataset(Base):
     """Dataset migration model."""
 
     @classmethod
-    def from_yaml(cls, path, client):
+    def from_yaml(cls, path, client=None, commit=None):
         """Read content from YAML file."""
         data = jsonld.read_yaml(path)
-        self = DatasetSchemaV3(client=client).load(data)
+        self = DatasetSchemaV3(client=client, commit=commit).load(data)
         self.__reference__ = path
         return self
 
@@ -195,10 +206,56 @@ class DatasetFileSchemaV3(EntitySchemaV3):
         unknown = EXCLUDE
 
     added = fields.DateTime(schema.dateCreated)
-    based_on = fields.Nested(schema.isBasedOn, DatasetFileSchema, missing=None)
+    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchemaV3", missing=None)
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
     external = fields.Boolean(renku.external, missing=False)
+
+
+class LanguageSchemaV5(JsonLDSchema):
+    """Language schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.Language
+        model = Language
+        unknown = EXCLUDE
+
+    alternate_name = fields.String(schema.alternateName)
+    name = fields.String(schema.name)
+
+
+class DatasetTagSchemaV5(JsonLDSchema):
+    """DatasetTag schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.PublicationEvent
+        model = DatasetTag
+        unknown = EXCLUDE
+
+    _id = fields.Id()
+    commit = fields.String(schema.location)
+    created = fields.DateTime(schema.startDate, missing=None)
+    dataset = fields.String(schema.about)
+    description = fields.String(schema.description)
+    name = fields.String(schema.name)
+
+
+class UrlSchemaV5(JsonLDSchema):
+    """Url schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.URL
+        model = Url
+        unknown = EXCLUDE
+
+    _id = fields.Id(missing=None)
+    url = fields.Uri(schema.url, missing=None)
 
 
 class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
@@ -217,8 +274,12 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
     description = fields.String(schema.description, missing=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV3, many=True)
     identifier = fields.String(schema.identifier)
+    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV5, missing=None)
+    keywords = fields.List(schema.keywords, fields.String())
     license = fields.Uri(schema.license, missing=None, allow_none=True)
     name = fields.String(schema.alternateName, missing=None)
+    same_as = fields.Nested(schema.sameAs, UrlSchemaV5, missing=None)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV5, many=True)
     title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
@@ -256,4 +317,4 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
     paths = client.renku_datasets_path.rglob(client.METADATA)
-    return [Dataset.from_yaml(path, client=client) for path in paths]
+    return [Dataset.from_yaml(path=path, client=client) for path in paths]
