@@ -162,7 +162,7 @@ install_requires = [
     "psutil>=5.4.7,<=5.7.2",
     "pyasn1>=0.4.5,<=0.4.8",
     "PyYAML>=3.12,<=5.3.1",
-    "pyld==2.0.2",
+    "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<=19.1.0",
     "pyshacl==0.11.3.post1",
     "python-dateutil>=2.6.1,<=2.8.1",
