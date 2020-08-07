@@ -137,15 +137,11 @@ for name, reqs in extras_require.items():
         continue
     extras_require["nodocs"].extend(reqs)
 
-dependency_links = [
-    "git+https://github.com/SwissDataScienceCenter/calamus.git@master#egg=calamus",
-]
-
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "apispec==3.3.1",
     "attrs==19.3.0",
-    "calamus @ git+https://github.com/SwissDataScienceCenter/calamus.git@master#egg=calamus",
+    "calamus==0.3.2",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
     "cryptography>=2.7,<=2.9.2",
@@ -253,7 +249,6 @@ setup(
     platforms="any",
     entry_points={"console_scripts": ["renku=renku.cli:cli"],},
     extras_require=extras_require,
-    dependency_links=dependency_links,
     install_requires=install_requires,
     setup_requires=complete_setup_requires,
     tests_require=tests_require,
