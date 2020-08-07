@@ -634,17 +634,12 @@ def renku_cli(client, run):
     return renku_cli_
 
 
-@pytest.fixture(
-    params=[
-        {"path": Path(__file__).parent / "tests" / "fixtures" / "doi-dataset.yml",},
-        {"path": Path(__file__).parent / "tests" / "fixtures" / "broken-dataset-v0.5.2.yml",},
-    ]
-)
-def dataset_metadata(request):
+@pytest.fixture
+def dataset_metadata():
     """Return dataset metadata fixture."""
     from renku.core.models.jsonld import NoDatesSafeLoader
 
-    file_path = request.param["path"]
+    file_path = Path(__file__).parent / "tests" / "fixtures" / "doi-dataset.yml"
 
     data = yaml.load(file_path.read_text(), Loader=NoDatesSafeLoader)
     yield data

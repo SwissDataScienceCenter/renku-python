@@ -23,6 +23,7 @@ from pathlib import Path
 from git import GitError, Repo
 
 from renku.core import errors
+from renku.core.management.migrations.models.v3 import get_client_datasets
 from renku.core.models.datasets import DatasetFile
 from renku.core.utils.urls import remove_credentials
 
@@ -51,7 +52,7 @@ def _migrate_submodule_based_datasets(client):
     repo_paths = []
     symlinks = []
 
-    for dataset in client.datasets.values():
+    for dataset in get_client_datasets(client):
         for file_ in dataset.files:
             path = client.path / file_.path
             if not path.is_symlink():
@@ -120,7 +121,7 @@ def _migrate_submodule_based_datasets(client):
             except ValueError:
                 pass
 
-    for dataset in client.datasets.values():
+    for dataset in get_client_datasets(client):
         for file_ in dataset.files:
             if file_.path in metadata:
                 based_on, url = metadata[file_.path]

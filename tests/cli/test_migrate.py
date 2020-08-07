@@ -24,8 +24,6 @@ from renku import LocalClient
 from renku.cli import cli
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-from renku.core.models.datasets import Dataset
-from renku.core.utils.urls import url_to_string
 
 
 @pytest.mark.migration
@@ -183,15 +181,6 @@ def test_migrations_runs(isolated_runner, old_project):
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code
     assert "No migrations required." in result.output
-
-
-@pytest.mark.migration
-def test_migration_broken_urls(dataset_metadata):
-    """Check that migration of broken dataset file URLs is string."""
-    dataset = Dataset.from_jsonld(dataset_metadata, client=LocalClient("."),)
-
-    for file_ in dataset.files:
-        assert isinstance(url_to_string(file_.url), str)
 
 
 @pytest.mark.migration

@@ -24,8 +24,8 @@ from pathlib import Path
 
 import pyld
 
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.jsonld import read_yaml, write_yaml
+from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
 
 
 def migrate(client):
@@ -61,7 +61,7 @@ def _migrate_datasets_metadata(client):
         ],
     }
 
-    old_metadata_paths = _dataset_pre_0_3(client)
+    old_metadata_paths = get_pre_0_3_4_datasets_metadata(client)
     new_metadata_paths = client.renku_datasets_path.rglob(client.METADATA)
 
     for path in itertools.chain(old_metadata_paths, new_metadata_paths):
@@ -81,7 +81,6 @@ def _apply_on_the_fly_jsonld_migrations(
 
     if jsonld_translate:
         # perform the translation
-
         data = pyld.jsonld.expand(data)
         data_str = json.dumps(data)
         for k, v in jsonld_translate.items():
@@ -133,15 +132,9 @@ def _apply_on_the_fly_jsonld_migrations(
 
     data["@context"] = jsonld_context
 
+    _migrate_types(data)
+
     write_yaml(path, data)
-
-
-def _dataset_pre_0_3(client):
-    """Return paths of dataset metadata for pre 0.3.4."""
-    project_is_pre_0_3 = int(client.project.version) < 2
-    if project_is_pre_0_3:
-        return (client.path / DATA_DIR).rglob(client.METADATA)
-    return []
 
 
 def _migrate_dataset_schema(data, client):
@@ -313,6 +306,7 @@ _INITIAL_JSONLD_DATASET_CONTEXT = {
     "@version": 1.1,
     "prov": "http://www.w3.org/ns/prov#",
     "wfprov": "http://purl.org/wf4ever/wfprov#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     "path": "prov:atLocation",
     "_id": "@id",
     "_project": {
