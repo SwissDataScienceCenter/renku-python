@@ -61,24 +61,8 @@ class CommitMixin:
 
     def default_id(self):
         """Configure calculated ID."""
-        if self.commit:
-            hexsha = self.commit.hexsha
-        else:
-            hexsha = "UNCOMMITTED"
-
-        # Determine the hostname for the resource URIs.
-        # If RENKU_DOMAIN is set, it overrides the host from remote.
-        # Default is localhost.
-        host = "localhost"
-        if self.client:
-            host = self.client.remote.get("host") or host
-        host = os.environ.get("RENKU_DOMAIN") or host
-
-        # always set the id by the identifier
-        return urllib.parse.urljoin(
-            "https://{host}".format(host=host),
-            pathlib.posixpath.join("/blob/{hexsha}/{path}".format(hexsha=hexsha, path=self.path)),
-        )
+        hexsha = self.commit.hexsha if self.commit else "UNCOMMITTED"
+        return generate_file_id(client=self.client, hexsha=hexsha, path=self.path)
 
     @_label.default
     def default_label(self):
@@ -91,8 +75,8 @@ class CommitMixin:
             path = self.path
             if self.client and os.path.isabs(path):
                 path = pathlib.Path(path).relative_to(self.client.path)
-            return "{path}@{hexsha}".format(hexsha=hexsha, path=path)
-        return "{hexsha}".format(hexsha=hexsha, self=self)
+            return generate_label(path, hexsha)
+        return hexsha
 
     def __attrs_post_init__(self):
         """Post-init hook."""
@@ -269,3 +253,22 @@ class EntitySchema(CommitMixinSchema):
 
         rdf_type = [prov.Entity, wfprov.Artifact]
         model = Entity
+
+
+def generate_label(path, hexsha):
+    """Generate label field."""
+    return f"{path}@{hexsha}"
+
+
+def generate_file_id(client, hexsha, path):
+    """Generate DatasetFile id field."""
+    # Determine the hostname for the resource URIs.
+    # If RENKU_DOMAIN is set, it overrides the host from remote.
+    # Default is localhost.
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    # always set the id by the identifier
+    return urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{path}"))

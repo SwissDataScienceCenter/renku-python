@@ -17,15 +17,14 @@
 # limitations under the License.
 """Represent provenance agents."""
 
-import configparser
 import re
 
 from attr.validators import instance_of
 from marshmallow import EXCLUDE
 
-from renku.core import errors
 from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, schema
+from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
 
 
@@ -51,15 +50,7 @@ class Person:
     @_id.default
     def default_id(self):
         """Set the default id."""
-        import string
-
-        if self.email:
-            return "mailto:{email}".format(email=self.email)
-
-        # prep name to be a valid ntuple string
-        name = self.name.translate(str.maketrans("", "", string.punctuation))
-        name = "".join(filter(lambda x: x in string.printable, name))
-        return "_:{}".format("".join(name.lower().split()))
+        return generat_person_id(email=self.email, name=self.name)
 
     @email.validator
     def check_email(self, attribute, value):
@@ -100,25 +91,7 @@ class Person:
     @classmethod
     def from_git(cls, git):
         """Create an instance from a Git repo."""
-        git_config = git.config_reader()
-        try:
-            name = git_config.get_value("user", "name", None)
-            email = git_config.get_value("user", "email", None)
-        except (configparser.NoOptionError, configparser.NoSectionError):  # pragma: no cover
-            raise errors.ConfigurationError(
-                "The user name and email are not configured. "
-                'Please use the "git config" command to configure them.\n\n'
-                '\tgit config --global --add user.name "John Doe"\n'
-                "\tgit config --global --add user.email "
-                '"john.doe@example.com"\n'
-            )
-
-        # Check the git configuration.
-        if not name:  # pragma: no cover
-            raise errors.MissingUsername()
-        if not email:  # pragma: no cover
-            raise errors.MissingEmail()
-
+        name, email = get_user_info(git)
         return cls(name=name, email=email)
 
     @classmethod
@@ -208,3 +181,16 @@ class SoftwareAgent:
 # set up the default agent
 
 renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)
+
+
+def generat_person_id(email, name):
+    """Generate Person default id."""
+    import string
+
+    if email:
+        return f"mailto:{email}"
+
+    # prep name to be a valid ntuple string
+    name = name.translate(str.maketrans("", "", string.punctuation))
+    name = "".join(filter(lambda x: x in string.printable, name))
+    return "_:{}".format("".join(name.lower().split()))

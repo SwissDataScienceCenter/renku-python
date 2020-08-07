@@ -140,9 +140,9 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
     workdir_requirements = [r for r in cmd_line_tool.requirements if isinstance(r, InitialWorkDirRequirement)]
 
     for r in workdir_requirements:
-        for l in r.listing:
-            if l.entry == '$({"listing": [], "class": "Directory"})':
-                created_outputs.append(l.entryname)
+        for listing in r.listing:
+            if listing.entry == '$({"listing": [], "class": "Directory"})':
+                created_outputs.append(listing.entryname)
 
     for o in outputs:
         prefix = None

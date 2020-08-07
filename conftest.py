@@ -161,7 +161,7 @@ def repository():
         result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
         assert 0 == result.exit_code
 
-        yield project_path
+        yield os.path.realpath(project_path)
 
 
 @pytest.fixture
@@ -606,7 +606,7 @@ def doi_responses():
 
 
 @pytest.fixture
-def cli(client, run):
+def renku_cli(client, run):
     """Return a callable Renku CLI.
 
     It returns the exit code and content of the resulting CWL tool.
@@ -615,9 +615,9 @@ def cli(client, run):
 
     from renku.core.models.provenance.activities import Activity
 
-    def renku_cli(*args):
+    def renku_cli_(*args, **kwargs):
         before_wf_files = set(client.workflow_path.glob("*.yaml"))
-        exit_code = run(args)
+        exit_code = run(args, **kwargs)
         after_wf_files = set(client.workflow_path.glob("*.yaml"))
         new_files = after_wf_files - before_wf_files
         assert len(new_files) <= 1
@@ -625,25 +625,21 @@ def cli(client, run):
             wf_filepath = new_files.pop()
             with wf_filepath.open("r") as f:
                 content = Activity.from_jsonld(yaml.safe_load(f), client=client, commit=client.repo.head.commit)
+            content = content.association.plan
         else:
             content = None
 
         return exit_code, content
 
-    return renku_cli
+    return renku_cli_
 
 
-@pytest.fixture(
-    params=[
-        {"path": Path(__file__).parent / "tests" / "fixtures" / "doi-dataset.yml",},
-        {"path": Path(__file__).parent / "tests" / "fixtures" / "broken-dataset-v0.5.2.yml",},
-    ]
-)
-def dataset_metadata(request):
+@pytest.fixture
+def dataset_metadata():
     """Return dataset metadata fixture."""
     from renku.core.models.jsonld import NoDatesSafeLoader
 
-    file_path = request.param["path"]
+    file_path = Path(__file__).parent / "tests" / "fixtures" / "doi-dataset.yml"
 
     data = yaml.load(file_path.read_text(), Loader=NoDatesSafeLoader)
     yield data

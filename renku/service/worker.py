@@ -21,7 +21,6 @@ from contextlib import contextmanager
 
 import sentry_sdk
 from rq import Worker
-from rq.logutils import setup_loghandlers
 
 from sentry_sdk.integrations.rq import RqIntegration
 
