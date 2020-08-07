@@ -104,7 +104,7 @@ jobs:
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
-      run: pytest -v -m "not integration and not publish and not serial" -n auto --dist loadscope tests/cli
+      run: pytest -v -m "not integration and not publish and not serial" -n auto  tests/cli
     - name: Test with pytest(serial)
       run: pytest -v -m "not integration and not publish and serial"  tests/cli
     - name: Coveralls
@@ -213,11 +213,11 @@ jobs:
     - name: Test with pytest
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -v -m "not integration and not publish and not serial" -n auto --dist loadscope tests/cli
+      run: pytest -v -m "not integration and not publish and not serial" -n auto tests/cli
     - name: Test with pytest(serial)
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -v -m "not integration and not publish and serial"  tests/cli
+      run: pytest -v -m "not integration and not publish and serial" tests/cli
 
   test-macos-core:
     runs-on: macos-latest

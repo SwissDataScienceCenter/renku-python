@@ -86,7 +86,7 @@ def global_config_dir(monkeypatch, tmpdir_factory):
         yield m
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def run_shell():
     """Create a shell cmd runner."""
     import subprocess
@@ -113,7 +113,7 @@ def run_shell():
     return run_
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def run(runner, capsys):
     """Return a callable runner."""
     from renku.cli import cli
@@ -151,7 +151,7 @@ def data_file(tmpdir):
     return p
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def repository():
     """Yield a Renku repository."""
     from renku.cli import cli
@@ -203,7 +203,7 @@ def project_metadata(project):
     yield project, metadata
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def client(project):
     """Return a Renku repository."""
     from renku.core.management import LocalClient
@@ -272,7 +272,7 @@ def dataset(client):
     return dataset
 
 
-@pytest.fixture(params=[".", "some/sub/directory"])
+@pytest.fixture(scope="function", params=[".", "some/sub/directory"])
 def subdirectory(request):
     """Runs tests in root directory and a subdirectory."""
     from renku.core.utils.contexts import chdir
