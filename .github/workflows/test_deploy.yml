@@ -104,7 +104,9 @@ jobs:
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test with pytest
-      run: pytest -v -m "not integration and not publish" tests/cli
+      run: pytest -v -m "not integration and not publish and not serial" -n auto --dist loadscope tests/cli
+    - name: Test with pytest(serial)
+      run: pytest -v -m "not integration and not publish and serial"  tests/cli
     - name: Coveralls
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
@@ -140,7 +142,7 @@ jobs:
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
-        run: pytest -v -m "not integration and not publish" tests/core
+        run: pytest -v -m "not integration and not publish" -n auto tests/core
       - name: Coveralls
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
@@ -176,7 +178,7 @@ jobs:
           git config --global --add user.name "Renku @ SDSC"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
-        run: pytest -v -m "not integration and not publish" tests/service
+        run: pytest -v -m "not integration and not publish" -n auto tests/service
       - name: Coveralls
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
@@ -211,7 +213,11 @@ jobs:
     - name: Test with pytest
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -v -m "not integration and not publish" tests/cli
+      run: pytest -v -m "not integration and not publish and not serial" -n auto --dist loadscope tests/cli
+    - name: Test with pytest(serial)
+      env:
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+      run: pytest -v -m "not integration and not publish and serial"  tests/cli
 
   test-macos-core:
     runs-on: macos-latest
@@ -240,7 +246,7 @@ jobs:
       - name: Test with pytest
         env:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish" tests/core
+        run: pytest -v -m "not integration and not publish" -n auto tests/core
 
   test-macos-service:
     runs-on: macos-latest
@@ -269,7 +275,7 @@ jobs:
       - name: Test with pytest
         env:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish" tests/service
+        run: pytest -v -m "not integration and not publish" -n auto tests/service
 
   test-linux-integration:
     runs-on: ubuntu-latest
@@ -336,7 +342,7 @@ jobs:
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -m integration -v
+      run: pytest -m integration -v -n auto
 
   publish-pypi:
     runs-on: ubuntu-latest

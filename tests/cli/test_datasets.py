@@ -1237,6 +1237,7 @@ def test_avoid_empty_commits(runner, client, directory_tree):
     assert commit_sha_before == commit_sha_after
 
 
+@pytest.mark.serial
 def test_multiple_dataset_commits(runner, client, directory_tree):
     """Check adding existing data to multiple datasets."""
     commit_sha_before = client.repo.head.object.hexsha

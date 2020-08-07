@@ -68,7 +68,7 @@ def instance_path(renku_path, monkeypatch):
         yield renku_path
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def runner():
     """Create a runner on isolated filesystem."""
     return CliRunner()
@@ -126,6 +126,7 @@ def run(runner, capsys):
                 cli.main(
                     args=args, prog_name=runner.get_default_prog_name(cli),
                 )
+                return 0
             except SystemExit as e:
                 return 0 if e.code is None else e.code
             except Exception:
@@ -164,7 +165,7 @@ def repository():
         yield os.path.realpath(project_path)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def project(repository):
     """Create a test project."""
     from git import Repo

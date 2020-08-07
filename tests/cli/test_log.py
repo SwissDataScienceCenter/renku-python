@@ -24,6 +24,7 @@ import pytest
 from renku.cli import cli
 
 
+@pytest.mark.serial
 @pytest.mark.shelled
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_run_log_strict(runner, project, run_shell, format):
@@ -37,7 +38,6 @@ def test_run_log_strict(runner, project, run_shell, format):
     assert ".renku/workflow/" in result.output
 
 
-@pytest.mark.shelled
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""
@@ -62,7 +62,6 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirector
     assert all(p in result.output for p in test_paths)
 
 
-@pytest.mark.shelled
 @pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_dataset_log_invalidation_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""
