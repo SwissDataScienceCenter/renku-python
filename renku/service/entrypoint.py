@@ -21,11 +21,15 @@ import os
 import traceback
 import uuid
 
+import sentry_sdk
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from flask import Flask, request
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.service.cache import cache
 from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, OPENAPI_VERSION, SERVICE_NAME, SWAGGER_URL
@@ -61,6 +65,13 @@ from renku.service.views.templates import (
 )
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
+
+if os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        environment=os.getenv("SENTRY_ENV"),
+        integrations=[FlaskIntegration(), RqIntegration(), RedisIntegration()],
+    )
 
 
 def create_app():
