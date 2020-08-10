@@ -849,7 +849,7 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
         assert new_file.basename not in [file_.path.name for file_ in dataset.files]
 
 
-def test_dataset_rm(tmpdir, runner, project, client, subdirectory):
+def test_dataset_1rm(tmpdir, runner, project, client, subdirectory):
     """Test removal of a dataset."""
     # try to delete non existing dataset
     result = runner.invoke(cli, ["dataset", "rm"])
