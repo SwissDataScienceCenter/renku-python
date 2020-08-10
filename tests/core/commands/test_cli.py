@@ -30,13 +30,13 @@ import git
 import pytest
 from click.testing import CliRunner
 from cwlgen import parse_cwl
+from tests.cli.test_init import INPUT, METADATA, TEMPLATE_ID
 
 from renku import __version__
 from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
 from renku.core.utils.contexts import chdir
-from tests.cli.test_init import INPUT, METADATA, TEMPLATE_ID
 
 
 def test_version(runner):

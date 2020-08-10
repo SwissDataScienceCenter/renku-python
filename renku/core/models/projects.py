@@ -54,6 +54,8 @@ class Project(ReferenceMixin):
 
     version = jsonld.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION), context="schema:schemaVersion")
 
+    agent_version = jsonld.ib(converter=str, default=None, context="schema:agent")
+
     client = attr.ib(default=None, kw_only=True)
 
     creator = jsonld.ib(default=None, kw_only=True, context={"@id": "schema:creator",}, type=Person)
@@ -115,6 +117,10 @@ class Project(ReferenceMixin):
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""
+        from renku import __version__
+
+        self.agent_version = __version__
+
         data = ProjectSchema().dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
 
@@ -176,6 +182,7 @@ class ProjectSchema(JsonLDSchema):
     created = fields.DateTime(schema.dateCreated, missing=None)
     updated = fields.DateTime(schema.dateUpdated, missing=None)
     version = fields.String(schema.schemaVersion, missing=1)
+    agent_version = fields.String(schema.agent, missing=None)
     creator = fields.Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 

@@ -20,6 +20,42 @@
 import tempfile
 from pathlib import Path
 
+from renku import LocalClient
+from renku.core.commands.dataset import create_dataset
+
+
+def test_latest_version(project):
+    """Test returning the latest version of `SoftwareAgent`."""
+    from renku import __version__
+
+    create_dataset(
+        "ds1", title="", description="", creators=[],
+    )
+
+    agent_version = LocalClient(project).latest_agent
+    assert __version__ == agent_version
+
+
+def test_latest_version_user_commits(project):
+    """Test retrieval of `SoftwareAgent` with latest non-renku command."""
+    from git import Repo
+
+    from renku import __version__
+
+    create_dataset(
+        "ds1", title="", description="", creators=[],
+    )
+
+    myfile = Path("myfile")
+    myfile.write_text("123")
+
+    repo = Repo(project)
+    repo.index.add([str(myfile)])
+    repo.index.commit("added myfile")
+
+    agent_version = LocalClient(project).latest_agent
+    assert __version__ == agent_version
+
 
 def test_init_repository(local_client):
     """Test initializing an empty repository."""
