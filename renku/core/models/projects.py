@@ -80,36 +80,8 @@ class Project(ReferenceMixin):
 
     @property
     def project_id(self):
-        """Return the id for the project based on the repo origin remote."""
-        import pathlib
-        import urllib
-
-        # Determine the hostname for the resource URIs.
-        # If RENKU_DOMAIN is set, it overrides the host from remote.
-        # Default is localhost.
-        host = "localhost"
-
-        if not self.creator:
-            raise ValueError("Project Creator not set")
-
-        owner = self.creator.email.split("@")[0]
-        name = self.name
-
-        if self.client:
-            remote = self.client.remote
-            host = self.client.remote.get("host") or host
-            owner = remote.get("owner") or owner
-            name = remote.get("name") or name
-        host = os.environ.get("RENKU_DOMAIN") or host
-        if name:
-            name = urllib.parse.quote(name, safe="")
-        else:
-            raise ValueError("Project name not set")
-
-        project_url = urllib.parse.urljoin(
-            "https://{host}".format(host=host), pathlib.posixpath.join(PROJECT_URL_PATH, owner, name or "NULL")
-        )
-        return project_url
+        """Return the id for the project."""
+        return generate_project_id(client=self.client, name=self.name, creator=self.creator)
 
     @classmethod
     def from_yaml(cls, path, client=None):
@@ -203,3 +175,33 @@ class ProjectSchema(JsonLDSchema):
             return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
         obj.created = self._fix_timezone(obj.created)
         return obj
+
+
+def generate_project_id(client, name, creator):
+    """Return the id for the project based on the repo origin remote."""
+    import pathlib
+    import urllib
+
+    # Determine the hostname for the resource URIs.
+    # If RENKU_DOMAIN is set, it overrides the host from remote.
+    # Default is localhost.
+    host = "localhost"
+
+    if not creator:
+        raise ValueError("Project Creator not set")
+
+    owner = creator.email.split("@")[0]
+
+    if client:
+        remote = client.remote
+        host = client.remote.get("host") or host
+        owner = remote.get("owner") or owner
+        name = remote.get("name") or name
+    host = os.environ.get("RENKU_DOMAIN") or host
+    if name:
+        name = urllib.parse.quote(name, safe="")
+    else:
+        raise ValueError("Project name not set")
+
+    project_url = urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join(PROJECT_URL_PATH, owner, name))
+    return project_url

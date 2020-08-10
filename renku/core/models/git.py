@@ -17,6 +17,7 @@
 # limitations under the License.
 """Git utilities."""
 
+import configparser
 import re
 
 import attr
@@ -146,3 +147,28 @@ class Range:
         if self.start:
             return "{self.start}..{self.stop}".format(self=self)
         return str(self.stop)
+
+
+def get_user_info(git):
+    """Get Git repository's owner name and email."""
+
+    git_config = git.config_reader()
+    try:
+        name = git_config.get_value("user", "name", None)
+        email = git_config.get_value("user", "email", None)
+    except (configparser.NoOptionError, configparser.NoSectionError):  # pragma: no cover
+        raise errors.ConfigurationError(
+            "The user name and email are not configured. "
+            'Please use the "git config" command to configure them.\n\n'
+            '\tgit config --global --add user.name "John Doe"\n'
+            "\tgit config --global --add user.email "
+            '"john.doe@example.com"\n'
+        )
+
+    # Check the git configuration.
+    if not name:  # pragma: no cover
+        raise errors.MissingUsername()
+    if not email:  # pragma: no cover
+        raise errors.MissingEmail()
+
+    return name, email

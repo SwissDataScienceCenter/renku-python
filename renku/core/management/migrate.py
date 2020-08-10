@@ -35,8 +35,9 @@ from pathlib import Path
 import pkg_resources
 
 from renku.core.errors import MigrationRequired, ProjectNotSupported
+from renku.core.utils.migrate import read_project_version
 
-SUPPORTED_PROJECT_VERSION = 5
+SUPPORTED_PROJECT_VERSION = 6
 
 
 def check_for_migration(client):
@@ -85,7 +86,7 @@ def migrate(client, progress_callback=None):
 
 def _get_project_version(client):
     try:
-        return int(client.project.version)
+        return int(read_project_version(client))
     except ValueError:
         return 1
 

@@ -76,11 +76,11 @@
         },
         "calamus": {
             "hashes": [
-                "sha256:13c1bfccf815a5c3113c2f9aac70d32daddc8304717806e07436c8bd17397084",
-                "sha256:597660302a2f37fa0f917030aa6a95a40efd8134d448eb10dcd4b080a67515c2"
+                "sha256:a3ad53e4ff42a1fce0649894b6ed1e30b9c741eb8898ee2e7e30b8d1361ae080",
+                "sha256:a928a48b87d6b49f9f1f0176de096051aa50088eeb9c46b38fcaaf578cb77218"
             ],
             "markers": "python_full_version >= '3.6.1' and python_full_version < '4.0.0'",
-            "version": "==0.3.1"
+            "version": "==0.3.2"
         },
         "certifi": {
             "hashes": [
@@ -571,9 +571,9 @@
         },
         "pyld": {
             "hashes": [
-                "sha256:d3ac99b9cadeebefbf032ba9951b66bb96438a237273a6c6aead8c15c7564ea9"
+                "sha256:287445f888c3a332ccbd20a14844c66c2fcbaeab3c99acd506a0788e2ebb2f82"
             ],
-            "version": "==2.0.2"
+            "version": "==2.0.3"
         },
         "pyopenssl": {
             "hashes": [
