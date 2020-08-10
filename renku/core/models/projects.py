@@ -54,9 +54,7 @@ class Project(ReferenceMixin):
 
     version = jsonld.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION), context="schema:schemaVersion")
 
-    agent_version = jsonld.ib(
-        converter=str, default=None, context='schema:agent'
-    )
+    agent_version = jsonld.ib(converter=str, default=None, context="schema:agent")
 
     client = attr.ib(default=None, kw_only=True)
 

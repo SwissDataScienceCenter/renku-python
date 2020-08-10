@@ -32,6 +32,7 @@ def migrations_check(client):
 def migrations_versions(client):
     """Return source and destination migration versions."""
     from renku import __version__
+
     return __version__, client.latest_agent
 
 

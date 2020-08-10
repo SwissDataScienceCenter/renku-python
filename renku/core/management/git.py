@@ -294,7 +294,7 @@ class GitCore:
 
         diffs = []
         try:
-            diffs = [d.a_path for d in self.repo.index.diff('HEAD')]
+            diffs = [d.a_path for d in self.repo.index.diff("HEAD")]
             if project_metadata_path in diffs:
                 diffs.remove(project_metadata_path)
         except gitdb.exc.BadName:

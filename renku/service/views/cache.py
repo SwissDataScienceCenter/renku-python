@@ -278,11 +278,11 @@ def migration_check_project_view(user_data, cache):
         migration_required, project_supported = migrations_check()
 
     return result_response(
-        ProjectMigrationCheckResponseRPC(), {
+        ProjectMigrationCheckResponseRPC(),
+        {
             "migration_required": migration_required,
             "project_supported": project_supported,
             "project_version": project_version,
             "latest_version": latest_version,
-        }
-
+        },
     )
