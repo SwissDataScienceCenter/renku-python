@@ -44,7 +44,7 @@ def test_migrations_job(svc_client_setup):
         "token": os.getenv("IT_OAUTH_GIT_TOKEN"),
     }
 
-    assert migrate_job(user_data, project_id, job_id) is None
+    assert migrate_job(user_data, project_id, job_id, "my migrate commit") is None
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 

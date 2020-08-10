@@ -245,12 +245,9 @@ def migrate_project_view(user_data, cache):
 
         with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
             queue.enqueue(
-                migrate_job,
-                user_data,
-                project.project_id,
-                job.job_id,
-                commit_message,
+                migrate_job, user_data, project.project_id, job.job_id, commit_message,
             )
+
         return result_response(ProjectMigrateAsyncResponseRPC(), job)
 
     messages, was_migrated = execute_migration(project, commit_message)

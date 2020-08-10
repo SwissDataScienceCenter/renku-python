@@ -185,8 +185,8 @@ class ProjectMigrateRequest(Schema):
     @pre_load()
     def default_commit_message(self, data, **kwargs):
         """Set default commit message."""
-        if not data.get('commit_message'):
-            data['commit_message'] = 'service: renku migrate'
+        if not data.get("commit_message"):
+            data["commit_message"] = "service: renku migrate"
 
         return data
 

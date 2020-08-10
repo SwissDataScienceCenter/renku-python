@@ -36,9 +36,7 @@ def execute_migration(project, commit_message):
         messages.append(msg)
 
     with chdir(project.abs_path):
-        was_migrated = migrate_project(
-            progress_callback=collect_message, commit_message=commit_message
-        )
+        was_migrated = migrate_project(progress_callback=collect_message, commit_message=commit_message)
 
     return messages, was_migrated
 
