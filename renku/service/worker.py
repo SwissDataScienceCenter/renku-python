@@ -19,12 +19,18 @@
 import os
 from contextlib import contextmanager
 
+import sentry_sdk
 from rq import Worker
-from rq.logutils import setup_loghandlers
+
+from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.core.errors import ConfigurationError, UsageError
 from renku.service.jobs.queues import QUEUES, WorkerQueues
 from renku.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
+
+
+if os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(os.getenv("SENTRY_DSN"), integrations=[RqIntegration()])
 
 
 @contextmanager
@@ -34,12 +40,10 @@ def worker(queue_list):
     def build_worker():
         """Build worker."""
         # NOTE: logging configuration has been moved to `.work(logging_level=)`
-        worker_log.info(
-            'worker log level set to {}'.format(DEPLOYMENT_LOG_LEVEL)
-        )
+        worker_log.info(f"worker log level set to {DEPLOYMENT_LOG_LEVEL}")
 
         rq_worker = Worker(queue_list, connection=WorkerQueues.connection)
-        worker_log.info('worker created')
+        worker_log.info("worker created")
 
         return rq_worker
 
@@ -50,10 +54,7 @@ def check_queues(queue_list):
     """Check if listening on specified queues is possible."""
     for queue in queue_list:
         if queue not in QUEUES:
-            err_msg = (
-                'invalid queue name: {0}\n\n'
-                'valid queue names: \n{1}'.format(queue, '\n'.join(QUEUES))
-            )
+            err_msg = "invalid queue name: {0}\n\n" "valid queue names: \n{1}".format(queue, "\n".join(QUEUES))
             raise UsageError(err_msg)
 
 
@@ -66,15 +67,12 @@ def start_worker(queue_list):
 
 
 if __name__ == '__main__':
-    queues = os.getenv('RENKU_SVC_WORKER_QUEUES')
-    worker_log.info('working on queues: {}'.format(queues))
+    queues = os.getenv("RENKU_SVC_WORKER_QUEUES")
+    worker_log.info(f"working on queues: {queues}")
 
     if not queues:
-        raise ConfigurationError((
-            'Worker queues not specified. '
-            'Please, set RENKU_SVC_WORKER_QUEUES environment variable.'
-        ))
+        raise ConfigurationError(
+            ("Worker queues not specified. " "Please, set RENKU_SVC_WORKER_QUEUES environment variable.")
+        )
 
-    start_worker([
-        queue_name.strip() for queue_name in queues.strip().split(',')
-    ])
+    start_worker([queue_name.strip() for queue_name in queues.strip().split(",")])

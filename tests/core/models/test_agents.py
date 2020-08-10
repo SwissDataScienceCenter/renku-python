@@ -22,40 +22,32 @@ from renku.core.models.provenance.agents import Person
 
 
 @pytest.mark.parametrize(
-    'value,has_name,has_email,has_affiliation', [
-        ('John Doe<john.doe@mail.ch>[Some Affiliation]', True, True, True),
-        (
-            '  John Doe  <  john.doe@mail.ch  >  [  Some Affiliation  ]', True,
-            True, True
-        ),
-        ('  John Doe  <  john.doe@mail.ch  >  [  ]', True, True, False),
-        ('  John Doe  <  john.doe@mail.ch  >  ', True, True, False),
-        (
-            '  John Doe  <  john.doe@mail.ch  >  Some Affiliation ', True,
-            True, False
-        ),
-        (
-            '  <  john.doe@mail.ch  > [  Some Affiliation  ] ', False, True,
-            True
-        ),
-        ('  <> [  Some Affiliation  ] ', False, False, True),
-        ('  [  Some Affiliation  ] ', False, False, True),
-        ('  <  john.doe@mail.ch  > [  ] ', False, True, False),
-    ]
+    "value,has_name,has_email,has_affiliation",
+    [
+        ("John Doe<john.doe@mail.ch>[Some Affiliation]", True, True, True),
+        ("  John Doe  <  john.doe@mail.ch  >  [  Some Affiliation  ]", True, True, True),
+        ("  John Doe  <  john.doe@mail.ch  >  [  ]", True, True, False),
+        ("  John Doe  <  john.doe@mail.ch  >  ", True, True, False),
+        ("  John Doe  <  john.doe@mail.ch  >  Some Affiliation ", True, True, False),
+        ("  <  john.doe@mail.ch  > [  Some Affiliation  ] ", False, True, True),
+        ("  <> [  Some Affiliation  ] ", False, False, True),
+        ("  [  Some Affiliation  ] ", False, False, True),
+        ("  <  john.doe@mail.ch  > [  ] ", False, True, False),
+    ],
 )
 def test_construct_person(value, has_name, has_email, has_affiliation):
     """Test construct person from string."""
     p = Person.from_string(value)
 
     if has_name:
-        assert 'John Doe' == p.name
+        assert "John Doe" == p.name
     else:
-        assert '' == p.name
+        assert "" == p.name
     if has_email:
-        assert 'john.doe@mail.ch' == p.email
+        assert "john.doe@mail.ch" == p.email
     else:
         assert p.email is None
     if has_affiliation:
-        assert 'Some Affiliation' == p.affiliation
+        assert "Some Affiliation" == p.affiliation
     else:
         assert p.affiliation is None

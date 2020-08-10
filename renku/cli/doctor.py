@@ -27,11 +27,11 @@ from renku.core.commands.doctor import DOCTOR_INFO, doctor_check
 @click.pass_context
 def doctor(ctx):
     """Check your system and repository for potential problems."""
-    click.secho('\n'.join(textwrap.wrap(DOCTOR_INFO)) + '\n', bold=True)
+    click.secho("\n".join(textwrap.wrap(DOCTOR_INFO)) + "\n", bold=True)
     is_ok, problems = doctor_check()
 
     if is_ok:
-        click.secho('Everything seems to be ok.', fg='green')
+        click.secho("Everything seems to be ok.", fg="green")
         ctx.exit(0)
 
     click.secho(problems)

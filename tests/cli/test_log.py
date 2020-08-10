@@ -25,72 +25,59 @@ from renku.cli import cli
 
 
 @pytest.mark.shelled
-@pytest.mark.parametrize('format', ['json-ld', 'nt', 'rdf'])
+@pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
 def test_run_log_strict(runner, project, run_shell, format):
     """Test log output of run command."""
     # Run a shell command with pipe.
     result = run_shell('renku run echo "a" > output')
 
     # Assert created output file.
-    result = runner.invoke(
-        cli, ['log', '--strict', '--format={}'.format(format)]
-    )
+    result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
     assert 0 == result.exit_code, result.output
-    assert '.renku/workflow/' in result.output
+    assert ".renku/workflow/" in result.output
 
 
 @pytest.mark.shelled
-@pytest.mark.parametrize('format', ['json-ld', 'nt', 'rdf'])
-def test_dataset_log_strict(
-    tmpdir, runner, project, client, format, subdirectory
-):
+@pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
+def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""
-    result = runner.invoke(cli, ['dataset', 'create', 'my-dataset'])
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code
 
     paths = []
     test_paths = []
     for i in range(3):
-        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file = tmpdir.join("file_{0}".format(i))
         new_file.write(str(i))
         paths.append(str(new_file))
-        test_paths.append(str(new_file.relto(tmpdir.join('..'))))
+        test_paths.append(str(new_file.relto(tmpdir.join(".."))))
 
     # add data
-    result = runner.invoke(
-        cli,
-        ['dataset', 'add', 'my-dataset'] + paths,
-    )
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths,)
     assert 0 == result.exit_code
 
-    result = runner.invoke(
-        cli, ['log', '--strict', '--format={}'.format(format)]
-    )
+    result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
 
     assert 0 == result.exit_code, result.output
     assert all(p in result.output for p in test_paths)
 
 
 @pytest.mark.shelled
-@pytest.mark.parametrize('format', ['json-ld', 'nt', 'rdf'])
-def test_dataset_log_invalidation_strict(
-    tmpdir, runner, project, client, format, subdirectory
-):
+@pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
+def test_dataset_log_invalidation_strict(tmpdir, runner, project, client, format, subdirectory):
     """Test output of log for dataset add."""
     repo = git.Repo(project)
-    input_ = client.path / 'input.txt'
-    input_.write_text('first')
+    input_ = client.path / "input.txt"
+    input_.write_text("first")
 
-    repo.git.add('--all')
-    repo.index.commit('Created input.txt')
+    repo.git.add("--all")
+    repo.index.commit("Created input.txt")
 
     os.remove(input_)
-    repo.git.add('--all')
-    repo.index.commit('Removed input.txt')
+    repo.git.add("--all")
+    repo.index.commit("Removed input.txt")
 
-    result = runner.invoke(
-        cli, ['log', '--strict', '--format={}'.format(format)]
-    )
+    result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
 
     assert 0 == result.exit_code, result.output
-    assert 'wasInvalidatedBy' in result.output
+    assert "wasInvalidatedBy" in result.output

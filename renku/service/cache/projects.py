@@ -32,7 +32,7 @@ class ProjectManagementCache(BaseCache):
 
     def make_project(self, user, project_data):
         """Store user project metadata."""
-        project_data.update({'user_id': user.user_id})
+        project_data.update({"user_id": user.user_id})
 
         project_obj = self.project_schema.load(project_data, unknown=EXCLUDE)
         project_obj.save()
@@ -43,8 +43,7 @@ class ProjectManagementCache(BaseCache):
     def get_project(user, project_id):
         """Get user cached project."""
         try:
-            record = Project.get((Project.project_id == project_id) &
-                                 (Project.user_id == user.user_id))
+            record = Project.get((Project.project_id == project_id) & (Project.user_id == user.user_id))
         except ValueError:
             raise ProjectNotFound(project_id)
 

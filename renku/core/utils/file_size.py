@@ -20,36 +20,35 @@
 import re
 
 units = {
-    'b': 1,
-    'kb': 1000,
-    'mb': 1000**2,
-    'gb': 1000**3,
-    'tb': 1000**4,
-    'm': 1000**2,
-    'g': 1000**3,
-    't': 1000**4,
-    'p': 1000**5,
-    'e': 1000**6,
-    'z': 1000**7,
-    'y': 1000**8,
-    'ki': 1024,
-    'mi': 1024**2,
-    'gi': 1024**3,
-    'ti': 1024**4,
-    'pi': 1024**5,
-    'ei': 1024**6,
-    'zi': 1024**7,
-    'yi': 1024**8,
+    "b": 1,
+    "kb": 1000,
+    "mb": 1000 ** 2,
+    "gb": 1000 ** 3,
+    "tb": 1000 ** 4,
+    "m": 1000 ** 2,
+    "g": 1000 ** 3,
+    "t": 1000 ** 4,
+    "p": 1000 ** 5,
+    "e": 1000 ** 6,
+    "z": 1000 ** 7,
+    "y": 1000 ** 8,
+    "ki": 1024,
+    "mi": 1024 ** 2,
+    "gi": 1024 ** 3,
+    "ti": 1024 ** 4,
+    "pi": 1024 ** 5,
+    "ei": 1024 ** 6,
+    "zi": 1024 ** 7,
+    "yi": 1024 ** 8,
 }
 
 
 def parse_file_size(size_str):
     """Parse a human readable filesize to bytes."""
-    res = re.search(r'([0-9.]+)([a-zA-Z]{1,2})', size_str)
+    res = re.search(r"([0-9.]+)([a-zA-Z]{1,2})", size_str)
     if not res or res.group(2).lower() not in units:
         raise ValueError(
-            'Supplied file size does not contain a unit. '
-            'Valid units are: {}'.format(', '.join(units.keys()))
+            "Supplied file size does not contain a unit. " "Valid units are: {}".format(", ".join(units.keys()))
         )
 
     value = float(res.group(1))

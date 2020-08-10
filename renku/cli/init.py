@@ -147,17 +147,16 @@ from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import INFO
 from renku.core.commands.git import set_git_home
-from renku.core.commands.init import create_from_template, fetch_template, \
-    read_template_manifest
+from renku.core.commands.init import create_from_template, fetch_template, read_template_manifest
 from renku.core.commands.options import option_external_storage_requested
 from renku.core.models.tabulate import tabulate
 
-_GITLAB_CI = '.gitlab-ci.yml'
-_DOCKERFILE = 'Dockerfile'
-_REQUIREMENTS = 'requirements.txt'
+_GITLAB_CI = ".gitlab-ci.yml"
+_DOCKERFILE = "Dockerfile"
+_REQUIREMENTS = "requirements.txt"
 CI_TEMPLATES = [_GITLAB_CI, _DOCKERFILE, _REQUIREMENTS]
 
-INVALID_DATA_DIRS = ['.', '.renku', '.git']
+INVALID_DATA_DIRS = [".", ".renku", ".git"]
 """Paths that cannot be used as data directory name."""
 
 
@@ -165,11 +164,10 @@ def parse_parameters(ctx, param, value):
     """Parse parameters to dictionary."""
     parameters = {}
     for parameter in value:
-        splitted = parameter.split('=', 1)
+        splitted = parameter.split("=", 1)
         if len(splitted) < 2 or len(splitted[0]) < 1:
             raise errors.ParameterError(
-                'Parameter format must be --parameter "param1"="value". ',
-                f'--parameter "{parameter}"'
+                'Parameter format must be --parameter "param1"="value". ', f'--parameter "{parameter}"'
             )
         parameters[splitted[0]] = splitted[1]
     return parameters
@@ -178,7 +176,7 @@ def parse_parameters(ctx, param, value):
 def validate_name(ctx, param, value):
     """Validate a project name."""
     if not value:
-        value = os.path.basename(ctx.params['path'].rstrip(os.path.sep))
+        value = os.path.basename(ctx.params["path"].rstrip(os.path.sep))
     return value
 
 
@@ -195,49 +193,43 @@ def create_template_sentence(templates, describe=False, instructions=False):
     :ref templates: list of templates coming from manifest file
     :ref instructions: add instructions
     """
-    Template = namedtuple(
-        'Template', ['index', 'id', 'description', 'variables']
-    )
+    Template = namedtuple("Template", ["index", "id", "description", "variables"])
 
     def extract_description(template_elem):
         """Extract description from template manifest."""
         if describe:
-            return template_elem['description']
+            return template_elem["description"]
         return None
 
     def extract_variables(template_elem):
         """Extract variables from tempalte manifest."""
         if describe:
-            return '\n'.join([
-                f'{variable[0]}: {variable[1]}'
-                for variable in template_elem.get('variables', {}).items()
-            ])
+            return "\n".join(
+                [f"{variable[0]}: {variable[1]}" for variable in template_elem.get("variables", {}).items()]
+            )
 
-        return ','.join(template_elem.get('variables', {}).keys())
+        return ",".join(template_elem.get("variables", {}).keys())
 
     templates_friendly = [
         Template(
             index=index + 1,
-            id=template_elem['folder'],
+            id=template_elem["folder"],
             description=extract_description(template_elem),
             variables=extract_variables(template_elem),
-        ) for index, template_elem in enumerate(templates)
+        )
+        for index, template_elem in enumerate(templates)
     ]
 
-    table_headers = OrderedDict((
-        ('index', 'Index'),
-        ('id', 'Id'),
-        ('variables', 'Parameters'),
-    ))
+    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters"),))
 
     if describe:
-        table_headers['description'] = 'Description'
+        table_headers["description"] = "Description"
 
     text = tabulate(templates_friendly, headers=table_headers)
 
     if not instructions:
         return text
-    return '{0}\nPlease choose a template by typing the index'.format(text)
+    return "{0}\nPlease choose a template by typing the index".format(text)
 
 
 def is_path_empty(path):
@@ -245,7 +237,7 @@ def is_path_empty(path):
 
     :ref path: target path
     """
-    gen = Path(path).glob('**/*')
+    gen = Path(path).glob("**/*")
     return not any(gen)
 
 
@@ -259,14 +251,10 @@ def resolve_data_directory(data_dir, path):
     try:
         data_dir = absolute_data_dir.relative_to(path)
     except ValueError:
-        raise errors.ParameterError(
-            f'Data directory {data_dir} is not within project {path}'
-        )
+        raise errors.ParameterError(f"Data directory {data_dir} is not within project {path}")
 
     if str(data_dir).rstrip(os.path.sep) in INVALID_DATA_DIRS:
-        raise errors.ParameterError(
-            f'Cannot use {data_dir} as data directory.'
-        )
+        raise errors.ParameterError(f"Cannot use {data_dir} as data directory.")
 
     return data_dir
 
@@ -277,8 +265,8 @@ def check_git_user_config():
     repo = Repo.init(dummy_git_folder)
     git_config = repo.config_reader()
     try:
-        git_config.get_value('user', 'name', None)
-        git_config.get_value('user', 'email', None)
+        git_config.get_value("user", "name", None)
+        git_config.get_value("user", "email", None)
         return True
     except (configparser.NoOptionError, configparser.NoSectionError):
         return False
@@ -286,111 +274,86 @@ def check_git_user_config():
 
 @click.command()
 @click.argument(
-    'path',
-    default='.',
-    type=click.Path(writable=True, file_okay=False, resolve_path=True),
+    "path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True),
 )
 @click.option(
-    '-n',
-    '--name',
-    callback=validate_name,
-    help='Provide a custom project name.',
+    "-n", "--name", callback=validate_name, help="Provide a custom project name.",
 )
 @click.option(
-    '--data-dir',
+    "--data-dir",
     default=None,
     type=click.Path(writable=True, file_okay=False),
-    help='Data directory within the project'
+    help="Data directory within the project",
+)
+@click.option("-t", "--template-id", help="Provide the id of the template to use.")
+@click.option(
+    "-i", "--template-index", help="Provide the index number of the template to use.", type=int,
+)
+@click.option("-s", "--template-source", help="Provide the templates repository url or path.")
+@click.option(
+    "-r", "--template-ref", default="master", help="Specify the reference to checkout on remote template repository.",
 )
 @click.option(
-    '-t', '--template-id', help='Provide the id of the template to use.'
-)
-@click.option(
-    '-i',
-    '--template-index',
-    help='Provide the index number of the template to use.',
-    type=int,
-)
-@click.option(
-    '-s',
-    '--template-source',
-    help='Provide the templates repository url or path.'
-)
-@click.option(
-    '-r',
-    '--template-ref',
-    default='master',
-    help='Specify the reference to checkout on remote template repository.',
-)
-@click.option(
-    '-p',
-    '--parameter',
+    "-p",
+    "--parameter",
     multiple=True,
     type=click.STRING,
     callback=parse_parameters,
     help=(
-        'Provide parameters value. Should be invoked once per parameter. '
+        "Provide parameters value. Should be invoked once per parameter. "
         'Please specify the values as follow: --parameter "param1"="value"'
-    )
+    ),
 )
-@click.option(
-    '-l',
-    '--list-templates',
-    is_flag=True,
-    help='List templates available in the template-source.'
-)
-@click.option(
-    '-d',
-    '--describe',
-    is_flag=True,
-    help='Show description for templates and parameters'
-)
-@click.option('--force', is_flag=True, help='Override target path.')
+@click.option("-l", "--list-templates", is_flag=True, help="List templates available in the template-source.")
+@click.option("-d", "--describe", is_flag=True, help="Show description for templates and parameters")
+@click.option("--force", is_flag=True, help="Override target path.")
 @option_external_storage_requested
 @pass_local_client
 @click.pass_context
 def init(
-    ctx, client, external_storage_requested, path, name, template_id,
-    template_index, template_source, template_ref, parameter, list_templates,
-    force, describe, data_dir
+    ctx,
+    client,
+    external_storage_requested,
+    path,
+    name,
+    template_id,
+    template_index,
+    template_source,
+    template_ref,
+    parameter,
+    list_templates,
+    force,
+    describe,
+    data_dir,
 ):
     """Initialize a project in PATH. Default is the current path."""
     # verify dirty path
     if not is_path_empty(path) and not force and not list_templates:
         raise errors.InvalidFileOperation(
             'Folder "{0}" is not empty. Please add --force '
-            'flag to transform it into a Renku repository.'.format(str(path))
+            "flag to transform it into a Renku repository.".format(str(path))
         )
 
     data_dir = resolve_data_directory(data_dir, path)
 
     if not check_git_user_config():
         raise errors.ConfigurationError(
-            'The user name and email are not configured. '
+            "The user name and email are not configured. "
             'Please use the "git config" command to configure them.\n\n'
             '\tgit config --global --add user.name "John Doe"\n'
-            '\tgit config --global --add user.email '
+            "\tgit config --global --add user.email "
             '"john.doe@example.com"\n'
         )
 
     # select template source
     if template_source:
-        click.echo(
-            'Fetching template from {0}@{1}... '.format(
-                template_source, template_ref
-            ),
-            nl=False
-        )
+        click.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref), nl=False)
         template_folder = Path(mkdtemp())
         fetch_template(template_source, template_ref, template_folder)
-        template_manifest = read_template_manifest(
-            template_folder, checkout=True
-        )
-        click.secho('OK', fg='green')
+        template_manifest = read_template_manifest(template_folder, checkout=True)
+        click.secho("OK", fg="green")
     else:
-        template_folder = Path(
-            pkg_resources.resource_filename('renku', 'templates')
-        )
+        template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)
 
     # select specific template
@@ -398,40 +361,28 @@ def init(
     template_data = None
     if template_id:
         if template_index:
-            raise errors.ParameterError(
-                'Use either --template-id or --template-index, not both',
-                '"--template-index"'
-            )
+            raise errors.ParameterError("Use either --template-id or --template-index, not both", '"--template-index"')
         template_filtered = [
-            template_elem for template_elem in template_manifest
-            if template_elem['folder'] == template_id
+            template_elem for template_elem in template_manifest if template_elem["folder"] == template_id
         ]
         if len(template_filtered) == 1:
             template_data = template_filtered[0]
         else:
-            click.echo(
-                f'The template with id "{template_id}" is not available.'
-            )
+            click.echo(f'The template with id "{template_id}" is not available.')
             repeat = True
 
     if template_index or template_index == 0:
         if template_index > 0 and template_index <= len(template_manifest):
             template_data = template_manifest[template_index - 1]
         else:
-            click.echo(
-                f'The template at index {template_index} is not available.'
-            )
+            click.echo(f"The template at index {template_index} is not available.")
             repeat = True
 
     if list_templates:
         if template_data:
-            click.echo(
-                create_template_sentence([template_data], describe=describe)
-            )
+            click.echo(create_template_sentence([template_data], describe=describe))
         else:
-            click.echo(
-                create_template_sentence(template_manifest, describe=describe)
-            )
+            click.echo(create_template_sentence(template_manifest, describe=describe))
         return
 
     if repeat or not (template_id or template_index):
@@ -440,34 +391,29 @@ def init(
             template_data = templates[0]
         else:
             template_num = click.prompt(
-                text=create_template_sentence(
-                    templates, describe=describe, instructions=True
-                ),
+                text=create_template_sentence(templates, describe=describe, instructions=True),
                 type=click.IntRange(1, len(templates)),
                 show_default=False,
-                show_choices=False
+                show_choices=False,
             )
             template_data = templates[template_num - 1]
 
     # verify variables have been passed
-    template_variables = template_data.get('variables', {})
+    template_variables = template_data.get("variables", {})
     template_variables_keys = set(template_variables.keys())
     input_parameters_keys = set(parameter.keys())
-    for key in (template_variables_keys - input_parameters_keys):
+    for key in template_variables_keys - input_parameters_keys:
         value = click.prompt(
-            text=(
-                f'The template requires a value for "{key}" '
-                f'({template_variables[key]})'
-            ),
-            default='',
-            show_default=False
+            text=(f'The template requires a value for "{key}" ' f"({template_variables[key]})"),
+            default="",
+            show_default=False,
         )
         parameter[key] = value
     useless_variables = input_parameters_keys - template_variables_keys
-    if (len(useless_variables) > 0):
+    if len(useless_variables) > 0:
         click.echo(
-            INFO + 'These parameters are not used by the template and were '
-            'ignored:\n\t{}'.format('\n\t'.join(useless_variables))
+            INFO + "These parameters are not used by the template and were "
+            "ignored:\n\t{}".format("\n\t".join(useless_variables))
         )
         for key in useless_variables:
             del parameter[key]
@@ -477,36 +423,29 @@ def init(
     if not client.external_storage_requested:
         external_storage_requested = False
     ctx.obj = client = attr.evolve(
-        client,
-        path=path,
-        data_dir=data_dir,
-        external_storage_requested=external_storage_requested
+        client, path=path, data_dir=data_dir, external_storage_requested=external_storage_requested
     )
     if not is_path_empty(path):
         from git import GitCommandError
+
         try:
-            commit = client.find_previous_commit('*')
-            branch_name = 'pre_renku_init_{0}'.format(commit.hexsha[:7])
+            commit = client.find_previous_commit("*")
+            branch_name = "pre_renku_init_{0}".format(commit.hexsha[:7])
             with client.worktree(
                 path=path,
                 branch_name=branch_name,
                 commit=commit,
-                merge_args=[
-                    '--no-ff', '-s', 'recursive', '-X', 'ours',
-                    '--allow-unrelated-histories'
-                ]
+                merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
             ):
-                click.echo(
-                    'Saving current data in branch {0}'.format(branch_name)
-                )
+                click.echo("Saving current data in branch {0}".format(branch_name))
         except AttributeError:
-            click.echo('Warning! Overwriting non-empty folder.')
+            click.echo("Warning! Overwriting non-empty folder.")
         except GitCommandError as e:
             click.UsageError(e)
 
     # clone the repo
-    template_path = template_folder / template_data['folder']
-    click.echo('Initializing new Renku repository... ', nl=False)
+    template_path = template_folder / template_data["folder"]
+    click.echo("Initializing new Renku repository... ", nl=False)
     with client.lock:
         try:
             create_from_template(
@@ -515,11 +454,12 @@ def init(
                 name=name,
                 metadata=parameter,
                 force=force,
-                data_dir=data_dir
+                data_dir=data_dir,
             )
         except FileExistsError as e:
             raise click.UsageError(e)
 
     # Install git hooks
     from .githooks import install
+
     ctx.invoke(install, force=force)

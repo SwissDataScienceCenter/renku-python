@@ -36,10 +36,11 @@ def schedule():
     setup_loghandlers(level=DEPLOYMENT_LOG_LEVEL)
 
     build_scheduler = Scheduler(connection=WorkerQueues.connection)
-    scheduler_log.info('scheduler created')
 
-    cleanup_interval = int(os.getenv('RENKU_SVC_CLEANUP_INTERVAL', 60))
-    scheduler_log.info('cleanup interval set to {}'.format(cleanup_interval))
+    scheduler_log.info("scheduler created")
+
+    cleanup_interval = int(os.getenv("RENKU_SVC_CLEANUP_INTERVAL", 60))
+    scheduler_log.info("cleanup interval set to {}".format(cleanup_interval))
 
     def requeue(*args, **kwargs):
         """Inverval check for scheduled jobs."""
@@ -47,13 +48,14 @@ def schedule():
 
         queue = Scheduler.get_queue_for_job(build_scheduler, job)
         scheduler_log.info(
-            f'job {job.id}:{job.func_name} re/queued to {queue.name}'
+            f"job {job.id}:{job.func_name} re/queued to {queue.name}"
         )
 
         return queue
 
     # NOTE: Patch scheduler to have requeing information on INFO log level.
     build_scheduler.get_queue_for_job = requeue
+
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),
@@ -71,17 +73,16 @@ def schedule():
         result_ttl=cleanup_interval + 1,
     )
 
-    scheduler_log.info('log level set to {}'.format(DEPLOYMENT_LOG_LEVEL))
-
+    scheduler_log.info(f"log level set to {DEPLOYMENT_LOG_LEVEL}")
     yield build_scheduler
 
 
 def start_scheduler():
     """Build and start scheduler."""
     with schedule() as scheduler:
-        scheduler_log.info('running scheduler')
+        scheduler_log.info("running scheduler")
         scheduler.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     start_scheduler()

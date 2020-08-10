@@ -28,12 +28,12 @@ DEPLOYMENT_LOG_LEVEL = os.getenv('DEPLOYMENT_LOG_LEVEL', 'INFO')
 config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
 logging.config.dictConfig(config)
 
-service_log = logging.getLogger('renku.service')
-worker_log = logging.getLogger('renku.worker')
-scheduler_log = logging.getLogger('renku.scheduler')
+service_log = logging.getLogger("renku.service")
+worker_log = logging.getLogger("renku.worker")
+scheduler_log = logging.getLogger("renku.scheduler")
 
 __all__ = [
-    'service_log',
-    'worker_log',
-    'scheduler_log',
+    "service_log",
+    "worker_log",
+    "scheduler_log",
 ]

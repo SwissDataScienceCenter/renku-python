@@ -56,26 +56,22 @@ def repo_sync(repo, message=None, remote=None, paths=None):
         if repo.remotes:
             existing = next((r for r in repo.remotes if r.url == remote), None)
             if not existing:
-                existing = next((r for r in repo.remotes if r.name == remote),
-                                None)
-            origin = next((r for r in repo.remotes if r.name == 'origin'),
-                          None)
+                existing = next((r for r in repo.remotes if r.name == remote), None)
+            origin = next((r for r in repo.remotes if r.name == "origin"), None)
             if existing:
                 origin = existing
             elif origin:
                 pushed_branch = uuid4().hex
                 origin = repo.create_remote(pushed_branch, remote)
         if not origin:
-            origin = repo.create_remote('origin', remote)
+            origin = repo.create_remote("origin", remote)
     elif not repo.active_branch.tracking_branch():
         # No remote set on branch, push to available remote if only a single
         # one is available
         if len(repo.remotes) == 1:
             origin = repo.remotes[0]
         else:
-            raise errors.ConfigurationError(
-                'No remote has been set up for the current branch'
-            )
+            raise errors.ConfigurationError("No remote has been set up for the current branch")
     else:
         # get remote that's set up to track the local branch
         origin = repo.remotes[repo.active_branch.tracking_branch().remote_name]
@@ -84,25 +80,21 @@ def repo_sync(repo, message=None, remote=None, paths=None):
         # commit uncommitted changes
         try:
             repo.git.add(*paths)
-            saved_paths = [d.b_path for d in repo.index.diff('HEAD')]
+            saved_paths = [d.b_path for d in repo.index.diff("HEAD")]
 
             if not message:
                 # Show saved files in message
                 max_len = 100
-                message = 'Saved changes to: '
+                message = "Saved changes to: "
                 paths_with_lens = reduce(
-                    lambda c, x: c + [(x, c[-1][1] + len(x))], saved_paths,
-                    [(None, len(message))]
+                    lambda c, x: c + [(x, c[-1][1] + len(x))], saved_paths, [(None, len(message))]
                 )[1:]
                 # limit first line to max_len characters
-                message += ' '.join(
-                    p if l < max_len else '\n\t' + p
-                    for p, l in paths_with_lens
-                )
+                message += " ".join(p if l < max_len else "\n\t" + p for p, l in paths_with_lens)
 
             repo.index.commit(message)
         except git.exc.GitCommandError as e:
-            raise errors.GitError('Cannot commit changes') from e
+            raise errors.GitError("Cannot commit changes") from e
 
     try:
         # push local changes to remote branch
@@ -112,8 +104,8 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
         origin.push(repo.active_branch)
     except git.exc.GitCommandError as e:
-        if 'protected branches' not in e.stderr:
-            raise errors.GitError('Cannot push changes') from e
+        if "protected branches" not in e.stderr:
+            raise errors.GitError("Cannot push changes") from e
         # push to new remote branch if original one is protected
         pushed_branch = uuid4().hex
         origin = repo.create_remote(pushed_branch, remote)

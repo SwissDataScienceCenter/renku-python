@@ -38,15 +38,13 @@ class Endpoint(str):
 
 def default_endpoint_from_config(config, option=None):
     """Return a default endpoint."""
-    default_endpoint = config.get('core', {}).get('default')
-    project_endpoint = config.get('project',
-                                  {}).get('core',
-                                          {}).get('default', default_endpoint)
+    default_endpoint = config.get("core", {}).get("default")
+    project_endpoint = config.get("project", {}).get("core", {}).get("default", default_endpoint)
     return Endpoint(
         option or project_endpoint or default_endpoint,
         default=default_endpoint,
         project=project_endpoint,
-        option=option
+        option=option,
     )
 
 
@@ -56,11 +54,11 @@ def password_prompt(ctx, param, value):
         return
 
     if not value:
-        if 'password_stdin' in ctx.params:
-            with click.open_file('-') as fp:
-                value = fp.read().strip('\n')
+        if "password_stdin" in ctx.params:
+            with click.open_file("-") as fp:
+                value = fp.read().strip("\n")
         else:
-            value = click.prompt('Password', hide_input=True)
+            value = click.prompt("Password", hide_input=True)
 
     click.echo(value)
     return value
@@ -74,9 +72,7 @@ def install_completion(ctx, attr, value):  # pragma: no cover
         return value
 
     shell, path = click_completion.core.install()
-    click.secho(
-        '{0} completion installed in {1}'.format(shell, path), fg='green'
-    )
+    click.secho("{0} completion installed in {1}".format(shell, path), fg="green")
     ctx.exit()
 
 
@@ -85,11 +81,11 @@ def default_endpoint(ctx, param, value):
     if ctx.resilient_parsing:
         return
 
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
     endpoint = default_endpoint_from_config(config, option=value)
 
     if endpoint is None:
-        raise UsageError('No default endpoint found.')
+        raise UsageError("No default endpoint found.")
 
     return endpoint
 
@@ -97,36 +93,27 @@ def default_endpoint(ctx, param, value):
 def validate_endpoint(ctx, param, value):
     """Validate endpoint."""
     try:
-        config = ctx.obj['config']
+        config = ctx.obj["config"]
     except Exception:
         return
 
     endpoint = default_endpoint(ctx, param, value)
 
-    if endpoint not in config.get('endpoints', {}):
-        raise UsageError('Unknown endpoint: {0}'.format(endpoint))
+    if endpoint not in config.get("endpoints", {}):
+        raise UsageError("Unknown endpoint: {0}".format(endpoint))
 
     return endpoint
 
 
-argument_endpoint = click.argument(
-    'endpoint',
-    required=False,
-    callback=validate_endpoint,
-)
-option_endpoint = click.option(
-    '--endpoint',
-    default=None,
-    callback=validate_endpoint,
-    help=validate_endpoint.__doc__,
-)
+argument_endpoint = click.argument("endpoint", required=False, callback=validate_endpoint,)
+option_endpoint = click.option("--endpoint", default=None, callback=validate_endpoint, help=validate_endpoint.__doc__,)
 
 option_isolation = click.option(
-    '--isolation',
+    "--isolation",
     is_flag=True,
     default=False,
     callback=lambda ctx, param, value: set_git_isolation(value),
-    help='Set up the isolation for invoking of the given command.',
+    help="Set up the isolation for invoking of the given command.",
 )
 
 
@@ -138,23 +125,13 @@ def check_siblings(graph, outputs):
 
     siblings = {node.path for node in siblings}
     missing = siblings - {node.path for node in outputs}
-    missing = {
-        m
-        for m in missing
-        if all(not m.startswith(node.path) for node in outputs)
-    }
+    missing = {m for m in missing if all(not m.startswith(node.path) for node in outputs)}
 
     if missing:
-        msg = (
-            'Include the files above in the command '
-            'or use the --with-siblings option.'
-        )
+        msg = "Include the files above in the command " "or use the --with-siblings option."
         raise RenkuException(
-            'There are missing output siblings:\n\n'
-            '\t{0}\n\n{1}'.format(
-                '\n\t'.join(click.style(path, fg='red') for path in missing),
-                msg,
-            ),
+            "There are missing output siblings:\n\n"
+            "\t{0}\n\n{1}".format("\n\t".join(click.style(path, fg="red") for path in missing), msg,),
         )
     return outputs
 
@@ -168,18 +145,10 @@ def with_siblings(graph, outputs):
 
 
 option_check_siblings = click.option(
-    '--check-siblings',
-    'siblings',
-    flag_value=check_siblings,
-    default=True,
-    help=check_siblings.__doc__,
+    "--check-siblings", "siblings", flag_value=check_siblings, default=True, help=check_siblings.__doc__,
 )
 option_with_siblings = click.option(
-    '--with-siblings',
-    'siblings',
-    flag_value=with_siblings,
-    default=True,
-    help=with_siblings.__doc__,
+    "--with-siblings", "siblings", flag_value=with_siblings, default=True, help=with_siblings.__doc__,
 )
 
 
@@ -189,10 +158,10 @@ def option_siblings(func):
 
 
 option_external_storage_requested = click.option(
-    'external_storage_requested',
-    '--external-storage/--no-external-storage',
-    ' /-S',
+    "external_storage_requested",
+    "--external-storage/--no-external-storage",
+    " /-S",
     is_flag=True,
     default=True,
-    help='Use an external file storage service.'
+    help="Use an external file storage service.",
 )

@@ -58,17 +58,17 @@ def migrate_job(cache, user_data, project_id, user_job_id):
         project = cache.get_project(user, project_id)
         messages, was_migrated = execute_migration(project)
 
-        user_job.update_extras('messages', messages)
-        user_job.update_extras('was_migrated', was_migrated)
+        user_job.update_extras("messages", messages)
+        user_job.update_extras("was_migrated", was_migrated)
 
-        worker_log.debug(f'operation successfull - syncing with remote')
-        _, remote_branch = repo_sync(Repo(project.abs_path), remote='origin')
-        user_job.update_extras('remote_branch', remote_branch)
+        worker_log.debug(f"operation successful - syncing with remote")
+        _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
+        user_job.update_extras("remote_branch", remote_branch)
 
         user_job.complete()
-        worker_log.debug(f'job completed')
+        worker_log.debug(f"job completed")
     except (HTTPError, ParameterError, GitCommandError, RenkuException) as exp:
-        user_job.update_extras('error', str(exp))
+        user_job.update_extras("error", str(exp))
         user_job.fail_job()
 
         # Reraise exception, so we see trace in job metadata

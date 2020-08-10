@@ -26,23 +26,23 @@ from renku.cli import cli
 def test_limit_log(runner, project, run, subdirectory):
     """Test naming of CWL tools and workflows."""
     cwd = Path(project)
-    data = cwd / 'data.txt'
-    output = cwd / 'output.txt'
+    data = cwd / "data.txt"
+    output = cwd / "output.txt"
 
-    assert 0 == run(args=('run', 'echo', 'hello'), stdout=data)
+    assert 0 == run(args=("run", "echo", "hello"), stdout=data)
     assert data.exists()
 
-    assert 0 == run(args=('run', 'wc', '-c'), stdin=data, stdout=output)
+    assert 0 == run(args=("run", "wc", "-c"), stdin=data, stdout=output)
     assert output.exists()
 
     relative_path = os.path.relpath(output, os.getcwd())
-    cmd = ['log', '--revision', 'HEAD^^..', relative_path]
+    cmd = ["log", "--revision", "HEAD^^..", relative_path]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert data.name not in result.output
     assert output.name in result.output
 
-    cmd = ['log', '--revision', 'HEAD^^^']
+    cmd = ["log", "--revision", "HEAD^^^"]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code
     assert data.name in result.output
