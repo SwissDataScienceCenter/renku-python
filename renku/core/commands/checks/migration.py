@@ -17,22 +17,16 @@
 # limitations under the License.
 """Warn if migration is required."""
 from renku.core.commands.echo import ERROR, WARNING
-from renku.core.management.migrate import is_migration_required, \
-    is_project_unsupported
+from renku.core.management.migrate import is_migration_required, is_project_unsupported
 
 
 def check_migration(client):
     """Check for project version."""
     if is_migration_required(client):
-        problems = (
-            WARNING + 'Project requires migration.\n' +
-            '  (use "renku migrate" to fix this issue)\n'
-        )
+        problems = WARNING + "Project requires migration.\n" + '  (use "renku migrate" to fix this issue)\n'
     elif is_project_unsupported(client):
         problems = (
-            ERROR +
-            'Project version is not supported by your version of Renku.\n' +
-            '  (upgrade your Renku version)\n'
+            ERROR + "Project version is not supported by your version of Renku.\n" + "  (upgrade your Renku version)\n"
         )
     else:
         return True, None

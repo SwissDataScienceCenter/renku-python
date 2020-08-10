@@ -19,8 +19,7 @@
 
 from urllib.parse import urlparse
 
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load, \
-    validates
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
 
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
@@ -34,13 +33,13 @@ class ManifestTemplatesRequest(ProjectCloneContext):
     """Request schema for listing manifest templates."""
 
     url = fields.String(required=True)
-    ref = fields.String(missing='master')
+    ref = fields.String(missing="master")
     depth = fields.Integer(missing=TEMPLATE_CLONE_DEPTH_DEFAULT)
 
     @pre_load()
     def set_git_url(self, data, **kwargs):
         """Set git_url field."""
-        data['git_url'] = data['url']
+        data["git_url"] = data["url"]
 
         return data
 
@@ -49,16 +48,14 @@ class TemplateParameterSchema(Schema):
     """Manifest template schema."""
 
     key = fields.String(required=True)
-    value = fields.String(missing='')
+    value = fields.String(missing="")
 
 
 class ProjectTemplateRequest(ManifestTemplatesRequest):
     """Request schema for listing manifest templates."""
 
     identifier = fields.String(required=True)
-    parameters = fields.List(
-        fields.Nested(TemplateParameterSchema), missing=[]
-    )
+    parameters = fields.List(fields.Nested(TemplateParameterSchema), missing=[])
 
     project_name = fields.String(required=True)
     project_namespace = fields.String(required=True)
@@ -70,17 +67,16 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     @pre_load()
     def create_new_project_url(self, data, **kwargs):
         """Set owner and name fields."""
-        project_name_stripped = strip_and_lower(data['project_name'])
-        new_project_url = '{0}/{1}/{2}'.format(
-            data['project_repository'], data['project_namespace'],
-            project_name_stripped
+        project_name_stripped = strip_and_lower(data["project_name"])
+        new_project_url = "{0}/{1}/{2}".format(
+            data["project_repository"], data["project_namespace"], project_name_stripped
         )
-        data['new_project_url'] = new_project_url
-        data['project_name_stripped'] = project_name_stripped
+        data["new_project_url"] = new_project_url
+        data["project_name_stripped"] = project_name_stripped
 
         return data
 
-    @validates('new_project_url')
+    @validates("new_project_url")
     def validate_new_project_url(self, value):
         """Validates git url."""
         try:
@@ -93,12 +89,10 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     @post_load()
     def format_new_project_url(self, data, **kwargs):
         """Format URL with an access token."""
-        new_project_url = urlparse(data['new_project_url'])
+        new_project_url = urlparse(data["new_project_url"])
 
-        url = 'oauth2:{0}@{1}'.format(data['token'], new_project_url.netloc)
-        data['new_project_url_with_auth'] = new_project_url._replace(
-            netloc=url
-        ).geturl()
+        url = "oauth2:{0}@{1}".format(data["token"], new_project_url.netloc)
+        data["new_project_url_with_auth"] = new_project_url._replace(netloc=url).geturl()
 
         return data
 
@@ -115,9 +109,7 @@ class ManifestTemplateSchema(Schema):
 class ManifestTemplatesResponse(Schema):
     """Manifest templates response."""
 
-    templates = fields.List(
-        fields.Nested(ManifestTemplateSchema), required=True
-    )
+    templates = fields.List(fields.Nested(ManifestTemplateSchema), required=True)
 
 
 class ManifestTemplatesResponseRPC(JsonRPCResponse):

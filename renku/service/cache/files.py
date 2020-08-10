@@ -29,7 +29,7 @@ class FileManagementCache(BaseCache):
 
     def set_file(self, user, file_data):
         """Cache file metadata."""
-        file_data.update({'user_id': user.user_id})
+        file_data.update({"user_id": user.user_id})
 
         file_obj = self.file_schema.load(file_data)
         file_obj.save()
@@ -44,8 +44,7 @@ class FileManagementCache(BaseCache):
     def get_file(user, file_id):
         """Get user file."""
         try:
-            record = File.get((File.file_id == file_id) &
-                              (File.user_id == user.user_id))
+            record = File.get((File.file_id == file_id) & (File.user_id == user.user_id))
         except ValueError:
             return
 

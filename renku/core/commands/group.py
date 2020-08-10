@@ -26,5 +26,5 @@ class OptionalGroup(click.Group):
     def parse_args(self, ctx, args):
         """Check if the first argument is an existing command."""
         if args and args[0] in self.commands:
-            args.insert(0, '')
+            args.insert(0, "")
         super(OptionalGroup, self).parse_args(ctx, args)

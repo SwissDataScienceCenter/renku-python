@@ -18,7 +18,7 @@
 """Plugin hooks for renku run customization."""
 import pluggy
 
-hookspec = pluggy.HookspecMarker('renku')
+hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec

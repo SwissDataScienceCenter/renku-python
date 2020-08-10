@@ -33,7 +33,7 @@ def with_reference(path):
     _current_reference.push(path)
     yield
     if path != _current_reference.pop():
-        raise RuntimeError('current_reference has been modified')
+        raise RuntimeError("current_reference has been modified")
 
 
 def has_reference():
@@ -51,5 +51,4 @@ class ReferenceMixin:
     @__reference__.default
     def default_reference(self):
         """Create a default reference path."""
-        return current_reference._get_current_object() if has_reference(
-        ) else None
+        return current_reference._get_current_object() if has_reference() else None

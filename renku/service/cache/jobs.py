@@ -32,9 +32,9 @@ class JobManagementCache(BaseCache):
             locked = {locked}
 
         if job_data:
-            job_data.update({'user_id': user.user_id})
+            job_data.update({"user_id": user.user_id})
         else:
-            job_data = {'user_id': user.user_id}
+            job_data = {"user_id": user.user_id}
 
         job_obj = self.job_schema.load(job_data)
         job_obj.save()
@@ -48,8 +48,7 @@ class JobManagementCache(BaseCache):
     def get_job(user, job_id):
         """Get user job."""
         try:
-            job_obj = Job.get((Job.job_id == job_id) &
-                              (Job.user_id == user.user_id))
+            job_obj = Job.get((Job.job_id == job_id) & (Job.user_id == user.user_id))
         except ValueError:
             return
 

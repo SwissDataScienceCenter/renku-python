@@ -33,9 +33,9 @@ def tabular(client, records, *, columns=None):
     :param columns: List of columns to display
     """
     if not columns:
-        columns = 'added,creators,dataset,full_path'
+        columns = "added,creators,dataset,full_path"
 
-    if 'size' in columns.split(','):
+    if "size" in columns.split(","):
         _get_lfs_file_sizes(client, records)
 
     for record in records:
@@ -54,16 +54,15 @@ def _get_lfs_file_sizes(client, records):
     files_sizes = {}
 
     try:
-        lfs_run = run(('git', 'lfs', 'ls-files', '--name-only', '--size'),
-                      stdout=PIPE,
-                      cwd=client.path,
-                      universal_newlines=True)
+        lfs_run = run(
+            ("git", "lfs", "ls-files", "--name-only", "--size"), stdout=PIPE, cwd=client.path, universal_newlines=True
+        )
     except SubprocessError:
         pass
     else:
-        lfs_output = lfs_run.stdout.split('\n')
+        lfs_output = lfs_run.stdout.split("\n")
         # Example line format: relative/path/to/file (7.9 MB)
-        pattern = re.compile(r'^(.*?)\s*\((.*)\)')
+        pattern = re.compile(r"^(.*?)\s*\((.*)\)")
 
         for line in lfs_output:
             match = pattern.search(line)
@@ -71,8 +70,8 @@ def _get_lfs_file_sizes(client, records):
                 continue
             filepath, size = match.groups()
             # Fix alignment for bytes
-            if size.endswith(' B'):
-                size = size.replace(' B', '  B')
+            if size.endswith(" B"):
+                size = size.replace(" B", "  B")
             files_sizes[filepath] = size
 
     for record in records:
@@ -82,7 +81,7 @@ def _get_lfs_file_sizes(client, records):
                 path = client.path / record.path
                 size = os.path.getsize(path)
                 size = humanize.naturalsize(size).upper()
-                size = size.replace('BYTES', ' B')
+                size = size.replace("BYTES", " B")
             except OSError:
                 pass
 
@@ -102,21 +101,21 @@ def jsonld(client, records, **kwargs):
 
 
 DATASET_FILES_FORMATS = {
-    'tabular': tabular,
-    'json-ld': jsonld,
+    "tabular": tabular,
+    "json-ld": jsonld,
 }
 """Valid formatting options."""
 
 DATASET_FILES_COLUMNS = {
-    'added': ('added', None),
-    'creators': ('creators_csv', 'creators'),
-    'creators_full': ('creators_full_csv', 'creators'),
-    'dataset': ('title', 'dataset'),
-    'full_path': ('full_path', None),
-    'path': ('path', None),
-    'short_name': ('dataset_name', 'dataset name'),
-    'dataset_name': ('dataset_name', 'dataset name'),
-    'size': ('size', None)
+    "added": ("added", None),
+    "creators": ("creators_csv", "creators"),
+    "creators_full": ("creators_full_csv", "creators"),
+    "dataset": ("title", "dataset"),
+    "full_path": ("full_path", None),
+    "path": ("path", None),
+    "short_name": ("dataset_name", "dataset name"),
+    "dataset_name": ("dataset_name", "dataset name"),
+    "size": ("size", None),
 }
 
-DATASET_FILES_COLUMNS_ALIGNMENTS = {'size': 'right'}
+DATASET_FILES_COLUMNS_ALIGNMENTS = {"size": "right"}

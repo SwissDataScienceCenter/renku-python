@@ -37,17 +37,13 @@ from renku.core.commands.echo import GitProgress
 
 
 @click.command()
-@click.option(
-    '--pull-data', is_flag=True, help='Pull data from Git-LFS.', default=False
-)
-@click.argument('url')
-@click.argument('path', required=False, default=None)
+@click.option("--pull-data", is_flag=True, help="Pull data from Git-LFS.", default=False)
+@click.argument("url")
+@click.argument("path", required=False, default=None)
 def clone(pull_data, url, path):
     """Clone a Renku repository."""
-    click.echo('Cloning {} ...'.format(url))
+    click.echo("Cloning {} ...".format(url))
 
     skip_smudge = not pull_data
-    project_clone(
-        url=url, path=path, skip_smudge=skip_smudge, progress=GitProgress()
-    )
-    click.secho('OK', fg='green')
+    project_clone(url=url, path=path, skip_smudge=skip_smudge, progress=GitProgress())
+    click.secho("OK", fg="green")

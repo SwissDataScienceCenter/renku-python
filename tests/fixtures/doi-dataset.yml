@@ -30,12 +30,14 @@ _project:
     foaf: http://xmlns.com/foaf/0.1/
     prov: http://www.w3.org/ns/prov#
   '@type':
-  - foaf:Project
+  - schema:Project
   - prov:Location
   _id: https://dev.renku.ch/virginiafriedrich/datasets-test
 created: '2019-07-31T07:22:25.503110+02:00'
 creator:
-- '@type': schema:Person
+- '@type':
+  - prov:Person
+  - schema:Person
   _id: https://orcid.org/0000-0002-3730-5348
   affiliation: RWTH University Aachen
   alternate_name: null

@@ -35,8 +35,8 @@ class CommandLineTool(cwlgen.CommandLineTool):
     def get_dict(self):
         """Set outputs to empty if not set."""
         d = super(CommandLineTool, self).get_dict()
-        if 'outputs' not in d:
-            d['outputs'] = []
+        if "outputs" not in d:
+            d["outputs"] = []
         return d
 
 
@@ -46,18 +46,18 @@ class WorkflowStep(cwlgen.WorkflowStep):
     def get_dict(self):
         """Set out to empty if not set."""
         d = super(WorkflowStep, self).get_dict()
-        if 'out' not in d:
-            d['out'] = []
+        if "out" not in d:
+            d["out"] = []
         return d
 
 
 def _get_argument_type(value):
     """Get the type of a command line argument."""
-    type_ = 'string'
+    type_ = "string"
 
     try:
         value = int(value)
-        type_ = 'int'
+        type_ = "int"
     except ValueError:
         pass
 
@@ -94,14 +94,10 @@ class CWLConverter(object):
         else:
             tmpdir = tempfile.mkdtemp()
 
-        if hasattr(run, 'subprocesses') and run.subprocesses:
-            return CWLConverter._convert_composite(
-                run, tmpdir, basedir, filename=filename
-            )
+        if hasattr(run, "subprocesses") and run.subprocesses:
+            return CWLConverter._convert_composite(run, tmpdir, basedir, filename=filename)
         else:
-            return CWLConverter._convert_step(
-                run, tmpdir, basedir, filename=filename
-            )
+            return CWLConverter._convert_step(run, tmpdir, basedir, filename=filename)
 
     @staticmethod
     def _convert_composite(run, tmpdir, basedir, filename=None):
@@ -127,9 +123,7 @@ class CWLConverter(object):
                     continue
 
                 for previous_process in previous_output_dirs[key]:
-                    previous_process.outputs.append(
-                        CommandOutput(produces=entity, create_folder=False)
-                    )
+                    previous_process.outputs.append(CommandOutput(produces=entity, create_folder=False))
 
             for output in subprocess.outputs:
                 entity = output.produces
@@ -145,103 +139,77 @@ class CWLConverter(object):
 
         # Convert workflow steps
         for i, subprocess in subprocesses:
-            tool, path = CWLConverter._convert_step(
-                subprocess, tmpdir, basedir
-            )
-            step = WorkflowStep('step_{}'.format(i), path)
+            tool, path = CWLConverter._convert_step(subprocess, tmpdir, basedir)
+            step = WorkflowStep("step_{}".format(i), path)
 
             for input in subprocess.inputs:
                 input_path = input.consumes.path
 
                 sanitized_id = input.sanitized_id
                 if input.mapped_to:
-                    sanitized_id = 'input_stdin'
+                    sanitized_id = "input_stdin"
                 if input_path in inputs:
                     # already used as top-level input elsewhere, reuse
-                    step.inputs.append(
-                        cwlgen.WorkflowStepInput(
-                            input.sanitized_id, source=inputs[input_path]
-                        )
-                    )
+                    step.inputs.append(cwlgen.WorkflowStepInput(input.sanitized_id, source=inputs[input_path]))
                 elif input_path in outputs:
                     # output of a previous step, refer to it
                     consumed_outputs.add(outputs[input_path][0])
                     step.inputs.append(
                         cwlgen.WorkflowStepInput(
-                            input.sanitized_id,
-                            source='{}/{}'.format(
-                                outputs[input_path][1], outputs[input_path][0]
-                            )
+                            input.sanitized_id, source="{}/{}".format(outputs[input_path][1], outputs[input_path][0])
                         )
                     )
                 else:
                     # input isn't output and doesn't exist yet, add new
-                    inputs[input_path] = 'input_{}'.format(input_index)
-                    step.inputs.append(
-                        cwlgen.WorkflowStepInput(
-                            input.sanitized_id, source=inputs[input_path]
-                        )
-                    )
+                    inputs[input_path] = "input_{}".format(input_index)
+                    step.inputs.append(cwlgen.WorkflowStepInput(input.sanitized_id, source=inputs[input_path]))
                     input_index += 1
 
             for argument in subprocess.arguments:
-                argument_id = 'argument_{}'.format(argument_index)
+                argument_id = "argument_{}".format(argument_index)
                 arguments[argument_id] = argument.value
-                step.inputs.append(
-                    cwlgen.WorkflowStepInput(
-                        argument.sanitized_id, source=argument_id
-                    )
-                )
+                step.inputs.append(cwlgen.WorkflowStepInput(argument.sanitized_id, source=argument_id))
                 argument_index += 1
 
             for output in subprocess.outputs:
                 sanitized_id = output.sanitized_id
 
                 if output.mapped_to:
-                    sanitized_id = 'output_{}'.format(
-                        output.mapped_to.stream_type
-                    )
+                    sanitized_id = "output_{}".format(output.mapped_to.stream_type)
                 outputs[output.produces.path] = (sanitized_id, step.id)
                 step.out.append(cwlgen.WorkflowStepOutput(sanitized_id))
 
             steps.append(step)
 
-        workflow_object = cwlgen.Workflow(str(uuid4()), cwl_version='v1.0')
+        workflow_object = cwlgen.Workflow(str(uuid4()), cwl_version="v1.0")
         workflow_object.hints = []
         workflow_object.requirements = []
 
         # check types of paths and add as top level inputs/outputs
         for path, id_ in inputs.items():
-            type_ = 'Directory' if os.path.isdir(path) else 'File'
+            type_ = "Directory" if os.path.isdir(path) else "File"
             workflow_object.inputs.append(
                 cwlgen.InputParameter(
                     id_,
                     param_type=type_,
-                    default={
-                        'path': os.path.abspath(os.path.join(basedir, path)),
-                        'class': type_
-                    }
+                    default={"path": os.path.abspath(os.path.join(basedir, path)), "class": type_},
                 )
             )
 
         for id_, value in arguments.items():
             value, type_ = _get_argument_type(value)
-            workflow_object.inputs.append(
-                cwlgen.InputParameter(id_, param_type=type_, default=value)
-            )
+            workflow_object.inputs.append(cwlgen.InputParameter(id_, param_type=type_, default=value))
 
         for index, (path, (id_, step_id)) in enumerate(outputs.items(), 1):
-            type_ = 'Directory' if os.path.isdir(path) else 'File'
+            type_ = "Directory" if os.path.isdir(path) else "File"
             workflow_object.outputs.append(
                 cwlgen.WorkflowOutputParameter(
-                    'output_{}'.format(index),
-                    output_source='{}/{}'.format(step_id, id_),
-                    param_type=type_
+                    "output_{}".format(index), output_source="{}/{}".format(step_id, id_), param_type=type_
                 )
             )
         workflow_object.steps.extend(steps)
         if not filename:
-            filename = 'parent_{}.cwl'.format(uuid4())
+            filename = "parent_{}.cwl".format(uuid4())
         path = os.path.join(tmpdir, filename)
         workflow_object.export(path)
 
@@ -257,18 +225,18 @@ class CWLConverter(object):
         for output in step.outputs:
             if not output.mapped_to:
                 continue
-            if output.mapped_to.stream_type == 'stderr':
+            if output.mapped_to.stream_type == "stderr":
                 stderr = output.produces.path
-            if output.mapped_to.stream_type == 'stdout':
+            if output.mapped_to.stream_type == "stdout":
                 stdout = output.produces.path
 
         tool_object = CommandLineTool(
             tool_id=step._id,
-            base_command=step.command.split(' '),
+            base_command=step.command.split(" "),
             stdin=stdin,
             stderr=stderr,
             stdout=stdout,
-            cwl_version='v1.0'
+            cwl_version="v1.0",
         )
 
         workdir_req = cwlgen.InitialWorkDirRequirement([])
@@ -280,14 +248,12 @@ class CWLConverter(object):
             path = output.produces.path
             if not os.path.isdir(path):
                 path = str(Path(path).parent)
-            if (path != '.' and path not in dirents and output.create_folder):
+            if path != "." and path not in dirents and output.create_folder:
                 # workflow needs to create subdirectory for output file,
                 # if the directory was not already present
                 workdir_req.listing.append(
                     cwlgen.InitialWorkDirRequirement.Dirent(
-                        entry='$({"listing": [], "class": "Directory"})',
-                        entryname=path,
-                        writable=True
+                        entry='$({"listing": [], "class": "Directory"})', entryname=path, writable=True
                     )
                 )
                 dirents.append(path)
@@ -302,15 +268,13 @@ class CWLConverter(object):
 
             workdir_req.listing.append(
                 cwlgen.InitialWorkDirRequirement.Dirent(
-                    entry='$(inputs.{})'.format(tool_input.id),
-                    entryname=input_.consumes.path,
-                    writable=False
+                    entry="$(inputs.{})".format(tool_input.id), entryname=input_.consumes.path, writable=False
                 )
             )
 
             tool_object.inputs.append(tool_input)
             if input_.mapped_to:
-                tool_object.stdin = '$(inputs.{}.path)'.format(tool_input.id)
+                tool_object.stdin = "$(inputs.{}.path)".format(tool_input.id)
                 jsrequirement = True
         for argument in step.arguments:
             tool_object.inputs.append(CWLConverter._convert_argument(argument))
@@ -318,12 +282,10 @@ class CWLConverter(object):
         if workdir_req.listing:
             tool_object.requirements.append(workdir_req)
         if jsrequirement:
-            tool_object.requirements.append(
-                cwlgen.InlineJavascriptRequirement()
-            )
+            tool_object.requirements.append(cwlgen.InlineJavascriptRequirement())
 
         if not filename:
-            filename = '{}.cwl'.format(uuid4())
+            filename = "{}.cwl".format(uuid4())
         path = os.path.join(tmpdir, filename)
         tool_object.export(path)
 
@@ -333,11 +295,11 @@ class CWLConverter(object):
     def _convert_input(input, basedir):
         """Converts an input to a CWL input."""
         entity = input.consumes
-        type_ = 'Directory' if isinstance(entity, Collection) else 'File'
+        type_ = "Directory" if isinstance(entity, Collection) else "File"
 
         sanitized_id = input.sanitized_id
         if input.mapped_to:
-            sanitized_id = 'input_stdin'
+            sanitized_id = "input_stdin"
 
         separate = None
         prefix = None
@@ -345,34 +307,32 @@ class CWLConverter(object):
             prefix = input.prefix
             separate = False
 
-            if prefix.endswith(' '):
+            if prefix.endswith(" "):
                 prefix = prefix[:-1]
                 separate = True
 
         return cwlgen.CommandInputParameter(
             sanitized_id,
             param_type=type_,
-            input_binding=cwlgen.CommandLineBinding(
-                position=input.position, prefix=prefix, separate=separate
-            ),
-            default={
-                'path': os.path.abspath(os.path.join(basedir, entity.path)),
-                'class': type_
-            }
+            input_binding=cwlgen.CommandLineBinding(position=input.position, prefix=prefix, separate=separate),
+            default={"path": os.path.abspath(os.path.join(basedir, entity.path)), "class": type_},
         )
 
     @staticmethod
     def _convert_output(output):
         """Converts an output to a CWL output."""
         if output.mapped_to:
-            return cwlgen.CommandOutputParameter(
-                'output_{}'.format(output.mapped_to.stream_type),
-                param_type=output.mapped_to.stream_type,
-                streamable=False
-            ), None
+            return (
+                cwlgen.CommandOutputParameter(
+                    "output_{}".format(output.mapped_to.stream_type),
+                    param_type=output.mapped_to.stream_type,
+                    streamable=False,
+                ),
+                None,
+            )
 
         entity = output.produces
-        type_ = 'Directory' if isinstance(entity, Collection) else 'File'
+        type_ = "Directory" if isinstance(entity, Collection) else "File"
 
         if output.position:
             # output is specified as a parameter, create an input as well
@@ -382,32 +342,29 @@ class CWLConverter(object):
                 prefix = output.prefix
                 separate = False
 
-                if prefix.endswith(' '):
+                if prefix.endswith(" "):
                     prefix = prefix[:-1]
                     separate = True
 
             arg = cwlgen.CommandInputParameter(
-                '{}_arg'.format(output.sanitized_id),
-                param_type='string',
-                input_binding=cwlgen.CommandLineBinding(
-                    position=output.position, prefix=prefix, separate=separate
-                ),
-                default=entity.path
+                "{}_arg".format(output.sanitized_id),
+                param_type="string",
+                input_binding=cwlgen.CommandLineBinding(position=output.position, prefix=prefix, separate=separate),
+                default=entity.path,
             )
             outp = cwlgen.CommandOutputParameter(
                 output.sanitized_id,
                 param_type=type_,
-                output_binding=cwlgen.CommandOutputBinding(
-                    glob='$(inputs.{})'.format(arg.id)
-                )
+                output_binding=cwlgen.CommandOutputBinding(glob="$(inputs.{})".format(arg.id)),
             )
             return outp, arg
 
-        return cwlgen.CommandOutputParameter(
-            output.sanitized_id,
-            param_type=type_,
-            output_binding=cwlgen.CommandOutputBinding(glob=entity.path)
-        ), None
+        return (
+            cwlgen.CommandOutputParameter(
+                output.sanitized_id, param_type=type_, output_binding=cwlgen.CommandOutputBinding(glob=entity.path)
+            ),
+            None,
+        )
 
     @staticmethod
     def _convert_argument(argument):
@@ -420,15 +377,13 @@ class CWLConverter(object):
             prefix = argument.prefix
             separate = False
 
-            if prefix.endswith(' '):
+            if prefix.endswith(" "):
                 prefix = prefix[:-1]
                 separate = True
 
         return cwlgen.CommandInputParameter(
             argument.sanitized_id,
             param_type=type_,
-            input_binding=cwlgen.CommandLineBinding(
-                position=argument.position, prefix=prefix, separate=separate
-            ),
-            default=value
+            input_binding=cwlgen.CommandLineBinding(position=argument.position, prefix=prefix, separate=separate),
+            default=value,
         )

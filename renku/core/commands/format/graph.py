@@ -31,7 +31,7 @@ def ascii(graph, strict=False):
     from ..echo import echo_via_pager
 
     if strict:
-        raise SHACLValidationError('--strict not supported for json-ld-graph')
+        raise SHACLValidationError("--strict not supported for json-ld-graph")
 
     echo_via_pager(str(DAG(graph)))
 
@@ -44,9 +44,7 @@ def _jsonld(graph, format, *args, **kwargs):
 
     from renku.core.models.jsonld import asjsonld
 
-    output = getattr(pyld.jsonld, format)([
-        asjsonld(action) for action in graph.activities.values()
-    ])
+    output = getattr(pyld.jsonld, format)([asjsonld(action) for action in graph.activities.values()])
     return json.dumps(output, indent=2)
 
 
@@ -55,12 +53,9 @@ def _conjunctive_graph(graph):
     from rdflib import ConjunctiveGraph
     from rdflib.plugin import Parser, register
 
-    register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
+    register("json-ld", Parser, "rdflib_jsonld.parser", "JsonLDParser")
 
-    return ConjunctiveGraph().parse(
-        data=_jsonld(graph, 'expand'),
-        format='json-ld',
-    )
+    return ConjunctiveGraph().parse(data=_jsonld(graph, "expand"), format="json-ld",)
 
 
 def dot(graph, simple=True, debug=False, landscape=False, strict=False):
@@ -70,16 +65,16 @@ def dot(graph, simple=True, debug=False, landscape=False, strict=False):
     from rdflib.tools.rdf2dot import rdf2dot
 
     if strict:
-        raise SHACLValidationError('--strict not supported for dot')
+        raise SHACLValidationError("--strict not supported for dot")
 
     g = _conjunctive_graph(graph)
 
-    g.bind('prov', 'http://www.w3.org/ns/prov#')
-    g.bind('foaf', 'http://xmlns.com/foaf/0.1/')
-    g.bind('wfdesc', 'http://purl.org/wf4ever/wfdesc#')
-    g.bind('wf', 'http://www.w3.org/2005/01/wf/flow#')
-    g.bind('wfprov', 'http://purl.org/wf4ever/wfprov#')
-    g.bind('schema', 'http://schema.org/')
+    g.bind("prov", "http://www.w3.org/ns/prov#")
+    g.bind("foaf", "http://xmlns.com/foaf/0.1/")
+    g.bind("wfdesc", "http://purl.org/wf4ever/wfdesc#")
+    g.bind("wf", "http://www.w3.org/2005/01/wf/flow#")
+    g.bind("wfprov", "http://purl.org/wf4ever/wfprov#")
+    g.bind("schema", "http://schema.org/")
 
     if debug:
         rdf2dot(g, sys.stdout)
@@ -107,9 +102,7 @@ def _rdf2dot_simple(g, stream, graph=None):
     from itertools import chain
 
     path_re = re.compile(
-        r'(?P<prefix>https://\w+/\w+/|https://\w+/){0,1}(?P<type>[a-zA-Z]+)/'
-        r'(?P<commit>\w+)'
-        r'(?P<path>.+)?'
+        r"(?P<prefix>https://\w+/\w+/|https://\w+/){0,1}(?P<type>[a-zA-Z]+)/" r"(?P<commit>\w+)" r"(?P<path>.+)?"
     )
 
     inputs = g.query(
@@ -154,34 +147,32 @@ def _rdf2dot_simple(g, stream, graph=None):
         stream.write(
             '\t"{src_commit}:{src_path}" -> '
             '"{tgt_commit}:{tgt_path}" '
-            '[label={role}] \n'.format(
-                src_commit=src_path['commit'][:5],
-                src_path=src_path.get('path') or '',
-                tgt_commit=tgt_path['commit'][:5],
-                tgt_path=tgt_path.get('path') or '',
-                role=role
+            "[label={role}] \n".format(
+                src_commit=src_path["commit"][:5],
+                src_path=src_path.get("path") or "",
+                tgt_commit=tgt_path["commit"][:5],
+                tgt_path=tgt_path.get("path") or "",
+                role=role,
             )
         )
-        if src_path.get('type') == 'commit':
-            activity_nodes.setdefault(source, {'comment': comment})
+        if src_path.get("type") == "commit":
+            activity_nodes.setdefault(source, {"comment": comment})
             artifact_nodes.setdefault(target, {})
-        if tgt_path.get('type') == 'commit':
-            activity_nodes.setdefault(target, {'comment': comment})
+        if tgt_path.get("type") == "commit":
+            activity_nodes.setdefault(target, {"comment": comment})
             artifact_nodes.setdefault(source, {})
 
     # customize the nodes
     for node, content in activity_nodes.items():
         node_path = path_re.match(node).groupdict()
-        comment = content['comment']
+        comment = content["comment"]
         if graph:
             activity = None
             for a in graph.activities.values():
                 if a._id == str(node):
                     activity = a
-                elif hasattr(a, '_processes'):
-                    activity = next(
-                        (p for p in a._processes if p._id == str(node)), None
-                    )
+                elif hasattr(a, "_processes"):
+                    activity = next((p for p in a._processes if p._id == str(node)), None)
                 else:
                     continue
                 if not activity:
@@ -192,31 +183,27 @@ def _rdf2dot_simple(g, stream, graph=None):
             if activity:
                 plan = activity.association.plan
 
-                comment = '{}: {} {}'.format(
-                    comment.split(':', 1)[0], ' '.join(plan.to_argv()),
-                    ' '.join(plan.to_stream_repr())
+                comment = "{}: {} {}".format(
+                    comment.split(":", 1)[0], " ".join(plan.to_argv()), " ".join(plan.to_stream_repr())
                 )
-        path = node_path.get('path')
+        path = node_path.get("path")
         if path:
-            path = ':{}'.format(path)
+            path = ":{}".format(path)
         else:
-            path = ''
+            path = ""
         stream.write(
             '\t"{commit}:{path}" '
             '[shape=box label="#{commit}{path}:{comment}"] \n'.format(
-                comment=comment, commit=node_path['commit'][:5], path=path
+                comment=comment, commit=node_path["commit"][:5], path=path
             )
         )
     for node, content in artifact_nodes.items():
         node_path = path_re.match(node).groupdict()
         stream.write(
             '\t"{commit}:{path}" '
-            '[label="#{commit}:{path}"] \n'.format(
-                commit=node_path['commit'][:5],
-                path=node_path.get('path') or ''
-            )
+            '[label="#{commit}:{path}"] \n'.format(commit=node_path["commit"][:5], path=node_path.get("path") or "")
         )
-    stream.write('}\n')
+    stream.write("}\n")
 
 
 def _rdf2dot_reduced(g, stream):
@@ -238,7 +225,7 @@ def _rdf2dot_reduced(g, stream):
 
     def node(x):
         """Return a name of the given node."""
-        return nodes.setdefault(x, 'node{0}'.format(len(nodes)))
+        return nodes.setdefault(x, "node{0}".format(len(nodes)))
 
     def label(x, g):
         """Generate a label for the node."""
@@ -252,26 +239,26 @@ def _rdf2dot_reduced(g, stream):
         except Exception:
             return x
 
-    def formatliteral(l, g):
+    def formatliteral(literal, g):
         """Format and escape literal."""
-        v = html.escape(l)
-        if l.datatype:
-            return '&quot;%s&quot;^^%s' % (v, qname(l.datatype, g))
-        elif l.language:
-            return '&quot;%s&quot;@%s' % (v, l.language)
-        return '&quot;%s&quot;' % v
+        v = html.escape(literal)
+        if literal.datatype:
+            return "&quot;%s&quot;^^%s" % (v, qname(literal.datatype, g))
+        elif literal.language:
+            return "&quot;%s&quot;@%s" % (v, literal.language)
+        return "&quot;%s&quot;" % v
 
     def qname(x, g):
         """Compute qname."""
         try:
             q = g.compute_qname(x)
-            return q[0] + ':' + q[2]
+            return q[0] + ":" + q[2]
         except Exception:
             return x
 
     def color(p):
         """Choose node color."""
-        return 'BLACK'
+        return "BLACK"
 
     # filter out nodes and edges created for directories
     sparql = """
@@ -297,41 +284,32 @@ def _rdf2dot_reduced(g, stream):
             types[sn].add((qname(p, g), html.escape(o)))
             continue
         # add the project membership to the node
-        if p == rdflib.term.URIRef('schema:isPartOf'):
+        if p == rdflib.term.URIRef("schema:isPartOf"):
             fields[sn].add((qname(p, g), html.escape(o)))
             continue
 
         if isinstance(o, (rdflib.URIRef, rdflib.BNode)):
             on = node(o)
-            opstr = (
-                '\t%s -> %s [ color=%s, label=< <font point-size="12" '
-                'color="#336633">%s</font> > ] ;\n'
-            )
+            opstr = '\t%s -> %s [ color=%s, label=< <font point-size="12" ' 'color="#336633">%s</font> > ] ;\n'
             stream.write(opstr % (sn, on, color(p), qname(p, g)))
         else:
             fields[sn].add((qname(p, g), formatliteral(o, g)))
 
     for u, n in nodes.items():
-        stream.write(u'# %s %s\n' % (u, n))
-        f = [
-            '<tr><td align="left"><b>%s</b></td><td align="left">'
-            '<b>%s</b></td></tr>' % x for x in sorted(types[n])
-        ]
-        f += [
-            '<tr><td align="left">%s</td><td align="left">%s</td></tr>' % x
-            for x in sorted(fields[n])
-        ]
+        stream.write("# %s %s\n" % (u, n))
+        f = ['<tr><td align="left"><b>%s</b></td><td align="left">' "<b>%s</b></td></tr>" % x for x in sorted(types[n])]
+        f += ['<tr><td align="left">%s</td><td align="left">%s</td></tr>' % x for x in sorted(fields[n])]
         opstr = (
             '%s [ shape=none, color=%s label=< <table color="#666666"'
             ' cellborder="0" cellspacing="0" border="1"><tr>'
             '<td colspan="2" bgcolor="grey"><B>%s</B></td></tr><tr>'
             '<td href="%s" bgcolor="#eeeeee" colspan="2">'
             '<font point-size="12" color="#6666ff">%s</font></td>'
-            '</tr>%s</table> > ] \n'
+            "</tr>%s</table> > ] \n"
         )
-        stream.write(opstr % (n, NODECOLOR, label(u, g), u, u, ''.join(f)))
+        stream.write(opstr % (n, NODECOLOR, label(u, g), u, u, "".join(f)))
 
-    stream.write('}\n')
+    stream.write("}\n")
 
 
 def makefile(graph, strict=False):
@@ -339,7 +317,7 @@ def makefile(graph, strict=False):
     from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 
     if strict:
-        raise SHACLValidationError('--strict not supported for json-ld-graph')
+        raise SHACLValidationError("--strict not supported for json-ld-graph")
 
     for activity in graph.activities.values():
         if not isinstance(activity, ProcessRun):
@@ -353,73 +331,64 @@ def makefile(graph, strict=False):
             plan = step.association.plan
             inputs = [i.consumes.path for i in plan.inputs]
             outputs = [o.produces.path for o in plan.outputs]
-            click.echo(' '.join(outputs) + ': ' + ' '.join(inputs))
-            click.echo(
-                '\t@' + ' '.join(plan.to_argv()) + ' ' +
-                ' '.join(plan.to_stream_repr())
-            )
+            click.echo(" ".join(outputs) + ": " + " ".join(inputs))
+            click.echo("\t@" + " ".join(plan.to_argv()) + " " + " ".join(plan.to_stream_repr()))
 
 
 def jsonld(graph, strict=False):
     """Format graph as JSON-LD file."""
-    ld = _jsonld(graph, 'expand')
+    ld = _jsonld(graph, "expand")
 
     if strict:
-        r, _, t = validate_graph(ld, format='json-ld')
+        r, _, t = validate_graph(ld, format="json-ld")
 
         if not r:
-            raise SHACLValidationError(
-                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
-            )
+            raise SHACLValidationError("{}\nCouldn't get log: Invalid Knowledge Graph data".format(t))
     click.echo(ld)
 
 
 def jsonld_graph(graph, strict=False):
     """Format graph as JSON-LD graph file."""
     if strict:
-        raise SHACLValidationError('--strict not supported for json-ld-graph')
-    click.echo(_jsonld(graph, 'flatten'))
+        raise SHACLValidationError("--strict not supported for json-ld-graph")
+    click.echo(_jsonld(graph, "flatten"))
 
 
 def nt(graph, strict=False):
     """Format graph as n-tuples."""
-    nt = _conjunctive_graph(graph).serialize(format='nt')
+    nt = _conjunctive_graph(graph).serialize(format="nt")
     if strict:
-        r, _, t = validate_graph(nt, format='nt')
+        r, _, t = validate_graph(nt, format="nt")
 
         if not r:
-            raise SHACLValidationError(
-                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
-            )
+            raise SHACLValidationError("{}\nCouldn't get log: Invalid Knowledge Graph data".format(t))
 
     click.echo(nt)
 
 
 def rdf(graph, strict=False):
     """Output the graph as RDF."""
-    xml = _conjunctive_graph(graph).serialize(format='application/rdf+xml')
+    xml = _conjunctive_graph(graph).serialize(format="application/rdf+xml")
     if strict:
-        r, _, t = validate_graph(xml, format='xml')
+        r, _, t = validate_graph(xml, format="xml")
 
         if not r:
-            raise SHACLValidationError(
-                "{}\nCouldn't get log: Invalid Knowledge Graph data".format(t)
-            )
+            raise SHACLValidationError("{}\nCouldn't get log: Invalid Knowledge Graph data".format(t))
 
     click.echo(xml)
 
 
 FORMATS = {
-    'ascii': ascii,
-    'dot': dot,
-    'dot-full': dot_full,
-    'dot-landscape': dot_landscape,
-    'dot-full-landscape': dot_full_landscape,
-    'dot-debug': dot_debug,
-    'json-ld': jsonld,
-    'json-ld-graph': jsonld_graph,
-    'Makefile': makefile,
-    'nt': nt,
-    'rdf': rdf,
+    "ascii": ascii,
+    "dot": dot,
+    "dot-full": dot_full,
+    "dot-landscape": dot_landscape,
+    "dot-full-landscape": dot_full_landscape,
+    "dot-debug": dot_debug,
+    "json-ld": jsonld,
+    "json-ld-graph": jsonld_graph,
+    "Makefile": makefile,
+    "nt": nt,
+    "rdf": rdf,
 }
 """Valid formatting options."""

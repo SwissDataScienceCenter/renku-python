@@ -27,24 +27,21 @@ def test_project_serialization(client):
     """Test project serialization with JSON-LD context."""
     from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 
-    with freeze_time('2017-03-01T08:00:00.000000+00:00') as frozen_time:
+    with freeze_time("2017-03-01T08:00:00.000000+00:00") as frozen_time:
         project_time = frozen_time().replace(tzinfo=timezone.utc)
-        project = Project(name='demo', client=client)
-        assert project.name == 'demo'
+        project = Project(name="demo", client=client)
+        assert project.name == "demo"
         assert project.created == project_time
         assert project.updated == project_time
 
     data = project.as_jsonld()
-    assert 'http://schema.org/Project' in data['@type']
-    assert 'http://www.w3.org/ns/prov#Location' in data['@type']
+    assert "http://schema.org/Project" in data["@type"]
+    assert "http://www.w3.org/ns/prov#Location" in data["@type"]
 
-    assert 'demo' == data['http://schema.org/name']
-    assert project_time.isoformat('T') == data['http://schema.org/dateUpdated']
-    assert project_time.isoformat('T') == data['http://schema.org/dateCreated']
-    assert (
-        str(SUPPORTED_PROJECT_VERSION) ==
-        data['http://schema.org/schemaVersion']
-    )
+    assert "demo" == data["http://schema.org/name"]
+    assert project_time.isoformat("T") == data["http://schema.org/dateUpdated"]
+    assert project_time.isoformat("T") == data["http://schema.org/dateCreated"]
+    assert str(SUPPORTED_PROJECT_VERSION) == data["http://schema.org/schemaVersion"]
 
 
 def test_project_creator_deserialization(client, project):
@@ -53,29 +50,23 @@ def test_project_creator_deserialization(client, project):
 
     # modify the project metadata to change the creator
     project = client.project
-    project.creator = Person(email='johndoe@example.com', name='Johnny Doe')
+    project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
     project.to_yaml()
-    client.repo.git.commit(
-        '-a', '--amend', '-C', 'HEAD', '--author',
-        'Johnny Doe <johndoe@example.com>', '--no-verify'
-    )
+    client.repo.git.commit("-a", "--amend", "-C", "HEAD", "--author", "Johnny Doe <johndoe@example.com>", "--no-verify")
 
     # the project creator should always be the one in the metadata
-    assert 'johndoe@example.com' == client.project.creator.email
-    assert 'Johnny Doe' == client.project.creator.name
+    assert "johndoe@example.com" == client.project.creator.email
+    assert "Johnny Doe" == client.project.creator.name
     assert client.project.creator.label == client.project.creator.name
 
     # Remove the creator from metadata
     project = client.project
     project.creator = None
     project.to_yaml()
-    client.repo.git.commit(
-        '-a', '--amend', '-C', 'HEAD', '--author',
-        'Jane Doe <janedoe@example.com>', '--no-verify'
-    )
+    client.repo.git.commit("-a", "--amend", "-C", "HEAD", "--author", "Jane Doe <janedoe@example.com>", "--no-verify")
 
     # now the creator should be the one from the commit
     project = Project.from_yaml(client.renku_metadata_path, client=client)
-    assert 'janedoe@example.com' == project.creator.email
-    assert 'Jane Doe' == project.creator.name
+    assert "janedoe@example.com" == project.creator.email
+    assert "Jane Doe" == project.creator.name
     assert project.creator.label == project.creator.name

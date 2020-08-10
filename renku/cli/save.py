@@ -74,35 +74,26 @@ import click
 from renku.core.commands.save import save_and_push
 
 
-@click.command(name='save')
+@click.command(name="save")
+@click.option("-m", "--message", default=None, help="The commit message to use")
 @click.option(
-    '-m', '--message', default=None, help='The commit message to use'
-)
-@click.option(
-    '-d',
-    '--destination',
+    "-d",
+    "--destination",
     default=None,
     help=(
-        'The git remote to push to. Defaults to the remote set in git, '
-        'automatically set in interactive environments'
-    )
+        "The git remote to push to. Defaults to the remote set in git, " "automatically set in interactive environments"
+    ),
 )
-@click.argument('paths', type=click.Path(exists=True, dir_okay=True), nargs=-1)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @click.pass_context
 def save(ctx, message, destination, paths):
     """Save and push local changes."""
 
-    saved_paths, branch = save_and_push(
-        message=message, remote=destination, paths=paths
-    )
+    saved_paths, branch = save_and_push(message=message, remote=destination, paths=paths)
 
     if saved_paths:
-        click.echo(
-            'Successfully saved to branch {}: \n\t{}'.format(
-                branch, '\n\t'.join(saved_paths)
-            )
-        )
+        click.echo("Successfully saved to branch {}: \n\t{}".format(branch, "\n\t".join(saved_paths)))
     else:
-        click.echo('There were no changes to save.')
+        click.echo("There were no changes to save.")
 
-    click.secho('OK', fg='green')
+    click.secho("OK", fg="green")

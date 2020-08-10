@@ -28,7 +28,6 @@ recursive-include renku *.py
 # added by check_manifest.py
 chartpress.yaml
 include .coveragerc
-include .style.yapf
 include *.enc
 include *.py
 include *.rst
@@ -41,6 +40,7 @@ include Dockerfile*
 include LICENSE
 include Makefile
 include Pipfile Pipfile.lock
+include pyproject.toml
 include pytest.ini
 include snap/snapcraft.yaml
 prune .env

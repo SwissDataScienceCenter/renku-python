@@ -1,6 +1,7 @@
 '@context':
   '@version': 1.1
   _id: '@id'
+  _label: rdfs:label
   _project:
     '@context':
       '@version': 1.1
@@ -45,6 +46,7 @@
     '@context':
       '@version': 1.1
       _id: '@id'
+      _label: rdfs:label
       _project:
         '@context':
           '@version': 1.1
@@ -84,9 +86,12 @@
           rdfs: http://www.w3.org/2000/01/rdf-schema#
           schema: http://schema.org/
         '@id': schema:creator
+      external: renku:external
       name: schema:name
       path: prov:atLocation
       prov: http://www.w3.org/ns/prov#
+      rdfs: http://www.w3.org/2000/01/rdf-schema#
+      renku: https://swissdatasciencecenter.github.io/renku-ontology#
       schema: http://schema.org/
       url: schema:url
       wfprov: http://purl.org/wf4ever/wfprov#
@@ -104,6 +109,7 @@
   name: schema:name
   path: prov:atLocation
   prov: http://www.w3.org/ns/prov#
+  rdfs: http://www.w3.org/2000/01/rdf-schema#
   same_as:
     '@context':
       '@version': 1.1

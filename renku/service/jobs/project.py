@@ -53,14 +53,14 @@ def migrate_job(cache, user_data, project_id, user_job_id, commit_message):
         project = cache.get_project(user, project_id)
         messages, was_migrated = execute_migration(project, commit_message)
 
-        user_job.update_extras('messages', messages)
-        user_job.update_extras('was_migrated', was_migrated)
+        user_job.update_extras("messages", messages)
+        user_job.update_extras("was_migrated", was_migrated)
 
-        _, remote_branch = repo_sync(Repo(project.abs_path), remote='origin')
-        user_job.update_extras('remote_branch', remote_branch)
+        _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
+        user_job.update_extras("remote_branch", remote_branch)
 
         user_job.complete()
     except (HTTPError, ParameterError, GitCommandError, RenkuException) as exp:
-        user_job.update_extras('error', str(exp))
+        user_job.update_extras("error", str(exp))
         user_job.fail_job()
         return

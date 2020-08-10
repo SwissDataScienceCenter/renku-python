@@ -22,28 +22,9 @@ backwards compatible, we need to add/duplicate this migrations as a sort of
 back-dated migration.
 """
 
-import re
+from .m_0005__1_pyld2 import migrate_datasets_for_pyld2
 
 
 def migrate(client):
     """Migration function."""
-    _migrate_datasets(client)
-
-
-def _migrate_datasets(client):
-    """Migrate type scoped contexts of datasets."""
-    paths = (client.path / client.renku_datasets_path).rglob(client.METADATA)
-    for path in paths:
-        with path.open('r') as dataset:
-            content = dataset.read()
-
-        content = re.sub(r'"([^"])+_prov:([^"]+)":', '"\1_prov_\2":', content)
-        content = re.sub(
-            r'"([^"])+_wfprov:([^"]+)":', '"\1_wfprov_\2":', content
-        )
-        content = re.sub(
-            r'"([^"])+_schema:([^"]+)":', '"\1_schema_\2":', content
-        )
-
-        with path.open('w') as dataset:
-            dataset.write(content)
+    migrate_datasets_for_pyld2(client)

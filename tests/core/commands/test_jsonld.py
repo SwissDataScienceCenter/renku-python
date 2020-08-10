@@ -22,27 +22,27 @@ from renku.core.models import jsonld as jsonld
 
 def test_inheritance():
     """Test type and context inheritance."""
-    types = {'prov:Activity', 'wfprov:ProcessRun'}
-    context_keys = {'prov', 'wfprov', '@version'}
+    types = {"prov:Activity", "wfprov:ProcessRun"}
+    context_keys = {"prov", "wfprov", "@version"}
 
-    @jsonld.s(type='prov:Activity', context={'prov': 'A'})
+    @jsonld.s(type="prov:Activity", context={"prov": "A"})
     class Activity:
         """Define an activity."""
 
-    @jsonld.s(type='wfprov:ProcessRun', context={'wfprov': 'B'})
+    @jsonld.s(type="wfprov:ProcessRun", context={"wfprov": "B"})
     class ProcessRun(Activity):
         """Define a process execution based on an activity."""
 
     data = jsonld.asjsonld(ProcessRun())
-    assert types == set(data['@type'])
-    assert context_keys == set(data['@context'].keys())
+    assert types == set(data["@type"])
+    assert context_keys == set(data["@context"].keys())
 
-    types = {'prov:Activity', 'wfprov:ProcessRun', 'wfprov:WorkflowRun'}
+    types = {"prov:Activity", "wfprov:ProcessRun", "wfprov:WorkflowRun"}
 
-    @jsonld.s(type='wfprov:WorkflowRun')
+    @jsonld.s(type="wfprov:WorkflowRun")
     class WorkflowRun(ProcessRun):
         """Define a workflow run."""
 
     data = jsonld.asjsonld(WorkflowRun())
-    assert types == set(data['@type'])
-    assert context_keys == set(data['@context'].keys())
+    assert types == set(data["@type"])
+    assert context_keys == set(data["@context"].keys())
