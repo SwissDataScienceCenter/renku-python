@@ -37,7 +37,6 @@ from renku.core.models.locals import with_reference
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
 
-from ..models.provenance.agents import SoftwareAgent
 from .git import GitCore
 
 DEFAULT_DATA_DIR = "data"

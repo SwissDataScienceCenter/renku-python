@@ -19,14 +19,10 @@
 
 import os
 
-from marshmallow import EXCLUDE, pre_load
+from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, renku, schema, wfprov
-from renku.core.models.datasets import DatasetFileSchema
-from renku.core.models.git import get_user_info
-from renku.core.models.projects import generate_project_id
-from renku.core.models.provenance.agents import generat_person_id
+from renku.core.models.calamus import JsonLDSchema, fields, schema
 
 from .v3 import Base, DatasetSchemaV3
 
