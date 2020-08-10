@@ -192,11 +192,11 @@
         },
         "cwltool": {
             "hashes": [
-                "sha256:63e882b2143d45c5bed1512f79a29458fe6e85ccc0b671c411fffe1619b05d82",
-                "sha256:c8d9a77f25155aebb7d4c004bbdc506de1feafeaaf36c12df4b6c95a4d2d8b5f"
+                "sha256:1382dda7bc7cca6e7569555773361a444aa5bd5a01d9e8c106fdd8697bbafcfc",
+                "sha256:1e40cf62f708c670ed2e1594c5a85282cac68d2c6af1e91dfc5b94b40c7d9ece"
             ],
             "markers": "python_version >= '3.5' and python_version < '4'",
-            "version": "==3.0.20200724003302"
+            "version": "==3.0.20200807132242"
         },
         "decorator": {
             "hashes": [
