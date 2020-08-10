@@ -146,7 +146,7 @@ install_requires = [
     "click>=7.0,<=7.1.2",
     "cryptography>=2.7,<=2.9.2",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool==3.0.20200724003302",
+    "cwltool==3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "flask==1.1.2",
