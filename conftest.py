@@ -21,6 +21,7 @@ import json
 import os
 import pathlib
 import re
+import secrets
 import shutil
 import tarfile
 import tempfile
@@ -52,10 +53,29 @@ IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/git
 IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
-@pytest.fixture(scope="module")
-def renku_path(tmpdir_factory):
+@contextlib.contextmanager
+def _isolated_filesystem(tmpdir, name=None, delete=True):
+    """Click CliRunner ``isolated_filesystem`` but xdist compatible."""
+    cwd = os.getcwd()
+    if not name:
+        name = secrets.token_hex(8)
+    t = tmpdir.mkdir(name)
+    os.chdir(t)
+    try:
+        yield t
+    finally:
+        os.chdir(cwd)
+        if delete:
+            try:
+                shutil.rmtree(t)
+            except OSError:  # noqa: B014
+                pass
+
+
+@pytest.fixture(scope="function")
+def renku_path(tmpdir):
     """Temporary instance path."""
-    path = str(tmpdir_factory.mktemp("renku"))
+    path = str(tmpdir.mkdir("renku"))
     yield path
     shutil.rmtree(path)
 
@@ -75,12 +95,12 @@ def runner():
 
 
 @pytest.fixture
-def global_config_dir(monkeypatch, tmpdir_factory):
+def global_config_dir(monkeypatch, tmpdir):
     """Create a temporary renku config directory."""
     from renku.core.management.config import ConfigManagerMixin
 
     with monkeypatch.context() as m:
-        home_dir = tmpdir_factory.mktemp("fake_home").strpath
+        home_dir = tmpdir.mkdir("fake_home").strpath
         m.setattr(ConfigManagerMixin, "global_config_dir", home_dir)
 
         yield m
@@ -135,7 +155,7 @@ def run(runner, capsys):
     return generate
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def isolated_runner():
     """Create a runner on isolated filesystem."""
     runner_ = CliRunner()
@@ -152,13 +172,12 @@ def data_file(tmpdir):
 
 
 @pytest.fixture(scope="function")
-def repository():
+def repository(tmpdir):
     """Yield a Renku repository."""
     from renku.cli import cli
 
     runner = CliRunner()
-
-    with runner.isolated_filesystem() as project_path:
+    with _isolated_filesystem(tmpdir, delete=True) as project_path:
         result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
         assert 0 == result.exit_code
 
@@ -224,10 +243,10 @@ def client(project):
 
 
 @pytest.fixture(scope="function")
-def client_with_remote(client, tmpdir_factory):
+def client_with_remote(client, tmpdir):
     """Return a client with a (local) remote set."""
     # create remote
-    path = str(tmpdir_factory.mktemp("remote"))
+    path = str(tmpdir.mkdir("remote"))
     Repo().init(path, bare=True)
 
     origin = client.repo.create_remote("origin", path)
@@ -273,7 +292,7 @@ def dataset(client):
 
 
 @pytest.fixture(scope="function", params=[".", "some/sub/directory"])
-def subdirectory(request):
+def subdirectory(project, request):
     """Runs tests in root directory and a subdirectory."""
     from renku.core.utils.contexts import chdir
 
@@ -282,10 +301,10 @@ def subdirectory(request):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
         Repo().git.add(str(path))
-        Repo().index.commit("Create subdirectory")
+        Repo().index.commit("Create subdirectory", skip_hooks=True)
 
     with chdir(request.param):
-        yield
+        yield Path(request.param).resolve()
 
 
 @pytest.fixture
@@ -303,10 +322,10 @@ def dataset_responses():
 
 
 @pytest.fixture(scope="function")
-def directory_tree(tmpdir_factory):
+def directory_tree(tmpdir):
     """Create a test directory tree."""
     # initialize
-    p = tmpdir_factory.mktemp("directory_tree")
+    p = tmpdir.mkdir("directory_tree")
     p.join("file").write("1234")
     p.join("dir2").mkdir()
     p.join("dir2/file2").write("5678")
@@ -606,7 +625,7 @@ def doi_responses():
         yield rsps
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def renku_cli(client, run):
     """Return a callable Renku CLI.
 

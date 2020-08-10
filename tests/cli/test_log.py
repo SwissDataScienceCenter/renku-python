@@ -43,21 +43,19 @@ def test_dataset_log_strict(tmpdir, runner, project, client, format, subdirector
     """Test output of log for dataset add."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code
-
     paths = []
     test_paths = []
     for i in range(3):
         new_file = tmpdir.join("file_{0}".format(i))
         new_file.write(str(i))
         paths.append(str(new_file))
-        test_paths.append(str(new_file.relto(tmpdir.join(".."))))
+        test_paths.append(os.path.relpath(str(new_file), str(project)))
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths,)
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ["log", "--strict", "--format={}".format(format)])
-
     assert 0 == result.exit_code, result.output
     assert all(p in result.output for p in test_paths)
 

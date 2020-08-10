@@ -445,7 +445,7 @@ def test_repository_file_to_dataset(runner, project, client, subdirectory):
     a_path.write_text("a content")
 
     client.repo.git.add(str(a_path))
-    client.repo.git.commit(message="Added file a")
+    client.repo.git.commit(message="Added file a", no_verify=True)
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False,)
