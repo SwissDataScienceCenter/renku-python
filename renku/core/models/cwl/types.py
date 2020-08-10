@@ -31,9 +31,7 @@ class PathFormatterMixin:
         reference = self.__reference__
         if reference:
             return str(os.path.normpath(str(reference.parent / self.path)))
-        return os.path.relpath(
-            os.path.abspath(str(self.path)), os.path.realpath(os.getcwd())
-        )
+        return os.path.relpath(os.path.abspath(str(self.path)), os.path.realpath(os.getcwd()))
 
 
 @attr.s
@@ -52,7 +50,7 @@ class Directory(PathFormatterMixin):
     listing = attr.ib(default=attr.Factory(list))
 
 
-PATH_OBJECTS = {'File', 'Directory'}
+PATH_OBJECTS = {"File", "Directory"}
 PATH_TYPES = (File, Directory)
 
 

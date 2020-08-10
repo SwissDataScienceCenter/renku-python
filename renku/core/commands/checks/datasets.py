@@ -21,33 +21,23 @@ from collections import defaultdict
 
 import click
 
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
 
 from ..echo import WARNING
 
 
-def _dataset_pre_0_3(client):
-    """Return paths of dataset metadata for pre 0.3.4."""
-    project_is_pre_0_3 = int(client.project.version) < 2
-    if project_is_pre_0_3:
-        return (client.path / DATA_DIR).rglob(client.METADATA)
-    return []
-
-
 def check_dataset_metadata(client):
     """Check location of dataset metadata."""
-    # Find pre 0.3.4 metadata files.
-    old_metadata = list(_dataset_pre_0_3(client))
+    old_metadata = get_pre_0_3_4_datasets_metadata(client)
 
     if not old_metadata:
         return True, None
 
     problems = (
-        WARNING + 'There are metadata files in the old location.'
-        '\n  (use "renku migrate" to move them)\n\n\t' + '\n\t'.join(
-            click.style(str(path.relative_to(client.path)), fg='yellow')
-            for path in old_metadata
-        ) + '\n'
+        WARNING + "There are metadata files in the old location."
+        '\n  (use "renku migrate" to move them)\n\n\t'
+        + "\n\t".join(click.style(str(path.relative_to(client.path)), fg="yellow") for path in old_metadata)
+        + "\n"
     )
 
     return False, problems
@@ -60,21 +50,21 @@ def check_missing_files(client):
     for dataset in client.datasets.values():
         for file_ in dataset.files:
             path = client.path / file_.path
-            file_exists = (
-                path.exists() or (file_.external and os.path.lexists(path))
-            )
+            file_exists = path.exists() or (file_.external and os.path.lexists(path))
             if not file_exists:
                 missing[dataset.name].append(file_.path)
 
     if not missing:
         return True, None
 
-    problems = (WARNING + 'There are missing files in datasets.')
+    problems = WARNING + "There are missing files in datasets."
 
     for dataset, files in missing.items():
         problems += (
-            '\n\t' + click.style(dataset, fg='yellow') + ':\n\t  ' +
-            '\n\t  '.join(click.style(path, fg='red') for path in files)
+            "\n\t"
+            + click.style(dataset, fg="yellow")
+            + ":\n\t  "
+            + "\n\t  ".join(click.style(path, fg="red") for path in files)
         )
 
     return False, problems

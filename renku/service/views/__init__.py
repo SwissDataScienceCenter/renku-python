@@ -23,20 +23,11 @@ from renku.service.serializers.rpc import JsonRPCResponse
 
 def result_response(serializer, data):
     """Construct flask response."""
-    return current_app.response_class(
-        response=serializer.dumps({'result': data}),
-        mimetype='application/json'
-    )
+    return current_app.response_class(response=serializer.dumps({"result": data}), mimetype="application/json")
 
 
 def error_response(code, reason):
     """Construct error response."""
     return current_app.response_class(
-        response=JsonRPCResponse().dumps({
-            'error': {
-                'code': code,
-                'reason': reason
-            }
-        }),
-        mimetype='application/json'
+        response=JsonRPCResponse().dumps({"error": {"code": code, "reason": reason}}), mimetype="application/json"
     )

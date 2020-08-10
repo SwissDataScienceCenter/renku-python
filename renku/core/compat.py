@@ -60,7 +60,7 @@ cgi.escape = html.escape
 class RenkuGitWildMatchPattern(pathspec.patterns.GitWildMatchPattern):
     """Custom GitWildMatchPattern matcher."""
 
-    __slots__ = ('pattern', )
+    __slots__ = ("pattern",)
 
     def __init__(self, pattern, include=None):
         """Initialize RenkuRegexPattern."""
@@ -68,11 +68,11 @@ class RenkuGitWildMatchPattern(pathspec.patterns.GitWildMatchPattern):
         self.pattern = pattern
 
 
-pathspec.util.register_pattern('renku_gitwildmatch', RenkuGitWildMatchPattern)
+pathspec.util.register_pattern("renku_gitwildmatch", RenkuGitWildMatchPattern)
 
 __all__ = (
-    'FileNotFoundError',
-    'Path',
-    'contextlib',
-    'cgi',
+    "FileNotFoundError",
+    "Path",
+    "contextlib",
+    "cgi",
 )

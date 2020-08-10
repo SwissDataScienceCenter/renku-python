@@ -39,36 +39,25 @@ def execute(client, output_file, output_paths=None):
 
     def construct_tool_object(toolpath_object, *args, **kwargs):
         """Fix missing locations."""
-        protocol = 'file://'
+        protocol = "file://"
 
         def addLocation(d):
-            if 'location' not in d and 'path' in d:
-                d['location'] = protocol + d['path']
+            if "location" not in d and "path" in d:
+                d["location"] = protocol + d["path"]
 
-        visit_class(toolpath_object, ('File', 'Directory'), addLocation)
+        visit_class(toolpath_object, ("File", "Directory"), addLocation)
         return workflow.default_make_tool(toolpath_object, *args, **kwargs)
 
     argv = sys.argv
-    sys.argv = ['cwltool']
+    sys.argv = ["cwltool"]
 
     # Keep all environment variables.
     runtime_context = RuntimeContext(
-        kwargs={
-            'rm_tmpdir': False,
-            'move_outputs': 'leave',
-            'preserve_entire_environment': True,
-        }
+        kwargs={"rm_tmpdir": False, "move_outputs": "leave", "preserve_entire_environment": True,}
     )
-    loading_context = LoadingContext(
-        kwargs={
-            'construct_tool_object': construct_tool_object,
-        }
-    )
+    loading_context = LoadingContext(kwargs={"construct_tool_object": construct_tool_object,})
 
-    factory = cwltool.factory.Factory(
-        loading_context=loading_context,
-        runtime_context=runtime_context,
-    )
+    factory = cwltool.factory.Factory(loading_context=loading_context, runtime_context=runtime_context,)
     process = factory.make(os.path.relpath(str(output_file)))
     try:
         outputs = process()
@@ -80,32 +69,22 @@ def execute(client, output_file, output_paths=None):
     # Move outputs to correct location in the repository.
     output_dirs = process.factory.executor.output_dirs
 
-    def remove_prefix(location, prefix='file://'):
+    def remove_prefix(location, prefix="file://"):
         if location.startswith(prefix):
-            return location[len(prefix):]
+            return location[len(prefix) :]
         return location
 
-    locations = {
-        remove_prefix(output['location'])
-        for output in outputs.values()
-    }
+    locations = {remove_prefix(output["location"]) for output in outputs.values()}
     # make sure to not move an output if it's containing directory gets moved
     locations = {
-        location
-        for location in locations
-        if not any(location.startswith(d) for d in locations if location != d)
+        location for location in locations if not any(location.startswith(d) for d in locations if location != d)
     }
 
-    with progressbar(
-        locations,
-        label='Moving outputs',
-    ) as bar:
+    with progressbar(locations, label="Moving outputs",) as bar:
         for location in bar:
             for output_dir in output_dirs:
                 if location.startswith(output_dir):
-                    output_path = location[len(output_dir):].lstrip(
-                        os.path.sep
-                    )
+                    output_path = location[len(output_dir) :].lstrip(os.path.sep)
                     destination = client.path / output_path
                     if destination.is_dir():
                         shutil.rmtree(str(destination))
@@ -116,9 +95,5 @@ def execute(client, output_file, output_paths=None):
     unchanged_paths = client.remove_unmodified(output_paths)
     if unchanged_paths:
         click.echo(
-            'Unchanged files:\n\n\t{0}'.format(
-                '\n\t'.join(
-                    click.style(path, fg='yellow') for path in unchanged_paths
-                )
-            )
+            "Unchanged files:\n\n\t{0}".format("\n\t".join(click.style(path, fg="yellow") for path in unchanged_paths))
         )

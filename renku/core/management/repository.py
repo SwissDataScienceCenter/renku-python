@@ -40,7 +40,7 @@ from renku.core.models.refs import LinkReference
 from ..models.provenance.agents import SoftwareAgent
 from .git import GitCore
 
-DEFAULT_DATA_DIR = 'data'
+DEFAULT_DATA_DIR = "data"
 
 
 def default_path():
@@ -48,10 +48,11 @@ def default_path():
     from git import InvalidGitRepositoryError
 
     from renku.core.commands.git import get_git_home
+
     try:
         return get_git_home()
     except InvalidGitRepositoryError:
-        return '.'
+        return "."
 
 
 def path_converter(path):
@@ -63,16 +64,13 @@ def path_converter(path):
 class PathMixin:
     """Define a default path attribute."""
 
-    path = attr.ib(
-        default=default_path,
-        converter=path_converter,
-    )
+    path = attr.ib(default=default_path, converter=path_converter,)
 
     @path.validator
     def _check_path(self, _, value):
         """Check the path exists and it is a directory."""
         if not (value.exists() and value.is_dir()):
-            raise ValueError('Define an existing directory.')
+            raise ValueError("Define an existing directory.")
 
 
 @attr.s
@@ -89,28 +87,31 @@ class RepositoryApiMixin(GitCore):
     """Store a pointer to the parent repository."""
 
     data_dir = attr.ib(
-        default=DEFAULT_DATA_DIR,
-        kw_only=True,
-        converter=lambda value: str(value) if value else DEFAULT_DATA_DIR
+        default=DEFAULT_DATA_DIR, kw_only=True, converter=lambda value: str(value) if value else DEFAULT_DATA_DIR
     )
     """Define a name of the folder for storing datasets."""
 
-    METADATA = 'metadata.yml'
+    METADATA = "metadata.yml"
     """Default name of Renku config file."""
 
-    LOCK_SUFFIX = '.lock'
+    LOCK_SUFFIX = ".lock"
     """Default suffix for Renku lock file."""
 
-    WORKFLOW = 'workflow'
+    WORKFLOW = "workflow"
     """Directory for storing workflow in Renku."""
 
-    ACTIVITY_INDEX = 'activity_index.yaml'
+    ACTIVITY_INDEX = "activity_index.yaml"
     """Caches activities that generated a path."""
 
     RENKU_PROTECTED_PATHS = [
-        '\\.renku/.*', 'Dockerfile', '\\.dockerignore', '\\.gitignore',
-        '\\.gitattributes', '\\.gitlab-ci\\.yml', 'environment\\.yml',
-        'requirements\\.txt'
+        "\\.renku/.*",
+        "Dockerfile",
+        "\\.dockerignore",
+        "\\.gitignore",
+        "\\.gitattributes",
+        "\\.gitlab-ci\\.yml",
+        "environment\\.yml",
+        "requirements\\.txt",
     ]
 
     _commit_activity_cache = {}
@@ -129,9 +130,7 @@ class RepositoryApiMixin(GitCore):
         path.relative_to(path)
         self.renku_path = path
 
-        data_dir = self.get_value(
-            'renku', self.DATA_DIR_CONFIG_KEY, local_only=True
-        )
+        data_dir = self.get_value("renku", self.DATA_DIR_CONFIG_KEY, local_only=True)
         self.data_dir = data_dir or self.data_dir
 
         self._subclients = {}
@@ -143,10 +142,7 @@ class RepositoryApiMixin(GitCore):
         # initialize submodules
         if self.repo:
             try:
-                check_output([
-                    'git', 'submodule', 'update', '--init', '--recursive'
-                ],
-                             cwd=str(self.path))
+                check_output(["git", "submodule", "update", "--init", "--recursive"], cwd=str(self.path))
             except subprocess.CalledProcessError:
                 pass
 
@@ -158,10 +154,7 @@ class RepositoryApiMixin(GitCore):
     @property
     def lock(self):
         """Create a Renku config lock."""
-        return filelock.FileLock(
-            str(self.renku_path.with_suffix(self.LOCK_SUFFIX)),
-            timeout=0,
-        )
+        return filelock.FileLock(str(self.renku_path.with_suffix(self.LOCK_SUFFIX)), timeout=0,)
 
     @property
     def renku_metadata_path(self):
@@ -188,13 +181,11 @@ class RepositoryApiMixin(GitCore):
     def project(self):
         """Return the Project instance."""
         if self.renku_metadata_path.exists() and self._project is None:
-            self._project = Project.from_yaml(
-                self.renku_metadata_path, client=self
-            )
+            self._project = Project.from_yaml(self.renku_metadata_path, client=self)
         return self._project
 
     @property
-    def remote(self, remote_name='origin'):
+    def remote(self, remote_name="origin"):
         """Return host, owner and name of the remote if it exists."""
         from renku.core.models.git import GitURL
 
@@ -205,8 +196,7 @@ class RepositoryApiMixin(GitCore):
 
         host = owner = name = None
         try:
-            remote_branch = \
-                self.repo.head.reference.tracking_branch()
+            remote_branch = self.repo.head.reference.tracking_branch()
             if remote_branch is not None:
                 remote_name = remote_branch.remote_name
         except TypeError:
@@ -216,10 +206,10 @@ class RepositoryApiMixin(GitCore):
             url = GitURL.parse(self.repo.remotes[remote_name].url)
 
             # Remove gitlab. unless running on gitlab.com.
-            hostname_parts = url.hostname.split('.')
-            if len(hostname_parts) > 2 and hostname_parts[0] == 'gitlab':
+            hostname_parts = url.hostname.split(".")
+            if len(hostname_parts) > 2 and hostname_parts[0] == "gitlab":
                 hostname_parts = hostname_parts[1:]
-            url = attr.evolve(url, hostname='.'.join(hostname_parts))
+            url = attr.evolve(url, hostname=".".join(hostname_parts))
         except IndexError:
             url = None
 
@@ -228,7 +218,7 @@ class RepositoryApiMixin(GitCore):
             owner = url.owner
             name = url.name
 
-        remote = {'host': host, 'owner': owner, 'name': name}
+        remote = {"host": host, "owner": owner, "name": name}
         self._remote_cache[original_remote_name] = remote
 
         return remote
@@ -261,25 +251,17 @@ class RepositoryApiMixin(GitCore):
 
         if not path:
             # search for activities a file could have been a part of
-            activities = self.activities_for_paths(
-                commit.stats.files.keys(), file_commit=commit, revision='HEAD'
-            )
+            activities = self.activities_for_paths(commit.stats.files.keys(), file_commit=commit, revision="HEAD")
             if len(activities) > 1:
                 raise errors.CommitProcessingError(
-                    'Found multiple activities that produced the same entity '
-                    'at commit {}'.format(commit)
+                    "Found multiple activities that produced the same entity " "at commit {}".format(commit)
                 )
             if activities:
                 return activities[0]
 
         if path:
             data = (commit.tree / path).data_stream.read()
-            process = Activity.from_jsonld(
-                yaml.safe_load(data),
-                client=self,
-                commit=commit,
-                __reference__=path
-            )
+            process = Activity.from_jsonld(yaml.safe_load(data), client=self, commit=commit, __reference__=path)
 
             return process
 
@@ -287,11 +269,9 @@ class RepositoryApiMixin(GitCore):
 
     def is_workflow(self, path):
         """Check if the path is a valid CWL file."""
-        return path.startswith(self.cwl_prefix) and path.endswith('.yaml')
+        return path.startswith(self.cwl_prefix) and path.endswith(".yaml")
 
-    def find_previous_commit(
-        self, paths, revision='HEAD', return_first=False, full=False
-    ):
+    def find_previous_commit(self, paths, revision="HEAD", return_first=False, full=False):
         """Return a previous commit for a given path starting from ``revision``.
 
         :param revision: revision to start from, defaults to ``HEAD``
@@ -302,25 +282,15 @@ class RepositoryApiMixin(GitCore):
         kwargs = {}
 
         if full:
-            kwargs['full_history'] = True
+            kwargs["full_history"] = True
 
         if return_first:
-            file_commits = list(
-                self.repo.iter_commits(revision, paths=paths, **kwargs)
-            )
+            file_commits = list(self.repo.iter_commits(revision, paths=paths, **kwargs))
         else:
-            file_commits = list(
-                self.repo.iter_commits(
-                    revision, paths=paths, max_count=1, **kwargs
-                )
-            )
+            file_commits = list(self.repo.iter_commits(revision, paths=paths, max_count=1, **kwargs))
 
         if not file_commits:
-            raise KeyError(
-                'Could not find a file {0} in range {1}'.format(
-                    paths, revision
-                )
-            )
+            raise KeyError("Could not find a file {0} in range {1}".format(paths, revision))
 
         return file_commits[-1 if return_first else 0]
 
@@ -328,7 +298,7 @@ class RepositoryApiMixin(GitCore):
     def workflow_names(self):
         """Return index of workflow names."""
         names = defaultdict(list)
-        for ref in LinkReference.iter_items(self, common_path='workflows'):
+        for ref in LinkReference.iter_items(self, common_path="workflows"):
             names[str(ref.reference.relative_to(self.path))].append(ref.name)
         return names
 
@@ -348,10 +318,7 @@ class RepositoryApiMixin(GitCore):
         try:
             from git import Submodule
 
-            submodules = [
-                submodule for submodule in
-                Submodule.iter_items(self.repo, parent_commit=parent_commit)
-            ]
+            submodules = [submodule for submodule in Submodule.iter_items(self.repo, parent_commit=parent_commit)]
         except (RuntimeError, ValueError):
             # There are no submodules associated with the given commit.
             submodules = []
@@ -362,33 +329,26 @@ class RepositoryApiMixin(GitCore):
             is_renku = subpath / Path(self.renku_home)
 
             if subpath.exists() and is_renku.exists():
-                subclients[submodule] = self.__class__(
-                    path=subpath,
-                    parent=(self, submodule),
-                )
+                subclients[submodule] = self.__class__(path=subpath, parent=(self, submodule),)
 
         return subclients
 
     def resolve_in_submodules(self, commit, path):
         """Resolve filename in submodules."""
         original_path = self.path / path
-        in_vendor = str(path).startswith('.renku/vendors')
+        in_vendor = str(path).startswith(".renku/vendors")
 
         if original_path.is_symlink() or in_vendor:
-            original_path = Path(
-                os.path.realpath(os.path.abspath(str(original_path)))
-            )
+            original_path = Path(os.path.realpath(os.path.abspath(str(original_path))))
 
             for submodule, subclient in self.subclients(commit).items():
-                if (Path(submodule.path) / Path('.git')).exists():
+                if (Path(submodule.path) / Path(".git")).exists():
 
                     try:
                         subpath = original_path.relative_to(subclient.path)
                         return (
                             subclient,
-                            subclient.find_previous_commit(
-                                subpath, revision=submodule.hexsha
-                            ),
+                            subclient.find_previous_commit(subpath, revision=submodule.hexsha),
                             subpath,
                         )
                     except ValueError:
@@ -406,10 +366,10 @@ class RepositoryApiMixin(GitCore):
             current_branch = self.repo.active_branch
         except TypeError as e:
             # not on a branch, detached head
-            if 'HEAD is a detached' in str(e):
+            if "HEAD is a detached" in str(e):
                 current_commit = self.repo.head.commit
             else:
-                raise ValueError('Couldn\'t get active branch or commit', e)
+                raise ValueError("Couldn't get active branch or commit", e)
 
         self.repo.git.checkout(commit)
 
@@ -446,10 +406,7 @@ class RepositoryApiMixin(GitCore):
         yield workflow
 
         for step in workflow.steps:
-            step_name = '{0}_{1}.yaml'.format(
-                uuid.uuid4().hex,
-                secure_filename('_'.join(step.run.baseCommand)),
-            )
+            step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(step.run.baseCommand)),)
 
             workflow_path = self.workflow_path
             if not workflow_path.exists():
@@ -458,11 +415,7 @@ class RepositoryApiMixin(GitCore):
             path = workflow_path / step_name
 
             with with_reference(path):
-                run = step.run.generate_process_run(
-                    client=self,
-                    commit=self.repo.head.commit,
-                    path=path,
-                )
+                run = step.run.generate_process_run(client=self, commit=self.repo.head.commit, path=path,)
                 run.to_yaml()
                 self.add_to_activity_index(run)
 
@@ -475,8 +428,7 @@ class RepositoryApiMixin(GitCore):
         # verify if folder is empty
         if self.repo is not None and not force:
             raise errors.InvalidFileOperation(
-                'Folder {0} already contains file. Use --force to overwrite'.
-                format(self.repo.git_dir)
+                "Folder {0} already contains file. Use --force to overwrite".format(self.repo.git_dir)
             )
 
         # initialize repo and set user data
@@ -485,7 +437,7 @@ class RepositoryApiMixin(GitCore):
         if user:
             config_writer = self.repo.config_writer()
             for key, value in user.items():
-                config_writer.set_value('user', key, value)
+                config_writer.set_value("user", key, value)
             config_writer.release()
 
         # verify if author information is available
@@ -503,7 +455,7 @@ class RepositoryApiMixin(GitCore):
         path = self.activity_index_path
 
         if path.exists():
-            with path.open('r') as stream:
+            with path.open("r") as stream:
                 self._activity_index = yaml.safe_load(stream)
         else:
             self._activity_index = {}
@@ -522,15 +474,13 @@ class RepositoryApiMixin(GitCore):
             if activity.path in self.path_activity_cache[g.path][hexsha]:
                 continue
 
-            self.path_activity_cache[g.path][g.commit.hexsha].append(
-                activity.path
-            )
+            self.path_activity_cache[g.path][g.commit.hexsha].append(activity.path)
 
         if self.path_activity_cache:
-            with self.activity_index_path.open('w') as stream:
+            with self.activity_index_path.open("w") as stream:
                 yaml.dump(self.path_activity_cache, stream)
 
-    def activities_for_paths(self, paths, file_commit=None, revision='HEAD'):
+    def activities_for_paths(self, paths, file_commit=None, revision="HEAD"):
         """Get all activities involving a path."""
         from renku.core.models.provenance.activities import Activity
 
@@ -538,17 +488,15 @@ class RepositoryApiMixin(GitCore):
 
         for p in paths:
             if p not in self.path_activity_cache:
-                parent_paths = [
-                    a for a in self.path_activity_cache.keys()
-                    if p.startswith(a)
-                ]
+                parent_paths = [a for a in self.path_activity_cache.keys() if p.startswith(a)]
                 if not parent_paths:
                     continue
                 matching_activities = [
-                    a for k, v in self.path_activity_cache.items()
+                    a
+                    for k, v in self.path_activity_cache.items()
                     for ck, cv in v.items()
-                    for a in cv if k in parent_paths and
-                    (not file_commit or ck == file_commit.hexsha)
+                    for a in cv
+                    if k in parent_paths and (not file_commit or ck == file_commit.hexsha)
                 ]
             else:
                 matching = self.path_activity_cache[p]
@@ -557,24 +505,18 @@ class RepositoryApiMixin(GitCore):
                         continue
                     matching_activities = matching[file_commit.hexsha]
                 else:
-                    matching_activities = [
-                        a for v in matching.values for a in v
-                    ]
+                    matching_activities = [a for v in matching.values for a in v]
 
             for a in matching_activities:
                 if (a, revision) in self._commit_activity_cache:
                     activity = self._commit_activity_cache[(a, revision)]
                 else:
                     try:
-                        commit = self.find_previous_commit(
-                            a, revision=revision
-                        )
+                        commit = self.find_previous_commit(a, revision=revision)
                     except KeyError:
                         continue
 
-                    activity = Activity.from_yaml(
-                        self.path / a, client=self, commit=commit
-                    )
+                    activity = Activity.from_yaml(self.path / a, client=self, commit=commit)
 
                     self._commit_activity_cache[(a, revision)] = activity
                 result.add(activity)
@@ -583,7 +525,7 @@ class RepositoryApiMixin(GitCore):
 
     def import_from_template(self, template_path, metadata, force=False):
         """Render template files from a template directory."""
-        for file in template_path.glob('**/*'):
+        for file in template_path.glob("**/*"):
             destination = self.path / file.relative_to(template_path)
             try:
                 # TODO: notify about the expected variables - code stub:

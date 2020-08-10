@@ -22,11 +22,7 @@ import pytest
 from renku.core.models.calamus import JsonLDSchema, fields
 
 
-@pytest.mark.parametrize(
-    'value', [{
-        'field': 'http://datascience.ch'
-    }, 'http://datascience.ch']
-)
+@pytest.mark.parametrize("value", [{"field": "http://datascience.ch"}, "http://datascience.ch"])
 def test_uri_field_serialization(value):
     """Test serialization of Uri fields."""
 
@@ -34,7 +30,7 @@ def test_uri_field_serialization(value):
         def __init__(self, field):
             self.field = field
 
-    schema = fields.Namespace('http://schema.org/')
+    schema = fields.Namespace("http://schema.org/")
 
     class EntitySchema(JsonLDSchema):
         field = fields.Uri(schema.field, allow_none=True)
@@ -47,17 +43,10 @@ def test_uri_field_serialization(value):
 
     data = EntitySchema().dump(entity)
 
-    assert data == {
-        '@type': ['http://schema.org/Entity'],
-        'http://schema.org/field': value
-    }
+    assert data == {"@type": ["http://schema.org/Entity"], "http://schema.org/field": value}
 
 
-@pytest.mark.parametrize(
-    'value', [{
-        'url': 'http://datascience.ch'
-    }, 'http://datascience.ch', None]
-)
+@pytest.mark.parametrize("value", [{"url": "http://datascience.ch"}, "http://datascience.ch", None])
 def test_uri_field_deserialization(value):
     """Test deserialization of Uri fields."""
 
@@ -65,7 +54,7 @@ def test_uri_field_deserialization(value):
         def __init__(self, field):
             self.field = field
 
-    schema = fields.Namespace('http://schema.org/')
+    schema = fields.Namespace("http://schema.org/")
 
     class EntitySchema(JsonLDSchema):
         field = fields.Uri(schema.field, allow_none=True)
@@ -74,10 +63,7 @@ def test_uri_field_deserialization(value):
             rdf_type = schema.Entity
             model = Entity
 
-    data = {
-        '@type': ['http://schema.org/Entity'],
-        'http://schema.org/field': value
-    }
+    data = {"@type": ["http://schema.org/Entity"], "http://schema.org/field": value}
 
     entity = EntitySchema().load(data)
 

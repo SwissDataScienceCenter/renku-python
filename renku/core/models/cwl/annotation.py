@@ -21,19 +21,19 @@ from renku.core.models import jsonld
 
 
 @jsonld.s(
-    type='oa:Annotation',
+    type="oa:Annotation",
     context={
-        'oa': 'http://www.w3.org/ns/oa#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        'dcterms': 'http://purl.org/dc/terms/',
+        "oa": "http://www.w3.org/ns/oa#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "dcterms": "http://purl.org/dc/terms/",
     },
     cmp=False,
 )
 class Annotation:
     """Represents a custom annotation for a research object."""
 
-    _id = jsonld.ib(context='@id', kw_only=True)
+    _id = jsonld.ib(context="@id", kw_only=True)
 
-    body = jsonld.ib(default=None, context='oa:hasBody', kw_only=True)
+    body = jsonld.ib(default=None, context="oa:hasBody", kw_only=True)
 
-    source = jsonld.ib(default=None, context='dcterms:creator', kw_only=True)
+    source = jsonld.ib(default=None, context="dcterms:creator", kw_only=True)

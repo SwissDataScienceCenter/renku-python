@@ -26,48 +26,32 @@ from renku.core.utils.shacl import validate_graph
 
 def test_dataset_shacl(tmpdir, runner, project, client):
     """Test dataset metadata structure."""
-    force_dataset_path = Path(
-        __file__
-    ).parent.parent.parent / 'fixtures' / 'force_dataset_shacl.json'
+    force_dataset_path = Path(__file__).parent.parent.parent / "fixtures" / "force_dataset_shacl.json"
 
-    force_datasetfile_path = Path(
-        __file__
-    ).parent.parent.parent / 'fixtures' / 'force_datasetfile_shacl.json'
+    force_datasetfile_path = Path(__file__).parent.parent.parent / "fixtures" / "force_datasetfile_shacl.json"
 
-    force_datasettag_path = Path(
-        __file__
-    ).parent.parent.parent / 'fixtures' / 'force_datasettag_shacl.json'
+    force_datasettag_path = Path(__file__).parent.parent.parent / "fixtures" / "force_datasettag_shacl.json"
 
-    runner.invoke(cli, ['dataset', 'create', 'dataset'])
+    runner.invoke(cli, ["dataset", "create", "dataset"])
 
     paths = []
     for i in range(3):
-        new_file = tmpdir.join('file_{0}'.format(i))
+        new_file = tmpdir.join("file_{0}".format(i))
         new_file.write(str(i))
         paths.append(str(new_file))
 
     # add data
     runner.invoke(
-        cli,
-        ['dataset', 'add', 'dataset'] + paths,
-        catch_exceptions=False,
+        cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False,
     )
 
     runner.invoke(
-        cli,
-        ['dataset', 'tag', 'dataset', '1.0'],
-        catch_exceptions=False,
+        cli, ["dataset", "tag", "dataset", "1.0"], catch_exceptions=False,
     )
 
-    with client.with_dataset('dataset') as dataset:
+    with client.with_dataset("dataset") as dataset:
         g = dataset.asjsonld()
-        rdf = pyld.jsonld.to_rdf(
-            g,
-            options={
-                'format': 'application/n-quads',
-                'produceGeneralizedRdf': True
-            }
-        )
+        rdf = pyld.jsonld.to_rdf(g, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 
         r, _, t = validate_graph(rdf, shacl_path=str(force_dataset_path))
         assert r is True, t
@@ -86,21 +70,13 @@ def test_project_shacl(project, client):
     """Test project metadata structure."""
     from renku.core.models.provenance.agents import Person
 
-    path = Path(
-        __file__
-    ).parent.parent.parent / 'fixtures' / 'force_project_shacl.json'
+    path = Path(__file__).parent.parent.parent / "fixtures" / "force_project_shacl.json"
 
     project = client.project
-    project.creator = Person(email='johndoe@example.com', name='Johnny Doe')
+    project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
 
     g = project.as_jsonld()
-    rdf = pyld.jsonld.to_rdf(
-        g,
-        options={
-            'format': 'application/n-quads',
-            'produceGeneralizedRdf': False
-        }
-    )
+    rdf = pyld.jsonld.to_rdf(g, options={"format": "application/n-quads", "produceGeneralizedRdf": False})
     r, _, t = validate_graph(rdf, shacl_path=str(path))
     assert r is True, t
 

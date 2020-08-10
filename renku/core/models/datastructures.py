@@ -25,7 +25,7 @@ from pathlib import Path
 class Model(object):
     """Abstract response of a single object."""
 
-    IDENTIFIER_KEY = 'identifier'
+    IDENTIFIER_KEY = "identifier"
 
     def __init__(self, response=None, client=None, collection=None):
         """Create a representation of an object on the server."""
@@ -54,7 +54,7 @@ class Collection(object):
         model = None
         """Define the type of object this collection represents."""
 
-        headers = ('id')
+        headers = "id"
         """Which fields to use as headers when printing the collection."""
 
     def __init__(self, client=None):
@@ -63,8 +63,8 @@ class Collection(object):
 
     def list(self):
         """Return a list if the collection is iterable."""
-        if not hasattr(self, '__iter__'):
-            raise NotImplementedError('The collection is not iterable.')
+        if not hasattr(self, "__iter__"):
+            raise NotImplementedError("The collection is not iterable.")
         return list(self)
 
 
@@ -118,16 +118,16 @@ class IndexedList(list):
 
     """
 
-    __slots__ = ('_attr_name', '_prefix')
+    __slots__ = ("_attr_name", "_prefix")
 
-    def __new__(cls, *args, attr=None, prefix=''):
+    def __new__(cls, *args, attr=None, prefix=""):
         """Call list constructor."""
         return super().__new__(cls)
 
-    def __init__(self, *args, attr=None, prefix=''):
+    def __init__(self, *args, attr=None, prefix=""):
         """Store index information."""
         if attr is None:
-            raise ValueError('The attribute name must be defined.')
+            raise ValueError("The attribute name must be defined.")
 
         self._attr_name = attr
         self._prefix = prefix
@@ -167,9 +167,7 @@ class IndexedList(list):
         try:
             return getattr(self, index)
         except AttributeError:
-            raise IndexError(
-                'No item found with id {0}'.format(self._prefix + index)
-            )
+            raise IndexError("No item found with id {0}".format(self._prefix + index))
 
 
 class DirectoryTree(dict):

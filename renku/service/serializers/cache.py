@@ -21,8 +21,7 @@ import uuid
 from datetime import datetime
 from urllib.parse import urlparse
 
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load, \
-    validates
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
 from werkzeug.utils import secure_filename
 
 from renku.core.errors import ConfigurationError
@@ -37,12 +36,12 @@ def extract_file(request):
     :raises: `ValidationError`
     """
     files = request.files
-    if 'file' not in files:
-        raise ValidationError('missing key: file')
+    if "file" not in files:
+        raise ValidationError("missing key: file")
 
-    file = files['file']
+    file = files["file"]
     if file and not file.filename:
-        raise ValidationError('wrong filename: {0}'.format(file.filename))
+        raise ValidationError("wrong filename: {0}".format(file.filename))
 
     if file:
         file.filename = secure_filename(file.filename)
@@ -62,7 +61,7 @@ class FileUploadContext(Schema):
     created_at = fields.DateTime(missing=datetime.utcnow)
     file_id = fields.String(missing=lambda: uuid.uuid4().hex)
 
-    content_type = fields.String(missing='unknown')
+    content_type = fields.String(missing="unknown")
     file_name = fields.String(required=True)
 
     # measured in bytes (comes from stat() - st_size)
@@ -111,16 +110,16 @@ class ProjectCloneContext(ProjectCloneRequest):
     project_id = fields.String(missing=lambda: uuid.uuid4().hex)
 
     # measured in ms
-    timestamp = fields.Integer(missing=time.time() * 1e+3)
+    timestamp = fields.Integer(missing=time.time() * 1e3)
 
     name = fields.String(required=True)
     fullname = fields.String(required=True)
     email = fields.String(required=True)
     owner = fields.String(required=True)
     token = fields.String(required=True)
-    ref = fields.String(missing='master')
+    ref = fields.String(missing="master")
 
-    @validates('git_url')
+    @validates("git_url")
     def validate_git_url(self, value):
         """Validates git url."""
         try:
@@ -133,20 +132,20 @@ class ProjectCloneContext(ProjectCloneRequest):
     @post_load()
     def format_url(self, data, **kwargs):
         """Format URL with a username and password."""
-        git_url = urlparse(data['git_url'])
+        git_url = urlparse(data["git_url"])
 
-        url = 'oauth2:{0}@{1}'.format(data['token'], git_url.netloc)
-        data['url_with_auth'] = git_url._replace(netloc=url).geturl()
+        url = "oauth2:{0}@{1}".format(data["token"], git_url.netloc)
+        data["url_with_auth"] = git_url._replace(netloc=url).geturl()
 
         return data
 
     @pre_load()
     def set_owner_name(self, data, **kwargs):
         """Set owner and name fields."""
-        git_url = GitURL.parse(data['git_url'])
+        git_url = GitURL.parse(data["git_url"])
 
-        data['owner'] = git_url.owner
-        data['name'] = git_url.name
+        data["owner"] = git_url.owner
+        data["name"] = git_url.name
 
         return data
 

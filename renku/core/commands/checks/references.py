@@ -26,19 +26,18 @@ def check_missing_references(client):
     """Find missing references."""
     from renku.core.models.refs import LinkReference
 
-    missing = [
-        ref for ref in LinkReference.iter_items(client)
-        if not ref.reference.exists()
-    ]
+    missing = [ref for ref in LinkReference.iter_items(client) if not ref.reference.exists()]
 
     if not missing:
         return True, None
 
     problems = (
-        '\n' + WARNING + 'There are missing references.'
-        '\n  (use "git rm <name>" to clean them)\n\n\t' + '\n\t'.join(
-            click.style(str(ref.path), fg='yellow') + ' -> ' +
-            click.style(str(ref.reference), fg='red') for ref in missing
-        ) + '\n'
+        "\n" + WARNING + "There are missing references."
+        '\n  (use "git rm <name>" to clean them)\n\n\t'
+        + "\n\t".join(
+            click.style(str(ref.path), fg="yellow") + " -> " + click.style(str(ref.reference), fg="red")
+            for ref in missing
+        )
+        + "\n"
     )
     return False, problems

@@ -26,15 +26,13 @@ from pathlib import Path
 from renku.core.models import jsonld as jsonld
 from renku.core.models.cwl.types import PATH_OBJECTS
 from renku.core.models.entities import Collection, CommitMixin, Entity
-from renku.core.models.workflow.parameters import CommandArgument, \
-    CommandInput, CommandOutput, MappedIOStream
+from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
 
 
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
     client, commit, path = client.resolve_in_submodules(
-        client.find_previous_commit(path, revision=commit.hexsha),
-        path,
+        client.find_previous_commit(path, revision=commit.hexsha), path,
     )
 
     entity_cls = Entity
@@ -44,11 +42,7 @@ def _entity_from_path(client, path, commit):
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
         return client.load_dataset_from_path(path, commit=commit)
     else:
-        return entity_cls(
-            commit=commit,
-            client=client,
-            path=str(path),
-        )
+        return entity_cls(commit=commit, client=client, path=str(path),)
 
 
 def _convert_cmd_binding(binding):
@@ -67,32 +61,29 @@ def _convert_cmd_input(input, client, commit):
         if input.inputBinding:
             prefix = input.inputBinding.prefix
             if prefix and input.inputBinding.separate:
-                prefix += ' '
+                prefix += " "
             return CommandInput(
                 position=input.inputBinding.position,
                 prefix=prefix,
-                consumes=_entity_from_path(client, input.default.path, commit)
+                consumes=_entity_from_path(client, input.default.path, commit),
             )
         else:
             return CommandInput(
                 consumes=_entity_from_path(client, input.default.path, commit),
-                mapped_to=MappedIOStream(stream_type='stdin')
-                if input.id == 'input_stdin' else None
+                mapped_to=MappedIOStream(stream_type="stdin") if input.id == "input_stdin" else None,
             )
     else:
         prefix = input.inputBinding.prefix
         if prefix and input.inputBinding.separate:
-            prefix += ' '
-        return CommandArgument(
-            position=input.inputBinding.position, value=val, prefix=prefix
-        )
+            prefix += " "
+        return CommandArgument(position=input.inputBinding.position, value=val, prefix=prefix)
 
 
 def _convert_cmd_output(output, factory, client, commit):
     """Convert a cwl output to ``CommandOutput``."""
     path = None
     mapped = None
-    input_prefix = '$(inputs.'
+    input_prefix = "$(inputs."
     position = None
     prefix = None
     input_to_remove = None
@@ -100,13 +91,13 @@ def _convert_cmd_output(output, factory, client, commit):
 
     if output.outputBinding:
         if output.outputBinding.glob.startswith(input_prefix):
-            input_id = output.outputBinding.glob[len(input_prefix):-1]
+            input_id = output.outputBinding.glob[len(input_prefix) : -1]
             inp = next(i for i in factory.inputs if i.id == input_id)
             path = inp.default
             position = inp.inputBinding.position
             prefix = inp.inputBinding.prefix
             if prefix and inp.inputBinding.separate:
-                prefix += ' '
+                prefix += " "
             input_to_remove = inp
         else:
             path = output.outputBinding.glob
@@ -115,32 +106,29 @@ def _convert_cmd_output(output, factory, client, commit):
         path = getattr(factory, output.type)
         mapped = MappedIOStream(stream_type=output.type)
 
-    if (((client.path / path).is_dir() and
-         path in factory.existing_directories) or (
-             not (client.path / path).is_dir() and
-             str(Path(path).parent) in factory.existing_directories
-         )):
+    if ((client.path / path).is_dir() and path in factory.existing_directories) or (
+        not (client.path / path).is_dir() and str(Path(path).parent) in factory.existing_directories
+    ):
         create_folder = True
 
-    return CommandOutput(
-        produces=_entity_from_path(client, path, commit),
-        mapped_to=mapped,
-        position=position,
-        prefix=prefix,
-        create_folder=create_folder
-    ), input_to_remove
+    return (
+        CommandOutput(
+            produces=_entity_from_path(client, path, commit),
+            mapped_to=mapped,
+            position=position,
+            prefix=prefix,
+            create_folder=create_folder,
+        ),
+        input_to_remove,
+    )
 
 
 @total_ordering
 @jsonld.s(
-    type=[
-        'renku:Run',
-        'prov:Entity',
-        'prov:Plan',
-    ],
+    type=["renku:Run", "prov:Entity", "prov:Plan",],
     context={
-        'renku': 'https://swissdatasciencecenter.github.io/renku-ontology#',
-        'prov': 'http://www.w3.org/ns/prov#',
+        "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
+        "prov": "http://www.w3.org/ns/prov#",
     },
     cmp=False,
 )
@@ -149,55 +137,36 @@ class Run(CommitMixin):
 
     command = jsonld.ib(
         default=None,
-        context={
-            '@id': 'renku:command',
-            '@type': 'http://www.w3.org/2001/XMLSchema#string',
-        },
+        context={"@id": "renku:command", "@type": "http://www.w3.org/2001/XMLSchema#string",},
         type=str,
         kw_only=True,
     )
 
     process_order = jsonld.ib(
         default=None,
-        context={
-            '@id': 'renku:processOrder',
-            '@type': 'http://www.w3.org/2001/XMLSchema#integer',
-        },
+        context={"@id": "renku:processOrder", "@type": "http://www.w3.org/2001/XMLSchema#integer",},
         type=int,
         kw_only=True,
     )
 
-    successcodes = jsonld.container.list(
-        context='renku:successCodes', kw_only=True, type=int
-    )
+    successcodes = jsonld.container.list(context="renku:successCodes", kw_only=True, type=int)
 
     subprocesses = jsonld.container.list(
-        'renku.core.models.workflow.run.Run',
-        context='renku:hasSubprocess',
-        kw_only=True
+        "renku.core.models.workflow.run.Run", context="renku:hasSubprocess", kw_only=True
     )
 
-    arguments = jsonld.container.list(
-        context='renku:hasArguments', kw_only=True, type=CommandArgument
-    )
+    arguments = jsonld.container.list(context="renku:hasArguments", kw_only=True, type=CommandArgument)
 
-    inputs = jsonld.container.list(
-        context='renku:hasInputs', kw_only=True, type=CommandInput
-    )
+    inputs = jsonld.container.list(context="renku:hasInputs", kw_only=True, type=CommandInput)
 
-    outputs = jsonld.container.list(
-        context='renku:hasOutputs', kw_only=True, type=CommandOutput
-    )
+    outputs = jsonld.container.list(context="renku:hasOutputs", kw_only=True, type=CommandOutput)
 
     @classmethod
     def from_factory(cls, factory, client, commit, path):
         """Creates a ``Run`` from a ``CommandLineToolFactory``."""
         inputs = []
         arguments = []
-        outputs = [
-            _convert_cmd_output(o, factory, client, commit)
-            for o in factory.outputs
-        ]  # TODO: handle stream!
+        outputs = [_convert_cmd_output(o, factory, client, commit) for o in factory.outputs]  # TODO: handle stream!
 
         if outputs:
             outputs, inputs_to_remove = zip(*outputs)
@@ -224,12 +193,11 @@ class Run(CommitMixin):
             client=client,
             commit=commit,
             path=path,
-            command=' '.join(factory.baseCommand),
+            command=" ".join(factory.baseCommand),
             successcodes=factory.successCodes,
-            arguments=[_convert_cmd_binding(a)
-                       for a in factory.arguments] + arguments,
+            arguments=[_convert_cmd_binding(a) for a in factory.arguments] + arguments,
             inputs=inputs,
-            outputs=outputs
+            outputs=outputs,
         )
 
     @property
@@ -242,7 +210,7 @@ class Run(CommitMixin):
         argv = []
 
         if self.command:
-            argv.extend(self.command.split(' '))
+            argv.extend(self.command.split(" "))
 
         arguments = self.inputs + self.outputs + self.arguments
 
@@ -295,9 +263,7 @@ class Run(CommitMixin):
                             s.process_order += 1
 
         if any(s.process_order == process_order for s in self.subprocesses):
-            raise ValueError(
-                'process_order {} already exists'.format(process_order)
-            )
+            raise ValueError("process_order {} already exists".format(process_order))
 
         subprocess.process_order = process_order
 
@@ -305,17 +271,11 @@ class Run(CommitMixin):
         output_paths = [o.produces.path for o in self.outputs]
 
         for input_ in subprocess.inputs:
-            if (
-                input_.consumes.path not in input_paths and
-                input_.consumes.path not in output_paths
-            ):
+            if input_.consumes.path not in input_paths and input_.consumes.path not in output_paths:
                 new_input = copy(input_)
                 new_input.mapped_to = None
 
-                matching_output = next((
-                    o for o in self.outputs
-                    if o.produces.path == new_input.consumes.path
-                ), None)
+                matching_output = next((o for o in self.outputs if o.produces.path == new_input.consumes.path), None)
 
                 if not matching_output:
                     self.inputs.append(new_input)
@@ -328,19 +288,14 @@ class Run(CommitMixin):
                 self.outputs.append(new_output)
                 output_paths.append(new_output.produces.path)
 
-                matching_input = next((
-                    i for i in self.inputs
-                    if i.consumes.path == new_output.produces.path
-                ), None)
+                matching_input = next((i for i in self.inputs if i.consumes.path == new_output.produces.path), None)
                 if matching_input:
                     self.inputs.remove(matching_input)
                     input_paths.remove(matching_input.consumes.path)
 
         self.subprocesses.append(subprocess)
 
-        self.subprocesses = sorted(
-            self.subprocesses, key=lambda s: s.process_order
-        )
+        self.subprocesses = sorted(self.subprocesses, key=lambda s: s.process_order)
 
     def __lt__(self, other):
         """Compares two subprocesses order based on their dependencies."""

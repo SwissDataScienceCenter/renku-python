@@ -24,19 +24,13 @@ from urllib3.util.retry import Retry
 
 
 @contextmanager
-def retry(
-    total_requests=10, backoff_factor=1, statuses=(500, 502, 503, 504, 429)
-):
+def retry(total_requests=10, backoff_factor=1, statuses=(500, 502, 503, 504, 429)):
     """Default HTTP session for requests."""
     _session = requests.Session()
 
-    retries = Retry(
-        total=total_requests,
-        backoff_factor=backoff_factor,
-        status_forcelist=list(statuses)
-    )
+    retries = Retry(total=total_requests, backoff_factor=backoff_factor, status_forcelist=list(statuses))
 
-    _session.mount('http://', HTTPAdapter(max_retries=retries))
-    _session.mount('https://', HTTPAdapter(max_retries=retries))
+    _session.mount("http://", HTTPAdapter(max_retries=retries))
+    _session.mount("https://", HTTPAdapter(max_retries=retries))
 
     yield _session

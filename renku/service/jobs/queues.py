@@ -20,11 +20,11 @@ from rq import Queue
 
 from renku.service.cache.base import BaseCache
 
-CLEANUP_QUEUE_FILES = 'cache.cleanup.files'
-CLEANUP_QUEUE_PROJECTS = 'cache.cleanup.projects'
+CLEANUP_QUEUE_FILES = "cache.cleanup.files"
+CLEANUP_QUEUE_PROJECTS = "cache.cleanup.projects"
 
-DATASETS_JOB_QUEUE = 'datasets.jobs'
-MIGRATIONS_JOB_QUEUE = 'project.migrations'
+DATASETS_JOB_QUEUE = "datasets.jobs"
+MIGRATIONS_JOB_QUEUE = "project.migrations"
 
 QUEUES = [
     CLEANUP_QUEUE_FILES,
