@@ -21,13 +21,11 @@ from contextlib import contextmanager
 
 import sentry_sdk
 from rq import Worker
-
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.core.errors import ConfigurationError, UsageError
 from renku.service.jobs.queues import QUEUES, WorkerQueues
 from renku.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
-
 
 if os.getenv("SENTRY_DSN"):
     sentry_sdk.init(os.getenv("SENTRY_DSN"), integrations=[RqIntegration()])

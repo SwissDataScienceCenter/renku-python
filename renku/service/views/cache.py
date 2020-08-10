@@ -35,15 +35,21 @@ from renku.service.config import CACHE_UPLOADS_PATH, INVALID_PARAMS_ERROR_CODE, 
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
-
 from renku.service.logger import service_log
-from renku.service.serializers.cache import FileListResponseRPC, \
-    FileUploadRequest, FileUploadResponseRPC, ProjectCloneContext, \
-    ProjectCloneRequest, ProjectCloneResponseRPC, ProjectListResponseRPC, \
-    ProjectMigrateAsyncResponseRPC, ProjectMigrateRequest, \
-    ProjectMigrateResponseRPC, ProjectMigrationCheckResponseRPC, \
-    extract_file
-
+from renku.service.serializers.cache import (
+    FileListResponseRPC,
+    FileUploadRequest,
+    FileUploadResponseRPC,
+    ProjectCloneContext,
+    ProjectCloneRequest,
+    ProjectCloneResponseRPC,
+    ProjectListResponseRPC,
+    ProjectMigrateAsyncResponseRPC,
+    ProjectMigrateRequest,
+    ProjectMigrateResponseRPC,
+    ProjectMigrationCheckResponseRPC,
+    extract_file,
+)
 from renku.service.utils import make_project_path
 from renku.service.views import result_response
 from renku.service.views.decorators import (

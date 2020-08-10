@@ -17,8 +17,7 @@
 # limitations under the License.
 """Cleanup jobs."""
 from renku.service.cache import ServiceCache
-from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, \
-    USER_JOB_STATE_IN_PROGRESS
+from renku.service.cache.models.job import USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS
 from renku.service.logger import worker_log
 
 

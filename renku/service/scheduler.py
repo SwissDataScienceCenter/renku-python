@@ -23,10 +23,8 @@ from datetime import datetime
 from rq_scheduler import Scheduler
 from rq_scheduler.utils import setup_loghandlers
 
-from renku.service.jobs.cleanup import cache_files_cleanup, \
-    cache_project_cleanup
-from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, \
-    CLEANUP_QUEUE_PROJECTS, WorkerQueues
+from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
+from renku.service.jobs.queues import CLEANUP_QUEUE_FILES, CLEANUP_QUEUE_PROJECTS, WorkerQueues
 from renku.service.logger import DEPLOYMENT_LOG_LEVEL, scheduler_log
 
 

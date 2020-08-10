@@ -21,8 +21,7 @@ from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import add_file, import_dataset
 from renku.core.commands.save import repo_sync
-from renku.core.errors import DatasetExistsError, ParameterError, \
-    RenkuException
+from renku.core.errors import DatasetExistsError, ParameterError, RenkuException
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import JobSchema
