@@ -53,6 +53,10 @@ spec:
               value: {{ .Values.cleanupProjectsTTL | quote }}
             - name: RQ_WORKER_LOG_LEVEL
               value: {{ .Values.logLevel }}
+            - name: SENTRY_DSN
+              value: {{ .Values.sentry.dsn }}
+            - name: SENTRY_ENV
+              value: {{ .Values.sentry.environment }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -83,6 +87,10 @@ spec:
               value: {{ .Values.cleanupProjectsTTL | quote }}
             - name: RQ_WORKER_LOG_LEVEL
               value: {{ .Values.logLevel }}
+            - name: SENTRY_DSN
+              value: {{ .Values.sentry.dsn }}
+            - name: SENTRY_ENV
+              value: {{ .Values.sentry.environment }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -105,6 +113,10 @@ spec:
               value: {{ .Values.cacheDirectory | quote }}
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ .Values.cleanupInterval | quote }}
+            - name: SENTRY_DSN
+              value: {{ .Values.sentry.dsn }}
+            - name: SENTRY_ENV
+              value: {{ .Values.sentry.environment }}
 
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -130,6 +142,10 @@ spec:
               value: /renku/openapi.json
             - name: SERVICE_LOG_LEVEL
               value: {{ .Values.logLevel }}
+            - name: SENTRY_DSN
+              value: {{ .Values.sentry.dsn }}
+            - name: SENTRY_ENV
+              value: {{ .Values.sentry.environment }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
