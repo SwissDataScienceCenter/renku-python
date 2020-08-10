@@ -45,15 +45,12 @@ def schedule():
         job = args[0]
 
         queue = Scheduler.get_queue_for_job(build_scheduler, job)
-        scheduler_log.info(
-            f"job {job.id}:{job.func_name} re/queued to {queue.name}"
-        )
+        scheduler_log.info(f"job {job.id}:{job.func_name} re/queued to {queue.name}")
 
         return queue
 
     # NOTE: Patch scheduler to have requeing information on INFO log level.
     build_scheduler.get_queue_for_job = requeue
-
 
     build_scheduler.schedule(
         scheduled_time=datetime.utcnow(),

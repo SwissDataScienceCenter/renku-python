@@ -31,7 +31,7 @@ from renku.service.views.decorators import requires_cache
 def execute_migration(project):
     """Execute project migrations."""
     messages = []
-    worker_log.debug(f'migrating {project.abs_path}')
+    worker_log.debug(f"migrating {project.abs_path}")
 
     def collect_message(msg):
         """Collect migration message."""
@@ -40,7 +40,7 @@ def execute_migration(project):
     with chdir(project.abs_path):
         was_migrated = migrate_project(progress_callback=collect_message)
 
-    worker_log.debug(f'migration finished - was_migrated={was_migrated}')
+    worker_log.debug(f"migration finished - was_migrated={was_migrated}")
     return messages, was_migrated
 
 
@@ -48,9 +48,7 @@ def execute_migration(project):
 def migrate_job(cache, user_data, project_id, user_job_id):
     """Execute migrations job."""
     user = cache.ensure_user(user_data)
-    worker_log.debug(
-        f'executing dataset import job for {user.user_id}:{user.fullname}'
-    )
+    worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")
 
     user_job = cache.get_job(user, user_job_id)
 

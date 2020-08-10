@@ -68,20 +68,16 @@ def dataset_import(
 ):
     """Job for dataset import."""
     user = cache.ensure_user(user)
-    worker_log.debug(
-        f'executing dataset import job for {user.user_id}:{user.fullname}'
-    )
+    worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")
 
     user_job = cache.get_job(user, user_job_id)
     user_job.in_progress()
 
     try:
-        worker_log.debug(f'retrieving metadata for project {project_id}')
+        worker_log.debug(f"retrieving metadata for project {project_id}")
         project = cache.get_project(user, project_id)
         with chdir(project.abs_path):
-            worker_log.debug(
-                f'project found in cache - importing dataset {dataset_uri}'
-            )
+            worker_log.debug(f"project found in cache - importing dataset {dataset_uri}")
             import_dataset(
                 dataset_uri,
                 name,
@@ -91,9 +87,7 @@ def dataset_import(
             )
 
             worker_log.debug(f"operation successful - syncing with remote")
-            _, remote_branch = repo_sync(
-                Repo(project.abs_path), remote="origin"
-            )
+            _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
@@ -110,35 +104,25 @@ def dataset_import(
 def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset, commit_message, name, url):
     """Add a remote file to a specified dataset."""
     user = cache.ensure_user(user)
-    worker_log.debug((
-        f'executing dataset add remote '
-        f'file job for {user.user_id}:{user.fullname}'
-    ))
+    worker_log.debug((f"executing dataset add remote " f"file job for {user.user_id}:{user.fullname}"))
 
     user_job = cache.get_job(user, user_job_id)
     user_job.in_progress()
 
     try:
-        worker_log.debug(f'checking metadata for project {project_id}')
+        worker_log.debug(f"checking metadata for project {project_id}")
         project = cache.get_project(user, project_id)
 
         with chdir(project.abs_path):
             urls = url if isinstance(url, list) else [url]
 
             worker_log.debug(f"adding files {urls} to dataset {name}")
-            add_file(
-                urls,
-                name,
-                create=create_dataset,
-                commit_message=commit_message
-            )
+            add_file(urls, name, create=create_dataset, commit_message=commit_message)
 
             worker_log.debug(f"operation successful - syncing with remote")
-            _, remote_branch = repo_sync(
-                Repo(project.abs_path), remote="origin"
-            )
+            _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
-            
+
             user_job.complete()
             worker_log.debug(f"job completed")
     except (HTTPError, BaseException, GitCommandError, RenkuException) as exp:

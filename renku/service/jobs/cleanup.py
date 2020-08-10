@@ -24,7 +24,7 @@ from renku.service.logger import worker_log
 def cache_files_cleanup():
     """Cache files a cleanup job."""
     cache = ServiceCache()
-    worker_log.debug('executing cache files cleanup')
+    worker_log.debug("executing cache files cleanup")
 
     for user, files in cache.user_files():
         jobs = [
@@ -36,16 +36,14 @@ def cache_files_cleanup():
                 continue
 
             if file.ttl_expired():
-                worker_log.debug(
-                    f'purging file {file.file_id}:{file.file_name}'
-                )
+                worker_log.debug(f"purging file {file.file_id}:{file.file_name}")
                 file.purge()
 
 
 def cache_project_cleanup():
     """Cache project a cleanup job."""
     cache = ServiceCache()
-    worker_log.debug('executing cache projects cleanup')
+    worker_log.debug("executing cache projects cleanup")
 
     for user, projects in cache.user_projects():
         jobs = [
@@ -57,7 +55,5 @@ def cache_project_cleanup():
                 continue
 
             if project.ttl_expired():
-                worker_log.debug(
-                    f'purging project {project.project_id}:{project.name}'
-                )
+                worker_log.debug(f"purging project {project.project_id}:{project.name}")
                 project.purge()

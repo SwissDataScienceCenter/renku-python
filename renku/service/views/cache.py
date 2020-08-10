@@ -170,7 +170,7 @@ def _project_clone(cache, user_data, project_data):
                 project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
-    
+
     repo = project_clone(
         project_data["url_with_auth"],
         local_path,

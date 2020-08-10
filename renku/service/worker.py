@@ -60,11 +60,11 @@ def start_worker(queue_list):
     """Start worker."""
     check_queues(queue_list)
     with worker(queue_list) as rq_worker:
-        worker_log.info('running worker')
+        worker_log.info("running worker")
         rq_worker.work(logging_level=DEPLOYMENT_LOG_LEVEL)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     queues = os.getenv("RENKU_SVC_WORKER_QUEUES")
     worker_log.info(f"working on queues: {queues}")
 
