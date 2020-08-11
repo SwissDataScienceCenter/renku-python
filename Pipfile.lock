@@ -716,11 +716,11 @@
         },
         "schema-salad": {
             "hashes": [
-                "sha256:097930860105b0e401f123b349942691626e7fa0c77311f3f64850721d3ae357",
-                "sha256:3a0d26c5658db4766909ddd3ec0bbb032329c1abd5c272a436cc4d67161daa96"
+                "sha256:6f0124bd2112e9deff8ecfda8917cf286bb7e38596a90d6ae80985852b5f5671",
+                "sha256:9d4e99e6024eda2e84355f0641e3f08ba060e5cdfb2dc519cf8f775462e11f0f"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==7.0.20200612160654"
+            "version": "==7.0.20200811075006"
         },
         "setuptools-scm": {
             "hashes": [
