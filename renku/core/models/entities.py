@@ -21,11 +21,11 @@ import os
 import pathlib
 import urllib
 import weakref
+from urllib.parse import quote
 
 import attr
 
-from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, schema, wfprov
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, rdfs, schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
 
@@ -34,24 +34,17 @@ def _str_or_none(data):
     return str(data) if data is not None else data
 
 
-@jsonld.s(
-    context={
-        "prov": "http://www.w3.org/ns/prov#",
-        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        "schema": "http://schema.org/",
-    },
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class CommitMixin:
     """Represent a commit mixin."""
 
     commit = attr.ib(default=None, kw_only=True)
     client = attr.ib(default=None, kw_only=True)
-    path = jsonld.ib(context="prov:atLocation", default=None, kw_only=True, converter=_str_or_none)
+    path = attr.ib(default=None, kw_only=True, converter=_str_or_none)
 
-    _id = jsonld.ib(default=None, context="@id", kw_only=True)
-    _label = jsonld.ib(context="rdfs:label", kw_only=True)
-    _project = jsonld.ib(context="schema:isPartOf", type=Project, kw_only=True, default=None)
+    _id = attr.ib(default=None, kw_only=True)
+    _label = attr.ib(kw_only=True)
+    _project = attr.ib(type=Project, kw_only=True, default=None)
 
     @property
     def submodules(self):
@@ -93,16 +86,7 @@ class CommitMixin:
             self._id = self.default_id()
 
 
-@jsonld.s(
-    type=["prov:Entity", "wfprov:Artifact",],
-    context={
-        "schema": "http://schema.org/",
-        "prov": "http://www.w3.org/ns/prov#",
-        "wfprov": "http://purl.org/wf4ever/wfprov#",
-        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-    },
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class Entity(CommitMixin):
     """Represent a data value or item."""
 
@@ -170,13 +154,11 @@ class Entity(CommitMixin):
         self.client = client
 
 
-@jsonld.s(
-    type=["prov:Collection",], context={"prov": "http://www.w3.org/ns/prov#",}, cmp=False,
-)
+@attr.s(cmp=False,)
 class Collection(Entity):
     """Represent a directory with files."""
 
-    members = jsonld.container.list(type=Entity, context="prov:hadMember", kw_only=True)
+    members = attr.ib(kw_only=True, default=None)
 
     def default_members(self):
         """Generate default members as entities from current path."""
@@ -242,7 +224,7 @@ class CommitMixinSchema(JsonLDSchema):
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label", missing=None)
-    _project = fields.Nested(schema.isPartOf, ProjectSchema, init_name="project", missing=None)
+    _project = Nested(schema.isPartOf, ProjectSchema, init_name="project", missing=None)
 
 
 class EntitySchema(CommitMixinSchema):
@@ -253,6 +235,18 @@ class EntitySchema(CommitMixinSchema):
 
         rdf_type = [prov.Entity, wfprov.Artifact]
         model = Entity
+
+
+class CollectionSchema(EntitySchema):
+    """Entity Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.Collection]
+        model = Collection
+
+    members = Nested(prov.hadMember, [EntitySchema, "CollectionSchema"], many=True)
 
 
 def generate_label(path, hexsha):
@@ -271,4 +265,4 @@ def generate_file_id(client, hexsha, path):
     host = os.environ.get("RENKU_DOMAIN") or host
 
     # always set the id by the identifier
-    return urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{path}"))
+    return urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))

@@ -26,15 +26,25 @@ from pathlib import Path, posixpath
 
 import attr
 from git import NULL_TREE
+from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
-from renku.core.models.cwl.annotation import Annotation
-from renku.core.models.entities import Collection, CommitMixin, Entity
+from renku.core.models.calamus import Nested, fields, oa, prov, rdfs, wfprov
+from renku.core.models.cwl.annotation import AnnotationSchema
+from renku.core.models.entities import (
+    Collection,
+    CollectionSchema,
+    CommitMixin,
+    CommitMixinSchema,
+    Entity,
+    EntitySchema,
+)
+from renku.core.models.locals import ReferenceMixin
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
 
-from .agents import Person, renku_agent
-from .qualified import Association, Generation, Usage
+from .agents import Person, PersonSchema, SoftwareAgentSchema, renku_agent
+from .qualified import Association, AssociationSchema, Generation, GenerationSchema, Usage, UsageSchema
 
 
 def _nodes(output, parent=None):
@@ -80,48 +90,28 @@ def _set_entity_client_commit(entity, client, commit):
         entity.commit = commit
 
 
-@jsonld.s(
-    type="prov:Activity",
-    context={
-        "prov": "http://www.w3.org/ns/prov#",
-        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        "schema": "http://schema.org/",
-    },
-    cmp=False,
-)
-class Activity(CommitMixin):
+@attr.s(cmp=False,)
+class Activity(CommitMixin, ReferenceMixin):
     """Represent an activity in the repository."""
 
-    _id = jsonld.ib(default=None, context="@id", kw_only=True)
-    _message = jsonld.ib(context="rdfs:comment", kw_only=True)
-    _was_informed_by = jsonld.ib(context="prov:wasInformedBy", kw_only=True,)
+    _id = attr.ib(default=None, kw_only=True)
+    _message = attr.ib(kw_only=True)
+    _was_informed_by = attr.ib(kw_only=True,)
 
     part_of = attr.ib(default=None, kw_only=True)
 
     _collections = attr.ib(default=attr.Factory(OrderedDict), init=False, kw_only=True)
-    generated = jsonld.container.list(Generation, context={"@reverse": "prov:activity",}, kw_only=True)
+    generated = attr.ib(kw_only=True, default=None)
 
-    invalidated = jsonld.container.list(Entity, context={"@reverse": "prov:wasInvalidatedBy",}, kw_only=True)
+    invalidated = attr.ib(kw_only=True, default=None)
 
-    influenced = jsonld.ib(context="prov:influenced", kw_only=True,)
+    influenced = attr.ib(kw_only=True)
 
-    started_at_time = jsonld.ib(
-        context={"@id": "prov:startedAtTime", "@type": "http://www.w3.org/2001/XMLSchema#dateTime",}, kw_only=True,
-    )
+    started_at_time = attr.ib(kw_only=True)
 
-    ended_at_time = jsonld.ib(
-        context={"@id": "prov:endedAtTime", "@type": "http://www.w3.org/2001/XMLSchema#dateTime",}, kw_only=True,
-    )
+    ended_at_time = attr.ib(kw_only=True)
 
-    agent = jsonld.ib(
-        context="prov:wasAssociatedWith",
-        kw_only=True,
-        default=renku_agent,
-        type="renku.core.models.provenance.agents.SoftwareAgent",
-    )
-    person_agent = jsonld.ib(
-        context="prov:wasAssociatedWith", kw_only=True, type="renku.core.models.provenance.agents.Person"
-    )
+    agents = attr.ib(kw_only=True)
 
     def default_generated(self):
         """Create default ``generated``."""
@@ -266,7 +256,6 @@ class Activity(CommitMixin):
             host = cls.client.remote.get("host") or host
         host = os.environ.get("RENKU_DOMAIN") or "localhost"
 
-        # always set the id by the identifier
         return urllib.parse.urljoin(
             "https://{host}".format(host=host),
             posixpath.join("/activities", "commit/{commit}".format(commit=commitsha)),
@@ -288,26 +277,26 @@ class Activity(CommitMixin):
     def default_was_informed_by(self):
         """List parent actions."""
         if self.commit:
-            return [{"@id": self.generate_id(parent),} for parent in self.commit.parents]
+            return [self.generate_id(parent) for parent in self.commit.parents]
 
     @started_at_time.default
     def default_started_at_time(self):
         """Configure calculated properties."""
         if self.commit:
-            return self.commit.authored_datetime.isoformat()
+            return self.commit.authored_datetime
 
     @ended_at_time.default
     def default_ended_at_time(self):
         """Configure calculated properties."""
         if self.commit:
-            return self.commit.committed_datetime.isoformat()
+            return self.commit.committed_datetime
 
-    @person_agent.default
-    def default_person_agent(self):
+    @agents.default
+    def default_agents(self):
         """Set person agent to be the author of the commit."""
         if self.commit:
-            return Person.from_commit(self.commit)
-        return None
+            return [Person.from_commit(self.commit), renku_agent]
+        return [renku_agent]
 
     @property
     def nodes(self):
@@ -351,30 +340,62 @@ class Activity(CommitMixin):
             for g in self.generated:
                 g._activity = weakref.ref(self)
 
+    @classmethod
+    def from_yaml(cls, path, client=None, commit=None):
+        """Return an instance from a YAML file."""
+        data = jsonld.read_yaml(path)
 
-@jsonld.s(
-    type="wfprov:ProcessRun",
-    context={"wfprov": "http://purl.org/wf4ever/wfprov#", "oa": "http://www.w3.org/ns/oa#",},
-    cmp=False,
-)
+        self = cls.from_jsonld(data=data, client=client, commit=commit)
+        self.__reference__ = path
+
+        return self
+
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = ActivitySchema(flattened=True).dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, list):
+            raise ValueError(data)
+
+        schema = ActivitySchema
+
+        if any(str(wfprov.WorkflowRun) in d["@type"] for d in data):
+            schema = WorkflowRunSchema
+        elif any(str(wfprov.ProcessRun) in d["@type"] for d in data):
+            schema = ProcessRunSchema
+
+        return schema(client=client, commit=commit, flattened=True).load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return ActivitySchema(flattened=True).dump(self)
+
+
+@attr.s(cmp=False,)
 class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
 
     __association_cls__ = Run
 
-    generated = jsonld.container.list(Generation, context={"@reverse": "prov:activity",}, kw_only=True, default=None)
+    generated = attr.ib(kw_only=True, default=None)
 
-    association = jsonld.ib(context="prov:qualifiedAssociation", default=None, kw_only=True, type=Association)
+    association = attr.ib(default=None, kw_only=True)
 
-    annotations = jsonld.container.list(context={"@reverse": "oa:hasTarget",}, kw_only=True, type=Annotation)
+    annotations = attr.ib(kw_only=True, default=None)
 
-    qualified_usage = jsonld.container.list(Usage, context="prov:qualifiedUsage", kw_only=True, default=None)
+    qualified_usage = attr.ib(kw_only=True, default=None)
 
     def __attrs_post_init__(self):
         """Calculate properties."""
         super().__attrs_post_init__()
-
-        if not self.commit and self.client:
+        commit_not_set = not self.commit or self.commit.hexsha in self._id
+        if commit_not_set and self.client and Path(self.path).exists():
             self.commit = self.client.find_previous_commit(self.path)
 
         if not self.annotations:
@@ -446,7 +467,7 @@ class ProcessRun(Activity):
         return [a for r in results for a in r]
 
     @classmethod
-    def from_run(cls, run, client, path, commit=None, is_subprocess=False, update_commits=False):
+    def from_run(cls, run, client, path, commit=None, subprocess_index=None, update_commits=False):
         """Convert a ``Run`` to a ``ProcessRun``."""
         from .agents import SoftwareAgent
 
@@ -457,11 +478,11 @@ class ProcessRun(Activity):
 
         id_ = ProcessRun.generate_id(commit)
 
-        if is_subprocess:
-            id_ = "{}/steps/step_{}".format(id_, run.process_order)
+        if subprocess_index is not None:
+            id_ = f"{id_}/steps/step_{subprocess_index}"
 
         for input_ in run.inputs:
-            usage_id = id_ + "/inputs/" + input_.sanitized_id
+            usage_id = f"{id_}/{input_.sanitized_id}"
             revision = commit
             input_path = input_.consumes.path
             entity = input_.consumes
@@ -507,23 +528,38 @@ class ProcessRun(Activity):
         # Activity itself
         yield self.association.plan
 
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = ProcessRunSchema(flattened=True).dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
 
-@jsonld.s(
-    type="wfprov:WorkflowRun", context={"wfprov": "http://purl.org/wf4ever/wfprov#",}, cmp=False,
-)
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, list):
+            raise ValueError(data)
+
+        return ProcessRunSchema(client=client, commit=commit, flattened=True).load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return ProcessRunSchema(flattened=True).dump(self)
+
+
+@attr.s(cmp=False,)
 class WorkflowRun(ProcessRun):
     """A workflow run typically contains several subprocesses."""
 
     __association_cls__ = Run
 
-    _processes = jsonld.container.list(
-        ProcessRun, context={"@reverse": "wfprov:wasPartOfWorkflowRun",}, kw_only=True, default=attr.Factory(list)
-    )
+    _processes = attr.ib(kw_only=True, default=attr.Factory(list))
 
     @property
     def subprocesses(self):
         """Subprocesses of this ``WorkflowRun``."""
-        return {p.association.plan.process_order: p for p in self._processes}
+        return {i: p for i, p in enumerate(self._processes)}
 
     @classmethod
     def from_run(cls, run, client, path, commit=None, update_commits=False):
@@ -537,20 +573,23 @@ class WorkflowRun(ProcessRun):
         generated = []
 
         for s in run.subprocesses:
-            proc_run = ProcessRun.from_run(s, client, path, commit, True, update_commits)
+            proc_run = ProcessRun.from_run(s.process, client, path, commit, s.index, update_commits)
             processes.append(proc_run)
             generated.extend(proc_run.generated)
 
         usages = []
 
         id_ = cls.generate_id(commit)
-
+        input_index = 1
         for input in run.inputs:
-            usage_id = id_ + "/inputs/" + input.sanitized_id
+            usage_id = f"{id_}/inputs/{input_index}"
+
             dependency = Usage.from_revision(
                 client=client, path=input.consumes.path, role=input.sanitized_id, revision=commit, id=usage_id,
             )
+
             usages.append(dependency)
+            input_index += 1
 
         agent = SoftwareAgent.from_commit(commit)
         association = Association(agent=agent, id=id_ + "/association", plan=run)
@@ -566,7 +605,7 @@ class WorkflowRun(ProcessRun):
                 continue
 
             for e in entity.entities:
-                if e.commit is not entity.commit:
+                if e.commit is not entity.commit or any(g.entity._id == e._id for g in all_generated):
                     continue
 
                 all_generated.append(Generation(activity=generation.activity, entity=e, role=None))
@@ -611,3 +650,70 @@ class WorkflowRun(ProcessRun):
                 s.part_of = self
 
         super().__attrs_post_init__()
+
+    def to_yaml(self):
+        """Write an instance to the referenced YAML file."""
+        data = WorkflowRunSchema(flattened=True).dump(self)
+        jsonld.write_yaml(path=self.__reference__, data=data)
+
+    @classmethod
+    def from_jsonld(cls, data, client=None, commit=None):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, list):
+            raise ValueError(data)
+
+        return WorkflowRunSchema(client=client, commit=commit, flattened=True).load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return WorkflowRunSchema(flattened=True).dump(self)
+
+
+class ActivitySchema(CommitMixinSchema):
+    """Activity schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = prov.Activity
+        model = Activity
+        unknown = EXCLUDE
+
+    _message = fields.String(rdfs.comment, init_name="message", missing=None)
+    _was_informed_by = fields.List(prov.wasInformedBy, fields.IRI(), init_name="was_informed_by")
+    generated = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
+    invalidated = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
+    influenced = Nested(prov.influenced, CollectionSchema, many=True)
+    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
+    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
+    agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
+
+
+class ProcessRunSchema(ActivitySchema):
+    """ProcessRun schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = wfprov.ProcessRun
+        model = ProcessRun
+        unknown = EXCLUDE
+
+    association = Nested(prov.qualifiedAssociation, AssociationSchema)
+    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
+    qualified_usage = Nested(prov.qualifiedUsage, UsageSchema, many=True)
+
+
+class WorkflowRunSchema(ProcessRunSchema):
+    """WorkflowRun schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = wfprov.WorkflowRun
+        model = WorkflowRun
+        unknown = EXCLUDE
+
+    _processes = Nested(wfprov.wasPartOfWorkflowRun, ProcessRunSchema, reverse=True, many=True, init_name="processes")
