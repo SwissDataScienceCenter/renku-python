@@ -22,12 +22,12 @@ import uuid
 import pytest
 from flaky import flaky
 from git import Repo
-from tests.service.views.test_dataset_views import assert_rpc_response
 
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.service.jobs.cleanup import cache_project_cleanup
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.utils import make_project_path
+from tests.service.views.test_dataset_views import assert_rpc_response
 
 
 @pytest.mark.parametrize("url", [("https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/")])

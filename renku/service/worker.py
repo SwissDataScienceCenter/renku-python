@@ -21,7 +21,6 @@ from contextlib import contextmanager
 
 import sentry_sdk
 from rq import Worker
-
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.core.errors import ConfigurationError, UsageError

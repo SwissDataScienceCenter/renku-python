@@ -23,7 +23,6 @@ from tempfile import TemporaryDirectory
 
 import pkg_resources
 import pytest
-from tests.utils import raises
 
 from renku.core import errors
 from renku.core.commands.init import (
@@ -34,6 +33,7 @@ from renku.core.commands.init import (
     validate_template,
 )
 from renku.core.management.config import RENKU_HOME
+from tests.utils import raises
 
 TEMPLATE_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
 TEMPLATE_ID = "python-minimal"

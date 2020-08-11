@@ -26,9 +26,9 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
-from tests.utils import make_dataset_add_payload
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from tests.utils import make_dataset_add_payload
 
 
 def assert_rpc_response(response, with_key="result"):

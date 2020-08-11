@@ -20,12 +20,12 @@ import os
 from pathlib import Path
 
 import pytest
-from tests.core.commands.test_init import METADATA, TEMPLATE_ID, TEMPLATE_INDEX, TEMPLATE_REF, TEMPLATE_URL
-from tests.utils import raises
 
 from renku.cli import cli
 from renku.cli.init import create_template_sentence, parse_parameters
 from renku.core import errors
+from tests.core.commands.test_init import METADATA, TEMPLATE_ID, TEMPLATE_INDEX, TEMPLATE_REF, TEMPLATE_URL
+from tests.utils import raises
 
 INIT = ["init", "test-new-project", "--template-id", TEMPLATE_ID]
 INIT_REMOTE = ["--template-source", TEMPLATE_URL, "--template-ref", TEMPLATE_REF]
