@@ -180,7 +180,7 @@ def project(repository):
     yield repository
     os.chdir(repository)
     repo.head.reset(commit, index=True, working_tree=True)
-    # remove any extra non-tracked files (.pyc, etc)
+    # INFO: remove any extra non-tracked files (.pyc, etc)
     repo.git.clean("-xdff")
 
     assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
