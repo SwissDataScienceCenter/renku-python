@@ -258,7 +258,7 @@ class DatasetFile(Entity):
 
     external = attr.ib(default=False, kw_only=True)
 
-    source = jsonld.ib(context="renku:source", default=None, kw_only=True)
+    source = attr.ib(default=None, kw_only=True)
 
     @added.default
     def _now(self):
@@ -790,8 +790,8 @@ def generate_dataset_file_url(client, filepath):
     if not client or not client.project:
         return
 
-    project_id = urllib.parse.urlparse(client.project._id)
-    filepath = urllib.parse.quote(filepath, safe="/")
+    project_id = urlparse(client.project._id)
+    filepath = quote(filepath, safe="/")
     path = pathlib.posixpath.join(project_id.path, "files", "blob", filepath)
     project_id = project_id._replace(path=path)
 

@@ -17,8 +17,8 @@
 # limitations under the License.
 """DatasetFile source and url migrations."""
 
-from renku.core.models.datasets import generate_dataset_file_url
 from renku.core.management.migrations.models.v7 import get_client_datasets
+from renku.core.models.datasets import generate_dataset_file_url
 
 
 def migrate(client):
