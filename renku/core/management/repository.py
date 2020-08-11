@@ -146,6 +146,11 @@ class RepositoryApiMixin(GitCore):
                 pass
 
     @property
+    def latest_agent(self):
+        """Returns latest agent version used in the repository."""
+        return self.project.agent_version
+
+    @property
     def lock(self):
         """Create a Renku config lock."""
         return filelock.FileLock(str(self.renku_path.with_suffix(self.LOCK_SUFFIX)), timeout=0,)

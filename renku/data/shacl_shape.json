@@ -127,6 +127,15 @@
             },
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:agent",
+               "datatype": {
+                 "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "schema:name",
                "datatype": {
                   "@id": "xsd:string"

@@ -6,6 +6,8 @@ networks:
 services:
   redis:
     image: redis:5.0.3-alpine
+    ports:
+      - "6379:6379"
     networks:
       - net
 
@@ -29,7 +31,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - /tmp/renku-core:/tmp/renku-core
+      - /tmp/renku:/tmp/renku
 
   renku-scheduler:
     build:
@@ -40,7 +42,6 @@ services:
       - net
     env_file: .env
 
-
   renku-worker:
     build:
       context: .
@@ -50,4 +51,4 @@ services:
       - net
     env_file: .env
     volumes:
-      - /tmp/renku-core:/tmp/renku-core
+      - /tmp/renku:/tmp/renku

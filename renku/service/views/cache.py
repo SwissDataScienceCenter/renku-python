@@ -28,13 +28,14 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
-from renku.core.commands.migrate import migrations_check
+from renku.core.commands.migrate import migrations_check, migrations_versions
 from renku.core.commands.save import repo_sync
 from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
+from renku.service.logger import service_log
 from renku.service.serializers.cache import (
     FileListResponseRPC,
     FileUploadRequest,
@@ -169,7 +170,8 @@ def _project_clone(cache, user_data, project_data):
                 project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
-    project_clone(
+
+    repo = project_clone(
         project_data["url_with_auth"],
         local_path,
         depth=project_data["depth"] if project_data["depth"] != 0 else None,
@@ -177,6 +179,9 @@ def _project_clone(cache, user_data, project_data):
         config={"user.name": project_data["fullname"], "user.email": project_data["email"],},
         checkout_rev=project_data["ref"],
     )
+
+    service_log.debug(f"project successfully cloned: {repo}")
+    service_log.debug(f"project folder exists: {local_path.exists()}")
 
     project = cache.make_project(user, project_data)
     return project
@@ -274,9 +279,15 @@ def migration_check_project_view(user_data, cache):
     project = cache.get_project(user, request.args["project_id"])
 
     with chdir(project.abs_path):
+        latest_version, project_version = migrations_versions()
         migration_required, project_supported = migrations_check()
 
     return result_response(
         ProjectMigrationCheckResponseRPC(),
-        {"migration_required": migration_required, "project_supported": project_supported},
+        {
+            "migration_required": migration_required,
+            "project_supported": project_supported,
+            "project_version": project_version,
+            "latest_version": latest_version,
+        },
     )
