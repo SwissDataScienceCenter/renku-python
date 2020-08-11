@@ -28,7 +28,7 @@ from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
 
 
-def execute_migration(project):
+def execute_migration(project, commit_message):
     """Execute project migrations."""
     messages = []
     worker_log.debug(f"migrating {project.abs_path}")
@@ -38,14 +38,14 @@ def execute_migration(project):
         messages.append(msg)
 
     with chdir(project.abs_path):
-        was_migrated = migrate_project(progress_callback=collect_message)
+        was_migrated = migrate_project(progress_callback=collect_message, commit_message=commit_message)
 
     worker_log.debug(f"migration finished - was_migrated={was_migrated}")
     return messages, was_migrated
 
 
 @requires_cache
-def migrate_job(cache, user_data, project_id, user_job_id):
+def migrate_job(cache, user_data, project_id, user_job_id, commit_message):
     """Execute migrations job."""
     user = cache.ensure_user(user_data)
     worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")
@@ -54,7 +54,7 @@ def migrate_job(cache, user_data, project_id, user_job_id):
 
     try:
         project = cache.get_project(user, project_id)
-        messages, was_migrated = execute_migration(project)
+        messages, was_migrated = execute_migration(project, commit_message)
 
         user_job.update_extras("messages", messages)
         user_job.update_extras("was_migrated", was_migrated)

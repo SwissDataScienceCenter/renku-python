@@ -241,18 +241,21 @@ def migrate_project_view(user_data, cache):
     """Migrate specified project."""
     ctx = ProjectMigrateRequest().load(request.json)
     user = cache.ensure_user(user_data)
+
     project = cache.get_project(user, ctx["project_id"])
+    commit_message = ctx.get("commit_message", None)
 
     if ctx.get("is_delayed", False):
         job = cache.make_job(user, locked=project.project_id)
 
         with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
             queue.enqueue(
-                migrate_job, user_data, project.project_id, job.job_id,
+                migrate_job, user_data, project.project_id, job.job_id, commit_message,
             )
+
         return result_response(ProjectMigrateAsyncResponseRPC(), job)
 
-    messages, was_migrated = execute_migration(project)
+    messages, was_migrated = execute_migration(project, commit_message)
     response = {"messages": messages, "was_migrated": was_migrated}
 
     if was_migrated:
