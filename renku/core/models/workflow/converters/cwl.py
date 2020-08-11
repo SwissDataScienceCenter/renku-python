@@ -70,8 +70,8 @@ def _recurse_subprocesses(run, index):
         return [(index, run)], index + 1
 
     processes = []
-    for s in sorted(run.subprocesses, key=lambda x: x.process_order):
-        result, index = _recurse_subprocesses(s, index)
+    for s in sorted(run.subprocesses, key=lambda x: x.index):
+        result, index = _recurse_subprocesses(s.process, index)
         processes.extend(result)
 
     return processes, index
@@ -145,34 +145,34 @@ class CWLConverter(object):
             for input in subprocess.inputs:
                 input_path = input.consumes.path
 
-                sanitized_id = input.sanitized_id
-                if input.mapped_to:
-                    sanitized_id = "input_stdin"
+                sanitized_id = input.sanitized_id.replace("/", "_")
                 if input_path in inputs:
                     # already used as top-level input elsewhere, reuse
-                    step.inputs.append(cwlgen.WorkflowStepInput(input.sanitized_id, source=inputs[input_path]))
+                    step.inputs.append(cwlgen.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
                 elif input_path in outputs:
                     # output of a previous step, refer to it
                     consumed_outputs.add(outputs[input_path][0])
                     step.inputs.append(
                         cwlgen.WorkflowStepInput(
-                            input.sanitized_id, source="{}/{}".format(outputs[input_path][1], outputs[input_path][0])
+                            sanitized_id, source="{}/{}".format(outputs[input_path][1], outputs[input_path][0])
                         )
                     )
                 else:
                     # input isn't output and doesn't exist yet, add new
                     inputs[input_path] = "input_{}".format(input_index)
-                    step.inputs.append(cwlgen.WorkflowStepInput(input.sanitized_id, source=inputs[input_path]))
+                    step.inputs.append(cwlgen.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
                     input_index += 1
 
             for argument in subprocess.arguments:
                 argument_id = "argument_{}".format(argument_index)
                 arguments[argument_id] = argument.value
-                step.inputs.append(cwlgen.WorkflowStepInput(argument.sanitized_id, source=argument_id))
+                step.inputs.append(
+                    cwlgen.WorkflowStepInput(argument.sanitized_id.replace("/", "_"), source=argument_id)
+                )
                 argument_index += 1
 
             for output in subprocess.outputs:
-                sanitized_id = output.sanitized_id
+                sanitized_id = output.sanitized_id.replace("/", "_")
 
                 if output.mapped_to:
                     sanitized_id = "output_{}".format(output.mapped_to.stream_type)
@@ -298,6 +298,7 @@ class CWLConverter(object):
         type_ = "Directory" if isinstance(entity, Collection) else "File"
 
         sanitized_id = input.sanitized_id
+        sanitized_id = sanitized_id.replace("/", "_")
         if input.mapped_to:
             sanitized_id = "input_stdin"
 
@@ -334,6 +335,8 @@ class CWLConverter(object):
         entity = output.produces
         type_ = "Directory" if isinstance(entity, Collection) else "File"
 
+        sanitized_id = output.sanitized_id.replace("/", "_")
+
         if output.position:
             # output is specified as a parameter, create an input as well
             separate = None
@@ -347,13 +350,13 @@ class CWLConverter(object):
                     separate = True
 
             arg = cwlgen.CommandInputParameter(
-                "{}_arg".format(output.sanitized_id),
+                "{}_arg".format(sanitized_id),
                 param_type="string",
                 input_binding=cwlgen.CommandLineBinding(position=output.position, prefix=prefix, separate=separate),
                 default=entity.path,
             )
             outp = cwlgen.CommandOutputParameter(
-                output.sanitized_id,
+                sanitized_id,
                 param_type=type_,
                 output_binding=cwlgen.CommandOutputBinding(glob="$(inputs.{})".format(arg.id)),
             )
@@ -361,7 +364,7 @@ class CWLConverter(object):
 
         return (
             cwlgen.CommandOutputParameter(
-                output.sanitized_id, param_type=type_, output_binding=cwlgen.CommandOutputBinding(glob=entity.path)
+                sanitized_id, param_type=type_, output_binding=cwlgen.CommandOutputBinding(glob=entity.path)
             ),
             None,
         )
@@ -382,7 +385,7 @@ class CWLConverter(object):
                 separate = True
 
         return cwlgen.CommandInputParameter(
-            argument.sanitized_id,
+            argument.sanitized_id.replace("/", "_"),
             param_type=type_,
             input_binding=cwlgen.CommandLineBinding(position=argument.position, prefix=prefix, separate=separate),
             default=value,

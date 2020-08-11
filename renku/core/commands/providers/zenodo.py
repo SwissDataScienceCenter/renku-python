@@ -213,7 +213,7 @@ class ZenodoRecordSerializer:
 
     links = attr.ib(default=None, kw_only=True)
 
-    metadata = attr.ib(default=None, kw_only=True, type=ZenodoMetadataSerializer, converter=_metadata_converter)
+    metadata = attr.ib(default=None, kw_only=True, converter=_metadata_converter)
 
     modified = attr.ib(default=None, kw_only=True)
 
@@ -437,7 +437,7 @@ class ZenodoExporter(ExporterApi):
 
     def dataset_to_request(self):
         """Prepare dataset metadata for request."""
-        jsonld = self.dataset.asjsonld()
+        jsonld = self.dataset.as_jsonld()
         jsonld["upload_type"] = "dataset"
         return jsonld
 

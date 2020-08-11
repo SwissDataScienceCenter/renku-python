@@ -170,7 +170,7 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning):
             cli, ["rerun", "--show-inputs", "--from", str(first), str(second)], catch_exceptions=False
         )
         assert 0 == result.exit_code
-        assert result.output.startswith("_:CommandInput")
+        assert result.output.startswith("https://")
         assert result.output[:-1].endswith(first.name)
         assert 0 == run(args=("rerun", "--edit-inputs", "--from", str(first), str(second)), stdin=stdin)
     finally:

@@ -53,8 +53,8 @@ class CommandLineToolFactory(object):
 
     command_line = attr.ib(converter=lambda cmd: list(cmd) if isinstance(cmd, (list, tuple)) else shlex.split(cmd),)
 
-    explicit_inputs = attr.ib(default=[], converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
-    explicit_outputs = attr.ib(default=[], converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
+    explicit_inputs = attr.ib(factory=list, converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
+    explicit_outputs = attr.ib(factory=list, converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
 
     no_input_detection = attr.ib(default=False)
     no_output_detection = attr.ib(default=False)

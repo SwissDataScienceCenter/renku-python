@@ -17,40 +17,40 @@
 # limitations under the License.
 """Represent provenance agents."""
 
+import os
+import pathlib
 import re
+import urllib
+import uuid
+from urllib.parse import quote
 
+import attr
 from attr.validators import instance_of
+from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
-from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, schema
+
+from renku.core.models.calamus import fields, prov, rdfs, schema, wfprov
 from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
 
 
-@jsonld.s(
-    type=["prov:Person", "schema:Person",],
-    context={
-        "schema": "http://schema.org/",
-        "prov": "http://www.w3.org/ns/prov#",
-        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-    },
-    slots=True,
-)
+@attr.s(slots=True,)
 class Person:
     """Represent a person."""
 
-    name = jsonld.ib(context="schema:name", kw_only=True, validator=instance_of(str))
-    email = jsonld.ib(context="schema:email", default=None, kw_only=True)
-    label = jsonld.ib(context="rdfs:label", kw_only=True)
-    affiliation = jsonld.ib(default=None, kw_only=True, context="schema:affiliation")
-    alternate_name = jsonld.ib(default=None, kw_only=True, context="schema:alternateName")
-    _id = jsonld.ib(context="@id", kw_only=True)
+    client = attr.ib(default=None, kw_only=True)
 
-    @_id.default
+    name = attr.ib(kw_only=True, validator=instance_of(str))
+    email = attr.ib(default=None, kw_only=True)
+    label = attr.ib(kw_only=True)
+    affiliation = attr.ib(default=None, kw_only=True,)
+    alternate_name = attr.ib(default=None, kw_only=True,)
+    _id = attr.ib(default=None, kw_only=True)
+
     def default_id(self):
         """Set the default id."""
-        return generat_person_id(email=self.email, name=self.name)
+        return generate_person_id(email=self.email, client=self.client)
 
     @email.validator
     def check_email(self, attribute, value):
@@ -150,32 +150,37 @@ class PersonSchema(JsonLDSchema):
     _id = fields.Id(init_name="id")
 
 
-@jsonld.s(
-    type=["prov:SoftwareAgent", "wfprov:WorkflowEngine",],
-    context={
-        "prov": "http://www.w3.org/ns/prov#",
-        "wfprov": "http://purl.org/wf4ever/wfprov#",
-        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        "_label": None,  # stop propagation of _label from parent context
-    },
-    frozen=True,
-    slots=True,
+@attr.s(
+    frozen=True, slots=True,
 )
 class SoftwareAgent:
     """Represent executed software."""
 
-    label = jsonld.ib(context="rdfs:label", kw_only=True)
-    was_started_by = jsonld.ib(type=Person, context="prov:wasStartedBy", default=None, kw_only=True,)
+    label = attr.ib(kw_only=True)
 
-    _id = jsonld.ib(context="@id", kw_only=True)
+    _id = attr.ib(kw_only=True)
 
     @classmethod
     def from_commit(cls, commit):
         """Create an instance from a Git commit."""
         author = Person.from_commit(commit)
         if commit.author != commit.committer:
-            return cls(label=commit.committer.name, id=commit.committer.email, was_started_by=author,)
+            return cls(label=commit.committer.name, id=commit.committer.email)
         return author
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return SoftwareAgentSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return SoftwareAgentSchema().dump(self)
 
 
 # set up the default agent
@@ -183,14 +188,32 @@ class SoftwareAgent:
 renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)
 
 
-def generat_person_id(email, name):
+def generate_person_id(email, client=None):
     """Generate Person default id."""
-    import string
-
     if email:
-        return f"mailto:{email}"
+        return "mailto:{email}".format(email=email)
 
-    # prep name to be a valid ntuple string
-    name = name.translate(str.maketrans("", "", string.punctuation))
-    name = "".join(filter(lambda x: x in string.printable, name))
-    return "_:{}".format("".join(name.lower().split()))
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    id_ = str(uuid.uuid4())
+
+    return urllib.parse.urljoin(
+        "https://{host}".format(host=host), pathlib.posixpath.join("/persons", quote(id_, safe=""))
+    )
+
+
+class SoftwareAgentSchema(JsonLDSchema):
+    """SoftwareAgent schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [prov.SoftwareAgent, wfprov.WorkflowEngine]
+        model = SoftwareAgent
+        unknown = EXCLUDE
+
+    label = fields.String(rdfs.label)
+    _id = fields.Id(init_name="id")

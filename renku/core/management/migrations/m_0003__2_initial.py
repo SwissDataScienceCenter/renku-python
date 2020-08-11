@@ -66,7 +66,7 @@ def _migrate_datasets_pre_v0_3(client):
     for old_path in get_pre_0_3_4_datasets_metadata(client):
         name = str(old_path.parent.relative_to(client.path / DATA_DIR))
 
-        dataset = Dataset.from_yaml(old_path)
+        dataset = Dataset.from_yaml(old_path, client=client)
         dataset.title = name
         dataset.name = name
         new_path = client.renku_datasets_path / dataset.identifier / client.METADATA

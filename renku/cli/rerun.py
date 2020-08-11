@@ -73,7 +73,7 @@ def edit_inputs(client, workflow):
         input_.consumes.path = str(Path(os.path.abspath(new_path)).relative_to(client.path))
 
     for step in workflow.subprocesses:
-        for argument in step.arguments:
+        for argument in step.process.arguments:
             argument.value = click.prompt("{0._id}".format(argument), default=argument.value,)
 
     return workflow
