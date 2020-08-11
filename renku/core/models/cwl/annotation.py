@@ -17,23 +17,47 @@
 # limitations under the License.
 """Represent an annotation for a workflow."""
 
-from renku.core.models import jsonld
+import attr
+from marshmallow import EXCLUDE
+
+from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
 
 
-@jsonld.s(
-    type="oa:Annotation",
-    context={
-        "oa": "http://www.w3.org/ns/oa#",
-        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-        "dcterms": "http://purl.org/dc/terms/",
-    },
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class Annotation:
     """Represents a custom annotation for a research object."""
 
-    _id = jsonld.ib(context="@id", kw_only=True)
+    _id = attr.ib(kw_only=True)
 
-    body = jsonld.ib(default=None, context="oa:hasBody", kw_only=True)
+    body = attr.ib(default=None, kw_only=True)
 
-    source = jsonld.ib(default=None, context="dcterms:creator", kw_only=True)
+    source = attr.ib(default=None, kw_only=True)
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return AnnotationSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return AnnotationSchema().dump(self)
+
+
+class AnnotationSchema(JsonLDSchema):
+    """Annotation schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = oa.Annotation
+        model = Annotation
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name="id")
+    body = fields.Raw(oa.hasBody)
+    source = fields.Raw(dcterms.creator)

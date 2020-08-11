@@ -19,14 +19,14 @@
 
 import os
 
-from marshmallow import EXCLUDE, pre_load
+from marshmallow import EXCLUDE, post_load, pre_load
 
 from renku.core.models import jsonld
 from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, renku, schema, wfprov
 from renku.core.models.datasets import DatasetFileSchema
 from renku.core.models.git import get_user_info
 from renku.core.models.projects import generate_project_id
-from renku.core.models.provenance.agents import generat_person_id
+from renku.core.models.provenance.agents import generate_person_id
 
 
 class Base:
@@ -41,19 +41,32 @@ class Base:
 class Person(Base):
     """Person migration model."""
 
+    client = None
+
+    @staticmethod
+    def _fix_person_id(person, client=None):
+        """Fixes the id of a Person if it is not set."""
+        if not person._id or "mailto:None" in person._id:
+            if not client and person.client:
+                client = person.client
+            person._id = generate_person_id(email=person.email, client=client)
+
+        return person
+
     @classmethod
-    def from_git(cls, git):
+    def from_git(cls, git, client=None):
         """Create an instance from a Git repo."""
         name, email = get_user_info(git)
-        return cls(name=name, email=email)
+        instance = cls(name=name, email=email)
+
+        instance = Person._fix_person_id(instance, client)
+
+        return instance
 
     def __init__(self, **kwargs):
         """Initialize an instance."""
         kwargs.setdefault("_id", None)
         super().__init__(**kwargs)
-
-        if not self._id or "mailto:None" in self._id:
-            self._id = generat_person_id(email=self.email, name=self.name)
 
 
 class Project(Base):
@@ -87,10 +100,10 @@ class Dataset(Base):
     """Dataset migration model."""
 
     @classmethod
-    def from_yaml(cls, path):
+    def from_yaml(cls, path, client):
         """Read content from YAML file."""
         data = jsonld.read_yaml(path)
-        self = DatasetSchemaV3().load(data)
+        self = DatasetSchemaV3(client=client).load(data)
         self.__reference__ = path
         return self
 
@@ -119,6 +132,14 @@ class PersonSchemaV3(JsonLDSchema):
     label = fields.String(rdfs.label)
     affiliation = fields.String(schema.affiliation, missing=None)
     alternate_name = fields.String(schema.alternateName, missing=None)
+
+    @post_load
+    def make_instance(self, data, **kwargs):
+        """Transform loaded dict into corresponding object."""
+        instance = JsonLDSchema.make_instance(self, data, **kwargs)
+
+        instance = Person._fix_person_id(instance)
+        return instance
 
 
 class ProjectSchemaV3(JsonLDSchema):
@@ -235,4 +256,4 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
     paths = client.renku_datasets_path.rglob(client.METADATA)
-    return [Dataset.from_yaml(path) for path in paths]
+    return [Dataset.from_yaml(path, client=client) for path in paths]

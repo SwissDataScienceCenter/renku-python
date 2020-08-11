@@ -22,10 +22,11 @@ import os
 
 import attr
 from marshmallow import EXCLUDE
+from marshmallow.decorators import pre_dump
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, schema
 from renku.core.models.datastructures import Collection
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
@@ -34,36 +35,25 @@ from renku.core.utils.datetime8601 import parse_date
 PROJECT_URL_PATH = "projects"
 
 
-@jsonld.s(
-    type=["schema:Project", "prov:Location",],
-    context={"schema": "http://schema.org/", "prov": "http://www.w3.org/ns/prov#"},
-    translate={
-        "http://schema.org/name": "http://xmlns.com/foaf/0.1/name",
-        "http://schema.org/Project": "http://xmlns.com/foaf/0.1/Project",
-    },
-    slots=True,
-)
+@attr.s(slots=True,)
 class Project(ReferenceMixin):
     """Represent a project."""
 
-    name = jsonld.ib(default=None, context="schema:name")
+    name = attr.ib(default=None,)
 
-    created = jsonld.ib(converter=parse_date, context="schema:dateCreated")
+    created = attr.ib(converter=parse_date,)
 
-    updated = jsonld.ib(converter=parse_date, context="schema:dateUpdated")
+    version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION),)
 
-    version = jsonld.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION), context="schema:schemaVersion")
-
-    agent_version = jsonld.ib(converter=str, default=None, context="schema:agent")
+    agent_version = attr.ib(converter=str, default=None)
 
     client = attr.ib(default=None, kw_only=True)
 
-    creator = jsonld.ib(default=None, kw_only=True, context={"@id": "schema:creator",}, type=Person)
+    creator = attr.ib(default=None, kw_only=True)
 
-    _id = jsonld.ib(context="@id", kw_only=True, default=None)
+    _id = attr.ib(kw_only=True, default=None)
 
     @created.default
-    @updated.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
@@ -179,12 +169,19 @@ class ProjectSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     name = fields.String(schema.name, missing=None)
-    created = fields.DateTime(schema.dateCreated, missing=None)
-    updated = fields.DateTime(schema.dateUpdated, missing=None)
+    created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     version = fields.String(schema.schemaVersion, missing=1)
     agent_version = fields.String(schema.agent, missing=None)
-    creator = fields.Nested(schema.creator, PersonSchema, missing=None)
+    creator = Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        obj.created = self._fix_timezone(obj.created)
+        return obj
 
 
 def generate_project_id(client, name, creator):

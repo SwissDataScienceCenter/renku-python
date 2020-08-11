@@ -43,10 +43,10 @@ class Dataset(Base):
     """Dataset migration model."""
 
     @classmethod
-    def from_yaml(cls, path):
+    def from_yaml(cls, path, client):
         """Read content from YAML file."""
         data = jsonld.read_yaml(path)
-        self = DatasetSchemaV6().load(data)
+        self = DatasetSchemaV6(client=client).load(data)
         self.__reference__ = path
         return self
 
@@ -124,4 +124,4 @@ class DatasetSchemaV6(DatasetSchemaV3):
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
     paths = client.renku_datasets_path.rglob(client.METADATA)
-    return [Dataset.from_yaml(path) for path in paths]
+    return [Dataset.from_yaml(path, client=client) for path in paths]

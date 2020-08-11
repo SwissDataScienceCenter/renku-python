@@ -21,52 +21,57 @@ import datetime
 import os
 import pathlib
 import re
-import urllib
 import uuid
 from pathlib import Path
+from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 import attr
 from attr.validators import instance_of
-from marshmallow import EXCLUDE
+from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
-from renku.core.models.calamus import JsonLDSchema, fields, rdfs, renku, schema
+from renku.core.models import jsonld as jsonld
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
 from renku.core.models.entities import Entity, EntitySchema
+from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
 from renku.core.utils.doi import extract_doi, is_doi
 
-from . import jsonld as jsonld
-
 NoneType = type(None)
 
 
-@jsonld.s(
-    type="schema:URL", context={"schema": "http://schema.org/",},
-)
+@attr.s
 class Url:
     """Represents a schema URL reference."""
 
-    url = jsonld.ib(default=None, kw_only=True, context="schema:url")
+    client = attr.ib(default=None, kw_only=True)
+
+    url = attr.ib(default=None, kw_only=True)
 
     url_str = attr.ib(default=None, kw_only=True)
     url_id = attr.ib(default=None, kw_only=True)
 
-    _id = jsonld.ib(kw_only=True, context="@id")
+    _id = attr.ib(default=None, kw_only=True)
 
-    @_id.default
     def default_id(self):
         """Define default value for id field."""
         if self.url_str:
-            parsed_result = urllib.parse.urlparse(self.url_str)
-            id_ = urllib.parse.ParseResult("", *parsed_result[1:]).geturl()
+            parsed_result = urlparse(self.url_str)
+            id_ = ParseResult("", *parsed_result[1:]).geturl()
         elif self.url_id:
-            parsed_result = urllib.parse.urlparse(self.url_id)
-            id_ = urllib.parse.ParseResult("", *parsed_result[1:]).geturl()
+            parsed_result = urlparse(self.url_id)
+            id_ = ParseResult("", *parsed_result[1:]).geturl()
         else:
             id_ = str(uuid.uuid4())
-        return "_:URL@{0}".format(id_)
+
+        host = "localhost"
+        if self.client:
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
+
+        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/urls", quote(id_, safe="")))
 
     def default_url(self):
         """Define default value for url field."""
@@ -91,6 +96,9 @@ class Url:
         """Post-initialize attributes."""
         if not self.url:
             self.url = self.default_url()
+
+        if not self._id:
+            self._id = self.default_id()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -122,7 +130,7 @@ def _convert_creators(value):
 class CreatorMixin:
     """Mixin for handling creators container."""
 
-    creators = jsonld.container.list(Person, kw_only=True, context="schema:creator", converter=_convert_creators)
+    creators = attr.ib(kw_only=True, converter=_convert_creators)
 
     @property
     def creators_csv(self):
@@ -143,35 +151,45 @@ def _extract_doi(value):
     return value
 
 
-@jsonld.s(
-    type="schema:PublicationEvent", context={"schema": "http://schema.org/"}, frozen=True, slots=True,
-)
+@attr.s(slots=True,)
 class DatasetTag(object):
     """Represents a Tag of an instance of a dataset."""
 
     client = attr.ib(default=None, kw_only=True)
 
-    name = jsonld.ib(default=None, kw_only=True, validator=instance_of(str), context="schema:name")
+    name = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
 
-    description = jsonld.ib(default=None, kw_only=True, validator=instance_of(str), context="schema:description")
+    description = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
 
-    commit = jsonld.ib(default=None, kw_only=True, validator=instance_of(str), context="schema:location")
+    commit = attr.ib(default=None, kw_only=True, validator=instance_of(str),)
 
-    created = jsonld.ib(converter=parse_date, context="schema:startDate", kw_only=True)
+    created = attr.ib(converter=parse_date, kw_only=True)
 
-    dataset = jsonld.ib(context="schema:about", default=None, kw_only=True)
+    dataset = attr.ib(default=None, kw_only=True)
 
-    _id = jsonld.ib(kw_only=True, context="@id")
+    _id = attr.ib(default=None, kw_only=True)
 
     @created.default
     def _now(self):
         """Define default value for datetime fields."""
         return datetime.datetime.now(datetime.timezone.utc)
 
-    @_id.default
     def default_id(self):
         """Define default value for id field."""
-        return "_:{0}@{1}".format(self.name, self.commit)
+
+        host = "localhost"
+        if self.client:
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
+
+        name = "{0}@{1}".format(self.name, self.commit)
+
+        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/datasettags", quote(name, safe="")))
+
+    def __attrs_post_init__(self):
+        """Post-Init hook."""
+        if not self._id:
+            self._id = self.default_id()
 
     @classmethod
     def from_jsonld(cls, data):
@@ -188,14 +206,12 @@ class DatasetTag(object):
         return DatasetTagSchema().dump(self)
 
 
-@jsonld.s(
-    type="schema:Language", context={"schema": "http://schema.org/"}, slots=True,
-)
+@attr.s(slots=True,)
 class Language:
     """Represent a language of an object."""
 
-    alternate_name = jsonld.ib(default=None, kw_only=True, context="schema:alternateName")
-    name = jsonld.ib(default=None, kw_only=True, context="schema:name")
+    alternate_name = attr.ib(default=None, kw_only=True)
+    name = attr.ib(default=None, kw_only=True)
 
     @classmethod
     def from_jsonld(cls, data):
@@ -220,31 +236,27 @@ def convert_based_on(v):
         return DatasetFile.from_jsonld(v)
 
 
-@jsonld.s(
-    type="schema:DigitalDocument",
-    slots=True,
-    context={"schema": "http://schema.org/", "renku": "https://swissdatasciencecenter.github.io/renku-ontology#"},
-)
+@attr.s(slots=True)
 class DatasetFile(Entity):
     """Represent a file in a dataset."""
 
-    added = jsonld.ib(converter=parse_date, context="schema:dateCreated", kw_only=True)
+    added = attr.ib(converter=parse_date, kw_only=True)
 
     checksum = attr.ib(default=None, kw_only=True)
 
     filename = attr.ib(kw_only=True, converter=convert_filename_path)
 
-    name = jsonld.ib(context="schema:name", kw_only=True, default=None)
+    name = attr.ib(kw_only=True, default=None)
 
     filesize = attr.ib(default=None, kw_only=True)
 
     filetype = attr.ib(default=None, kw_only=True)
 
-    url = jsonld.ib(default=None, context="schema:url", kw_only=True)
+    url = attr.ib(default=None, kw_only=True)
 
-    based_on = jsonld.ib(default=None, context="schema:isBasedOn", kw_only=True, converter=convert_based_on)
+    based_on = attr.ib(default=None, kw_only=True, converter=convert_based_on)
 
-    external = jsonld.ib(context="renku:external", default=False, kw_only=True)
+    external = attr.ib(default=False, kw_only=True)
 
     @added.default
     def _now(self):
@@ -275,7 +287,7 @@ class DatasetFile(Entity):
         if not self.name:
             self.name = self.filename
 
-        parsed_id = urllib.parse.urlparse(self._id)
+        parsed_id = urlparse(self._id)
 
         if not parsed_id.scheme:
             self._id = "file://{}".format(self._id)
@@ -330,10 +342,8 @@ def _convert_keyword(keywords):
         return keywords.keys()
 
 
-@jsonld.s(
-    type="schema:Dataset", context={"schema": "http://schema.org/"},
-)
-class Dataset(Entity, CreatorMixin):
+@attr.s
+class Dataset(Entity, CreatorMixin, ReferenceMixin):
     """Represent a dataset."""
 
     SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
@@ -352,44 +362,36 @@ class Dataset(Entity, CreatorMixin):
         "files",
     ]
 
-    _id = jsonld.ib(default=None, context="@id", kw_only=True)
-    _label = jsonld.ib(default=None, context="rdfs:label", kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
+    _label = attr.ib(default=None, kw_only=True)
 
-    date_published = jsonld.ib(default=None, context="schema:datePublished", kw_only=True)
+    date_published = attr.ib(default=None, kw_only=True)
 
-    description = jsonld.ib(default=None, context="schema:description", kw_only=True)
+    description = attr.ib(default=None, kw_only=True)
 
-    identifier = jsonld.ib(
-        default=attr.Factory(uuid.uuid4), context="schema:identifier", kw_only=True, converter=_extract_doi
-    )
+    identifier = attr.ib(default=attr.Factory(uuid.uuid4), kw_only=True, converter=_extract_doi)
 
-    in_language = jsonld.ib(
-        type=Language, default=None, converter=_convert_language, context="schema:inLanguage", kw_only=True
-    )
+    in_language = attr.ib(default=None, converter=_convert_language, kw_only=True)
 
-    keywords = jsonld.container.list(str, converter=_convert_keyword, context="schema:keywords", kw_only=True)
+    keywords = attr.ib(converter=_convert_keyword, kw_only=True, default=None)
 
-    license = jsonld.ib(default=None, context="schema:license", kw_only=True)
+    license = attr.ib(default=None, kw_only=True)
 
-    title = jsonld.ib(default=None, type=str, context="schema:name", kw_only=True)
+    title = attr.ib(default=None, type=str, kw_only=True)
 
-    url = jsonld.ib(default=None, context="schema:url", kw_only=True)
+    url = attr.ib(default=None, kw_only=True)
 
-    version = jsonld.ib(default=None, context="schema:version", kw_only=True)
+    version = attr.ib(default=None, kw_only=True)
 
-    date_created = jsonld.ib(converter=parse_date, context="schema:dateCreated", kw_only=True)
+    date_created = attr.ib(converter=parse_date, kw_only=True)
 
-    files = jsonld.container.list(
-        DatasetFile, default=None, converter=_convert_dataset_files, context="schema:hasPart", kw_only=True
-    )
+    files = attr.ib(factory=list, converter=_convert_dataset_files, kw_only=True)
 
-    tags = jsonld.container.list(
-        DatasetTag, default=None, converter=_convert_dataset_tags, context={"@id": "schema:subjectOf",}, kw_only=True
-    )
+    tags = attr.ib(factory=list, converter=_convert_dataset_tags, kw_only=True)
 
-    same_as = jsonld.ib(context="schema:sameAs", default=None, kw_only=True, type=Url)
+    same_as = attr.ib(default=None, kw_only=True)
 
-    name = jsonld.ib(default=None, context="schema:alternateName", kw_only=True)
+    name = attr.ib(default=None, kw_only=True)
 
     @date_created.default
     def _now(self):
@@ -600,7 +602,7 @@ class CreatorMixinSchema(JsonLDSchema):
 
         unknown = EXCLUDE
 
-    creators = fields.Nested(schema.creator, PersonSchema, many=True)
+    creators = Nested(schema.creator, PersonSchema, many=True)
 
 
 class UrlSchema(JsonLDSchema):
@@ -630,9 +632,17 @@ class DatasetTagSchema(JsonLDSchema):
     name = fields.String(schema.name)
     description = fields.String(schema.description)
     commit = fields.String(schema.location)
-    created = fields.DateTime(schema.startDate, missing=None)
+    created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     dataset = fields.String(schema.about)
     _id = fields.Id(init_name="id")
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        object.__setattr__(obj, "created", self._fix_timezone(obj.created))
+        return obj
 
 
 class LanguageSchema(JsonLDSchema):
@@ -659,11 +669,19 @@ class DatasetFileSchema(EntitySchema):
         model = DatasetFile
         unknown = EXCLUDE
 
-    added = fields.DateTime(schema.dateCreated)
+    added = fields.DateTime(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
-    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchema", missing=None)
+    based_on = Nested(schema.isBasedOn, "DatasetFileSchema", missing=None, propagate_client=False)
     external = fields.Boolean(renku.external, missing=False)
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        obj.added = self._fix_timezone(obj.added)
+        return obj
 
 
 class DatasetSchema(EntitySchema, CreatorMixinSchema):
@@ -678,20 +696,37 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
 
     _id = fields.Id(init_name="id", missing=None)
     _label = fields.String(rdfs.label, init_name="label", missing=None)
-    date_published = fields.DateTime(schema.datePublished, missing=None)
+    date_published = fields.DateTime(
+        schema.datePublished,
+        missing=None,
+        allow_none=True,
+        format="%Y-%m-%d",
+        extra_formats=("iso", "%Y-%m-%dT%H:%M:%S"),
+    )
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
-    in_language = fields.Nested(schema.inLanguage, LanguageSchema, missing=None)
-    keywords = fields.List(schema.keywords, fields.String())
+    in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
+    keywords = fields.List(schema.keywords, fields.String(), missing=None, allow_none=True)
     license = fields.Uri(schema.license, missing=None, allow_none=True)
     title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
-    date_created = fields.DateTime(schema.dateCreated, missing=None)
-    files = fields.Nested(schema.hasPart, DatasetFileSchema, many=True)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchema, many=True)
-    same_as = fields.Nested(schema.sameAs, UrlSchema, missing=None)
+    date_created = fields.DateTime(
+        schema.dateCreated, missing=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",)
+    )
+    files = Nested(schema.hasPart, DatasetFileSchema, many=True)
+    tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
+    same_as = Nested(schema.sameAs, UrlSchema, missing=None)
     name = fields.String(schema.alternateName)
+
+    @pre_dump
+    def fix_datetimes(self, obj, many=False, **kwargs):
+        """Pre dump hook."""
+        if many:
+            return [self.fix_datetimes(o, many=False, **kwargs) for o in obj]
+        obj.date_published = self._fix_timezone(obj.date_published)
+        obj.date_created = self._fix_timezone(obj.date_created)
+        return obj
 
 
 def is_dataset_name_valid(name):
@@ -737,6 +772,4 @@ def generate_dataset_id(client, identifier):
     host = os.environ.get("RENKU_DOMAIN") or host
 
     # always set the id by the identifier
-    return urllib.parse.urljoin(
-        f"https://{host}", pathlib.posixpath.join("/datasets", urllib.parse.quote(identifier, safe=""))
-    )
+    return urljoin(f"https://{host}", pathlib.posixpath.join("/datasets", quote(identifier, safe="")))

@@ -50,7 +50,7 @@ def test_dataset_shacl(tmpdir, runner, project, client):
     )
 
     with client.with_dataset("dataset") as dataset:
-        g = dataset.asjsonld()
+        g = dataset.as_jsonld()
         rdf = pyld.jsonld.to_rdf(g, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 
         r, _, t = validate_graph(rdf, shacl_path=str(force_dataset_path))

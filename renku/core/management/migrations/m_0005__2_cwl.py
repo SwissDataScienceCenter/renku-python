@@ -20,6 +20,7 @@
 import glob
 import os
 import uuid
+from functools import cmp_to_key
 from pathlib import Path
 
 from cwlgen import CommandLineTool, parse_cwl
@@ -30,9 +31,14 @@ from werkzeug.utils import secure_filename
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
+from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
 from renku.core.models.workflow.run import Run
 from renku.version import __version__, version_url
+
+default_missing_software_agent = SoftwareAgent(
+    label="renku pre 0.11.0", id="https://github.com/swissdatasciencecenter/renku-python/tree/pre-0.11.0"
+)
 
 
 def migrate(client):
@@ -48,7 +54,32 @@ def _migrate_old_workflows(client):
 
     cwl_paths = [(p, _find_only_cwl_commit(client, p)) for p in cwl_paths]
 
-    cwl_paths = sorted(cwl_paths, key=lambda p: p[1].committed_date)
+    def _sort_cwl_commits(e1, e2):
+        """Sorts cwl commits in order of their creation."""
+        commit1 = e1[1]
+        commit2 = e2[1]
+
+        if client.repo.is_ancestor(commit1, commit2):
+            return -1
+        if client.repo.is_ancestor(commit2, commit1):
+            return 1
+
+        if commit1.committed_date < commit2.committed_date:
+            return -1
+        if commit1.committed_date > commit2.committed_date:
+            return 1
+
+        if commit1.author_date < commit2.author_date:
+            return -1
+        if commit1.author_date > commit2.author_date:
+            return 1
+        raise ValueError(
+            f"Cannot order commits {commit1} and {commit2}, there is no "
+            "dependency between them and they have identical commit and "
+            "author dates"
+        )
+
+    cwl_paths = sorted(cwl_paths, key=cmp_to_key(_sort_cwl_commits))
 
     for cwl_file, commit in cwl_paths:
         path = _migrate_cwl(client, cwl_file, commit)
@@ -90,6 +121,9 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
     inputs = list(cmd_line_tool.inputs)
     outputs = list(cmd_line_tool.outputs)
 
+    base_id = Run.generate_id(client)
+    run._id = base_id
+
     if cmd_line_tool.stdin:
         name = cmd_line_tool.stdin.split(".")[1]
 
@@ -101,18 +135,22 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
 
         path = client.workflow_path / Path(matched_input.default["path"])
         stdin = path.resolve().relative_to(client.path)
+        id_ = CommandInput.generate_id(base_id, "stdin")
 
         run.inputs.append(
             CommandInput(
-                consumes=_entity_from_path(client, stdin, commit), mapped_to=MappedIOStream(stream_type="stdin")
+                id=id_,
+                consumes=_entity_from_path(client, stdin, commit),
+                mapped_to=MappedIOStream(client=client, stream_type="stdin"),
             )
         )
 
     if cmd_line_tool.stdout:
         run.outputs.append(
             CommandOutput(
+                id=CommandOutput.generate_id(base_id, "stdout"),
                 produces=_entity_from_path(client, cmd_line_tool.stdout, commit),
-                mapped_to=MappedIOStream(stream_type="stdout"),
+                mapped_to=MappedIOStream(client=client, stream_type="stdout"),
                 create_folder=False,
             )
         )
@@ -125,8 +163,9 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
     if cmd_line_tool.stderr:
         run.outputs.append(
             CommandOutput(
+                id=CommandOutput.generate_id(base_id, "stderr"),
                 produces=_entity_from_path(client, cmd_line_tool.stderr, commit),
-                mapped_to=MappedIOStream(stream_type="stderr"),
+                mapped_to=MappedIOStream(client=client, stream_type="stderr"),
                 create_folder=False,
             )
         )
@@ -184,6 +223,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
 
         run.outputs.append(
             CommandOutput(
+                id=CommandOutput.generate_id(base_id, position),
                 position=position,
                 prefix=prefix,
                 produces=_entity_from_path(client, path, commit),
@@ -207,13 +247,26 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
             path = Path(os.path.abspath(path)).relative_to(client.path)
 
             run.inputs.append(
-                CommandInput(position=position, prefix=prefix, consumes=_entity_from_path(client, path, commit))
+                CommandInput(
+                    id=CommandInput.generate_id(base_id, position),
+                    position=position,
+                    prefix=prefix,
+                    consumes=_entity_from_path(client, path, commit),
+                )
             )
         else:
-            run.arguments.append(CommandArgument(position=position, prefix=prefix, value=str(i.default)))
+            run.arguments.append(
+                CommandArgument(
+                    id=CommandArgument.generate_id(base_id, position),
+                    position=position,
+                    prefix=prefix,
+                    value=str(i.default),
+                )
+            )
 
     for a in cmd_line_tool.arguments:
-        run.arguments.append(CommandArgument(position=a["position"], value=a["valueFrom"]))
+        id_ = CommandArgument.generate_id(base_id, a["position"])
+        run.arguments.append(CommandArgument(id=id_, position=a["position"], value=a["valueFrom"]))
 
     if not persist:
         return run, None
@@ -227,6 +280,12 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
         run.path = path
         process_run = ProcessRun.from_run(run, client, path, commit=commit)
         process_run.invalidated = _invalidations_from_commit(client, commit)
+
+        # HACK: This fixes broken SoftwareAgent due to rebases done by users
+        if isinstance(process_run.association.agent, Person) or not process_run.association.agent.label.startswith(
+            "renku "
+        ):
+            process_run.association.agent = default_missing_software_agent
         process_run.to_yaml()
         client.add_to_activity_index(process_run)
         return process_run, absolute_path
@@ -237,6 +296,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     if not commit:
         commit = client.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
+    run._id = Run.generate_id(client)
 
     name = "{0}_migrated.yaml".format(uuid.uuid4().hex)
 
@@ -250,11 +310,17 @@ def _migrate_composite_step(client, workflow, path, commit=None):
             subrun = parse_cwl_cached(str(path))
 
         subprocess, _ = _migrate_single_step(client, subrun, path, commit=commit)
-        subprocess.path = run.path
         run.add_subprocess(subprocess)
 
     with with_reference(run.path):
         wf = WorkflowRun.from_run(run, client, run.path, commit=commit)
+
+        # HACK: This fixes broken SoftwareAgent due to rebases done by users
+        if isinstance(wf.association.agent, Person) or not wf.association.agent.label.startswith("renku "):
+            wf.association.agent = default_missing_software_agent
+        for p in wf._processes:
+            if isinstance(p.association.agent, Person) or not p.association.agent.label.startswith("renku "):
+                p.association.agent = default_missing_software_agent
         wf.to_yaml()
         client.add_to_activity_index(wf)
 

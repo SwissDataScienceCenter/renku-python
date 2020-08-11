@@ -32,14 +32,12 @@ def test_project_serialization(client):
         project = Project(name="demo", client=client)
         assert project.name == "demo"
         assert project.created == project_time
-        assert project.updated == project_time
 
     data = project.as_jsonld()
     assert "http://schema.org/Project" in data["@type"]
     assert "http://www.w3.org/ns/prov#Location" in data["@type"]
 
     assert "demo" == data["http://schema.org/name"]
-    assert project_time.isoformat("T") == data["http://schema.org/dateUpdated"]
     assert project_time.isoformat("T") == data["http://schema.org/dateCreated"]
     assert str(SUPPORTED_PROJECT_VERSION) == data["http://schema.org/schemaVersion"]
 

@@ -257,10 +257,9 @@ class RepositoryApiMixin(GitCore):
                 )
             if activities:
                 return activities[0]
-
-        if path:
+        else:
             data = (commit.tree / path).data_stream.read()
-            process = Activity.from_jsonld(yaml.safe_load(data), client=self, commit=commit, __reference__=path)
+            process = Activity.from_jsonld(yaml.safe_load(data), client=self, commit=commit)
 
             return process
 

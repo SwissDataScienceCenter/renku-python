@@ -114,18 +114,6 @@
                   "@id": "xsd:string"
                },
                "minCount": 1,
-               "maxCount": 1,
-               "sh:lessThanOrEquals": {
-                  "@id": "schema:dateUpdated"
-               }
-            },
-            {
-               "nodeKind": "sh:Literal",
-               "path": "schema:dateUpdated",
-               "datatype": {
-                  "@id": "xsd:string"
-               },
-               "minCount": 1,
                "maxCount": 1
             },
             {
@@ -267,7 +255,6 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "minCount": 1,
                "maxCount": 1,
                "sh:lessThanOrEquals": {
                   "@id": "schema:datePublished"
@@ -638,8 +625,7 @@
             {
                "nodeKind": "sh:IRI",
                "path": "prov:wasInformedBy",
-               "minCount": 0,
-               "maxCount": 1
+               "minCount": 0
             },
             {
                "nodeKind": "sh:Literal",
@@ -781,21 +767,8 @@
                },
                "minCount": 1,
                "maxCount": 1,
-               "sh:pattern": "renku \\d+\\.\\d+\\.\\d+(?:\\.dev\\d+)?",
+               "sh:pattern": "renku (pre )?\\d+\\.\\d+\\.\\d+(?:\\.dev\\d+)?",
                "sh:flags": "i"
-            },
-            {
-               "path": "prov:wasStartedBy",
-               "or": [
-                  {
-                     "nodeKind": "sh:IRI"
-                  },
-                  {
-                     "sh:class": {
-                        "@id": "prov:Person"
-                     }
-                  }],
-               "maxCount": 1
             }
          ]
       },
@@ -849,8 +822,7 @@
                "sh:class": {
                   "@id": "prov:Activity"
                },
-               "path": "prov:wasInvalidatedBy",
-               "maxCount": 1
+               "path": "prov:wasInvalidatedBy"
             }
          ]
       },
@@ -891,7 +863,7 @@
             },
             {
                "sh:class": {
-                  "@id": "renku:Run"
+                  "@id": "renku:OrderedSubprocess"
                },
                "path": "renku:hasSubprocess"
             },
@@ -933,6 +905,36 @@
                   "@id": "renku:CommandOutput"
                },
                "path": "renku:hasOutputs"
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuOrderedSubprocessShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:OrderedSubprocess",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:index",
+               "datatype": {
+                  "@id": "xsd:integer"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "sh:class": {
+                  "@id": "renku:Run"
+               },
+               "path": "renku:process",
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },
@@ -1018,7 +1020,7 @@
                "maxCount": 1
             },
             {
-               "path": "prov:mappedTo",
+               "path": "renku:mappedTo",
                "sh:class": {
                   "@id": "renku:IOStream"
                },
@@ -1068,7 +1070,7 @@
                "maxCount": 1
             },
             {
-               "path": "prov:mappedTo",
+               "path": "renku:mappedTo",
                "sh:class": {
                   "@id": "renku:IOStream"
                },
