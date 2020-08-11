@@ -280,10 +280,11 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
         run.path = path
         process_run = ProcessRun.from_run(run, client, path, commit=commit)
         process_run.invalidated = _invalidations_from_commit(client, commit)
+
+        # HACK: This fixes broken SoftwareAgent due to rebases done by users
         if isinstance(process_run.association.agent, Person) or not process_run.association.agent.label.startswith(
             "renku "
         ):
-            # fix broken SoftwareAgent due to rebases
             process_run.association.agent = default_missing_software_agent
         process_run.to_yaml()
         client.add_to_activity_index(process_run)
@@ -314,7 +315,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     with with_reference(run.path):
         wf = WorkflowRun.from_run(run, client, run.path, commit=commit)
 
-        # fix broken SoftwareAgent due to rebases
+        # HACK: This fixes broken SoftwareAgent due to rebases done by users
         if isinstance(wf.association.agent, Person) or not wf.association.agent.label.startswith("renku "):
             wf.association.agent = default_missing_software_agent
         for p in wf._processes:

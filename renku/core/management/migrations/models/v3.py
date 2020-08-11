@@ -43,14 +43,23 @@ class Person(Base):
 
     client = None
 
+    @staticmethod
+    def _fix_person_id(person, client=None):
+        """Fixes the id of a Person if it is not set."""
+        if not person._id or "mailto:None" in person._id:
+            if not client and person.client:
+                client = person.client
+            person._id = generate_person_id(email=person.email, client=client)
+
+        return person
+
     @classmethod
     def from_git(cls, git, client=None):
         """Create an instance from a Git repo."""
         name, email = get_user_info(git)
         instance = cls(name=name, email=email)
 
-        if not instance._id or "mailto:None" in instance._id:
-            instance._id = generate_person_id(email=instance.email, client=client)
+        instance = Person._fix_person_id(instance, client)
 
         return instance
 
@@ -129,8 +138,7 @@ class PersonSchemaV3(JsonLDSchema):
         """Transform loaded dict into corresponding object."""
         instance = JsonLDSchema.make_instance(self, data, **kwargs)
 
-        if not instance._id or "mailto:None" in instance._id:
-            instance._id = generate_person_id(email=instance.email, client=instance.client)
+        instance = Person._fix_person_id(instance)
         return instance
 
 

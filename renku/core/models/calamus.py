@@ -68,8 +68,7 @@ class JsonLDSchema(CalamusJsonLDSchema):
                 except ValueError as e:
                     if "could not be resolved, git returned" not in str(e):
                         raise
-                    # commit does not exist in local repository.
-                    # Could be an external file?
+                    # NOTE: This means the commit does not exist in the local repository. Could be an external file?
 
         return data
 
@@ -131,7 +130,7 @@ class Nested(fields.Nested):
 
     @property
     def schema(self):
-        """The nested Schema object.
+        """The nested ``calamus.Schema`` object.
 
         This method was copied from marshmallow and modified to support
         multiple different nested schemes.
