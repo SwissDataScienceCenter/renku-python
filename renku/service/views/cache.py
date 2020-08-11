@@ -35,6 +35,7 @@ from renku.service.config import CACHE_UPLOADS_PATH, INVALID_PARAMS_ERROR_CODE, 
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
+from renku.service.logger import service_log
 from renku.service.serializers.cache import (
     FileListResponseRPC,
     FileUploadRequest,
@@ -169,7 +170,8 @@ def _project_clone(cache, user_data, project_data):
                 project.delete()
 
     local_path.mkdir(parents=True, exist_ok=True)
-    project_clone(
+
+    repo = project_clone(
         project_data["url_with_auth"],
         local_path,
         depth=project_data["depth"] if project_data["depth"] != 0 else None,
@@ -177,6 +179,9 @@ def _project_clone(cache, user_data, project_data):
         config={"user.name": project_data["fullname"], "user.email": project_data["email"],},
         checkout_rev=project_data["ref"],
     )
+
+    service_log.debug(f"project successfully cloned: {repo}")
+    service_log.debug(f"project folder exists: {local_path.exists()}")
 
     project = cache.make_project(user, project_data)
     return project
