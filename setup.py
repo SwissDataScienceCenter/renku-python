@@ -108,7 +108,7 @@ tests_require = [
     "pytest-xdist==1.34.0",
     "pytest-yapf==0.1.1",
     "pytest>=4.0.0,<6.0.2",
-    "responses>=0.7.0,<=0.10.15",
+    "responses>=0.7.0,<0.10.17",
 ]
 
 extras_require = {
