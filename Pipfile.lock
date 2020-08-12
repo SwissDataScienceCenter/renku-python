@@ -716,11 +716,11 @@
         },
         "schema-salad": {
             "hashes": [
-                "sha256:097930860105b0e401f123b349942691626e7fa0c77311f3f64850721d3ae357",
-                "sha256:3a0d26c5658db4766909ddd3ec0bbb032329c1abd5c272a436cc4d67161daa96"
+                "sha256:6f0124bd2112e9deff8ecfda8917cf286bb7e38596a90d6ae80985852b5f5671",
+                "sha256:9d4e99e6024eda2e84355f0641e3f08ba060e5cdfb2dc519cf8f775462e11f0f"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==7.0.20200612160654"
+            "version": "==7.0.20200811075006"
         },
         "setuptools-scm": {
             "hashes": [
@@ -868,11 +868,11 @@
         },
         "docker": {
             "hashes": [
-                "sha256:03a46400c4080cb6f7aa997f881ddd84fef855499ece219d75fbdb53289c17ab",
-                "sha256:26eebadce7e298f55b76a88c4f8802476c5eaddbdbe38dbc6cce8781c47c9b54"
+                "sha256:431a268f2caf85aa30613f9642da274c62f6ee8bae7d70d968e01529f7d6af93",
+                "sha256:ba118607b0ba6bfc1b236ec32019a355c47b5d012d01d976467d4692ef443929"
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
-            "version": "==4.2.2"
+            "version": "==4.3.0"
         },
         "idna": {
             "hashes": [
