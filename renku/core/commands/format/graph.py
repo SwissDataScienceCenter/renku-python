@@ -145,7 +145,7 @@ def _rdf2dot_simple(g, stream, graph=None):
         stream.write(
             '\t"{src_commit}:{src_path}" -> '
             '"{tgt_commit}:{tgt_path}" '
-            "[label={role}] \n".format(
+            '[label="{role}"] \n'.format(
                 src_commit=src_path["commit"][:5],
                 src_path=src_path.get("path") or "",
                 tgt_commit=tgt_path["commit"][:5],
