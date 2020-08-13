@@ -164,7 +164,7 @@ install_requires = [
     "PyYAML>=3.12,<=5.3.1",
     "pyld==2.0.3",
     "pyOpenSSL>=19.0.0,<=19.1.0",
-    "pyshacl==0.11.3.post1",
+    "pyshacl==0.12.2",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
     "redis==3.5.3",
