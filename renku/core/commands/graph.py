@@ -26,7 +26,7 @@ import attr
 from renku.core import errors
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
-from renku.core.models.provenance.activities import Activity, ProcessRun, Usage
+from renku.core.models.provenance.activities import Activity, ProcessRun, Usage, WorkflowRun
 from renku.core.models.provenance.processes import Process
 from renku.core.models.provenance.qualified import Generation
 from renku.core.models.workflow.run import Run
@@ -63,11 +63,12 @@ class Graph(object):
     _latest_commits = attr.ib(default=attr.Factory(dict))
     _nodes = attr.ib()
     _need_update = attr.ib(default=attr.Factory(dict))
+    _workflows = attr.ib(default=attr.Factory(dict))
 
     cwl_prefix = attr.ib(init=False)
 
     def __attrs_post_init__(self):
-        """Derive basic informations."""
+        """Derive basic information."""
         self.cwl_prefix = self.client.cwl_prefix
 
     @_nodes.default
@@ -149,7 +150,8 @@ class Graph(object):
             return ([node.parent] if node.parent is not None else []) + _from_entity(node, check_parents=False)
         elif isinstance(node, Process) or isinstance(node, Run):
             # warnings.warn('Called on run {0}'.format(node), stacklevel=2)
-            return self.parents(node.activity)
+            activity = node.activity
+            return self.parents(activity) if activity else []
         elif isinstance(node, ProcessRun):
             return node.qualified_usage
         elif isinstance(node, Activity):
@@ -252,9 +254,11 @@ class Graph(object):
 
             # Iterate over parents.
             if isinstance(activity, ProcessRun):
+                if isinstance(activity, WorkflowRun):
+                    self._workflows[activity.path] = activity
                 for entity in activity.qualified_usage:
                     for member in entity.entities:
-                        parent_activities = self.client.activities_for_paths(member.path, revision="HEAD")
+                        parent_activities = self.client.activities_for_paths(paths=[member.path], revision="HEAD")
                         for a in parent_activities:
                             if a.commit and a.commit not in visited:
                                 self.activities[a.commit] = a
@@ -381,7 +385,7 @@ class Graph(object):
         """Return siblings for a given node.
 
         The key is part of the result set, hence to check if the node has
-        siblings you should check the lenght is greater than 1.
+        siblings you should check the length is greater than 1.
         """
         parent = None
 
@@ -408,10 +412,7 @@ class Graph(object):
     def as_workflow(
         self, input_paths=None, output_paths=None, outputs=None, use_latest=True,
     ):
-        """Serialize graph to renku ``Run`` workflow.
-
-        :param global_step_outputs: Make all step outputs global.
-        """
+        """Serialize graph to renku ``Run`` workflow."""
         if output_paths is None:
             output_paths = {node.path for node in outputs if _safe_path(node.path)}
 
@@ -473,10 +474,24 @@ class Graph(object):
                         stack.append(process_run)
                         processes.add(process_run)
 
+        if len(processes) == 1:
+            process_run = list(processes)[0]
+            if not isinstance(process_run, WorkflowRun):
+                return process_run.association.plan
+
         parent_process = Run(client=self.client)
 
         for step in processes:
             # Loop through runs and add them as sub processes to parent.
             parent_process.add_subprocess(step.association.plan)
 
-        return parent_process
+        return self._find_identical_parent_run(parent_process)
+
+    def _find_identical_parent_run(self, run):
+        subprocesses_ids = [step.process._id for step in run.subprocesses]
+        for workflow in self._workflows.values():
+            other_subprocesses_ids = [step.process._id for step in workflow.association.plan.subprocesses]
+            if subprocesses_ids == other_subprocesses_ids:
+                return workflow.association.plan
+
+        return run

@@ -70,9 +70,6 @@ def test_update(runner, project, run, no_lfs_warning):
     with output.open("r") as f:
         assert f.read().strip() == "2"
 
-    result = runner.invoke(cli, ["log"], catch_exceptions=False)
-    assert "(part of" in result.output, result.output
-
     # Source has been updated but output is unchanged.
     update_and_commit("34", source, repo)
 
@@ -135,6 +132,9 @@ def test_update_multiple_steps(runner, project, run, no_lfs_warning):
     assert 1 == result.exit_code
 
     assert 0 == run()
+
+    result = runner.invoke(cli, ["log"], catch_exceptions=False)
+    assert "(part of" in result.output, result.output
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code

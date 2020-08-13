@@ -642,7 +642,7 @@ class WorkflowRun(ProcessRun):
         if not self._id:
             self._id = self.default_id()
 
-        if self.client:
+        if self.client and self._processes:
             for s in self._processes:
                 s.client = self.client
                 s.commit = self.commit
