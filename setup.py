@@ -106,11 +106,11 @@ tests_require = [
     "pytest-pep8==1.0.6",
     "pytest-xdist==1.34.0",
     "pytest>=4.0.0,<6.0.2",
-    "responses>=0.7.0,<=0.10.15",
+    "responses>=0.7.0,<0.10.17",
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<=3.1.2", "renku-sphinx-theme==0.1.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.1", "renku-sphinx-theme==0.1.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
     "sentry": ["sentry-sdk[flask]>=0.7.4,<0.16.4"],
@@ -144,7 +144,7 @@ install_requires = [
     "click>=7.0,<=7.1.2",
     "cryptography>=2.7,<=2.9.2",
     "cwlgen>=0.4.0,<=0.4.2",
-    "cwltool==3.0.20200724003302",
+    "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "flask==1.1.2",

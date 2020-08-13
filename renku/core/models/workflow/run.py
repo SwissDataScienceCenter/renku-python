@@ -341,9 +341,9 @@ class Run(CommitMixin):
 
     def __attrs_post_init__(self):
         """Calculate properties."""
-        super().__attrs_post_init__()
         if self.client and not self._id:
             self._id = Run.generate_id(self.client)
+        super().__attrs_post_init__()
 
         commit_not_set = not self.commit or self.commit.hexsha in self._label
         if commit_not_set and self.client and self.path and Path(self.path).exists():
