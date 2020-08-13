@@ -25,7 +25,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-import requests
 import yaml
 
 from renku.cli import cli
@@ -1276,36 +1275,16 @@ def test_add_nonprotected_file(runner, client, tmpdir, filename, subdirectory):
 
 
 def test_add_removes_local_path_information(runner, client, directory_tree):
-    """Test local paths are removed when adding to a dataset."""
+    """Test added local paths are stored as relative path."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", directory_tree.strpath])
     assert 0 == result.exit_code
 
     with client.with_dataset("my-dataset") as dataset:
+        relative_path = os.path.relpath(directory_tree.strpath, client.path)
         for file_ in dataset.files:
-            assert file_.url.startswith("file://../")
-            assert file_.url.endswith(file_.name)
-
-
-def test_add_remove_credentials(runner, client, monkeypatch):
-    """Check removal of credentials during adding of remote data files."""
-    url = "https://username:password@example.com/index.html"
-
-    def get(u, *args, **kwargs):
-        """Mocked response."""
-        response = requests.Response()
-        response._content = b"{}"
-        response._content_consumed = True
-        response.status_code = 200
-        return response
-
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
-
-    monkeypatch.setattr(requests, "get", get)
-    dataset = client.load_dataset("my-dataset")
-    o = client._add_from_url(dataset, url, client.path, extract=False)
-
-    assert "https://example.com/index.html" == o[0]["url"]
+            assert file_.source.startswith(relative_path)
+            assert file_.source.endswith(file_.name)
+            assert file_.url.endswith(file_.path)
 
 
 def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory, no_lfs_size_limit):

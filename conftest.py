@@ -180,7 +180,7 @@ def project(repository):
     yield repository
     os.chdir(repository)
     repo.head.reset(commit, index=True, working_tree=True)
-    # remove any extra non-tracked files (.pyc, etc)
+    # INFO: remove any extra non-tracked files (.pyc, etc)
     repo.git.clean("-xdff")
 
     assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
@@ -337,27 +337,53 @@ def data_repository(directory_tree):
     return repo
 
 
+def clone_compressed_repository(base_path, name):
+    """Decompress and clone a repository."""
+
+    compressed_repo_path = Path(__file__).parent / "tests" / "fixtures" / f"{name}.tar.gz"
+    working_dir = base_path / name
+
+    bare_base_path = working_dir / "bare"
+    with tarfile.open(compressed_repo_path, "r") as fixture:
+        fixture.extractall(str(bare_base_path))
+
+    bare_path = bare_base_path / name
+    repository_path = working_dir / "repository"
+    repository = Repo(bare_path, search_parent_directories=True).clone(repository_path)
+
+    return repository
+
+
 @pytest.fixture(
-    params=[
-        {"name": "old-datasets-v0.3.0.git", "exit_code": 1},
-        {"name": "old-datasets-v0.5.0.git", "exit_code": 1},
-        {"name": "old-datasets-v0.5.1.git", "exit_code": 0},
-        {"name": "test-renku-v0.3.0.git", "exit_code": 1},
-    ],
+    params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git",],
     scope="module",
 )
-def old_bare_repository(request, tmpdir_factory):
+def old_repository(request, tmp_path_factory):
     """Prepares a testing repo created by old version of renku."""
-    compressed_repo_path = Path(__file__).parent / "tests" / "fixtures" / "{0}.tar.gz".format(request.param["name"])
+    name = request.param
+    base_path = tmp_path_factory.mktemp(name)
+    repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    working_dir_path = tmpdir_factory.mktemp(request.param["name"])
+    yield repository
 
-    with tarfile.open(str(compressed_repo_path), "r") as fixture:
-        fixture.extractall(working_dir_path.strpath)
+    shutil.rmtree(base_path)
 
-    yield {"path": working_dir_path / request.param["name"], "exit_code": request.param["exit_code"]}
 
-    shutil.rmtree(working_dir_path.strpath)
+@pytest.fixture
+def old_project(old_repository):
+    """Create a test project."""
+    commit = old_repository.head.commit
+
+    repository_path = old_repository.working_dir
+
+    os.chdir(repository_path)
+
+    yield old_repository
+
+    os.chdir(repository_path)
+    old_repository.head.reset(commit, index=True, working_tree=True)
+    # remove any extra non-tracked files (.pyc, etc)
+    old_repository.git.clean("-xdff")
 
 
 @pytest.fixture(
@@ -389,74 +415,35 @@ def old_bare_repository(request, tmpdir_factory):
 )
 def old_workflow_project(request, tmp_path_factory):
     """Prepares a testing repo created by old version of renku."""
-    import tarfile
-    from pathlib import Path
-
-    from git import Repo
-
     name = request.param["name"]
-
-    compressed_repo_path = Path(__file__).parent / "tests" / "fixtures" / "{name}.tar.gz".format(name=name)
-
-    working_dir_path = tmp_path_factory.mktemp(name)
-
-    with tarfile.open(str(compressed_repo_path), "r") as fixture:
-        fixture.extractall(str(working_dir_path))
-
-    path = working_dir_path / name
-
-    repo_path = tmp_path_factory.mktemp("repo")
-
-    repository = Repo(str(path), search_parent_directories=True).clone(str(repo_path))
-
+    base_path = tmp_path_factory.mktemp(name)
+    repository = clone_compressed_repository(base_path=base_path, name=name)
     repository_path = repository.working_dir
 
-    commit = repository.head.commit
-
     os.chdir(repository_path)
+
     yield {
         "repo": repository,
         "path": repository_path,
         "log_path": request.param["log_path"],
         "expected_strings": request.param["expected_strings"],
     }
-    os.chdir(repository_path)
-    repository.head.reset(commit, index=True, working_tree=True)
-    # remove any extra non-tracked files (.pyc, etc)
-    repository.git.clean("-xdff")
 
-    shutil.rmtree(str(repo_path))
-
-
-@pytest.fixture(scope="module")
-def old_repository(tmpdir_factory, old_bare_repository):
-    """Create git repo of old repository fixture."""
-    import shutil
-
-    from git import Repo
-
-    repo_path = tmpdir_factory.mktemp("repo")
-    yield {
-        "repo": Repo(old_bare_repository["path"].strpath, search_parent_directories=True).clone(repo_path.strpath),
-        "exit_code": old_bare_repository["exit_code"],
-    }
-    shutil.rmtree(repo_path.strpath)
+    shutil.rmtree(base_path)
 
 
 @pytest.fixture
-def old_project(old_repository):
-    """Create a test project."""
-    repo = old_repository["repo"]
-    repository_path = repo.working_dir
+def old_dataset_project(tmp_path_factory):
+    """Prepares a testing repo created by old version of renku."""
+    name = "old-datasets-v0.9.1.git"
+    base_path = tmp_path_factory.mktemp(name)
+    repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    commit = repo.head.commit
+    os.chdir(repository.working_dir)
 
-    os.chdir(repository_path)
-    yield {"repo": repo, "path": repository_path, "exit_code": old_repository["exit_code"]}
-    os.chdir(repository_path)
-    repo.head.reset(commit, index=True, working_tree=True)
-    # remove any extra non-tracked files (.pyc, etc)
-    repo.git.clean("-xdff")
+    yield repository
+
+    shutil.rmtree(base_path)
 
 
 @pytest.fixture
@@ -477,6 +464,7 @@ def old_repository_with_submodules(request, tmpdir_factory):
     yield repo
 
     shutil.rmtree(repo_path.strpath)
+    shutil.rmtree(working_dir)
 
 
 @pytest.fixture(autouse=True)
