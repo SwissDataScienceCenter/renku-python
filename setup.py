@@ -152,7 +152,7 @@ install_requires = [
     "flask-swagger-ui==3.25.0",
     "gitdb2==3.0.1",
     "gitpython==3.1.0",
-    "humanize==2.5.0",
+    "humanize==2.6.0",
     "jinja2>=2.10.3,<=2.11.2",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
