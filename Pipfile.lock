@@ -41,10 +41,10 @@
         },
         "backrefs": {
             "hashes": [
-                "sha256:3158c4668e4400dda93ccf11c58474cc10983eefcaba48e9fabf9bccbd94542e"
+                "sha256:a1bbb68f103cf514bcc481b86c40965478d779422fed7cabc5aade318d506df8"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==4.4"
+            "version": "==4.5"
         },
         "bagit": {
             "hashes": [
