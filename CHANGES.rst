@@ -18,6 +18,102 @@
 Changes
 =======
 
+`0.11.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.4...v0.11.0.>`__ (2020-08-14)
+-----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** disable version check in githook calls
+   (`#1300 <https://github.com/SwissDataScienceCenter/renku-python/issues/1300>`__)
+   (`5132db3 <https://github.com/SwissDataScienceCenter/renku-python/commit/5132db3813dd0bd87f289dbf286ea73149478aeb>`__)
+-  **core:** fix paths in migration of workflows
+   (`#1371 <https://github.com/SwissDataScienceCenter/renku-python/issues/1371>`__)
+   (`8c3d34b <https://github.com/SwissDataScienceCenter/renku-python/commit/8c3d34b526dbec5147d5ec4196669dcf3084930a>`__)
+-  **core:** Fixes SoftwareAgent person context
+   (`#1323 <https://github.com/SwissDataScienceCenter/renku-python/issues/1323>`__)
+   (`a207a7f <https://github.com/SwissDataScienceCenter/renku-python/commit/a207a7f999d68373133801ac4ee3e08c06959ff3>`__)
+-  **core:** Only update project metadata if any migrations were
+   executed
+   (`#1308 <https://github.com/SwissDataScienceCenter/renku-python/issues/1308>`__)
+   (`1056a03 <https://github.com/SwissDataScienceCenter/renku-python/commit/1056a0363c85fe788b1a9a152c3674e4b093e827>`__)
+-  **service:** adds more custom logging and imp. except handling
+   (`#1435 <https://github.com/SwissDataScienceCenter/renku-python/issues/1435>`__)
+   (`6c3adb5 <https://github.com/SwissDataScienceCenter/renku-python/commit/6c3adb510ca102f07e143b8c74aafaf29850656c>`__)
+-  **service:** fixes handlers for internal loggers
+   (`#1433 <https://github.com/SwissDataScienceCenter/renku-python/issues/1433>`__)
+   (`a312f7c <https://github.com/SwissDataScienceCenter/renku-python/commit/a312f7c641c27de111fb78012c2f546405eee72e>`__)
+-  **service:** move project_id to query string on migrations check
+   (`#1367 <https://github.com/SwissDataScienceCenter/renku-python/issues/1367>`__)
+   (`0f89726 <https://github.com/SwissDataScienceCenter/renku-python/commit/0f8972698399aee50bced4a141cb24add6d9494b>`__)
+-  **tests:** integration tests
+   (`#1351 <https://github.com/SwissDataScienceCenter/renku-python/issues/1351>`__)
+   (`3974a39 <https://github.com/SwissDataScienceCenter/renku-python/commit/3974a39d5098ecebcc49f2d624e6912e1d423e03>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** Adds renku save command
+   (`#1273 <https://github.com/SwissDataScienceCenter/renku-python/issues/1273>`__)
+   (`4ddc1c2 <https://github.com/SwissDataScienceCenter/renku-python/commit/4ddc1c2cf8db05fecc3634bc33f9d5df8488d017>`__)
+-  **cli:** prompt for missing variables
+   (`1e1d408 <https://github.com/SwissDataScienceCenter/renku-python/commit/1e1d4087e9a4fc338b64e050c4b345f298d9eb3f>`__),
+   closes
+   `#1126 <https://github.com/SwissDataScienceCenter/renku-python/issues/1126>`__
+-  **cli:** Show detailed commands for renku log output
+   (`#1345 <https://github.com/SwissDataScienceCenter/renku-python/issues/1345>`__)
+   (`19fb819 <https://github.com/SwissDataScienceCenter/renku-python/commit/19fb8194003646c4ae78009a3714ac8ff89f4edb>`__)
+-  **core:** Calamus integration
+   (`#1281 <https://github.com/SwissDataScienceCenter/renku-python/issues/1281>`__)
+   (`bda538f <https://github.com/SwissDataScienceCenter/renku-python/commit/bda538fb3733d222003b62bf7821ce02f44afac7>`__)
+-  **core:** configurable data dir
+   (`#1347 <https://github.com/SwissDataScienceCenter/renku-python/issues/1347>`__)
+   (`e388773 <https://github.com/SwissDataScienceCenter/renku-python/commit/e388773b0cc70219a8791ed0a34c07cb8fb3a00b>`__)
+-  **core:** disabling of inputs/outputs auto-detection
+   (`#1406 <https://github.com/SwissDataScienceCenter/renku-python/issues/1406>`__)
+   (`3245ca0 <https://github.com/SwissDataScienceCenter/renku-python/commit/3245ca077a9937241836617ff73756bd1602ee60>`__)
+-  **core:** migration check in core
+   (`#1320 <https://github.com/SwissDataScienceCenter/renku-python/issues/1320>`__)
+   (`4bc52f4 <https://github.com/SwissDataScienceCenter/renku-python/commit/4bc52f430b0def821df7cb3dc498af46ee9c4448>`__)
+-  **core:** Move workflow serialisation over to calamus
+   (`#1386 <https://github.com/SwissDataScienceCenter/renku-python/issues/1386>`__)
+   (`f0fbc49 <https://github.com/SwissDataScienceCenter/renku-python/commit/f0fbc4979955de04ac5c565e471a52019eb6cd48>`__)
+-  **core:** save and load workflow as jsonld
+   (`#1185 <https://github.com/SwissDataScienceCenter/renku-python/issues/1185>`__)
+   (`d403289 <https://github.com/SwissDataScienceCenter/renku-python/commit/d403289cec6cdb11ad002b17fbbb751de2818ce1>`__)
+-  **core:** separate models for migrations
+   (`#1431 <https://github.com/SwissDataScienceCenter/renku-python/issues/1431>`__)
+   (`127d606 <https://github.com/SwissDataScienceCenter/renku-python/commit/127d606fa9ad26479645a06b132a7c9a952ae989>`__)
+-  **dataset:** source and url for DatasetFile
+   (`#1451 <https://github.com/SwissDataScienceCenter/renku-python/issues/1451>`__)
+   (`b4fa5db <https://github.com/SwissDataScienceCenter/renku-python/commit/b4fa5dbed50b47a6a64f3c84b40bb99d86abd51e>`__)
+-  **service:** added endpoints to execute all migrations on a project
+   (`#1322 <https://github.com/SwissDataScienceCenter/renku-python/issues/1322>`__)
+   (`aca8cc2 <https://github.com/SwissDataScienceCenter/renku-python/commit/aca8cc2f540041d5e5d5c06e180d62cd52876086>`__)
+-  **service:** adds endpoint for explicit migrations check
+   (`#1326 <https://github.com/SwissDataScienceCenter/renku-python/issues/1326>`__)
+   (`146b1a7 <https://github.com/SwissDataScienceCenter/renku-python/commit/146b1a7a579898110fdf95ffc67ebc813115cc2e>`__)
+-  **service:** adds source and destination versions to migrations check
+   (`#1372 <https://github.com/SwissDataScienceCenter/renku-python/issues/1372>`__)
+   (`ea76b48 <https://github.com/SwissDataScienceCenter/renku-python/commit/ea76b48a90e5f476f057a939d661f39d09f1b4c3>`__)
+-  decode base64 headers
+   (`#1407 <https://github.com/SwissDataScienceCenter/renku-python/issues/1407>`__)
+   (`9901cc3 <https://github.com/SwissDataScienceCenter/renku-python/commit/9901cc339f9832a5161b82d4368f239d3929f740>`__)
+-  **service:** adds endpoints for dataset remove
+   (`#1383 <https://github.com/SwissDataScienceCenter/renku-python/issues/1383>`__)
+   (`289e4b9 <https://github.com/SwissDataScienceCenter/renku-python/commit/289e4b9fec4cec18e9fb82e2360b00f562b7b09b>`__)
+-  **service:** adds endpoints for unlinking files from a dataset
+   (`#1314 <https://github.com/SwissDataScienceCenter/renku-python/issues/1314>`__)
+   (`1b78b16 <https://github.com/SwissDataScienceCenter/renku-python/commit/1b78b16d97ba42d08505fb6b38fa2d66c6209417>`__)
+-  **service:** async migrations execution
+   (`#1344 <https://github.com/SwissDataScienceCenter/renku-python/issues/1344>`__)
+   (`ff66953 <https://github.com/SwissDataScienceCenter/renku-python/commit/ff66953de06d8abdd6ca8067aaa7d48ae24423de>`__)
+-  **service:** create new projects from templates
+   (`#1287 <https://github.com/SwissDataScienceCenter/renku-python/issues/1287>`__)
+   (`552f85c <https://github.com/SwissDataScienceCenter/renku-python/commit/552f85ce7392a727db6b2c2bcef35ecbbfa93913>`__),
+   closes
+   `#862 <https://github.com/SwissDataScienceCenter/renku-python/issues/862>`__
+
 `0.10.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.4...v0.10.5>`__ (2020-07-16)
 ----------------------------------------------------------------------------------------------------------
 
