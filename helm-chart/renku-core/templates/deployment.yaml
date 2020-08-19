@@ -27,6 +27,13 @@ spec:
         - name: shared-volume
           emptyDir: {}
       containers:
+        - name: {{ .Chart.Name}}-rqmetrics
+          image: "justsam/rqmetrics:latest"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: RQ_REDIS_HOST
+              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+        
         - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
