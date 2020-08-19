@@ -21,11 +21,10 @@ from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import add_file, import_dataset
 from renku.core.commands.save import repo_sync
-from renku.core.errors import DatasetExistsError, ParameterError, RenkuException
+from renku.core.errors import ParameterError, RenkuException
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import JobSchema
-from renku.service.errors import ProjectNotFound
 from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
 
@@ -86,12 +85,12 @@ def dataset_import(
                 progress=DatasetImportJobProcess(cache, user_job),
             )
 
-            worker_log.debug(f"operation successful - syncing with remote")
+            worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
-            worker_log.debug(f"job completed")
+            worker_log.debug("job completed")
     except (HTTPError, ParameterError, RenkuException, GitCommandError) as exp:
         user_job.fail_job(str(exp))
 
@@ -119,12 +118,12 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
             worker_log.debug(f"adding files {urls} to dataset {name}")
             add_file(urls, name, create=create_dataset, commit_message=commit_message)
 
-            worker_log.debug(f"operation successful - syncing with remote")
+            worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
-            worker_log.debug(f"job completed")
+            worker_log.debug("job completed")
     except (HTTPError, BaseException, GitCommandError, RenkuException) as exp:
         user_job.fail_job(str(exp))
 

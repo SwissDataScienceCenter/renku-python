@@ -37,7 +37,7 @@ import pkg_resources
 from renku.core.errors import MigrationRequired, ProjectNotSupported
 from renku.core.utils.migrate import read_project_version
 
-SUPPORTED_PROJECT_VERSION = 6
+SUPPORTED_PROJECT_VERSION = 7
 
 
 def check_for_migration(client):

@@ -28,6 +28,7 @@ from cwlgen.requirements import InitialWorkDirRequirement
 from git import NULL_TREE, Actor
 from werkzeug.utils import secure_filename
 
+from renku.core.management.migrations.models.v3 import Dataset
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
@@ -338,7 +339,7 @@ def _entity_from_path(client, path, commit):
         entity_cls = Collection
 
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
-        return client.load_dataset_from_path(path, commit=commit)
+        return Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
     else:
         return entity_cls(commit=commit, client=client, path=str(path),)
 
@@ -383,7 +384,7 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
         entity_cls = Collection
 
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted:
-        entity = client.load_dataset_from_path(path, commit=commit)
+        entity = Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
     else:
         entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection,)
 

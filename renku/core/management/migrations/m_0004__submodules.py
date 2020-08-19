@@ -23,8 +23,8 @@ from pathlib import Path
 from git import GitError, Repo
 
 from renku.core import errors
-from renku.core.management.migrations.models.v3 import get_client_datasets
-from renku.core.models.datasets import DatasetFile
+from renku.core.management.migrations.models.v3 import DatasetFileSchemaV3, get_client_datasets
+from renku.core.models.datasets import DatasetFile, DatasetFileSchema
 from renku.core.utils.urls import remove_credentials
 
 
@@ -98,6 +98,8 @@ def _migrate_submodule_based_datasets(client):
                 based_on.based_on = None
             else:
                 based_on = DatasetFile.from_revision(remote_client, path=path_within_repo, url=url)
+            data = DatasetFileSchema(client=remote_client).dump(based_on)
+            based_on = DatasetFileSchemaV3(client=remote_client).load(data)
         else:
             if url:
                 full_path = Path(url) / path_within_repo

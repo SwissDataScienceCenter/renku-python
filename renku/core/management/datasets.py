@@ -24,9 +24,7 @@ import shutil
 import tempfile
 import time
 import uuid
-import warnings
 from collections import OrderedDict
-from configparser import NoSectionError
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
@@ -43,7 +41,13 @@ from renku.core import errors
 from renku.core.management.clone import clone
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import is_project_unsupported, migrate
-from renku.core.models.datasets import Dataset, DatasetFile, DatasetTag, is_dataset_name_valid
+from renku.core.models.datasets import (
+    Dataset,
+    DatasetFile,
+    DatasetTag,
+    generate_dataset_file_url,
+    is_dataset_name_valid,
+)
 from renku.core.models.git import GitURL
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
@@ -372,6 +376,7 @@ class DatasetsApiMixin(object):
         # Generate the DatasetFiles
         dataset_files = []
         for data in files:
+            data.setdefault("url", generate_dataset_file_url(client=self, filepath=str(data["path"])))
             dataset_file = DatasetFile.from_revision(self, **data)
 
             # Set dataset file path relative to root for submodules.
@@ -436,13 +441,13 @@ class DatasetsApiMixin(object):
                         raise errors.ProtectedFiles([src])
 
             if path_in_repo:
-                return [{"path": path_in_repo, "url": path_in_repo, "parent": self}]
+                return [{"path": path_in_repo, "source": path_in_repo, "parent": self}]
 
         action = "symlink" if external else "copy"
         return [
             {
                 "path": dst.relative_to(self.path),
-                "url": "file://" + os.path.relpath(str(src), str(self.path)),
+                "source": os.path.relpath(str(src), str(self.path)),
                 "parent": self,
                 "operation": (src, dst, action),
             }
@@ -492,7 +497,7 @@ class DatasetsApiMixin(object):
             {
                 "operation": (src, dst, "move"),
                 "path": dst.relative_to(self.path),
-                "url": remove_credentials(url),
+                "source": remove_credentials(url),
                 "parent": self,
             }
             for src, dst in paths
@@ -550,8 +555,9 @@ class DatasetsApiMixin(object):
                 if based_on:
                     based_on.url = url
                     based_on.based_on = None
+                    based_on.source = url
                 else:
-                    based_on = DatasetFile.from_revision(remote_client, path=src, url=url)
+                    based_on = DatasetFile.from_revision(remote_client, path=src, url=url, source=url)
 
                 path_in_dst_repo = dst.relative_to(self.path)
 
@@ -563,7 +569,7 @@ class DatasetsApiMixin(object):
                 results.append(
                     {
                         "path": path_in_dst_repo,
-                        "url": remove_credentials(url),
+                        "source": remove_credentials(url),
                         "parent": self,
                         "based_on": based_on,
                         "operation": operation,
@@ -687,31 +693,6 @@ class DatasetsApiMixin(object):
                     files[path] = file_
         return files
 
-    def get_relative_url(self, url):
-        """Determine if the repo url should be relative."""
-        # Check if the default remote of the branch we are on is on
-        # the same server as the submodule. If so, use a relative path
-        # instead of an absolute URL.
-        try:
-            branch_remote = self.repo.config_reader().get('branch "{}"'.format(self.repo.active_branch.name), "remote")
-        except NoSectionError:
-            branch_remote = "origin"
-
-        try:
-            remote = self.repo.remote(branch_remote)
-        except ValueError:
-            warnings.warn("Remote {} not found, cannot check for relative URL.".format(branch_remote))
-            return url
-
-        remote_url = GitURL.parse(remote.url)
-        submodule_url = GitURL.parse(url)
-
-        if remote_url.hostname == submodule_url.hostname:
-            # construct the relative path
-            url = Path("../../{}".format(submodule_url.owner) if remote_url.owner == submodule_url.owner else "..")
-            url = str(url / submodule_url.name)
-        return url
-
     def dataset_commits(self, dataset, max_results=None):
         """Gets the newest commit for a dataset or its files.
 
@@ -793,7 +774,7 @@ class DatasetsApiMixin(object):
 
             file_.based_on = DatasetFile.from_jsonld(file_.based_on)
             based_on = file_.based_on
-            url = based_on.url
+            url = based_on.source
             if url in visited_repos:
                 repo, repo_path, remote_client = visited_repos[url]
             else:
@@ -806,10 +787,10 @@ class DatasetsApiMixin(object):
             if not remote_file:
                 try:
                     remote_file = DatasetFile.from_revision(
-                        remote_client, path=based_on.path, url=url, added=based_on.added
+                        remote_client, path=based_on.path, source=None, added=based_on.added
                     )
                 except KeyError:
-                    raise errors.ParameterError("Cannot find file {} in the repo {}".format(based_on.url, url))
+                    raise errors.ParameterError("Cannot find file {} in the repo {}".format(based_on.source, url))
 
             commit_sha = self._get_commit_sha_from_label(based_on)
             remote_commit_sha = self._get_commit_sha_from_label(remote_file)
@@ -854,7 +835,7 @@ class DatasetsApiMixin(object):
         modified_datasets = {}
 
         for file_ in updated_files:
-            new_file = DatasetFile.from_revision(self, path=file_.path, based_on=file_.based_on)
+            new_file = DatasetFile.from_revision(self, path=file_.path, based_on=file_.based_on, url=file_.url)
             file_.dataset.update_files([new_file])
             modified_datasets[file_.dataset.name] = file_.dataset
 

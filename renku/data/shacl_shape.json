@@ -526,6 +526,21 @@
                "datatype": {
                   "@id": "xsd:boolean"
                }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:source",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "path": "prov:qualifiedGeneration",
+               "sh:class": {
+                  "@id": "prov:Generation"
+               }
             }
          ]
       },
