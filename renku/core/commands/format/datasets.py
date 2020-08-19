@@ -43,7 +43,7 @@ DATASETS_FORMATS = {
 """Valid formatting options."""
 
 DATASETS_COLUMNS = {
-    "id": ("uid", "id"),
+    "id": ("identifier", "id"),
     "created": ("date_created", None),
     "date_created": ("date_created", None),
     "short_name": ("name", None),

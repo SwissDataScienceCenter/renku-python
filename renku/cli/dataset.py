@@ -575,16 +575,10 @@ def unlink(name, include, exclude, yes):
 
 
 @dataset.command("rm")
-@click.argument("names", nargs=-1)
-def remove(names):
+@click.argument("name")
+def remove(name):
     """Delete a dataset."""
-    datasetscontext = partial(
-        progressbar, label="Removing metadata files".ljust(30), item_show_func=lambda item: str(item) if item else ""
-    )
-    referencescontext = partial(
-        progressbar, label="Removing aliases".ljust(30), item_show_func=lambda item: item.name if item else "",
-    )
-    dataset_remove(names, with_output=True, datasetscontext=datasetscontext, referencescontext=referencescontext)
+    dataset_remove(name)
     click.secho("OK", fg="green")
 
 
