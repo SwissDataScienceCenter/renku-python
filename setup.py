@@ -96,24 +96,24 @@ tests_require = [
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<=0.3.15",
-    "isort>=5.3.2,<5.4.0",
+    "isort>=5.3.2,<5.5.0",
     "pydocstyle>=3.0.0,<=5.0.2",
     "pytest-black==0.3.10",
     "pytest-cache==1.0",
-    "pytest-cov>=2.5.1,<=2.10.0",
+    "pytest-cov>=2.5.1,<2.11.0",
     "pytest-flake8>=1.0.4,<=1.0.6",
     "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
-    "pytest-xdist==1.34.0",
+    "pytest-xdist>=1.34.0,<2.1.0",
     "pytest>=4.0.0,<6.0.2",
     "responses>=0.7.0,<0.10.17",
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.1", "renku-sphinx-theme==0.1.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.2", "renku-sphinx-theme==0.1.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.16.4"],
+    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.16.6"],
     "tests": tests_require,
 }
 
@@ -152,7 +152,7 @@ install_requires = [
     "flask-swagger-ui==3.25.0",
     "gitdb2==3.0.1",
     "gitpython==3.1.0",
-    "humanize==2.5.0",
+    "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
