@@ -444,7 +444,6 @@ class DatasetsApiMixin(object):
                 return [{"path": path_in_repo, "source": path_in_repo, "parent": self}]
 
         action = "symlink" if external else "copy"
-
         return [
             {
                 "path": dst.relative_to(self.path),
