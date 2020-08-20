@@ -142,7 +142,7 @@ def rerun(client, revision, roots, siblings, inputs, paths):
     client.repo.git.add(*paths)
 
     if client.repo.is_dirty():
-        commit_msg = ("renku rerun: " "committing {} newly added files").format(len(paths))
+        commit_msg = "renku rerun: committing {} newly added files".format(len(paths))
 
         committer = Actor("renku {0}".format(__version__), version_url)
 

@@ -27,7 +27,6 @@ from renku.core import errors
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
 from renku.core.models.provenance.activities import Activity, ProcessRun, Usage, WorkflowRun
-from renku.core.models.provenance.processes import Process
 from renku.core.models.provenance.qualified import Generation
 from renku.core.models.workflow.run import Run
 
@@ -148,7 +147,7 @@ class Graph(object):
         elif isinstance(node, Entity):
             # Link files and directories and generations.
             return ([node.parent] if node.parent is not None else []) + _from_entity(node, check_parents=False)
-        elif isinstance(node, Process) or isinstance(node, Run):
+        elif isinstance(node, Run):
             # warnings.warn('Called on run {0}'.format(node), stacklevel=2)
             activity = node.activity
             return self.parents(activity) if activity else []
@@ -398,7 +397,7 @@ class Graph(object):
             parent = node.activity
         elif isinstance(node, Usage):
             parent = self.activities[node.commit]
-        elif isinstance(node, Process) or isinstance(node, Run):
+        elif isinstance(node, Run):
             return {node}
 
         if parent is None or not isinstance(parent, ProcessRun):
