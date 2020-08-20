@@ -39,7 +39,7 @@ COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
 
 
-def _mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
+def get_mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
     """Get a mapping of standard streams to given paths."""
     # FIXME add device number too
     standard_inos = {}
@@ -62,6 +62,8 @@ def _mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
                     yield standard_inos[key], path
             except FileNotFoundError:  # pragma: no cover
                 pass
+
+        return []
 
     return dict(stream_inos(lookup_paths)) if standard_inos else {}
 
@@ -183,7 +185,7 @@ class GitCore:
     def ensure_clean(self, ignore_std_streams=False):
         """Make sure the repository is clean."""
         dirty_paths = self.dirty_paths
-        mapped_streams = _mapped_std_streams(dirty_paths)
+        mapped_streams = get_mapped_std_streams(dirty_paths)
 
         if ignore_std_streams:
             if dirty_paths - set(mapped_streams.values()):
@@ -257,6 +259,8 @@ class GitCore:
                 self.ensure_untracked(str(path_))
                 self.ensure_unstaged(str(path_))
 
+        project_metadata_path = str(self.renku_metadata_path)
+
         yield
 
         committer = Actor("renku {0}".format(__version__), version_url)
@@ -288,7 +292,15 @@ class GitCore:
         if not commit_only:
             self.repo.git.add("--all")
 
-        if not commit_empty and not self.repo.index.diff("HEAD"):
+        diffs = []
+        try:
+            diffs = [d.a_path for d in self.repo.index.diff("HEAD")]
+            if project_metadata_path in diffs:
+                diffs.remove(project_metadata_path)
+        except gitdb.exc.BadName:
+            pass
+
+        if not commit_empty and not diffs:
             if raise_if_empty:
                 raise errors.NothingToCommit()
             return
@@ -300,6 +312,14 @@ class GitCore:
             argv = [os.path.basename(sys.argv[0])] + [remove_credentials(arg) for arg in sys.argv[1:]]
 
             commit_message = " ".join(argv)
+
+        try:
+            project = self.project
+            if project:
+                project.to_yaml()
+                self.repo.index.add(project_metadata_path)
+        except ValueError:
+            pass
 
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(
@@ -316,17 +336,10 @@ class GitCore:
         commit_only=None,
         ignore_std_streams=False,
         raise_if_empty=False,
-        up_to_date=False,
     ):
         """Perform Git checks and operations."""
         if clean:
             self.ensure_clean(ignore_std_streams=ignore_std_streams)
-
-        if up_to_date:
-            # TODO
-            # Fetch origin/master
-            # is_ancestor('origin/master', 'HEAD')
-            pass
 
         if commit:
             with self.commit(
@@ -376,7 +389,7 @@ class GitCore:
         relative = Path(".").resolve().relative_to(self.path)
 
         # Reroute standard streams
-        original_mapped_std = _mapped_std_streams(self.candidate_paths)
+        original_mapped_std = get_mapped_std_streams(self.candidate_paths)
         mapped_std = {}
         for name, stream in original_mapped_std.items():
             stream_path = Path(path) / (Path(stream).relative_to(self.path))

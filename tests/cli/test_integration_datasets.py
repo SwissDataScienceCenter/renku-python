@@ -42,7 +42,7 @@ from renku.core.utils.contexts import chdir
         {
             "doi": "10.5281/zenodo.2658634",
             "name": "pyndl_naive_discriminat_v064",
-            "creator": "Konstantin Sering, Marc Weitz, David-Elias Künstle, " "Lennart Schneider",
+            "creator": "Konstantin Sering, Marc Weitz, David-Elias Künstle, Lennart Schneider",
             "version": "v0.6.4",
         },
         {
@@ -101,7 +101,6 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
         ("10.5281/zenodo.2671633", "n"),
         ("10.5281/zenodo.3237420", "n"),
         ("10.5281/zenodo.3236928", "n"),
-        ("10.5281/zenodo.3188334", "y"),
         ("10.5281/zenodo.3236928", "n"),
         ("10.5281/zenodo.2669459", "n"),
         ("10.5281/zenodo.2371189", "n"),
@@ -184,10 +183,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
         ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
         ("10.5281/zenodo.1494915", "no files have been found"),
         ("https://zenodo.org/record/2621201248", "record not found"),
-        (
-            ("https://dataverse.harvard.edu/dataset.xhtml" "?persistentId=doi:10.7910/DVN/F4NUMRXXXX"),
-            "record not found",
-        ),
+        (("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX"), "record not found",),
     ],
 )
 @pytest.mark.integration
@@ -203,7 +199,7 @@ def test_dataset_import_expected_err(runner, project, doi, err):
     "url",
     [
         "https://zenodo.org/record/2621208",
-        ("https://dataverse.harvard.edu/dataset.xhtml" "?persistentId=doi:10.7910/DVN/F4NUMR"),
+        ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMR"),
     ],
 )
 @pytest.mark.integration
@@ -288,7 +284,7 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
     "url",
     [
         "https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",
-        ("https://dev.renku.ch/projects/" "renku-testing/project-9/" "datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/"),
+        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/"),
     ],
 )
 def test_dataset_import_renkulab_dataset(runner, project, client, url):
@@ -333,7 +329,7 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     "url,exit_code",
     [
         ("https://dev.renku.ch/projects/renku-testing/project-9/", 2),
-        ("https://dev.renku.ch/projects/renku-testing/project-9/" "datasets/b9f7b21b-8b00-42a2-976a-invalid", 2),
+        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/b9f7b21b-8b00-42a2-976a-invalid", 2),
         ("https://dev.renku.ch/datasets/10.5281%2Fzenodo.666", 1),
     ],
 )
@@ -717,6 +713,12 @@ def test_add_data_from_git(runner, client, params, path):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert Path(path).exists()
 
+    file_ = read_dataset_file_metadata(client, "remote", path)
+    assert file_.url.endswith(os.path.join("files", "blob", path))
+    assert file_.source == remote
+    assert file_.based_on.source == remote
+    assert file_.based_on.url == remote
+
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
@@ -833,20 +835,12 @@ def read_dataset_file_metadata(client, name, filename):
 @flaky(max_runs=10, min_passes=1)
 def test_dataset_update(client, runner, params):
     """Test local copy is updated when remote file is updates."""
+    url = "https://github.com/SwissDataScienceCenter/renku-python.git"
+
     # Add dataset to project
     result = runner.invoke(
         cli,
-        [
-            "dataset",
-            "add",
-            "--create",
-            "remote",
-            "--ref",
-            "v0.3.0",
-            "-s",
-            "CHANGES.rst",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
-        ],
+        ["dataset", "add", "--create", "remote", "--ref", "v0.3.0", "-s", "CHANGES.rst", url,],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -863,8 +857,10 @@ def test_dataset_update(client, runner, params):
     assert after.url == before.url
     assert after.based_on._id == before.based_on._id
     assert after.based_on._label != before.based_on._label
-    assert after.based_on.path == before.based_on.path
     assert after.based_on.based_on is None
+    assert after.based_on.path == before.based_on.path
+    assert after.based_on.source == url
+    assert after.based_on.url == url
 
 
 @pytest.mark.integration
@@ -1017,7 +1013,7 @@ def test_import_from_renku_project(tmpdir, client, runner, url):
     """Check metadata for an imported dataset from other renkulab repo."""
     from renku.core.management import LocalClient
 
-    path = tmpdir.strpath
+    path = tmpdir.mkdir("remote_repo")
     os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
     git.Repo.clone_from(url, path, recursive=True)
 
@@ -1052,7 +1048,7 @@ def test_import_from_renku_project(tmpdir, client, runner, url):
     assert metadata.based_on._label == file_._label
     assert metadata.based_on.path == file_.path
     assert metadata.based_on.based_on is None
-    assert metadata.based_on.url == url
+    assert metadata.based_on.source == url
 
 
 @pytest.mark.integration
@@ -1270,12 +1266,7 @@ def test_renku_clone_uses_project_name(runner, monkeypatch, path, expected_path)
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "url",
-    [
-        (
-            "https://username:password@raw.githubusercontent.com/"
-            "SwissDataScienceCenter/renku-python/master/docs/Makefile"
-        )
-    ],
+    ["https://username:password@raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"],
 )
 def test_add_removes_credentials(runner, client, url):
     """Check removal of credentials during adding of remote data files."""
@@ -1287,13 +1278,13 @@ def test_add_removes_credentials(runner, client, url):
     with client.with_dataset("my-dataset") as dataset:
         file_ = dataset.files[0]
         url_obj = urlparse(url)
-        assert file_.url == url_obj._replace(netloc=url_obj.hostname).geturl()
+        assert file_.source == url_obj._replace(netloc=url_obj.hostname).geturl()
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "url", [("https://raw.githubusercontent.com/SwissDataScienceCenter/" "renku-python/master/docs/Makefile")]
+    "url", [("https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile")]
 )
 def test_check_disk_space(runner, client, monkeypatch, url):
     """Check adding to dataset prompts if disk space is not enough."""
@@ -1339,7 +1330,6 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
             assert path.exists()
             assert not path.is_symlink()
             assert file_.based_on is None
-            assert file_.url.startswith("file://")
 
     with client.with_dataset("remote") as dataset:
         for file_ in dataset.files:
@@ -1349,6 +1339,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
             assert file_.based_on is not None
             assert file_.based_on.based_on is None
             assert file_.name == file_.based_on.name
+            assert "https://github.com/SwissDataScienceCenter/r10e-ds-py.git" == file_.based_on.source
 
 
 @pytest.mark.integration

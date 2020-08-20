@@ -42,9 +42,7 @@ def _jsonld(graph, format, *args, **kwargs):
 
     import pyld
 
-    from renku.core.models.jsonld import asjsonld
-
-    output = getattr(pyld.jsonld, format)([asjsonld(action) for action in graph.activities.values()])
+    output = getattr(pyld.jsonld, format)([action.as_jsonld() for action in graph.activities.values()])
     return json.dumps(output, indent=2)
 
 
@@ -147,7 +145,7 @@ def _rdf2dot_simple(g, stream, graph=None):
         stream.write(
             '\t"{src_commit}:{src_path}" -> '
             '"{tgt_commit}:{tgt_path}" '
-            "[label={role}] \n".format(
+            '[label="{role}"] \n'.format(
                 src_commit=src_path["commit"][:5],
                 src_path=src_path.get("path") or "",
                 tgt_commit=tgt_path["commit"][:5],

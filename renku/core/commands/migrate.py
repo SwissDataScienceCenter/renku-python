@@ -28,6 +28,14 @@ def migrations_check(client):
     return is_migration_required(client), not is_project_unsupported(client)
 
 
+@pass_local_client
+def migrations_versions(client):
+    """Return source and destination migration versions."""
+    from renku import __version__
+
+    return __version__, client.latest_agent
+
+
 @pass_local_client(clean=True, commit=True, commit_empty=False)
 def migrate_project(client, progress_callback=None, commit_message=None):
     """Migrate all project's entities."""

@@ -21,23 +21,14 @@ from collections import defaultdict
 
 import click
 
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
 
 from ..echo import WARNING
 
 
-def _dataset_pre_0_3(client):
-    """Return paths of dataset metadata for pre 0.3.4."""
-    project_is_pre_0_3 = int(client.project.version) < 2
-    if project_is_pre_0_3:
-        return (client.path / DATA_DIR).rglob(client.METADATA)
-    return []
-
-
 def check_dataset_metadata(client):
     """Check location of dataset metadata."""
-    # Find pre 0.3.4 metadata files.
-    old_metadata = list(_dataset_pre_0_3(client))
+    old_metadata = get_pre_0_3_4_datasets_metadata(client)
 
     if not old_metadata:
         return True, None

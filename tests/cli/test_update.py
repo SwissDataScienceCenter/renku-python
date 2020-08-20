@@ -274,7 +274,7 @@ def test_siblings_in_output_directory(runner, project, run):
     base_sh = ["sh", "-c", script, "output"]
 
     assert not output.exists()
-    assert 0 == run(args=["run"] + base_sh + ["output"], stdin=source)
+    assert 0 == run(args=["run"] + base_sh, stdin=source)
     assert output.exists()
     check_files()
 
@@ -288,7 +288,7 @@ def test_siblings_in_output_directory(runner, project, run):
     check_files()
 
 
-def test_relative_path_for_directory_input(client, run, cli):
+def test_relative_path_for_directory_input(client, run, renku_cli):
     """Test having a directory input generates relative path in CWL."""
     (client.path / DATA_DIR / "file1").write_text("file1")
     client.repo.git.add("--all")
@@ -300,8 +300,7 @@ def test_relative_path_for_directory_input(client, run, cli):
     client.repo.git.add("--all")
     client.repo.index.commit("Add one more file")
 
-    exit_code, cwl = cli("update")
-    cwl = cwl.association.plan
+    exit_code, cwl = renku_cli("update")
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
     assert isinstance(cwl.inputs[0].consumes, Collection)

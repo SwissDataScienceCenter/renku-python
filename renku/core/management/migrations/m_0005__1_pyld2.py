@@ -22,10 +22,10 @@ import re
 
 def migrate(client):
     """Migration function."""
-    _migrate_datasets(client)
+    migrate_datasets_for_pyld2(client)
 
 
-def _migrate_datasets(client):
+def migrate_datasets_for_pyld2(client):
     """Migrate type scoped contexts of datasets."""
     paths = (client.path / client.renku_datasets_path).rglob(client.METADATA)
 

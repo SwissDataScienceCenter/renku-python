@@ -53,8 +53,11 @@ class CommandLineToolFactory(object):
 
     command_line = attr.ib(converter=lambda cmd: list(cmd) if isinstance(cmd, (list, tuple)) else shlex.split(cmd),)
 
-    explicit_inputs = attr.ib(default=[], converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
-    explicit_outputs = attr.ib(default=[], converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
+    explicit_inputs = attr.ib(factory=list, converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
+    explicit_outputs = attr.ib(factory=list, converter=lambda paths: [Path(os.path.abspath(p)) for p in paths])
+
+    no_input_detection = attr.ib(default=False)
+    no_output_detection = attr.ib(default=False)
 
     directory = attr.ib(default=".", converter=lambda path: Path(path).resolve(),)
     working_dir = attr.ib(default=".", converter=lambda path: Path(path).resolve(),)
@@ -94,13 +97,17 @@ class CommandLineToolFactory(object):
 
         for stream_name in ("stdout", "stderr"):
             stream = getattr(self, stream_name)
-            if stream and self.file_candidate(self.working_dir / stream):
+            if stream and self.is_existing_path(self.working_dir / stream):
                 self.outputs.append(CommandOutputParameter(id="output_{0}".format(stream_name), type=stream_name,))
 
         for input_ in self.guess_inputs(*detect):
             if isinstance(input_, CommandLineBinding):
                 self.arguments.append(input_)
-            else:
+            elif (
+                not self.no_input_detection
+                or input_.type not in PATH_OBJECTS
+                or input_.default.path in self.explicit_inputs
+            ):
                 self.inputs.append(input_)
 
         if self.explicit_inputs:
@@ -159,7 +166,7 @@ class CommandLineToolFactory(object):
             self.delete_indirect_files_list()
 
             # List of all output paths.
-            paths = []
+            output_paths = []
 
             inputs = {input.id: input for input in self.inputs}
             outputs = list(self.outputs)
@@ -167,12 +174,18 @@ class CommandLineToolFactory(object):
             # Keep track of unmodified output files.
             unmodified = set()
 
-            # Calculate possible output paths.
-            # Capture newly created files through redirects.
-            candidates = {file_ for file_ in repo.untracked_files}
+            candidates = set()
 
-            # Capture modified files through redirects.
-            candidates |= {o.a_path for o in repo.index.diff(None) if not o.deleted_file}
+            if not self.no_output_detection:
+                # Calculate possible output paths.
+                # Capture newly created files through redirects.
+                candidates |= {file_ for file_ in repo.untracked_files}
+
+                # Capture modified files through redirects.
+                candidates |= {o.a_path for o in repo.index.diff(None) if not o.deleted_file}
+
+            # Include explicit outputs
+            candidates |= {str(path.relative_to(self.working_dir)) for path in self.explicit_outputs}
 
             from renku.core.commands.graph import _safe_path
 
@@ -180,7 +193,7 @@ class CommandLineToolFactory(object):
 
             for output, input, path in self.guess_outputs(candidates):
                 outputs.append(output)
-                paths.append(path)
+                output_paths.append(path)
 
                 if input is not None:
                     if input.id not in inputs:  # pragma: no cover
@@ -193,37 +206,16 @@ class CommandLineToolFactory(object):
                 if stream and stream not in candidates and Path(os.path.abspath(stream)) not in self.explicit_outputs:
                     unmodified.add(stream)
                 elif stream:
-                    paths.append(stream)
-
-            if self.explicit_outputs:
-                last_output_id = len(outputs)
-
-                for output, input, path in self.find_explicit_outputs(last_output_id):
-                    outputs.append(output)
-                    paths.append(path)
-
-                    if input is not None:
-                        if input.id not in inputs:  # pragma: no cover
-                            raise RuntimeError("Inconsistent input name.")
-
-                        inputs[input.id] = input
-                    # remove outputs covered by explicit outputs
-                    output_glob = output.outputBinding.glob
-                    for input_id, input in inputs.items():
-                        if input.type == "string" and input.default.startswith(output_glob):
-                            input_glob = "$(inputs.{})".format(input_id)
-                            existing_output = next(o for o in outputs if o.outputBinding.glob == input_glob)
-                            if existing_output:
-                                outputs.remove(existing_output)
+                    output_paths.append(stream)
 
             if unmodified:
                 raise errors.UnmodifiedOutputs(repo, unmodified)
 
-            if not no_output and not paths:
+            if not no_output and not output_paths:
                 raise errors.OutputsNotFound(repo, inputs.values())
 
             if client.check_external_storage():
-                lfs_paths = client.track_paths_in_storage(*paths)
+                lfs_paths = client.track_paths_in_storage(*output_paths)
 
                 show_message = client.get_value("renku", "show_lfs_message")
                 if lfs_paths and (show_message is None or show_message == "True"):
@@ -235,10 +227,10 @@ class CommandLineToolFactory(object):
                         + "\n\trenku config show_lfs_message False"
                     )
 
-            repo.git.add(*paths)
+            repo.git.add(*output_paths)
 
             if repo.is_dirty():
-                commit_msg = ("renku run: " "committing {} newly added files").format(len(paths))
+                commit_msg = ("renku run: " "committing {} newly added files").format(len(output_paths))
 
                 committer = Actor("renku {0}".format(__version__), version_url)
 
@@ -266,7 +258,7 @@ class CommandLineToolFactory(object):
         if not value.exists():
             raise errors.UsageError("Directory must exist.")
 
-    def file_candidate(self, candidate, ignore=None):
+    def is_existing_path(self, candidate, ignore=None):
         """Return a path instance if it exists in current directory."""
         if ignore and candidate in ignore:
             return
@@ -287,7 +279,7 @@ class CommandLineToolFactory(object):
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
-        if self.file_candidate(self.command_line[0]):
+        if self.is_existing_path(self.command_line[0]):
             return [], list(self.command_line)
 
         cmd = [self.command_line[0]]
@@ -297,14 +289,14 @@ class CommandLineToolFactory(object):
             # only guess subcommand for more arguments
             return cmd, args
 
-        while args and re.match(self._RE_SUBCOMMAND, args[0]) and not self.file_candidate(args[0]):
+        while args and re.match(self._RE_SUBCOMMAND, args[0]) and not self.is_existing_path(args[0]):
             cmd.append(args.pop(0))
 
         return cmd, args
 
     def guess_type(self, value, ignore_filenames=None):
         """Return new value and CWL parameter type."""
-        candidate = self.file_candidate(value, ignore=ignore_filenames)
+        candidate = self.is_existing_path(value, ignore=ignore_filenames)
         if candidate:
             try:
                 if candidate.is_dir():
@@ -412,11 +404,11 @@ class CommandLineToolFactory(object):
                 position=position, valueFrom=prefix,
             )
 
-    def guess_outputs(self, paths):
+    def guess_outputs(self, candidates):
         """Yield detected output and changed command input parameter."""
-        # TODO what to do with duplicate paths & inputs with same defauts
-        paths = list(paths)
-        tree = DirectoryTree.from_list(paths)
+        # TODO what to do with duplicate paths & inputs with same defaults
+        candidates = list(candidates)
+        tree = DirectoryTree.from_list(candidates)
 
         input_candidates = {}
         conflicting_paths = {}
@@ -424,9 +416,11 @@ class CommandLineToolFactory(object):
         for index, input in enumerate(self.inputs):
             # Convert input defaults to paths relative to working directory.
             if input.type not in PATH_OBJECTS:
+                if self.no_input_detection:
+                    continue
                 try:
                     path = self.directory / str(input.default)
-                    input_path = path.resolve().relative_to(self.working_dir)
+                    input_path = Path(os.path.abspath(path)).relative_to(self.working_dir)
                 except FileNotFoundError:
                     continue
             else:
@@ -440,8 +434,8 @@ class CommandLineToolFactory(object):
                     content = {
                         str(path) for path in input_path.rglob("*") if not path.is_dir() and path.name != ".gitkeep"
                     }
-                    extra_paths = content - subpaths
-                    if extra_paths:
+                    preexisting_paths = content - subpaths
+                    if preexisting_paths:
                         raise errors.InvalidOutputPath(
                             'The output directory "{0}" is not empty. \n\n'
                             "Delete existing files before running the "
@@ -449,7 +443,7 @@ class CommandLineToolFactory(object):
                             '\n  (use "git rm <file>..." to remove them '
                             "first)"
                             "\n\n".format(input_path)
-                            + "\n".join("\t" + click.style(path, fg="yellow") for path in extra_paths)
+                            + "\n".join("\t" + click.style(path, fg="yellow") for path in preexisting_paths)
                             + "\n\n"
                             "Once you have removed files that should be used "
                             "as outputs,\n"
@@ -457,9 +451,9 @@ class CommandLineToolFactory(object):
                         )
 
                 # Remove files from the input directory
-                paths = [path for path in paths if path not in subpaths]
-                # Include input path in the paths to check
-                paths.append(str(input_path))
+                candidates[:] = (path for path in candidates if path not in subpaths)
+                # Include input path in the candidates to check
+                candidates.append(str(input_path))
 
                 input_candidates[str(input_path)] = input
             elif input.type not in PATH_OBJECTS:
@@ -467,21 +461,17 @@ class CommandLineToolFactory(object):
                 input_candidates[str(input_path)] = input
             else:
                 # Names that can not be outputs because they are already inputs
-                conflicting_paths[str(input_path)] = (index, input)
+                conflicting_paths[str(input_path)] = input
 
         streams = {path for path in (getattr(self, name) for name in ("stdout", "stderr")) if path is not None}
 
         # TODO group by a common prefix
 
-        for position, path in enumerate(paths):
-            if Path(os.path.abspath(path)) in self.explicit_outputs:
-                del paths[position]
-
-        for position, path in enumerate(paths):
-            candidate = self.file_candidate(self.working_dir / path)
+        for position, path in enumerate(candidates):
+            candidate = self.is_existing_path(self.working_dir / path)
 
             if candidate is None:
-                raise ValueError('Path "{0}" does not exist.'.format(path))
+                raise errors.UsageError('Path "{0}" does not exist.'.format(path))
 
             glob = str(candidate.relative_to(self.working_dir))
 
@@ -492,7 +482,7 @@ class CommandLineToolFactory(object):
 
             if glob in conflicting_paths:
                 # it means that it is rewriting a file
-                index, input = conflicting_paths[glob]
+                input = conflicting_paths[glob]
                 new_input = attr.evolve(input, type="string", default=glob)
                 input_candidates[glob] = new_input
 
@@ -537,12 +527,12 @@ class CommandLineToolFactory(object):
             try:
                 explicit_input.relative_to(self.working_dir)
             except ValueError:
-                raise errors.InvalidInputPath(
+                raise errors.UsageError(
                     "The input file or directory is not in the repository."
                     "\n\n\t" + click.style(str(explicit_input), fg="yellow") + "\n\n"
                 )
-            if self.file_candidate(explicit_input) is None:
-                raise errors.InvalidInputPath(
+            if self.is_existing_path(explicit_input) is None:
+                raise errors.UsageError(
                     "The input file or directory does not exist."
                     "\n\n\t" + click.style(str(explicit_input), fg="yellow") + "\n\n"
                 )
@@ -553,44 +543,6 @@ class CommandLineToolFactory(object):
             # The inputBinging is None because these inputs won't
             # appear on command-line
             yield CommandInputParameter(id="input_{0}".format(input_id), type=type, default=default, inputBinding=None)
-
-    def find_explicit_outputs(self, starting_output_id):
-        """Yield explicit output and changed command input parameter."""
-        inputs = {str(i.default.path.relative_to(self.working_dir)): i for i in self.inputs if i.type in PATH_OBJECTS}
-        output_id = starting_output_id
-
-        for path in self.explicit_outputs:
-            if self.file_candidate(path) is None:
-                raise errors.InvalidOutputPath(
-                    "The output file or directory does not exist."
-                    "\n\n\t" + click.style(str(path), fg="yellow") + "\n\n"
-                )
-
-            output_path = str(path.relative_to(self.working_dir))
-            type = "Directory" if path.is_dir() else "File"
-            if output_path in inputs:
-                # change input type to note that it is also an output
-                input = inputs[output_path]
-                input = attr.evolve(input, type="string", default=output_path)
-                yield (
-                    CommandOutputParameter(
-                        id="output_{0}".format(output_id),
-                        type=type,
-                        outputBinding=dict(glob="$(inputs.{0})".format(input.id)),
-                    ),
-                    input,
-                    output_path,
-                )
-            else:
-                yield (
-                    CommandOutputParameter(
-                        id="output_{0}".format(output_id), type=type, outputBinding=dict(glob=str(output_path))
-                    ),
-                    None,
-                    output_path,
-                )
-
-            output_id += 1
 
     def delete_indirect_files_list(self):
         """Remove indirect inputs and outputs list."""

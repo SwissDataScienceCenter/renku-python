@@ -21,10 +21,11 @@ from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import add_file, import_dataset
 from renku.core.commands.save import repo_sync
-from renku.core.errors import DatasetExistsError, ParameterError
+from renku.core.errors import ParameterError, RenkuException
 from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import chdir
 from renku.service.cache.serializers.job import JobSchema
+from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
 
 
@@ -66,13 +67,16 @@ def dataset_import(
 ):
     """Job for dataset import."""
     user = cache.ensure_user(user)
+    worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")
+
     user_job = cache.get_job(user, user_job_id)
-    project = cache.get_project(user, project_id)
+    user_job.in_progress()
 
-    with chdir(project.abs_path):
-        try:
-            user_job.in_progress()
-
+    try:
+        worker_log.debug(f"retrieving metadata for project {project_id}")
+        project = cache.get_project(user, project_id)
+        with chdir(project.abs_path):
+            worker_log.debug(f"project found in cache - importing dataset {dataset_uri}")
             import_dataset(
                 dataset_uri,
                 name,
@@ -81,34 +85,48 @@ def dataset_import(
                 progress=DatasetImportJobProcess(cache, user_job),
             )
 
+            worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
-        except (HTTPError, ParameterError, DatasetExistsError, GitCommandError) as exp:
-            user_job.fail_job(str(exp))
+            worker_log.debug("job completed")
+    except (HTTPError, ParameterError, RenkuException, GitCommandError) as exp:
+        user_job.fail_job(str(exp))
 
-            # Reraise exception, so we see trace in job metadata.
-            raise exp
+        # Reraise exception, so we see trace in job metadata
+        # and in metrics as failed job.
+        raise exp
 
 
 @requires_cache
 def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset, commit_message, name, url):
     """Add a remote file to a specified dataset."""
     user = cache.ensure_user(user)
+    worker_log.debug((f"executing dataset add remote " f"file job for {user.user_id}:{user.fullname}"))
+
     user_job = cache.get_job(user, user_job_id)
-    project = cache.get_project(user, project_id)
+    user_job.in_progress()
 
     try:
-        user_job.in_progress()
+        worker_log.debug(f"checking metadata for project {project_id}")
+        project = cache.get_project(user, project_id)
 
         with chdir(project.abs_path):
             urls = url if isinstance(url, list) else [url]
+
+            worker_log.debug(f"adding files {urls} to dataset {name}")
             add_file(urls, name, create=create_dataset, commit_message=commit_message)
 
+            worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
             user_job.update_extras("remote_branch", remote_branch)
 
             user_job.complete()
-    except (HTTPError, BaseException, GitCommandError) as e:
-        user_job.fail_job(str(e))
+            worker_log.debug("job completed")
+    except (HTTPError, BaseException, GitCommandError, RenkuException) as exp:
+        user_job.fail_job(str(exp))
+
+        # Reraise exception, so we see trace in job metadata
+        # and in metrics as failed job.
+        raise exp

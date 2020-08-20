@@ -17,40 +17,41 @@
 # limitations under the License.
 """Represents a workflow template."""
 
+import os
+import pathlib
+import urllib.parse
 import uuid
 
-from renku.core.models import jsonld as jsonld
+import attr
+from marshmallow import EXCLUDE
+
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku
+from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
-@jsonld.s(
-    type=["renku:IOStream",],
-    context={
-        "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
-        "prov": "http://www.w3.org/ns/prov#",
-    },
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class MappedIOStream(object):
     """Represents an IO stream (stdin, stdout, stderr)."""
 
-    _id = jsonld.ib(context="@id", kw_only=True)
-    _label = jsonld.ib(default=None, context="rdfs:label", kw_only=True)
+    client = attr.ib(default=None, kw_only=True)
+
+    _id = attr.ib(default=None, kw_only=True)
+    _label = attr.ib(default=None, kw_only=True)
 
     STREAMS = ["stdin", "stdout", "stderr"]
 
-    stream_type = jsonld.ib(
-        context={"@id": "renku:streamType", "@type": "http://www.w3.org/2001/XMLSchema#string",},
-        type=str,
-        kw_only=True,
-    )
+    stream_type = attr.ib(type=str, kw_only=True,)
 
-    @_id.default
     def default_id(self):
-        """Set default id."""
-        # TODO: make bnode ids nicer once this issue is in a release:
-        # https://github.com/RDFLib/rdflib/issues/888
-        # right now it's limited to a-zA-Z0-9 (-_ will work once it's fixed)
-        return "_:MappedIOStream-{}".format(str(uuid.uuid4())).replace("-", "")
+        """Generate an id for a mapped stream."""
+        host = "localhost"
+        if self.client:
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
+
+        return urllib.parse.urljoin(
+            "https://{host}".format(host=host), pathlib.posixpath.join("/iostreams", self.stream_type)
+        )
 
     def default_label(self):
         """Set default label."""
@@ -58,65 +59,59 @@ class MappedIOStream(object):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
+        if not self._id:
+            self._id = self.default_id()
         if not self._label:
             self._label = self.default_label()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
 
-@jsonld.s(
-    type=["renku:CommandParameter",],
-    context={
-        "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
-        "prov": "http://www.w3.org/ns/prov#",
-    },
-    cmp=False,
-)
+        return MappedIOStreamSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return MappedIOStreamSchema().dump(self)
+
+
+@attr.s(cmp=False,)
 class CommandParameter(object):
     """Represents a parameter for an execution template."""
 
-    _id = jsonld.ib(default=None, context="@id", kw_only=True)
-    _label = jsonld.ib(default=None, context="rdfs:label", kw_only=True)
+    _id = attr.ib(default=None, kw_only=True)
+    _label = attr.ib(default=None, kw_only=True)
 
-    position = jsonld.ib(
-        default=None,
-        context={"@id": "renku:position", "@type": "http://www.w3.org/2001/XMLSchema#integer",},
-        type=int,
-        kw_only=True,
-    )
+    position = attr.ib(default=None, type=int, kw_only=True,)
 
-    prefix = jsonld.ib(
-        default=None,
-        context={"@id": "renku:prefix", "@type": "http://www.w3.org/2001/XMLSchema#string",},
-        type=str,
-        kw_only=True,
-    )
+    prefix = attr.ib(default=None, type=str, kw_only=True,)
 
     @property
     def sanitized_id(self):
         """Return ``_id`` sanitized for use in non-jsonld contexts."""
-        return self._id.split(":", 1)[1].replace("-", "_")
+        if "/steps/" in self._id:
+            return "/".join(self._id.split("/")[-4:])
+        return "/".join(self._id.split("/")[-2:])
 
 
-@jsonld.s(
-    type=["renku:CommandArgument",],
-    context={
-        "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
-        "prov": "http://www.w3.org/ns/prov#",
-    },
-    cmp=False,
-)
+@attr.s(cmp=False,)
 class CommandArgument(CommandParameter):
     """An argument to a command that is neither input nor output."""
 
-    value = jsonld.ib(
-        default=None,
-        context={"@id": "renku:value", "@type": "http://www.w3.org/2001/XMLSchema#string",},
-        type=str,
-        kw_only=True,
-    )
+    value = attr.ib(default=None, type=str, kw_only=True,)
 
-    def default_id(self):
-        """Set default id."""
-        return "_:CommandArgument-{}".format(str(uuid.uuid4())).replace("-", "")
+    @staticmethod
+    def generate_id(run_id, position=None):
+        """Generate an id for an argument."""
+        if position:
+            id_ = str(position)
+        else:
+            id_ = uuid.uuid4().hex
+        return "{}/arguments/{}".format(run_id, id_)
 
     def default_label(self):
         """Set default label."""
@@ -133,35 +128,40 @@ class CommandArgument(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._id:
-            self._id = self.default_id()
-
         if not self._label:
             self._label = self.default_label()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
 
-@jsonld.s(
-    type=["renku:CommandInput",],
-    context={
-        "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
-        "prov": "http://www.w3.org/ns/prov#",
-    },
-    cmp=False,
-)
+        return CommandArgumentSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return CommandArgumentSchema().dump(self)
+
+
+@attr.s(cmp=False,)
 class CommandInput(CommandParameter):
     """An input to a command."""
 
-    consumes = jsonld.ib(
-        context="renku:consumes",
-        kw_only=True,
-        type=["renku.core.models.entities.Entity", "renku.core.models.entities.Collection"],
-    )
+    consumes = attr.ib(kw_only=True,)
 
-    mapped_to = jsonld.ib(default=None, context="prov:mappedTo", kw_only=True, type=MappedIOStream)
+    mapped_to = attr.ib(default=None, kw_only=True)
 
-    def default_id(self):
-        """Set default id."""
-        return "_:CommandInput-{}".format(str(uuid.uuid4())).replace("-", "")
+    @staticmethod
+    def generate_id(run_id, position=None):
+        """Generate an id for an argument."""
+        if position:
+            id_ = str(position)
+        else:
+            id_ = uuid.uuid4().hex
+        return "{}/inputs/{}".format(run_id, id_)
 
     def default_label(self):
         """Set default label."""
@@ -185,37 +185,42 @@ class CommandInput(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._id:
-            self._id = self.default_id()
-
         if not self._label:
             self._label = self.default_label()
 
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
 
-@jsonld.s(
-    type=["renku:CommandOutput",],
-    context={
-        "renku": "https://swissdatasciencecenter.github.io/renku-ontology#",
-        "prov": "http://www.w3.org/ns/prov#",
-    },
-    cmp=False,
-)
+        return CommandInputSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return CommandInputSchema().dump(self)
+
+
+@attr.s(cmp=False,)
 class CommandOutput(CommandParameter):
     """An output of a command."""
 
-    create_folder = jsonld.ib(default=False, context="renku:createFolder", kw_only=True, type=bool)
+    create_folder = attr.ib(default=False, kw_only=True, type=bool)
 
-    produces = jsonld.ib(
-        context="renku:produces",
-        kw_only=True,
-        type=["renku.core.models.entities.Entity", "renku.core.models.entities.Collection"],
-    )
+    produces = attr.ib(kw_only=True)
 
-    mapped_to = jsonld.ib(default=None, context="prov:mappedTo", kw_only=True, type=MappedIOStream)
+    mapped_to = attr.ib(default=None, kw_only=True)
 
-    def default_id(self):
-        """Set default id."""
-        return "_:CommandOutput-{}".format(str(uuid.uuid4())).replace("-", "")
+    @staticmethod
+    def generate_id(run_id, position=None):
+        """Generate an id for an argument."""
+        if position:
+            id_ = str(position)
+        else:
+            id_ = uuid.uuid4().hex
+        return "{}/outputs/{}".format(run_id, id_)
 
     def default_label(self):
         """Set default label."""
@@ -242,8 +247,92 @@ class CommandOutput(CommandParameter):
 
     def __attrs_post_init__(self):
         """Post-init hook."""
-        if not self._id:
-            self._id = self.default_id()
-
         if not self._label:
             self._label = self.default_label()
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return CommandOutputSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return CommandOutputSchema().dump(self)
+
+
+class MappedIOStreamSchema(JsonLDSchema):
+    """MappedIOStream schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.IOStream]
+        model = MappedIOStream
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name="id")
+    _label = fields.String(rdfs.label, init_name="label")
+    stream_type = fields.String(renku.streamType)
+
+
+class CommandParameterSchema(JsonLDSchema):
+    """CommandParameter schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandParameter]
+        model = CommandParameter
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name="id")
+    _label = fields.String(rdfs.label, init_name="label")
+    position = fields.Integer(renku.position, missing=None)
+    prefix = fields.String(renku.prefix, missing=None)
+
+
+class CommandArgumentSchema(CommandParameterSchema):
+    """CommandArgument schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandArgument]
+        model = CommandArgument
+        unknown = EXCLUDE
+
+    value = fields.String(renku.value)
+
+
+class CommandInputSchema(CommandParameterSchema):
+    """CommandArgument schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandInput]
+        model = CommandInput
+        unknown = EXCLUDE
+
+    consumes = Nested(renku.consumes, [EntitySchema, CollectionSchema])
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+
+
+class CommandOutputSchema(CommandParameterSchema):
+    """CommandArgument schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.CommandOutput]
+        model = CommandOutput
+        unknown = EXCLUDE
+
+    create_folder = fields.Boolean(renku.createFolder)
+    produces = Nested(renku.produces, [EntitySchema, CollectionSchema])
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)

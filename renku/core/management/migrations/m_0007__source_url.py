@@ -15,25 +15,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Service logger."""
-import logging.config
-import os
+"""DatasetFile source and url migrations."""
 
-import yaml
+from renku.core.management.migrations.models.v7 import get_client_datasets
+from renku.core.models.datasets import generate_dataset_file_url
 
-from renku.service.config import LOGGER_CONFIG_FILE
 
-DEPLOYMENT_LOG_LEVEL = os.getenv("DEPLOYMENT_LOG_LEVEL", "INFO")
+def migrate(client):
+    """Migration function."""
+    _fix_dataset_file_source_and_url(client)
 
-config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
-logging.config.dictConfig(config)
 
-service_log = logging.getLogger("renku.service")
-worker_log = logging.getLogger("renku.worker")
-scheduler_log = logging.getLogger("renku.scheduler")
+def _fix_dataset_file_source_and_url(client):
+    for dataset in get_client_datasets(client):
+        for file_ in dataset.files:
+            file_.source = file_.url
+            file_.url = generate_dataset_file_url(client=client, filepath=file_.path)
 
-__all__ = [
-    "service_log",
-    "worker_log",
-    "scheduler_log",
-]
+            if file_.source:
+                file_.source = file_.source.replace("file://", "")
+
+            if file_.based_on:
+                file_.based_on.source = file_.based_on.url
+
+        dataset.to_yaml()

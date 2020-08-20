@@ -15,25 +15,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Service logger."""
-import logging.config
-import os
+"""DatasetFile metadata migrations."""
 
-import yaml
+from renku.core.management.migrations.models.v3 import get_client_datasets
 
-from renku.service.config import LOGGER_CONFIG_FILE
 
-DEPLOYMENT_LOG_LEVEL = os.getenv("DEPLOYMENT_LOG_LEVEL", "INFO")
+def migrate(client):
+    """Migration function."""
+    _fix_dataset_metadata(client)
 
-config = yaml.safe_load(LOGGER_CONFIG_FILE.read_text())
-logging.config.dictConfig(config)
 
-service_log = logging.getLogger("renku.service")
-worker_log = logging.getLogger("renku.worker")
-scheduler_log = logging.getLogger("renku.scheduler")
-
-__all__ = [
-    "service_log",
-    "worker_log",
-    "scheduler_log",
-]
+def _fix_dataset_metadata(client):
+    for dataset in get_client_datasets(client):
+        dataset.to_yaml()
