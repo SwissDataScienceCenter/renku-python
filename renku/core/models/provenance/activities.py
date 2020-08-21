@@ -641,7 +641,22 @@ class WorkflowRun(ProcessRun):
         if not self._id:
             self._id = self.default_id()
 
-        if self.client and self._processes:
+        if not self._processes:
+            self._processes = []
+            for subprocess in self.association.plan.subprocesses:
+                run = subprocess.process
+                process_run = ProcessRun.from_run(
+                    run=run,
+                    client=self.client,
+                    path=self.path,
+                    commit=self.commit,
+                    subprocess_index=subprocess.index,
+                    update_commits=True,
+                )
+
+                self._processes.append(process_run)
+
+        if self.client:
             for s in self._processes:
                 s.client = self.client
                 s.commit = self.commit
@@ -714,5 +729,3 @@ class WorkflowRunSchema(ProcessRunSchema):
         rdf_type = wfprov.WorkflowRun
         model = WorkflowRun
         unknown = EXCLUDE
-
-    _processes = Nested(wfprov.wasPartOfWorkflowRun, ProcessRunSchema, reverse=True, many=True, init_name="processes")
