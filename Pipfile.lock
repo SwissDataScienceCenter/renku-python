@@ -669,11 +669,11 @@
         },
         "rq": {
             "hashes": [
-                "sha256:60509898c9ebc40e4155fde8bf88a204ed1914cc9e1cde3d19188b1c5bd5efbd",
-                "sha256:ee7fb24bc84dba87446264ca7162b2ed7d6d6af3cbd68f0b6b220ce7c23c8ae8"
+                "sha256:4d8268e0d541d8016cbb915befd30fc68f1c3a9e77a8cfc02de3e6f22a5314d9",
+                "sha256:601fc7f1600f0b069b1e145678545d1f532316b72716e44fd0295daef917679c"
             ],
-            "markers": "python_version >= '3.4'",
-            "version": "==1.4.3"
+            "markers": "python_version >= '3.5'",
+            "version": "==1.5.1"
         },
         "rq-scheduler": {
             "hashes": [
