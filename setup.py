@@ -138,7 +138,7 @@ for name, reqs in extras_require.items():
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "apispec==3.3.1",
-    "attrs==19.3.0",
+    "attrs==20.1.0",
     "calamus==0.3.2",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
