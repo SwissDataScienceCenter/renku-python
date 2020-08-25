@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku service controller mixin."""
 from renku.core.utils.contexts import chdir
-from renku.service.controllers.remote_project import RemoteProject
+from renku.service.controllers.utils import RemoteProject
 
 
 class ReadOperationMixin:

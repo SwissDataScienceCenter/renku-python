@@ -462,7 +462,7 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo):
-    """Check listing of existing datasets."""
+    """Check listing of existing dataset files."""
     svc_client, headers, _, _ = svc_client_with_repo
 
     params = dict(git_url=it_remote_repo, name="ds1")

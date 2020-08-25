@@ -19,7 +19,7 @@
 from renku.core.commands.dataset import list_files
 from renku.core.utils.contexts import chdir
 from renku.service.controllers.mixins import ReadOperationMixin
-from renku.service.controllers.remote_project import RemoteProject
+from renku.service.controllers.utils import RemoteProject
 from renku.service.serializers.datasets import DatasetFilesListRequest, DatasetFilesListResponseRPC
 from renku.service.views import result_response
 
