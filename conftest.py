@@ -53,6 +53,12 @@ IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
 @pytest.fixture(scope="module")
+def it_remote_repo():
+    """Returns a remote path to integration test repository."""
+    return IT_REMOTE_REPO_URL
+
+
+@pytest.fixture(scope="module")
 def renku_path(tmpdir_factory):
     """Temporary instance path."""
     path = str(tmpdir_factory.mktemp("renku"))

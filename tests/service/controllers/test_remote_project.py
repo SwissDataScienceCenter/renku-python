@@ -19,7 +19,7 @@
 import pytest
 
 import renku
-from renku.core.commands.migrate import migrations_versions, migrations_check
+from renku.core.commands.migrate import migrations_check, migrations_versions
 from renku.service.controllers.remote_project import RemoteProject
 
 

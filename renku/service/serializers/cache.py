@@ -221,7 +221,8 @@ class ProjectMigrationCheckRequest(Schema):
     """Request schema for project migration check."""
 
     project_id = fields.String()
-    project_remote = fields.String()
+
+    git_url = fields.String()
     branch = fields.String()
 
 

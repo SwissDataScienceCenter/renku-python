@@ -593,10 +593,17 @@ def test_check_migrations_local(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations_remote():
+def test_check_migrations_remote(svc_client_setup, it_remote_repo):
     """Check if migrations are required for a remote project."""
-    pass
-    # TODO:
+    svc_client, headers, _, _ = svc_client_setup
+
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=it_remote_repo), headers=headers)
+    assert 200 == response.status_code
+
+    assert response.json["result"]["migration_required"]
+    assert response.json["result"]["project_supported"]
+    assert response.json["result"]["project_version"]
+    assert response.json["result"]["latest_version"]
 
 
 @pytest.mark.service

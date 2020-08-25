@@ -48,6 +48,7 @@ from renku.service.serializers.cache import (
     ProjectMigrateAsyncResponseRPC,
     ProjectMigrateRequest,
     ProjectMigrateResponseRPC,
+    ProjectMigrationCheckRequest,
     ProjectMigrationCheckResponseRPC,
     extract_file,
 )
@@ -265,7 +266,7 @@ def migrate_project_view(user_data, cache):
     return result_response(ProjectMigrateResponseRPC(), response)
 
 
-@use_kwargs(ProjectMigrateRequest)
+@use_kwargs(ProjectMigrationCheckRequest)
 @marshal_with(ProjectMigrationCheckResponseRPC)
 @header_doc(
     "Check if project requires migration.", tags=(CACHE_BLUEPRINT_TAG,),

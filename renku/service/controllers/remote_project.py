@@ -19,48 +19,27 @@
 
 import tempfile
 from contextlib import contextmanager
-from pathlib import Path
-from urllib.parse import urlparse
 
-import requests
 from git import Repo
+from marshmallow import EXCLUDE
 
 from renku.core.utils.contexts import chdir
+from renku.service.serializers.cache import ProjectCloneContext
 
 
 class RemoteProject:
     """Parent controller for all controllers with remote support."""
 
-    def __init__(self, remote_url, branch="master"):
+    def __init__(self, user_data, request_data, branch="master"):
         """Construct remote controller."""
-        self.remote_url = remote_url
+        self.ctx = ProjectCloneContext().load({**user_data, **request_data}, unknown=EXCLUDE)
+
+        self.git_url = self.ctx["url_with_auth"]
         self.branch = branch
 
     @contextmanager
     def remote(self):
         """Retrieve project metadata."""
-        path = self.project_metadata_path
-
         with tempfile.TemporaryDirectory() as td, chdir(td):
-            Repo.init(".")
-
-            renku_dir = Path(f"{td}/.renku")
-            renku_dir.mkdir(exist_ok=True)
-
-            metadata_file = renku_dir / "metadata.yml"
-            metadata_file.write_text(requests.get(path.geturl()).text)
-
+            Repo.clone_from(self.git_url, td, branch=self.branch, depth=1)
             yield td
-
-    @property
-    def project_metadata_path(self):
-        """Construct project metadata remote path."""
-        url = urlparse(f"{self.remote_url}/raw/{self.branch}/.renku/metadata.yml")
-
-        if url.scheme not in ("http", "https"):
-            url = url._replace(scheme="https")
-
-        if not url.netloc:
-            raise ValueError("netloc unknown")
-
-        return url
