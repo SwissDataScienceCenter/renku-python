@@ -18,6 +18,16 @@
 Changes
 =======
 
+`0.11.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.0...v0.11.1>`__ (2020-08-18)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  fixes shacl for DatasetFile when used inside a qualifiedGeneration
+   (`#1477 <https://github.com/SwissDataScienceCenter/renku-python/issues/1477>`__)
+   (`99dd4a4 <https://github.com/SwissDataScienceCenter/renku-python/commit/99dd4a49704a36e330ea0d5ee7e0fcc7db31f7ad>`__)
+
 `0.11.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.10.4...v0.11.0.>`__ (2020-08-14)
 -----------------------------------------------------------------------------------------------------------
 

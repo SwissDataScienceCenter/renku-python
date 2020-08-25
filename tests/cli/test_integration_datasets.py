@@ -1013,7 +1013,7 @@ def test_import_from_renku_project(tmpdir, client, runner, url):
     """Check metadata for an imported dataset from other renkulab repo."""
     from renku.core.management import LocalClient
 
-    path = tmpdir.strpath
+    path = tmpdir.mkdir("remote_repo")
     os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
     git.Repo.clone_from(url, path, recursive=True)
 
