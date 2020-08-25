@@ -17,13 +17,14 @@
 # limitations under the License.
 """Renku service migrations check controller."""
 from renku.core.commands.migrate import migrations_check, migrations_versions
-from renku.core.utils.contexts import chdir
-from renku.service.controllers.remote_project import RemoteProject
+
+from renku.service.controllers.mixins import ReadOperationMixin
+
 from renku.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.service.views import result_response
 
 
-class MigrationsCheckCtrl:
+class MigrationsCheckCtrl(ReadOperationMixin):
     """Controller for migrations check endpoint."""
 
     REQUEST_SERIALIZER = ProjectMigrationCheckRequest()
@@ -32,11 +33,12 @@ class MigrationsCheckCtrl:
     def __init__(self, cache, user_data, request_data):
         """Construct migration check controller."""
         self.ctx = MigrationsCheckCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.user = cache.ensure_user(user_data)
+        super(MigrationsCheckCtrl, self).__init__(cache, user_data, request_data)
 
-        self.cache = cache
-        self.user_data = user_data
-        self.request_data = request_data
+    @property
+    def context(self):
+        """Controller operation context."""
+        return self.ctx
 
     def renku_op(self):
         """Renku operation for the controller."""
@@ -49,20 +51,6 @@ class MigrationsCheckCtrl:
             "project_version": project_version,
             "latest_version": latest_version,
         }
-
-    def local(self):
-        """Execute renku operation against service cache."""
-        project = self.cache.get_project(self.user, self.ctx["project_id"])
-
-        with chdir(project.abs_path):
-            return self.renku_op()
-
-    def remote(self):
-        """Execute renku operation against remote project."""
-        project = RemoteProject(self.user_data, self.request_data)
-
-        with project.remote():
-            return self.renku_op()
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""

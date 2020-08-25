@@ -17,13 +17,12 @@
 # limitations under the License.
 """Renku service datasets list controller."""
 from renku.core.commands.dataset import list_datasets
-from renku.core.utils.contexts import chdir
-from renku.service.controllers.remote_project import RemoteProject
+from renku.service.controllers.mixins import ReadOperationMixin
 from renku.service.serializers.datasets import DatasetListRequest, DatasetListResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsListCtrl:
+class DatasetsListCtrl(ReadOperationMixin):
     """Controller for datasets list endpoint."""
 
     REQUEST_SERIALIZER = DatasetListRequest()
@@ -32,27 +31,16 @@ class DatasetsListCtrl:
     def __init__(self, cache, user_data, request_data):
         """Construct a datasets list controller."""
         self.ctx = DatasetsListCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.cache = cache
-        self.user_data = user_data
-        self.request_data = request_data
+        super(DatasetsListCtrl, self).__init__(cache, user_data, request_data)
+
+    @property
+    def context(self):
+        """Controller operation context."""
+        return self.ctx
 
     def renku_op(self):
         """Renku operation for the controller."""
         return list_datasets()
-
-    def local(self):
-        """Execute renku operation against service cache."""
-        project = self.cache.get_project(self.cache.ensure_user(self.user_data), self.ctx["project_id"])
-
-        with chdir(project.abs_path):
-            return self.renku_op()
-
-    def remote(self):
-        """Execute renku operation against remote project."""
-        project = RemoteProject(self.user_data, self.request_data)
-
-        with project.remote():
-            return self.renku_op()
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
