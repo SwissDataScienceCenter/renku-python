@@ -49,7 +49,7 @@ class DatasetsListCtrl:
 
     def remote(self):
         """Execute renku operation against remote project."""
-        project = RemoteProject(self.user_data, self.request_data, branch=self.ctx.get("branch", "master"))
+        project = RemoteProject(self.user_data, self.request_data)
 
         with project.remote():
             return self.renku_op()
