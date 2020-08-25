@@ -17,21 +17,29 @@
 # limitations under the License.
 """Renku service cache views."""
 import pytest
+from marshmallow import ValidationError
 
 import renku
 from renku.core.commands.migrate import migrations_check, migrations_versions
+from renku.core.errors import ConfigurationError
 from renku.service.controllers.remote_project import RemoteProject
 
 
 def test_project_metadata_remote():
     """Check path construction for remote project metadata path."""
-    ctrl = RemoteProject("https://dev.renku.ch/gitlab/contact/import-me")
-    path = ctrl.project_metadata_path
+    user_data = {
+        "fullname": "testing user",
+        "email": "testing@user.com",
+        "token": "123",
+    }
+    request_data = {"git_url": "https://dev.renku.ch/gitlab/contact/import-me"}
+    ctrl = RemoteProject(user_data, request_data)
+    path = ctrl.remote_url
 
     assert path
     assert "https" == path.scheme
-    assert "dev.renku.ch" == path.netloc
-    assert "/gitlab/contact/import-me/raw/master/.renku/metadata.yml" == path.path
+    assert "oauth2:123@dev.renku.ch" == path.netloc
+    assert "/gitlab/contact/import-me" == path.path
     assert "" == path.params
     assert "" == path.query
     assert "" == path.fragment
@@ -39,35 +47,50 @@ def test_project_metadata_remote():
 
 def test_project_metadata_custom_remote():
     """Check path construction for remote project metadata path."""
-    ctrl = RemoteProject("https://dev.renku.ch/gitlab/contact/import-me", branch="my-branch")
-    path = ctrl.project_metadata_path
+    user_data = {
+        "fullname": "testing user",
+        "email": "testing@user.com",
+        "token": "123",
+    }
 
-    assert path
-    assert "https" == path.scheme
-    assert "dev.renku.ch" == path.netloc
-    assert "/gitlab/contact/import-me/raw/my-branch/.renku/metadata.yml" == path.path
-    assert "" == path.params
-    assert "" == path.query
-    assert "" == path.fragment
+    request_data = {"git_url": "https://dev.renku.ch/gitlab/contact/import-me", "ref": "my-branch"}
+
+    ctrl = RemoteProject(user_data, request_data)
+    ref = ctrl.ctx["ref"]
+
+    assert request_data["ref"] == ref
 
 
 def test_project_metadata_remote_err():
     """Check exception raised during path construction for remote project metadata path."""
-    ctrl = RemoteProject("/dev.renku.ch/gitlab/contact/import-me")
+    user_data = {
+        "fullname": "testing user",
+        "email": "testing@user.com",
+        "token": "123",
+    }
+    request_data = {"git_url": "/dev.renku.ch/gitlab/contact/import-me"}
 
-    with pytest.raises(ValueError):
-        _ = ctrl.project_metadata_path
+    with pytest.raises(ValidationError):
+        RemoteProject(user_data, request_data)
 
-    ctrl = RemoteProject("httpz://dev.renku.ch/gitlab/contact/import-me")
-    path = ctrl.project_metadata_path
-    assert "https" == path.scheme
+    request_data["git_url"] = "httpz://dev.renku.ch/gitlab/contact/import-me"
+
+    with pytest.raises(ConfigurationError):
+        RemoteProject(user_data, request_data)
 
 
 def test_remote_project_context():
     """Check remote project context manager."""
-    ctrl = RemoteProject("https://dev.renku.ch/gitlab/contact/import-me")
+    user_data = {
+        "fullname": "testing user",
+        "email": "testing@user.com",
+        "token": "123",
+    }
+    request_data = {"git_url": "https://dev.renku.ch/gitlab/contact/import-me"}
+    ctrl = RemoteProject(user_data, request_data)
 
     with ctrl.remote() as project_path:
+        assert project_path
         latest_version, project_version = migrations_versions()
         assert renku.__version__ == latest_version
         assert "pre-0.11.0" == project_version
