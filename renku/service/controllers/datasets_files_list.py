@@ -16,15 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets files controller."""
+
 from renku.core.commands.dataset import list_files
-from renku.core.utils.contexts import chdir
-from renku.service.controllers.mixins import ReadOperationMixin
-from renku.service.controllers.utils import RemoteProject
+from renku.service.controllers.api.abstract import ServiceCtrl
+from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.serializers.datasets import DatasetFilesListRequest, DatasetFilesListResponseRPC
 from renku.service.views import result_response
 
 
-class DatasetsFilesListCtrl(ReadOperationMixin):
+class DatasetsFilesListCtrl(ServiceCtrl, ReadOperationMixin):
     """Controller for datasets files list endpoint."""
 
     REQUEST_SERIALIZER = DatasetFilesListRequest()

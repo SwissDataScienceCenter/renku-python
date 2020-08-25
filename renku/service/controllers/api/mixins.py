@@ -16,8 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service controller mixin."""
+
+from abc import abstractmethod
+
 from renku.core.utils.contexts import chdir
-from renku.service.controllers.utils import RemoteProject
+from renku.service.controllers.utils.remote_project import RemoteProject
 
 
 class ReadOperationMixin:
@@ -32,10 +35,12 @@ class ReadOperationMixin:
         self.request_data = request_data
 
     @property
+    @abstractmethod
     def context(self):
         """Operation context"""
         raise NotImplementedError
 
+    @abstractmethod
     def renku_op(self):
         """Implements renku operation for the controller."""
         raise NotImplementedError

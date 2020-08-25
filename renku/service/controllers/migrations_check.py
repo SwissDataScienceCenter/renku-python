@@ -16,15 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service migrations check controller."""
+
 from renku.core.commands.migrate import migrations_check, migrations_versions
-
-from renku.service.controllers.mixins import ReadOperationMixin
-
+from renku.service.controllers.api.abstract import ServiceCtrl
+from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.service.views import result_response
 
 
-class MigrationsCheckCtrl(ReadOperationMixin):
+class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
     """Controller for migrations check endpoint."""
 
     REQUEST_SERIALIZER = ProjectMigrationCheckRequest()
