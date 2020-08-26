@@ -136,7 +136,7 @@ def add_file_to_dataset_view(user_data, cache):
         if "file_url" in _file:
             commit_message = "{0}{1}".format(ctx["commit_message"], _file["file_url"])
 
-            job = cache.make_job(user)
+            job = cache.make_job(user, project=project, job_data={"renku_op": "dataset_add_remote_file"})
             _file["job_id"] = job.job_id
 
             with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
@@ -260,7 +260,7 @@ def import_dataset_view(user_data, cache):
     user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx["project_id"])
-    job = cache.make_job(user, project=project)
+    job = cache.make_job(user, project=project, job_data={"renku_op": "dataset_import"})
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(

@@ -57,4 +57,12 @@ def list_jobs(user_data, cache):
 @requires_identity
 def job_details(user_data, cache, job_id):
     """Show details for a specific job."""
-    return result_response(JobDetailsResponseRPC(), cache.get_job(cache.ensure_user(user_data), job_id),)
+    user = cache.ensure_user(user_data)
+
+    job = cache.get_job(user, job_id)
+
+    if not job or not job.project_id:
+        return result_response(JobDetailsResponseRPC(), None)
+
+    job.project = cache.get_project(user, job.project_id)
+    return result_response(JobDetailsResponseRPC(), job)
