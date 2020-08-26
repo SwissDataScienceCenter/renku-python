@@ -32,6 +32,8 @@ class JobSchema(Schema):
 
     job_id = fields.String(missing=lambda: uuid.uuid4().hex)
     user_id = fields.String(required=True)
+    project_id = fields.String()
+    renku_op = fields.String()
 
     state = fields.String(required=False, missing=USER_JOB_STATE_ENQUEUED)
     extras = fields.Dict(required=False)

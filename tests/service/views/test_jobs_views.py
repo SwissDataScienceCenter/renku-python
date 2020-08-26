@@ -23,6 +23,8 @@ from datetime import datetime
 import pytest
 from marshmallow.utils import isoformat
 
+from renku.service.cache.models.project import Project
+
 
 @pytest.mark.service
 def test_jobs_view_identity_protected(svc_client):
@@ -34,7 +36,7 @@ def test_jobs_view_identity_protected(svc_client):
     response = svc_client.get("/jobs", headers=headers)
 
     assert {"error"} == set(response.json.keys())
-    assert ("user identification is incorrect or missing") == response.json["error"]["reason"]
+    assert "user identification is incorrect or missing" == response.json["error"]["reason"]
 
 
 @pytest.mark.service
@@ -56,15 +58,23 @@ def test_jobs_view_expected_job(svc_client_cache):
     job_data = {
         "job_id": uuid.uuid4().hex,
         "state": "CREATED",
+        "renku_op": "dataset_import",
         "created_at": isoformat(datetime.now()),
         "updated_at": isoformat(datetime.now()),
         "extras": {"progress": 42},
     }
-    job = cache.make_job(user, job_data)
+
+    project = Project(project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject")
+    project.abs_path.mkdir(parents=True, exist_ok=True)
+    project.save()
+
+    job = cache.make_job(user, project=project, job_data=job_data)
 
     response = svc_client.get("/jobs", headers=headers)
     assert 1 == len(response.json["result"]["jobs"])
-    assert {"job_id", "state", "created_at", "updated_at", "extras",} == set(response.json["result"]["jobs"][0].keys())
+    assert {"job_id", "state", "created_at", "updated_at", "extras", "renku_op", "project"} == set(
+        response.json["result"]["jobs"][0].keys()
+    )
 
     cache.invalidate_job(user, job.job_id)
     response = svc_client.get("/jobs", headers=headers)

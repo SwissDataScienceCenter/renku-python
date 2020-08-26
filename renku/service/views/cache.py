@@ -246,7 +246,7 @@ def migrate_project_view(user_data, cache):
     commit_message = ctx.get("commit_message", None)
 
     if ctx.get("is_delayed", False):
-        job = cache.make_job(user, locked=project.project_id)
+        job = cache.make_job(user, project=project, job_data={"renku_op": "migrate_job"})
 
         with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
             queue.enqueue(

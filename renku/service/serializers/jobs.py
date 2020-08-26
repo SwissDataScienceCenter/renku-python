@@ -16,9 +16,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache serializers for jobs."""
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, post_dump, pre_dump
 
 from renku.service.serializers.rpc import JsonRPCResponse
+
+
+class ProjectJobDetails(Schema):
+    """Project details part of JobDetails response."""
+
+    project_id = fields.String()
+
+    name = fields.String()
+    fullname = fields.String()
+    email = fields.String()
+    owner = fields.String()
+    ref = fields.String()
 
 
 class JobDetails(Schema):
@@ -28,6 +40,8 @@ class JobDetails(Schema):
     updated_at = fields.DateTime()
 
     job_id = fields.String(required=True)
+    project = fields.Nested(ProjectJobDetails)
+    renku_op = fields.String()
 
     state = fields.String()
     extras = fields.Dict()

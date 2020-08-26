@@ -260,7 +260,7 @@ def import_dataset_view(user_data, cache):
     user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx["project_id"])
-    job = cache.make_job(user, locked=project.project_id)
+    job = cache.make_job(user, project=project)
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(

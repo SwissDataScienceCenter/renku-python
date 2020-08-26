@@ -36,9 +36,16 @@ jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 @requires_identity
 def list_jobs(user_data, cache):
     """List user created jobs."""
-    return result_response(
-        JobListResponseRPC(), {"jobs": [job for job in cache.get_jobs(cache.ensure_user(user_data))]}
-    )
+    user = cache.ensure_user(user_data)
+
+    jobs = []
+    for job in cache.get_jobs(user):
+        if job.project_id:
+            job.project = cache.get_project(user, job.project_id)
+
+        jobs.append(job)
+
+    return result_response(JobListResponseRPC(), {"jobs": jobs})
 
 
 @header_doc(description="Show details for a specific job.", tags=(JOBS_BLUEPRINT_TAG,))
