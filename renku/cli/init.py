@@ -355,6 +355,7 @@ def init(
     else:
         template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)
+        template_source = "renku"
 
     # select specific template
     repeat = False
@@ -390,13 +391,15 @@ def init(
         if len(templates) == 1:
             template_data = templates[0]
         else:
-            template_num = click.prompt(
+            template_index = click.prompt(
                 text=create_template_sentence(templates, describe=describe, instructions=True),
                 type=click.IntRange(1, len(templates)),
                 show_default=False,
                 show_choices=False,
             )
-            template_data = templates[template_num - 1]
+            template_data = templates[template_index - 1]
+
+        template_id = template_data["folder"]
 
     # verify variables have been passed
     template_variables = template_data.get("variables", {})
@@ -442,6 +445,14 @@ def init(
             click.echo("Warning! Overwriting non-empty folder.")
         except GitCommandError as e:
             click.UsageError(e)
+
+    # supply additional parameters
+    parameter["__template_source__"] = template_source
+    parameter["__template_ref__"] = template_ref
+    parameter["__template_id__"] = template_id
+    parameter["__namespace__"] = ""
+    parameter["__repository__"] = ""
+    parameter["__project_slug__"] = ""
 
     # clone the repo
     template_path = template_folder / template_data["folder"]

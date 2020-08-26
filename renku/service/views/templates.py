@@ -115,12 +115,28 @@ def create_project_from_template(user, cache):
         shutil.rmtree(str(new_project_path))
     new_project_path.mkdir(parents=True, exist_ok=True)
 
+    default_metadata = {
+        "__template_source__": ctx["git_url"],
+        "__template_ref__": ctx["ref"],
+        "__template_id__": ctx["identifier"],
+        "__namespace__": ctx["project_namespace"],
+        "__repository__": ctx["project_repository"],
+        "__project_slug__": ctx["project_slug"],
+    }
+
     # prepare data and init new project
     source_path = template_project.abs_path / ctx["identifier"]
     git_user = {"email": user["email"], "name": user["fullname"]}
     with chdir(new_project_path):
         create_from_template_local(
-            source_path, ctx["project_name"], provided_parameters, git_user, ctx["url"], ctx["ref"], "service"
+            source_path,
+            ctx["project_name"],
+            provided_parameters,
+            default_metadata,
+            git_user,
+            ctx["url"],
+            ctx["ref"],
+            "service",
         )
     new_repo_push(new_project_path, ctx["new_project_url_with_auth"])
 
