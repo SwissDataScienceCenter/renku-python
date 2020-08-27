@@ -24,7 +24,9 @@ import attr
 from renku.core.models.entities import CommitMixin
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Process(CommitMixin):
     """Represent a process."""
 
@@ -38,7 +40,9 @@ class Process(CommitMixin):
         return self._activity()
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Workflow(Process):
     """Represent workflow with subprocesses."""
 

@@ -134,7 +134,10 @@ class StorageApiMixin(RepositoryApiMixin):
         """Initialize the external storage for data."""
         try:
             call(
-                self._CMD_STORAGE_INSTALL + (["--force"] if force else []), stdout=PIPE, stderr=STDOUT, cwd=self.path,
+                self._CMD_STORAGE_INSTALL + (["--force"] if force else []),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=self.path,
             )
         except (KeyboardInterrupt, OSError) as e:
             raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
@@ -183,7 +186,10 @@ class StorageApiMixin(RepositoryApiMixin):
         if track_paths:
             try:
                 call(
-                    self._CMD_STORAGE_TRACK + track_paths, stdout=PIPE, stderr=STDOUT, cwd=self.path,
+                    self._CMD_STORAGE_TRACK + track_paths,
+                    stdout=PIPE,
+                    stderr=STDOUT,
+                    cwd=self.path,
                 )
             except (KeyboardInterrupt, OSError) as e:
                 raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
@@ -195,7 +201,10 @@ class StorageApiMixin(RepositoryApiMixin):
         """Untrack paths from the external storage."""
         try:
             call(
-                self._CMD_STORAGE_UNTRACK + list(paths), stdout=PIPE, stderr=STDOUT, cwd=self.path,
+                self._CMD_STORAGE_UNTRACK + list(paths),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=self.path,
             )
         except (KeyboardInterrupt, OSError) as e:
             raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
@@ -312,7 +321,10 @@ class StorageApiMixin(RepositoryApiMixin):
                     path, "r+t"
                 ) as input_file:
                     run(
-                        self._CMD_STORAGE_CLEAN, cwd=client_path, stdin=input_file, stdout=tmp,
+                        self._CMD_STORAGE_CLEAN,
+                        cwd=client_path,
+                        stdin=input_file,
+                        stdout=tmp,
                     )
 
                     tmp_path = tmp.name
@@ -339,7 +351,11 @@ class StorageApiMixin(RepositoryApiMixin):
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
         run(
-            self._CMD_STORAGE_CHECKOUT + list(paths), cwd=self.path, stdout=PIPE, stderr=STDOUT, check=True,
+            self._CMD_STORAGE_CHECKOUT + list(paths),
+            cwd=self.path,
+            stdout=PIPE,
+            stderr=STDOUT,
+            check=True,
         )
 
     def check_requires_tracking(self, *paths):

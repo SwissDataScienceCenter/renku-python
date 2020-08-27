@@ -429,7 +429,11 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client):
         paths.append(str(new_file))
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "dataset"] + paths,
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
 
@@ -447,7 +451,11 @@ def test_repository_file_to_dataset(runner, project, client, subdirectory):
     client.repo.git.commit(message="Added file a", no_verify=True)
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "dataset", str(a_path)],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     with client.with_dataset("dataset") as dataset:
@@ -479,7 +487,11 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
 
     paths = [str(zero_data), str(first_level), str(second_level)]
 
-    result = runner.invoke(cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "dataset"] + paths,
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     assert os.stat(client.path / DATA_DIR / "dataset" / "zero.txt")
@@ -496,14 +508,22 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory):
 )
 def test_usage_error_in_add_from_url(runner, client, params, message):
     """Test user's errors when adding URL/local file to a dataset."""
-    result = runner.invoke(cli, ["dataset", "add", "remote", "--create"] + params, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "remote", "--create"] + params,
+        catch_exceptions=False,
+    )
     assert 2 == result.exit_code
     assert message in result.output
 
 
 def test_add_from_local_repo_warning(runner, client, data_repository, directory_tree):
     """Test a warning is printed when adding from a local git repo."""
-    result = runner.invoke(cli, ["dataset", "add", "dataset", "--create", str(directory_tree)], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "dataset", "--create", str(directory_tree)],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
     assert "Use remote's Git URL instead to enable lineage " in result.output
 
@@ -513,7 +533,11 @@ def test_add_data_directory(runner, client):
     result = runner.invoke(cli, ["dataset", "create", "new-dataset"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset", "add", "new-dataset", "data/new-dataset"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "new-dataset", "data/new-dataset"],
+        catch_exceptions=False,
+    )
     assert 2 == result.exit_code
     assert "Cannot add dataset's data directory recursively" in result.output
 
@@ -537,7 +561,10 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
         paths.append(str(new_file))
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset"] + paths,
+    )
     assert 0 == result.exit_code
 
     received_inodes = []
@@ -555,7 +582,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
 
 def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
     """Test adding a file into a dataset and check path independent
-    of the CWD """
+    of the CWD"""
     # create a dataset
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code
@@ -568,7 +595,11 @@ def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
     client.repo.git.commit(message="Added file a")
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "dataset", str(a_path)], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "dataset", str(a_path)],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     with client.with_dataset("dataset") as dataset:
@@ -640,7 +671,11 @@ def test_datasets_ls_files_tabular_dataset_filter(tmpdir, runner, project):
         created_files.append(new_file.basename)
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset"] + paths,
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     # list all files in non empty dataset
@@ -683,7 +718,11 @@ def test_datasets_ls_files_tabular_patterns(tmpdir, runner, project):
         sub_file.write(str(i))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset"] + paths,
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     # check include / exclude filters
@@ -720,7 +759,10 @@ def test_datasets_ls_files_tabular_creators(tmpdir, runner, project, client):
         paths.append(str(new_file))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset"] + paths,
+    )
     assert 0 == result.exit_code
 
     with client.with_dataset("my-dataset") as dataset:
@@ -753,7 +795,11 @@ def test_datasets_ls_files_correct_paths(tmpdir, runner, client):
         paths.append(str(new_file))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset"] + paths,
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     # check include / exclude filters
@@ -772,7 +818,11 @@ def test_datasets_ls_files_with_name(directory_tree, runner, project):
     assert 0 == result.exit_code
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", directory_tree.strpath], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset", directory_tree.strpath],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     # list files with name
@@ -870,7 +920,11 @@ def test_dataset_1rm(tmpdir, runner, project, client, subdirectory):
         paths.append(str(new_file))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset"] + paths,
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     # try to delete a non empty dataset
@@ -1069,19 +1123,33 @@ def test_dataset_tag(tmpdir, runner, project, subdirectory):
     new_file.write(str("test"))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False,)
-    assert 0 == result.exit_code
-
-    # tag dataset
-    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0"], catch_exceptions=False,)
-    assert 0 == result.exit_code
-
     result = runner.invoke(
-        cli, ["dataset", "tag", "my-dataset", "A", "-d", "short descriptiön"], catch_exceptions=False,
+        cli,
+        ["dataset", "add", "my-dataset", str(new_file)],
+        catch_exceptions=False,
     )
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False,)
+    # tag dataset
+    result = runner.invoke(
+        cli,
+        ["dataset", "tag", "my-dataset", "1.0"],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli,
+        ["dataset", "tag", "my-dataset", "A", "-d", "short descriptiön"],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code
+
+    result = runner.invoke(
+        cli,
+        ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
 
@@ -1096,22 +1164,36 @@ def test_dataset_ls_tags(tmpdir, runner, project, client, form):
     new_file.write(str("test"))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset", str(new_file)],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     commit1 = client.repo.head.commit.hexsha
 
     # tag dataset
-    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     commit2 = client.repo.head.commit.hexsha
 
-    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     result = runner.invoke(
-        cli, ["dataset", "ls-tags", "my-dataset", "--format={}".format(form)], catch_exceptions=False,
+        cli,
+        ["dataset", "ls-tags", "my-dataset", "--format={}".format(form)],
+        catch_exceptions=False,
     )
     assert 0 == result.exit_code
     assert "1.0" in result.output
@@ -1131,29 +1213,53 @@ def test_dataset_rm_tag(tmpdir, runner, project, client, subdirectory):
     new_file.write(str("test"))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset", str(new_file)],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     commit1 = client.repo.head.commit.hexsha
 
     # tag dataset
-    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "tag", "my-dataset", "1.0", "-d", "first tag!"],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset", "ls-tags", "my-dataset"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "ls-tags", "my-dataset"],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
     assert "1.0" in result.output
     assert "first tag!" in result.output
     assert commit1 in result.output
 
-    result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "2.0"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "rm-tags", "my-dataset", "2.0"],
+        catch_exceptions=False,
+    )
     assert 2 == result.exit_code
     assert "not found" in result.output
 
-    result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1.0"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "rm-tags", "my-dataset", "1.0"],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1.0"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "rm-tags", "my-dataset", "1.0"],
+        catch_exceptions=False,
+    )
     assert 2 == result.exit_code
     assert "not found" in result.output
 
@@ -1168,15 +1274,27 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
     new_file.write(str("test"))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset", str(new_file)],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     for i in range(1, 4):
         # tag dataset
-        result = runner.invoke(cli, ["dataset", "tag", "my-dataset", str(i)], catch_exceptions=False,)
+        result = runner.invoke(
+            cli,
+            ["dataset", "tag", "my-dataset", str(i)],
+            catch_exceptions=False,
+        )
         assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1", "2", "3"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "rm-tags", "my-dataset", "1", "2", "3"],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
     assert "1" not in result.output
     assert "2" not in result.output
@@ -1184,7 +1302,11 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
 
 
 def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
-    result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "rm-tags", "my-dataset", "1"],
+        catch_exceptions=False,
+    )
 
     assert 2 == result.exit_code
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -1196,10 +1318,18 @@ def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
     new_file.write(str("test"))
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset", str(new_file)],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1"], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "rm-tags", "my-dataset", "1"],
+        catch_exceptions=False,
+    )
     assert 2 == result.exit_code
 
 
@@ -1207,7 +1337,9 @@ def test_dataset_clean_up_when_add_fails(runner, client, subdirectory):
     """Test project is cleaned when dataset add fails for a new dataset."""
     # add a non-existing path to a new dataset
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "new-dataset", "non-existing-file"], catch_exceptions=True,
+        cli,
+        ["dataset", "add", "--create", "new-dataset", "non-existing-file"],
+        catch_exceptions=True,
     )
 
     assert 2 == result.exit_code

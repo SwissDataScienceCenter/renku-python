@@ -67,7 +67,9 @@ cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 @marshal_with(FileListResponseRPC)
 @header_doc(description="List uploaded files.", tags=(CACHE_BLUEPRINT_TAG,))
 @cache_blueprint.route(
-    "/cache.files_list", methods=["GET"], provide_automatic_options=False,
+    "/cache.files_list",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @requires_cache
@@ -86,10 +88,13 @@ def list_uploaded_files_view(user, cache):
 @use_kwargs(FileUploadRequest)
 @marshal_with(FileUploadResponseRPC)
 @header_doc(
-    description="Upload file or archive of files.", tags=(CACHE_BLUEPRINT_TAG,),
+    description="Upload file or archive of files.",
+    tags=(CACHE_BLUEPRINT_TAG,),
 )
 @cache_blueprint.route(
-    "/cache.files_upload", methods=["POST"], provide_automatic_options=False,
+    "/cache.files_upload",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @requires_cache
@@ -114,7 +119,12 @@ def upload_file_view(user, cache):
         if response_builder.get("override_existing", False):
             file_path.unlink()
         else:
-            return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": "file exists",})
+            return jsonify(
+                error={
+                    "code": INVALID_PARAMS_ERROR_CODE,
+                    "reason": "file exists",
+                }
+            )
 
     file.save(str(file_path))
 
@@ -176,7 +186,10 @@ def _project_clone(cache, user_data, project_data):
         local_path,
         depth=project_data["depth"] if project_data["depth"] != 0 else None,
         raise_git_except=True,
-        config={"user.name": project_data["fullname"], "user.email": project_data["email"],},
+        config={
+            "user.name": project_data["fullname"],
+            "user.email": project_data["email"],
+        },
         checkout_rev=project_data["ref"],
     )
 
@@ -195,7 +208,9 @@ def _project_clone(cache, user_data, project_data):
     tags=(CACHE_BLUEPRINT_TAG,),
 )
 @cache_blueprint.route(
-    "/cache.project_clone", methods=["POST"], provide_automatic_options=False,
+    "/cache.project_clone",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
@@ -210,10 +225,13 @@ def project_clone_view(user_data):
 
 @marshal_with(ProjectListResponseRPC)
 @header_doc(
-    "List cached projects.", tags=(CACHE_BLUEPRINT_TAG,),
+    "List cached projects.",
+    tags=(CACHE_BLUEPRINT_TAG,),
 )
 @cache_blueprint.route(
-    "/cache.project_list", methods=["GET"], provide_automatic_options=False,
+    "/cache.project_list",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @requires_cache
@@ -228,10 +246,13 @@ def list_projects_view(user, cache):
 @use_kwargs(ProjectMigrateRequest)
 @marshal_with(ProjectMigrateResponseRPC)
 @header_doc(
-    "Migrate project to the latest version.", tags=(CACHE_BLUEPRINT_TAG,),
+    "Migrate project to the latest version.",
+    tags=(CACHE_BLUEPRINT_TAG,),
 )
 @cache_blueprint.route(
-    "/cache.migrate", methods=["POST"], provide_automatic_options=False,
+    "/cache.migrate",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
@@ -250,7 +271,11 @@ def migrate_project_view(user_data, cache):
 
         with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
             queue.enqueue(
-                migrate_job, user_data, project.project_id, job.job_id, commit_message,
+                migrate_job,
+                user_data,
+                project.project_id,
+                job.job_id,
+                commit_message,
             )
 
         return result_response(ProjectMigrateAsyncResponseRPC(), job)
@@ -267,10 +292,13 @@ def migrate_project_view(user_data, cache):
 @use_kwargs(ProjectMigrateRequest)
 @marshal_with(ProjectMigrationCheckResponseRPC)
 @header_doc(
-    "Check if project requires migration.", tags=(CACHE_BLUEPRINT_TAG,),
+    "Check if project requires migration.",
+    tags=(CACHE_BLUEPRINT_TAG,),
 )
 @cache_blueprint.route(
-    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False,
+    "/cache.migrations_check",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @requires_cache

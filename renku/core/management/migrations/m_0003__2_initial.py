@@ -86,7 +86,11 @@ def _migrate_datasets_pre_v0_3(client):
         dataset.to_yaml(new_path)
 
         Path(old_path).unlink()
-        ref = LinkReference.create(client=client, name="datasets/{0}".format(name), force=True,)
+        ref = LinkReference.create(
+            client=client,
+            name="datasets/{0}".format(name),
+            force=True,
+        )
         ref.set_reference(new_path)
 
 
@@ -98,7 +102,11 @@ def _migrate_broken_dataset_paths(client):
             dataset.name = dataset.title
 
         # migrate the refs
-        ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True,)
+        ref = LinkReference.create(
+            client=client,
+            name="datasets/{0}".format(dataset.name),
+            force=True,
+        )
         ref.set_reference(expected_path / client.METADATA)
 
         old_dataset_path = client.renku_datasets_path / uuid.UUID(dataset.identifier).hex
@@ -130,7 +138,8 @@ def _fix_labels_and_ids(client):
 
         for file_ in dataset.files:
             _, commit, _ = client.resolve_in_submodules(
-                client.find_previous_commit(file_.path, revision="HEAD"), file_.path,
+                client.find_previous_commit(file_.path, revision="HEAD"),
+                file_.path,
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
