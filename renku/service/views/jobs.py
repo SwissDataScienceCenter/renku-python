@@ -29,7 +29,9 @@ jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 
 @header_doc(description="List uploaded files.", tags=(JOBS_BLUEPRINT_TAG,))
 @jobs_blueprint.route(
-    "/jobs", methods=["GET"], provide_automatic_options=False,
+    "/jobs",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_validation_except
 @requires_cache
@@ -43,11 +45,16 @@ def list_jobs(user_data, cache):
 
 @header_doc(description="Show details for a specific job.", tags=(JOBS_BLUEPRINT_TAG,))
 @jobs_blueprint.route(
-    "/jobs/<job_id>", methods=["GET"], provide_automatic_options=False,
+    "/jobs/<job_id>",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_validation_except
 @requires_cache
 @requires_identity
 def job_details(user_data, cache, job_id):
     """Show details for a specific job."""
-    return result_response(JobDetailsResponseRPC(), cache.get_job(cache.ensure_user(user_data), job_id),)
+    return result_response(
+        JobDetailsResponseRPC(),
+        cache.get_job(cache.ensure_user(user_data), job_id),
+    )

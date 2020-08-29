@@ -68,7 +68,8 @@ def workflow(ctx, client):
         for path in client.workflow_path.glob("*.yaml"):
             click.echo(
                 "{path}: {names}".format(
-                    path=path.name, names=", ".join(click.style(_deref(name), fg="green") for name in names[path.name]),
+                    path=path.name,
+                    names=", ".join(click.style(_deref(name), fg="green") for name in names[path.name]),
                 )
             )
 
@@ -148,7 +149,9 @@ def create(client, output_file, revision, paths):
     graph = Graph(client)
     outputs = graph.build(paths=paths, revision=revision)
 
-    workflow = graph.as_workflow(outputs=outputs,)
+    workflow = graph.as_workflow(
+        outputs=outputs,
+    )
 
     if output_file:
         output_file = Path(output_file)

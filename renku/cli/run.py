@@ -212,21 +212,40 @@ from renku.core.management.git import get_mapped_std_streams
 from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 
 
-@click.command(context_settings=dict(ignore_unknown_options=True,))
-@click.option(
-    "explicit_inputs", "--input", multiple=True, help="Force a path to be considered as an input.",
+@click.command(
+    context_settings=dict(
+        ignore_unknown_options=True,
+    )
 )
 @click.option(
-    "explicit_outputs", "--output", multiple=True, help="Force a path to be considered an output.",
+    "explicit_inputs",
+    "--input",
+    multiple=True,
+    help="Force a path to be considered as an input.",
 )
 @click.option(
-    "--no-output", is_flag=True, default=False, help="Allow command without output files.",
+    "explicit_outputs",
+    "--output",
+    multiple=True,
+    help="Force a path to be considered an output.",
 )
 @click.option(
-    "--no-input-detection", is_flag=True, default=False, help="Disable auto-detection of inputs.",
+    "--no-output",
+    is_flag=True,
+    default=False,
+    help="Allow command without output files.",
 )
 @click.option(
-    "--no-output-detection", is_flag=True, default=False, help="Disable auto-detection of outputs.",
+    "--no-input-detection",
+    is_flag=True,
+    default=False,
+    help="Disable auto-detection of inputs.",
+)
+@click.option(
+    "--no-output-detection",
+    is_flag=True,
+    default=False,
+    help="Disable auto-detection of outputs.",
 )
 @click.option(
     "--success-code",
@@ -239,7 +258,10 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 @option_isolation
 @click.argument("command_line", nargs=-1, type=click.UNPROCESSED)
 @pass_local_client(
-    clean=True, requires_migration=True, commit=True, ignore_std_streams=True,
+    clean=True,
+    requires_migration=True,
+    commit=True,
+    ignore_std_streams=True,
 )
 def run(
     client,
@@ -330,7 +352,9 @@ def run(
                         sys.stderr = old_stderr
 
                 return_code = call(
-                    factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()},
+                    factory.command_line,
+                    cwd=os.getcwd(),
+                    **{key: getattr(sys, key) for key in mapped_std.keys()},
                 )
 
                 sys.stdout.flush()
