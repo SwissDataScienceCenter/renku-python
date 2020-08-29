@@ -135,7 +135,10 @@ class GitCore:
         repo_path = self.repo.working_dir
         return [
             os.path.join(repo_path, path)
-            for path in itertools.chain((x[0] for x in self.repo.index.entries), self.repo.untracked_files,)
+            for path in itertools.chain(
+                (x[0] for x in self.repo.index.entries),
+                self.repo.untracked_files,
+            )
         ]
 
     def find_ignored_paths(self, *paths):
@@ -323,7 +326,9 @@ class GitCore:
 
         # Ignore pre-commit hooks since we have already done everything.
         self.repo.index.commit(
-            commit_message, committer=committer, skip_hooks=True,
+            commit_message,
+            committer=committer,
+            skip_hooks=True,
         )
 
     @contextmanager
@@ -354,7 +359,11 @@ class GitCore:
 
     @contextmanager
     def worktree(
-        self, path=None, branch_name=None, commit=None, merge_args=("--ff-only",),
+        self,
+        path=None,
+        branch_name=None,
+        commit=None,
+        merge_args=("--ff-only",),
     ):
         """Create new worktree."""
         from git import NULL_TREE, GitCommandError

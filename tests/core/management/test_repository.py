@@ -29,7 +29,10 @@ def test_latest_version(project):
     from renku import __version__
 
     create_dataset(
-        "ds1", title="", description="", creators=[],
+        "ds1",
+        title="",
+        description="",
+        creators=[],
     )
 
     agent_version = LocalClient(project).latest_agent
@@ -43,7 +46,10 @@ def test_latest_version_user_commits(project):
     from renku import __version__
 
     create_dataset(
-        "ds1", title="", description="", creators=[],
+        "ds1",
+        title="",
+        description="",
+        creators=[],
     )
 
     myfile = Path("myfile")
