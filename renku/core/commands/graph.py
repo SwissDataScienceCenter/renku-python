@@ -412,9 +412,6 @@ class Graph(object):
         self, input_paths=None, output_paths=None, outputs=None, use_latest=True,
     ):
         """Serialize graph to renku ``Run`` workflow."""
-        if output_paths is None:
-            output_paths = {node.path for node in outputs if _safe_path(node.path)}
-
         processes = set()
         stack = []
 
@@ -484,13 +481,32 @@ class Graph(object):
             # Loop through runs and add them as sub processes to parent.
             parent_process.add_subprocess(step.association.plan)
 
-        return self._find_identical_parent_run(parent_process)
+        return self._find_identical_parent_run(run=parent_process, outputs=outputs)
 
-    def _find_identical_parent_run(self, run):
+    def _find_identical_parent_run(self, run, outputs):
+        from marshmallow.exceptions import ValidationError
+
+        def workflow_has_identical_subprocesses(workflow_, subprocesses_ids_):
+            wf_subprocesses_ids = [step.process._id for step in workflow_.association.plan.subprocesses]
+            return wf_subprocesses_ids == subprocesses_ids_
+
         subprocesses_ids = [step.process._id for step in run.subprocesses]
         for workflow in self._workflows.values():
-            other_subprocesses_ids = [step.process._id for step in workflow.association.plan.subprocesses]
-            if subprocesses_ids == other_subprocesses_ids:
+            if workflow_has_identical_subprocesses(workflow, subprocesses_ids):
                 return workflow.association.plan
+
+        # Search all workflow files that generate the same outputs to find a similar parent run
+        workflow_files = set()
+        for output in outputs:
+            activities = self.client.path_activity_cache.get(output.path, {}).values()
+            workflow_files |= set([file for activity in activities for file in activity])
+        for file_ in workflow_files:
+            try:
+                workflow = WorkflowRun.from_yaml(path=file_, client=self.client)
+            except ValidationError:  # Not a WorkflowRun
+                pass
+            else:
+                if workflow_has_identical_subprocesses(workflow, subprocesses_ids):
+                    return workflow.association.plan
 
         return run
