@@ -69,7 +69,12 @@ def handle_redis_except(f):
         except (RedisError, OSError) as e:
             error_code = REDIS_EXCEPTION_ERROR_CODE
 
-            return jsonify(error={"code": error_code, "reason": e.messages,})
+            return jsonify(
+                error={
+                    "code": error_code,
+                    "reason": e.messages,
+                }
+            )
 
     return decorated_function
 
@@ -96,7 +101,12 @@ def handle_schema_except(f):
             return f(*args, **kwargs)
         except KeyError as e:
             if e.args and len(e.args) > 0:
-                return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": f'missing parameter "{e.args[0]}"',})
+                return jsonify(
+                    error={
+                        "code": INVALID_PARAMS_ERROR_CODE,
+                        "reason": f'missing parameter "{e.args[0]}"',
+                    }
+                )
             raise
 
     return decorated_function
@@ -111,7 +121,12 @@ def handle_validation_except(f):
         try:
             return f(*args, **kwargs)
         except ValidationError as e:
-            return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": e.messages,})
+            return jsonify(
+                error={
+                    "code": INVALID_PARAMS_ERROR_CODE,
+                    "reason": e.messages,
+                }
+            )
 
     return decorated_function
 

@@ -90,7 +90,10 @@ def test_dataset_deserialization(client, dataset):
 
 def test_dataset_files_empty_metadata(dataset_metadata):
     """Check parsing metadata of dataset files with empty filename."""
-    dataset = Dataset.from_jsonld(dataset_metadata, client=LocalClient("."),)
+    dataset = Dataset.from_jsonld(
+        dataset_metadata,
+        client=LocalClient("."),
+    )
     files = [file.filename for file in dataset.files if not file.filename]
 
     if files:
@@ -108,7 +111,10 @@ def test_uuid_migration(dataset_metadata, client):
 def test_dataset_creator_email(dataset_metadata):
     """Check that creators without an email are assigned a blank node."""
     # modify the dataset metadata to change the creator
-    dataset = Dataset.from_jsonld(dataset_metadata, client=LocalClient("."),)
+    dataset = Dataset.from_jsonld(
+        dataset_metadata,
+        client=LocalClient("."),
+    )
 
     dataset.creators[0]._id = "mailto:None"
     dataset_broken = Dataset.from_jsonld(dataset.as_jsonld(), client=LocalClient("."))

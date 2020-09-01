@@ -94,7 +94,9 @@ def _migrate_old_workflows(client):
             committer = Actor("renku {0}".format(__version__), version_url)
 
             client.repo.index.commit(
-                commit_msg, committer=committer, skip_hooks=True,
+                commit_msg,
+                committer=committer,
+                skip_hooks=True,
             )
 
 
@@ -272,7 +274,10 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
     if not persist:
         return run, None
 
-    step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(cmd_line_tool.baseCommand)),)
+    step_name = "{0}_{1}.yaml".format(
+        uuid.uuid4().hex,
+        secure_filename("_".join(cmd_line_tool.baseCommand)),
+    )
 
     absolute_path = client.workflow_path / step_name
     path = absolute_path.relative_to(client.path)
@@ -331,7 +336,8 @@ def _migrate_composite_step(client, workflow, path, commit=None):
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
     client, commit, path = client.resolve_in_submodules(
-        client.find_previous_commit(path, revision=commit.hexsha), path,
+        client.find_previous_commit(path, revision=commit.hexsha),
+        path,
     )
 
     entity_cls = Entity
@@ -341,7 +347,11 @@ def _entity_from_path(client, path, commit):
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
         return Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
     else:
-        return entity_cls(commit=commit, client=client, path=str(path),)
+        return entity_cls(
+            commit=commit,
+            client=client,
+            path=str(path),
+        )
 
 
 def _invalidations_from_commit(client, commit):
@@ -363,7 +373,10 @@ def _invalidations_from_commit(client, commit):
 
 def _get_activity_entity(client, commit, path, collections, deleted=False):
     """Gets the entity associated with this Activity and path."""
-    client, commit, path = client.resolve_in_submodules(commit, path,)
+    client, commit, path = client.resolve_in_submodules(
+        commit,
+        path,
+    )
     output_path = client.path / path
     parents = list(output_path.relative_to(client.path).parents)
 
@@ -373,7 +386,13 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
         if str(parent) in collections:
             collection = collections[str(parent)]
         else:
-            collection = Collection(client=client, commit=commit, path=str(parent), members=[], parent=collection,)
+            collection = Collection(
+                client=client,
+                commit=commit,
+                path=str(parent),
+                members=[],
+                parent=collection,
+            )
             members.append(collection)
             collections[str(parent)] = collection
 
@@ -386,7 +405,12 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted:
         entity = Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
     else:
-        entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection,)
+        entity = entity_cls(
+            commit=commit,
+            client=client,
+            path=str(path),
+            parent=collection,
+        )
 
     if collection:
         collection.members.append(entity)

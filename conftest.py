@@ -124,7 +124,13 @@ def run_shell():
         :param sleep_for: After executing command sleep for n seconds.
         :returns: Process object or tuple (stdout, stderr).
         """
-        ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,)
+        ps = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
 
         if return_ps:
             return ps
@@ -150,7 +156,8 @@ def run(runner, capsys):
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
                 cli.main(
-                    args=args, prog_name=runner.get_default_prog_name(cli),
+                    args=args,
+                    prog_name=runner.get_default_prog_name(cli),
                 )
                 return 0
             except SystemExit as e:
@@ -293,7 +300,16 @@ def dataset(client):
     from renku.core.models.provenance.agents import Person
 
     with client.with_dataset("dataset", create=True) as dataset:
-        dataset.creators = [Person(**{"affiliation": "xxx", "email": "me@example.com", "id": "me_id", "name": "me",})]
+        dataset.creators = [
+            Person(
+                **{
+                    "affiliation": "xxx",
+                    "email": "me@example.com",
+                    "id": "me_id",
+                    "name": "me",
+                }
+            )
+        ]
     return dataset
 
 
@@ -381,7 +397,12 @@ def clone_compressed_repository(base_path, name):
 
 
 @pytest.fixture(
-    params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git",],
+    params=[
+        "old-datasets-v0.3.0.git",
+        "old-datasets-v0.5.0.git",
+        "old-datasets-v0.5.1.git",
+        "test-renku-v0.3.0.git",
+    ],
     scope="module",
 )
 def old_repository(request, tmp_path_factory):
@@ -839,7 +860,11 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
 
     payload = {"git_url": IT_REMOTE_REPO_URL}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=authentication_headers,)
+    response = svc_client.post(
+        "/cache.project_clone",
+        data=json.dumps(payload),
+        headers=authentication_headers,
+    )
 
     assert response
     assert "result" in response.json
@@ -957,48 +982,75 @@ def svc_protected_repo(svc_client):
         {
             "url": "/cache.files_list",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {"url": "/cache.files_upload", "allowed_method": "POST", "headers": {}},
         {
             "url": "/cache.project_clone",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {
             "url": "/cache.project_list",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {
             "url": "/datasets.add",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {
             "url": "/datasets.create",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {
             "url": "/datasets.files_list",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {
             "url": "/datasets.list",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {
             "url": "/templates.read_manifest",
             "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
         {
             "url": "/templates.create_project",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
         },
     ]
 )
@@ -1038,8 +1090,15 @@ def unlink_file_setup(svc_client_with_repo):
     """Setup for testing of unlinking of a file."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
-    payload = make_dataset_add_payload(project_id, [("file_path", "README.md")],)
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    payload = make_dataset_add_payload(
+        project_id,
+        [("file_path", "README.md")],
+    )
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert 200 == response.status_code
 
     unlink_payload = {
