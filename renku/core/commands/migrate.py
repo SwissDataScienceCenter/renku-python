@@ -17,7 +17,7 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.management.migrate import is_migration_required, is_project_unsupported, migrate
+from renku.core.management.migrate import is_migration_required, is_project_unsupported, migrate, migrate_environment
 
 from .client import pass_local_client
 
@@ -37,12 +37,41 @@ def migrations_versions(client):
 
 
 @pass_local_client(clean=True, commit=True, commit_empty=False)
-def migrate_project(client, progress_callback=None, commit_message=None):
+def migrate_project(
+    client,
+    force_template_update=False,
+    skip_template_update=False,
+    skip_docker_update=False,
+    skip_migrations=False,
+    progress_callback=None,
+    commit_message=None,
+):
     """Migrate all project's entities."""
-    return migrate(client=client, progress_callback=progress_callback)
+    return migrate(
+        client=client,
+        force_template_update=force_template_update,
+        skip_template_update=skip_template_update,
+        skip_docker_update=skip_docker_update,
+        skip_migrations=skip_migrations,
+        progress_callback=progress_callback,
+    )
 
 
 @pass_local_client(clean=True, commit=False)
-def migrate_project_no_commit(client, progress_callback=None):
+def migrate_project_no_commit(
+    client,
+    force_template_update=False,
+    skip_template_update=False,
+    skip_docker_update=False,
+    skip_migrations=False,
+    progress_callback=None,
+):
     """Migrate all project's entities but do not commit changes."""
-    return migrate(client=client, progress_callback=progress_callback)
+    return migrate(
+        client=client,
+        force_template_update=force_template_update,
+        skip_template_update=skip_template_update,
+        skip_docker_update=skip_docker_update,
+        skip_migrations=skip_migrations,
+        progress_callback=progress_callback,
+    )

@@ -1,3 +1,4 @@
+#!/bin/bash
 REF="refs/heads/master"
 if [ "$REF" == "refs/heads/master" ]
 then

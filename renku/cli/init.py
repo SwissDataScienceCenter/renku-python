@@ -140,14 +140,13 @@ from tempfile import mkdtemp
 
 import attr
 import click
-import pkg_resources
 from git import Repo
 
 from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import INFO
 from renku.core.commands.git import set_git_home
-from renku.core.commands.init import create_from_template, fetch_template, read_template_manifest
+from renku.core.commands.init import create_from_template, fetch_template
 from renku.core.commands.options import option_external_storage_requested
 from renku.core.models.tabulate import tabulate
 
@@ -345,17 +344,9 @@ def init(
             '"john.doe@example.com"\n'
         )
 
-    # select template source
-    if template_source:
-        click.echo("Fetching template from {0}@{1}... ".format(template_source, template_ref), nl=False)
-        template_folder = Path(mkdtemp())
-        fetch_template(template_source, template_ref, template_folder)
-        template_manifest = read_template_manifest(template_folder, checkout=True)
-        click.secho("OK", fg="green")
-    else:
-        template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
-        template_manifest = read_template_manifest(template_folder)
-        template_source = "renku"
+    template_manifest, template_folder, template_source, template_version = fetch_template(
+        template_source, template_ref, click.echo
+    )
 
     # select specific template
     repeat = False
@@ -464,6 +455,9 @@ def init(
                 client=client,
                 name=name,
                 metadata=parameter,
+                template_version=template_version,
+                immutable_template_files=template_data.get("immutable_template_files", []),
+                automated_update=template_data.get("allow_template_update", False),
                 force=force,
                 data_dir=data_dir,
             )

@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Client for handling a local repository."""
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -102,6 +104,11 @@ class RepositoryApiMixin(GitCore):
     ACTIVITY_INDEX = "activity_index.yaml"
     """Caches activities that generated a path."""
 
+    DOCKERFILE = "Dockerfile"
+    """Name of the Dockerfile in the repo."""
+
+    TEMPLATE_CHECKSUMS = "template_checksums.json"
+
     RENKU_PROTECTED_PATHS = [
         "\\.renku/.*",
         "Dockerfile",
@@ -169,6 +176,16 @@ class RepositoryApiMixin(GitCore):
     def activity_index_path(self):
         """Path to the activity filepath cache."""
         return self.renku_path / self.ACTIVITY_INDEX
+
+    @property
+    def docker_path(self):
+        """Path to the Dockerfile."""
+        return self.path / self.DOCKERFILE
+
+    @property
+    def template_checksums(self):
+        """Return a ``Path`` instance to the template checksums file."""
+        return self.renku_path / self.TEMPLATE_CHECKSUMS
 
     @cached_property
     def cwl_prefix(self):
@@ -524,8 +541,10 @@ class RepositoryApiMixin(GitCore):
 
     def import_from_template(self, template_path, metadata, force=False):
         """Render template files from a template directory."""
+        checksums = {}
         for file in template_path.glob("**/*"):
-            destination = self.path / file.relative_to(template_path)
+            rel_path = file.relative_to(template_path)
+            destination = self.path / rel_path
             try:
                 # TODO: notify about the expected variables - code stub:
                 # with file.open() as fr:
@@ -540,7 +559,36 @@ class RepositoryApiMixin(GitCore):
                 rendered_content = template.render(metadata)
                 destination = Path(Template(str(destination)).render(metadata))
                 destination.write_text(rendered_content)
+                checksums[str(rel_path)] = self._content_hash(destination)
             except IsADirectoryError:
                 destination.mkdir(parents=True, exist_ok=True)
             except TypeError:
                 shutil.copy(file, destination)
+
+        self.template_checksums.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(self.template_checksums, "w") as checksum_file:
+            json.dump(checksums, checksum_file)
+
+    def check_immutable_template_files(self, *paths):
+        """Check paths and return a list of those that are marked immutable in the project template."""
+        if not self.project.immutable_template_files:
+            return []
+
+        immutable_paths = []
+
+        for path in paths:
+            relative_path = Path(path)
+
+            if str(relative_path) in self.project.immutable_template_files:
+                immutable_paths.append(path)
+
+        return immutable_paths
+
+    def _content_hash(self, path):
+        """Calculate the sha256 hash of a file."""
+        sha256_hash = hashlib.sha256()
+        with open(str(path), "rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()

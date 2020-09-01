@@ -26,7 +26,7 @@ from marshmallow.decorators import pre_dump
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.datastructures import Collection
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
@@ -46,6 +46,20 @@ class Project(ReferenceMixin):
     version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION),)
 
     agent_version = attr.ib(converter=str, default="pre-0.11.0")
+
+    template_source = attr.ib(converter=str, default=None)
+
+    template_ref = attr.ib(converter=str, default=None)
+
+    template_id = attr.ib(converter=str, default=None)
+
+    template_version = attr.ib(converter=str, default=None)
+
+    template_metadata = attr.ib(converter=str, default=None)
+
+    immutable_template_files = attr.ib(factory=list)
+
+    automated_update = attr.ib(converter=bool, default=False)
 
     client = attr.ib(default=None, kw_only=True)
 
@@ -171,6 +185,13 @@ class ProjectSchema(JsonLDSchema):
     created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     version = fields.String(schema.schemaVersion, missing=1)
     agent_version = fields.String(schema.agent, missing="pre-0.11.0")
+    template_source = fields.String(renku.templateSource, missing=None)
+    template_ref = fields.String(renku.templateReference, missing=None)
+    template_id = fields.String(renku.templateId, missing=None)
+    template_version = fields.String(renku.templateVersion, missing=None)
+    template_metadata = fields.String(renku.templateMetadata, missing=None)
+    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
+    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
     creator = Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 
