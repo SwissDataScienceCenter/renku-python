@@ -103,7 +103,10 @@ def build_routes(app):
     app.config.update(
         {
             "APISPEC_SPEC": APISpec(
-                title=SERVICE_NAME, openapi_version=OPENAPI_VERSION, version=API_VERSION, plugins=[MarshmallowPlugin()],
+                title=SERVICE_NAME,
+                openapi_version=OPENAPI_VERSION,
+                version=API_VERSION,
+                plugins=[MarshmallowPlugin()],
             ),
             "APISPEC_SWAGGER_URL": API_SPEC_URL,
         }

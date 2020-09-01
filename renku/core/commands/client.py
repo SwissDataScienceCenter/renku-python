@@ -68,7 +68,11 @@ def pass_local_client(
     def new_func(*args, **kwargs):
         ctx = click.get_current_context(silent=True)
         if ctx is None:
-            client = LocalClient(path=default_path(), renku_home=RENKU_HOME, external_storage_requested=True,)
+            client = LocalClient(
+                path=default_path(),
+                renku_home=RENKU_HOME,
+                external_storage_requested=True,
+            )
             ctx = click.Context(click.Command(method))
         else:
             client = ctx.ensure_object(LocalClient)

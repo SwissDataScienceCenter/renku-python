@@ -90,13 +90,17 @@ def _set_entity_client_commit(entity, client, commit):
         entity.commit = commit
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Activity(CommitMixin, ReferenceMixin):
     """Represent an activity in the repository."""
 
     _id = attr.ib(default=None, kw_only=True)
     _message = attr.ib(kw_only=True)
-    _was_informed_by = attr.ib(kw_only=True,)
+    _was_informed_by = attr.ib(
+        kw_only=True,
+    )
 
     part_of = attr.ib(default=None, kw_only=True)
 
@@ -155,7 +159,10 @@ class Activity(CommitMixin, ReferenceMixin):
 
     def _get_activity_entity(self, path, deleted=False):
         """Gets the entity associated with this Activity and path."""
-        client, commit, path = self.client.resolve_in_submodules(self.commit, path,)
+        client, commit, path = self.client.resolve_in_submodules(
+            self.commit,
+            path,
+        )
         output_path = client.path / path
         parents = list(output_path.relative_to(client.path).parents)
 
@@ -165,7 +172,13 @@ class Activity(CommitMixin, ReferenceMixin):
             if str(parent) in self._collections:
                 collection = self._collections[str(parent)]
             else:
-                collection = Collection(client=client, commit=commit, path=str(parent), members=[], parent=collection,)
+                collection = Collection(
+                    client=client,
+                    commit=commit,
+                    path=str(parent),
+                    members=[],
+                    parent=collection,
+                )
                 members.append(collection)
                 self._collections[str(parent)] = collection
 
@@ -179,7 +192,12 @@ class Activity(CommitMixin, ReferenceMixin):
         if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted:
             entity = client.load_dataset_from_path(path, commit=commit)
         else:
-            entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection,)
+            entity = entity_cls(
+                commit=commit,
+                client=client,
+                path=str(path),
+                parent=collection,
+            )
 
         if collection:
             collection.members.append(entity)
@@ -377,7 +395,9 @@ class Activity(CommitMixin, ReferenceMixin):
         return ActivitySchema(flattened=True).dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class ProcessRun(Activity):
     """A process run is a particular execution of a Process description."""
 
@@ -424,7 +444,11 @@ class ProcessRun(Activity):
                 if not usage.commit and "@UNCOMMITTED" in usage._label:
                     usages.append(
                         Usage.from_revision(
-                            client=self.client, path=usage.path, role=usage.role, revision=revision, id=usage._id,
+                            client=self.client,
+                            path=usage.path,
+                            role=usage.role,
+                            revision=revision,
+                            id=usage._id,
                         )
                     )
                 else:
@@ -548,7 +572,9 @@ class ProcessRun(Activity):
         return ProcessRunSchema(flattened=True).dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class WorkflowRun(ProcessRun):
     """A workflow run typically contains several subprocesses."""
 
@@ -585,7 +611,11 @@ class WorkflowRun(ProcessRun):
             usage_id = f"{id_}/inputs/{input_index}"
 
             dependency = Usage.from_revision(
-                client=client, path=input.consumes.path, role=input.sanitized_id, revision=commit, id=usage_id,
+                client=client,
+                path=input.consumes.path,
+                role=input.sanitized_id,
+                revision=commit,
+                id=usage_id,
             )
 
             usages.append(dependency)
