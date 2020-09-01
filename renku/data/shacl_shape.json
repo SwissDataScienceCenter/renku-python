@@ -149,6 +149,45 @@
                   "@id": "schema:Person"
                },
                "minCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:templateSource",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:templateReference",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:templateId",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:immutableTemplateFiles",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:automatedTemplateUpdate",
+               "datatype": {
+                  "@id": "xsd:boolean"
+               },
+               "maxCount": 1
             }
          ]
       },

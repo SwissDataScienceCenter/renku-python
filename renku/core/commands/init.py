@@ -17,10 +17,13 @@
 # limitations under the License.
 """Project initialization logic."""
 
+import json
 import tempfile
 from pathlib import Path
+from tempfile import mkdtemp
 
 import git
+import pkg_resources
 import yaml
 
 from renku.core import errors
@@ -31,13 +34,13 @@ from .client import pass_local_client
 TEMPLATE_MANIFEST = "manifest.yaml"
 
 
-def fetch_template(source, ref="master", tempdir=None):
-    """Fetch the template and checkout the relevant data.
+def fetch_template_from_git(source, ref="master", tempdir=None):
+    """Fetch the template from a git repository and checkout the relevant data.
 
     :param source: url or full path of the templates repository
     :param ref: reference for git checkout - branch, commit or tag
     :param tempdir: temporary work directory path
-    :return: template manifest Path
+    :return: tuple of (template folder, template version)
     """
     if tempdir is None:
         tempdir = Path(tempfile.mkdtemp())
@@ -66,7 +69,33 @@ def fetch_template(source, ref="master", tempdir=None):
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot checkout manifest file {0}".format(TEMPLATE_MANIFEST)) from e
 
-    return tempdir / TEMPLATE_MANIFEST
+    return tempdir / TEMPLATE_MANIFEST, template_repo.head.commit.hexsha
+
+
+def fetch_template(template_source, template_ref, process_callback=None):
+    """Fetches a local or remote template.
+
+    :param template_source: url or full path of the templates repository
+    :param template_ref: reference for git checkout - branch, commit or tag
+    :return: tuple of (template manifest, template folder, template source, template version)
+    """
+    if template_source and template_source != "renku":
+        if process_callback:
+            process_callback("Fetching template from {0}@{1}... ".format(template_source, template_ref))
+        template_folder = Path(mkdtemp())
+        _, template_version = fetch_template_from_git(template_source, template_ref, template_folder)
+        template_manifest = read_template_manifest(template_folder, checkout=True)
+        if process_callback:
+            process_callback("OK")
+    else:
+        from renku import __version__
+
+        template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
+        template_manifest = read_template_manifest(template_folder)
+        template_source = "renku"
+        template_version = __version__
+
+    return template_manifest, template_folder, template_source, template_version
 
 
 def validate_template(template_path):
@@ -136,13 +165,30 @@ def read_template_manifest(folder, checkout=False):
 
 
 def create_from_template(
-    template_path, client, name=None, metadata={}, force=None, data_dir=None, user=None, commit_message=None
+    template_path,
+    client,
+    name=None,
+    metadata={},
+    template_version=None,
+    immutable_template_files=[],
+    automated_update=False,
+    force=None,
+    data_dir=None,
+    user=None,
+    commit_message=None,
 ):
     """Initialize a new project from a template."""
     with client.commit(commit_message=commit_message):
         client.init_repository(force, user)
         metadata["name"] = name
-        with client.with_metadata(name=name):
+        with client.with_metadata(name=name) as project:
+            project.template_source = metadata["__template_source__"]
+            project.template_ref = metadata["__template_ref__"]
+            project.template_id = metadata["__template_id__"]
+            project.template_version = template_version
+            project.immutable_template_files = immutable_template_files
+            project.automated_update = automated_update
+            project.template_metadata = json.dumps(metadata)
             client.import_from_template(template_path, metadata, force)
 
         if data_dir:

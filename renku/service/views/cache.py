@@ -28,9 +28,7 @@ from marshmallow import EXCLUDE
 from patoolib.util import PatoolError
 
 from renku.core.commands.clone import project_clone
-from renku.core.commands.migrate import migrations_check, migrations_versions
 from renku.core.commands.save import repo_sync
-from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
 from renku.service.controllers.migrations_check import MigrationsCheckCtrl
 from renku.service.jobs.contexts import enqueue_retry
