@@ -217,6 +217,15 @@ class ProjectMigrateAsyncResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectMigrateJobResponse)
 
 
+class ProjectMigrationCheckRequest(Schema):
+    """Request schema for project migration check."""
+
+    project_id = fields.String()
+
+    git_url = fields.String()
+    branch = fields.String()
+
+
 class ProjectMigrationCheckResponse(Schema):
     """Response schema for project migration check."""
 

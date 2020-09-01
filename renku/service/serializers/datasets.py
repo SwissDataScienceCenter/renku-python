@@ -160,7 +160,10 @@ class DatasetAddResponseRPC(JsonRPCResponse):
 class DatasetListRequest(Schema):
     """Request schema for dataset list view."""
 
-    project_id = fields.String(required=True)
+    project_id = fields.String()
+
+    git_url = fields.String()
+    branch = fields.String()
 
 
 class DatasetListResponse(Schema):
@@ -178,8 +181,12 @@ class DatasetListResponseRPC(JsonRPCResponse):
 class DatasetFilesListRequest(Schema):
     """Request schema for dataset files list view."""
 
-    project_id = fields.String(required=True)
     name = fields.String(required=True)
+
+    project_id = fields.String()
+
+    git_url = fields.String()
+    branch = fields.String()
 
 
 class DatasetFileDetails(Schema):

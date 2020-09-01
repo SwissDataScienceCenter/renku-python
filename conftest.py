@@ -53,6 +53,12 @@ IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/git
 IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
+@pytest.fixture(scope="module")
+def it_remote_repo():
+    """Returns a remote path to integration test repository."""
+    return IT_REMOTE_REPO_URL
+
+
 @contextlib.contextmanager
 def _isolated_filesystem(tmpdir, name=None, delete=True):
     """Click CliRunner ``isolated_filesystem`` but xdist compatible."""

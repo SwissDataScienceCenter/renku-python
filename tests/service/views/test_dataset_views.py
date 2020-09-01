@@ -422,6 +422,28 @@ def test_list_datasets_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
+def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo):
+    """Check listing of existing datasets."""
+    svc_client, headers, _, _ = svc_client_with_repo
+
+    params = dict(git_url=it_remote_repo)
+
+    response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {"datasets"} == set(response.json["result"].keys())
+    assert 0 != len(response.json["result"]["datasets"])
+
+    assert {"version", "description", "created_at", "name", "title", "creators", "keywords"} == set(
+        response.json["result"]["datasets"][0].keys()
+    )
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
 def test_list_datasets_view_no_auth(svc_client_with_repo):
     """Check listing of existing datasets with no auth."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -434,6 +456,26 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 
     assert response
     assert_rpc_response(response, with_key="error")
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
+def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo):
+    """Check listing of existing dataset files."""
+    svc_client, headers, _, _ = svc_client_with_repo
+
+    params = dict(git_url=it_remote_repo, name="ds1")
+
+    response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {"files", "name"} == set(response.json["result"].keys())
+
+    assert 0 != len(response.json["result"]["files"])
+    assert "ds1" == response.json["result"]["name"]
 
 
 @pytest.mark.service
