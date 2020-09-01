@@ -36,6 +36,8 @@ from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
+from renku.service.controllers.datasets_files_list import DatasetsFilesListCtrl
+from renku.service.controllers.datasets_list import DatasetsListCtrl
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
@@ -81,13 +83,7 @@ dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVIC
 @requires_identity
 def list_datasets_view(user, cache):
     """List all datasets in project."""
-    ctx = DatasetListRequest().load(request.args)
-    project = cache.get_project(cache.ensure_user(user), ctx["project_id"])
-
-    with chdir(project.abs_path):
-        ctx["datasets"] = list_datasets()
-
-    return result_response(DatasetListResponseRPC(), ctx)
+    return DatasetsListCtrl(cache, user, dict(request.args)).to_response()
 
 
 @use_kwargs(DatasetFilesListRequest, locations=["query"])
@@ -101,13 +97,7 @@ def list_datasets_view(user, cache):
 @requires_identity
 def list_dataset_files_view(user, cache):
     """List files in a dataset."""
-    ctx = DatasetFilesListRequest().load(request.args)
-    project = cache.get_project(cache.ensure_user(user), ctx["project_id"])
-
-    with chdir(project.abs_path):
-        ctx["files"] = list_files(datasets=[ctx["name"]])
-
-    return result_response(DatasetFilesListResponseRPC(), ctx)
+    return DatasetsFilesListCtrl(cache, user, dict(request.args)).to_response()
 
 
 @use_kwargs(DatasetAddRequest)
