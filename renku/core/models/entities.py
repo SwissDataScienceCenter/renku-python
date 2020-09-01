@@ -34,7 +34,9 @@ def _str_or_none(data):
     return str(data) if data is not None else data
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class CommitMixin:
     """Represent a commit mixin."""
 
@@ -86,12 +88,16 @@ class CommitMixin:
             self._id = self.default_id()
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Entity(CommitMixin):
     """Represent a data value or item."""
 
     _parent = attr.ib(
-        default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None,
+        default=None,
+        kw_only=True,
+        converter=lambda value: weakref.ref(value) if value is not None else None,
     )
 
     @classmethod
@@ -100,11 +106,20 @@ class Entity(CommitMixin):
         if find_previous:
             revision = client.find_previous_commit(path, revision=revision)
 
-        client, commit, path = client.resolve_in_submodules(revision, path,)
+        client, commit, path = client.resolve_in_submodules(
+            revision,
+            path,
+        )
 
         path_ = client.path / path
         if path != "." and path_.is_dir():
-            entity = Collection(client=client, commit=commit, path=path, members=[], parent=parent,)
+            entity = Collection(
+                client=client,
+                commit=commit,
+                path=path,
+                members=[],
+                parent=parent,
+            )
 
             files_in_commit = commit.stats.files
 
@@ -154,7 +169,9 @@ class Entity(CommitMixin):
         self.client = client
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Collection(Entity):
     """Represent a directory with files."""
 
@@ -178,7 +195,12 @@ class Collection(Entity):
                 continue  # ignore empty directories in Git repository
             cls = Collection if path.is_dir() else Entity
             members.append(
-                cls(commit=self.commit, client=self.client, path=str(path.relative_to(self.client.path)), parent=self,)
+                cls(
+                    commit=self.commit,
+                    client=self.client,
+                    path=str(path.relative_to(self.client.path)),
+                    parent=self,
+                )
             )
         return members
 

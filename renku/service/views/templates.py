@@ -55,7 +55,9 @@ templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SE
 @marshal_with(ManifestTemplatesResponseRPC)
 @header_doc("Clone a remote template repository and read the templates.", tags=(TEMPLATES_BLUEPRINT_TAG,))
 @templates_blueprint.route(
-    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False,
+    "/templates.read_manifest",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_base_except
 @handle_git_except
@@ -67,7 +69,13 @@ templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SE
 @requires_identity
 def read_manifest_from_template(user, cache):
     """Read templates from the manifest file of a template repository."""
-    project_data = ManifestTemplatesRequest().load({**user, **request.args,}, unknown=EXCLUDE)
+    project_data = ManifestTemplatesRequest().load(
+        {
+            **user,
+            **request.args,
+        },
+        unknown=EXCLUDE,
+    )
     project = _project_clone(user, project_data)
     manifest = read_template_manifest(project.abs_path)
 
@@ -81,7 +89,9 @@ def read_manifest_from_template(user, cache):
     tags=(TEMPLATES_BLUEPRINT_TAG,),
 )
 @templates_blueprint.route(
-    "/templates.create_project", methods=["POST"], provide_automatic_options=False,
+    "/templates.create_project",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_base_except
 @handle_git_except
@@ -93,7 +103,13 @@ def read_manifest_from_template(user, cache):
 @requires_identity
 def create_project_from_template(user, cache):
     """Create a new project starting form target template."""
-    ctx = ProjectTemplateRequest().load({**user, **request.json,}, unknown=EXCLUDE)
+    ctx = ProjectTemplateRequest().load(
+        {
+            **user,
+            **request.json,
+        },
+        unknown=EXCLUDE,
+    )
 
     # Clone project and find target template
     template_project = _project_clone(user, ctx)

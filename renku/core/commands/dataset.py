@@ -295,7 +295,10 @@ def list_files(client, datasets=None, creators=None, include=None, exclude=None,
 
 
 @pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
+    clean=False,
+    requires_migration=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def file_unlink(client, name, include, exclude, interactive=False, yes=False, commit_message=None):
     """Remove matching files from a dataset."""
@@ -335,7 +338,10 @@ def file_unlink(client, name, include, exclude, interactive=False, yes=False, co
 
 
 @pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
+    clean=False,
+    requires_migration=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def dataset_remove(
     client,
@@ -476,10 +482,20 @@ def export_dataset(
 
 
 @pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
+    clean=False,
+    requires_migration=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def import_dataset(
-    client, uri, name="", extract=False, with_prompt=False, yes=False, commit_message=None, progress=None,
+    client,
+    uri,
+    name="",
+    extract=False,
+    with_prompt=False,
+    yes=False,
+    commit_message=None,
+    progress=None,
 ):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
@@ -497,7 +513,12 @@ def import_dataset(
                 tabulate(
                     files,
                     headers=OrderedDict(
-                        (("checksum", None), ("filename", "name"), ("size_in_mb", "size (mb)"), ("filetype", "type"),)
+                        (
+                            ("checksum", None),
+                            ("filename", "name"),
+                            ("size_in_mb", "size (mb)"),
+                            ("filetype", "type"),
+                        )
                     ),
                     floatfmt=".2f",
                 )
@@ -678,7 +699,10 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
 
 
 @pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
+    clean=False,
+    requires_migration=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def tag_dataset_with_client(client, name, tag, description, force=False, commit_message=None):
     """Creates a new tag for a dataset and injects a LocalClient."""
@@ -700,7 +724,10 @@ def tag_dataset(client, name, tag, description, force=False):
 
 
 @pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
+    clean=False,
+    requires_migration=True,
+    commit=True,
+    commit_only=DATASET_METADATA_PATHS,
 )
 def remove_dataset_tags(client, name, tags, commit_message=True):
     """Removes tags from a dataset."""

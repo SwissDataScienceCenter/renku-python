@@ -76,7 +76,9 @@ dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVIC
 @marshal_with(DatasetListResponseRPC)
 @header_doc("List all datasets in project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.list", methods=["GET"], provide_automatic_options=False,
+    "/datasets.list",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @requires_cache
@@ -90,7 +92,9 @@ def list_datasets_view(user, cache):
 @marshal_with(DatasetFilesListResponseRPC)
 @header_doc("List files in a dataset.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.files_list", methods=["GET"], provide_automatic_options=False,
+    "/datasets.files_list",
+    methods=["GET"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @requires_cache
@@ -104,7 +108,9 @@ def list_dataset_files_view(user, cache):
 @marshal_with(DatasetAddResponseRPC)
 @header_doc("Add an uploaded file to a cloned repository.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.add", methods=["POST"], provide_automatic_options=False,
+    "/datasets.add",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
@@ -177,7 +183,9 @@ def add_file_to_dataset_view(user_data, cache):
 @marshal_with(DatasetCreateResponseRPC)
 @header_doc("Create a new dataset in a project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.create", methods=["POST"], provide_automatic_options=False,
+    "/datasets.create",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
@@ -210,7 +218,9 @@ def create_dataset_view(user, cache):
 @marshal_with(DatasetRemoveResponseRPC)
 @header_doc("Remove a dataset from a project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.remove", methods=["POST"], provide_automatic_options=False,
+    "/datasets.remove",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
@@ -239,7 +249,9 @@ def remove_dataset_view(user, cache):
 @marshal_with(DatasetImportResponseRPC)
 @header_doc("Import a dataset", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.import", methods=["POST"], provide_automatic_options=False,
+    "/datasets.import",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
@@ -272,7 +284,9 @@ def import_dataset_view(user_data, cache):
 @marshal_with(DatasetEditResponseRPC)
 @header_doc("Edit dataset metadata", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.edit", methods=["POST"], provide_automatic_options=False,
+    "/datasets.edit",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
@@ -307,7 +321,9 @@ def edit_dataset_view(user_data, cache):
 @marshal_with(DatasetUnlinkResponseRPC)
 @header_doc("Unlink a file from a dataset", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
-    "/datasets.unlink", methods=["POST"], provide_automatic_options=False,
+    "/datasets.unlink",
+    methods=["POST"],
+    provide_automatic_options=False,
 )
 @handle_common_except
 @accepts_json
