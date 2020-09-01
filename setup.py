@@ -97,7 +97,7 @@ tests_require = [
     "flaky==3.7.0",
     "freezegun>=0.3.12,<=0.3.15",
     "isort>=5.3.2,<5.5.0",
-    "pydocstyle>=3.0.0,<=5.0.2",
+    "pydocstyle>=3.0.0,<5.1.2",
     "pytest-black==0.3.10",
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.11.0",
