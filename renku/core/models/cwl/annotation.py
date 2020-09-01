@@ -23,7 +23,9 @@ from marshmallow import EXCLUDE
 from renku.core.models.calamus import JsonLDSchema, dcterms, fields, oa
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Annotation:
     """Represents a custom annotation for a research object."""
 

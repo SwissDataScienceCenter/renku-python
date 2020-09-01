@@ -38,8 +38,13 @@ def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job, mock
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),),
-        query_string={"unpack_archive": True, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
+        ),
+        query_string={
+            "unpack_archive": True,
+            "override_existing": True,
+        },
         headers=headers,
     )
     assert response
