@@ -45,6 +45,7 @@ class JobDetails(Schema):
 
     state = fields.String()
     extras = fields.Dict()
+    client_extras = fields.String()
 
 
 class JobListResponse(Schema):

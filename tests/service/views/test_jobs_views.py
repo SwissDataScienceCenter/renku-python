@@ -72,7 +72,7 @@ def test_jobs_view_expected_job(svc_client_cache):
 
     response = svc_client.get("/jobs", headers=headers)
     assert 1 == len(response.json["result"]["jobs"])
-    assert {"job_id", "state", "created_at", "updated_at", "extras", "renku_op", "project"} == set(
+    assert {"job_id", "state", "created_at", "updated_at", "extras", "client_extras", "renku_op", "project"} == set(
         response.json["result"]["jobs"][0].keys()
     )
 
@@ -119,7 +119,9 @@ def test_jobs_view_check_exclusion(svc_client_cache):
     assert {"result"} == set(response.json.keys())
     assert 10 == len(response.json["result"]["jobs"])
     for job in response.json["result"]["jobs"]:
-        assert {"job_id", "state", "created_at", "updated_at", "extras", "renku_op", "project"} == set(job.keys())
+        assert {"job_id", "state", "created_at", "updated_at", "extras", "client_extras", "renku_op", "project"} == set(
+            job.keys()
+        )
 
 
 @pytest.mark.service

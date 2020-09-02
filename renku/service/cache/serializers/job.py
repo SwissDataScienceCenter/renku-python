@@ -37,6 +37,7 @@ class JobSchema(Schema):
 
     state = fields.String(required=False, missing=USER_JOB_STATE_ENQUEUED)
     extras = fields.Dict(required=False)
+    client_extras = fields.String(required=False, missing=None)
 
     @post_load
     def make_job(self, data, **options):

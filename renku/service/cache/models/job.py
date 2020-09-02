@@ -42,6 +42,7 @@ class Job(Model):
     renku_op = TextField()
     state = TextField()
     extras = JSONField()
+    client_extras = TextField()
 
     locked = SetField()
 
