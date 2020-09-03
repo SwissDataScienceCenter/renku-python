@@ -35,15 +35,24 @@ from renku.core.utils.datetime8601 import parse_date
 PROJECT_URL_PATH = "projects"
 
 
-@attr.s(slots=True,)
+@attr.s(
+    slots=True,
+)
 class Project(ReferenceMixin):
     """Represent a project."""
 
-    name = attr.ib(default=None,)
+    name = attr.ib(
+        default=None,
+    )
 
-    created = attr.ib(converter=parse_date,)
+    created = attr.ib(
+        converter=parse_date,
+    )
 
-    version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION),)
+    version = attr.ib(
+        converter=str,
+        default=str(SUPPORTED_PROJECT_VERSION),
+    )
 
     agent_version = attr.ib(converter=str, default="pre-0.11.0")
 

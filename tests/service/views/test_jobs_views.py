@@ -64,7 +64,13 @@ def test_jobs_view_expected_job(svc_client_cache):
 
     response = svc_client.get("/jobs", headers=headers)
     assert 1 == len(response.json["result"]["jobs"])
-    assert {"job_id", "state", "created_at", "updated_at", "extras",} == set(response.json["result"]["jobs"][0].keys())
+    assert {
+        "job_id",
+        "state",
+        "created_at",
+        "updated_at",
+        "extras",
+    } == set(response.json["result"]["jobs"][0].keys())
 
     cache.invalidate_job(user, job.job_id)
     response = svc_client.get("/jobs", headers=headers)

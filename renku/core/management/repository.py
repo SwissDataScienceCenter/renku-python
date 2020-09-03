@@ -63,7 +63,10 @@ def path_converter(path):
 class PathMixin:
     """Define a default path attribute."""
 
-    path = attr.ib(default=default_path, converter=path_converter,)
+    path = attr.ib(
+        default=default_path,
+        converter=path_converter,
+    )
 
     @path.validator
     def _check_path(self, _, value):
@@ -153,7 +156,10 @@ class RepositoryApiMixin(GitCore):
     @property
     def lock(self):
         """Create a Renku config lock."""
-        return filelock.FileLock(str(self.renku_path.with_suffix(self.LOCK_SUFFIX)), timeout=0,)
+        return filelock.FileLock(
+            str(self.renku_path.with_suffix(self.LOCK_SUFFIX)),
+            timeout=0,
+        )
 
     @property
     def renku_metadata_path(self):
@@ -328,7 +334,10 @@ class RepositoryApiMixin(GitCore):
             is_renku = subpath / Path(self.renku_home)
 
             if subpath.exists() and is_renku.exists():
-                subclients[submodule] = self.__class__(path=subpath, parent=(self, submodule),)
+                subclients[submodule] = self.__class__(
+                    path=subpath,
+                    parent=(self, submodule),
+                )
 
         return subclients
 
@@ -405,7 +414,10 @@ class RepositoryApiMixin(GitCore):
         yield workflow
 
         for step in workflow.steps:
-            step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(step.run.baseCommand)),)
+            step_name = "{0}_{1}.yaml".format(
+                uuid.uuid4().hex,
+                secure_filename("_".join(step.run.baseCommand)),
+            )
 
             workflow_path = self.workflow_path
             if not workflow_path.exists():
@@ -414,7 +426,11 @@ class RepositoryApiMixin(GitCore):
             path = workflow_path / step_name
 
             with with_reference(path):
-                run = step.run.generate_process_run(client=self, commit=self.repo.head.commit, path=path,)
+                run = step.run.generate_process_run(
+                    client=self,
+                    commit=self.repo.head.commit,
+                    path=path,
+                )
                 run.to_yaml()
                 self.add_to_activity_index(run)
 

@@ -73,7 +73,10 @@ def status(ctx, client, revision, no_output, path):
 
         for filepath, stts in sorted(status["outdated"].items()):
             outdated = ", ".join(
-                "{0}#{1}".format(click.style(graph._format_path(n.path), fg="blue", bold=True), _format_sha1(graph, n),)
+                "{0}#{1}".format(
+                    click.style(graph._format_path(n.path), fg="blue", bold=True),
+                    _format_sha1(graph, n),
+                )
                 for n in stts
                 if n.path and n.path not in status["outdated"]
             )

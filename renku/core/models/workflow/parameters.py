@@ -29,7 +29,9 @@ from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku
 from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class MappedIOStream(object):
     """Represents an IO stream (stdin, stdout, stderr)."""
 
@@ -40,7 +42,10 @@ class MappedIOStream(object):
 
     STREAMS = ["stdin", "stdout", "stderr"]
 
-    stream_type = attr.ib(type=str, kw_only=True,)
+    stream_type = attr.ib(
+        type=str,
+        kw_only=True,
+    )
 
     def default_id(self):
         """Generate an id for a mapped stream."""
@@ -79,16 +84,26 @@ class MappedIOStream(object):
         return MappedIOStreamSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class CommandParameter(object):
     """Represents a parameter for an execution template."""
 
     _id = attr.ib(default=None, kw_only=True)
     _label = attr.ib(default=None, kw_only=True)
 
-    position = attr.ib(default=None, type=int, kw_only=True,)
+    position = attr.ib(
+        default=None,
+        type=int,
+        kw_only=True,
+    )
 
-    prefix = attr.ib(default=None, type=str, kw_only=True,)
+    prefix = attr.ib(
+        default=None,
+        type=str,
+        kw_only=True,
+    )
 
     @property
     def sanitized_id(self):
@@ -98,11 +113,17 @@ class CommandParameter(object):
         return "/".join(self._id.split("/")[-2:])
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class CommandArgument(CommandParameter):
     """An argument to a command that is neither input nor output."""
 
-    value = attr.ib(default=None, type=str, kw_only=True,)
+    value = attr.ib(
+        default=None,
+        type=str,
+        kw_only=True,
+    )
 
     @staticmethod
     def generate_id(run_id, position=None):
@@ -146,11 +167,15 @@ class CommandArgument(CommandParameter):
         return CommandArgumentSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class CommandInput(CommandParameter):
     """An input to a command."""
 
-    consumes = attr.ib(kw_only=True,)
+    consumes = attr.ib(
+        kw_only=True,
+    )
 
     mapped_to = attr.ib(default=None, kw_only=True)
 
@@ -203,7 +228,9 @@ class CommandInput(CommandParameter):
         return CommandInputSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class CommandOutput(CommandParameter):
     """An output of a command."""
 

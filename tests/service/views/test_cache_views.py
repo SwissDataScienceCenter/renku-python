@@ -60,7 +60,10 @@ def test_list_upload_files_all_no_auth(svc_client):
         "Content-Type": "application/json",
         "accept": "application/json",
     }
-    response = svc_client.get("/cache.files_list", headers=headers,)
+    response = svc_client.get(
+        "/cache.files_list",
+        headers=headers,
+    )
 
     assert 200 == response.status_code
 
@@ -74,7 +77,11 @@ def test_file_upload(svc_client):
     headers_user = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user,
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile.txt"),
+        ),
+        headers=headers_user,
     )
 
     assert response
@@ -90,7 +97,11 @@ def test_file_upload_override(svc_client):
     headers_user = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user,
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile.txt"),
+        ),
+        headers=headers_user,
     )
 
     assert response
@@ -101,7 +112,11 @@ def test_file_upload_override(svc_client):
     old_file_id = response.json["result"]["files"][0]["file_id"]
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user,
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile.txt"),
+        ),
+        headers=headers_user,
     )
 
     assert response
@@ -113,7 +128,9 @@ def test_file_upload_override(svc_client):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),),
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile.txt"),
+        ),
         query_string={"override_existing": True},
         headers=headers_user,
     )
@@ -131,7 +148,11 @@ def test_file_upload_same_file(svc_client):
     """Check successful file upload with same file uploaded twice."""
     headers_user1 = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user1,
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile.txt"),
+        ),
+        headers=headers_user1,
     )
 
     assert response
@@ -142,7 +163,11 @@ def test_file_upload_same_file(svc_client):
     assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user1,
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile.txt"),
+        ),
+        headers=headers_user1,
     )
 
     assert response
@@ -155,7 +180,12 @@ def test_file_upload_same_file(svc_client):
 @pytest.mark.service
 def test_file_upload_no_auth(svc_client):
     """Check failed file upload."""
-    response = svc_client.post("/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),),)
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile.txt"),
+        ),
+    )
 
     assert response
     assert 200 == response.status_code
@@ -171,7 +201,11 @@ def test_file_upload_with_users(svc_client):
     headers_user2 = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt"),), headers=headers_user1
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile1.txt"),
+        ),
+        headers=headers_user1,
     )
 
     assert {"result"} == set(response.json.keys())
@@ -181,7 +215,11 @@ def test_file_upload_with_users(svc_client):
     assert 200 == response.status_code
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt"),), headers=headers_user2
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile1.txt"),
+        ),
+        headers=headers_user2,
     )
 
     assert response
@@ -372,7 +410,11 @@ def test_clone_projects_invalid_headers(svc_client):
         "git_url": IT_REMOTE_REPO_URL,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/cache.project_clone",
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
     assert {"result"} == set(response.json.keys())
 
@@ -399,8 +441,13 @@ def test_upload_zip_unpack_archive(datapack_zip, svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),),
-        query_string={"unpack_archive": True, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
+        ),
+        query_string={
+            "unpack_archive": True,
+            "override_existing": True,
+        },
         headers=headers,
     )
 
@@ -424,8 +471,13 @@ def test_upload_zip_archive(datapack_zip, svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),),
-        query_string={"unpack_archive": False, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
+        ),
+        query_string={
+            "unpack_archive": False,
+            "override_existing": True,
+        },
         headers=headers,
     )
 
@@ -449,8 +501,13 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),),
-        query_string={"unpack_archive": True, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),
+        ),
+        query_string={
+            "unpack_archive": True,
+            "override_existing": True,
+        },
         headers=headers,
     )
 
@@ -464,7 +521,10 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
         assert not file_["is_archive"]
         assert not file_["unpack_archive"]
 
-    response = svc_client.get("/cache.files_list", headers=headers,)
+    response = svc_client.get(
+        "/cache.files_list",
+        headers=headers,
+    )
 
     assert response
     assert 200 == response.status_code
@@ -490,8 +550,13 @@ def test_upload_tar_archive(datapack_tar, svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),),
-        query_string={"unpack_archive": False, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),
+        ),
+        query_string={
+            "unpack_archive": False,
+            "override_existing": True,
+        },
         headers=headers,
     )
 
@@ -515,8 +580,13 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),),
-        query_string={"unpack_archive": True, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),
+        ),
+        query_string={
+            "unpack_archive": True,
+            "override_existing": True,
+        },
         headers=headers,
     )
 

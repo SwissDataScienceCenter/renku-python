@@ -34,7 +34,11 @@ def test_move_dataset_file(tmpdir, runner, client):
     source = tmpdir.join("source")
     source.write("Source file")
 
-    result = runner.invoke(cli, ["dataset", "add", "testing", source.strpath], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "testing", source.strpath],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     assert (client.path / client.data_dir / "testing" / "source").exists()
