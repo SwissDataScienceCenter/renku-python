@@ -351,6 +351,9 @@ class Run(CommitMixin):
         if commit_not_set and self.client and self.path and Path(self.path).exists():
             self.commit = self.client.find_previous_commit(self.path)
 
+        # List order is not guaranteed when loading from JSON-LD
+        self.subprocesses.sort()
+
     @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD data."""
