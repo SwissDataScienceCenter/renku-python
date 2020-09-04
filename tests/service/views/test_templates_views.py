@@ -142,6 +142,7 @@ def test_service_default_init_parameters(svc_client_templates_creation, mocker):
             "__namespace__",
             "__repository__",
             "__project_slug__",
+            "__sanitized_project_name__",
         ]
     ) <= set(metadata.keys())
     assert metadata["__template_source__"] == "https://github.com/SwissDataScienceCenter/renku-project-template"
@@ -150,3 +151,4 @@ def test_service_default_init_parameters(svc_client_templates_creation, mocker):
     assert metadata["__namespace__"] == "contact"
     assert metadata["__repository__"] == "https://dev.renku.ch/gitlab"
     assert metadata["__project_slug__"] == f"contact/{project_name}"
+    assert metadata["__sanitized_project_name__"] == project_name

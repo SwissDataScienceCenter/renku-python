@@ -121,6 +121,7 @@ def create_project_from_template(user, cache):
         "__template_id__": ctx["identifier"],
         "__namespace__": ctx["project_namespace"],
         "__repository__": ctx["project_repository"],
+        "__sanitized_project_name__": ctx["project_name_stripped"],
         "__project_slug__": ctx["project_slug"],
     }
 
