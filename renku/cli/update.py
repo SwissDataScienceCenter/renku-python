@@ -139,7 +139,9 @@ from renku.version import __version__, version_url
 @option_siblings
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client(
-    clean=True, requires_migration=True, commit=True,
+    clean=True,
+    requires_migration=True,
+    commit=True,
 )
 def update(client, revision, no_output, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
@@ -158,7 +160,11 @@ def update(client, revision, no_output, siblings, paths):
     input_paths = {node.path for node in graph.nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
-    workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs,)
+    workflow = graph.as_workflow(
+        input_paths=input_paths,
+        output_paths=output_paths,
+        outputs=outputs,
+    )
 
     wf, path = CWLConverter.convert(workflow, client)
     # Don't compute paths if storage is disabled.
@@ -179,7 +185,9 @@ def update(client, revision, no_output, siblings, paths):
         committer = Actor("renku {0}".format(__version__), version_url)
 
         client.repo.index.commit(
-            commit_msg, committer=committer, skip_hooks=True,
+            commit_msg,
+            committer=committer,
+            skip_hooks=True,
         )
 
     workflow_name = "{0}_update.yaml".format(uuid.uuid4().hex)

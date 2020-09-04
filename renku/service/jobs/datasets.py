@@ -63,7 +63,14 @@ class DatasetImportJobProcess(DownloadProgressCallback):
 
 @requires_cache
 def dataset_import(
-    cache, user, user_job_id, project_id, dataset_uri, name=None, extract=False, timeout=None,
+    cache,
+    user,
+    user_job_id,
+    project_id,
+    dataset_uri,
+    name=None,
+    extract=False,
+    timeout=None,
 ):
     """Job for dataset import."""
     user = cache.ensure_user(user)

@@ -21,7 +21,10 @@ from renku.core.commands.providers.dataverse import DataverseExporter, _Datavers
 
 def test_dataverse_exporter_init():
     """Check construction of a dataverse exporter."""
-    exporter = DataverseExporter(dataset="my-dataset", access_token="let-me-in",)
+    exporter = DataverseExporter(
+        dataset="my-dataset",
+        access_token="let-me-in",
+    )
 
     assert exporter
     assert "my-dataset" == exporter.dataset
@@ -30,7 +33,10 @@ def test_dataverse_exporter_init():
 
 def test_dataverse_deposition_init():
     """Check construction of dataverse deposition."""
-    deposit = _DataverseDeposition(access_token="let-me-in", server_url="http://sss",)
+    deposit = _DataverseDeposition(
+        access_token="let-me-in",
+        server_url="http://sss",
+    )
 
     assert deposit
     assert "let-me-in" == deposit.access_token
