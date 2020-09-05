@@ -46,7 +46,8 @@ from renku.core.models.workflow.parameters import (
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
     client, commit, path = client.resolve_in_submodules(
-        client.find_previous_commit(path, revision=commit.hexsha), path,
+        client.find_previous_commit(path, revision=commit.hexsha),
+        path,
     )
 
     entity_cls = Entity
@@ -56,7 +57,11 @@ def _entity_from_path(client, path, commit):
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
         return client.load_dataset_from_path(path, commit=commit)
     else:
-        return entity_cls(commit=commit, client=client, path=str(path),)
+        return entity_cls(
+            commit=commit,
+            client=client,
+            path=str(path),
+        )
 
 
 def _convert_cmd_binding(binding, client, commit):
@@ -151,11 +156,17 @@ def _convert_cmd_output(output, factory, client, commit, run_id):
 
 
 @total_ordering
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Run(CommitMixin):
     """Represents a `renku run` execution template."""
 
-    command = attr.ib(default=None, type=str, kw_only=True,)
+    command = attr.ib(
+        default=None,
+        type=str,
+        kw_only=True,
+    )
 
     successcodes = attr.ib(kw_only=True, type=list, factory=list)
 
@@ -365,7 +376,9 @@ class Run(CommitMixin):
 
 
 @total_ordering
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class OrderedSubprocess:
     """A subprocess with ordering."""
 

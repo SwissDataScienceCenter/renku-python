@@ -35,7 +35,11 @@ def assert_rpc_response(response, with_key="result"):
     """Check rpc result in response."""
     assert response and 200 == response.status_code
 
-    response_text = re.sub(r"http\S+", "", json.dumps(response.json),)
+    response_text = re.sub(
+        r"http\S+",
+        "",
+        json.dumps(response.json),
+    )
     assert with_key in response_text
 
 
@@ -51,7 +55,11 @@ def test_create_dataset_view(svc_client_with_repo):
         "name": "{0}".format(uuid.uuid4().hex),
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -72,7 +80,11 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
         "name": "{0}".format(uuid.uuid4().hex),
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert {"error": {"code": -32100, "reason": 'project_id "ref does not exist" not found'}} == response.json
@@ -90,7 +102,9 @@ def test_remove_dataset_view(svc_client_with_repo):
     }
 
     svc_client.post(
-        "/datasets.create", data=json.dumps(payload), headers=headers,
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
     )
 
     response = svc_client.post("/datasets.remove", data=json.dumps(payload), headers=headers)
@@ -115,7 +129,11 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
         "keywords": ["keyword1", "keyword2"],
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -126,7 +144,11 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
     params = {
         "project_id": project_id,
     }
-    response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
+    response = svc_client.get(
+        "/datasets.list",
+        query_string=params,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -155,7 +177,11 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
         "description": "my little description",
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
@@ -173,7 +199,11 @@ def test_create_dataset_commit_msg(svc_client_with_repo):
 
     payload = {"project_id": project_id, "name": "{0}".format(uuid.uuid4().hex), "commit_message": "my awesome dataset"}
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -194,11 +224,19 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
         "name": "mydataset",
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
     assert "result" in response.json.keys()
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
     assert_rpc_response(response, with_key="error")
 
@@ -215,7 +253,11 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
 
     payload = {"project_id": project_id, "name": "mydata", "remote_name": "origin"}
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response, with_key="error")
@@ -290,7 +332,9 @@ def test_add_file_view(svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt"),),
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile1.txt"),
+        ),
         query_string={"override_existing": True},
         headers=headers,
     )
@@ -308,11 +352,19 @@ def test_add_file_view(svc_client_with_repo):
         "project_id": project_id,
         "name": "{0}".format(uuid.uuid4().hex),
         "create_dataset": True,
-        "files": [{"file_id": file_id,},],
+        "files": [
+            {
+                "file_id": file_id,
+            },
+        ],
     }
     headers["Content-Type"] = content_type
 
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -333,7 +385,9 @@ def test_add_file_commit_msg(svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt"),),
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile1.txt"),
+        ),
         query_string={"override_existing": True},
         headers=headers,
     )
@@ -346,10 +400,18 @@ def test_add_file_commit_msg(svc_client_with_repo):
         "project_id": project_id,
         "name": "{0}".format(uuid.uuid4().hex),
         "create_dataset": True,
-        "files": [{"file_id": file_id,},],
+        "files": [
+            {
+                "file_id": file_id,
+            },
+        ],
     }
     headers["Content-Type"] = content_type
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -370,7 +432,9 @@ def test_add_file_failure(svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt"),),
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), "datafile1.txt"),
+        ),
         query_string={"override_existing": True},
         headers=headers,
     )
@@ -383,10 +447,19 @@ def test_add_file_failure(svc_client_with_repo):
         "project_id": project_id,
         "name": "{0}".format(uuid.uuid4().hex),
         "create_dataset": True,
-        "files": [{"file_id": file_id,}, {"file_path": "my problem right here"}],
+        "files": [
+            {
+                "file_id": file_id,
+            },
+            {"file_path": "my problem right here"},
+        ],
     }
     headers["Content-Type"] = content_type
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response, with_key="error")
@@ -406,7 +479,11 @@ def test_list_datasets_view(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
+    response = svc_client.get(
+        "/datasets.list",
+        query_string=params,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -428,7 +505,11 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo):
 
     params = dict(git_url=it_remote_repo)
 
-    response = svc_client.get("/datasets.list", query_string=params, headers=headers,)
+    response = svc_client.get(
+        "/datasets.list",
+        query_string=params,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -452,7 +533,10 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/datasets.list", query_string=params,)
+    response = svc_client.get(
+        "/datasets.list",
+        query_string=params,
+    )
 
     assert response
     assert_rpc_response(response, with_key="error")
@@ -467,7 +551,11 @@ def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo):
 
     params = dict(git_url=it_remote_repo, name="ds1")
 
-    response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
+    response = svc_client.get(
+        "/datasets.files_list",
+        query_string=params,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -490,7 +578,11 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "name": "{0}".format(uuid.uuid4().hex),
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
 
     assert_rpc_response(response)
@@ -501,7 +593,11 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers,)
+    response = svc_client.get(
+        "/datasets.list",
+        query_string=params_list,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -526,7 +622,9 @@ def test_list_dataset_files(svc_client_with_repo):
     file_name = "{0}".format(uuid.uuid4().hex)
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), file_name),),
+        data=dict(
+            file=(io.BytesIO(b"this is a test"), file_name),
+        ),
         query_string={"override_existing": True},
         headers=headers,
     )
@@ -542,11 +640,17 @@ def test_list_dataset_files(svc_client_with_repo):
     payload = {
         "project_id": project_id,
         "name": "mydata",
-        "files": [{"file_id": file_id},],
+        "files": [
+            {"file_id": file_id},
+        ],
     }
     headers["Content-Type"] = content_type
 
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -559,7 +663,11 @@ def test_list_dataset_files(svc_client_with_repo):
         "name": "mydata",
     }
 
-    response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
+    response = svc_client.get(
+        "/datasets.files_list",
+        query_string=params,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -580,8 +688,13 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),),
-        query_string={"unpack_archive": True, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
+        ),
+        query_string={
+            "unpack_archive": True,
+            "override_existing": True,
+        },
         headers=headers,
     )
 
@@ -607,7 +720,11 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     }
 
     headers["Content-Type"] = content_type
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -615,9 +732,19 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
-    payload = {"project_id": project_id, "name": payload["name"], "files": [{"file_id": file_["file_id"]},]}
+    payload = {
+        "project_id": project_id,
+        "name": payload["name"],
+        "files": [
+            {"file_id": file_["file_id"]},
+        ],
+    }
 
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -630,7 +757,11 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
         "name": payload["name"],
     }
 
-    response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
+    response = svc_client.get(
+        "/datasets.files_list",
+        query_string=params,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -651,8 +782,13 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),),
-        query_string={"unpack_archive": True, "override_existing": True,},
+        data=dict(
+            file=(io.BytesIO(datapack_zip.read_bytes()), datapack_zip.name),
+        ),
+        query_string={
+            "unpack_archive": True,
+            "override_existing": True,
+        },
         headers=headers,
     )
 
@@ -681,7 +817,11 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     }
 
     headers["Content-Type"] = content_type
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -695,7 +835,11 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
         "files": files,
     }
 
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -708,7 +852,11 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
         "name": payload["name"],
     }
 
-    response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
+    response = svc_client.get(
+        "/datasets.files_list",
+        query_string=params,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -730,7 +878,11 @@ def test_add_existing_file(svc_client_with_repo):
         "name": "{0}".format(uuid.uuid4().hex),
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
     assert_rpc_response(response)
 
@@ -744,7 +896,11 @@ def test_add_existing_file(svc_client_with_repo):
         "files": files,
     }
 
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -789,12 +945,20 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
 
     response = client.post(
         "/datasets.import",
-        data=json.dumps({"project_id": project_meta["project_id"], "dataset_uri": doi,}),
+        data=json.dumps(
+            {
+                "project_id": project_meta["project_id"],
+                "dataset_uri": doi,
+            }
+        ),
         headers=headers,
     )
 
     assert_rpc_response(response)
-    assert {"created_at", "job_id",} == set(response.json["result"])
+    assert {
+        "created_at",
+        "job_id",
+    } == set(response.json["result"])
 
     user_job = cache.get_job(user, response.json["result"]["job_id"])
     assert response.json["result"]["job_id"] == user_job.job_id
@@ -806,7 +970,12 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
     assert user_job.job_id in [job["job_id"] for job in response.json["result"]["jobs"]]
 
 
-@pytest.mark.parametrize("url", ["https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3",])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3",
+    ],
+)
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
@@ -824,7 +993,11 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata, mock_redis)
         shutil.copytree(project, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url])
-    response = client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert_rpc_response(response)
     assert {"files", "name", "project_id"} == set(response.json["result"])
@@ -859,7 +1032,11 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata, mock_re
         shutil.copytree(project, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url_gist, url_dbox])
-    response = client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert_rpc_response(response)
     assert {"files", "name", "project_id"} == set(response.json["result"])
@@ -885,9 +1062,14 @@ def test_add_remote_and_local_file(svc_client_with_repo):
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = make_dataset_add_payload(
-        project_id, [("file_path", "README.md"), "https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"],
+        project_id,
+        [("file_path", "README.md"), "https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"],
     )
-    response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.add",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -914,7 +1096,11 @@ def test_edit_datasets_view(svc_client_with_repo):
         "name": name,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -926,7 +1112,11 @@ def test_edit_datasets_view(svc_client_with_repo):
         "project_id": project_id,
     }
 
-    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers,)
+    response = svc_client.get(
+        "/datasets.list",
+        query_string=params_list,
+        headers=headers,
+    )
 
     assert response
     assert_rpc_response(response)
@@ -954,7 +1144,11 @@ def test_protected_branch(svc_protected_repo):
         "name": uuid.uuid4().hex,
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
     assert response
 
     if "error" in response.json.keys() and response.json["error"]["migration_required"]:
@@ -971,7 +1165,11 @@ def test_unlink_file(unlink_file_setup):
     """Check unlinking of a file from a dataset."""
     svc_client, headers, unlink_payload = unlink_file_setup
 
-    response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.unlink",
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
 
     assert {"result": {"unlinked": ["README.md"]}} == response.json
 
@@ -984,7 +1182,11 @@ def test_unlink_file_no_filter_error(unlink_file_setup):
     svc_client, headers, unlink_payload = unlink_file_setup
     unlink_payload.pop("include_filters")
 
-    response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.unlink",
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
 
     assert {"error": {"code": -32602, "reason": {"_schema": ["one of the filters must be specified"]}}} == response.json
 
@@ -997,6 +1199,10 @@ def test_unlink_file_exclude(unlink_file_setup):
     svc_client, headers, unlink_payload = unlink_file_setup
     unlink_payload["exclude_filters"] = unlink_payload.pop("include_filters")
 
-    response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.unlink",
+        data=json.dumps(unlink_payload),
+        headers=headers,
+    )
 
     assert {"error": {"code": -32100, "reason": "Invalid parameter value - No records found."}} == response.json

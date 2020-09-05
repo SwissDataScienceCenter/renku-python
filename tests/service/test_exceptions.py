@@ -54,7 +54,10 @@ def test_auth_headers_exc(service_allowed_endpoint):
     else:
         client_method = methods.pop(method)
 
-    response = client_method(request["url"], headers=request["headers"],)
+    response = client_method(
+        request["url"],
+        headers=request["headers"],
+    )
 
     assert 200 == response.status_code
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
@@ -75,6 +78,10 @@ def test_migration_required_flag(svc_client_setup):
         "name": "{0}".format(uuid.uuid4().hex),
     }
 
-    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post(
+        "/datasets.create",
+        data=json.dumps(payload),
+        headers=headers,
+    )
 
     assert response.json["error"]["migration_required"]
