@@ -95,10 +95,10 @@ tests_require = [
     "fakeredis>=1.4.1,<1.4.4",
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
-    "freezegun>=0.3.12,<=0.3.15",
-    "isort>=5.3.2,<5.5.0",
-    "pydocstyle>=3.0.0,<5.1.1",
-    "pytest-black==0.3.10",
+    "freezegun>=0.3.12,<1.0.1",
+    "isort>=5.3.2,<5.6.0",
+    "pydocstyle>=3.0.0,<5.1.2",
+    "pytest-black>=0.3.10,<=0.3.11",
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.11.0",
     "pytest-flake8>=1.0.4,<=1.0.6",
@@ -106,14 +106,14 @@ tests_require = [
     "pytest-pep8==1.0.6",
     "pytest-xdist>=1.34.0,<2.2.0",
     "pytest>=4.0.0,<6.0.2",
-    "responses>=0.7.0,<0.11.1",
+    "responses>=0.7.0,<0.12.1",
 ]
 
 extras_require = {
     "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.2", "renku-sphinx-theme==0.1.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.2"],
+    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.3"],
     "tests": tests_require,
 }
 
@@ -137,8 +137,8 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
-    "apispec==3.3.1",
-    "attrs>=19.3.0,<=20.1.0",
+    "apispec>=3.3.1,<=3.3.2",
+    "attrs>=19.3.0,<=20.2.0",
     "calamus==0.3.2",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
@@ -148,7 +148,7 @@ install_requires = [
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "flask==1.1.2",
-    "flask-apispec>=0.9.0,<0.11.0",
+    "flask-apispec>=0.9.0,<0.10.0",
     "flask-swagger-ui==3.25.0",
     "gitdb2==3.0.1",
     "gitpython==3.1.0",
