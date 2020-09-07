@@ -189,8 +189,7 @@ def test_create_from_template(local_client):
 
 
 def test_template_filename(local_client):
-    """Test using a template with dynamic filenames.
-    """
+    """Test using a template with dynamic filenames."""
     with TemporaryDirectory() as tempdir:
         template_folder = Path(tempdir) / "first"
 

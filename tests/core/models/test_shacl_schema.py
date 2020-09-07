@@ -42,11 +42,15 @@ def test_dataset_shacl(tmpdir, runner, project, client):
 
     # add data
     runner.invoke(
-        cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False,
+        cli,
+        ["dataset", "add", "dataset"] + paths,
+        catch_exceptions=False,
     )
 
     runner.invoke(
-        cli, ["dataset", "tag", "dataset", "1.0"], catch_exceptions=False,
+        cli,
+        ["dataset", "tag", "dataset", "1.0"],
+        catch_exceptions=False,
     )
 
     with client.with_dataset("dataset") as dataset:

@@ -152,7 +152,9 @@ def siblings(client, revision, flat, verbose, paths):
 @show.command()
 @click.option("--revision", default="HEAD")
 @click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=False), nargs=-1,
+    "paths",
+    type=click.Path(exists=True, dir_okay=False),
+    nargs=-1,
 )
 @pass_local_client(requires_migration=True)
 @click.pass_context
@@ -191,7 +193,9 @@ def inputs(ctx, client, revision, paths):
 @show.command()
 @click.option("--revision", default="HEAD")
 @click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1,
+    "paths",
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
 )
 @pass_local_client(requires_migration=True)
 @click.pass_context

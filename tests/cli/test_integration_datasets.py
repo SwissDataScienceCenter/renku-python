@@ -138,7 +138,12 @@ def test_dataset_import_real_param(doi, runner, project, sleep_after, client):
 
 
 @pytest.mark.parametrize(
-    "doi", [("10.5281/zenodo.3239984", "n"), ("zenodo.org/record/3239986", "n"), ("10.5281/zenodo.3239982", "n"),]
+    "doi",
+    [
+        ("10.5281/zenodo.3239984", "n"),
+        ("zenodo.org/record/3239986", "n"),
+        ("10.5281/zenodo.3239982", "n"),
+    ],
 )
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
@@ -183,7 +188,10 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
         ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
         ("10.5281/zenodo.1494915", "no files have been found"),
         ("https://zenodo.org/record/2621201248", "record not found"),
-        (("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX"), "record not found",),
+        (
+            ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX"),
+            "record not found",
+        ),
     ],
 )
 @pytest.mark.integration
@@ -306,7 +314,12 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",
+    ],
+)
 def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
     """Test dataset import fails if cannot clone repo."""
     from renku.core.management import LocalClient
@@ -485,7 +498,11 @@ def test_dataset_export_upload_multiple(
         paths.append(str(new_file))
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "my-dataset"] + paths,
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
     with client.with_dataset("my-dataset") as dataset:
@@ -707,7 +724,9 @@ def test_add_data_from_git(runner, client, params, path):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params, catch_exceptions=False,
+        cli,
+        ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params,
+        catch_exceptions=False,
     )
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -748,13 +767,17 @@ def test_add_data_from_git_with_wildcards(runner, client, params, files):
     REMOTE = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", REMOTE] + params, catch_exceptions=False,
+        cli,
+        ["dataset", "add", "remote", "--create", "--ref", "0.5.2", REMOTE] + params,
+        catch_exceptions=False,
     )
     assert 0 == result.exit_code
     assert files == set(os.listdir("data/remote"))
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", REMOTE] + params, catch_exceptions=False,
+        cli,
+        ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", REMOTE] + params,
+        catch_exceptions=False,
     )
     assert 0 == result.exit_code
     assert files == set(os.listdir("data/remote/new"))
@@ -815,7 +838,11 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
 
     urls = n_urls * [remote]
 
-    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0"] + params + urls, catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "remote", "--ref", "0.3.0"] + params + urls,
+        catch_exceptions=False,
+    )
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
     assert message in result.output
 
@@ -840,7 +867,17 @@ def test_dataset_update(client, runner, params):
     # Add dataset to project
     result = runner.invoke(
         cli,
-        ["dataset", "add", "--create", "remote", "--ref", "v0.3.0", "-s", "CHANGES.rst", url,],
+        [
+            "dataset",
+            "add",
+            "--create",
+            "remote",
+            "--ref",
+            "v0.3.0",
+            "-s",
+            "CHANGES.rst",
+            url,
+        ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -1240,11 +1277,20 @@ def test_renkulab_clone_checkout_rev(tmpdir, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("rev", ["test-branch", "my-tag",])
+@pytest.mark.parametrize(
+    "rev",
+    [
+        "test-branch",
+        "my-tag",
+    ],
+)
 def test_renku_clone_checkout_revs(tmpdir, rev):
     """Test cloning of a Renku repo checking out a rev."""
     with chdir(str(tmpdir)):
-        repo = project_clone("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
+        repo = project_clone(
+            "https://dev.renku.ch/gitlab/contact/no-renku.git",
+            checkout_rev=rev,
+        )
 
         assert rev == repo.active_branch.name
 
@@ -1296,7 +1342,11 @@ def test_check_disk_space(runner, client, monkeypatch, url):
 
     monkeypatch.setattr(shutil, "disk_usage", disk_usage)
 
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my-data", url], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "-c", "my-data", url],
+        catch_exceptions=False,
+    )
     assert 1 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Insufficient disk space" in result.output
 
@@ -1347,7 +1397,11 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
 @flaky(max_runs=10, min_passes=1)
 def test_dataset_add_dropbox(runner, client, project, url, size):
     """Test importing data from dropbox."""
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my-dropbox-data", url], catch_exceptions=False,)
+    result = runner.invoke(
+        cli,
+        ["dataset", "add", "-c", "my-dropbox-data", url],
+        catch_exceptions=False,
+    )
     assert 0 == result.exit_code
 
     filename = Path(parse.urlparse(url).path).name

@@ -34,7 +34,9 @@ class Association:
     """Assign responsibility to an agent for an activity."""
 
     plan = attr.ib()
-    agent = attr.ib(default=None,)
+    agent = attr.ib(
+        default=None,
+    )
 
     _id = attr.ib(kw_only=True)
 
@@ -46,7 +48,10 @@ class Association:
         agent = SoftwareAgent.from_commit(activity.commit)
         return cls(
             plan=activity.__association_cls__(
-                commit=commit or activity.commit, client=activity.client, path=activity.path, activity=activity,
+                commit=commit or activity.commit,
+                client=activity.client,
+                path=activity.path,
+                activity=activity,
             ),
             agent=agent,
             id=activity._id + "/association",  # add plan and agent
@@ -81,7 +86,9 @@ class EntityProxyMixin:
         return getattr(entity, name)
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Usage(EntityProxyMixin):
     """Represent a dependent path."""
 
@@ -112,7 +119,9 @@ class Usage(EntityProxyMixin):
         return UsageSchema().dump(self)
 
 
-@attr.s(cmp=False,)
+@attr.s(
+    cmp=False,
+)
 class Generation(EntityProxyMixin):
     """Represent an act of generating a file."""
 
@@ -121,7 +130,9 @@ class Generation(EntityProxyMixin):
     role = attr.ib(default=None)
 
     _activity = attr.ib(
-        default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None,
+        default=None,
+        kw_only=True,
+        converter=lambda value: weakref.ref(value) if value is not None else None,
     )
     _id = attr.ib(kw_only=True)
 
@@ -134,8 +145,12 @@ class Generation(EntityProxyMixin):
     def default_id(self):
         """Configure calculated ID."""
         if self.role:
-            return "{self.activity._id}/{self.role}".format(self=self,)
-        return "{self.activity._id}/tree/{self.entity.path}".format(self=self,)
+            return "{self.activity._id}/{self.role}".format(
+                self=self,
+            )
+        return "{self.activity._id}/tree/{self.entity.path}".format(
+            self=self,
+        )
 
     @classmethod
     def from_jsonld(cls, data):

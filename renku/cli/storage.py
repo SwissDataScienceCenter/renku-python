@@ -64,7 +64,10 @@ def storage():
 
 @storage.command()
 @click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
+    "paths",
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
 )
 @pass_local_client
 def pull(client, paths):
@@ -74,7 +77,10 @@ def pull(client, paths):
 
 @storage.command()
 @click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
+    "paths",
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
 )
 @pass_local_client
 def clean(client, paths):
@@ -100,7 +106,10 @@ def clean(client, paths):
 
 @storage.command("check-lfs-hook", hidden=True)
 @click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
+    "paths",
+    type=click.Path(exists=True, dir_okay=True),
+    nargs=-1,
+    required=True,
 )
 @pass_local_client
 def check_lfs_hook(client, paths):

@@ -458,7 +458,13 @@ def create(name, title, description, creators, keyword):
     """Create an empty dataset in the current repo."""
     creators = creators or ()
 
-    new_dataset = create_dataset(name=name, title=title, description=description, creators=creators, keywords=keyword,)
+    new_dataset = create_dataset(
+        name=name,
+        title=title,
+        description=description,
+        creators=creators,
+        keywords=keyword,
+    )
 
     click.echo(f'Use the name "{new_dataset.name}" to refer to this dataset.')
     click.secho("OK", fg="green")
@@ -483,7 +489,11 @@ def edit(name, title, description, creators, keyword):
     keywords = keyword or ()
 
     updated, no_email_warnings = edit_dataset(
-        name=name, title=title, description=description, creators=creators, keywords=keywords,
+        name=name,
+        title=title,
+        description=description,
+        creators=creators,
+        keywords=keywords,
     )
 
     if not updated:
@@ -582,7 +592,9 @@ def remove(names):
         progressbar, label="Removing metadata files".ljust(30), item_show_func=lambda item: str(item) if item else ""
     )
     referencescontext = partial(
-        progressbar, label="Removing aliases".ljust(30), item_show_func=lambda item: item.name if item else "",
+        progressbar,
+        label="Removing aliases".ljust(30),
+        item_show_func=lambda item: item.name if item else "",
     )
     dataset_remove(names, with_output=True, datasetscontext=datasetscontext, referencescontext=referencescontext)
     click.secho("OK", fg="green")

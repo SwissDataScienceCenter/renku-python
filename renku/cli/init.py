@@ -220,7 +220,13 @@ def create_template_sentence(templates, describe=False, instructions=False):
         for index, template_elem in enumerate(templates)
     ]
 
-    table_headers = OrderedDict((("index", "Index"), ("id", "Id"), ("variables", "Parameters"),))
+    table_headers = OrderedDict(
+        (
+            ("index", "Index"),
+            ("id", "Id"),
+            ("variables", "Parameters"),
+        )
+    )
 
     if describe:
         table_headers["description"] = "Description"
@@ -274,10 +280,15 @@ def check_git_user_config():
 
 @click.command()
 @click.argument(
-    "path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True),
+    "path",
+    default=".",
+    type=click.Path(writable=True, file_okay=False, resolve_path=True),
 )
 @click.option(
-    "-n", "--name", callback=validate_name, help="Provide a custom project name.",
+    "-n",
+    "--name",
+    callback=validate_name,
+    help="Provide a custom project name.",
 )
 @click.option(
     "--data-dir",
@@ -287,11 +298,17 @@ def check_git_user_config():
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
 @click.option(
-    "-i", "--template-index", help="Provide the index number of the template to use.", type=int,
+    "-i",
+    "--template-index",
+    help="Provide the index number of the template to use.",
+    type=int,
 )
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
-    "-r", "--template-ref", default="master", help="Specify the reference to checkout on remote template repository.",
+    "-r",
+    "--template-ref",
+    default="master",
+    help="Specify the reference to checkout on remote template repository.",
 )
 @click.option(
     "-p",
