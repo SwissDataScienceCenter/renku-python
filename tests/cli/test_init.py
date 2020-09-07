@@ -278,6 +278,7 @@ def test_default_init_parameters(isolated_runner, mocker):
             "__namespace__",
             "__repository__",
             "__project_slug__",
+            "__sanitized_project_name__",
         ]
     ) <= set(metadata.keys())
     assert metadata["__template_source__"] == "renku"
@@ -286,3 +287,4 @@ def test_default_init_parameters(isolated_runner, mocker):
     assert metadata["__namespace__"] == ""
     assert metadata["__repository__"] == ""
     assert metadata["__project_slug__"] == ""
+    assert metadata["__sanitized_project_name__"] == ""
