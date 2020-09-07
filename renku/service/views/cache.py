@@ -243,6 +243,11 @@ def migrate_project_view(user_data, cache):
     user = cache.ensure_user(user_data)
 
     project = cache.get_project(user, ctx["project_id"])
+
+    force_template_update = ctx.get("force_template_update", False)
+    skip_template_update = ctx.get("skip_template_update", False)
+    skip_docker_update = ctx.get("skip_docker_update", False)
+    skip_migrations = ctx.get("skip_migrations", False)
     commit_message = ctx.get("commit_message", None)
 
     if ctx.get("is_delayed", False):
@@ -250,7 +255,15 @@ def migrate_project_view(user_data, cache):
 
         with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
             queue.enqueue(
-                migrate_job, user_data, project.project_id, job.job_id, commit_message,
+                migrate_job,
+                user_data,
+                project.project_id,
+                job.job_id,
+                force_template_update,
+                skip_template_update,
+                skip_docker_update,
+                skip_migrations,
+                commit_message,
             )
 
         return result_response(ProjectMigrateAsyncResponseRPC(), job)

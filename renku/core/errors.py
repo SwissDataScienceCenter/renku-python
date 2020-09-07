@@ -417,3 +417,11 @@ class InvalidTemplateError(RenkuException):
 
 class ExportError(RenkuException):
     """Raised when a dataset cannot be exported."""
+
+
+class TemplateUpdateError(RenkuException):
+    """Raised when using a non-valid template."""
+
+
+class DockerfileUpdateError(RenkuException):
+    """Raised when using a non-valid template."""

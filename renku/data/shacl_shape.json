@@ -176,6 +176,22 @@
             },
             {
                "nodeKind": "sh:Literal",
+               "path": "renku:templateVersion",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:templateMetadata",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "renku:immutableTemplateFiles",
                "datatype": {
                   "@id": "xsd:string"

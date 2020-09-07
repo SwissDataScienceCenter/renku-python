@@ -570,6 +570,21 @@ class RepositoryApiMixin(GitCore):
         with open(self.template_checksums, "w") as checksum_file:
             json.dump(checksums, checksum_file)
 
+    def check_immutable_template_files(self, *paths):
+        """Check paths and return a list of those that are marked immutable in the project template."""
+        if not self.project.immutable_template_files:
+            return []
+
+        immutable_paths = []
+
+        for path in paths:
+            relative_path = Path(path)
+
+            if str(relative_path) in self.project.immutable_template_files:
+                immutable_paths.append(path)
+
+        return immutable_paths
+
     def _content_hash(self, path):
         """Calculate the sha256 hash of a file."""
         sha256_hash = hashlib.sha256()
