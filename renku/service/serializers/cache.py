@@ -180,6 +180,7 @@ class ProjectMigrateRequest(Schema):
 
     project_id = fields.String(required=True)
     is_delayed = fields.Boolean(default=False)
+    client_extras = fields.String()
     commit_message = fields.String()
 
     @pre_load()
