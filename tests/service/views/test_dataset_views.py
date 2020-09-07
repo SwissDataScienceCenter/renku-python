@@ -414,7 +414,7 @@ def test_list_datasets_view(svc_client_with_repo):
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
 
-    assert {"version", "description", "created_at", "name", "title", "creators", "keywords"} == set(
+    assert {"version", "description", "identifier", "created_at", "name", "title", "creators", "keywords"} == set(
         response.json["result"]["datasets"][0].keys()
     )
 
@@ -436,7 +436,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo):
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
 
-    assert {"version", "description", "created_at", "name", "title", "creators", "keywords"} == set(
+    assert {"version", "description", "identifier", "created_at", "name", "title", "creators", "keywords"} == set(
         response.json["result"]["datasets"][0].keys()
     )
 
@@ -560,13 +560,13 @@ def test_list_dataset_files(svc_client_with_repo):
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers,)
     assert response
-    assert_rpc_response(response)
 
+    assert_rpc_response(response)
     assert {"name", "files"} == set(response.json["result"].keys())
 
     assert params["name"] == response.json["result"]["name"]
     assert file_name in [file["name"] for file in response.json["result"]["files"]]
-    assert {"name", "path", "created", "added"} == response.json["result"]["files"][0]
+    assert {"name", "path", "added"} == response.json["result"]["files"][0].keys()
 
 
 @pytest.mark.service
