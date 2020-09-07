@@ -184,6 +184,7 @@ class ProjectMigrateRequest(Schema):
     skip_docker_update = fields.Boolean(default=False)
     skip_migrations = fields.Boolean(default=False)
     is_delayed = fields.Boolean(default=False)
+    client_extras = fields.String()
     commit_message = fields.String()
 
     @pre_load()

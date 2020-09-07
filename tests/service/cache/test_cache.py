@@ -68,7 +68,7 @@ def test_service_cache_make_job(svc_client_cache):
         "job_id": uuid.uuid4().hex,
     }
 
-    job = cache.make_job(user, job_data)
+    job = cache.make_job(user, job_data=job_data)
 
     assert job
 
@@ -90,7 +90,7 @@ def test_service_cache_get_job(svc_client_cache):
     job_data = {
         "job_id": uuid.uuid4().hex,
     }
-    job = cache.make_job(user, job_data)
+    job = cache.make_job(user, job_data=job_data)
     assert job
 
     retrieved_job = cache.get_job(user, job.job_id)

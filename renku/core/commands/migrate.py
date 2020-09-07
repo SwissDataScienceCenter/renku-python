@@ -35,6 +35,7 @@ def migrations_check(client):
         is_migration_required(client),
         not is_project_unsupported(client),
         is_template_update_possible(client),
+        bool(client.project.automated_update),
         is_docker_update_possible(client),
     )
 
