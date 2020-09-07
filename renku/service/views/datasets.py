@@ -72,7 +72,7 @@ DATASET_BLUEPRINT_TAG = "datasets"
 dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@use_kwargs(DatasetListRequest, locations=["query"])
+@use_kwargs(DatasetListRequest, location="query")
 @marshal_with(DatasetListResponseRPC)
 @header_doc("List all datasets in project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
@@ -86,7 +86,7 @@ def list_datasets_view(user, cache):
     return DatasetsListCtrl(cache, user, dict(request.args)).to_response()
 
 
-@use_kwargs(DatasetFilesListRequest, locations=["query"])
+@use_kwargs(DatasetFilesListRequest, location="query")
 @marshal_with(DatasetFilesListResponseRPC)
 @header_doc("List files in a dataset.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
