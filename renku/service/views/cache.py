@@ -55,6 +55,7 @@ from renku.service.views import result_response
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
+    handle_migration_except,
     header_doc,
     requires_cache,
     requires_identity,
@@ -234,6 +235,7 @@ def list_projects_view(user, cache):
     "/cache.migrate", methods=["POST"], provide_automatic_options=False,
 )
 @handle_common_except
+@handle_migration_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -268,8 +270,15 @@ def migrate_project_view(user_data, cache):
 
         return result_response(ProjectMigrateAsyncResponseRPC(), job)
 
-    messages, was_migrated = execute_migration(project, commit_message)
-    response = {"messages": messages, "was_migrated": was_migrated}
+    messages, was_migrated, template_migrated, docker_migrated = execute_migration(
+        project, force_template_update, skip_template_update, skip_docker_update, skip_migrations, commit_message
+    )
+    response = {
+        "messages": messages,
+        "was_migrated": was_migrated,
+        "template_migrated": template_migrated,
+        "docker_migrated": docker_migrated,
+    }
 
     if was_migrated:
         _, response["remote_branch"] = repo_sync(Repo(project.abs_path), remote="origin")

@@ -72,7 +72,7 @@ def test_fetch_template_from_git(url, ref, result, error):
     """
     with TemporaryDirectory() as tempdir:
         with raises(error):
-            manifest_file = fetch_template_from_git(url, ref, Path(tempdir))
+            manifest_file, _ = fetch_template_from_git(url, ref, Path(tempdir))
             assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
             assert manifest_file.exists()
 
@@ -256,7 +256,7 @@ def test_update_from_template(local_client, mocker):
                 continue
             p.write_text(f"{p.read_text()}\nmodified")
 
-        migrate(local_client)
+        migrate(local_client, skip_docker_update=True)
 
         for p in project_files:
             if p.is_dir():
@@ -310,7 +310,7 @@ def test_update_from_template_with_modified_files(local_client, mocker):
         modified_local_content = modified_file.read_text() + "\nlocal modification"
         modified_file.write_text(modified_local_content)
 
-        migrate(local_client)
+        migrate(local_client, skip_docker_update=True)
 
         for p in project_files:
             if p.is_dir():
@@ -356,8 +356,6 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
         fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
         fetch_template.return_value = (manifest, temppath, "renku", "0.0.2")
 
-        project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
-
         for p in template_files:
             if p.is_dir():
                 continue
@@ -368,7 +366,9 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
         modified_local_content = modified_file.read_text() + "\nlocal modification"
         modified_file.write_text(modified_local_content)
 
-        with pytest.raises(ValueError, match=r"Can't update template as immutable template file .* has local changes."):
+        with pytest.raises(
+            errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
+        ):
             migrate(local_client)
 
 
@@ -454,12 +454,10 @@ def test_update_from_template_with_new_variable(local_client, mocker):
         fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
         fetch_template.return_value = (manifest, temppath, "renku", "0.0.2")
 
-        project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
-
         for p in template_files:
             if p.is_dir():
                 continue
             p.write_text(f"{p.read_text()}\nmodified")
 
-        with pytest.raises(ValueError, match=r".*Can't update template, it now requires variable.*"):
+        with pytest.raises(errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"):
             migrate(local_client)

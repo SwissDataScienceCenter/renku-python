@@ -420,8 +420,12 @@ class ExportError(RenkuException):
 
 
 class TemplateUpdateError(RenkuException):
-    """Raised when using a non-valid template."""
+    """Raised when a project couldn't be updated from its template."""
 
 
 class DockerfileUpdateError(RenkuException):
-    """Raised when using a non-valid template."""
+    """Raised when the renku version in the Dockerfile couldn't be updated."""
+
+
+class MigrationError(RenkuException):
+    """Raised when something wen't running during migrations."""

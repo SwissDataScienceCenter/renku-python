@@ -199,6 +199,8 @@ class ProjectMigrateResponse(Schema):
     """Response schema for project migrate."""
 
     was_migrated = fields.Boolean()
+    template_migrated = fields.Boolean()
+    docker_migrated = fields.Boolean()
     messages = fields.List(fields.String)
 
 
@@ -234,6 +236,8 @@ class ProjectMigrationCheckResponse(Schema):
     """Response schema for project migration check."""
 
     migration_required = fields.Boolean()
+    template_update_possible = fields.Boolean()
+    docker_update_possible = fields.Boolean()
     project_supported = fields.Boolean()
     project_version = fields.String()
     latest_version = fields.String()

@@ -17,7 +17,13 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.management.migrate import is_migration_required, is_project_unsupported, migrate, migrate_environment
+from renku.core.management.migrate import (
+    is_docker_update_possible,
+    is_migration_required,
+    is_project_unsupported,
+    is_template_update_possible,
+    migrate,
+)
 
 from .client import pass_local_client
 
@@ -25,7 +31,12 @@ from .client import pass_local_client
 @pass_local_client
 def migrations_check(client):
     """Public function for a migrations check."""
-    return is_migration_required(client), not is_project_unsupported(client)
+    return (
+        is_migration_required(client),
+        not is_project_unsupported(client),
+        is_template_update_possible(client),
+        is_docker_update_possible(client),
+    )
 
 
 @pass_local_client
@@ -55,12 +66,6 @@ def migrate_project(
         skip_migrations=skip_migrations,
         progress_callback=progress_callback,
     )
-
-
-@pass_local_client(clean=True, commit=True, commit_empty=False)
-def migrate_template_environment(client, progress_callback=None, commit_message=None):
-    """Migrate template environment entities."""
-    return migrate_environment(client=client, progress_callback=progress_callback)
 
 
 @pass_local_client(clean=True, commit=False)

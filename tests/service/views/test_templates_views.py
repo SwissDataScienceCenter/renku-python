@@ -63,7 +63,7 @@ def test_compare_manifests(svc_client_with_templates):
 
     with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        manifest_file = fetch_template_from_git(TEMPLATE_URL, TEMPLATE_REF, temp_path)
+        manifest_file, _ = fetch_template_from_git(TEMPLATE_URL, TEMPLATE_REF, temp_path)
         manifest = read_template_manifest(temp_path)
 
         assert manifest_file and manifest_file.exists()

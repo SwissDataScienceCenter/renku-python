@@ -47,15 +47,15 @@ class Project(ReferenceMixin):
 
     agent_version = attr.ib(converter=str, default="pre-0.11.0")
 
-    template_source = attr.ib(converter=str, default=None)
+    template_source = attr.ib(type=str, default=None)
 
-    template_ref = attr.ib(converter=str, default=None)
+    template_ref = attr.ib(type=str, default=None)
 
-    template_id = attr.ib(converter=str, default=None)
+    template_id = attr.ib(type=str, default=None)
 
-    template_version = attr.ib(converter=str, default=None)
+    template_version = attr.ib(type=str, default=None)
 
-    template_metadata = attr.ib(converter=str, default=None)
+    template_metadata = attr.ib(type=str, default="{}")
 
     immutable_template_files = attr.ib(factory=list)
 

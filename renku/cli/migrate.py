@@ -29,11 +29,13 @@ from renku.core.commands.migrate import migrate_project, migrate_project_no_comm
 def migrate(no_commit):
     """Migrate to latest Renku version."""
     if no_commit:
-        result = migrate_project_no_commit(
+        result, _, _ = migrate_project_no_commit(
             skip_template_update=True, skip_docker_update=True, progress_callback=click.secho,
         )
     else:
-        result = migrate_project(skip_template_update=True, skip_docker_update=True, progress_callback=click.secho,)
+        result, _, _ = migrate_project(
+            skip_template_update=True, skip_docker_update=True, progress_callback=click.secho,
+        )
 
     if result:
         click.secho("OK", fg="green")

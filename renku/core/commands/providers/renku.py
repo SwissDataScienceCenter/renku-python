@@ -116,7 +116,7 @@ class RenkuProvider(ProviderApi):
     def _migrate_project(self, client):
         if is_project_unsupported(client):
             return
-        migrate(client)
+        migrate(client, skip_template_update=True, skip_docker_update=True)
 
     @staticmethod
     def _is_project_dataset(parsed_url):

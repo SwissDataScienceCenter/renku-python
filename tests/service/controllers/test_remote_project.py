@@ -95,6 +95,8 @@ def test_remote_project_context():
         assert renku.__version__ == latest_version
         assert "pre-0.11.0" == project_version
 
-        migration_required, project_supported = migrations_check()
+        migration_required, project_supported, template_update_possible, docker_update_possible = migrations_check()
         assert migration_required is True
+        assert template_update_possible is False
+        assert docker_update_possible is False
         assert project_supported is True
