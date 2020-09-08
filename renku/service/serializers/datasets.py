@@ -41,6 +41,7 @@ class DatasetDetails(Schema):
     creators = fields.List(fields.Nested(DatasetCreators))
     description = fields.String()
     keywords = fields.List(fields.String())
+    identifier = fields.String()
 
 
 class DatasetCreateRequest(DatasetDetails):
@@ -194,6 +195,9 @@ class DatasetFileDetails(Schema):
     """Serialize dataset files to a response object."""
 
     name = fields.String(required=True)
+    path = fields.String()
+    created = fields.DateTime()
+    added = fields.DateTime()
 
 
 class DatasetFilesListResponse(Schema):
