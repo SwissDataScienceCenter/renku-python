@@ -72,7 +72,7 @@ DATASET_BLUEPRINT_TAG = "datasets"
 dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@use_kwargs(DatasetListRequest, locations=["query"])
+@use_kwargs(DatasetListRequest, location="query")
 @marshal_with(DatasetListResponseRPC)
 @header_doc("List all datasets in project.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
@@ -86,7 +86,7 @@ def list_datasets_view(user, cache):
     return DatasetsListCtrl(cache, user, dict(request.args)).to_response()
 
 
-@use_kwargs(DatasetFilesListRequest, locations=["query"])
+@use_kwargs(DatasetFilesListRequest, location="query")
 @marshal_with(DatasetFilesListResponseRPC)
 @header_doc("List files in a dataset.", tags=(DATASET_BLUEPRINT_TAG,))
 @dataset_blueprint.route(
@@ -126,7 +126,11 @@ def add_file_to_dataset_view(user_data, cache):
         if "file_url" in _file:
             commit_message = "{0}{1}".format(ctx["commit_message"], _file["file_url"])
 
-            job = cache.make_job(user)
+            job = cache.make_job(
+                user,
+                project=project,
+                job_data={"renku_op": "dataset_add_remote_file", "client_extras": ctx.get("client_extras")},
+            )
             _file["job_id"] = job.job_id
 
             with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
@@ -250,7 +254,9 @@ def import_dataset_view(user_data, cache):
     user = cache.ensure_user(user_data)
     ctx = DatasetImportRequest().load(request.json)
     project = cache.get_project(user, ctx["project_id"])
-    job = cache.make_job(user, locked=project.project_id)
+    job = cache.make_job(
+        user, project=project, job_data={"renku_op": "dataset_import", "client_extras": ctx.get("client_extras")}
+    )
 
     with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
         queue.enqueue(
