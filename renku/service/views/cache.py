@@ -32,6 +32,7 @@ from renku.core.commands.migrate import migrations_check, migrations_versions
 from renku.core.commands.save import repo_sync
 from renku.core.utils.contexts import chdir
 from renku.service.config import CACHE_UPLOADS_PATH, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
+from renku.service.controllers.migrations_check import MigrationsCheckCtrl
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.project import execute_migration, migrate_job
 from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
@@ -47,6 +48,7 @@ from renku.service.serializers.cache import (
     ProjectMigrateAsyncResponseRPC,
     ProjectMigrateRequest,
     ProjectMigrateResponseRPC,
+    ProjectMigrationCheckRequest,
     ProjectMigrationCheckResponseRPC,
     extract_file,
 )
@@ -246,7 +248,9 @@ def migrate_project_view(user_data, cache):
     commit_message = ctx.get("commit_message", None)
 
     if ctx.get("is_delayed", False):
-        job = cache.make_job(user, locked=project.project_id)
+        job = cache.make_job(
+            user, project=project, job_data={"renku_op": "migrate_job", "client_extras": ctx.get("client_extras")}
+        )
 
         with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
             queue.enqueue(
@@ -264,7 +268,7 @@ def migrate_project_view(user_data, cache):
     return result_response(ProjectMigrateResponseRPC(), response)
 
 
-@use_kwargs(ProjectMigrateRequest)
+@use_kwargs(ProjectMigrationCheckRequest)
 @marshal_with(ProjectMigrationCheckResponseRPC)
 @header_doc(
     "Check if project requires migration.", tags=(CACHE_BLUEPRINT_TAG,),
@@ -278,19 +282,4 @@ def migrate_project_view(user_data, cache):
 @accepts_json
 def migration_check_project_view(user_data, cache):
     """Migrate specified project."""
-    user = cache.ensure_user(user_data)
-    project = cache.get_project(user, request.args["project_id"])
-
-    with chdir(project.abs_path):
-        latest_version, project_version = migrations_versions()
-        migration_required, project_supported = migrations_check()
-
-    return result_response(
-        ProjectMigrationCheckResponseRPC(),
-        {
-            "migration_required": migration_required,
-            "project_supported": project_supported,
-            "project_version": project_version,
-            "latest_version": latest_version,
-        },
-    )
+    return MigrationsCheckCtrl(cache, user_data, dict(request.args)).to_response()

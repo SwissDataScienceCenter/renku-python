@@ -37,9 +37,12 @@ class Job(Model):
 
     job_id = TextField(primary_key=True, index=True)
     user_id = TextField(index=True)
+    project_id = TextField(index=True)
 
+    renku_op = TextField()
     state = TextField()
     extras = JSONField()
+    client_extras = TextField()
 
     locked = SetField()
 

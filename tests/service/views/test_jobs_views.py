@@ -23,6 +23,8 @@ from datetime import datetime
 import pytest
 from marshmallow.utils import isoformat
 
+from renku.service.cache.models.project import Project
+
 
 @pytest.mark.service
 def test_jobs_view_identity_protected(svc_client):
@@ -34,7 +36,7 @@ def test_jobs_view_identity_protected(svc_client):
     response = svc_client.get("/jobs", headers=headers)
 
     assert {"error"} == set(response.json.keys())
-    assert ("user identification is incorrect or missing") == response.json["error"]["reason"]
+    assert "user identification is incorrect or missing" == response.json["error"]["reason"]
 
 
 @pytest.mark.service
@@ -56,15 +58,23 @@ def test_jobs_view_expected_job(svc_client_cache):
     job_data = {
         "job_id": uuid.uuid4().hex,
         "state": "CREATED",
+        "renku_op": "dataset_import",
         "created_at": isoformat(datetime.now()),
         "updated_at": isoformat(datetime.now()),
         "extras": {"progress": 42},
     }
-    job = cache.make_job(user, job_data)
+
+    project = Project(project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject")
+    project.abs_path.mkdir(parents=True, exist_ok=True)
+    project.save()
+
+    job = cache.make_job(user, project=project, job_data=job_data)
 
     response = svc_client.get("/jobs", headers=headers)
     assert 1 == len(response.json["result"]["jobs"])
-    assert {"job_id", "state", "created_at", "updated_at", "extras",} == set(response.json["result"]["jobs"][0].keys())
+    assert {"job_id", "state", "created_at", "updated_at", "extras", "client_extras", "renku_op", "project"} == set(
+        response.json["result"]["jobs"][0].keys()
+    )
 
     cache.invalidate_job(user, job.job_id)
     response = svc_client.get("/jobs", headers=headers)
@@ -86,14 +96,20 @@ def test_jobs_view_check_exclusion(svc_client_cache):
             "created_at": isoformat(datetime.utcnow()),
             "updated_at": isoformat(datetime.utcnow()),
             "extras": {"progress": 42},
+            "renku_op": "dataset_import",
         }
-        job1 = cache.make_job(user, job_data)
+
+        project = Project(project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject")
+        project.abs_path.mkdir(parents=True, exist_ok=True)
+        project.save()
+
+        job1 = cache.make_job(user, project=project, job_data=job_data)
         assert job1
 
         new_job = copy.deepcopy(job_data)
         new_job["job_id"] = uuid.uuid4().hex
 
-        job2 = cache.make_job(excluded_user, new_job)
+        job2 = cache.make_job(excluded_user, project=project, job_data=new_job)
         assert job2
 
         assert job1.job_id != job2.job_id
@@ -103,7 +119,9 @@ def test_jobs_view_check_exclusion(svc_client_cache):
     assert {"result"} == set(response.json.keys())
     assert 10 == len(response.json["result"]["jobs"])
     for job in response.json["result"]["jobs"]:
-        assert {"job_id", "state", "created_at", "updated_at", "extras"} == set(job.keys())
+        assert {"job_id", "state", "created_at", "updated_at", "extras", "client_extras", "renku_op", "project"} == set(
+            job.keys()
+        )
 
 
 @pytest.mark.service
@@ -116,7 +134,7 @@ def test_job_details_auth(svc_client):
     response = svc_client.get("/jobs/myjob", headers=headers)
 
     assert {"error"} == set(response.json.keys())
-    assert ("user identification is incorrect or missing") == response.json["error"]["reason"]
+    assert "user identification is incorrect or missing" == response.json["error"]["reason"]
 
 
 @pytest.mark.service
@@ -142,12 +160,17 @@ def test_job_details_2user(svc_client_cache):
             "created_at": isoformat(datetime.now()),
             "updated_at": isoformat(datetime.now()),
             "extras": {"progress": 42},
+            "renku_op": "dataset_import",
         }
         for _ in range(10)
     ]
 
+    project = Project(project_id="123", user_id=user.user_id, owner="renkumeister", name="testproject")
+    project.abs_path.mkdir(parents=True, exist_ok=True)
+    project.save()
+
     for job_data in jobs:
-        cache.make_job(user, job_data)
+        cache.make_job(user, job_data=job_data, project=project)
 
     user_headers = copy.deepcopy(headers)
     headers["Renku-User-Id"] = "excluded_user"

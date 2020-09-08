@@ -15,16 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""DatasetFile metadata migrations."""
+"""Renku service controller module interfaces."""
 
-from renku.core.management.migrations.models.v3 import get_client_datasets
-
-
-def migrate(client):
-    """Migration function."""
-    _fix_dataset_metadata(client)
+from abc import ABC
 
 
-def _fix_dataset_metadata(client):
-    for dataset in get_client_datasets(client):
-        dataset.to_yaml()
+class ServiceCtrl(ABC):
+    """Interface for Renku service controllers."""
+
+    def renku_op(self):
+        """Renku operation for the controller."""
+        pass
+
+    def to_response(self):
+        """Execute controller flow and serialize to service response."""
+        pass

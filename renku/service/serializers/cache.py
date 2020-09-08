@@ -180,6 +180,7 @@ class ProjectMigrateRequest(Schema):
 
     project_id = fields.String(required=True)
     is_delayed = fields.Boolean(default=False)
+    client_extras = fields.String()
     commit_message = fields.String()
 
     @pre_load()
@@ -215,6 +216,15 @@ class ProjectMigrateAsyncResponseRPC(JsonRPCResponse):
     """RPC response schema for project migrate."""
 
     result = fields.Nested(ProjectMigrateJobResponse)
+
+
+class ProjectMigrationCheckRequest(Schema):
+    """Request schema for project migration check."""
+
+    project_id = fields.String()
+
+    git_url = fields.String()
+    branch = fields.String()
 
 
 class ProjectMigrationCheckResponse(Schema):

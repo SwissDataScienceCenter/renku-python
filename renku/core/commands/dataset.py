@@ -535,7 +535,7 @@ def import_dataset(
         if is_doi(dataset.identifier):
             dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
 
-        urls, names = zip(*[(f.url, f.filename) for f in files])
+        urls, names = zip(*[(f.source, f.filename) for f in files])
 
         _add_to_dataset(
             client,
@@ -596,7 +596,7 @@ def update_datasets(
     for file_ in records:
         if file_.based_on:
             possible_updates.append(file_)
-            unique_remotes.add(file_.based_on.url)
+            unique_remotes.add(file_.based_on.source)
         elif file_.external:
             external_files.append(file_)
 
