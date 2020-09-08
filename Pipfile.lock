@@ -229,10 +229,11 @@
         },
         "flask-apispec": {
             "hashes": [
-                "sha256:64c3f528dbf3e78ca7f3d6c695a1e8b788a87f0f4f4ce5c19070649a8f807856",
-                "sha256:c694f067b076828816b8c778e6928263fdc12b9ed1d2de4e781d21b2dd13aa5a"
+                "sha256:337f6821db06d9db24f3e8f18fca334f278e55e03dca3cef3c9c492762a5f738",
+                "sha256:f91fceb66d747978a2992f4e940cbd2379eaa156e8b8eae200791eee7af136be"
             ],
-            "version": "==0.9.0"
+            "markers": "python_version >= '3.5'",
+            "version": "==0.10.0"
         },
         "flask-swagger-ui": {
             "hashes": [
@@ -441,7 +442,7 @@
                 "sha256:67bf4cae9d3275b3fc74bd7ff88a7c98ee8c57c94b251a67b031dc293ecc4b76",
                 "sha256:a2a5eefb4b75a3b43f05be1cca0b6686adf56af7465c3ca629e5ad8d1e1fe13d"
             ],
-            "markers": "python_version >= '3'",
+            "markers": "python_version >= '3.5'",
             "version": "==3.7.1"
         },
         "mistune": {
@@ -824,11 +825,11 @@
         },
         "webargs": {
             "hashes": [
-                "sha256:4f04918864c7602886335d8099f9b8960ee698b6b914f022736ed50be6b71235",
-                "sha256:871642a2e0c62f21d5b78f357750ac7a87e6bc734c972f633aa5fb6204fbf29a",
-                "sha256:fc81c9f9d391acfbce406a319217319fd8b2fd862f7fdb5319ad06944f36ed25"
+                "sha256:cf0b5e2fdfb81f28b9332fce15621069d3fbc910a01c7ca8a5e166371699927b",
+                "sha256:ebb47fb35c3c4fc764213a17d1686e82fec54759ebed2b0715907d566668bb3f"
             ],
-            "version": "==5.5.3"
+            "markers": "python_version >= '3.5'",
+            "version": "==6.1.0"
         },
         "werkzeug": {
             "hashes": [

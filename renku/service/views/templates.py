@@ -51,7 +51,7 @@ TEMPLATES_BLUEPRINT_TAG = "templates"
 templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@use_kwargs(ManifestTemplatesRequest, locations=["query"])
+@use_kwargs(ManifestTemplatesRequest, location="query")
 @marshal_with(ManifestTemplatesResponseRPC)
 @header_doc("Clone a remote template repository and read the templates.", tags=(TEMPLATES_BLUEPRINT_TAG,))
 @templates_blueprint.route(
