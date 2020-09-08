@@ -166,7 +166,7 @@ install_requires = [
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
     "redis==3.5.3",
-    "rdflib==4.2.2",
+    "rdflib==5.0.0",
     "rdflib-jsonld>=0.4.0,<0.5.0",
     "requests>=2.23.0,<=2.24.0",
     "rq==1.5.1",
