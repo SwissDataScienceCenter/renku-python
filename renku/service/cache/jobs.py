@@ -18,6 +18,7 @@
 """Renku service jobs management."""
 from renku.service.cache.base import BaseCache
 from renku.service.cache.models.job import Job
+from renku.service.cache.models.project import Project
 from renku.service.cache.serializers.job import JobSchema
 
 
@@ -26,22 +27,20 @@ class JobManagementCache(BaseCache):
 
     job_schema = JobSchema()
 
-    def make_job(self, user, job_data=None, locked=None):
+    def make_job(self, user, project=None, job_data=None):
         """Cache job state under user hash set."""
-        if isinstance(locked, str) or isinstance(locked, int):
-            locked = {locked}
-
         if job_data:
             job_data.update({"user_id": user.user_id})
         else:
             job_data = {"user_id": user.user_id}
 
         job_obj = self.job_schema.load(job_data)
+
+        if project and isinstance(project, Project):
+            job_obj.project_id = project.project_id
+            job_obj.locked.add(project.project_id)
+
         job_obj.save()
-
-        for lock_obj in locked or []:
-            job_obj.locked.add(lock_obj)
-
         return job_obj
 
     @staticmethod
