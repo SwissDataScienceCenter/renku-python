@@ -825,11 +825,11 @@
         },
         "webargs": {
             "hashes": [
-                "sha256:cf0b5e2fdfb81f28b9332fce15621069d3fbc910a01c7ca8a5e166371699927b",
-                "sha256:ebb47fb35c3c4fc764213a17d1686e82fec54759ebed2b0715907d566668bb3f"
+                "sha256:2ead6ce38559152043ab4ada4d389aef6c804b0c169482e7c92b3f498f690b2c",
+                "sha256:412ecadd977afdea0ed6fa5f5b65ddd13a099269e622ec537f9c74c443ce4d0b"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==6.1.0"
+            "version": "==6.1.1"
         },
         "werkzeug": {
             "hashes": [
