@@ -22,10 +22,12 @@ import uuid
 import pytest
 from flaky import flaky
 from git import Repo
+from werkzeug.utils import secure_filename
 
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.service.jobs.cleanup import cache_project_cleanup
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
+from renku.service.serializers.headers import encode_b64
 from renku.service.utils import make_project_path
 from tests.service.views.test_dataset_views import assert_rpc_response
 
@@ -74,7 +76,10 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 def test_dataset_import_job(doi, svc_client_with_repo):
     """Test dataset import via doi."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
-    user = {"user_id": headers["Renku-User-Id"]}
+
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = {"user_id": user_id}
+
     payload = {
         "project_id": project_id,
         "dataset_uri": doi,
@@ -119,7 +124,10 @@ def test_dataset_import_job(doi, svc_client_with_repo):
 def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
-    user = {"user_id": headers["Renku-User-Id"]}
+
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = {"user_id": user_id}
+
     payload = {
         "project_id": project_id,
         "dataset_uri": doi,
@@ -159,7 +167,10 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
 def test_dataset_import_twice_job(doi, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
-    user = {"user_id": headers["Renku-User-Id"]}
+
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = {"user_id": user_id}
+
     payload = {
         "project_id": project_id,
         "dataset_uri": doi,
@@ -208,7 +219,9 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
 def test_dataset_add_remote_file(url, svc_client_with_repo):
     """Test dataset add a remote file."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
-    user = {"user_id": headers["Renku-User-Id"]}
+
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = {"user_id": user_id}
 
     payload = {"project_id": project_id, "name": uuid.uuid4().hex, "create_dataset": True, "files": [{"file_url": url}]}
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
@@ -236,7 +249,9 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 def test_dataset_project_lock(doi, svc_client_with_repo):
     """Test dataset project lock."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
-    user = {"user_id": headers["Renku-User-Id"]}
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = {"user_id": user_id}
+
     payload = {
         "project_id": project_id,
         "dataset_uri": doi,

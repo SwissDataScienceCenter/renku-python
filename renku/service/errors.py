@@ -26,3 +26,11 @@ class ProjectNotFound(RenkuException):
         """Build a custom message."""
         message = f'project_id "{project_id}" not found'
         super(ProjectNotFound, self).__init__(message)
+
+
+class IdentificationError(RenkuException):
+    """User identification not found or failed validation."""
+
+    def __init__(self, message):
+        """Build a custom message"""
+        super(IdentificationError, self).__init__(message)

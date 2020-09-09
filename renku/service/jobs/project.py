@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Project related jobs."""
-
 from git import GitCommandError, Repo
 from urllib3.exceptions import HTTPError
 

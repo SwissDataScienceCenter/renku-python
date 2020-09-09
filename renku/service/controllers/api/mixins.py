@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service controller mixin."""
-
 from abc import ABCMeta, abstractmethod
+from functools import wraps
 from pathlib import Path
 
 from git import Repo
@@ -27,6 +27,21 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import chdir
 from renku.service.controllers.utils.remote_project import RemoteProject
+from renku.service.errors import IdentificationError
+
+
+def local_identity(method):
+    """Ensure identity on local execution."""
+    # noqa
+    @wraps(method)
+    def _impl(self, *method_args, **method_kwargs):
+        """Implementation of method wrapper."""
+        if not self.user:
+            raise IdentificationError("user identification is missing")
+
+        return method(self, *method_args, **method_kwargs)
+
+    return _impl
 
 
 class ReadOperationMixin(metaclass=ABCMeta):
@@ -34,8 +49,6 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
     def __init__(self, cache, user_data, request_data):
         """Read operation mixin for controllers."""
-        self.user = cache.ensure_user(user_data)
-
         self.cache = cache
         self.user_data = user_data
         self.request_data = request_data
@@ -43,6 +56,9 @@ class ReadOperationMixin(metaclass=ABCMeta):
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
         # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
         self.project_path = None
+
+        if user_data:
+            self.user = cache.ensure_user(user_data)
 
     @property
     @abstractmethod
@@ -64,6 +80,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
         else:
             raise RenkuException("context does not contain `project_id` or `git_url`")
 
+    @local_identity
     def local(self):
         """Execute operation against service cache."""
         project = self.cache.get_project(self.user, self.context["project_id"])

@@ -24,9 +24,11 @@ import uuid
 import pytest
 from flaky import flaky
 from marshmallow import EXCLUDE
+from werkzeug.utils import secure_filename
 
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
+from renku.service.serializers.headers import encode_b64
 from renku.service.serializers.templates import ManifestTemplatesRequest
 from tests.service.views.test_dataset_views import assert_rpc_response
 
@@ -67,7 +69,9 @@ def test_cleanup_files_old_keys(svc_client_cache, service_job, tmp_path):
     """Cleanup old project."""
     svc_client, headers, cache = svc_client_cache
 
-    user = cache.ensure_user({"user_id": "user"})
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
+
     mydata = tmp_path / "mydata.json"
     mydata.write_text("1,2,3")
 
@@ -134,7 +138,8 @@ def test_cleanup_project_old_keys(svc_client_cache, service_job):
     """Cleanup old project with old hset keys."""
     svc_client, headers, cache = svc_client_cache
 
-    user = cache.ensure_user({"user_id": "user"})
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
     project = {
         "project_id": uuid.uuid4().hex,
         "name": "my-project",

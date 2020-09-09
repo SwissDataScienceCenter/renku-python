@@ -27,12 +27,21 @@ from marshmallow import EXCLUDE
 from renku.core.utils.contexts import chdir
 from renku.service.serializers.cache import ProjectCloneContext
 
+ANONYMOUS_SESSION = "anonymous"
+
 
 class RemoteProject:
     """Parent controller for all controllers with remote support."""
 
     def __init__(self, user_data, request_data):
         """Construct remote controller."""
+        if not user_data:
+            user_data = {
+                "owner": f"{ANONYMOUS_SESSION} session",
+                "name": f"{ANONYMOUS_SESSION}",
+                "token": f"{ANONYMOUS_SESSION}"
+            }
+
         self.ctx = ProjectCloneContext().load({**user_data, **request_data}, unknown=EXCLUDE)
 
         self.git_url = self.ctx["url_with_auth"]

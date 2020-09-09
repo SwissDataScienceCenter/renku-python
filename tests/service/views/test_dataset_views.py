@@ -26,8 +26,10 @@ from pathlib import Path
 
 import pytest
 from flaky import flaky
+from werkzeug.utils import secure_filename
 
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from renku.service.serializers.headers import encode_b64
 from tests.utils import make_dataset_add_payload
 
 
@@ -525,7 +527,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_list_dataset_files(svc_client_with_repo):
     """Check listing of dataset files"""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -776,7 +778,9 @@ def test_add_existing_file(svc_client_with_repo):
 def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
     """Test import a dataset."""
     client, headers, cache = svc_client_cache
-    user = cache.ensure_user({"user_id": "user"})
+
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
 
     project_meta = {
         "project_id": uuid.uuid4().hex,
@@ -824,7 +828,8 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata, mock_redis)
     project, project_meta = project_metadata
     client, headers, cache = svc_client_cache
 
-    user = cache.ensure_user({"user_id": "user"})
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
     project_obj = cache.make_project(user, project_meta)
 
     dest = project_obj.abs_path
@@ -859,7 +864,8 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata, mock_re
     url_dbox = "https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0"
 
     client, headers, cache = svc_client_cache
-    user = cache.ensure_user({"user_id": "user"})
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
     project_obj = cache.make_project(user, project_meta)
 
     dest = project_obj.abs_path

@@ -17,13 +17,17 @@
 # limitations under the License.
 """Renku service jobs view tests."""
 import copy
+import time
 import uuid
 from datetime import datetime
 
+import jwt
 import pytest
 from marshmallow.utils import isoformat
+from werkzeug.utils import secure_filename
 
 from renku.service.cache.models.project import Project
+from renku.service.serializers.headers import encode_b64
 
 
 @pytest.mark.service
@@ -40,10 +44,9 @@ def test_jobs_view_identity_protected(svc_client):
 
 
 @pytest.mark.service
-def test_jobs_view_empty_result(svc_client):
+def test_jobs_view_empty_result(svc_client, identity_headers):
     """Check empty result for user requested jobs."""
-    headers = {"Content-Type": "application/json", "accept": "application/json", "Renku-User-Id": "user"}
-    response = svc_client.get("/jobs", headers=headers)
+    response = svc_client.get("/jobs", headers=identity_headers)
 
     assert {"result"} == set(response.json.keys())
     assert [] == response.json["result"]["jobs"]
@@ -54,7 +57,9 @@ def test_jobs_view_expected_job(svc_client_cache):
     """Check non-empty result for user requested job."""
     svc_client, headers, cache = svc_client_cache
 
-    user = cache.ensure_user({"user_id": "user"})
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
+
     job_data = {
         "job_id": uuid.uuid4().hex,
         "state": "CREATED",
@@ -86,7 +91,8 @@ def test_jobs_view_check_exclusion(svc_client_cache):
     """Check non-empty result for user requested jobs."""
     svc_client, headers, cache = svc_client_cache
 
-    user = cache.ensure_user({"user_id": "user"})
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
     excluded_user = cache.ensure_user({"user_id": "excluded_user"})
 
     for _ in range(10):
@@ -138,21 +144,21 @@ def test_job_details_auth(svc_client):
 
 
 @pytest.mark.service
-def test_job_details_empty(svc_client):
+def test_job_details_empty(svc_client, identity_headers):
     """Check job details for a user."""
-    headers = {"Content-Type": "application/json", "accept": "application/json", "Renku-User-Id": "user"}
-    response = svc_client.get("/jobs/myjob", headers=headers)
+    response = svc_client.get("/jobs/myjob", headers=identity_headers)
 
     assert {"result"} == set(response.json.keys())
     assert response.json["result"] is None
 
 
 @pytest.mark.service
-def test_job_details_2user(svc_client_cache):
+def test_job_details_by_user(svc_client_cache):
     """Check job details for a user."""
     svc_client, headers, cache = svc_client_cache
 
-    user = cache.ensure_user({"user_id": "user"})
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
     jobs = [
         {
             "job_id": uuid.uuid4().hex,
@@ -172,12 +178,36 @@ def test_job_details_2user(svc_client_cache):
     for job_data in jobs:
         cache.make_job(user, job_data=job_data, project=project)
 
-    user_headers = copy.deepcopy(headers)
-    headers["Renku-User-Id"] = "excluded_user"
-    excluded_user_headers = copy.deepcopy(headers)
+    jwt_data = {
+        "jti": "12345",
+        "exp": int(time.time()) + 1e6,
+        "nbf": 0,
+        "iat": 1595317694,
+        "iss": "https://stable.dev.renku.ch/auth/realms/Renku",
+        "aud": ["renku"],
+        "sub": "12345",
+        "typ": "ID",
+        "azp": "renku",
+        "nonce": "12345",
+        "auth_time": 1595317694,
+        "session_state": "12345",
+        "acr": "1",
+        "email_verified": False,
+        "preferred_username": "user1@platform2.com",
+        "given_name": "user",
+        "family_name": "user one",
+        "name": "User One",
+        "email": "user1@platform2.com",
+    }
+
+    excluded_user_headers = {
+        "Content-Type": "application/json",
+        "Renku-User": jwt.encode(jwt_data, "secret", algorithm="HS256").decode("utf-8"),
+        "Authorization": headers["Authorization"],
+    }
 
     for job in jobs:
-        response = svc_client.get("/jobs/{0}".format(job["job_id"]), headers=user_headers)
+        response = svc_client.get("/jobs/{0}".format(job["job_id"]), headers=headers)
         assert response
         assert job["job_id"] == response.json["result"]["job_id"]
 
