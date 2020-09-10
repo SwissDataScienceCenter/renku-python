@@ -120,8 +120,12 @@ def test_creator_parse(creators, data_file):
 
 def test_dataset_serialization(dataset):
     """Test dataset (de)serialization."""
-    dataset_metadata = dataset.as_jsonld()
-    dataset = Dataset.from_jsonld(dataset_metadata)
+
+    def read_value(key):
+        return dataset_metadata.get(key)[0].get("@value")
+
+    flattened_metadata = dataset.as_jsonld()
+    dataset = Dataset.from_jsonld(flattened_metadata)
 
     # assert that all attributes found in metadata are set in the instance
     assert dataset.date_created
@@ -131,14 +135,13 @@ def test_dataset_serialization(dataset):
     assert dataset.path
     assert dataset._project
 
+    dataset_metadata = [m for m in flattened_metadata if "Dataset" in str(m["@type"])][0]
+
     # check values
-    assert str(dataset.date_created.isoformat()) == dataset_metadata.get("http://schema.org/dateCreated")
-    assert dataset.creators[0].email == dataset_metadata.get("http://schema.org/creator")[0].get(
-        "http://schema.org/email"
-    )
-    assert dataset.identifier == dataset_metadata.get("http://schema.org/identifier")
-    assert dataset.title == dataset_metadata.get("http://schema.org/name")
-    assert dataset.path == dataset_metadata.get("http://www.w3.org/ns/prov#atLocation")
+    assert str(dataset.date_created.isoformat()) == read_value("http://schema.org/dateCreated")
+    assert dataset.identifier == read_value("http://schema.org/identifier")
+    assert dataset.title == read_value("http://schema.org/name")
+    assert dataset.path == read_value("http://www.w3.org/ns/prov#atLocation")
 
 
 def test_create_dataset_custom_message(project):

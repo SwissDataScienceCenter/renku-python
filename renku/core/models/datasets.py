@@ -587,20 +587,20 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
             return data
-        if not isinstance(data, dict):
+        if not isinstance(data, (dict, list)):
             raise ValueError(data)
 
         schema_class = schema_class or DatasetSchema
-        return schema_class(client=client, commit=commit).load(data)
+        return schema_class(client=client, commit=commit, flattened=True).load(data)
 
     def to_yaml(self):
         """Write an instance to the referenced YAML file."""
-        data = DatasetSchema().dump(self)
+        data = DatasetSchema(flattened=True).dump(self)
         jsonld.write_yaml(path=self.__reference__, data=data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
-        return DatasetSchema().dump(self)
+        return DatasetSchema(flattened=True).dump(self)
 
 
 class CreatorMixinSchema(JsonLDSchema):
