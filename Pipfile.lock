@@ -76,11 +76,11 @@
         },
         "calamus": {
             "hashes": [
-                "sha256:a3ad53e4ff42a1fce0649894b6ed1e30b9c741eb8898ee2e7e30b8d1361ae080",
-                "sha256:a928a48b87d6b49f9f1f0176de096051aa50088eeb9c46b38fcaaf578cb77218"
+                "sha256:406fbecd8f2e7d703ca89115f4fe027019344c16b74604891b296283467e2f8b",
+                "sha256:86df8d249db27707c40f29b3a60e96206b8196b4f9fc1832c9cf2285ee22132d"
             ],
             "markers": "python_full_version >= '3.6.1' and python_full_version < '4.0.0'",
-            "version": "==0.3.2"
+            "version": "==0.3.3"
         },
         "certifi": {
             "hashes": [
