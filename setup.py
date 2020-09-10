@@ -140,7 +140,7 @@ install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "apispec>=3.3.1,<=3.3.2",
     "attrs>=19.3.0,<=20.2.0",
-    "calamus==0.3.2",
+    "calamus==0.3.3",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
     "cryptography>=2.7,<=2.9.2",
