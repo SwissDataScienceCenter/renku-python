@@ -41,6 +41,7 @@ class DatasetDetails(Schema):
     creators = fields.List(fields.Nested(DatasetCreators))
     description = fields.String()
     keywords = fields.List(fields.String())
+    identifier = fields.String()
 
 
 class DatasetCreateRequest(DatasetDetails):
@@ -122,6 +123,7 @@ class DatasetAddRequest(Schema):
     force = fields.Boolean(missing=False)
 
     commit_message = fields.String()
+    client_extras = fields.String()
 
     @post_load()
     def default_commit_message(self, data, **kwargs):
@@ -160,7 +162,10 @@ class DatasetAddResponseRPC(JsonRPCResponse):
 class DatasetListRequest(Schema):
     """Request schema for dataset list view."""
 
-    project_id = fields.String(required=True)
+    project_id = fields.String()
+
+    git_url = fields.String()
+    branch = fields.String()
 
 
 class DatasetListResponse(Schema):
@@ -178,14 +183,21 @@ class DatasetListResponseRPC(JsonRPCResponse):
 class DatasetFilesListRequest(Schema):
     """Request schema for dataset files list view."""
 
-    project_id = fields.String(required=True)
     name = fields.String(required=True)
+
+    project_id = fields.String()
+
+    git_url = fields.String()
+    branch = fields.String()
 
 
 class DatasetFileDetails(Schema):
     """Serialize dataset files to a response object."""
 
     name = fields.String(required=True)
+    path = fields.String()
+    created = fields.DateTime()
+    added = fields.DateTime()
 
 
 class DatasetFilesListResponse(Schema):
@@ -208,6 +220,7 @@ class DatasetImportRequest(Schema):
     dataset_uri = fields.String(required=True)
     name = fields.String()
     extract = fields.Boolean()
+    client_extras = fields.String()
 
 
 class DatasetImportResponse(Schema):

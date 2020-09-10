@@ -45,7 +45,7 @@ class Project(ReferenceMixin):
 
     version = attr.ib(converter=str, default=str(SUPPORTED_PROJECT_VERSION),)
 
-    agent_version = attr.ib(converter=str, default=None)
+    agent_version = attr.ib(converter=str, default="pre-0.11.0")
 
     client = attr.ib(default=None, kw_only=True)
 
@@ -89,7 +89,6 @@ class Project(ReferenceMixin):
     def from_yaml(cls, path, client=None):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
-
         self = cls.from_jsonld(data=data, client=client)
         self.__reference__ = path
 
@@ -171,7 +170,7 @@ class ProjectSchema(JsonLDSchema):
     name = fields.String(schema.name, missing=None)
     created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     version = fields.String(schema.schemaVersion, missing=1)
-    agent_version = fields.String(schema.agent, missing=None)
+    agent_version = fields.String(schema.agent, missing="pre-0.11.0")
     creator = Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 

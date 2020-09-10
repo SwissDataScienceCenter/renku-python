@@ -296,6 +296,7 @@ def check_git_user_config():
 @click.option(
     "-p",
     "--parameter",
+    "metadata",
     multiple=True,
     type=click.STRING,
     callback=parse_parameters,
@@ -320,7 +321,7 @@ def init(
     template_index,
     template_source,
     template_ref,
-    parameter,
+    metadata,
     list_templates,
     force,
     describe,
@@ -355,6 +356,7 @@ def init(
     else:
         template_folder = Path(pkg_resources.resource_filename("renku", "templates"))
         template_manifest = read_template_manifest(template_folder)
+        template_source = "renku"
 
     # select specific template
     repeat = False
@@ -390,25 +392,27 @@ def init(
         if len(templates) == 1:
             template_data = templates[0]
         else:
-            template_num = click.prompt(
+            template_index = click.prompt(
                 text=create_template_sentence(templates, describe=describe, instructions=True),
                 type=click.IntRange(1, len(templates)),
                 show_default=False,
                 show_choices=False,
             )
-            template_data = templates[template_num - 1]
+            template_data = templates[template_index - 1]
+
+        template_id = template_data["folder"]
 
     # verify variables have been passed
     template_variables = template_data.get("variables", {})
     template_variables_keys = set(template_variables.keys())
-    input_parameters_keys = set(parameter.keys())
+    input_parameters_keys = set(metadata.keys())
     for key in template_variables_keys - input_parameters_keys:
         value = click.prompt(
             text=(f'The template requires a value for "{key}" ' f"({template_variables[key]})"),
             default="",
             show_default=False,
         )
-        parameter[key] = value
+        metadata[key] = value
     useless_variables = input_parameters_keys - template_variables_keys
     if len(useless_variables) > 0:
         click.echo(
@@ -416,7 +420,7 @@ def init(
             "ignored:\n\t{}".format("\n\t".join(useless_variables))
         )
         for key in useless_variables:
-            del parameter[key]
+            del metadata[key]
 
     # set local path and storage
     store_directory(path)
@@ -443,6 +447,15 @@ def init(
         except GitCommandError as e:
             click.UsageError(e)
 
+    # supply additional metadata
+    metadata["__template_source__"] = template_source
+    metadata["__template_ref__"] = template_ref
+    metadata["__template_id__"] = template_id
+    metadata["__namespace__"] = ""
+    metadata["__sanitized_project_name__"] = ""
+    metadata["__repository__"] = ""
+    metadata["__project_slug__"] = ""
+
     # clone the repo
     template_path = template_folder / template_data["folder"]
     click.echo("Initializing new Renku repository... ", nl=False)
@@ -452,7 +465,7 @@ def init(
                 template_path=template_path,
                 client=client,
                 name=name,
-                metadata=parameter,
+                metadata=metadata,
                 force=force,
                 data_dir=data_dir,
             )

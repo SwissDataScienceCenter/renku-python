@@ -106,7 +106,6 @@ def test_create_project_from_template(svc_client_templates_creation):
     # successfully push with proper authentication
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
     assert response
-
     assert {"result"} == set(response.json.keys())
     stripped_name = strip_and_lower(payload["project_name"])
     assert stripped_name == response.json["result"]["name"]
@@ -120,3 +119,36 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert {"result"} == set(response.json.keys())
     assert expected_url == response.json["result"]["url"]
     assert rm_remote() is True
+
+
+def test_service_default_init_parameters(svc_client_templates_creation, mocker):
+    """Test that the default parameters are set in template initialisation."""
+    create_from_template = mocker.patch("renku.service.views.templates.create_from_template_local")
+    mocker.patch("renku.service.views.templates.new_repo_push")
+    svc_client, headers, payload, rm_remote = svc_client_templates_creation
+    response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
+    assert response
+    assert {"result"} == set(response.json.keys())
+
+    project_name = strip_and_lower(payload["project_name"])
+
+    create_from_template.assert_called_once()
+    metadata = create_from_template.call_args[0][3]
+    assert set(
+        [
+            "__template_source__",
+            "__template_ref__",
+            "__template_id__",
+            "__namespace__",
+            "__repository__",
+            "__project_slug__",
+            "__sanitized_project_name__",
+        ]
+    ) <= set(metadata.keys())
+    assert metadata["__template_source__"] == "https://github.com/SwissDataScienceCenter/renku-project-template"
+    assert metadata["__template_ref__"] == "0.1.11"
+    assert metadata["__template_id__"] == "python-minimal"
+    assert metadata["__namespace__"] == "contact"
+    assert metadata["__repository__"] == "https://dev.renku.ch/gitlab"
+    assert metadata["__project_slug__"] == f"contact/{project_name}"
+    assert metadata["__sanitized_project_name__"] == project_name

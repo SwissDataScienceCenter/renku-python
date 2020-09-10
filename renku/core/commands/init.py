@@ -154,7 +154,7 @@ def create_from_template(
 
 @pass_local_client
 def create_from_template_local(
-    client, template_path, name, metadata={}, user=None, source=None, ref=None, invoked_from=None
+    client, template_path, name, metadata={}, default_metadata={}, user=None, source=None, ref=None, invoked_from=None
 ):
     """Initialize a new project from a template.
 
@@ -164,6 +164,8 @@ def create_from_template_local(
     parameters = "".join([f' -p "{key}"="{value}"' for key, value in metadata.items()])
     prefix = f"{invoked_from}: " if invoked_from else ""
     commit_message = f"{prefix}{command}{parameters}"
+
+    metadata = {**default_metadata, **metadata}
 
     create_from_template(
         template_path=template_path,

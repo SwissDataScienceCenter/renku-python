@@ -181,6 +181,7 @@ class RepositoryApiMixin(GitCore):
         """Return the Project instance."""
         if self.renku_metadata_path.exists() and self._project is None:
             self._project = Project.from_yaml(self.renku_metadata_path, client=self)
+
         return self._project
 
     @property
