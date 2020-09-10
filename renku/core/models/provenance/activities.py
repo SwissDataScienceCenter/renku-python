@@ -254,7 +254,7 @@ class Activity(CommitMixin, ReferenceMixin):
         host = "localhost"
         if hasattr(cls, "client"):
             host = cls.client.remote.get("host") or host
-        host = os.environ.get("RENKU_DOMAIN") or "localhost"
+        host = os.environ.get("RENKU_DOMAIN") or host
 
         return urllib.parse.urljoin(
             "https://{host}".format(host=host),
@@ -265,7 +265,7 @@ class Activity(CommitMixin, ReferenceMixin):
         """Configure calculated ID."""
         if self.commit:
             return self.generate_id(self.commit.hexsha)
-        return self.generate_id("UNCOMMITED")
+        return self.generate_id("UNCOMMITTED")
 
     @_message.default
     def default_message(self):
@@ -483,7 +483,6 @@ class ProcessRun(Activity):
 
         for input_ in run.inputs:
             usage_id = f"{id_}/{input_.sanitized_id}"
-            revision = commit
             input_path = input_.consumes.path
             entity = input_.consumes
             if update_commits:
@@ -581,11 +580,11 @@ class WorkflowRun(ProcessRun):
 
         id_ = cls.generate_id(commit)
         input_index = 1
-        for input in run.inputs:
+        for input_ in run.inputs:
             usage_id = f"{id_}/inputs/{input_index}"
 
             dependency = Usage.from_revision(
-                client=client, path=input.consumes.path, role=input.sanitized_id, revision=commit, id=usage_id,
+                client=client, path=input_.consumes.path, role=input_.sanitized_id, revision=commit, id=usage_id,
             )
 
             usages.append(dependency)
@@ -641,6 +640,21 @@ class WorkflowRun(ProcessRun):
         """Attrs post initializations."""
         if not self._id:
             self._id = self.default_id()
+
+        if not self._processes:
+            self._processes = []
+            for subprocess in self.association.plan.subprocesses:
+                run = subprocess.process
+                process_run = ProcessRun.from_run(
+                    run=run,
+                    client=self.client,
+                    path=self.path,
+                    commit=self.commit,
+                    subprocess_index=subprocess.index,
+                    update_commits=True,
+                )
+
+                self._processes.append(process_run)
 
         if self.client:
             for s in self._processes:
@@ -715,5 +729,3 @@ class WorkflowRunSchema(ProcessRunSchema):
         rdf_type = wfprov.WorkflowRun
         model = WorkflowRun
         unknown = EXCLUDE
-
-    _processes = Nested(wfprov.wasPartOfWorkflowRun, ProcessRunSchema, reverse=True, many=True, init_name="processes")
