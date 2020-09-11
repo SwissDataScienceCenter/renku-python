@@ -47,7 +47,7 @@ The first example shows situation when ``D`` is modified and files ``E`` and
     ** - modified
     () - needs update
 
-In this situation, you can do efectively two things:
+In this situation, you can do effectively two things:
 
 * Recreate a single file by running
 
@@ -76,8 +76,8 @@ of dependent files must be recreated.
            /            \
     *A*--*B*--(F)--(G)--(H)
 
-To avoid excesive recreation of the large portion of files which could have
-been affected by a simple change of an input file, consider speficing a single
+To avoid excessive recreation of the large portion of files which could have
+been affected by a simple change of an input file, consider specifying a single
 file (e.g. ``renku update G``). See also :ref:`cli-status`.
 
 .. _cli-update-with-siblings:
@@ -128,7 +128,7 @@ from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph, _safe_path
 from renku.core.commands.options import option_siblings
 from renku.core.models.locals import with_reference
-from renku.core.models.provenance.activities import WorkflowRun
+from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.version import __version__, version_url
 
@@ -174,7 +174,7 @@ def update(client, revision, no_output, siblings, paths):
     client.repo.git.add(*paths)
 
     if client.repo.is_dirty():
-        commit_msg = ("renku update: " "committing {} newly added files").format(len(paths))
+        commit_msg = "renku update: committing {} newly added files".format(len(paths))
 
         committer = Actor("renku {0}".format(__version__), version_url)
 
@@ -189,6 +189,7 @@ def update(client, revision, no_output, siblings, paths):
     workflow.update_id_and_label_from_commit_path(client, client.repo.head.commit, path)
 
     with with_reference(path):
-        run = WorkflowRun.from_run(workflow, client, path, update_commits=True)
+        cls = WorkflowRun if workflow.subprocesses else ProcessRun
+        run = cls.from_run(run=workflow, client=client, path=path, update_commits=True)
         run.to_yaml()
         client.add_to_activity_index(run)
