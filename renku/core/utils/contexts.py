@@ -87,3 +87,17 @@ class Isolation(contextlib.ExitStack):
         for key, value in kwargs.items():
             if value is not None:
                 self.enter_context(self.CONTEXTS[key](value))
+
+
+@contextlib.contextmanager
+def measure(message="TOTAL"):
+    """Measure execution time of enclosing code block."""
+    import time
+
+    start = time.time()
+    try:
+        yield
+    finally:
+        end = time.time()
+        total_seconds = float("%.2f" % (end - start))
+        print(f"{message}: {total_seconds} seconds")

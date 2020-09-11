@@ -213,21 +213,12 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True,))
-@click.option(
-    "explicit_inputs", "--input", multiple=True, help="Force a path to be considered as an input.",
-)
-@click.option(
-    "explicit_outputs", "--output", multiple=True, help="Force a path to be considered an output.",
-)
-@click.option(
-    "--no-output", is_flag=True, default=False, help="Allow command without output files.",
-)
-@click.option(
-    "--no-input-detection", is_flag=True, default=False, help="Disable auto-detection of inputs.",
-)
-@click.option(
-    "--no-output-detection", is_flag=True, default=False, help="Disable auto-detection of outputs.",
-)
+@click.option("--name", help="A name for the workflow step.")
+@click.option("explicit_inputs", "--input", multiple=True, help="Force a path to be considered as an input.")
+@click.option("explicit_outputs", "--output", multiple=True, help="Force a path to be considered an output.")
+@click.option("--no-output", is_flag=True, default=False, help="Allow command without output files.")
+@click.option("--no-input-detection", is_flag=True, default=False, help="Disable auto-detection of inputs.")
+@click.option("--no-output-detection", is_flag=True, default=False, help="Disable auto-detection of outputs.")
 @click.option(
     "--success-code",
     "success_codes",
@@ -238,11 +229,10 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
 )
 @option_isolation
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
-@pass_local_client(
-    clean=True, requires_migration=True, commit=True, ignore_std_streams=True,
-)
+@pass_local_client(clean=True, requires_migration=True, commit=True, ignore_std_streams=True)
 def run(
     client,
+    name,
     explicit_inputs,
     explicit_outputs,
     no_output,
@@ -314,39 +304,38 @@ def run(
             successCodes=success_codes,
             **{name: os.path.relpath(path, working_dir) for name, path in mapped_std.items()},
         )
-        with client.with_workflow_storage() as wf:
-            with factory.watch(client, no_output=no_output) as tool:
-                # Don't compute paths if storage is disabled.
-                if client.check_external_storage():
-                    # Make sure all inputs are pulled from a storage.
-                    paths_ = (path for _, path in tool.iter_input_files(client.workflow_path))
-                    client.pull_paths_from_storage(*paths_)
+        with factory.watch(client, no_output=no_output) as tool:
+            # Don't compute paths if storage is disabled.
+            if client.check_external_storage():
+                # Make sure all inputs are pulled from a storage.
+                paths_ = (path for _, path in tool.iter_input_files(client.workflow_path))
+                client.pull_paths_from_storage(*paths_)
 
-                if tty_exists:
-                    # apply original output redirection
-                    if stdout_redirected:
-                        sys.stdout = old_stdout
-                    if stderr_redirected:
-                        sys.stderr = old_stderr
+            if tty_exists:
+                # apply original output redirection
+                if stdout_redirected:
+                    sys.stdout = old_stdout
+                if stderr_redirected:
+                    sys.stderr = old_stderr
 
-                return_code = call(
-                    factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()},
-                )
+            return_code = call(
+                factory.command_line, cwd=os.getcwd(), **{key: getattr(sys, key) for key in mapped_std.keys()},
+            )
 
-                sys.stdout.flush()
-                sys.stderr.flush()
+            sys.stdout.flush()
+            sys.stderr.flush()
 
-                if tty_exists:
-                    # change back to /dev/tty redirection
-                    if stdout_redirected:
-                        sys.stdout = system_stdout
-                    if stderr_redirected:
-                        sys.stderr = system_stderr
+            if tty_exists:
+                # change back to /dev/tty redirection
+                if stdout_redirected:
+                    sys.stdout = system_stdout
+                if stderr_redirected:
+                    sys.stderr = system_stderr
 
-                if return_code not in (success_codes or {0}):
-                    raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
+            if return_code not in (success_codes or {0}):
+                raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
 
-                wf.add_step(run=tool)
+        client.process_and_store_run(command_line_tool=tool, name=name, client=client)
 
         if factory.messages:
             click.echo(factory.messages)

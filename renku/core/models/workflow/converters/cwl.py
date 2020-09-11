@@ -26,7 +26,8 @@ from uuid import uuid4
 import cwlgen
 
 from renku.core.models.entities import Collection
-from renku.core.models.workflow.parameters import CommandOutput
+
+# from renku.core.models.workflow.parameters import CommandOutput
 
 
 class CommandLineTool(cwlgen.CommandLineTool):
@@ -122,8 +123,8 @@ class CWLConverter(object):
                 if key not in previous_output_dirs:
                     continue
 
-                for previous_process in previous_output_dirs[key]:
-                    previous_process.outputs.append(CommandOutput(produces=entity, create_folder=False))
+                # for previous_process in previous_output_dirs[key]:
+                #     previous_process.outputs.append(CommandOutput(produces=entity, create_folder=False))
 
             for output in subprocess.outputs:
                 entity = output.produces

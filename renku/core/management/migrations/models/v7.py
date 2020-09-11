@@ -67,7 +67,7 @@ class DatasetSchemaV7(DatasetSchemaV3):
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV7, many=True)
 
 
-def get_client_datasets(client):
+def get_client_datasets(client, metadata_path):
     """Return Dataset migration models for a client."""
-    paths = client.renku_datasets_path.rglob(client.METADATA)
+    paths = [metadata_path] if metadata_path else client.renku_datasets_path.rglob(client.METADATA)
     return [Dataset.from_yaml(path=path, client=client) for path in paths]
