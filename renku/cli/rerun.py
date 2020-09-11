@@ -48,6 +48,7 @@ from pathlib import Path
 import click
 
 from renku.cli.update import execute_workflow
+from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.graph import Graph
 from renku.core.commands.options import option_siblings
@@ -65,6 +66,14 @@ def edit_inputs(client, workflow):
     for input_ in workflow.inputs:
         new_path = click.prompt("{0._id}".format(input_), default=input_.consumes.path,)
         input_.consumes.path = str(Path(os.path.abspath(new_path)).relative_to(client.path))
+
+        try:
+            input_.consumes.commit = client.find_previous_commit(input_.consumes.path)
+        except KeyError:
+            raise errors.DirtyRepository(f"Please commit {input_.consumes.path} before using it as an input.")
+
+        input_.consumes._id = input_.consumes.default_id()
+        input_.consumes._label = input_.consumes.default_label()
 
     for step in workflow.subprocesses:
         for argument in step.process.arguments:

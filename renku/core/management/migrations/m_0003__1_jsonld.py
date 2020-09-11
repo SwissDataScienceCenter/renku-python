@@ -28,10 +28,11 @@ from renku.core.models.jsonld import read_yaml, write_yaml
 from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
 
 
-def migrate(client):
+def migrate(client, metadata_path):
     """Migration function."""
-    _migrate_project_metadata(client)
-    _migrate_datasets_metadata(client)
+    if not metadata_path:
+        _migrate_project_metadata(client)
+    _migrate_datasets_metadata(client, metadata_path)
 
 
 def _migrate_project_metadata(client):
@@ -49,7 +50,7 @@ def _migrate_project_metadata(client):
     )
 
 
-def _migrate_datasets_metadata(client):
+def _migrate_datasets_metadata(client, metadata_path):
     """Apply all initial JSON-LD migrations to datasets."""
     jsonld_migrations = {
         "dctypes:Dataset": [_migrate_dataset_schema, _migrate_absolute_paths],
@@ -62,7 +63,7 @@ def _migrate_datasets_metadata(client):
     }
 
     old_metadata_paths = get_pre_0_3_4_datasets_metadata(client)
-    new_metadata_paths = client.renku_datasets_path.rglob(client.METADATA)
+    new_metadata_paths = [metadata_path] if metadata_path else client.renku_datasets_path.rglob(client.METADATA)
 
     for path in itertools.chain(old_metadata_paths, new_metadata_paths):
         _apply_on_the_fly_jsonld_migrations(

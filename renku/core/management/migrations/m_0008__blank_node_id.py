@@ -20,11 +20,11 @@
 from renku.core.management.migrations.models.v8 import get_client_datasets
 
 
-def migrate(client):
+def migrate(client, metadata_path):
     """Migration function."""
-    _fix_dataset_metadata(client)
+    _fix_dataset_metadata(client, metadata_path)
 
 
-def _fix_dataset_metadata(client):
-    for dataset in get_client_datasets(client):
+def _fix_dataset_metadata(client, metadata_path):
+    for dataset in get_client_datasets(client, metadata_path):
         dataset.to_yaml()

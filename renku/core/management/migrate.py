@@ -86,6 +86,7 @@ def migrate(
     skip_docker_update=False,
     skip_migrations=False,
     progress_callback=None,
+    metadata_path=None,
 ):
     """Apply all migration files to the project."""
     template_updated = docker_updated = False
@@ -125,7 +126,7 @@ def migrate(
                 module_name = module.__name__.split(".")[-1]
                 progress_callback(f"Applying migration {module_name}...")
             try:
-                module.migrate(client)
+                module.migrate(client, metadata_path=metadata_path)
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1
