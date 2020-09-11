@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020- Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,43 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Renku service controller module interfaces."""
 
-root = true
+from abc import ABC
 
-[*]
-indent_style = space
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-charset = utf-8
 
-# Python files
-[*.py]
-indent_size = 4
-max_line_length = 120
-# isort plugin configuration
-known_first_party = renku
-multi_line_output = 2
-default_section = THIRDPARTY
-skip = .eggs
+class ServiceCtrl(ABC):
+    """Interface for Renku service controllers."""
 
-# RST files (used by sphinx)
-[*.rst]
-indent_size = 3
+    def renku_op(self):
+        """Renku operation for the controller."""
+        pass
 
-# CSS, HTML, JS, JSON, YML
-[*.{css,html,js,json,yml}]
-indent_size = 2
-
-# Matches the exact files either package.json or .travis.yml
-[{package.json,.travis.yml}]
-indent_size = 2
-
-# Dockerfile
-[Dockerfile]
-indent_size = 4
-
-# Makefile
-[Makefile]
-indent_size = 4
-indent_style = tab
+    def to_response(self):
+        """Execute controller flow and serialize to service response."""
+        pass

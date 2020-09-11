@@ -181,6 +181,7 @@ class RepositoryApiMixin(GitCore):
         """Return the Project instance."""
         if self.renku_metadata_path.exists() and self._project is None:
             self._project = Project.from_yaml(self.renku_metadata_path, client=self)
+
         return self._project
 
     @property
@@ -253,7 +254,7 @@ class RepositoryApiMixin(GitCore):
             activities = self.activities_for_paths(commit.stats.files.keys(), file_commit=commit, revision="HEAD")
             if len(activities) > 1:
                 raise errors.CommitProcessingError(
-                    "Found multiple activities that produced the same entity " "at commit {}".format(commit)
+                    "Found multiple activities that produced the same entity at commit {}".format(commit)
                 )
             if activities:
                 return activities[0]
@@ -503,7 +504,7 @@ class RepositoryApiMixin(GitCore):
                         continue
                     matching_activities = matching[file_commit.hexsha]
                 else:
-                    matching_activities = [a for v in matching.values for a in v]
+                    matching_activities = [a for v in matching.values() for a in v]
 
             for a in matching_activities:
                 if (a, revision) in self._commit_activity_cache:

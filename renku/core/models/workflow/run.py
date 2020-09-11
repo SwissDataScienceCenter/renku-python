@@ -167,6 +167,8 @@ class Run(CommitMixin):
 
     outputs = attr.ib(kw_only=True, factory=list)
 
+    _activity = attr.ib(kw_only=True, default=None)
+
     @staticmethod
     def generate_id(client):
         """Generate an id for an argument."""
@@ -224,7 +226,7 @@ class Run(CommitMixin):
     @property
     def activity(self):
         """Return the activity object."""
-        return self._activity()
+        return self._activity() if self._activity else None
 
     def to_argv(self):
         """Convert run into argv list."""
@@ -348,6 +350,9 @@ class Run(CommitMixin):
         commit_not_set = not self.commit or self.commit.hexsha in self._label
         if commit_not_set and self.client and self.path and Path(self.path).exists():
             self.commit = self.client.find_previous_commit(self.path)
+
+        # List order is not guaranteed when loading from JSON-LD
+        self.subprocesses.sort()
 
     @classmethod
     def from_jsonld(cls, data):

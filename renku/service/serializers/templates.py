@@ -60,6 +60,7 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     project_name = fields.String(required=True)
     project_namespace = fields.String(required=True)
     project_repository = fields.String(required=True)
+    project_slug = fields.String(required=True)
 
     new_project_url = fields.String(required=True)
     project_name_stripped = fields.String(required=True)
@@ -68,11 +69,11 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     def create_new_project_url(self, data, **kwargs):
         """Set owner and name fields."""
         project_name_stripped = strip_and_lower(data["project_name"])
-        new_project_url = "{0}/{1}/{2}".format(
-            data["project_repository"], data["project_namespace"], project_name_stripped
-        )
+        new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
+        project_slug = f"{data['project_namespace']}/{project_name_stripped}"
         data["new_project_url"] = new_project_url
         data["project_name_stripped"] = project_name_stripped
+        data["project_slug"] = project_slug
 
         return data
 

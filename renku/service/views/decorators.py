@@ -24,6 +24,7 @@ from flask_apispec import doc
 from git import GitCommandError
 from marshmallow import ValidationError
 from redis import RedisError
+from sentry_sdk import capture_exception
 from werkzeug.exceptions import HTTPException
 
 from renku.core.errors import MigrationRequired, RenkuException
@@ -49,7 +50,9 @@ def requires_identity(f):
         """Represents decorated function."""
         try:
             user = UserIdentityHeaders().load(request.headers)
-        except (ValidationError, KeyError):
+        except (ValidationError, KeyError) as e:
+            capture_exception(e)
+
             err_message = "user identification is incorrect or missing"
             return jsonify(error={"code": INVALID_HEADERS_ERROR_CODE, "reason": err_message})
 
@@ -67,9 +70,9 @@ def handle_redis_except(f):
         try:
             return f(*args, **kwargs)
         except (RedisError, OSError) as e:
-            error_code = REDIS_EXCEPTION_ERROR_CODE
+            capture_exception(e)
 
-            return jsonify(error={"code": error_code, "reason": e.messages,})
+            return jsonify(error={"code": REDIS_EXCEPTION_ERROR_CODE, "reason": e.messages})
 
     return decorated_function
 
@@ -95,8 +98,11 @@ def handle_schema_except(f):
         try:
             return f(*args, **kwargs)
         except KeyError as e:
+            capture_exception(e)
+
             if e.args and len(e.args) > 0:
-                return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": f'missing parameter "{e.args[0]}"',})
+                return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": f'missing parameter "{e.args[0]}"'})
+
             raise
 
     return decorated_function
@@ -111,6 +117,8 @@ def handle_validation_except(f):
         try:
             return f(*args, **kwargs)
         except ValidationError as e:
+            capture_exception(e)
+
             return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": e.messages,})
 
     return decorated_function
@@ -125,6 +133,8 @@ def handle_renku_except(f):
         try:
             return f(*args, **kwargs)
         except RenkuException as e:
+            capture_Exception(e)
+
             err_response = {
                 "code": RENKU_EXCEPTION_ERROR_CODE,
                 "reason": str(e),
@@ -147,6 +157,7 @@ def handle_git_except(f):
         try:
             return f(*args, **kwargs)
         except GitCommandError as e:
+            capture_exception(e)
 
             error_code = GIT_ACCESS_DENIED_ERROR_CODE if "Access denied" in e.stderr else GIT_UNKNOWN_ERROR_CODE
 
@@ -187,12 +198,17 @@ def handle_base_except(f):
         try:
             return f(*args, **kwargs)
         except HTTPException as e:  # handle general werkzeug exception
+            capture_exception(e)
+
             return error_response(e.code, e.description)
 
         except (Exception, BaseException, OSError, IOError) as e:
+            capture_exception(e)
+
             internal_error = "internal error"
             if hasattr(e, "stderr"):
                 internal_error += ": {0}".format(" ".join(e.stderr.strip().split("\n")))
+
             return error_response(INTERNAL_FAILURE_ERROR_CODE, internal_error)
 
     return decorated_function

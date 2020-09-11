@@ -257,3 +257,34 @@ def test_init_with_invalid_data_dir(isolated_runner, data_dir):
     assert 2 == result.exit_code
     data_dir = data_dir.rstrip("/")
     assert f"Cannot use {data_dir} as data directory." in result.output
+
+
+def test_default_init_parameters(isolated_runner, mocker):
+    """Test that the default parameters are set in template initialisation."""
+    create_from_template = mocker.patch("renku.cli.init.create_from_template")
+    mocker.patch("renku.cli.githooks.install")
+
+    new_project = Path("test-new-project")
+    assert not new_project.exists()
+    result = isolated_runner.invoke(cli, INIT, INPUT)
+    assert 0 == result.exit_code
+    create_from_template.assert_called_once()
+    metadata = create_from_template.call_args[1]["metadata"]
+    assert set(
+        [
+            "__template_source__",
+            "__template_ref__",
+            "__template_id__",
+            "__namespace__",
+            "__repository__",
+            "__project_slug__",
+            "__sanitized_project_name__",
+        ]
+    ) <= set(metadata.keys())
+    assert metadata["__template_source__"] == "renku"
+    assert metadata["__template_ref__"] == "master"
+    assert metadata["__template_id__"] == "python-minimal"
+    assert metadata["__namespace__"] == ""
+    assert metadata["__repository__"] == ""
+    assert metadata["__project_slug__"] == ""
+    assert metadata["__sanitized_project_name__"] == ""

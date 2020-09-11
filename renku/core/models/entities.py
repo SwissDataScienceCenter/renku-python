@@ -19,9 +19,8 @@
 
 import os
 import pathlib
-import urllib
 import weakref
-from urllib.parse import quote
+from urllib.parse import quote, urljoin
 
 import attr
 
@@ -265,4 +264,4 @@ def generate_file_id(client, hexsha, path):
     host = os.environ.get("RENKU_DOMAIN") or host
 
     # always set the id by the identifier
-    return urllib.parse.urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))
+    return urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))

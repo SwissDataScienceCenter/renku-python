@@ -55,19 +55,6 @@ Entities
    :inherited-members:
 
 
-Plans
------
-
-.. py:module:: renku.core.models.provenance.processes
-
-.. autoclass:: Process
-   :members:
-   :inherited-members:
-
-.. autoclass:: Workflow
-   :members:
-   :inherited-members:
-
 Agents
 ------
 
