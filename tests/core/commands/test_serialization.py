@@ -20,48 +20,9 @@
 import datetime
 from urllib.parse import urljoin
 
-import yaml
-
 from renku.core.management.client import LocalClient
 from renku.core.models.datasets import Dataset
 from renku.core.utils.uuid import is_uuid
-
-
-def test_dataset_serialization(client, dataset, data_file):
-    """Test Dataset serialization."""
-
-    def load_dataset(name):
-        with open(str(client.get_dataset_path(name))) as f:
-            return yaml.safe_load(f)
-
-    d_dict = load_dataset("dataset")
-
-    expected_fields = [
-        "@id",
-        "http://www.w3.org/2000/01/rdf-schema#label",
-        "http://schema.org/isPartOf",
-        "http://schema.org/dateCreated",
-        "http://schema.org/creator",
-        "http://schema.org/datePublished",
-        "http://schema.org/description",
-        "http://schema.org/hasPart",
-        "http://schema.org/identifier",
-        "http://schema.org/inLanguage",
-        "http://schema.org/keywords",
-        "http://schema.org/license",
-        "http://schema.org/name",
-        "http://www.w3.org/ns/prov#atLocation",
-        "http://schema.org/url",
-        "http://schema.org/version",
-    ]
-    for field in expected_fields:
-        assert field in d_dict
-
-    assert not d_dict["http://schema.org/hasPart"]
-    client.add_data_to_dataset(dataset, [str(data_file)])
-    dataset.to_yaml()
-    d_dict = load_dataset("dataset")
-    assert d_dict["http://schema.org/hasPart"]
 
 
 def test_dataset_deserialization(client, dataset):

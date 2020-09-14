@@ -726,20 +726,9 @@ def test_add_data_from_git(runner, client, params, path):
     [
         (["-s", "docker*"], {"docker"}),
         (["-s", "docker/*"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
-        (
-            ["-s", "docker/**"],
-            {
-                "powerline.config",
-                "Dockerfile",
-                "entrypoint.sh",
-                "requirements.txt",
-                "fix-permissions.sh",
-                "LICENSE-fix-permissions",
-                "powerline.bashrc",
-                "git-config.bashrc",
-            },
-        ),
+        (["-s", "docker/**"], {"py3.7", "cuda10.0-tf1.14", "cuda9.2", "r3.6.1", "bioc3_10"}),
         (["-s", "docker/*/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
+        (["-s", "**/*sh"], {"entrypoint.sh", "fix-permissions.sh"}),
     ],
 )
 @flaky(max_runs=10, min_passes=1)
