@@ -25,7 +25,7 @@ URL, with a command like:
 
 .. code-block:: console
 
-    $ renku config registry https://registry.gitlab.com/demo/demo
+    $ renku config set registry https://registry.gitlab.com/demo/demo
 
 By default, configuration is stored locally in the project's directory. Use
 ``--global`` option to store configuration for all projects in your home
@@ -38,7 +38,7 @@ To remove a specific key from configuration use:
 
 .. code-block:: console
 
-    $ renku config --remove registry
+    $ renku config remove registry
 
 By default, only local configuration is searched for removal. Use ``--global``
 option to remove a global configuration value.
@@ -50,7 +50,7 @@ You can display all configuration values with:
 
 .. code-block:: console
 
-    $ renku config
+    $ renku config show
 
 Both local and global configuration files are read. Values in local
 configuration take precedence over global values. Use ``--local`` or
@@ -60,7 +60,7 @@ You can provide a KEY to display only its value:
 
 .. code-block:: console
 
-    $ renku config registry
+    $ renku config show registry
     https://registry.gitlab.com/demo/demo
 
 Available configuration values

@@ -59,7 +59,7 @@ In this situation, you can do effectively two things:
 
   .. code-block:: console
 
-     $ renku update
+     $ renku update --all
 
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
