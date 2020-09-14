@@ -44,3 +44,28 @@ def test_show_outputs_with_directory(runner, client, run):
     result = runner.invoke(cli, cmd + ["output/foo", "output/bar"])
     assert 0 == result.exit_code
     assert {"output"} == set(result.output.strip().split("\n"))
+
+
+def test_show_verbose(runner, client, run):
+    """Show with verbose option."""
+    base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']
+    assert 0 == run(args=["run"] + base_sh + ["intermediate", "foo", "bar"])
+    input_commit = client.repo.head.commit.parents[0].hexsha
+    assert 0 == run(args=["run", "ls", "intermediate"], stdout="baz")
+    output_commit = client.repo.head.commit.parents[0].hexsha
+
+    workflow_partial_name = "_ls.yaml"
+
+    result = runner.invoke(cli, ["show", "inputs", "-v"])
+    assert 0 == result.exit_code
+    assert input_commit in result.output
+    assert workflow_partial_name in result.output
+    for header in ("PATH", "COMMIT", "USAGE TIME", "WORKFLOW"):
+        assert header in result.output.split("\n")[0]
+
+    result = runner.invoke(cli, ["show", "outputs", "-v", "baz"])
+    assert 0 == result.exit_code
+    assert output_commit in result.output
+    assert workflow_partial_name in result.output
+    for header in ("PATH", "COMMIT", "GENERATION TIME", "WORKFLOW"):
+        assert header in result.output.split("\n")[0]
