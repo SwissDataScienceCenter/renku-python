@@ -133,7 +133,7 @@ def handle_renku_except(f):
         try:
             return f(*args, **kwargs)
         except RenkuException as e:
-            capture_Exception(e)
+            capture_exception(e)
 
             err_response = {
                 "code": RENKU_EXCEPTION_ERROR_CODE,
