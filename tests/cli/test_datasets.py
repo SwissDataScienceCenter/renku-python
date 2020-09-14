@@ -288,7 +288,7 @@ def test_dataset_url_in_different_domain(runner, client):
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
     format_option = "--format={0}".format(output_format)
-    result = runner.invoke(cli, ["dataset", format_option])
+    result = runner.invoke(cli, ["dataset", "list", format_option])
     assert 0 == result.exit_code
 
 
@@ -300,11 +300,11 @@ def test_datasets_list_non_empty(output_format, runner, project):
     assert 0 == result.exit_code
     assert "OK" in result.output
 
-    result = runner.invoke(cli, ["dataset", format_option])
+    result = runner.invoke(cli, ["dataset", "list", format_option])
     assert 0 == result.exit_code
     assert "my-dataset" in result.output
 
-    result = runner.invoke(cli, ["dataset", "--revision=HEAD~1", format_option])
+    result = runner.invoke(cli, ["dataset", "list", "--revision=HEAD~1", format_option])
     assert 0 == result.exit_code
     assert "my-dataset" not in result.output
 
@@ -324,7 +324,7 @@ def test_datasets_list_with_columns(runner, project, columns, headers, values):
     )
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset", "--columns", columns])
+    result = runner.invoke(cli, ["dataset", "list", "--columns", columns])
     assert 0 == result.exit_code
     assert headers == result.output.split("\n").pop(0).split()
     for value in values:
@@ -334,7 +334,7 @@ def test_datasets_list_with_columns(runner, project, columns, headers, values):
 @pytest.mark.parametrize("column", DATASETS_COLUMNS.keys())
 def test_datasets_list_columns_correctly(runner, project, column):
     """Test dataset listing only shows requested columns."""
-    result = runner.invoke(cli, ["dataset", "--columns", column])
+    result = runner.invoke(cli, ["dataset", "list", "--columns", column])
     assert 0 == result.exit_code
     header = result.output.split("\n").pop(0)
     name, display_name = DATASETS_COLUMNS[column]
@@ -345,7 +345,7 @@ def test_datasets_list_columns_correctly(runner, project, column):
 @pytest.mark.parametrize("columns", ["invalid", "id,invalid"])
 def test_datasets_list_invalid_column(runner, project, columns):
     """Test dataset listing invalid column name."""
-    result = runner.invoke(cli, ["dataset", "--columns", columns])
+    result = runner.invoke(cli, ["dataset", "list", "--columns", columns])
     assert 2 == result.exit_code
     assert 'Invalid column name: "invalid".' in result.output
 
@@ -1473,7 +1473,7 @@ def test_workflow_with_external_file(runner, client, directory_tree, project, ru
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == run(args=("update",))
+    assert 0 == run(args=("update", "--all",))
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
 

@@ -372,7 +372,7 @@ def test_file_tracking(isolated_runner):
     os.chdir("test-project")
     result = runner.invoke(cli, ["init", ".", "--template-id", TEMPLATE_ID], INPUT)
     assert 0 == result.exit_code
-    result = runner.invoke(cli, ["config", "lfs_threshold", "0b"])
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ["run", "touch", "tracked"])
@@ -810,7 +810,7 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked):
     os.chdir("test-project")
     result = runner.invoke(cli, ["init", ".", "--template-id", TEMPLATE_ID], INPUT)
     assert 0 == result.exit_code
-    result = runner.invoke(cli, ["config", "lfs_threshold", "0b"])
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
     assert 0 == result.exit_code
 
     with Path(".renkulfsignore").open("w") as f:

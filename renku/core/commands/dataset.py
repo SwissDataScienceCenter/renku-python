@@ -664,8 +664,11 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
         creators = set(creators)
 
     records = []
+    unused_names = list(names)
     for dataset in client.datasets.values():
         if not names or dataset.name in names:
+            if unused_names:
+                unused_names.remove(dataset.name)
             for file_ in dataset.files:
                 file_.dataset = dataset
                 file_.client = client
@@ -678,6 +681,10 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
 
                 if match:
                     records.append(file_)
+
+    if unused_names:
+        unused_names = ", ".join(unused_names)
+        raise ParameterError(f"Dataset doesn't exist: {unused_names}")
 
     return sorted(records, key=lambda file_: file_.added)
 

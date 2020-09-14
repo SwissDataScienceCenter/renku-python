@@ -420,7 +420,13 @@ def prompt_tag_selection(tags):
     return None
 
 
-@click.group(invoke_without_command=True)
+@click.group()
+def dataset():
+    """Dataset commands."""
+    pass
+
+
+@dataset.command("list")
 @click.option("--revision", default=None)
 @click.option("--format", type=click.Choice(DATASETS_FORMATS), default="tabular", help="Choose an output format.")
 @click.option(
@@ -433,11 +439,8 @@ def prompt_tag_selection(tags):
     show_default=True,
 )
 @click.pass_context
-def dataset(ctx, revision, format, columns):
+def list_dataset(ctx, revision, format, columns):
     """Handle datasets."""
-    if ctx.invoked_subcommand is not None:
-        return
-
     click.echo(list_datasets(revision=revision, format=format, columns=columns))
 
 

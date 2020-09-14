@@ -65,7 +65,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    exit_code, run = renku_cli("update")
+    exit_code, run = renku_cli("update", "--all")
     assert 0 == exit_code
     assert 0 == len(run.subprocesses)
     assert previous_run_id == run._id
@@ -83,7 +83,7 @@ def test_update(runner, project, renku_cli, no_lfs_warning):
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    exit_code, run = renku_cli("update")
+    exit_code, run = renku_cli("update", "--all")
     assert 0 == exit_code
     assert 0 == len(run.subprocesses)
     assert previous_run_id == run._id
@@ -145,7 +145,7 @@ def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    exit_code, run = renku_cli("update")
+    exit_code, run = renku_cli("update", "--all")
     assert 0 == exit_code
     assert 2 == len(run.subprocesses)
 
@@ -187,7 +187,7 @@ def test_workflow_without_outputs(runner, project, run):
     cmd = ["status", "--no-output"]
     result = runner.invoke(cli, cmd)
     assert 1 == result.exit_code
-    assert 0 == run(args=("update", "--no-output"))
+    assert 0 == run(args=("update", "--no-output", "--all"))
 
     cmd = ["status", "--no-output"]
     result = runner.invoke(cli, cmd)
@@ -247,8 +247,8 @@ def test_siblings_update(runner, project, run, no_lfs_warning):
     assert not brother.exists()
 
     # Update should find also missing siblings.
-    assert 1 == run(args=("update",))
-    assert 0 == run(args=("update", "--with-siblings"))
+    assert 1 == run(args=("update", "--all",))
+    assert 0 == run(args=("update", "--with-siblings", "--all"))
 
     for sibling in siblings:
         with sibling.open("r") as f:
@@ -316,7 +316,7 @@ def test_relative_path_for_directory_input(client, run, renku_cli):
     client.repo.git.add("--all")
     client.repo.index.commit("Add one more file")
 
-    exit_code, cwl = renku_cli("update")
+    exit_code, cwl = renku_cli("update", "--all")
     assert 0 == exit_code
     assert 1 == len(cwl.inputs)
     assert isinstance(cwl.inputs[0].consumes, Collection)

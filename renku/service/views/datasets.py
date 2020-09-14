@@ -23,7 +23,13 @@ from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
 from git import GitCommandError, Repo
 
-from renku.core.commands.dataset import add_file, create_dataset, dataset_remove, edit_dataset, file_unlink
+from renku.core.commands.dataset import (
+    add_file,
+    create_dataset,
+    dataset_remove,
+    edit_dataset,
+    file_unlink,
+)
 from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir

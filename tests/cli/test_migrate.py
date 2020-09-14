@@ -30,7 +30,7 @@ from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrati
 @pytest.mark.parametrize(
     "command",
     [
-        ["config", "key", "value"],
+        ["config", "set", "key", "value"],
         ["dataset", "create", "new"],
         ["dataset", "add", "new", "README.md"],
         ["dataset", "edit", "new"],
@@ -48,8 +48,8 @@ from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrati
         ["show", "outputs"],
         ["show", "siblings"],
         ["status"],
-        ["update"],
-        ["workflow"],
+        ["update", "--all"],
+        ["workflow", "list"],
     ],
 )
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
@@ -66,7 +66,7 @@ def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_su
     "command",
     [
         ["clone", "uri"],
-        ["config", "key"],
+        ["config", "show", "key"],
         ["dataset"],
         ["dataset", "ls-files"],
         ["dataset", "ls-tags", "new"],

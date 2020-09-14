@@ -94,27 +94,48 @@ from renku.core import errors
 from renku.core.commands.config import read_config, update_config
 
 
-@click.command()
-@click.argument("key", required=False, default=None)
-@click.argument("value", required=False, default=None)
-@click.option("--remove", is_flag=True, help="Remove specified key.")
-@click.option("--local", "local_only", is_flag=True, help="Read/store from/to local configuration only.")
-@click.option("--global", "global_only", is_flag=True, help="Read/store from/to global configuration only.")
-def config(key, value, remove, local_only, global_only):
-    """Manage configuration options."""
-    is_write = value is not None
+@click.group()
+def config():
+    """Interact with renku configuration."""
+    pass
 
-    if is_write and remove:
-        raise errors.UsageError("Cannot remove and set at the same time.")
-    if remove and not key:
-        raise errors.UsageError("KEY is missing.")
+
+@config.command()
+@click.argument("key", required=False, default=None)
+@click.option("--local", "local_only", is_flag=True, help="Read from local configuration only.")
+@click.option("--global", "global_only", is_flag=True, help="Read from global configuration only.")
+def show(key, local_only, global_only):
+    """Show current configuration.
+
+    KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
+    """
     if local_only and global_only:
         raise errors.UsageError("Cannot use --local and --global together.")
 
-    if remove:
-        update_config(key, remove=remove, global_only=global_only)
-    elif is_write:
-        update_config(key, value=value, global_only=global_only)
-    else:
-        value = read_config(key, local_only, global_only)
-        click.secho(value)
+    value = read_config(key, local_only, global_only)
+    click.secho(value)
+
+
+@config.command("set")
+@click.argument("key")
+@click.argument("value")
+@click.option("--global", "global_only", is_flag=True, help="Store to global configuration only.")
+def set_(key, value, global_only):
+    """Set a configuration value.
+
+    KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
+    """
+    update_config(key, value=value, global_only=global_only)
+    click.secho("OK", fg="green")
+
+
+@config.command()
+@click.argument("key")
+@click.option("--global", "global_only", is_flag=True, help="Remove from global configuration only.")
+def remove(key, global_only):
+    """Remove a configuration value.
+
+    KEY is of the form <group>.<entry>, e.g. 'interactive.default_url'.
+    """
+    update_config(key, remove=True, global_only=global_only)
+    click.secho("OK", fg="green")

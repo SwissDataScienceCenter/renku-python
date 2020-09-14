@@ -53,24 +53,28 @@ def _deref(ref):
     return ref[len("workflows/") :]
 
 
-@click.group(invoke_without_command=True)
+@click.group()
+def workflow():
+    """Workflow commands."""
+    pass
+
+
+@workflow.command("list")
 @pass_local_client(requires_migration=True)
-@click.pass_context
-def workflow(ctx, client):
+def list_workflows(client):
     """List or manage workflows with subcommands."""
-    if ctx.invoked_subcommand is None:
-        from renku.core.models.refs import LinkReference
+    from renku.core.models.refs import LinkReference
 
-        names = defaultdict(list)
-        for ref in LinkReference.iter_items(client, common_path="workflows"):
-            names[ref.reference.name].append(ref.name)
+    names = defaultdict(list)
+    for ref in LinkReference.iter_items(client, common_path="workflows"):
+        names[ref.reference.name].append(ref.name)
 
-        for path in client.workflow_path.glob("*.yaml"):
-            click.echo(
-                "{path}: {names}".format(
-                    path=path.name, names=", ".join(click.style(_deref(name), fg="green") for name in names[path.name]),
-                )
+    for path in client.workflow_path.glob("*.yaml"):
+        click.echo(
+            "{path}: {names}".format(
+                path=path.name, names=", ".join(click.style(_deref(name), fg="green") for name in names[path.name]),
             )
+        )
 
 
 def validate_path(ctx, param, value):
