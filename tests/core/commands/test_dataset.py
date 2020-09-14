@@ -118,6 +118,19 @@ def test_creator_parse(creators, data_file):
         Dataset(name="dataset", creators=["name"])
 
 
+def test_creators_with_same_email(tmp_path):
+    """Test creators with different names and same email address."""
+    creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
+    dataset = Dataset(name="dataset", creators=creators)
+    path = tmp_path / "dataset.yml"
+    dataset.__reference__ = path
+    dataset.to_yaml()
+
+    dataset = Dataset.from_yaml(path)
+    assert 1 == len(dataset.creators)
+    assert dataset.creators[0].name in ["me", "me2"]
+
+
 def test_dataset_serialization(dataset):
     """Test dataset (de)serialization."""
 

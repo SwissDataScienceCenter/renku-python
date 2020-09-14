@@ -126,6 +126,16 @@ class StringList(fields._JsonLDField, marshmallow.fields.String, marshmallow.fie
         """Create an instance."""
         super().__init__(*args, **kwargs)
 
+    def _serialize(self, value, attr, obj, **kwargs):
+        if isinstance(value, list):
+            value = value[0] if value else None
+        if isinstance(value, str):
+            value = super(fields._JsonLDField, self)._serialize(value, attr, obj, **kwargs)
+            if self.parent.opts.add_value_types:
+                value = {"@value": value, "@type": "http://www.w3.org/2001/XMLSchema#string"}
+
+        return value
+
     def _deserialize(self, value, attr, data, **kwargs):
         value = normalize_value(value)
         if not value:
