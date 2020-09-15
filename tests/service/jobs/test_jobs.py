@@ -158,3 +158,32 @@ def test_cleanup_project_old_keys(svc_client_cache, service_job):
 
     assert 200 == response.status_code
     assert 0 == len(response.json["result"]["projects"])
+
+
+@pytest.mark.service
+@pytest.mark.jobs
+def test_job_constructor_lock(svc_client_cache, service_job):
+    """Test correct locking construction."""
+    svc_client, headers, cache = svc_client_cache
+
+    user = cache.ensure_user({"user_id": "user"})
+    project = {
+        "project_id": uuid.uuid4().hex,
+        "name": "my-project",
+        "fullname": "full project name",
+        "email": "my@email.com",
+        "owner": "me",
+        "token": "awesome token",
+        "git_url": "git@gitlab.com",
+    }
+    project = cache.make_project(user, project)
+    os.makedirs(str(project.abs_path), exist_ok=True)
+
+    job = cache.make_job(user, project=project)
+
+    assert job
+    assert job.job_id
+    assert project.project_id == job.project_id
+    assert user.user_id == job.user_id
+
+    assert project.project_id in {_id.decode("utf-8") for _id in job.locked.members()}
