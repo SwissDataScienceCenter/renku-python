@@ -96,11 +96,11 @@ class Uri(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.Dic
 
     def _serialize(self, value, attr, obj, **kwargs):
         if isinstance(value, str):
-            value = super(marshmallow.fields.String, self)._serialize(value, attr, obj, **kwargs)
+            value = super(fields._JsonLDField, self)._serialize(value, attr, obj, **kwargs)
             if self.parent.opts.add_value_types:
                 value = {"@value": value, "@type": "http://www.w3.org/2001/XMLSchema#string"}
         elif isinstance(value, dict):
-            value = super(marshmallow.fields.Dict, self)._serialize(value, attr, obj, **kwargs)
+            value = super(marshmallow.fields.String, self)._serialize(value, attr, obj, **kwargs)
 
         return value
 
@@ -111,12 +111,42 @@ class Uri(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.Dic
         elif isinstance(value, str):
             return value
         elif isinstance(value, dict):
-            return super(marshmallow.fields.Dict, self)._deserialize(value, attr, data, **kwargs)
+            return super(marshmallow.fields.String, self)._deserialize(value, attr, data, **kwargs)
         else:
             raise ValueError("Invalid type for field {}: {}".format(self.name, type(value)))
 
 
 fields.Uri = Uri
+
+
+class StringList(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.List):
+    """A String field that might be a list when deserializing."""
+
+    def __init__(self, *args, **kwargs):
+        """Create an instance."""
+        super().__init__(*args, **kwargs)
+
+    def _serialize(self, value, attr, obj, **kwargs):
+        if isinstance(value, list):
+            value = value[0] if value else None
+        if isinstance(value, str):
+            value = super(fields._JsonLDField, self)._serialize(value, attr, obj, **kwargs)
+            if self.parent.opts.add_value_types:
+                value = {"@value": value, "@type": "http://www.w3.org/2001/XMLSchema#string"}
+
+        return value
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        value = normalize_value(value)
+        if not value:
+            return None
+        elif isinstance(value, str):
+            return value
+        elif isinstance(value, list):
+            value = super(marshmallow.fields.String, self)._deserialize(value, attr, data, **kwargs)
+            return value[0] if len(value) > 0 else None
+        else:
+            raise ValueError("Invalid type for field {}: {}".format(self.name, type(value)))
 
 
 class Nested(fields.Nested):

@@ -29,7 +29,7 @@ from attr.validators import instance_of
 from calamus.schema import JsonLDSchema
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import fields, prov, rdfs, schema, wfprov
+from renku.core.models.calamus import StringList, fields, prov, rdfs, schema, wfprov
 from renku.core.models.git import get_user_info
 from renku.version import __version__, version_url
 
@@ -141,11 +141,11 @@ class PersonSchema(JsonLDSchema):
         model = Person
         unknown = EXCLUDE
 
-    name = fields.String(schema.name)
+    name = StringList(schema.name, fields.String(), missing=None)
     email = fields.String(schema.email, missing=None)
-    label = fields.String(rdfs.label)
-    affiliation = fields.String(schema.affiliation, missing=None)
-    alternate_name = fields.String(schema.alternateName, missing=None)
+    label = StringList(rdfs.label, fields.String(), missing=None)
+    affiliation = StringList(schema.affiliation, fields.String(), missing=None)
+    alternate_name = StringList(schema.alternateName, fields.String(), missing=None)
     _id = fields.Id(init_name="id")
 
 
