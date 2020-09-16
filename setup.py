@@ -91,7 +91,7 @@ history = open("CHANGES.rst").read()
 tests_require = [
     "black==19.10b0",
     "check-manifest>=0.37,<=0.42",
-    "coverage>=4.5.3,<5.3",
+    "coverage>=4.5.3,<5.4",
     "fakeredis>=1.4.1,<1.4.4",
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
