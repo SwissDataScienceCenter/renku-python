@@ -199,10 +199,9 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     assert "Dataset exists" in extras["error"]
 
 
-@pytest.mark.parametrize("url", [
-    "https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3",
-    "https://tinyurl.com/y6gne4ct"
-])
+@pytest.mark.parametrize(
+    "url", ["https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3", "https://tinyurl.com/y6gne4ct"]
+)
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
