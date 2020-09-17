@@ -217,7 +217,7 @@ def _add_to_dataset(
             total_size = 0
             for url in urls:
                 try:
-                    with requests.get(url, stream=True) as r:
+                    with requests.get(url, stream=True, allow_redirects=True) as r:
                         total_size += int(r.headers.get("content-length", 0))
                 except requests.exceptions.RequestException:
                     pass
