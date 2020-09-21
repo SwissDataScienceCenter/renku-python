@@ -21,6 +21,7 @@ import urllib
 import attr
 
 from renku.core.commands.providers.api import ProviderApi
+from renku.core.errors import RenkuImportError
 from renku.core.utils.doi import extract_doi, is_doi
 from renku.core.utils.requests import retry
 
@@ -86,7 +87,12 @@ class DOIProvider(ProviderApi):
     @staticmethod
     def _serialize(response):
         """Serialize HTTP response for DOI."""
-        return DOIMetadataSerializer(**{key.replace("-", "_").lower(): value for key, value in response.items()})
+        data = {key.replace("-", "_").lower(): value for key, value in response.items()}
+        try:
+            serializer = DOIMetadataSerializer(**data)
+            return serializer
+        except TypeError as exp:
+            raise RenkuImportError(exp, "doi metadata could not be serialized")
 
     def _query(self, doi):
         """Retrieve metadata for given doi."""
