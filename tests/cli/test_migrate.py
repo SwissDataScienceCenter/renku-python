@@ -49,7 +49,7 @@ from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrati
         ["show", "siblings"],
         ["status"],
         ["update", "--all"],
-        ["workflow", "list"],
+        ["workflow", "ls"],
     ],
 )
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):

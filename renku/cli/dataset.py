@@ -426,7 +426,7 @@ def dataset():
     pass
 
 
-@dataset.command("list")
+@dataset.command("ls")
 @click.option("--revision", default=None)
 @click.option("--format", type=click.Choice(DATASETS_FORMATS), default="tabular", help="Choose an output format.")
 @click.option(

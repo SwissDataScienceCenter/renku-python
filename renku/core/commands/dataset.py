@@ -664,7 +664,7 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
         creators = set(creators)
 
     records = []
-    unused_names = list(names)
+    unused_names = set(names)
     for dataset in client.datasets.values():
         if not names or dataset.name in names:
             if unused_names:

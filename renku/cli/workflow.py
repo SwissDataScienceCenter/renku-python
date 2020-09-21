@@ -76,7 +76,7 @@ by using:
         writable: false
     stdout: output_file
 
-You can use ``--revision`` to specify the revision of the output file to 
+You can use ``--revision`` to specify the revision of the output file to
 generate the workflow for. You can also export to a file directly with
 ``-o <path>``.
 """
@@ -110,7 +110,7 @@ def workflow():
     pass
 
 
-@workflow.command("list")
+@workflow.command("ls")
 @pass_local_client(requires_migration=True)
 def list_workflows(client):
     """List or manage workflows with subcommands."""

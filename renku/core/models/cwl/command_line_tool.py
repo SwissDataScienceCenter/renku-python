@@ -224,7 +224,7 @@ class CommandLineToolFactory(object):
                         + "Adding these files to Git LFS:\n"
                         + "\t{}".format("\n\t".join(lfs_paths))
                         + "\nTo disable this message in the future, run:"
-                        + "\n\trenku config show_lfs_message False"
+                        + "\n\trenku config set show_lfs_message False"
                     )
 
             repo.git.add(*output_paths)

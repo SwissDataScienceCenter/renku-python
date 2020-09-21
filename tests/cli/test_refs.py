@@ -41,7 +41,7 @@ def test_workflow_naming(runner, client):
     assert 0 == result.exit_code
 
     #: Show all CWL files with aliases.
-    result = runner.invoke(cli, ["workflow", "list"])
+    result = runner.invoke(cli, ["workflow", "ls"])
     assert 0 == result.exit_code
     assert "first" in result.output
     assert "group/second" in result.output
@@ -50,7 +50,7 @@ def test_workflow_naming(runner, client):
     result = runner.invoke(cli, ["workflow", "rename", "first", "third"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["workflow", "list"])
+    result = runner.invoke(cli, ["workflow", "ls"])
     assert "first" not in result.output
     assert "third" in result.output
 
@@ -76,7 +76,7 @@ def test_workflow_naming(runner, client):
     result = runner.invoke(cli, ["workflow", "remove", "third"])
     assert 0 == result.exit_code
 
-    result = runner.invoke(cli, ["workflow", "list"])
+    result = runner.invoke(cli, ["workflow", "ls"])
     assert "group/second" not in result.output
     assert "third" not in result.output
 
