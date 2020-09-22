@@ -324,6 +324,9 @@ def dataset_responses():
         rsps.add_callback(responses.GET, "http://example.com/file", callback=request_callback)
         rsps.add_callback(responses.GET, "https://example.com/file", callback=request_callback)
         rsps.add_callback(responses.GET, "http://example.com/file.ext?foo=bar", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "http://example.com/file", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "https://example.com/file", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "http://example.com/file.ext?foo=bar", callback=request_callback)
         yield rsps
 
 
