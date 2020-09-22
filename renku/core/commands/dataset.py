@@ -217,7 +217,7 @@ def _add_to_dataset(
             total_size = 0
             for url in urls:
                 try:
-                    with requests.get(url, stream=True) as r:
+                    with requests.get(url, stream=True, allow_redirects=True) as r:
                         total_size += int(r.headers.get("content-length", 0))
                 except requests.exceptions.RequestException:
                     pass
@@ -483,7 +483,7 @@ def import_dataset(
 ):
     """Import data from a 3rd party provider or another renku project."""
     u = urllib.parse.urlparse(uri)
-    if u.scheme not in ("", "file", "git+https", "git+ssh"):
+    if u.scheme not in ("", "file", "git+https", "git+ssh", "doi"):
         # NOTE: Check if the url is a redirect.
         uri = requests.head(uri, allow_redirects=True).url
 

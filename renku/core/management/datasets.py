@@ -1085,7 +1085,7 @@ class DatasetsApiMixin(object):
         tmp_root.mkdir(parents=True, exist_ok=True)
         tmp = tempfile.mkdtemp(dir=tmp_root)
 
-        with requests.get(url, stream=True) as request:
+        with requests.get(url, stream=True, allow_redirects=True) as request:
             request.raise_for_status()
 
             if not filename:
