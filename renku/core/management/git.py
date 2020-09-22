@@ -30,7 +30,7 @@ from itertools import zip_longest
 from pathlib import Path
 
 import attr
-import gitdb
+import git
 
 from renku.core import errors
 from renku.core.utils.urls import remove_credentials
@@ -219,7 +219,7 @@ class GitCore:
                 if is_parent or is_equal:
                     raise errors.DirtyRenkuDirectory(self.repo)
 
-        except gitdb.exc.BadName:
+        except git.exc.BadName:
             pass
 
     def setup_credential_helper(self):
@@ -297,7 +297,7 @@ class GitCore:
             diffs = [d.a_path for d in self.repo.index.diff("HEAD")]
             if project_metadata_path in diffs:
                 diffs.remove(project_metadata_path)
-        except gitdb.exc.BadName:
+        except git.exc.BadName:
             pass
 
         if not commit_empty and not diffs:

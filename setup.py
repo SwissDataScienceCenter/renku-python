@@ -151,7 +151,6 @@ install_requires = [
     "flask==1.1.2",
     "flask-apispec==0.10.0",
     "flask-swagger-ui==3.25.0",
-    "gitdb2==3.0.1",
     "gitpython==3.1.0",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",

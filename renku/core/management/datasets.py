@@ -548,6 +548,8 @@ class DatasetsApiMixin(object):
         paths = {f[0] for f in files}
         metadata = self._fetch_files_metadata(remote_client, paths)
 
+        new_files = []
+
         for path, src, dst in files:
             if not src.is_dir():
                 # Use original metadata if it exists
@@ -560,6 +562,11 @@ class DatasetsApiMixin(object):
                     based_on = DatasetFile.from_revision(remote_client, path=src, url=url, source=url)
 
                 path_in_dst_repo = dst.relative_to(self.path)
+
+                if path_in_dst_repo in new_files:  # A path with the same destination is already copied
+                    continue
+
+                new_files.append(path_in_dst_repo)
 
                 if remote_client._is_external_file(src):
                     operation = (src.resolve(), dst, "symlink")
@@ -612,7 +619,8 @@ class DatasetsApiMixin(object):
             result[r] = None
         return result
 
-    def _resolve_path(self, root_path, path):
+    @staticmethod
+    def _resolve_path(root_path, path):
         """Check if a path is within a root path and resolve it."""
         try:
             root_path = Path(root_path).resolve()
@@ -621,8 +629,10 @@ class DatasetsApiMixin(object):
         except ValueError:
             raise errors.ParameterError("File {} is not within path {}".format(path, root_path))
 
-    def _get_src_and_dst(self, path, repo_path, sources, dst_root, used_sources):
+    @staticmethod
+    def _get_src_and_dst(path, repo_path, sources, dst_root, used_sources):
         is_wildcard = False
+        matched_pattern = None
 
         if not sources:
             source = Path(".")
@@ -634,19 +644,25 @@ class DatasetsApiMixin(object):
                 except ValueError:
                     if glob.globmatch(path, str(s), flags=glob.GLOBSTAR):
                         is_wildcard = True
-                        source = path
+                        source = Path(path)
                         used_sources.add(s)
+                        matched_pattern = str(s)
                         break
                 else:
-                    source = s
+                    source = Path(s)
                     used_sources.add(source)
                     break
 
             if not source:
                 return
 
+        if is_wildcard:
+            # Search to see if a parent of the path matches the pattern and return it
+            while glob.globmatch(str(source.parent), matched_pattern, flags=glob.GLOBSTAR) and source != source.parent:
+                source = source.parent
+
         src = repo_path / path
-        source_name = Path(source).name
+        source_name = source.name
         relative_path = Path(path).relative_to(source)
 
         if src.is_dir() and is_wildcard:
@@ -655,9 +671,10 @@ class DatasetsApiMixin(object):
 
         dst = dst_root / source_name / relative_path
 
-        return (path, src, dst)
+        return path, src, dst
 
-    def _fetch_lfs_files(self, repo_path, paths):
+    @staticmethod
+    def _fetch_lfs_files(repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
         repo_path = str(repo_path)
         try:
