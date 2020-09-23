@@ -251,7 +251,7 @@ class DatasetsApiMixin(object):
             )
         else:
             for url in urls:
-                is_remote, is_git = _check_url(url)
+                is_remote, is_git, url = _check_url(url)
 
                 if is_git and is_remote:  # Remote git repo
                     sources = sources or ()
@@ -602,7 +602,9 @@ class DatasetsApiMixin(object):
 
     def _provider_check(self, url):
         """Check additional provider related operations."""
-        url = parse.urlparse(url)
+        # NOTE: Check if the url is a redirect.
+        r = requests.head(url, allow_redirects=True)
+        url = parse.urlparse(r.url)
 
         if "dropbox.com" in url.netloc:
             url = self._ensure_dropbox(url)
@@ -1083,7 +1085,7 @@ class DatasetsApiMixin(object):
         tmp_root.mkdir(parents=True, exist_ok=True)
         tmp = tempfile.mkdtemp(dir=tmp_root)
 
-        with requests.get(url, stream=True) as request:
+        with requests.get(url, stream=True, allow_redirects=True) as request:
             request.raise_for_status()
 
             if not filename:
@@ -1136,6 +1138,10 @@ def _check_url(url):
 
     if is_remote:
         is_git = u.path.endswith(".git")
+        if not is_git:
+            # NOTE: Check if the url is a redirect.
+            url = requests.head(url, allow_redirects=True).url
+            u = parse.urlparse(url)
     else:
         try:
             Repo(u.path, search_parent_directories=True)
@@ -1144,7 +1150,7 @@ def _check_url(url):
         else:
             is_git = True
 
-    return is_remote, is_git
+    return is_remote, is_git, url
 
 
 DATASET_METADATA_PATHS = [
