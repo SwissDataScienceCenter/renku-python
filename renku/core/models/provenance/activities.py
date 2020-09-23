@@ -139,16 +139,23 @@ class Activity(CommitMixin, ReferenceMixin):
             # in this backwards diff
             if file_.change_type == "A":
                 continue
+
             path_ = Path(git_unicode_unescape(file_.a_path))
 
-            is_dataset = self.client.DATASETS in str(path_)
+            is_dataset = any(
+                [
+                    path_.resolve() == (self.client.path / f.path).resolve()
+                    for d in self.client.datasets.values()
+                    for f in d.files
+                ]
+            )
             not_refs = LinkReference.REFS not in str(path_)
             does_not_exists = not path_.exists()
 
             if all([is_dataset, not_refs, does_not_exists]):
                 dataset = next(
                     d
-                    for d in self.client.datasets
+                    for d in self.client.datasets.values()
                     for f in d.files
                     if path_.resolve() == (self.client.path / f.path).resolve()
                 )
