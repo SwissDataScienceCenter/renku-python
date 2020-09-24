@@ -24,26 +24,17 @@ import pytest
 from renku.cli import cli
 from renku.cli.init import create_template_sentence, parse_parameters
 from renku.core import errors
-from tests.core.commands.test_init import METADATA, TEMPLATE_ID, TEMPLATE_INDEX, TEMPLATE_REF, TEMPLATE_URL
+
 from tests.utils import raises
 
-INIT = ["init", "test-new-project", "--template-id", TEMPLATE_ID]
-INIT_REMOTE = ["--template-source", TEMPLATE_URL, "--template-ref", TEMPLATE_REF]
-INIT_FORCE = ["--force"]
-INIT_INDEX = ["init", "test-new-project-2", "--template-index", TEMPLATE_INDEX]
-INIT_ID = ["--template-id", TEMPLATE_ID]
-LIST_TEMPLATES = ["--list-templates"]
-PARAMETERS_CORRECT = ["--parameter", "p1=v1", "--parameter", "p2=v2"]
-PARAMETER_NO_EQUAL = ["--parameter", "p3:v3"]
-PARAMETER_EARLY_EQUAL = ["--parameter", "=p4v3"]
-INPUT = len(set(METADATA.keys())) * "\n"
 
-
-def test_parse_parameters():
+def test_parse_parameters(project_init):
     def clean_param(p):
         return [v for v in p if v != "--parameter"]
 
-    parsed = parse_parameters(None, None, clean_param(PARAMETERS_CORRECT))
+    commands = project_init[2]
+
+    parsed = parse_parameters(None, None, clean_param(commands["parameters"]))
     keys = parsed.keys()
     assert 2 == len(keys)
     assert "p1" in keys
@@ -51,9 +42,13 @@ def test_parse_parameters():
     assert "v1" == parsed["p1"]
     assert "v2" == parsed["p2"]
     with raises(errors.ParameterError):
-        parse_parameters(None, None, clean_param(PARAMETERS_CORRECT) + clean_param(PARAMETER_NO_EQUAL))
+        parse_parameters(
+            None, None, clean_param(commands["parameters"]) + clean_param(commands["parameters_equal_missing"])
+        )
     with raises(errors.ParameterError):
-        parse_parameters(None, None, clean_param(PARAMETERS_CORRECT) + clean_param(PARAMETER_EARLY_EQUAL))
+        parse_parameters(
+            None, None, clean_param(commands["parameters"]) + clean_param(commands["parameters_equal_early"])
+        )
 
 
 def test_template_selection_helpers():
@@ -88,22 +83,26 @@ def test_template_selection_helpers():
     assert instructions in full_sentence
 
 
-def test_list_templates(isolated_runner):
+def test_list_templates(isolated_runner, project_init):
     """Test listing templates."""
-    new_project = Path("test-new-project")
+    template, data, commands = project_init
+
+    new_project = Path(data["test_project"])
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT + LIST_TEMPLATES)
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["list"])
     assert 0 == result.exit_code
     assert not new_project.exists()
-    assert TEMPLATE_ID in result.output
+    assert template["id"] in result.output
 
 
-def test_init(isolated_runner):
+def test_init(isolated_runner, project_init):
     """Test project initialization from template."""
+    template, data, commands = project_init
+
     # create the project
-    new_project = Path("test-new-project")
+    new_project = Path(data["test_project"])
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT, INPUT)
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / ".renku").exists()
@@ -111,11 +110,13 @@ def test_init(isolated_runner):
     assert (new_project / ".renku" / "metadata.yml").exists()
 
     # try to re-create in the same folder
-    result = isolated_runner.invoke(cli, INIT, INPUT)
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     assert 0 != result.exit_code
 
     # force re-create in the same folder
-    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
+    )
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / ".renku").exists()
@@ -123,8 +124,8 @@ def test_init(isolated_runner):
     assert (new_project / ".renku" / "metadata.yml").exists()
 
     # init using index instead of id
-    new_project_2 = Path("test-new-project-2")
-    result = isolated_runner.invoke(cli, INIT_INDEX, INPUT)
+    new_project_2 = Path(data["test_project_alt"])
+    result = isolated_runner.invoke(cli, commands["init_alt"] + commands["index"], commands["confirm"])
     assert 0 == result.exit_code
     assert new_project_2.exists()
     assert (new_project_2 / ".renku").exists()
@@ -138,22 +139,30 @@ def test_init(isolated_runner):
         assert expected_file.exists()
 
     # verify providing both index and id fails
-    result = isolated_runner.invoke(cli, INIT_INDEX + INIT_ID + INIT_FORCE, INPUT)
+    result = isolated_runner.invoke(
+        cli, commands["init_alt"] + commands["index"] + commands["id"] + commands["force"], commands["confirm"]
+    )
     assert 2 == result.exit_code
     assert "Use either --template-id or --template-index, not both" in result.output
 
 
-def test_init_force_in_empty_dir(isolated_runner):
+def test_init_force_in_empty_dir(isolated_runner, project_init):
     """Run init --force in empty directory."""
-    new_project = Path("test-new-project")
+    template, data, commands = project_init
+
+    new_project = Path(data["test_project"])
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
+    )
     assert 0 == result.exit_code
 
 
-def test_init_force_in_dirty_dir(isolated_runner):
+def test_init_force_in_dirty_dir(isolated_runner, project_init):
     """Run init --force in dirty directory."""
-    new_project = Path("test-new-project")
+    template, data, commands = project_init
+
+    new_project = Path(data["test_project"])
     assert not new_project.exists()
 
     new_project.mkdir(parents=True)
@@ -162,31 +171,37 @@ def test_init_force_in_dirty_dir(isolated_runner):
         dest.writelines(["random text"])
     assert random_file.exists()
 
-    result = isolated_runner.invoke(cli, INIT, INPUT)
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     lines = result.output.split("\n")
     assert 1 == result.exit_code
     assert "is not empty" in lines[0]
     assert "random_file.txt" in lines[1]
 
-    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
+    )
     assert random_file.exists()
     assert 0 == result.exit_code
 
 
-def test_init_on_cloned_repo(isolated_runner, data_repository):
+def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
     """Run init --force in directory containing another repo."""
-    new_project = Path("test-new-project")
+    template, data, commands = project_init
+
+    new_project = Path(data["test_project"])
     import shutil
 
     shutil.copytree(str(data_repository.working_dir), str(new_project))
     assert new_project.exists()
 
     # try to create in a dirty folder
-    result = isolated_runner.invoke(cli, INIT, INPUT)
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     assert 0 != result.exit_code
 
     # force re-create in the same folder
-    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
+    )
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / ".renku").exists()
@@ -195,12 +210,16 @@ def test_init_on_cloned_repo(isolated_runner, data_repository):
 
 
 @pytest.mark.integration
-def test_init_remote(isolated_runner):
+def test_init_remote(isolated_runner, project_init):
     """Test project initialization from a remote template."""
+    template, data, commands = project_init
+
     # create the project
-    new_project = Path("test-new-project")
+    new_project = Path(data["test_project"])
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT + INIT_REMOTE, INPUT)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
+    )
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / ".renku").exists()
@@ -208,34 +227,49 @@ def test_init_remote(isolated_runner):
     assert (new_project / ".renku" / "metadata.yml").exists()
 
 
-def test_init_with_parameters(isolated_runner):
+def test_init_with_parameters(isolated_runner, project_init):
     """Test project initialization using custom metadata."""
+    template, data, commands = project_init
+
     # create the project
-    new_project = Path("test-new-project")
+    new_project = Path(data["test_project"])
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT + PARAMETERS_CORRECT + PARAMETER_NO_EQUAL)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["parameters"] + commands["parameters_equal_missing"]
+    )
     assert 0 != result.exit_code
-    assert "Error: Invalid parameter value for --parameter " f'"{PARAMETER_NO_EQUAL[1]}"' in result.output
+    assert (
+        "Error: Invalid parameter value for --parameter "
+        f'"{ commands["parameters_equal_missing"][1]}"' in result.output
+    )
 
-    result = isolated_runner.invoke(cli, INIT + PARAMETERS_CORRECT + PARAMETER_EARLY_EQUAL)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["parameters"] + commands["parameters_equal_early"]
+    )
     assert 0 != result.exit_code
-    assert "Error: Invalid parameter value for --parameter " f'"{PARAMETER_EARLY_EQUAL[1]}"' in result.output
+    assert (
+        "Error: Invalid parameter value for --parameter " f'"{commands["parameters_equal_early"][1]}"' in result.output
+    )
 
-    result = isolated_runner.invoke(cli, INIT + PARAMETERS_CORRECT, INPUT)
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["parameters"], commands["confirm"]
+    )
     assert 0 == result.exit_code
     assert "The template requires a value for" in result.output
-    for param in set(METADATA.keys()):
+    for param in set(template["metadata"].keys()):
         assert param in result.output
     assert "These parameters are not used by the template and were ignored:" in result.output
 
 
 @pytest.mark.parametrize("data_dir", ["dir", "nested/dir/s"])
-def test_init_with_data_dir(isolated_runner, data_dir, directory_tree):
+def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_init):
     """Test initializing with data directory."""
     from git import Repo
 
-    new_project = Path("test-new-project")
-    result = isolated_runner.invoke(cli, INIT + ["--data-dir", data_dir])
+    template, data, commands = project_init
+
+    new_project = Path(data["test_project"])
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
     assert 0 == result.exit_code
 
     assert (new_project / data_dir).exists()
@@ -249,30 +283,35 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree):
 
 
 @pytest.mark.parametrize("data_dir", ["/absolute/path/outside", "../relative/path/outside"])
-def test_init_with_wrong_data_dir(isolated_runner, data_dir):
+def test_init_with_wrong_data_dir(isolated_runner, data_dir, project_init):
     """Test initialization fails with wrong data directory."""
-    result = isolated_runner.invoke(cli, INIT + ["--data-dir", data_dir])
+    template, data, commands = project_init
+
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
     assert 2 == result.exit_code
     assert f"Data directory {data_dir} is not within project" in result.output
 
 
 @pytest.mark.parametrize("data_dir", [".", ".git", ".renku", ".git/"])
-def test_init_with_invalid_data_dir(isolated_runner, data_dir):
+def test_init_with_invalid_data_dir(isolated_runner, data_dir, project_init):
     """Test initialization fails with invalid data directory."""
-    result = isolated_runner.invoke(cli, INIT + ["--data-dir", data_dir])
+    template, data, commands = project_init
+
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
     assert 2 == result.exit_code
     data_dir = data_dir.rstrip("/")
     assert f"Cannot use {data_dir} as data directory." in result.output
 
 
-def test_default_init_parameters(isolated_runner, mocker):
+def test_default_init_parameters(isolated_runner, mocker, project_init):
     """Test that the default parameters are set in template initialisation."""
     create_from_template = mocker.patch("renku.cli.init.create_from_template")
     mocker.patch("renku.cli.githooks.install")
+    template, data, commands = project_init
 
-    new_project = Path("test-new-project")
+    new_project = Path(data["test_project"])
     assert not new_project.exists()
-    result = isolated_runner.invoke(cli, INIT, INPUT)
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     create_from_template.assert_called_once()
     metadata = create_from_template.call_args[1]["metadata"]
@@ -287,7 +326,7 @@ def test_default_init_parameters(isolated_runner, mocker):
     } <= set(metadata.keys())
     assert metadata["__template_source__"] == "renku"
     assert metadata["__template_ref__"] == "master"
-    assert metadata["__template_id__"] == "python-minimal"
+    assert metadata["__template_id__"] == template["id"]
     assert metadata["__namespace__"] == ""
     assert metadata["__repository__"] == ""
     assert metadata["__project_slug__"] == ""

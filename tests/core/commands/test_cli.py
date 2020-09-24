@@ -35,7 +35,6 @@ from renku.cli import cli
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
 from renku.core.utils.contexts import chdir
-from tests.cli.test_init import INPUT, METADATA, TEMPLATE_ID
 
 
 def test_version(runner):
@@ -259,15 +258,15 @@ def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
     assert 0 == result.exit_code
 
 
-def test_show_inputs(tmpdir_factory, project, runner, run):
+def test_show_inputs(tmpdir_factory, project, runner, run, template):
     """Test show inputs with submodules."""
     second_project = Path(str(tmpdir_factory.mktemp("second_project")))
 
     parameters = []
-    for key in set(METADATA.keys()):
+    for key in set(template["metadata"].keys()):
         parameters.append("--parameter")
-        parameters.append(f'{key}="{METADATA[key]}"')
-    assert 0 == run(args=("init", str(second_project), "--template-id", TEMPLATE_ID, *parameters))
+        parameters.append(f'{key}="{template["metadata"][key]}"')
+    assert 0 == run(args=("init", str(second_project), "--template-id", template["id"], *parameters))
 
     woop = second_project / "woop"
     with woop.open("w") as fp:
@@ -290,14 +289,16 @@ def test_show_inputs(tmpdir_factory, project, runner, run):
     assert {str(imported_woop.resolve().relative_to(Path(project).resolve()))} == set(result.output.strip().split("\n"))
 
 
-def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
+def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, project_init):
     """Test the LFS requirement for renku run with disabled storage."""
     runner = isolated_runner
+    template, data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
 
-    result = runner.invoke(cli, ["--no-external-storage", "init", ".", "--template-id", TEMPLATE_ID], INPUT)
+    result = runner.invoke(cli, ["--no-external-storage"] + commands["init"] +
+                           commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
@@ -318,11 +319,13 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch):
     assert 1 == result.exit_code
 
 
-def test_configuration_of_external_storage(isolated_runner, monkeypatch):
+def test_configuration_of_external_storage(isolated_runner, monkeypatch, project_init):
     """Test the LFS requirement for renku run."""
     runner = isolated_runner
+    template, data, commands = project_init
 
-    result = runner.invoke(cli, ["--external-storage", "init", ".", "--template-id", TEMPLATE_ID], INPUT)
+    result = runner.invoke(cli, ["--external-storage"] + commands["init"] +
+                           commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
@@ -342,9 +345,13 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch):
     assert 0 == result.exit_code
 
 
-def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory_tree):
+def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory_tree, project_init):
     """Test LFS is checked early."""
-    result = isolated_runner.invoke(cli, ["--no-external-storage", "init", ".", "--template-id", TEMPLATE_ID])
+    template, data, commands = project_init
+
+    result = isolated_runner.invoke(cli, ["--no-external-storage"] +
+                                    commands["init"] + commands["id"],
+                                    commands["confirm"])
     assert 0 == result.exit_code
 
     result = isolated_runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -364,13 +371,14 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
         assert 'Cannot use "--source" with URLs' in result.output
 
 
-def test_file_tracking(isolated_runner):
+def test_file_tracking(isolated_runner, project_init):
     """Test .gitattribute handling on renku run."""
     runner = isolated_runner
+    template, data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
-    result = runner.invoke(cli, ["init", ".", "--template-id", TEMPLATE_ID], INPUT)
+    result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     result = runner.invoke(cli, ["config", "lfs_threshold", "0b"])
     assert 0 == result.exit_code
@@ -385,9 +393,10 @@ def test_file_tracking(isolated_runner):
 
 
 @pytest.mark.xfail
-def test_status_with_submodules(isolated_runner, monkeypatch):
+def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     """Test status calculation with submodules."""
     runner = isolated_runner
+    template, data, commands = project_init
 
     os.mkdir("foo")
     os.mkdir("bar")
@@ -396,15 +405,19 @@ def test_status_with_submodules(isolated_runner, monkeypatch):
         f.write("woop")
 
     os.chdir("foo")
-    result = runner.invoke(
-        cli, ["init", ".", "--template", TEMPLATE_ID, "--no-external-storage"], INPUT, catch_exceptions=False
-    )
+    result = runner.invoke(cli,
+                           commands["init"] + commands["id"] +
+                           ["--no-external-storage"],
+                           commands["confirm"],
+                           catch_exceptions=False)
     assert 0 == result.exit_code
 
     os.chdir("../bar")
-    result = runner.invoke(
-        cli, ["init", ".", "--template", TEMPLATE_ID, "--no-external-storage"], INPUT, catch_exceptions=False
-    )
+    result = runner.invoke(cli,
+                           commands["init"] + commands["id"] +
+                           ["--no-external-storage"],
+                           commands["confirm"],
+                           catch_exceptions=False)
     assert 0 == result.exit_code
 
     os.chdir("../foo")
@@ -762,13 +775,14 @@ def test_config_get_value(client, global_config_dir):
     assert value is None
 
 
-def test_lfs_size_limit(isolated_runner):
+def test_lfs_size_limit(isolated_runner, project_init):
     """Test inclusion of files in lfs by size."""
     runner = isolated_runner
+    template, data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
-    result = runner.invoke(cli, ["init", ".", "--template-id", TEMPLATE_ID], INPUT)
+    result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
 
     large = Path("large")
@@ -802,13 +816,14 @@ def test_lfs_size_limit(isolated_runner):
         ("dir2\n!*.test", "dir2/file.test", True),
     ),
 )
-def test_lfs_ignore(isolated_runner, ignore, path, tracked):
+def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     """Test inclusion of files in lfs by size."""
     runner = isolated_runner
+    template, data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
-    result = runner.invoke(cli, ["init", ".", "--template-id", TEMPLATE_ID], INPUT)
+    result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     result = runner.invoke(cli, ["config", "lfs_threshold", "0b"])
     assert 0 == result.exit_code

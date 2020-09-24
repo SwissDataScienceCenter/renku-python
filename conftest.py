@@ -191,6 +191,51 @@ def repository(tmpdir):
 
 
 @pytest.fixture()
+def template():
+    """Yield template data."""
+    template = {
+        "url":
+        "https://github.com/SwissDataScienceCenter/renku-project-template",
+        "id": "python-minimal",
+        "index": 1,
+        "ref": "0.1.11",
+        "metadata": {
+            "description": "nodesc"
+        },
+    }
+
+    yield template
+
+
+@pytest.fixture()
+def project_init(template):
+    """Yield template data."""
+    data = {
+        "test_project": "test-new-project",
+        "test_project_alt": "test-new-project-2",
+    }
+
+    commands = {
+        "init": ["init", "."],
+        "init_test": ["init", data["test_project"]],
+        "init_alt": ["init", data["test_project_alt"]],
+        "remote": [
+            "--template-source", template["url"], "--template-ref", template["ref"]
+        ],
+        "id": ["--template-id", template["id"]],
+        "index": ["--template-index", template["index"]],
+        "force": ["--force"],
+        "list": ["--list-templates"],
+        "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
+        "parameters_equal_missing": ["--parameter", "p3:v3"],
+        "parameters_equal_early": ["--parameter", "=p4v3"],
+        "confirm": len(set(template["metadata"].keys())) * "\n",
+    }
+
+    yield template, data, commands
+
+
+@pytest.fixture()
 def project(repository):
     """Create a test project."""
     from git import Repo
@@ -682,28 +727,6 @@ def sleep_after():
     time.sleep(0.5)
 
 
-@pytest.fixture
-def remote_project(data_repository, directory_tree):
-    """A second Renku project with a dataset."""
-    from renku.cli import cli
-
-    runner = CliRunner()
-
-    with runner.isolated_filesystem() as project_path:
-        runner.invoke(cli, ["-S", "init", ".", "--template-id", "python-minimal"], "\n")
-        result = runner.invoke(cli, ["-S", "dataset", "create", "remote-dataset"])
-        assert 0 == result.exit_code
-
-        result = runner.invoke(
-            cli,
-            ["-S", "dataset", "add", "-s", "file", "-s", "dir2", "remote-dataset", directory_tree.strpath],
-            catch_exceptions=False,
-        )
-        assert 0 == result.exit_code
-
-        yield runner, project_path
-
-
 @pytest.fixture()
 def datapack_zip(directory_tree):
     """Returns dummy data folder as a zip archive."""
@@ -888,31 +911,27 @@ def svc_client_with_repo(svc_client_setup):
     yield svc_client, deepcopy(headers), project_id, url_components
 
 
-@pytest.fixture(scope="module")
-def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
+@pytest.fixture()
+def svc_client_with_templates(svc_client, mock_redis, authentication_headers, template):
     """Setup and teardown steps for templates tests."""
-    from tests.core.commands.test_init import TEMPLATE_REF, TEMPLATE_URL
-
-    template = {"url": TEMPLATE_URL, "ref": TEMPLATE_REF}
 
     yield svc_client, authentication_headers, template
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
     from renku.core.utils.requests import retry
     from renku.core.utils.scm import strip_and_lower
-    from tests.core.commands.test_init import METADATA, TEMPLATE_ID
 
     svc_client, authentication_headers, template = svc_client_with_templates
     parameters = []
-    for parameter in METADATA.keys():
-        parameters.append({"key": parameter, "value": METADATA[parameter]})
+    for parameter in template["metadata"].keys():
+        parameters.append({"key": parameter, "value": template["metadata"][parameter]})
 
     payload = {
         **template,
-        "identifier": TEMPLATE_ID,
+        "identifier": template["id"],
         "parameters": parameters,
         "project_name": f"Test renku-core {uuid.uuid4().hex[:12]}",
         "project_namespace": "contact",

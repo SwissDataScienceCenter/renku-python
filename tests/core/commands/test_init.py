@@ -35,37 +35,29 @@ from renku.core.commands.init import (
 from renku.core.management.config import RENKU_HOME
 from tests.utils import raises
 
-TEMPLATE_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
-TEMPLATE_ID = "python-minimal"
-TEMPLATE_INDEX = 1
-TEMPLATE_REF = "0.1.11"
-METADATA = {"description": "nodesc"}
-FAKE = "NON_EXISTING"
-NAME = "myname"
-
 template_local = Path(pkg_resources.resource_filename("renku", "templates"))
 
 
-@pytest.mark.parametrize(
-    "url, ref, result, error",
-    [
-        (TEMPLATE_URL, TEMPLATE_REF, True, None),
-        (FAKE, TEMPLATE_REF, None, errors.GitError),
-        (TEMPLATE_URL, FAKE, None, errors.GitError),
-    ],
-)
 @pytest.mark.integration
-def test_fetch_template(url, ref, result, error):
+def test_fetch_template(template):
     """Test fetching a template.
 
     It fetches a template from remote and verifies that the manifest
     file is there.
     """
-    with TemporaryDirectory() as tempdir:
-        with raises(error):
-            manifest_file = fetch_template(url, ref, Path(tempdir))
-            assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
-            assert manifest_file.exists()
+    # ? Can't parametrize with fixtures yet
+    # ? REF: https://docs.pytest.org/en/stable/proposals/parametrize_with_fixtures.html
+    parametrize = [
+        {"url": template["url"], "ref": template["ref"], "error": None},
+        {"url": "fake", "ref": template["ref"], "error": errors.GitError},
+        {"url": template["url"], "ref": "fake","error": errors.GitError},
+    ]
+    for parameters in parametrize:
+        with TemporaryDirectory() as tempdir:
+            with raises(parameters["error"]):
+                manifest_file = fetch_template(parameters["url"], parameters["ref"], Path(tempdir))
+                assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
+                assert manifest_file.exists()
 
 
 def test_read_template_manifest():
@@ -124,7 +116,7 @@ def test_read_template_manifest():
 
 
 @pytest.mark.integration
-def test_fetch_template_and_read_manifest():
+def test_fetch_template_and_read_manifest(template):
     """Test template fetch and manifest reading.
 
     It fetches a local template, reads the manifest, checkouts the
@@ -132,7 +124,7 @@ def test_fetch_template_and_read_manifest():
     """
     with TemporaryDirectory() as tempdir:
         template_path = Path(tempdir)
-        fetch_template(TEMPLATE_URL, TEMPLATE_REF, template_path)
+        fetch_template(template["url"], template["ref"], template_path)
         manifest = read_template_manifest(template_path, checkout=True)
         for template in manifest:
             template_folder = template_path / template["folder"]
@@ -166,7 +158,7 @@ def test_validate_template():
             assert validate_template(template_folder) is True
 
 
-def test_create_from_template(local_client):
+def test_create_from_template(local_client, template):
     """Test repository creation from a template.
 
     It creates a renku projects from one of the local templates and it verifies
@@ -177,7 +169,7 @@ def test_create_from_template(local_client):
         shutil.copytree(str(template_local), str(temppath))
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]["folder"]
-        create_from_template(template_path, local_client, NAME, METADATA)
+        create_from_template(template_path, local_client, "name", template["metadata"])
         template_files = [
             f
             for f in local_client.path.glob("**/*")
