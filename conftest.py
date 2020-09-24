@@ -194,14 +194,11 @@ def repository(tmpdir):
 def template():
     """Yield template data."""
     template = {
-        "url":
-        "https://github.com/SwissDataScienceCenter/renku-project-template",
+        "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "id": "python-minimal",
         "index": 1,
         "ref": "0.1.11",
-        "metadata": {
-            "description": "nodesc"
-        },
+        "metadata": {"description": "nodesc"},
     }
 
     yield template
@@ -219,9 +216,7 @@ def project_init(template):
         "init": ["init", "."],
         "init_test": ["init", data["test_project"]],
         "init_alt": ["init", data["test_project_alt"]],
-        "remote": [
-            "--template-source", template["url"], "--template-ref", template["ref"]
-        ],
+        "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
         "id": ["--template-id", template["id"]],
         "index": ["--template-index", template["index"]],
         "force": ["--force"],

@@ -297,8 +297,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, proj
     os.mkdir("test-project")
     os.chdir("test-project")
 
-    result = runner.invoke(cli, ["--no-external-storage"] + commands["init"] +
-                           commands["id"], commands["confirm"])
+    result = runner.invoke(cli, ["--no-external-storage"] + commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
@@ -324,8 +323,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch, project
     runner = isolated_runner
     template, data, commands = project_init
 
-    result = runner.invoke(cli, ["--external-storage"] + commands["init"] +
-                           commands["id"], commands["confirm"])
+    result = runner.invoke(cli, ["--external-storage"] + commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
@@ -349,9 +347,9 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
     """Test LFS is checked early."""
     template, data, commands = project_init
 
-    result = isolated_runner.invoke(cli, ["--no-external-storage"] +
-                                    commands["init"] + commands["id"],
-                                    commands["confirm"])
+    result = isolated_runner.invoke(
+        cli, ["--no-external-storage"] + commands["init"] + commands["id"], commands["confirm"]
+    )
     assert 0 == result.exit_code
 
     result = isolated_runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -405,19 +403,15 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
         f.write("woop")
 
     os.chdir("foo")
-    result = runner.invoke(cli,
-                           commands["init"] + commands["id"] +
-                           ["--no-external-storage"],
-                           commands["confirm"],
-                           catch_exceptions=False)
+    result = runner.invoke(
+        cli, commands["init"] + commands["id"] + ["--no-external-storage"], commands["confirm"], catch_exceptions=False
+    )
     assert 0 == result.exit_code
 
     os.chdir("../bar")
-    result = runner.invoke(cli,
-                           commands["init"] + commands["id"] +
-                           ["--no-external-storage"],
-                           commands["confirm"],
-                           catch_exceptions=False)
+    result = runner.invoke(
+        cli, commands["init"] + commands["id"] + ["--no-external-storage"], commands["confirm"], catch_exceptions=False
+    )
     assert 0 == result.exit_code
 
     os.chdir("../foo")

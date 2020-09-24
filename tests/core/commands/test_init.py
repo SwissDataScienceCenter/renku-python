@@ -50,7 +50,7 @@ def test_fetch_template(template):
     parametrize = [
         {"url": template["url"], "ref": template["ref"], "error": None},
         {"url": "fake", "ref": template["ref"], "error": errors.GitError},
-        {"url": template["url"], "ref": "fake","error": errors.GitError},
+        {"url": template["url"], "ref": "fake", "error": errors.GitError},
     ]
     for parameters in parametrize:
         with TemporaryDirectory() as tempdir:
