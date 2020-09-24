@@ -24,7 +24,6 @@ import pytest
 from renku.cli import cli
 from renku.cli.init import create_template_sentence, parse_parameters
 from renku.core import errors
-
 from tests.utils import raises
 
 
