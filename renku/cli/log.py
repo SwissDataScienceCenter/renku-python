@@ -98,5 +98,5 @@ from renku.core.commands.graph import Graph, build_graph
 @click.argument("paths", type=click.Path(exists=False), nargs=-1)
 def log(revision, format, no_output, strict, paths):
     """Show logs for a file."""
-    graph = build_graph(revision, format, no_output, paths)
+    graph = build_graph(revision, no_output, paths)
     FORMATS[format](graph, strict=strict)
