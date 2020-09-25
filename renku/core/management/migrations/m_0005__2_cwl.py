@@ -21,6 +21,7 @@ import glob
 import os
 import uuid
 from functools import cmp_to_key
+from hashlib import sha256
 from pathlib import Path
 
 from cwlgen import CommandLineTool, parse_cwl
@@ -110,10 +111,10 @@ def _migrate_cwl(client, path, commit):
     return path
 
 
-def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False):
+def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit=None, persist=False):
     """Migrate a single step workflow."""
     if not commit:
-        commit = client.find_previous_commit(path)
+        commit = client.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
 
     run = Run(client=client, path=path, commit=commit)
     run.command = " ".join(cmd_line_tool.baseCommand)
@@ -122,7 +123,14 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, persist=False
     inputs = list(cmd_line_tool.inputs)
     outputs = list(cmd_line_tool.outputs)
 
-    base_id = Run.generate_id(client)
+    # NOTE: Make run ids deterministic to prevent duplication.
+    if parent_commit:
+        label = f"{path}@{parent_commit.hexsha}"
+    else:
+        label = f"{path}@{commit.hexsha}"
+    identifier = sha256(label.encode("utf-8")).hexdigest()
+
+    base_id = Run.generate_id(client, identifier=identifier)
     run._id = base_id
 
     if cmd_line_tool.stdin:
@@ -297,7 +305,10 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     if not commit:
         commit = client.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
-    run._id = Run.generate_id(client)
+
+    label = f"{path}@{commit.hexsha}"
+    identifier = sha256(label.encode("utf-8")).hexdigest()
+    run._id = Run.generate_id(client, identifier=identifier)
 
     name = "{0}_migrated.yaml".format(uuid.uuid4().hex)
 
@@ -310,7 +321,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
             path = client.workflow_path / step.run
             subrun = parse_cwl_cached(str(path))
 
-        subprocess, _ = _migrate_single_step(client, subrun, path, commit=commit)
+        subprocess, _ = _migrate_single_step(client, subrun, path, parent_commit=commit)
         run.add_subprocess(subprocess)
 
     with with_reference(run.path):

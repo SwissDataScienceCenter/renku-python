@@ -729,3 +729,5 @@ class WorkflowRunSchema(ProcessRunSchema):
         rdf_type = wfprov.WorkflowRun
         model = WorkflowRun
         unknown = EXCLUDE
+
+    _processes = Nested(wfprov.wasPartOfWorkflowRun, ProcessRunSchema, reverse=True, many=True, init_name="processes")

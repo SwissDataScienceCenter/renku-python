@@ -22,8 +22,10 @@ from collections import OrderedDict, defaultdict, deque
 from pathlib import Path
 
 import attr
+from git import NULL_TREE
 
 from renku.core import errors
+from renku.core.commands.client import pass_local_client
 from renku.core.models.entities import Collection, Entity
 from renku.core.models.git import Range
 from renku.core.models.provenance.activities import Activity, ProcessRun, Usage, WorkflowRun
@@ -510,3 +512,26 @@ class Graph(object):
                     return workflow.association.plan
 
         return run
+
+
+@pass_local_client(requires_migration=True)
+def build_graph(client, revision, no_output, paths):
+    """Build graph structure."""
+    graph = Graph(client)
+    if not paths:
+        start, is_range, stop = revision.partition("..")
+        if not is_range:
+            stop = start
+        elif not stop:
+            stop = "HEAD"
+
+        commit = client.repo.rev_parse(stop)
+        paths = (
+            str(client.path / item.a_path)
+            for item in commit.diff(commit.parents or NULL_TREE)
+            # if not item.deleted_file
+        )
+
+    # NOTE shall we warn when "not no_output and not paths"?
+    graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
+    return graph
