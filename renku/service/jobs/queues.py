@@ -27,12 +27,14 @@ CLEANUP_QUEUE_PROJECTS = "cache.cleanup.projects"
 
 DATASETS_JOB_QUEUE = "datasets.jobs"
 MIGRATIONS_JOB_QUEUE = "project.migrations"
+GRAPH_JOB_QUEUE = "graph.jobs"
 
 QUEUES = [
     CLEANUP_QUEUE_FILES,
     CLEANUP_QUEUE_PROJECTS,
     DATASETS_JOB_QUEUE,
     MIGRATIONS_JOB_QUEUE,
+    GRAPH_JOB_QUEUE,
 ]
 
 

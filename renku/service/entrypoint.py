@@ -59,6 +59,7 @@ from renku.service.views.datasets import (
     remove_dataset_view,
     unlink_file_view,
 )
+from renku.service.views.graph import graph_blueprint, GRAPH_BLUEPRINT_TAG, graph_build_view
 from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, list_jobs
 from renku.service.views.templates import (
     TEMPLATES_BLUEPRINT_TAG,
@@ -114,6 +115,7 @@ def build_routes(app):
     )
     app.register_blueprint(cache_blueprint)
     app.register_blueprint(dataset_blueprint)
+    app.register_blueprint(graph_blueprint)
     app.register_blueprint(jobs_blueprint)
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
@@ -123,8 +125,10 @@ def build_routes(app):
 
     docs = FlaskApiSpec(app)
 
+    # NOTE: Version endpoint
     docs.register(version, blueprint=VERSION_BLUEPRINT_TAG)
 
+    # NOTE: Cache endpoints
     docs.register(list_uploaded_files_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(project_clone_view, blueprint=CACHE_BLUEPRINT_TAG)
@@ -132,6 +136,7 @@ def build_routes(app):
     docs.register(migrate_project_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(migration_check_project_view, blueprint=CACHE_BLUEPRINT_TAG)
 
+    # NOTE: Dataset endpoints
     docs.register(list_datasets_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(list_dataset_files_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(add_file_to_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
@@ -141,8 +146,13 @@ def build_routes(app):
     docs.register(remove_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(unlink_file_view, blueprint=DATASET_BLUEPRINT_TAG)
 
+    # NOTE: Graph endpoints
+    docs.register(graph_build_view, blueprint=GRAPH_BLUEPRINT_TAG)
+
+    # NOTE: User jobs endpoint
     docs.register(list_jobs, blueprint=JOBS_BLUEPRINT_TAG)
 
+    # NOTE: Template endpoints
     docs.register(read_manifest_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
     docs.register(create_project_from_template, blueprint=TEMPLATES_BLUEPRINT_TAG)
 

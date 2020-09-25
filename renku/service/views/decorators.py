@@ -87,6 +87,26 @@ def optional_identity(f):
     return decorated_function
 
 
+def optional_identity(f):
+    """Wrapper which indicates partial dependency on user identification."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kws):
+        """Represents decorated function."""
+        try:
+            user_identity = UserIdentityHeaders().load(request.headers)
+        except (ValidationError, KeyError):
+            if "Authorization" not in request.headers:
+                return f(None, *args, **kws)
+
+            identity = {"token": UserIdentityHeaders.extract_token(request.headers["Authorization"])}
+            return f(identity, *args, **kws)
+
+        return f(user_identity, *args, **kws)
+
+    return decorated_function
+
+
 def handle_redis_except(f):
     """Wrapper which handles Redis exceptions."""
     # noqa

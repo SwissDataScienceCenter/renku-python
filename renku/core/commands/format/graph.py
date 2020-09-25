@@ -333,16 +333,21 @@ def makefile(graph, strict=False):
             click.echo("\t@" + " ".join(plan.to_argv()) + " " + " ".join(plan.to_stream_repr()))
 
 
-def jsonld(graph, strict=False):
+def jsonld(graph, strict=False, to_stdout=True):
     """Format graph as JSON-LD file."""
-    ld = _jsonld(graph, "expand")
+    ld = _jsonld(graph, "expand", to_stdout=to_stdout)
 
     if strict:
         r, _, t = validate_graph(ld, format="json-ld")
 
         if not r:
             raise SHACLValidationError("{}\nCouldn't get log: Invalid Knowledge Graph data".format(t))
-    click.echo(ld)
+
+    if to_stdout:
+        click.echo(ld)
+        return
+
+    return ld
 
 
 def jsonld_graph(graph, strict=False):

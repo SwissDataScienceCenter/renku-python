@@ -34,3 +34,19 @@ class IdentificationError(RenkuException):
     def __init__(self, message):
         """Build a custom message."""
         super(IdentificationError, self).__init__(message)
+
+
+class OperationNotSupported(RenkuException):
+    """Operation not supported exception."""
+
+    def __init__(self, reason):
+        message = f'operation not supported: "{reason}"'
+        super(OperationNotSupported, self).__init__(message)
+
+
+class AuthenticationTokenMissing(RenkuException):
+    """Authentication token is missing."""
+
+    def __init__(self):
+        message = "authentication token is missing"
+        super(AuthenticationTokenMissing, self).__init__(message)

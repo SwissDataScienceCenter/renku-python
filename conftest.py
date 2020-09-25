@@ -1022,6 +1022,28 @@ def identity_headers():
     return headers
 
 
+def authentication_headers_raw():
+    """Get authentication headers without renku user identification."""
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
+    }
+
+    return headers
+
+
+@pytest.fixture(scope="module")
+def authentication_headers(authentication_headers_raw):
+    """Get authentication headers."""
+    identification = {
+        "Renku-User-Id": "b4b4de0eda0f471ab82702bd5c367fa7",
+        "Renku-User-FullName": "Just Sam",
+        "Renku-User-Email": "contact@justsam.io",
+    }
+
+    return {**authentication_headers_raw, **identification}
+
+
 @pytest.fixture(scope="module")
 def integration_lifecycle(svc_client, mock_redis, identity_headers):
     """Setup and teardown steps for integration tests."""
