@@ -516,7 +516,7 @@ class Graph(object):
 
 @pass_local_client(requires_migration=True)
 def build_graph(client, revision, no_output, paths):
-    """"""
+    """Build graph structure."""
     graph = Graph(client)
     if not paths:
         start, is_range, stop = revision.partition("..")
