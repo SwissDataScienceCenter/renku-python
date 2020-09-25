@@ -83,11 +83,9 @@ The ``--strict`` option is only supported for the ``jsonld``, ``rdf`` and
 """
 
 import click
-from git import NULL_TREE
 
-from renku.core.commands.client import pass_local_client
 from renku.core.commands.format.graph import FORMATS
-from renku.core.commands.graph import Graph, build_graph
+from renku.core.commands.graph import build_graph
 
 
 @click.command()
