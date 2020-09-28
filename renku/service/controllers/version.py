@@ -25,7 +25,7 @@ from renku.service.views import result_response
 
 class VersionCtrl(ServiceCtrl):
     """Version controller."""
-    
+
     RESPONSE_SERIALIZER = VersionResponseRPC()
 
     def to_response(self):
