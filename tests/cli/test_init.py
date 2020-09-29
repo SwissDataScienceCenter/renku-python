@@ -51,9 +51,9 @@ def test_parse_parameters():
     assert "v1" == parsed["p1"]
     assert "v2" == parsed["p2"]
     with raises(errors.ParameterError):
-        parsed = parse_parameters(None, None, clean_param(PARAMETERS_CORRECT) + clean_param(PARAMETER_NO_EQUAL))
+        parse_parameters(None, None, clean_param(PARAMETERS_CORRECT) + clean_param(PARAMETER_NO_EQUAL))
     with raises(errors.ParameterError):
-        parsed = parse_parameters(None, None, clean_param(PARAMETERS_CORRECT) + clean_param(PARAMETER_EARLY_EQUAL))
+        parse_parameters(None, None, clean_param(PARAMETERS_CORRECT) + clean_param(PARAMETER_EARLY_EQUAL))
 
 
 def test_template_selection_helpers():
@@ -111,11 +111,11 @@ def test_init(isolated_runner):
     assert (new_project / ".renku" / "metadata.yml").exists()
 
     # try to re-create in the same folder
-    result_re = isolated_runner.invoke(cli, INIT, INPUT)
-    assert 0 != result_re.exit_code
+    result = isolated_runner.invoke(cli, INIT, INPUT)
+    assert 0 != result.exit_code
 
     # force re-create in the same folder
-    result_re = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
+    result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
     assert 0 == result.exit_code
     assert new_project.exists()
     assert (new_project / ".renku").exists()
@@ -140,7 +140,7 @@ def test_init(isolated_runner):
     # verify providing both index and id fails
     result = isolated_runner.invoke(cli, INIT_INDEX + INIT_ID + INIT_FORCE, INPUT)
     assert 2 == result.exit_code
-    assert ("Use either --template-id or --template-index, not both") in result.output
+    assert "Use either --template-id or --template-index, not both" in result.output
 
 
 def test_init_force_in_empty_dir(isolated_runner):
@@ -161,6 +161,12 @@ def test_init_force_in_dirty_dir(isolated_runner):
     with random_file.open("w") as dest:
         dest.writelines(["random text"])
     assert random_file.exists()
+
+    result = isolated_runner.invoke(cli, INIT, INPUT)
+    lines = result.output.split("\n")
+    assert 1 == result.exit_code
+    assert "is not empty" in lines[0]
+    assert "random_file.txt" in lines[1]
 
     result = isolated_runner.invoke(cli, INIT + INIT_FORCE, INPUT)
     assert random_file.exists()
@@ -220,7 +226,7 @@ def test_init_with_parameters(isolated_runner):
     assert "The template requires a value for" in result.output
     for param in set(METADATA.keys()):
         assert param in result.output
-    assert ("These parameters are not used by the template and were ignored:") in result.output
+    assert "These parameters are not used by the template and were ignored:" in result.output
 
 
 @pytest.mark.parametrize("data_dir", ["dir", "nested/dir/s"])
@@ -270,17 +276,15 @@ def test_default_init_parameters(isolated_runner, mocker):
     assert 0 == result.exit_code
     create_from_template.assert_called_once()
     metadata = create_from_template.call_args[1]["metadata"]
-    assert set(
-        [
-            "__template_source__",
-            "__template_ref__",
-            "__template_id__",
-            "__namespace__",
-            "__repository__",
-            "__project_slug__",
-            "__sanitized_project_name__",
-        ]
-    ) <= set(metadata.keys())
+    assert {
+        "__template_source__",
+        "__template_ref__",
+        "__template_id__",
+        "__namespace__",
+        "__repository__",
+        "__project_slug__",
+        "__sanitized_project_name__",
+    } <= set(metadata.keys())
     assert metadata["__template_source__"] == "renku"
     assert metadata["__template_ref__"] == "master"
     assert metadata["__template_id__"] == "python-minimal"

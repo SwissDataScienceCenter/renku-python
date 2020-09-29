@@ -83,11 +83,9 @@ The ``--strict`` option is only supported for the ``jsonld``, ``rdf`` and
 """
 
 import click
-from git import NULL_TREE
 
-from renku.core.commands.client import pass_local_client
 from renku.core.commands.format.graph import FORMATS
-from renku.core.commands.graph import Graph
+from renku.core.commands.graph import build_graph
 
 
 @click.command()
@@ -96,24 +94,7 @@ from renku.core.commands.graph import Graph
 @click.option("--no-output", is_flag=True, default=False, help="Display commands without output files.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
 @click.argument("paths", type=click.Path(exists=False), nargs=-1)
-@pass_local_client(requires_migration=True)
-def log(client, revision, format, no_output, strict, paths):
+def log(revision, format, no_output, strict, paths):
     """Show logs for a file."""
-    graph = Graph(client)
-    if not paths:
-        start, is_range, stop = revision.partition("..")
-        if not is_range:
-            stop = start
-        elif not stop:
-            stop = "HEAD"
-
-        commit = client.repo.rev_parse(stop)
-        paths = (
-            str(client.path / item.a_path)
-            for item in commit.diff(commit.parents or NULL_TREE)
-            # if not item.deleted_file
-        )
-
-    # NOTE shall we warn when "not no_output and not paths"?
-    graph.build(paths=paths, revision=revision, can_be_cwl=no_output)
+    graph = build_graph(revision, no_output, paths)
     FORMATS[format](graph, strict=strict)
