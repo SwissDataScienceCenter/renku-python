@@ -114,7 +114,7 @@ extras_require = {
     "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.2", "renku-sphinx-theme==0.1.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.3"],
+    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.18.1"],
     "tests": tests_require,
 }
 
