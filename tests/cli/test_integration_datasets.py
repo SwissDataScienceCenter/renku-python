@@ -73,7 +73,7 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "OK" in result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "-c", "name,creators"])
+    result = runner.invoke(cli, ["dataset", "ls", "-c", "name,creators"])
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert doi["name"] in result.output

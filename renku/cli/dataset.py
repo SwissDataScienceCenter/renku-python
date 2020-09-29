@@ -61,7 +61,7 @@ Listing all datasets:
 
 .. code-block:: console
 
-    $ renku dataset list
+    $ renku dataset ls
     ID        NAME           TITLE          VERSION
     --------  -------------  -------------  ---------
     0ad1cb9a  some-dataset   Some Dataset
@@ -72,7 +72,7 @@ comma-separated list of column names:
 
 .. code-block:: console
 
-    $ renku dataset list --columns id,name,date_created,creators
+    $ renku dataset ls --columns id,name,date_created,creators
     ID        NAME           CREATED              CREATORS
     --------  -------------  -------------------  ---------
     0ad1cb9a  some-dataset   2020-03-19 16:39:46  sam
@@ -85,7 +85,7 @@ flag for it:
 
 .. code-block:: console
 
-    $ renku dataset list --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
+    $ renku dataset ls --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
     ID        NAME                 TITLE               VERSION
     a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
     c2d80abe  ds1                  ds1

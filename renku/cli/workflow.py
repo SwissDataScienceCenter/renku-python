@@ -24,7 +24,7 @@ Listing workflows:
 
 .. code-block:: console
 
-    $ renku workflow list
+    $ renku workflow ls
     26be2e8d66f74130a087642768f2cef0_rerun.yaml:
     199c4b9d462f4b27a4513e5e55f76eb2_cat.yaml:
     9bea2eccf9624de387d9b06e61eec0b6_rerun.yaml:
