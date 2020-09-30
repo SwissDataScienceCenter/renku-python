@@ -54,7 +54,7 @@ from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph
 from renku.core.commands.options import option_siblings
 from renku.core.models.locals import with_reference
-from renku.core.models.provenance.activities import WorkflowRun
+from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.version import __version__, version_url
 
@@ -142,7 +142,7 @@ def rerun(client, revision, roots, siblings, inputs, paths):
     client.repo.git.add(*paths)
 
     if client.repo.is_dirty():
-        commit_msg = ("renku rerun: " "committing {} newly added files").format(len(paths))
+        commit_msg = "renku rerun: committing {} newly added files".format(len(paths))
 
         committer = Actor("renku {0}".format(__version__), version_url)
 
@@ -157,6 +157,7 @@ def rerun(client, revision, roots, siblings, inputs, paths):
     workflow.update_id_and_label_from_commit_path(client, client.repo.head.commit, path)
 
     with with_reference(path):
-        run = WorkflowRun.from_run(workflow, client, path)
+        cls = WorkflowRun if workflow.subprocesses else ProcessRun
+        run = cls.from_run(workflow, client, path)
         run.to_yaml()
         client.add_to_activity_index(run)

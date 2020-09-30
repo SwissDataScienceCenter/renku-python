@@ -143,6 +143,26 @@ encourage usage of `pipenv` and `pyenv`:
 7. Submit a pull request through the GitHub website.
 
 
+Code comment guidelines
+-----------------------
+
+To make comments more easily readable and allow automated styling/parsing in editors, all code comments
+should start with one of these tags:
+
+* :code:`TODO`: An informal task.
+* :code:`FIXME`: Same as :code:`TODO`, but for bugs.
+* :code:`NOTE`: Something to pay attention to regarding the code.
+* :code:`INFO`: Explanation of what a section of code does (For more complicated pieces of code).
+* :code:`WARNING`: Similar to :code:`NOTE` but higher severity (where disregarding can cause errors).
+* :code:`HACK`: Ugly code that is needed for things to work.
+
+So a comment should look like:
+
+   .. code-block:: python
+
+      # TODO: some message
+
+
 Commit message guidelines
 -------------------------
 
@@ -155,6 +175,8 @@ do correctly. Commit message should always follow this pattern:
    $ %{type}(%{scope}): %{description}
 
 **Type's used for describing commit's which will end up in changelog are** :code:`fix:` & :code:`feat:`.
+
+:code:`description` should start with a lowercase letter.
 
 Please note that the :code:`fix` type here is only for user-facing bug fixes and not fixes on tests or CI.
 For those, please use: :code:`ci:` or :code:`test:`

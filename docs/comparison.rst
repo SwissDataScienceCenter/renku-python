@@ -59,7 +59,7 @@ dependencies are older then the targets.
    $ renku run echo second > foo
    $ renku status
    On branch master
-   Files generated from newer inputs:
+   Outdated outputs:
      (use "renku log [<file>...]" to see the full lineage)
      (use "renku update [<file>...]" to generate the file from its latest inputs)
 

@@ -65,7 +65,7 @@ def status(ctx, client, revision, no_output, path):
         click.echo("Git HEAD is detached!\n" " Please move back to your working branch to use renku\n")
     if status["outdated"]:
         click.echo(
-            "Files generated from newer inputs:\n"
+            "Outdated outputs:\n"
             '  (use "renku log [<file>...]" to see the full lineage)\n'
             '  (use "renku update [<file>...]" to '
             "generate the file from its latest inputs)\n"
@@ -87,7 +87,7 @@ def status(ctx, client, revision, no_output, path):
 
     if status["multiple-versions"]:
         click.echo(
-            "Input files used in different versions:\n"
+            "Modified inputs:\n"
             '  (use "renku log --revision <sha1> <file>" to see a lineage '
             "for the given revision)\n"
         )

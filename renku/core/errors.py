@@ -429,3 +429,12 @@ class DockerfileUpdateError(RenkuException):
 
 class MigrationError(RenkuException):
     """Raised when something wen't running during migrations."""
+
+
+class RenkuImportError(RenkuException):
+    """Raised when a dataset cannot be imported."""
+
+    def __init__(self, exp, msg):
+        """Embed exception and build a custom message."""
+        self.exp = exp
+        super(RenkuImportError, self).__init__(msg)

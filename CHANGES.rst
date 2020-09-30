@@ -18,6 +18,51 @@
 Changes
 =======
 
+`0.11.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.1...v0.11.2>`__ (2020-09-24)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fixes libxslt dependency in docker image
+   (`#1534 <https://github.com/SwissDataScienceCenter/renku-python/issues/1534>`__)
+   (`491bae7 <https://github.com/SwissDataScienceCenter/renku-python/commit/491bae764db72f91f3c444bd7105017e50e370cd>`__)
+-  **core:** fixes ‘doi:…’ import
+   (`#1536 <https://github.com/SwissDataScienceCenter/renku-python/issues/1536>`__)
+   (`f653c79 <https://github.com/SwissDataScienceCenter/renku-python/commit/f653c7912ee03ca24e2043063a5b269d938b3c31>`__)
+-  **core:** fixes duplicate ‘renku:Run’ ids on repeat execution of migrations
+   (`#1532 <https://github.com/SwissDataScienceCenter/renku-python/issues/1532>`__)
+   (`4ce6f3c <https://github.com/SwissDataScienceCenter/renku-python/commit/4ce6f3c1a86d9172973f78bea42619223c4fad2e>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** show existing paths when initializing non-empty dir
+   (`#1535 <https://github.com/SwissDataScienceCenter/renku-python/issues/1535>`__)
+   (`07c559f <https://github.com/SwissDataScienceCenter/renku-python/commit/07c559fd1d8ff22b0aec25a9585019d847635dd8>`__)
+-  **core:** follow URL redirections for dataset files
+   (`#1516 <https://github.com/SwissDataScienceCenter/renku-python/issues/1516>`__)
+   (`5a37b3c <https://github.com/SwissDataScienceCenter/renku-python/commit/5a37b3cdae7c06aca5b103bca8046e2804269765>`__)
+-  **dataset:** flattened JSON-LD metadata
+   (`#1518 <https://github.com/SwissDataScienceCenter/renku-python/issues/1518>`__)
+   (`458ddb9 <https://github.com/SwissDataScienceCenter/renku-python/commit/458ddb9b9cea037c01be496c20573a7645b5c0e4>`__)
+-  **service:** add additional template parameters
+   (`#1469 <https://github.com/SwissDataScienceCenter/renku-python/issues/1469>`__)
+   (`6372a32 <https://github.com/SwissDataScienceCenter/renku-python/commit/6372a32cd24dde4a77d53731ba03b6644b47ba73>`__)
+-  **service:** adds additional fields to datasets listings
+   (`#1508 <https://github.com/SwissDataScienceCenter/renku-python/issues/1508>`__)
+   (`f8a395f <https://github.com/SwissDataScienceCenter/renku-python/commit/f8a395f90c2cf4be54c9da390638fcdb9cb0b8cc>`__)
+-  **service:** adds project details and renku operation on jobs
+   endpoint
+   (`#1492 <https://github.com/SwissDataScienceCenter/renku-python/issues/1492>`__)
+   (`6b3fafd <https://github.com/SwissDataScienceCenter/renku-python/commit/6b3fafd75a3eda7a481a5ff2f626c60a083413ef>`__)
+-  **service:** execute read operations via git remote
+   (`#1488 <https://github.com/SwissDataScienceCenter/renku-python/issues/1488>`__)
+   (`84a0eb3 <https://github.com/SwissDataScienceCenter/renku-python/commit/84a0eb38a6521f12c8db05fe4ee169551fcc08a0>`__)
+-  **workflow:** avoid unnecessary parent runs
+   (`#1476 <https://github.com/SwissDataScienceCenter/renku-python/issues/1476>`__)
+   (`b908ffd <https://github.com/SwissDataScienceCenter/renku-python/commit/b908ffd03a26e996f2df2127dbfdb66cd9da1dba>`__)
+
 `0.11.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.0...v0.11.1>`__ (2020-08-18)
 ----------------------------------------------------------------------------------------------------------
 

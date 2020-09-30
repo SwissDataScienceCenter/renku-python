@@ -21,7 +21,7 @@ RUN apk add --no-cache --allow-untrusted \
     --repository http://dl-cdn.alpinelinux.org/alpine/latest-stable/community \
     --repository http://dl-cdn.alpinelinux.org/alpine/latest-stable/main \
     --repository http://nl.alpinelinux.org/alpine/edge/community \
-    git-lfs && \
+    libxslt git-lfs && \
     git lfs install
 
 COPY --from=builder /pythonroot/ /
