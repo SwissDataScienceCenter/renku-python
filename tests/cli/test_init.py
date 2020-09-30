@@ -31,7 +31,7 @@ def test_parse_parameters(project_init):
     def clean_param(p):
         return [v for v in p if v != "--parameter"]
 
-    commands = project_init[2]
+    data, commands = project_init
 
     parsed = parse_parameters(None, None, clean_param(commands["parameters"]))
     keys = parsed.keys()
@@ -82,9 +82,9 @@ def test_template_selection_helpers():
     assert instructions in full_sentence
 
 
-def test_list_templates(isolated_runner, project_init):
+def test_list_templates(isolated_runner, project_init, template):
     """Test listing templates."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     new_project = Path(data["test_project"])
     assert not new_project.exists()
@@ -96,7 +96,7 @@ def test_list_templates(isolated_runner, project_init):
 
 def test_init(isolated_runner, project_init):
     """Test project initialization from template."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     # create the project
     new_project = Path(data["test_project"])
@@ -147,7 +147,7 @@ def test_init(isolated_runner, project_init):
 
 def test_init_force_in_empty_dir(isolated_runner, project_init):
     """Run init --force in empty directory."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     new_project = Path(data["test_project"])
     assert not new_project.exists()
@@ -159,7 +159,7 @@ def test_init_force_in_empty_dir(isolated_runner, project_init):
 
 def test_init_force_in_dirty_dir(isolated_runner, project_init):
     """Run init --force in dirty directory."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     new_project = Path(data["test_project"])
     assert not new_project.exists()
@@ -185,7 +185,7 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
 
 def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
     """Run init --force in directory containing another repo."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     new_project = Path(data["test_project"])
     import shutil
@@ -211,7 +211,7 @@ def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
 @pytest.mark.integration
 def test_init_remote(isolated_runner, project_init):
     """Test project initialization from a remote template."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     # create the project
     new_project = Path(data["test_project"])
@@ -226,9 +226,9 @@ def test_init_remote(isolated_runner, project_init):
     assert (new_project / ".renku" / "metadata.yml").exists()
 
 
-def test_init_with_parameters(isolated_runner, project_init):
+def test_init_with_parameters(isolated_runner, project_init, template):
     """Test project initialization using custom metadata."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     # create the project
     new_project = Path(data["test_project"])
@@ -238,17 +238,14 @@ def test_init_with_parameters(isolated_runner, project_init):
     )
     assert 0 != result.exit_code
     assert (
-        "Error: Invalid parameter value for --parameter "
-        f'"{ commands["parameters_equal_missing"][1]}"' in result.output
+        f'Error: Invalid parameter value for --parameter "{ commands["parameters_equal_missing"][1]}"' in result.output
     )
 
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["parameters"] + commands["parameters_equal_early"]
     )
     assert 0 != result.exit_code
-    assert (
-        "Error: Invalid parameter value for --parameter " f'"{commands["parameters_equal_early"][1]}"' in result.output
-    )
+    assert f'Error: Invalid parameter value for --parameter "{commands["parameters_equal_early"][1]}"' in result.output
 
     result = isolated_runner.invoke(
         cli, commands["init_test"] + commands["id"] + commands["parameters"], commands["confirm"]
@@ -265,7 +262,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
     """Test initializing with data directory."""
     from git import Repo
 
-    template, data, commands = project_init
+    data, commands = project_init
 
     new_project = Path(data["test_project"])
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
@@ -284,7 +281,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 @pytest.mark.parametrize("data_dir", ["/absolute/path/outside", "../relative/path/outside"])
 def test_init_with_wrong_data_dir(isolated_runner, data_dir, project_init):
     """Test initialization fails with wrong data directory."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
     assert 2 == result.exit_code
@@ -294,7 +291,7 @@ def test_init_with_wrong_data_dir(isolated_runner, data_dir, project_init):
 @pytest.mark.parametrize("data_dir", [".", ".git", ".renku", ".git/"])
 def test_init_with_invalid_data_dir(isolated_runner, data_dir, project_init):
     """Test initialization fails with invalid data directory."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
     assert 2 == result.exit_code
@@ -302,11 +299,11 @@ def test_init_with_invalid_data_dir(isolated_runner, data_dir, project_init):
     assert f"Cannot use {data_dir} as data directory." in result.output
 
 
-def test_default_init_parameters(isolated_runner, mocker, project_init):
+def test_default_init_parameters(isolated_runner, mocker, project_init, template):
     """Test that the default parameters are set in template initialisation."""
     create_from_template = mocker.patch("renku.cli.init.create_from_template")
     mocker.patch("renku.cli.githooks.install")
-    template, data, commands = project_init
+    data, commands = project_init
 
     new_project = Path(data["test_project"])
     assert not new_project.exists()

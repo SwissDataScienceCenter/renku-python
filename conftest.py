@@ -227,7 +227,7 @@ def project_init(template):
         "confirm": len(set(template["metadata"].keys())) * "\n",
     }
 
-    yield template, data, commands
+    yield data, commands
 
 
 @pytest.fixture()

@@ -292,7 +292,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run, template):
 def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, project_init):
     """Test the LFS requirement for renku run with disabled storage."""
     runner = isolated_runner
-    template, data, commands = project_init
+    data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
@@ -321,7 +321,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, proj
 def test_configuration_of_external_storage(isolated_runner, monkeypatch, project_init):
     """Test the LFS requirement for renku run."""
     runner = isolated_runner
-    template, data, commands = project_init
+    data, commands = project_init
 
     result = runner.invoke(cli, ["--external-storage"] + commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
@@ -345,7 +345,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch, project
 
 def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory_tree, project_init):
     """Test LFS is checked early."""
-    template, data, commands = project_init
+    data, commands = project_init
 
     result = isolated_runner.invoke(
         cli, ["--no-external-storage"] + commands["init"] + commands["id"], commands["confirm"]
@@ -372,7 +372,7 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
 def test_file_tracking(isolated_runner, project_init):
     """Test .gitattribute handling on renku run."""
     runner = isolated_runner
-    template, data, commands = project_init
+    data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
@@ -394,7 +394,7 @@ def test_file_tracking(isolated_runner, project_init):
 def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     """Test status calculation with submodules."""
     runner = isolated_runner
-    template, data, commands = project_init
+    data, commands = project_init
 
     os.mkdir("foo")
     os.mkdir("bar")
@@ -772,7 +772,7 @@ def test_config_get_value(client, global_config_dir):
 def test_lfs_size_limit(isolated_runner, project_init):
     """Test inclusion of files in lfs by size."""
     runner = isolated_runner
-    template, data, commands = project_init
+    data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
@@ -813,7 +813,7 @@ def test_lfs_size_limit(isolated_runner, project_init):
 def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     """Test inclusion of files in lfs by size."""
     runner = isolated_runner
-    template, data, commands = project_init
+    data, commands = project_init
 
     os.mkdir("test-project")
     os.chdir("test-project")
