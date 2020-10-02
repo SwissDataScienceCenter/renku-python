@@ -30,7 +30,7 @@ services:
       - net
 
   rq-metrics:
-    image: justsam/rqmetrics:0.1.0
+    image: renku/rqmetrics:latest
     container_name: rq-metrics
     depends_on:
       - redis
