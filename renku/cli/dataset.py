@@ -552,7 +552,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
     "-c",
     "--columns",
     type=click.STRING,
-    default="dataset_name,added,size,path",
+    default="dataset_name,added,size,path,lfs",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,

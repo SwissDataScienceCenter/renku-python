@@ -602,6 +602,42 @@ def test_datasets_ls_files_check_exit_code(output_format, runner, project):
     assert 0 == result.exit_code
 
 
+def test_datasets_ls_files_lfs(tmpdir, runner, project):
+    """Test file listing lfs status."""
+    # NOTE: create a dataset
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code
+    assert "OK" in result.output
+
+    # NOTE: create some data
+    paths = []
+
+    new_file = tmpdir.join("file_1")
+    new_file.write(str(1))
+    paths.append(str(new_file))
+
+    new_file = tmpdir.join("file_2")
+    new_file.write(str(2) * 200000)
+    paths.append(str(new_file))
+
+    # NOTE: add data to dataset
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
+    assert 0 == result.exit_code
+
+    # NOTE: check files
+    result = runner.invoke(cli, ["dataset", "ls-files"])
+    assert 0 == result.exit_code
+
+    lines = result.output.split("\n")
+    file1_entry = next(line for line in lines if "file_1" in line)
+    file2_entry = next(line for line in lines if "file_2" in line)
+
+    assert file1_entry
+    assert file2_entry
+    assert not file1_entry.endswith("*")
+    assert file2_entry.endswith("*")
+
+
 @pytest.mark.parametrize("column", DATASET_FILES_COLUMNS.keys())
 def test_datasets_ls_files_columns_correctly(runner, project, column, directory_tree):
     """Test file listing only shows requested columns."""
