@@ -63,6 +63,7 @@ from renku.service.views.templates import (
     read_manifest_from_template,
     templates_blueprint,
 )
+from renku.service.views.version import VERSION_BLUEPRINT_TAG, version, version_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
@@ -112,11 +113,14 @@ def build_routes(app):
     app.register_blueprint(dataset_blueprint)
     app.register_blueprint(jobs_blueprint)
     app.register_blueprint(templates_blueprint)
+    app.register_blueprint(version_blueprint)
 
     swaggerui_blueprint = get_swaggerui_blueprint(SWAGGER_URL, API_SPEC_URL, config={"app_name": "Renku Service"})
     app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
     docs = FlaskApiSpec(app)
+
+    docs.register(version, blueprint=VERSION_BLUEPRINT_TAG)
 
     docs.register(list_uploaded_files_view, blueprint=CACHE_BLUEPRINT_TAG)
     docs.register(upload_file_view, blueprint=CACHE_BLUEPRINT_TAG)
