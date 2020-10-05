@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
-import os
 import re
 from subprocess import PIPE, SubprocessError, run
 

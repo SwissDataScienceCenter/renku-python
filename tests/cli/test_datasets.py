@@ -602,7 +602,7 @@ def test_datasets_ls_files_check_exit_code(output_format, runner, project):
     assert 0 == result.exit_code
 
 
-def test_datasets_ls_files_lfs(tmpdir, runner, project):
+def test_datasets_ls_files_lfs(tmpdir, large_file, runner, project):
     """Test file listing lfs status."""
     # NOTE: create a dataset
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -616,9 +616,7 @@ def test_datasets_ls_files_lfs(tmpdir, runner, project):
     new_file.write(str(1))
     paths.append(str(new_file))
 
-    new_file = tmpdir.join("file_2")
-    new_file.write(str(2) * 200000)
-    paths.append(str(new_file))
+    paths.append(str(large_file))
 
     # NOTE: add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
@@ -630,7 +628,7 @@ def test_datasets_ls_files_lfs(tmpdir, runner, project):
 
     lines = result.output.split("\n")
     file1_entry = next(line for line in lines if "file_1" in line)
-    file2_entry = next(line for line in lines if "file_2" in line)
+    file2_entry = next(line for line in lines if large_file.name in line)
 
     assert file1_entry
     assert file2_entry
