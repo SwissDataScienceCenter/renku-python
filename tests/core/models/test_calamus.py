@@ -43,6 +43,9 @@ def test_uri_field_serialization(value):
 
     data = EntitySchema().dump(entity)
 
+    if "@id" in data:
+        del data["@id"]
+
     assert data == {"@type": ["http://schema.org/Entity"], "http://schema.org/field": value}
 
 
