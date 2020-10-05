@@ -170,16 +170,19 @@ class Run(CommitMixin):
     _activity = attr.ib(kw_only=True, default=None)
 
     @staticmethod
-    def generate_id(client):
+    def generate_id(client, identifier=None):
         """Generate an id for an argument."""
         host = "localhost"
         if client:
             host = client.remote.get("host") or host
         host = os.environ.get("RENKU_DOMAIN") or host
 
+        if not identifier:
+            identifier = str(uuid.uuid4())
+
         return urllib.parse.urljoin(
             "https://{host}".format(host=host),
-            pathlib.posixpath.join("/runs", urllib.parse.quote(str(uuid.uuid4()), safe="")),
+            pathlib.posixpath.join("/runs", urllib.parse.quote(identifier, safe="")),
         )
 
     @classmethod

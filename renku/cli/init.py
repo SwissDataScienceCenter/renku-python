@@ -330,9 +330,12 @@ def init(
     """Initialize a project in PATH. Default is the current path."""
     # verify dirty path
     if not is_path_empty(path) and not force and not list_templates:
+        existing_paths = [str(p.relative_to(path)) for p in Path(path).iterdir()]
+        existing_paths.sort()
         raise errors.InvalidFileOperation(
-            'Folder "{0}" is not empty. Please add --force '
-            "flag to transform it into a Renku repository.".format(str(path))
+            f'Folder "{str(path)}" is not empty and contains the following files/directories:'
+            + "".join((f"\n\t{e}" for e in existing_paths))
+            + "\nPlease add --force flag to transform it into a Renku repository."
         )
 
     data_dir = resolve_data_directory(data_dir, path)

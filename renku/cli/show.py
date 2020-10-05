@@ -86,7 +86,19 @@ respectively.
    $ echo $?  # last command finished with an error code
    1
 
+You can use the ``-v`` or ``--verbose`` flag to print detailed information
+in a tabular format.
+
+.. code-block:: console
+
+   $ renku show inputs -v
+   PATH        COMMIT   USAGE TIME           WORKFLOW
+   ----------  -------  -------------------  -------------------...-----------
+   source.txt  6d10e05  2020-09-14 23:47:17  .renku/workflow/388...d8_head.yaml
+
+
 """
+from collections import namedtuple
 
 import click
 
@@ -94,6 +106,11 @@ from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.graph import Graph
 from renku.core.models.entities import Entity
+from renku.core.models.provenance.activities import ProcessRun
+from renku.core.models.tabulate import tabulate
+
+Result = namedtuple("Result", ["path", "commit", "time", "workflow"])
+HEADERS = {"path": None, "commit": None, "time": "time", "workflow": None}
 
 
 @click.group()
@@ -121,7 +138,7 @@ def siblings(client, revision, flat, verbose, paths):
     for node in nodes:
         try:
             sibling_sets.add(frozenset(graph.siblings(node)))
-        except (errors.InvalidOutputPath):
+        except errors.InvalidOutputPath:
             # ignore nodes that aren't outputs if no path was supplied
             if paths:
                 raise
@@ -151,18 +168,15 @@ def siblings(client, revision, flat, verbose, paths):
 
 @show.command()
 @click.option("--revision", default="HEAD")
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=False), nargs=-1,
-)
+@click.option("-v", "--verbose", is_flag=True)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client(requires_migration=True)
 @click.pass_context
-def inputs(ctx, client, revision, paths):
+def inputs(ctx, client, revision, verbose, paths):
     r"""Show inputs files in the repository.
 
     <PATHS>    Files to show. If no files are given all input files are shown.
     """
-    from renku.core.models.provenance.activities import ProcessRun
-
     graph = Graph(client)
     paths = set(paths)
     nodes = graph.build(revision=revision)
@@ -170,10 +184,12 @@ def inputs(ctx, client, revision, paths):
     commits |= {node.activity.commit for node in nodes if hasattr(node, "activity")}
     candidates = {(node.commit, node.path) for node in nodes if not paths or node.path in paths}
 
-    input_paths = set()
+    input_paths = {}
 
     for commit in commits:
-        activity = graph.activities[commit]
+        activity = graph.activities.get(commit)
+        if not activity:
+            continue
 
         if isinstance(activity, ProcessRun):
             for usage in activity.qualified_usage:
@@ -182,29 +198,51 @@ def inputs(ctx, client, revision, paths):
                     usage_key = (entity.commit, entity.path)
 
                     if path not in input_paths and usage_key in candidates:
-                        input_paths.add(path)
+                        input_paths[path] = Result(
+                            path=path, commit=entity.commit, time=activity.started_at_time, workflow=activity.path
+                        )
 
-    click.echo("\n".join(graph._format_path(path) for path in input_paths))
+    if not verbose:
+        click.echo("\n".join(graph._format_path(path) for path in input_paths))
+    else:
+        records = list(input_paths.values())
+        records.sort(key=lambda v: v[0])
+        HEADERS["time"] = "usage time"
+        click.echo(tabulate(collection=records, headers=HEADERS))
     ctx.exit(0 if not paths or len(input_paths) == len(paths) else 1)
 
 
 @show.command()
 @click.option("--revision", default="HEAD")
-@click.argument(
-    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1,
-)
+@click.option("-v", "--verbose", is_flag=True)
+@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @pass_local_client(requires_migration=True)
 @click.pass_context
-def outputs(ctx, client, revision, paths):
+def outputs(ctx, client, revision, verbose, paths):
     r"""Show output files in the repository.
 
     <PATHS>    Files to show. If no files are given all output files are shown.
     """
     graph = Graph(client)
-    filter = graph.build(paths=paths, revision=revision)
-    output_paths = graph.output_paths
+    filter_ = graph.build(paths=paths, revision=revision)
+    output_paths = {}
 
-    click.echo("\n".join(graph._format_path(path) for path in output_paths))
+    for activity in graph.activities.values():
+        if isinstance(activity, ProcessRun):
+            for entity in activity.generated:
+                if entity.path not in graph.output_paths:
+                    continue
+                output_paths[entity.path] = Result(
+                    path=entity.path, commit=entity.commit, time=activity.ended_at_time, workflow=activity.path
+                )
+
+    if not verbose:
+        click.echo("\n".join(graph._format_path(path) for path in output_paths.keys()))
+    else:
+        records = list(output_paths.values())
+        records.sort(key=lambda v: v[0])
+        HEADERS["time"] = "generation time"
+        click.echo(tabulate(collection=records, headers=HEADERS))
 
     if paths:
         if not output_paths:
@@ -212,7 +250,7 @@ def outputs(ctx, client, revision, paths):
 
         from renku.core.models.datastructures import DirectoryTree
 
-        tree = DirectoryTree.from_list(item.path for item in filter)
+        tree = DirectoryTree.from_list(item.path for item in filter_)
 
         for output in output_paths:
             if tree.get(output) is None:
