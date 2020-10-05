@@ -35,7 +35,7 @@ def update_and_commit(data, file_, repo):
     repo.index.commit("Updated source.txt")
 
 
-def test_update(runner, project, run, no_lfs_warning):
+def test_update(runner, project, renku_cli, no_lfs_warning):
     """Test automatic file update."""
     from renku.core.utils.shacl import validate_graph
 
@@ -49,7 +49,10 @@ def test_update(runner, project, run, no_lfs_warning):
 
     update_and_commit("1", source, repo)
 
-    assert 0 == run(args=("run", "wc", "-c"), stdin=source, stdout=output)
+    exit_code, run = renku_cli("run", "wc", "-c", stdin=source, stdout=output)
+    assert 0 == exit_code
+    assert 0 == len(run.subprocesses)
+    previous_run_id = run._id
 
     with output.open("r") as f:
         assert f.read().strip() == "1"
@@ -62,7 +65,11 @@ def test_update(runner, project, run, no_lfs_warning):
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == run()
+    exit_code, run = renku_cli("update")
+    assert 0 == exit_code
+    assert 0 == len(run.subprocesses)
+    assert previous_run_id == run._id
+    previous_run_id = run._id
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
@@ -70,16 +77,16 @@ def test_update(runner, project, run, no_lfs_warning):
     with output.open("r") as f:
         assert f.read().strip() == "2"
 
-    result = runner.invoke(cli, ["log"], catch_exceptions=False)
-    assert "(part of" in result.output, result.output
-
     # Source has been updated but output is unchanged.
     update_and_commit("34", source, repo)
 
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == run()
+    exit_code, run = renku_cli("update")
+    assert 0 == exit_code
+    assert 0 == len(run.subprocesses)
+    assert previous_run_id == run._id
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
@@ -100,7 +107,7 @@ def test_update(runner, project, run, no_lfs_warning):
             assert r is True, t
 
 
-def test_update_multiple_steps(runner, project, run, no_lfs_warning):
+def test_update_multiple_steps(runner, project, renku_cli, no_lfs_warning):
     """Test automatic file update."""
     cwd = Path(project)
     data = cwd / "data"
@@ -113,7 +120,9 @@ def test_update_multiple_steps(runner, project, run, no_lfs_warning):
 
     update_and_commit("1", source, repo)
 
-    assert 0 == run(args=("run", "cp", str(source), str(intermediate)))
+    exit_code, run = renku_cli("run", "cp", str(source), str(intermediate))
+    assert 0 == exit_code
+    assert 0 == len(run.subprocesses)
 
     with intermediate.open("r") as f:
         assert f.read().strip() == "1"
@@ -121,7 +130,9 @@ def test_update_multiple_steps(runner, project, run, no_lfs_warning):
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
 
-    assert 0 == run(args=("run", "cp", str(intermediate), str(output)))
+    exit_code, run = renku_cli("run", "cp", str(intermediate), str(output))
+    assert 0 == exit_code
+    assert 0 == len(run.subprocesses)
 
     with output.open("r") as f:
         assert f.read().strip() == "1"
@@ -134,7 +145,12 @@ def test_update_multiple_steps(runner, project, run, no_lfs_warning):
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code
 
-    assert 0 == run()
+    exit_code, run = renku_cli("update")
+    assert 0 == exit_code
+    assert 2 == len(run.subprocesses)
+
+    result = runner.invoke(cli, ["log"], catch_exceptions=False)
+    assert "(part of" in result.output, result.output
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code

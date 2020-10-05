@@ -13,16 +13,25 @@ jobs:
       with:
         ref: ${{ github.head_ref }}
         token: ${{ secrets.RENKU_CI_TOKEN }}
+    - name: Check previous commit
+      id: check-commit
+      run: |
+        echo "::set-output name=needs_update::$(git log --pretty=format:%s -n 1)"
+    - name: Print previous commit
+      run: echo "${{ steps.check-commit.outputs.needs_update }}"
     - name: Setup python
+      if: "steps.check-commit.outputs.needs_update != 'chore: automatically update Pipfile.lock'"
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
     - name: Update Pipfile.lock
+      if: "steps.check-commit.outputs.needs_update != 'chore: automatically update Pipfile.lock'"
       run: |
         python -m pip install --upgrade pip
         pip install pipenv
         pipenv lock
     - name: Commit changed Pipfile.lock
+      if: "steps.check-commit.outputs.needs_update != 'chore: automatically update Pipfile.lock'"
       run: |
         git config --local user.email "renku@datascience.ch"
         git config --local user.name "RenkuBot"

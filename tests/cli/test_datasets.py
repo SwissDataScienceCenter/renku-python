@@ -25,7 +25,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-import yaml
 
 from renku.cli import cli
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
@@ -35,7 +34,6 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.refs import LinkReference
-from renku.core.utils.datetime8601 import validate_iso8601
 
 
 def test_datasets_create_clean(runner, project, client):
@@ -979,61 +977,6 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
-
-
-def test_dataset_date_created_format(runner, client, project):
-    """Check format of date created field."""
-    # Create a dataset.
-    result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
-    assert "OK" in result.output
-
-    path = client.get_dataset_path("dataset")
-    assert path.exists()
-
-    with path.open(mode="r") as fp:
-        from dateutil import parser as dp
-
-        data_yaml = yaml.safe_load(fp)
-
-        created = "http://schema.org/dateCreated"
-        assert created in data_yaml
-        assert dp.parse(data_yaml[created])
-        assert validate_iso8601(data_yaml[created])
-
-
-def test_dataset_file_date_created_format(tmpdir, runner, client, project):
-    """Check format of date created field."""
-    # Create a dataset.
-    result = runner.invoke(cli, ["dataset", "create", "dataset"])
-    assert 0 == result.exit_code
-    assert "OK" in result.output
-
-    path = client.get_dataset_path("dataset")
-    assert path.exists()
-
-    # Create data file.
-    new_file = tmpdir.join("datafile.csv")
-    new_file.write("1,2,3")
-
-    # Add data to dataset.
-    result = runner.invoke(cli, ["dataset", "add", "dataset", str(new_file)])
-    assert 0 == result.exit_code
-
-    with path.open(mode="r") as fp:
-        from dateutil import parser as dp
-
-        data_yaml = yaml.safe_load(fp)
-
-        created = "http://schema.org/dateCreated"
-        files = "http://schema.org/hasPart"
-        added = "http://schema.org/dateCreated"
-        assert created in data_yaml
-        assert files in data_yaml
-        assert dp.parse(data_yaml[files][0][added])
-        assert dp.parse(data_yaml[created])
-        assert validate_iso8601(data_yaml[created])
-        assert validate_iso8601(data_yaml[files][0][added])
 
 
 @pytest.mark.parametrize(

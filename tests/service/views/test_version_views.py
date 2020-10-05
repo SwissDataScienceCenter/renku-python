@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020- Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,43 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Renku service version view tests."""
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 
-root = true
 
-[*]
-indent_style = space
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-charset = utf-8
+def test_version(svc_client):
+    """Test expected response from version endpoint."""
+    from renku import __version__
 
-# Python files
-[*.py]
-indent_size = 4
-max_line_length = 120
-# isort plugin configuration
-known_first_party = renku
-multi_line_output = 2
-default_section = THIRDPARTY
-skip = .eggs
+    response = svc_client.get("/version")
+    assert "result" in response.json
+    data = response.json["result"]
 
-# RST files (used by sphinx)
-[*.rst]
-indent_size = 3
-
-# CSS, HTML, JS, JSON, YML
-[*.{css,html,js,json,yml}]
-indent_size = 2
-
-# Matches the exact files either package.json or .travis.yml
-[{package.json,.travis.yml}]
-indent_size = 2
-
-# Dockerfile
-[Dockerfile]
-indent_size = 4
-
-# Makefile
-[Makefile]
-indent_size = 4
-indent_style = tab
+    assert {"latest_version", "supported_project_version"} == set(data.keys())
+    assert __version__ == data["latest_version"]
+    assert SUPPORTED_PROJECT_VERSION == data["supported_project_version"]

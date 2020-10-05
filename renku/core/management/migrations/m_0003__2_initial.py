@@ -129,6 +129,8 @@ def _fix_labels_and_ids(client):
         dataset._label = dataset.identifier
 
         for file_ in dataset.files:
+            if not Path(file_.path).exists():
+                continue
             _, commit, _ = client.resolve_in_submodules(
                 client.find_previous_commit(file_.path, revision="HEAD"), file_.path,
             )
