@@ -183,7 +183,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
         ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
         ("10.5281/zenodo.1494915", "no files have been found"),
         ("https://zenodo.org/record/2621201248", "record not found"),
-        (("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX"), "record not found",),
+        ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX", "record not found",),
     ],
 )
 @pytest.mark.integration
@@ -199,7 +199,7 @@ def test_dataset_import_expected_err(runner, project, doi, err):
     "url",
     [
         "https://zenodo.org/record/2621208",
-        ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMR"),
+        "https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMR",
     ],
 )
 @pytest.mark.integration
@@ -284,7 +284,7 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
     "url",
     [
         "https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",
-        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/"),
+        "https://dev.renku.ch/projects/renku-testing/project-9/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/",
     ],
 )
 def test_dataset_import_renkulab_dataset(runner, project, client, url):
@@ -302,6 +302,19 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
     dataset = [d for d in client.datasets.values()][0]
     assert dataset.same_as.url["@id"] == url
+
+
+@pytest.mark.integration
+@flaky(max_runs=1, min_passes=1)
+def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client):
+    """Test dataset imported from Renku projects have correct directory hierarchy."""
+    url = "https://dev.renku.ch/datasets/1a637fd1-a7a6-4d1f-b9aa-157e7033cd1c"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url]).exit_code
+
+    dataset = client.load_dataset("remote")
+    assert (client.path / dataset.data_dir / "README.md").exists()
+    assert (client.path / dataset.data_dir / "python" / "data" / "README.md").exists()
+    assert (client.path / dataset.data_dir / "r" / "data" / "README.md").exists()
 
 
 @pytest.mark.integration
@@ -734,45 +747,19 @@ def test_add_data_from_git(runner, client, params, path):
 @flaky(max_runs=10, min_passes=1)
 def test_add_data_from_git_with_wildcards(runner, client, params, files):
     """Test add data using wildcards to datasets from a git repository."""
-    REMOTE = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+    remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", REMOTE] + params, catch_exceptions=False,
+        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", remote] + params, catch_exceptions=False,
     )
     assert 0 == result.exit_code
     assert files == set(os.listdir("data/remote"))
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", REMOTE] + params, catch_exceptions=False,
+        cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", remote] + params, catch_exceptions=False,
     )
     assert 0 == result.exit_code
     assert files == set(os.listdir("data/remote/new"))
-
-
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-def test_add_from_git_copies_metadata(runner, client):
-    """Test an import from a git repository keeps creators name."""
-    # create a dataset and add a file to it
-    result = runner.invoke(
-        cli,
-        [
-            "dataset",
-            "add",
-            "remote",
-            "--create",
-            "--ref",
-            "v0.3.0",
-            "-s",
-            "README.rst",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
-        ],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-
-    dataset = client.load_dataset("remote")
-    assert dataset.files[0].name == "README.rst"
 
 
 @pytest.mark.integration
@@ -820,26 +807,26 @@ def read_dataset_file_metadata(client, name, filename):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("params", [[], ["-I", "CHANGES.rst"], ["-I", "C*"], ["remote"]])
+@pytest.mark.parametrize("params", [[], ["-I", "README.md"], ["-I", "R*"], ["remote"]])
 @flaky(max_runs=10, min_passes=1)
 def test_dataset_update(client, runner, params):
     """Test local copy is updated when remote file is updates."""
-    url = "https://github.com/SwissDataScienceCenter/renku-python.git"
+    url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     # Add dataset to project
     result = runner.invoke(
         cli,
-        ["dataset", "add", "--create", "remote", "--ref", "v0.3.0", "-s", "CHANGES.rst", url,],
+        ["dataset", "add", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url,],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    before = read_dataset_file_metadata(client, "remote", "CHANGES.rst")
+    before = read_dataset_file_metadata(client, "remote", "README.md")
 
     result = runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False)
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    after = read_dataset_file_metadata(client, "remote", "CHANGES.rst")
+    after = read_dataset_file_metadata(client, "remote", "README.md")
     assert after._id == before._id
     assert after._label != before._label
     assert after.added == before.added
@@ -902,10 +889,10 @@ def test_dataset_invalid_update(client, runner, params):
             "--create",
             "remote",
             "-s",
-            "docs/authors.rst",
+            "README.md",
             "--ref",
-            "v0.3.0",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
+            "0.3.0",
+            "https://github.com/SwissDataScienceCenter/renku-jupyter.git",
         ],
         catch_exceptions=False,
     )
@@ -979,17 +966,17 @@ def test_empty_update(client, runner, data_repository, directory_tree):
             "--create",
             "remote",
             "--ref",
-            "v0.3.0",
+            "0.3.0",
             "-s",
-            "CHANGES.rst",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
+            "README.md",
+            "https://github.com/SwissDataScienceCenter/renku-jupyter.git",
         ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
     commit_sha_before = client.repo.head.object.hexsha
-    result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.3.0"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "update", "--ref", "0.3.0"], catch_exceptions=False)
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
@@ -1123,8 +1110,8 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
             "add",
             "dataset",
             "-s",
-            "CHANGES.rst",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
+            "README.md",
+            "https://github.com/SwissDataScienceCenter/renku-project-template.git",
         ],
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -1273,7 +1260,7 @@ def test_add_removes_credentials(runner, client, url):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "url", [("https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile")]
+    "url", ["https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"]
 )
 def test_check_disk_space(runner, client, monkeypatch, url):
     """Check adding to dataset prompts if disk space is not enough."""
