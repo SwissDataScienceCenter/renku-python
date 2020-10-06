@@ -19,9 +19,12 @@
 Plugin Support
 ==============
 
-Plugins are supported using the `pluggy <https://pluggy.readthedocs.io/en/latest/>`_ library.
+Runtime Plugins
+---------------
 
-Plugins can be created as python packages that contain the respective entrypoint definition in their `setup.py` file, like so:
+Runtime plugins are supported using the `pluggy <https://pluggy.readthedocs.io/en/latest/>`_ library.
+
+Runtime plugins can be created as python packages that contain the respective entrypoint definition in their `setup.py` file, like so:
 
 .. code-block:: python
 
@@ -50,3 +53,32 @@ where `myproject.pluginmodule` points to a Renku `hookimpl` e.g.:
 
 .. automodule:: renku.core.plugins.run
    :members:
+
+
+CLI Plugins
+-----------
+
+Command-line interface plugins are supported using the `click-plugins <https://github.com/click-contrib/click-plugins>` library.
+
+As in case the runtime plugins, command-line plugins can be created as python packages that contain the respective entrypoint definition in their `setup.py` file, like so:
+
+.. code-block:: python
+
+    from setuptools import setup
+
+    setup(
+        ...
+        entry_points={"renku.cli_plugins": ["mycmd = myproject.pluginmodule:mycmd"]},
+        ...
+    )
+
+where `myproject.pluginmodule:mycmd` points to a click command e.g.:
+
+.. code-block:: python
+
+    import click
+
+    @click.command()
+    @pass_local_client()
+    def mycmd(client):
+        ...
