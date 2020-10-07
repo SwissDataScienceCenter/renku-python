@@ -371,6 +371,19 @@ def test_dataset_reimport_renkulab_dataset(runner, project, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
+def test_renku_dataset_import_missing_lfs_objects(runner, project):
+    """Test importing a dataset with missing LFS objects fails."""
+    result = runner.invoke(
+        cli, ["dataset", "import", "--yes", "https://dev.renku.ch/datasets/5c11e321-2bea-458c-94ce-abccf4257a54"]
+    )
+
+    assert 1 == result.exit_code
+    assert "Error: Cannot pull LFS objects from server" in result.output
+    assert "[404] Object does not exist on the server or you don't have permissions to access it" in result.output
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
     [("zenodo", [], "zenodo.org/deposit"), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:")],

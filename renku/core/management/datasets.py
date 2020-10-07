@@ -20,6 +20,7 @@
 import concurrent.futures
 import os
 import re
+import shlex
 import shutil
 import tempfile
 import time
@@ -677,23 +678,19 @@ class DatasetsApiMixin(object):
     def _fetch_lfs_files(repo_path, paths):
         """Fetch and checkout paths that are tracked by Git LFS."""
         repo_path = str(repo_path)
-        try:
-            output = run(("git", "lfs", "ls-files", "--name-only"), stdout=PIPE, cwd=repo_path, universal_newlines=True)
-        except SubprocessError:
-            return
-
-        lfs_files = set(output.stdout.split("\n"))
-        files = lfs_files & paths
-        if not files:
-            return
 
         try:
-            for path in files:
-                run(["git", "lfs", "pull", "--include", path], cwd=repo_path)
+            includes = ",".join(shlex.quote(p) for p in paths)
+            status = run(
+                ["git", "lfs", "pull", "--include", includes], stderr=PIPE, cwd=repo_path, universal_newlines=True
+            )
+            if status.returncode != 0:
+                message = "\n\t".join(status.stderr.split("\n"))
+                raise errors.GitError(f"Cannot pull LFS objects from server: {message}")
         except KeyboardInterrupt:
             raise
-        except SubprocessError:
-            pass
+        except SubprocessError as e:
+            raise errors.GitError(f"Cannot pull LFS objects from server: {e}")
 
     @staticmethod
     def _fetch_files_metadata(client, paths):
@@ -952,7 +949,8 @@ class DatasetsApiMixin(object):
         os.remove(pointer_file_path)
         return self._create_pointer_file(target, checksum=checksum)
 
-    def remove_file(self, filepath):
+    @staticmethod
+    def remove_file(filepath):
         """Remove a file/symlink and its pointer file (for external files)."""
         path = Path(filepath)
         try:
@@ -1000,7 +998,7 @@ class DatasetsApiMixin(object):
         if not url:
             raise errors.GitError("Invalid URL.")
 
-        RENKU_BRANCH = "renku-default-branch"
+        renku_branch = "renku-default-branch"
 
         def checkout(repo, ref):
             try:
@@ -1008,7 +1006,7 @@ class DatasetsApiMixin(object):
             except GitCommandError:
                 raise errors.ParameterError('Cannot find reference "{}" in Git repository: {}'.format(ref, url))
 
-        ref = ref or RENKU_BRANCH
+        ref = ref or renku_branch
         u = GitURL.parse(url)
         path = u.pathname
         if u.hostname == "localhost":
@@ -1045,7 +1043,7 @@ class DatasetsApiMixin(object):
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It
         # is used to refer to the default branch later.
-        renku_ref = "refs/heads/" + RENKU_BRANCH
+        renku_ref = "refs/heads/" + renku_branch
         try:
             repo.git.execute(["git", "symbolic-ref", renku_ref, repo.head.reference.path])
             checkout(repo, ref)
