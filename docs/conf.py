@@ -20,9 +20,13 @@
 from __future__ import print_function
 
 import os
+import sys
+from os.path import abspath, join, dirname
 
 import sphinx.environment
 from pkg_resources import get_distribution
+
+sys.path.insert(0, abspath(join(dirname(__file__))))
 
 # -- General configuration ------------------------------------------------
 
@@ -306,6 +310,7 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 # This is used for linking and such so we link to the thing we're building
+on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 rtd_version = os.environ.get("READTHEDOCS_VERSION", "latest")
 if rtd_version not in ["stable", "latest", "develop"]:
     rtd_version = "stable"
@@ -319,6 +324,6 @@ autoclass_content = "both"
 
 # -- Custom Document processing ----------------------------------------------
 
-import gensidebar  # isort:skip
+from gensidebar import generate_sidebar
 
-gensidebar.generate_sidebar(globals(), "renku-python")
+generate_sidebar(on_rtd, rtd_version, "renku-python")

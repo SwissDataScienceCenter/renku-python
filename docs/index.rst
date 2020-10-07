@@ -57,25 +57,4 @@ your data analysis workflows.
 
 For more information about using `renku`, refer to the `renku --help`.
 
-Project Information
-===================
-
-.. toctree::
-   :maxdepth: 1
-
-   license
-   contributing
-   changes
-   glossary
-
-Full Table of Contents
-======================
-
-.. toctree::
-   :maxdepth: 2
-
-   comparison
-   commands
-   models/index
-   management
-   plugins
+.. include:: _sidebar.rst.inc
