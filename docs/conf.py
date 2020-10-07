@@ -20,11 +20,13 @@
 from __future__ import print_function
 
 import os
+import re
 import sys
 from os.path import abspath, join, dirname
 
+import requests
 import sphinx.environment
-from pkg_resources import get_distribution
+from pkg_resources import get_distribution, parse_version
 
 sys.path.insert(0, abspath(join(dirname(__file__))))
 
@@ -312,8 +314,16 @@ texinfo_documents = [
 # This is used for linking and such so we link to the thing we're building
 on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 rtd_version = os.environ.get("READTHEDOCS_VERSION", "latest")
-if rtd_version not in ["stable", "latest", "develop"]:
-    rtd_version = "stable"
+
+if rtd_version not in ["stable", "latest"]:
+    # building docs for tag, get latest renku tag to link to
+    r = requests.get("https://api.github.com/repos/SwissDataScienceCenter/renku/tags")
+    tags = r.json()
+    version_re = r"^\d+\.\d+\.\d+$"
+    versions = [parse_version(t["name"]) for t in tags if re.match(version_re, t["name"])]
+    latest = max(versions)
+    rtd_version = str(latest)
+
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/", None),
