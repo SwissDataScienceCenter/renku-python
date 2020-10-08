@@ -18,6 +18,25 @@
 Changes
 =======
 
+`0.11.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.3...v0.11.4>`__ (2020-10-05)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix project migration getting overwritten with old metadata
+   (`#1580 <https://github.com/SwissDataScienceCenter/renku-python/issues/1580>`__)
+   (`dcc1541 <https://github.com/SwissDataScienceCenter/renku-python/commit/dcc1541f6164e697a7bc26054f7f6812bd1ef33a>`__)
+
+`0.11.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.2...v0.11.3>`__ (2020-09-29)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** make Run migration ids unique by relative path instead of absolute
+   (`686b9f9 <https://github.com/SwissDataScienceCenter/renku-python/commit/686b9f99d37315657bf9bcf273a4b0cf011d51ff>`__)
+
 `0.11.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.1...v0.11.2>`__ (2020-09-24)
 ----------------------------------------------------------------------------------------------------------
 
