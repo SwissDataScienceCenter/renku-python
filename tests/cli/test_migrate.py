@@ -93,6 +93,18 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 
 
 @pytest.mark.migration
+def test_migrate_project(isolated_runner, old_project):
+    """Test migrate on old repository."""
+    result = isolated_runner.invoke(cli, ["migrate"])
+    assert 0 == result.exit_code
+    assert not old_project.is_dirty()
+
+    client = LocalClient(path=old_project.working_dir)
+    assert client.project
+    assert client.project.name
+
+
+@pytest.mark.migration
 def test_correct_path_migrated(isolated_runner, old_project):
     """Check if path on dataset files has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate"])
