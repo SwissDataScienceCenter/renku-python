@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku service controller mixin."""
 
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 
 from git import Repo
 
