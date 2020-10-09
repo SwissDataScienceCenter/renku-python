@@ -28,8 +28,10 @@ from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
+from renku.service.controllers.datasets_edit import DatasetsEditCtrl
 from renku.service.controllers.datasets_files_list import DatasetsFilesListCtrl
 from renku.service.controllers.datasets_list import DatasetsListCtrl
+from renku.service.controllers.datasets_unlink import DatasetsUnlinkCtrl
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
@@ -278,27 +280,7 @@ def import_dataset_view(user_data, cache):
 @requires_identity
 def edit_dataset_view(user_data, cache):
     """Edit dataset metadata."""
-    ctx = DatasetEditRequest().load(request.json)
-
-    user = cache.ensure_user(user_data)
-    project = cache.get_project(user, ctx["project_id"])
-
-    if ctx.get("commit_message") is None:
-        ctx["commit_message"] = "service: dataset edit {0}".format(ctx["name"])
-
-    with chdir(project.abs_path):
-        edited, warnings = edit_dataset(
-            ctx["name"],
-            ctx.get("title"),
-            ctx.get("description"),
-            ctx.get("creators"),
-            keywords=ctx.get("keywords"),
-            commit_message=ctx["commit_message"],
-        )
-
-    return result_response(
-        DatasetEditResponseRPC(), {"edited": {field: ctx.get(field) for field in edited}, "warnings": warnings}
-    )
+    return DatasetsEditCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @use_kwargs(DatasetUnlinkRequest)
@@ -313,34 +295,4 @@ def edit_dataset_view(user_data, cache):
 @requires_identity
 def unlink_file_view(user_data, cache):
     """Unlink a file from a dataset."""
-    ctx = DatasetUnlinkRequest().load(request.json)
-
-    include = ctx.get("include_filter")
-    exclude = ctx.get("exclude_filter")
-
-    user = cache.ensure_user(user_data)
-    project = cache.get_project(user, ctx["project_id"])
-
-    if ctx.get("commit_message") is None:
-        if include and exclude:
-            filters = "-I {0} -X {1}".format(include, exclude)
-        elif not include and exclude:
-            filters = "-X {0}".format(exclude)
-        else:
-            filters = "-I {0}".format(include)
-
-        ctx["commit_message"] = "service: unlink dataset {0} {1}".format(ctx["name"], filters)
-
-    with chdir(project.abs_path):
-        records = file_unlink(
-            name=ctx["name"],
-            include=ctx.get("include_filters"),
-            exclude=ctx.get("exclude_filters"),
-            yes=True,
-            interactive=False,
-            commit_message=ctx["commit_message"],
-        )
-
-        unlinked = [record.path for record in records]
-
-    return result_response(DatasetUnlinkResponseRPC(), {"unlinked": unlinked})
+    return DatasetsUnlinkCtrl(cache, user_data, dict(request.json)).to_response()
