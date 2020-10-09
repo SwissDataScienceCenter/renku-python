@@ -31,7 +31,7 @@ from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, Uri, fields, rdfs, renku, schema
 from renku.core.models.entities import Entity, EntitySchema
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
@@ -57,21 +57,7 @@ class Url:
 
     def default_id(self):
         """Define default value for id field."""
-        if self.url_str:
-            parsed_result = urlparse(self.url_str)
-            id_ = ParseResult("", *parsed_result[1:]).geturl()
-        elif self.url_id:
-            parsed_result = urlparse(self.url_id)
-            id_ = ParseResult("", *parsed_result[1:]).geturl()
-        else:
-            id_ = str(uuid.uuid4())
-
-        host = "localhost"
-        if self.client:
-            host = self.client.remote.get("host") or host
-        host = os.environ.get("RENKU_DOMAIN") or host
-
-        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/urls", quote(id_, safe="")))
+        return generate_url_id(client=self.client, url_str=self.url_str, url_id=self.url_id)
 
     def default_url(self):
         """Define default value for url field."""
@@ -96,8 +82,12 @@ class Url:
         """Post-initialize attributes."""
         if not self.url:
             self.url = self.default_url()
+        elif isinstance(self.url, dict):
+            self.url_id = self.url["@id"]
+        elif isinstance(self.url, str):
+            self.url_str = self.url
 
-        if not self._id:
+        if not self._id or self._id.startswith("_:"):
             self._id = self.default_id()
 
     @classmethod
@@ -176,19 +166,11 @@ class DatasetTag(object):
 
     def default_id(self):
         """Define default value for id field."""
-
-        host = "localhost"
-        if self.client:
-            host = self.client.remote.get("host") or host
-        host = os.environ.get("RENKU_DOMAIN") or host
-
-        name = "{0}@{1}".format(self.name, self.commit)
-
-        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/datasettags", quote(name, safe="")))
+        return generate_dataset_tag_id(client=self.client, name=self.name, commit=self.commit)
 
     def __attrs_post_init__(self):
         """Post-Init hook."""
-        if not self._id:
+        if not self._id or self._id.startswith("_:"):
             self._id = self.default_id()
 
     @classmethod
@@ -624,7 +606,7 @@ class UrlSchema(JsonLDSchema):
         model = Url
         unknown = EXCLUDE
 
-    url = fields.Uri(schema.url, missing=None)
+    url = Uri(schema.url, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 
 
@@ -717,7 +699,7 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     identifier = fields.String(schema.identifier)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None, allow_none=True)
-    license = fields.Uri(schema.license, missing=None, allow_none=True)
+    license = Uri(schema.license, missing=None, allow_none=True)
     title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
@@ -769,6 +751,37 @@ def generate_default_name(dataset_title, dataset_version):
         return "{0}_{1}".format("_".join(name), version)
 
     return "_".join(name)
+
+
+def generate_url_id(client, url_str, url_id):
+    """Generate @id field for Url."""
+    if url_str:
+        parsed_result = urlparse(url_str)
+        id_ = ParseResult("", *parsed_result[1:]).geturl()
+    elif url_id:
+        parsed_result = urlparse(url_id)
+        id_ = ParseResult("", *parsed_result[1:]).geturl()
+    else:
+        id_ = str(uuid.uuid4())
+
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/urls", quote(id_, safe="")))
+
+
+def generate_dataset_tag_id(client, name, commit):
+    """Generate @id field for DatasetTag."""
+    host = "localhost"
+    if client:
+        host = client.remote.get("host") or host
+    host = os.environ.get("RENKU_DOMAIN") or host
+
+    name = "{0}@{1}".format(name, commit)
+
+    return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/datasettags", quote(name, safe="")))
 
 
 def generate_dataset_id(client, identifier):

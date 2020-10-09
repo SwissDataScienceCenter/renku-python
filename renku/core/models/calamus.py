@@ -116,9 +116,6 @@ class Uri(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.Dic
             raise ValueError("Invalid type for field {}: {}".format(self.name, type(value)))
 
 
-fields.Uri = Uri
-
-
 class StringList(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.List):
     """A String field that might be a list when deserializing."""
 

@@ -49,7 +49,7 @@ class Person:
 
     def default_id(self):
         """Set the default id."""
-        return generate_person_id(email=self.email, client=self.client)
+        return generate_person_id(email=self.email, client=self.client, full_identity=self.full_identity)
 
     @email.validator
     def check_email(self, attribute, value):
@@ -124,7 +124,7 @@ class Person:
     def __attrs_post_init__(self):
         """Finish object initialization."""
         # handle the case where ids were improperly set
-        if self._id == "mailto:None" or self._id is None:
+        if self._id == "mailto:None" or not self._id or self._id.startswith("_:"):
             self._id = self.default_id()
 
         if self.label is None:
@@ -187,7 +187,7 @@ class SoftwareAgent:
 renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)
 
 
-def generate_person_id(email, client=None):
+def generate_person_id(client, email, full_identity):
     """Generate Person default id."""
     if email:
         return "mailto:{email}".format(email=email)
@@ -197,7 +197,7 @@ def generate_person_id(email, client=None):
         host = client.remote.get("host") or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
-    id_ = str(uuid.uuid4())
+    id_ = full_identity or str(uuid.uuid4())
 
     return urllib.parse.urljoin(
         "https://{host}".format(host=host), pathlib.posixpath.join("/persons", quote(id_, safe=""))
