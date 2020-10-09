@@ -19,7 +19,6 @@
 
 import os
 import urllib
-import uuid
 import weakref
 from collections import OrderedDict
 from pathlib import Path, posixpath
@@ -140,14 +139,24 @@ class Activity(CommitMixin, ReferenceMixin):
             if file_.change_type == "A":
                 continue
             path_ = Path(file_.a_path)
-
-            is_dataset = self.client.DATASETS in str(path_)
+            is_dataset = any(
+                [
+                    path_.resolve() == (self.client.path / f.path).resolve()
+                    for d in self.client.datasets.values()
+                    for f in d.files
+                ]
+            )
             not_refs = LinkReference.REFS not in str(path_)
             does_not_exists = not path_.exists()
 
             if all([is_dataset, not_refs, does_not_exists]):
-                uid = uuid.UUID(path_.parent.name)
-                path_ = Path(self.client.renku_home) / self.client.DATASETS / str(uid) / self.client.METADATA
+                dataset = next(
+                    d
+                    for d in self.client.datasets
+                    for f in d.files
+                    if path_.resolve() == (self.client.path / f.path).resolve()
+                )
+                path_ = self.client.path / dataset.path / self.client.METADATA
 
             index.add(str(path_))
 
@@ -236,13 +245,24 @@ class Activity(CommitMixin, ReferenceMixin):
                 continue
             path_ = Path(file_.a_path)
 
-            is_dataset = self.client.DATASETS in str(path_)
+            is_dataset = any(
+                [
+                    path_.resolve() == (self.client.path / f.path).resolve()
+                    for d in self.client.datasets.values()
+                    for f in d.files
+                ]
+            )
             not_refs = LinkReference.REFS not in str(path_)
             does_not_exists = not (path_.exists() or (path_.is_symlink() and os.path.lexists(path_)))
 
             if all([is_dataset, not_refs, does_not_exists]):
-                uid = uuid.UUID(path_.parent.name)
-                path_ = Path(self.client.renku_home) / self.client.DATASETS / str(uid) / self.client.METADATA
+                dataset = next(
+                    d
+                    for d in self.client.datasets
+                    for f in d.files
+                    if path_.resolve() == (self.client.path / f.path).resolve()
+                )
+                path_ = self.client.path / dataset.path / self.client.METADATA
 
             index.add(str(path_))
 
