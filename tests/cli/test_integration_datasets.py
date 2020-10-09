@@ -133,7 +133,7 @@ def test_dataset_import_real_param(doi, runner, project, sleep_after, client):
     else:
         assert 1 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
 
@@ -147,7 +147,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
     result = runner.invoke(cli, ["dataset", "import", doi[0]], input=doi[1])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
 
@@ -171,7 +171,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     assert "Error: Dataset exists:" not in result.output
     assert "OK" in result.output
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "pyndl_naive_discriminat" in result.output
 
@@ -351,7 +351,7 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
     assert exit_code == result.exit_code
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code
 
 

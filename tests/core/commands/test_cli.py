@@ -56,7 +56,7 @@ def test_run_from_non_root(runner, client, cwd):
     path = client.path / cwd
     path.mkdir(parents=True, exist_ok=True)
     with chdir(path):
-        result = runner.invoke(cli, ["dataset"])
+        result = runner.invoke(cli, ["dataset", "ls"])
         assert 0 == result.exit_code
         assert "Run CLI commands only from project's root" in result.output
 
@@ -64,7 +64,7 @@ def test_run_from_non_root(runner, client, cwd):
         assert 0 == result.exit_code
         assert "Run CLI commands only from project" not in result.output
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code
     assert "Run CLI commands only from project's root" not in result.output
 
