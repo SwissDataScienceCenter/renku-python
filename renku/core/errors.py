@@ -91,7 +91,7 @@ class ParameterError(RenkuException):
 
 
 class InvalidFileOperation(RenkuException):
-    """Raise when trying to perfrom invalid file operation."""
+    """Raise when trying to perform invalid file operation."""
 
 
 class UsageError(RenkuException):

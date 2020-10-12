@@ -371,7 +371,7 @@ class DatasetsApiMixin(object):
             skip_hooks = not self.external_storage_requested
             self.repo.index.commit(msg, skip_hooks=skip_hooks)
         else:
-            warning_messages.append("No file was added to project")
+            warning_messages.append("No new file was added to project")
 
         # Generate the DatasetFiles
         dataset_files = []
@@ -826,7 +826,8 @@ class DatasetsApiMixin(object):
                     else:
                         shutil.copy(src, dst)
                     file_.based_on.commit = remote_file.commit
-                    file_.based_on._label = remote_file._label
+                    file_.based_on._label = file_.based_on.default_label()
+                    file_.based_on._id = file_.based_on.default_id()
                     updated_files.append(file_)
                 else:
                     # File was removed or renamed
@@ -842,7 +843,7 @@ class DatasetsApiMixin(object):
 
         file_paths = {str(self.path / f.path) for f in updated_files + deleted_files}
         # Force-add to include possible ignored files that are in datasets
-        self.repo.git.add(*(file_paths), force=True)
+        self.repo.git.add(*file_paths, force=True)
         skip_hooks = not self.external_storage_requested
         self.repo.index.commit(
             "renku dataset: updated {} files and deleted {} files".format(len(updated_files), len(deleted_files)),
@@ -854,7 +855,9 @@ class DatasetsApiMixin(object):
         modified_datasets = {}
 
         for file_ in updated_files:
-            new_file = DatasetFile.from_revision(self, path=file_.path, based_on=file_.based_on, url=file_.url)
+            new_file = DatasetFile.from_revision(
+                self, path=file_.path, based_on=file_.based_on, url=file_.url, source=file_.source
+            )
             file_.dataset.update_files([new_file])
             modified_datasets[file_.dataset.name] = file_.dataset
 
