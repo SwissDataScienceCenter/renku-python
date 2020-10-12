@@ -128,7 +128,7 @@ todo_include_todos = False
 html_theme = "renku"
 
 html_theme_options = {
-    "description": "Python API and CLI for the Renku platform.",
+    "description": "A software platform and tools for " "reproducible and collaborative data analysis.",
     "github_repo": "renku-python",
     "extra_nav_links": {
         "renku-python@GitHub": "https://github.com/SwissDataScienceCenter/renku-python",

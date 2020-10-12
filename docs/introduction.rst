@@ -15,9 +15,21 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+
 .. include:: ../README.rst
    :end-before: Renku for Users
 
-.. include:: gettingstarted.rst
 
-.. include:: _sidebar.rst.inc
+.. toctree::
+
+   installation
+   gettingstarted
+   comparison
+   commands
+   models/index
+   management
+   plugins
+   changes
+   contributing
+   glossary
+   license

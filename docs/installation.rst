@@ -16,8 +16,5 @@
     limitations under the License.
 
 .. include:: ../README.rst
-   :end-before: Renku for Users
-
-.. include:: gettingstarted.rst
-
-.. include:: _sidebar.rst.inc
+   :start-after: Renku for Users
+   :end-before: CLI Example
