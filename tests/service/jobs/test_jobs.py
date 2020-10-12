@@ -46,7 +46,7 @@ def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job, mock
 
     assert_rpc_response(response)
     assert 200 == response.status_code
-    assert 3 == len(response.json["result"]["files"])
+    assert 4 == len(response.json["result"]["files"])
 
     cache_files_cleanup()
     response = svc_client.get("/cache.files_list", headers=headers)

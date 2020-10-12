@@ -258,6 +258,11 @@ class DatasetFile(Entity):
         return generate_dataset_file_url(client=self.client, filepath=self.path)
 
     @property
+    def commit_sha(self):
+        """Return commit hash."""
+        return self.commit.hexsha if self.commit else ""
+
+    @property
     def full_path(self):
         """Return full path in the current reference frame."""
         path = self.client.path / self.path if self.client else self.path
@@ -451,10 +456,10 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         files_paths = {str(self.client.path / f.path) for f in self.files}
         return {p for p in paths if str(p) in files_paths}
 
-    def find_file(self, filename, return_index=False):
-        """Find a file in files container."""
+    def find_file(self, path, return_index=False):
+        """Find a file in files container using its relative path."""
         for index, file_ in enumerate(self.files):
-            if str(file_.path) == str(filename):
+            if str(file_.path) == str(path):
                 if return_index:
                     return index
                 file_.client = self.client
@@ -475,18 +480,12 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
     def update_files(self, files):
         """Update files with collection of DatasetFile objects."""
-        to_insert = []
-
         for new_file in files:
-            existing_file = self.find_file(new_file.path)
-            if existing_file is None:
-                to_insert.append(new_file)
-            else:
-                existing_file.commit = new_file.commit
-                existing_file._label = new_file._label
-                existing_file.based_on = new_file.based_on
+            self.unlink_file(new_file.path, missing_ok=True)
 
-        self.files += to_insert
+        self.files += list(files)
+
+        self._update_files_metadata()
 
     def rename_files(self, rename):
         """Rename files using the path mapping function."""
@@ -498,7 +497,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
             if not self.find_file(new_file.path):
                 files.append(new_file)
             else:
-                raise FileExistsError
+                raise errors.InvalidFileOperation(f"Destination file already exists: {new_file.path}")
 
         renamed = attr.evolve(self, files=files)
         setattr(renamed, "__reference__", self.__reference__)
@@ -508,13 +507,17 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
         return renamed
 
-    def unlink_file(self, file_path):
+    def unlink_file(self, path, missing_ok=False):
         """Unlink a file from dataset.
 
-        :param file_path: Relative path used as key inside files container.
+        :param path: Relative path used as key inside files container.
         """
-        index = self.find_file(file_path, return_index=True)
-        return self.files.pop(index)
+        index = self.find_file(path, return_index=True)
+        if index is not None:
+            return self.files.pop(index)
+
+        if not missing_ok:
+            raise errors.InvalidFileOperation(f"File cannot be found: {path}")
 
     def __attrs_post_init__(self):
         """Post-Init hook."""
@@ -532,17 +535,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         if not self.path and self.client:
             self.path = str(self.client.renku_datasets_path / self.uid)
 
-        if self.files and self.client is not None:
-            for dataset_file in self.files:
-                path = Path(dataset_file.path)
-                file_exists = path.exists() or (path.is_symlink() and os.path.lexists(path))
-
-                if dataset_file.client is None and file_exists:
-                    client, _, _ = self.client.resolve_in_submodules(
-                        self.client.find_previous_commit(dataset_file.path, revision="HEAD"), dataset_file.path,
-                    )
-
-                    dataset_file.client = client
+        self._update_files_metadata()
 
         try:
             if self.client:
@@ -553,6 +546,21 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
         if not self.name:
             self.name = generate_default_name(self.title, self.version)
+
+    def _update_files_metadata(self):
+        if not self.files or not self.client:
+            return
+
+        for file_ in self.files:
+            path = Path(file_.path)
+            file_exists = path.exists() or (path.is_symlink() and os.path.lexists(path))
+
+            if file_.client is None and file_exists:
+                client, _, _ = self.client.resolve_in_submodules(
+                    self.client.find_previous_commit(file_.path, revision="HEAD"), file_.path,
+                )
+
+                file_.client = client
 
     @classmethod
     def from_yaml(cls, path, client=None, commit=None):
