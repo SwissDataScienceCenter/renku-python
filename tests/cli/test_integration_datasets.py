@@ -305,7 +305,7 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
 
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client):
     """Test dataset imported from Renku projects have correct directory hierarchy."""
     url = "https://dev.renku.ch/datasets/1a637fd1-a7a6-4d1f-b9aa-157e7033cd1c"
