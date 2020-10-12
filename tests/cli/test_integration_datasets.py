@@ -305,7 +305,7 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
 
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client):
     """Test dataset imported from Renku projects have correct directory hierarchy."""
     url = "https://dev.renku.ch/datasets/1a637fd1-a7a6-4d1f-b9aa-157e7033cd1c"
@@ -827,29 +827,31 @@ def test_dataset_update(client, runner, params):
     url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     # Add dataset to project
-    result = runner.invoke(
-        cli,
-        ["dataset", "add", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url,],
-        catch_exceptions=False,
-    )
+    result = runner.invoke(cli, ["dataset", "add", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
     before = read_dataset_file_metadata(client, "remote", "README.md")
 
-    result = runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False).exit_code
 
     after = read_dataset_file_metadata(client, "remote", "README.md")
-    assert after._id == before._id
+
+    assert after._id != before._id
     assert after._label != before._label
-    assert after.added == before.added
+    assert after.added != before.added
     assert after.url == before.url
-    assert after.based_on._id == before.based_on._id
+    assert after.source == before.source
+    assert after.based_on._id != before.based_on._id
     assert after.based_on._label != before.based_on._label
     assert after.based_on.based_on is None
     assert after.based_on.path == before.based_on.path
     assert after.based_on.source == url
     assert after.based_on.url == url
+    commit_sha = after.based_on._label.split("@")[0]
+    assert commit_sha in after.based_on._id
+
+    result = runner.invoke(cli, ["doctor"])
+    assert 0 == result.exit_code, result.output
 
 
 @pytest.mark.integration
@@ -918,7 +920,7 @@ def test_dataset_invalid_update(client, runner, params):
 @pytest.mark.integration
 @pytest.mark.parametrize("params", [[], ["-I", "CHANGES.rst"], ["-I", "CH*"], ["dataset-1", "dataset-2"]])
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_update_multiple_datasets(client, runner, data_repository, directory_tree, params):
+def test_dataset_update_multiple_datasets(client, runner, data_repository, params):
     """Test update with multiple datasets."""
     path1 = client.path / DATA_DIR / "dataset-1" / "CHANGES.rst"
     path2 = client.path / DATA_DIR / "dataset-2" / "CHANGES.rst"
@@ -968,7 +970,7 @@ def test_dataset_update_multiple_datasets(client, runner, data_repository, direc
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_empty_update(client, runner, data_repository, directory_tree):
+def test_empty_update(client, runner, data_repository):
     """Test update when nothing changed does not create a commit."""
     # Add dataset to project
     result = runner.invoke(
