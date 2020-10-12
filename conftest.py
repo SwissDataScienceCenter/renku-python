@@ -170,14 +170,6 @@ def isolated_runner():
 
 
 @pytest.fixture()
-def data_file(tmpdir):
-    """Create a sample data file."""
-    p = tmpdir.mkdir("data").join("file")
-    p.write("1234")
-    return p
-
-
-@pytest.fixture()
 def repository(tmpdir):
     """Yield a Renku repository."""
     from renku.cli import cli
@@ -319,25 +311,27 @@ def dataset_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
         def request_callback(request):
-            return (200, {"Content-Type": "application/text"}, "1234")
+            return (200, {"Content-Type": "application/text"}, "123")
 
-        rsps.add_callback(responses.GET, "http://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.GET, "https://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.GET, "http://example.com/file.ext?foo=bar", callback=request_callback)
-        rsps.add_callback(responses.HEAD, "http://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.HEAD, "https://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.HEAD, "http://example.com/file.ext?foo=bar", callback=request_callback)
+        rsps.add_callback(responses.GET, "http://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.GET, "https://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.GET, "http://example.com/file1.ext?foo=bar", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "http://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "https://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "http://example.com/file1.ext?foo=bar", callback=request_callback)
         yield rsps
 
 
 @pytest.fixture()
-def directory_tree(tmpdir):
+def directory_tree(tmp_path):
     """Create a test directory tree."""
     # initialize
-    p = tmpdir.mkdir("directory_tree")
-    p.join("file").write("1234")
-    p.join("dir2").mkdir()
-    p.join("dir2/file2").write("5678")
+    p = tmp_path / "directory_tree"
+    p.mkdir()
+    p.joinpath("file1").write_text("123")
+    p.joinpath("dir1").mkdir()
+    p.joinpath("dir1/file2").write_text("456")
+    p.joinpath("dir1/file3").write_text("789")
     return p
 
 
@@ -347,19 +341,19 @@ def data_repository(directory_tree):
     from git import Actor, Repo
 
     # initialize
-    repo = Repo.init(directory_tree.strpath)
+    repo = Repo.init(str(directory_tree))
 
     # add a file
-    repo.index.add([directory_tree.join("file").strpath])
+    repo.index.add([str(directory_tree / "file1")])
     repo.index.commit("test commit", author=Actor("me", "me@example.com"))
 
     # commit changes to the same file with a different user
-    directory_tree.join("file").write("5678")
-    repo.index.add([directory_tree.join("file").strpath])
+    directory_tree.joinpath("file1").write_text("5678")
+    repo.index.add([str(directory_tree / "file1")])
     repo.index.commit("test commit", author=Actor("me2", "me2@example.com"))
 
     # commit a second file
-    repo.index.add([directory_tree.join("dir2/file2").strpath])
+    repo.index.add([str(directory_tree / "dir1" / "file2")])
     repo.index.commit("test commit", author=Actor("me", "me@example.com"))
 
     # return the repo

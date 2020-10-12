@@ -87,11 +87,11 @@ def test_move_symlinks(data_repository, runner, project, client, destination):
         assert dataset.title == "dataset"
 
     # add data from local git repo
-    filepath = os.path.join(data_repository.working_dir, "file")
+    filepath = os.path.join(data_repository.working_dir, "file1")
     result = runner.invoke(cli, ["dataset", "add", "dataset", filepath], catch_exceptions=False)
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
 
-    src = client.path / client.data_dir / "dataset" / "file"
+    src = client.path / client.data_dir / "dataset" / "file1"
     assert src.exists()
 
     result = runner.invoke(cli, ["mv", str(src), destination], catch_exceptions=False)

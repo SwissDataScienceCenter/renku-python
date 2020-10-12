@@ -243,9 +243,9 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree):
     assert not Repo(new_project).is_dirty()
 
     os.chdir(new_project.resolve())
-    result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", directory_tree.strpath])
+    result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, result.output
-    assert (Path(data_dir) / "my-data" / directory_tree.join("file").strpath).exists()
+    assert (Path(data_dir) / "my-data" / directory_tree.name / "file1").exists()
 
 
 @pytest.mark.parametrize("data_dir", ["/absolute/path/outside", "../relative/path/outside"])
