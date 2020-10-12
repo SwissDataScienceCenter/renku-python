@@ -698,7 +698,7 @@ class ActivitySchema(CommitMixinSchema):
     _message = fields.String(rdfs.comment, init_name="message", missing=None)
     _was_informed_by = fields.List(prov.wasInformedBy, fields.IRI(), init_name="was_informed_by")
     generated = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
-    invalidated = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
+    invalidated = Nested(prov.wasInvalidatedBy, [EntitySchema, CollectionSchema], reverse=True, many=True, missing=None)
     influenced = Nested(prov.influenced, CollectionSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
