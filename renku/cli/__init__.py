@@ -68,9 +68,8 @@ from pathlib import Path
 import click
 import click_completion
 import yaml
-
-from pkg_resources import iter_entry_points
 from click_plugins import with_plugins
+from pkg_resources import iter_entry_points
 
 from renku.cli.clone import clone
 from renku.cli.config import config
@@ -125,7 +124,8 @@ def is_allowed_command(ctx):
     """Check if invoked command contains help command."""
     return ctx.invoked_subcommand in WARNING_UNPROTECTED_COMMANDS or "-h" in sys.argv or "--help" in sys.argv
 
-@with_plugins(iter_entry_points('renku.cli_plugins'))
+
+@with_plugins(iter_entry_points("renku.cli_plugins"))
 @click.group(
     cls=IssueFromTraceback, context_settings={"auto_envvar_prefix": "RENKU", "help_option_names": ["-h", "--help"],}
 )
