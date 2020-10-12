@@ -71,9 +71,9 @@ def _migrate_old_workflows(client):
         if commit1.committed_date > commit2.committed_date:
             return 1
 
-        if commit1.author_date < commit2.author_date:
+        if commit1.authored_date < commit2.authored_date:
             return -1
-        if commit1.author_date > commit2.author_date:
+        if commit1.authored_date > commit2.authored_date:
             return 1
         raise ValueError(
             f"Cannot order commits {commit1} and {commit2}, there is no "
