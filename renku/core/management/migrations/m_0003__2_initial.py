@@ -24,7 +24,7 @@ from pathlib import Path
 
 from renku.core.management.migrations.models.v3 import Dataset, Project, get_client_datasets
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.models.datasets import generate_dataset_id
+from renku.core.models.datasets import generate_dataset_id, generate_default_name
 from renku.core.models.entities import generate_file_id, generate_label
 from renku.core.models.refs import LinkReference
 from renku.core.utils.migrate import get_pre_0_3_4_datasets_metadata
@@ -95,7 +95,7 @@ def _migrate_broken_dataset_paths(client):
     for dataset in get_client_datasets(client):
         expected_path = client.renku_datasets_path / dataset.identifier
         if not dataset.name:
-            dataset.name = dataset.title
+            dataset.name = generate_default_name(dataset.title, dataset.version)
 
         # migrate the refs
         ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True,)
