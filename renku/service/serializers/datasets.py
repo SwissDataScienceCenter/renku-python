@@ -239,13 +239,14 @@ class DatasetImportResponseRPC(JsonRPCResponse):
 class DatasetEditRequest(Schema):
     """Dataset edit metadata request."""
 
-    project_id = fields.String(required=True)
     name = fields.String(required=True)
-
     title = fields.String(default=None)
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
+
+    project_id = fields.String()
+    git_url = fields.String()
     commit_message = fields.String()
 
 
@@ -254,6 +255,7 @@ class DatasetEditResponse(Schema):
 
     edited = fields.Dict(required=True)
     warnings = fields.List(fields.String())
+    remote_branch = fields.String()
 
 
 class DatasetEditResponseRPC(JsonRPCResponse):
@@ -265,12 +267,12 @@ class DatasetEditResponseRPC(JsonRPCResponse):
 class DatasetUnlinkRequest(Schema):
     """Dataset unlink file request."""
 
-    project_id = fields.String(required=True)
     name = fields.String(required=True)
-
     include_filters = fields.List(fields.String())
     exclude_filters = fields.List(fields.String())
 
+    project_id = fields.String()
+    git_url = fields.String()
     commit_message = fields.String()
 
     @post_load()
@@ -289,6 +291,8 @@ class DatasetUnlinkResponse(Schema):
     """Dataset unlink files response."""
 
     unlinked = fields.List(fields.String())
+
+    remote_branch = fields.String()
 
 
 class DatasetUnlinkResponseRPC(JsonRPCResponse):

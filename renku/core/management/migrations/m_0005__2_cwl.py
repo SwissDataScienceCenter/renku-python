@@ -21,7 +21,7 @@ import glob
 import os
 import uuid
 from functools import cmp_to_key
-from hashlib import sha256
+from hashlib import sha1
 from pathlib import Path
 
 from cwlgen import CommandLineTool, parse_cwl
@@ -71,9 +71,9 @@ def _migrate_old_workflows(client):
         if commit1.committed_date > commit2.committed_date:
             return 1
 
-        if commit1.author_date < commit2.author_date:
+        if commit1.authored_date < commit2.authored_date:
             return -1
-        if commit1.author_date > commit2.author_date:
+        if commit1.authored_date > commit2.authored_date:
             return 1
         raise ValueError(
             f"Cannot order commits {commit1} and {commit2}, there is no "
@@ -124,11 +124,12 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
     outputs = list(cmd_line_tool.outputs)
 
     # NOTE: Make run ids deterministic to prevent duplication.
+    rel_path = Path(path).relative_to(client.path)
     if parent_commit:
-        label = f"{path}@{parent_commit.hexsha}"
+        label = f"{rel_path}@{parent_commit.hexsha}"
     else:
-        label = f"{path}@{commit.hexsha}"
-    identifier = sha256(label.encode("utf-8")).hexdigest()
+        label = f"{rel_path}@{commit.hexsha}"
+    identifier = sha1(label.encode("utf-8")).hexdigest()
 
     base_id = Run.generate_id(client, identifier=identifier)
     run._id = base_id
@@ -305,9 +306,9 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     if not commit:
         commit = client.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
-
-    label = f"{path}@{commit.hexsha}"
-    identifier = sha256(label.encode("utf-8")).hexdigest()
+    rel_path = Path(path).relative_to(client.path)
+    label = f"{rel_path}@{commit.hexsha}"
+    identifier = sha1(label.encode("utf-8")).hexdigest()
     run._id = Run.generate_id(client, identifier=identifier)
 
     name = "{0}_migrated.yaml".format(uuid.uuid4().hex)

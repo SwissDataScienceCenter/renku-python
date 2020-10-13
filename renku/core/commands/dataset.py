@@ -284,6 +284,8 @@ def list_files(client, datasets=None, creators=None, include=None, exclude=None,
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
+        record.creators_csv = record.dataset.creators_csv
+        record.creators_full_csv = record.dataset.creators_full_csv
 
     if format is None:
         return records
@@ -475,9 +477,7 @@ def export_dataset(
     return result
 
 
-@pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
-)
+@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS)
 def import_dataset(
     client, uri, name="", extract=False, with_prompt=False, yes=False, commit_message=None, progress=None,
 ):
@@ -563,13 +563,18 @@ def import_dataset(
     else:
         name = name or dataset.name
 
+        if not dataset.data_dir:
+            raise OperationError(f"Data directory for dataset must be set: {dataset.name}")
+
+        sources = [f"{dataset.data_dir}/**"]
+        for file_ in dataset.files:
+            try:
+                Path(file_.path).relative_to(dataset.data_dir)
+            except ValueError:  # Files that are not in dataset's data directory
+                sources.append(file_.path)
+
         _add_to_dataset(
-            client,
-            urls=[record.project_url],
-            name=name,
-            sources=[f.path for f in files],
-            with_metadata=dataset,
-            create=True,
+            client, urls=[record.project_url], name=name, sources=sources, with_metadata=dataset, create=True,
         )
 
 

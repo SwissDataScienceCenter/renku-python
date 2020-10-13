@@ -91,7 +91,7 @@ class ParameterError(RenkuException):
 
 
 class InvalidFileOperation(RenkuException):
-    """Raise when trying to perfrom invalid file operation."""
+    """Raise when trying to perform invalid file operation."""
 
 
 class UsageError(RenkuException):
@@ -194,6 +194,10 @@ class ProjectNotSupported(RenkuException):
         super().__init__(
             "Project is not supported by this version of Renku.\n" "Upgrade to the latest version of Renku."
         )
+
+
+class ProjectNotFound(RenkuException):
+    """Raise when one or more projects couldn't be found in the KG."""
 
 
 class NothingToCommit(RenkuException):
