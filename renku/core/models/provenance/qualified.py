@@ -18,6 +18,7 @@
 """Represent elaborated information about relations."""
 
 import weakref
+from urllib.parse import quote
 
 import attr
 from marshmallow import EXCLUDE
@@ -134,8 +135,8 @@ class Generation(EntityProxyMixin):
     def default_id(self):
         """Configure calculated ID."""
         if self.role:
-            return "{self.activity._id}/{self.role}".format(self=self,)
-        return "{self.activity._id}/tree/{self.entity.path}".format(self=self,)
+            return f"{self.activity._id}/{self.role}"
+        return f"{self.activity._id}/tree/{quote(str(self.entity.path))}"
 
     @classmethod
     def from_jsonld(cls, data):

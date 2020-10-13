@@ -22,3 +22,10 @@ import re
 def strip_and_lower(input):
     """Adjust chars to make the input compatible as scm source."""
     return re.sub(r"\s", r"-", input.strip()).lower()
+
+
+def git_unicode_unescape(s, encoding="utf-8"):
+    """Undoes git/gitpython unicode encoding."""
+    if s.startswith('"'):
+        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
+    return s

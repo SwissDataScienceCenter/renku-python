@@ -41,6 +41,7 @@ from renku.core.models.entities import (
 from renku.core.models.locals import ReferenceMixin
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
+from renku.core.utils.scm import git_unicode_unescape
 
 from .agents import Person, PersonSchema, SoftwareAgentSchema, renku_agent
 from .qualified import Association, AssociationSchema, Generation, GenerationSchema, Usage, UsageSchema
@@ -138,7 +139,9 @@ class Activity(CommitMixin, ReferenceMixin):
             # in this backwards diff
             if file_.change_type == "A":
                 continue
-            path_ = Path(file_.a_path)
+
+            path_ = Path(git_unicode_unescape(file_.a_path))
+
             is_dataset = any(
                 [
                     path_.resolve() == (self.client.path / f.path).resolve()
@@ -152,7 +155,7 @@ class Activity(CommitMixin, ReferenceMixin):
             if all([is_dataset, not_refs, does_not_exists]):
                 dataset = next(
                     d
-                    for d in self.client.datasets
+                    for d in self.client.datasets.values()
                     for f in d.files
                     if path_.resolve() == (self.client.path / f.path).resolve()
                 )
@@ -243,7 +246,7 @@ class Activity(CommitMixin, ReferenceMixin):
             # in this backwards diff
             if file_.change_type == "A":
                 continue
-            path_ = Path(file_.a_path)
+            path_ = Path(git_unicode_unescape(file_.a_path))
 
             is_dataset = any(
                 [
