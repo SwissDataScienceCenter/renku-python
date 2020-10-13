@@ -305,7 +305,7 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
 
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client):
     """Test dataset imported from Renku projects have correct directory hierarchy."""
     url = "https://dev.renku.ch/datasets/1a637fd1-a7a6-4d1f-b9aa-157e7033cd1c"
@@ -367,6 +367,19 @@ def test_dataset_reimport_renkulab_dataset(runner, project, url):
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
     assert 1 == result.exit_code
     assert "Dataset exists" in result.output
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_renku_dataset_import_missing_lfs_objects(runner, project):
+    """Test importing a dataset with missing LFS objects fails."""
+    result = runner.invoke(
+        cli, ["dataset", "import", "--yes", "https://dev.renku.ch/datasets/5c11e321-2bea-458c-94ce-abccf4257a54"]
+    )
+
+    assert 1 == result.exit_code
+    assert "Error: Cannot pull LFS objects from server" in result.output
+    assert "[404] Object does not exist on the server or you don't have permissions to access it" in result.output
 
 
 @pytest.mark.integration

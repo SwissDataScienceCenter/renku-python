@@ -22,7 +22,8 @@ import os
 from marshmallow import EXCLUDE, post_load, pre_load
 
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, fields, prov, rdfs, renku, schema, wfprov
+from renku.core.models.calamus import JsonLDSchema, Uri, fields, prov, rdfs, renku, schema, wfprov
+from renku.core.models.datasets import generate_dataset_tag_id, generate_url_id
 from renku.core.models.git import get_user_info
 from renku.core.models.projects import generate_project_id
 from renku.core.models.provenance.agents import generate_person_id
@@ -33,6 +34,8 @@ class Base:
 
     def __init__(self, **kwargs):
         """Initialize an instance."""
+        self.client = None
+
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -40,15 +43,17 @@ class Base:
 class Person(Base):
     """Person migration model."""
 
-    client = None
+    affiliation = None
+    email = None
+    name = None
 
     @staticmethod
     def _fix_person_id(person, client=None):
         """Fixes the id of a Person if it is not set."""
-        if not person._id or "mailto:None" in person._id:
+        if not person._id or "mailto:None" in person._id or person._id.startswith("_:"):
             if not client and person.client:
                 client = person.client
-            person._id = generate_person_id(email=person.email, client=client)
+            person._id = generate_person_id(client=client, email=person.email, full_identity=person.full_identity)
 
         return person
 
@@ -66,6 +71,13 @@ class Person(Base):
         """Initialize an instance."""
         kwargs.setdefault("_id", None)
         super().__init__(**kwargs)
+
+    @property
+    def full_identity(self):
+        """Return name, email, and affiliation."""
+        email = f" <{self.email}>" if self.email else ""
+        affiliation = f" [{self.affiliation}]" if self.affiliation else ""
+        return f"{self.name}{email}{affiliation}"
 
 
 class Project(Base):
@@ -98,6 +110,16 @@ class DatasetFile(Base):
 class DatasetTag(Base):
     """DatasetTag migration model."""
 
+    commit = None
+    name = None
+
+    def __init__(self, **kwargs):
+        """Initialize an instance."""
+        super().__init__(**kwargs)
+
+        if not self._id or self._id.startswith("_:"):
+            self._id = generate_dataset_tag_id(client=self.client, name=self.name, commit=self.commit)
+
 
 class Language(Base):
     """Language migration model."""
@@ -105,6 +127,22 @@ class Language(Base):
 
 class Url(Base):
     """Url migration model."""
+
+    url = None
+    url_id = None
+    url_str = None
+
+    def __init__(self, **kwargs):
+        """Initialize an instance."""
+        super().__init__(**kwargs)
+
+        if isinstance(self.url, dict):
+            self.url_id = self.url["@id"]
+        elif isinstance(self.url, str):
+            self.url_str = self.url
+
+        if not self._id or self._id.startswith("_:"):
+            self._id = generate_url_id(client=self.client, url_str=self.url_str, url_id=self.url_id)
 
 
 class Dataset(Base):
@@ -212,7 +250,7 @@ class DatasetFileSchemaV3(EntitySchemaV3):
     external = fields.Boolean(renku.external, missing=False)
 
 
-class LanguageSchemaV5(JsonLDSchema):
+class LanguageSchemaV3(JsonLDSchema):
     """Language schema."""
 
     class Meta:
@@ -226,7 +264,7 @@ class LanguageSchemaV5(JsonLDSchema):
     name = fields.String(schema.name)
 
 
-class DatasetTagSchemaV5(JsonLDSchema):
+class DatasetTagSchemaV3(JsonLDSchema):
     """DatasetTag schema."""
 
     class Meta:
@@ -244,7 +282,7 @@ class DatasetTagSchemaV5(JsonLDSchema):
     name = fields.String(schema.name)
 
 
-class UrlSchemaV5(JsonLDSchema):
+class UrlSchemaV3(JsonLDSchema):
     """Url schema."""
 
     class Meta:
@@ -255,7 +293,7 @@ class UrlSchemaV5(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(missing=None)
-    url = fields.Uri(schema.url, missing=None)
+    url = Uri(schema.url, missing=None)
 
 
 class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
@@ -274,12 +312,12 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
     description = fields.String(schema.description, missing=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV3, many=True)
     identifier = fields.String(schema.identifier)
-    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV5, missing=None)
+    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
     keywords = fields.List(schema.keywords, fields.String())
-    license = fields.Uri(schema.license, missing=None, allow_none=True)
+    license = Uri(schema.license, missing=None, allow_none=True)
     name = fields.String(schema.alternateName, missing=None)
-    same_as = fields.Nested(schema.sameAs, UrlSchemaV5, missing=None)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV5, many=True)
+    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, missing=None)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True)
     title = fields.String(schema.name)
     url = fields.String(schema.url)
     version = fields.String(schema.version, missing=None)
