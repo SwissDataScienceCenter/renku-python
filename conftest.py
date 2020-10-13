@@ -362,6 +362,22 @@ def dataset_responses():
         yield rsps
 
 
+@pytest.fixture
+def missing_kg_project_responses():
+    """KG project query responses for missing project."""
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def request_callback(request):
+            return (404, {"Content-Type": "application/text"}, json.dumps({"message": "no project found"}))
+
+        rsps.add_callback(
+            responses.GET, re.compile("http(s)*://dev.renku.ch/knowledge-graph/projects/.*"), callback=request_callback
+        )
+        rsps.add_passthru(re.compile("http(s)*://dev.renku.ch/datasets/.*"))
+        rsps.add_passthru(re.compile("http(s)*://dev.renku.ch/knowledge-graph/datasets/.*"))
+        yield rsps
+
+
 @pytest.fixture()
 def directory_tree(tmp_path):
     """Create a test directory tree."""
