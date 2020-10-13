@@ -410,6 +410,26 @@ def test_add_to_dirty_repo(directory_tree, runner, project, client):
     assert ["untracked"] == client.repo.untracked_files
 
 
+def test_add_unicode_file(tmpdir, runner, project, client):
+    """Test adding files with unicode special characters in their names."""
+    # create a dataset
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code
+    assert "OK" in result.output
+
+    filename = "filéàèû爱ಠ_ಠ.txt"
+    new_file = tmpdir.join(filename)
+    new_file.write(str("test"))
+
+    # add data
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)],)
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["log", "--format", "json-ld", "--strict", f"data/my-dataset/{filename}"])
+    assert 0 == result.exit_code
+    assert filename in result.output.encode("latin1").decode("unicode-escape")
+
+
 def test_multiple_file_to_dataset(tmpdir, runner, project, client):
     """Test importing multiple data into a dataset at once."""
     # create a dataset
