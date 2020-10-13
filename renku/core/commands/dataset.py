@@ -284,6 +284,8 @@ def list_files(client, datasets=None, creators=None, include=None, exclude=None,
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
+        record.creators_csv = record.dataset.creators_csv
+        record.creators_full_csv = record.dataset.creators_full_csv
 
     if format is None:
         return records

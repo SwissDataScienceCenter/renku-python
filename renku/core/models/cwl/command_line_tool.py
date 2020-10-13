@@ -30,6 +30,7 @@ from git import Actor
 
 from renku.core import errors
 from renku.core.commands.echo import INFO
+from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
 from ...management.config import RENKU_HOME
@@ -182,7 +183,7 @@ class CommandLineToolFactory(object):
                 candidates |= {file_ for file_ in repo.untracked_files}
 
                 # Capture modified files through redirects.
-                candidates |= {o.a_path for o in repo.index.diff(None) if not o.deleted_file}
+                candidates |= {git_unicode_unescape(o.a_path) for o in repo.index.diff(None) if not o.deleted_file}
 
             # Include explicit outputs
             candidates |= {str(path.relative_to(self.working_dir)) for path in self.explicit_outputs}

@@ -43,7 +43,7 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory):
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ["rm", str(client.path / DATA_DIR)])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
 
     assert not path.exists()
 

@@ -359,7 +359,7 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
     with monkeypatch.context() as monkey:
         monkey.setattr(StorageApiMixin, "storage_installed", False)
 
-        failing_command = ["dataset", "add", "-s", "src", "my-dataset", directory_tree.strpath]
+        failing_command = ["dataset", "add", "-s", "src", "my-dataset", str(directory_tree)]
         result = isolated_runner.invoke(cli, failing_command)
         assert 1 == result.exit_code
         assert "External storage is not configured" in result.output
