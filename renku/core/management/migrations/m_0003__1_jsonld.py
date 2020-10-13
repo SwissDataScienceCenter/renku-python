@@ -79,6 +79,10 @@ def _apply_on_the_fly_jsonld_migrations(
 ):
     data = read_yaml(path)
 
+    if not isinstance(data, dict) and not isinstance(data, list):
+        # NOTE: metadata file is probably not an actual renku file
+        return
+
     if jsonld_translate:
         # perform the translation
         data = pyld.jsonld.expand(data)
