@@ -33,6 +33,7 @@ import attr
 import git
 
 from renku.core import errors
+from renku.core.utils.scm import git_unicode_unescape
 from renku.core.utils.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = "DIFF"
@@ -213,8 +214,9 @@ class GitCore:
             staged = self.repo.index.diff("HEAD")
 
             for file_path in staged:
-                is_parent = str(file_path.a_path).startswith(path)
-                is_equal = path == file_path.a_path
+                unescaped_path = git_unicode_unescape(file_path.a_path)
+                is_parent = str(unescaped_path).startswith(path)
+                is_equal = path == unescaped_path
 
                 if is_parent or is_equal:
                     raise errors.DirtyRenkuDirectory(self.repo)
@@ -240,9 +242,9 @@ class GitCore:
         diff_before = set()
 
         if commit_only == COMMIT_DIFF_STRATEGY:
-            staged = {item.a_path for item in self.repo.index.diff(None)}
+            staged = {git_unicode_unescape(item.a_path) for item in self.repo.index.diff(None)}
 
-            modified = {item.a_path for item in self.repo.index.diff("HEAD")}
+            modified = {git_unicode_unescape(item.a_path) for item in self.repo.index.diff("HEAD")}
 
             if staged or modified:
                 self.repo.git.reset()
@@ -269,10 +271,12 @@ class GitCore:
 
         if commit_only == COMMIT_DIFF_STRATEGY:
             # Get diff generated in command.
-            change_types = {item.a_path: item.change_type for item in self.repo.index.diff(None)}
+            change_types = {git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff(None)}
             staged_after = set(change_types.keys())
 
-            modified_after_change_types = {item.a_path: item.change_type for item in self.repo.index.diff("HEAD")}
+            modified_after_change_types = {
+                git_unicode_unescape(item.a_path): item.change_type for item in self.repo.index.diff("HEAD")
+            }
 
             modified_after = set(modified_after_change_types.keys())
 
@@ -294,7 +298,7 @@ class GitCore:
 
         diffs = []
         try:
-            diffs = [d.a_path for d in self.repo.index.diff("HEAD")]
+            diffs = [git_unicode_unescape(d.a_path) for d in self.repo.index.diff("HEAD")]
             if project_metadata_path in diffs:
                 diffs.remove(project_metadata_path)
         except git.exc.BadName:

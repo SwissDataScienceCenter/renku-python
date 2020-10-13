@@ -31,6 +31,7 @@ from renku.core.models.git import Range
 from renku.core.models.provenance.activities import Activity, ProcessRun, Usage, WorkflowRun
 from renku.core.models.provenance.qualified import Generation
 from renku.core.models.workflow.run import Run
+from renku.core.utils.scm import git_unicode_unescape
 
 
 def _safe_path(filepath, can_be_cwl=False):
@@ -527,7 +528,7 @@ def build_graph(client, revision, no_output, paths):
 
         commit = client.repo.rev_parse(stop)
         paths = (
-            str(client.path / item.a_path)
+            str(client.path / git_unicode_unescape(item.a_path))
             for item in commit.diff(commit.parents or NULL_TREE)
             # if not item.deleted_file
         )
