@@ -32,7 +32,7 @@ ingress:
   enabled: false
 
 metrics:
-  enabled: true
+  enabled: false
   image:
     repository: renku/rqmetrics
     tag: latest
