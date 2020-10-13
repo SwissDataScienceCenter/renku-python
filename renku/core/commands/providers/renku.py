@@ -55,15 +55,17 @@ class RenkuProvider(ProviderApi):
         same_as, kg_urls = self._get_dataset_info(uri)
         project_url = None
         failed_urls = []
+        non_existing_projects = []
 
         for kg_url in kg_urls:
             try:
                 kg_datasets_url, ssh_url, https_url = self._get_project_urls(kg_url)
             except errors.OperationError as e:
                 # NOTE: Project was likely deleted, but still referenced in the KG
-                if "project not found" not in e.message:
+                if "project not found" not in str(e):
                     raise
-                failed_urls.append(kg_url)
+                non_existing_projects.append(kg_url)
+                continue
 
             # Check if the project contains the dataset
             if same_as is None:  # Dataset is in the project
@@ -91,6 +93,12 @@ class RenkuProvider(ProviderApi):
         if project_url is None:
             if failed_urls:
                 message = "Cannot clone remote projects:\n\t" + "\n\t".join(failed_urls)
+            elif non_existing_projects:
+                raise errors.ProjectNotFound(
+                    "Cannot find these projects in the knowledge graph:\n\t{}".format(
+                        "\n\t".join(non_existing_projects)
+                    )
+                )
             else:
                 message = "Cannot find any project for the dataset."
 

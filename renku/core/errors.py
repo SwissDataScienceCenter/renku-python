@@ -196,6 +196,10 @@ class ProjectNotSupported(RenkuException):
         )
 
 
+class ProjectNotFound(RenkuException):
+    """Raise when one or more projects couldn't be found in the KG."""
+
+
 class NothingToCommit(RenkuException):
     """Raise when there is nothing to commit."""
 
