@@ -765,6 +765,10 @@ def mock_redis():
     from renku.service.cache.models.project import Project
     from renku.service.cache.models.user import User
     from renku.service.jobs.queues import WorkerQueues
+    from renku.core.commands import save
+
+    def repo_sync_mock(p, remote=None):
+        return None, "origin"
 
     monkey_patch = MonkeyPatch()
     with monkey_patch.context() as m:
@@ -779,6 +783,8 @@ def mock_redis():
         m.setattr(User, "__database__", fake_model_db)
         m.setattr(File, "__database__", fake_model_db)
         m.setattr(Project, "__database__", fake_model_db)
+
+        save.repo_sync = repo_sync_mock
 
         yield
 

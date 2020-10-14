@@ -28,6 +28,7 @@ from renku.core.commands.save import repo_sync
 from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
+from renku.service.controllers.datasets_add_file import DatasetsAddFileCtrl
 from renku.service.controllers.datasets_edit import DatasetsEditCtrl
 from renku.service.controllers.datasets_files_list import DatasetsFilesListCtrl
 from renku.service.controllers.datasets_list import DatasetsListCtrl
@@ -75,9 +76,9 @@ dataset_blueprint = Blueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVIC
 @handle_common_except
 @requires_cache
 @requires_identity
-def list_datasets_view(user, cache):
+def list_datasets_view(user_data, cache):
     """List all datasets in project."""
-    return DatasetsListCtrl(cache, user, dict(request.args)).to_response()
+    return DatasetsListCtrl(cache, user_data, dict(request.args)).to_response()
 
 
 @use_kwargs(DatasetFilesListRequest, location="query")
@@ -89,9 +90,9 @@ def list_datasets_view(user, cache):
 @handle_common_except
 @requires_cache
 @requires_identity
-def list_dataset_files_view(user, cache):
+def list_dataset_files_view(user_data, cache):
     """List files in a dataset."""
-    return DatasetsFilesListCtrl(cache, user, dict(request.args)).to_response()
+    return DatasetsFilesListCtrl(cache, user_data, dict(request.args)).to_response()
 
 
 @use_kwargs(DatasetAddRequest)
@@ -106,69 +107,7 @@ def list_dataset_files_view(user, cache):
 @requires_identity
 def add_file_to_dataset_view(user_data, cache):
     """Add the uploaded file to cloned repository."""
-    ctx = DatasetAddRequest().load(request.json)
-    user = cache.ensure_user(user_data)
-    project = cache.get_project(user, ctx["project_id"])
-
-    if not ctx["commit_message"]:
-        ctx["commit_message"] = "service: dataset add {0}".format(ctx["name"])
-
-    local_paths = []
-    for _file in ctx["files"]:
-        local_path = None
-
-        if "file_url" in _file:
-            commit_message = "{0}{1}".format(ctx["commit_message"], _file["file_url"])
-
-            job = cache.make_job(
-                user,
-                project=project,
-                job_data={"renku_op": "dataset_add_remote_file", "client_extras": ctx.get("client_extras")},
-            )
-            _file["job_id"] = job.job_id
-
-            with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
-                queue.enqueue(
-                    dataset_add_remote_file,
-                    user_data,
-                    job.job_id,
-                    project.project_id,
-                    ctx["create_dataset"],
-                    commit_message,
-                    ctx["name"],
-                    _file["file_url"],
-                )
-            continue
-
-        if "file_id" in _file:
-            file = cache.get_file(user, _file["file_id"])
-            local_path = file.abs_path
-
-        elif "file_path" in _file:
-            local_path = project.abs_path / Path(_file["file_path"])
-
-        if not local_path or not local_path.exists():
-            return error_response(INVALID_PARAMS_ERROR_CODE, "invalid file reference: {0}".format(json.dumps(_file)))
-
-        ctx["commit_message"] += " {0}".format(local_path.name)
-        local_paths.append(str(local_path))
-
-    if local_paths:
-        with chdir(project.abs_path):
-            add_file(
-                local_paths,
-                ctx["name"],
-                create=ctx["create_dataset"],
-                force=ctx["force"],
-                commit_message=ctx["commit_message"],
-            )
-
-            try:
-                _, ctx["remote_branch"] = repo_sync(Repo(project.abs_path), remote="origin")
-            except GitCommandError:
-                return error_response(INTERNAL_FAILURE_ERROR_CODE, "repo sync failed")
-
-    return result_response(DatasetAddResponseRPC(), ctx)
+    return DatasetsAddFileCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @use_kwargs(DatasetCreateRequest)

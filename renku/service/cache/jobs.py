@@ -40,6 +40,10 @@ class JobManagementCache(BaseCache):
             job_obj.project_id = project.project_id
             job_obj.locked.add(project.project_id)
 
+        if project and isinstance(project, str):
+            job_obj.project_id = project
+            job_obj.locked.add(project)
+
         job_obj.save()
         return job_obj
 
