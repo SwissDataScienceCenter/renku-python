@@ -19,6 +19,7 @@
 from flask import Blueprint
 
 from renku.service.config import SERVICE_PREFIX
+from renku.service.errors import ProjectNotFound
 from renku.service.serializers.jobs import JobDetailsResponseRPC, JobListResponseRPC
 from renku.service.views import result_response
 from renku.service.views.decorators import handle_validation_except, header_doc, requires_cache, requires_identity
@@ -27,7 +28,7 @@ JOBS_BLUEPRINT_TAG = "jobs"
 jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@header_doc(description="List uploaded files.", tags=(JOBS_BLUEPRINT_TAG,))
+@header_doc(description="List user jobs.", tags=(JOBS_BLUEPRINT_TAG,))
 @jobs_blueprint.route(
     "/jobs", methods=["GET"], provide_automatic_options=False,
 )
@@ -40,8 +41,11 @@ def list_jobs(user_data, cache):
 
     jobs = []
     for job in cache.get_jobs(user):
-        if job.project_id:
-            job.project = cache.get_project(user, job.project_id)
+        try:
+            if job.project_id:
+                job.project = cache.get_project(user, job.project_id)
+        except ProjectNotFound:
+            continue
 
         jobs.append(job)
 
@@ -64,5 +68,9 @@ def job_details(user_data, cache, job_id):
     if not job or not job.project_id:
         return result_response(JobDetailsResponseRPC(), None)
 
-    job.project = cache.get_project(user, job.project_id)
+    try:
+        job.project = cache.get_project(user, job.project_id)
+    except ProjectNotFound:
+        pass
+
     return result_response(JobDetailsResponseRPC(), job)
