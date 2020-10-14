@@ -66,6 +66,13 @@ Renku releases and development versions are available from `PyPI
 knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
 <https://github.com/pipxproject/pipx>`_.
 
+.. note::
+   
+   We do not officially support Windows at this moment. The way Windows 
+   handles paths and symlinks interferes with some renku functionality.
+   We recommend using the Windows Subsystem for Linux (WSL) to use renku
+   on Windows.
+
 
 ``pipx``
 ~~~~~~~~
