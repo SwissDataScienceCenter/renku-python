@@ -19,10 +19,7 @@
 from renku.core.commands.dataset import create_dataset, dataset_remove
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadWithSyncOperation
-from renku.service.serializers.datasets import (
-    DatasetRemoveRequest,
-    DatasetRemoveResponseRPC,
-)
+from renku.service.serializers.datasets import DatasetRemoveRequest, DatasetRemoveResponseRPC
 from renku.service.views import result_response
 
 

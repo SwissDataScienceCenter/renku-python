@@ -204,7 +204,7 @@ def handle_base_except(f):
 
         except (Exception, BaseException, OSError, IOError) as e:
             capture_exception(e)
-            
+
             internal_error = "internal error"
             if hasattr(e, "stderr"):
                 internal_error += ": {0}".format(" ".join(e.stderr.strip().split("\n")))

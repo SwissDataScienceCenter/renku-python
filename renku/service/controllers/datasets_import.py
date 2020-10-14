@@ -23,10 +23,7 @@ from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_import
 from renku.service.jobs.queues import DATASETS_JOB_QUEUE
-from renku.service.serializers.datasets import (
-    DatasetImportResponseRPC,
-    DatasetImportRequest,
-)
+from renku.service.serializers.datasets import DatasetImportRequest, DatasetImportResponseRPC
 from renku.service.views import result_response
 
 
