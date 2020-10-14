@@ -37,7 +37,7 @@ import pkg_resources
 from renku.core.errors import MigrationRequired, ProjectNotSupported
 from renku.core.utils.migrate import read_project_version
 
-SUPPORTED_PROJECT_VERSION = 7
+SUPPORTED_PROJECT_VERSION = 8
 
 
 def check_for_migration(client):
@@ -75,6 +75,7 @@ def migrate(client, progress_callback=None):
             module.migrate(client)
             n_migrations_executed += 1
     if n_migrations_executed > 0:
+        client._project = None  # NOTE: force reloading of project metadata
         client.project.version = str(version)
         client.project.to_yaml()
 

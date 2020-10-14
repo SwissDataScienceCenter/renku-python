@@ -54,8 +54,4 @@ class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        if "project_id" in self.ctx:
-            return result_response(MigrationsCheckCtrl.RESPONSE_SERIALIZER, self.local())
-
-        elif "git_url" in self.ctx:
-            return result_response(MigrationsCheckCtrl.RESPONSE_SERIALIZER, self.remote())
+        return result_response(MigrationsCheckCtrl.RESPONSE_SERIALIZER, self.execute_op())

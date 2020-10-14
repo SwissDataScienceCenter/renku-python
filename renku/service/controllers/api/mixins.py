@@ -17,13 +17,17 @@
 # limitations under the License.
 """Renku service controller mixin."""
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
+from git import Repo
+
+from renku.core.commands.save import repo_sync
+from renku.core.errors import RenkuException
 from renku.core.utils.contexts import chdir
 from renku.service.controllers.utils.remote_project import RemoteProject
 
 
-class ReadOperationMixin:
+class ReadOperationMixin(metaclass=ABCMeta):
     """Read operation mixin."""
 
     def __init__(self, cache, user_data, request_data):
@@ -34,6 +38,8 @@ class ReadOperationMixin:
         self.user_data = user_data
         self.request_data = request_data
 
+        self.project_path = None
+
     @property
     @abstractmethod
     def context(self):
@@ -42,19 +48,47 @@ class ReadOperationMixin:
 
     @abstractmethod
     def renku_op(self):
-        """Implements renku operation for the controller."""
+        """Implements operation for the controller."""
         raise NotImplementedError
 
-    def local(self):
-        """Execute renku operation against service cache."""
-        project = self.cache.get_project(self.user, self.context["project_id"])
+    def execute_op(self):
+        """Execute renku operation which controller implements."""
+        if "project_id" in self.context:
+            return self.local()
+        elif "git_url" in self.context:
+            return self.remote()
+        else:
+            raise RenkuException("context does not contain `project_id` or `git_url`")
 
-        with chdir(project.abs_path):
+    def local(self):
+        """Execute operation against service cache."""
+        project = self.cache.get_project(self.user, self.context["project_id"])
+        self.project_path = project.abs_path
+
+        with chdir(self.project_path):
             return self.renku_op()
 
     def remote(self):
-        """Execute renku operation against remote project."""
+        """Execute operation against remote project."""
         project = RemoteProject(self.user_data, self.request_data)
 
-        with project.remote():
+        with project.remote() as path:
+            self.project_path = path
             return self.renku_op()
+
+
+class ReadWithSyncOperation(ReadOperationMixin, metaclass=ABCMeta):
+    """Sync operation mixin."""
+
+    def sync(self, remote="origin"):
+        """Sync with remote."""
+        if self.project_path is None:
+            raise RenkuException("unable to sync with remote since no operation has been executed")
+
+        _, remote_branch = repo_sync(Repo(self.project_path), remote=remote)
+        return remote_branch
+
+    def execute_and_sync(self, remote="origin"):
+        """Execute operation which controller implements and sync with the remote."""
+        # NOTE: This will return the operation result as well as name of the branch to which it has been pushed.
+        return self.execute_op(), self.sync(remote=remote)

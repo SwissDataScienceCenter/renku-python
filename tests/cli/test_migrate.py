@@ -93,6 +93,18 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 
 
 @pytest.mark.migration
+def test_migrate_project(isolated_runner, old_project):
+    """Test migrate on old repository."""
+    result = isolated_runner.invoke(cli, ["migrate"])
+    assert 0 == result.exit_code
+    assert not old_project.is_dirty()
+
+    client = LocalClient(path=old_project.working_dir)
+    assert client.project
+    assert client.project.name
+
+
+@pytest.mark.migration
 def test_correct_path_migrated(isolated_runner, old_project):
     """Check if path on dataset files has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate"])
@@ -241,7 +253,7 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     assert "https://doi.org/10.7910/DVN/EV6KLF" == dataset.same_as.url
     assert "1" == dataset.tags[0].name
     assert "Tag 1 created by renku import" == dataset.tags[0].description
-    assert isinstance(dataset.license, dict)
+    assert isinstance(dataset.license, str)
     assert "https://creativecommons.org/publicdomain/zero/1.0/" in str(dataset.license)
 
     file_ = dataset.find_file("data/dataverse/copy.sh")
@@ -274,3 +286,16 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     assert "README.md" == file_.source
     assert file_.based_on is None
     assert file_.url.endswith("/projects/mohammad.alisafaee/old-datasets-v0.9.1/files/blob/README.md")
+
+
+@pytest.mark.migration
+def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project):
+    """Test migration of datasets with blank nodes creates IRI identifiers."""
+    assert 0 == isolated_runner.invoke(cli, ["migrate"]).exit_code
+
+    dataset = LocalClient(path=old_dataset_project.working_dir).load_dataset("201901_us_flights_1")
+
+    assert not dataset.creators[0]._id.startswith("_:")
+    assert not dataset.same_as._id.startswith("_:")
+    assert not dataset.tags[0]._id.startswith("_:")
+    assert isinstance(dataset.license, str)
