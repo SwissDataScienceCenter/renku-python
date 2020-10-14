@@ -36,6 +36,7 @@ from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
 from renku.core.models.workflow.run import Run
+from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
 default_missing_software_agent = SoftwareAgent(
@@ -365,7 +366,7 @@ def _invalidations_from_commit(client, commit):
         # in this backwards diff
         if file_.change_type != "A":
             continue
-        path_ = Path(file_.a_path)
+        path_ = Path(git_unicode_unescape(file_.a_path))
         entity = _get_activity_entity(client, commit, path_, collections, deleted=True)
 
         results.append(entity)
