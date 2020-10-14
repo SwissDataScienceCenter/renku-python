@@ -29,9 +29,11 @@ from renku.core.models import json
 from renku.core.utils.contexts import chdir
 from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
 from renku.service.controllers.datasets_add_file import DatasetsAddFileCtrl
+from renku.service.controllers.datasets_create import DatasetsCreateCtrl
 from renku.service.controllers.datasets_edit import DatasetsEditCtrl
 from renku.service.controllers.datasets_files_list import DatasetsFilesListCtrl
 from renku.service.controllers.datasets_list import DatasetsListCtrl
+from renku.service.controllers.datasets_remove import DatasetsRemoveCtrl
 from renku.service.controllers.datasets_unlink import DatasetsUnlinkCtrl
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
@@ -120,27 +122,9 @@ def add_file_to_dataset_view(user_data, cache):
 @accepts_json
 @requires_cache
 @requires_identity
-def create_dataset_view(user, cache):
+def create_dataset_view(user_data, cache):
     """Create a new dataset in a project."""
-    ctx = DatasetCreateRequest().load(request.json)
-    project = cache.get_project(cache.ensure_user(user), ctx["project_id"])
-
-    with chdir(project.abs_path):
-        create_dataset(
-            ctx["name"],
-            title=ctx.get("title"),
-            creators=ctx.get("creators"),
-            description=ctx.get("description"),
-            keywords=ctx.get("keywords"),
-            commit_message=ctx["commit_message"],
-        )
-
-    try:
-        _, ctx["remote_branch"] = repo_sync(Repo(project.abs_path), remote="origin")
-    except GitCommandError:
-        return error_response(INTERNAL_FAILURE_ERROR_CODE, "repo sync failed")
-
-    return result_response(DatasetCreateResponseRPC(), ctx)
+    return DatasetsCreateCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @use_kwargs(DatasetRemoveRequest)
@@ -153,23 +137,9 @@ def create_dataset_view(user, cache):
 @accepts_json
 @requires_cache
 @requires_identity
-def remove_dataset_view(user, cache):
+def remove_dataset_view(user_data, cache):
     """Remove a dataset from a project."""
-    ctx = DatasetRemoveRequest().load(request.json)
-    project = cache.get_project(cache.ensure_user(user), ctx["project_id"])
-
-    if not project.abs_path.exists():
-        return error_response(INVALID_PARAMS_ERROR_CODE, "invalid project_id argument")
-
-    with chdir(project.abs_path):
-        dataset_remove(ctx["name"], commit_message=ctx["commit_message"])
-
-    try:
-        _, ctx["remote_branch"] = repo_sync(Repo(project.abs_path), remote="origin")
-    except GitCommandError:
-        return error_response(INTERNAL_FAILURE_ERROR_CODE, "repo sync failed")
-
-    return result_response(DatasetRemoveResponseRPC(), ctx)
+    return DatasetsRemoveCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @use_kwargs(DatasetImportRequest)

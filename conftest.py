@@ -759,13 +759,13 @@ def datapack_tar(directory_tree):
 @pytest.fixture(scope="module")
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
+    from renku.core.commands import save
     from renku.service.cache.base import BaseCache
     from renku.service.cache.models.file import File
     from renku.service.cache.models.job import Job
     from renku.service.cache.models.project import Project
     from renku.service.cache.models.user import User
     from renku.service.jobs.queues import WorkerQueues
-    from renku.core.commands import save
 
     def repo_sync_mock(p, remote=None):
         return None, "origin"
