@@ -22,6 +22,7 @@ from __future__ import absolute_import, print_function
 import json
 import os
 import shutil
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -334,6 +335,8 @@ def test_datasets_list_with_columns(runner, project, columns, headers, values):
 @pytest.mark.parametrize("column", DATASETS_COLUMNS.keys())
 def test_datasets_list_columns_correctly(runner, project, column):
     """Test dataset listing only shows requested columns."""
+    assert 0 == runner.invoke(cli, ["dataset", "create", "test"]).exit_code
+
     result = runner.invoke(cli, ["dataset", "--columns", column])
     assert 0 == result.exit_code
     header = result.output.split("\n").pop(0)
@@ -348,6 +351,21 @@ def test_datasets_list_invalid_column(runner, project, columns):
     result = runner.invoke(cli, ["dataset", "--columns", columns])
     assert 2 == result.exit_code
     assert 'Invalid column name: "invalid".' in result.output
+
+
+def test_datasets_list_description(runner, project):
+    """Test dataset description listing."""
+    description = "Very long description. " * 100
+    assert 0 == runner.invoke(cli, ["dataset", "create", "test", "-d", description]).exit_code
+
+    short_description = textwrap.wrap(description, width=64, max_lines=2)[0]
+
+    result = runner.invoke(cli, ["dataset", "--columns=name,description"])
+
+    assert 0 == result.exit_code
+    line = next(line for line in result.output.split("\n") if "test" in line)
+    assert short_description in line
+    assert description[: len(short_description) + 1] not in line
 
 
 def test_add_and_create_dataset(directory_tree, runner, project, client, subdirectory):
