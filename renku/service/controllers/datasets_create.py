@@ -30,7 +30,7 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
     RESPONSE_SERIALIZER = DatasetCreateResponseRPC()
 
     def __init__(self, cache, user_data, request_data):
-        """Construct a datasets edit list controller."""
+        """Construct a datasets create controller."""
         self.ctx = DatasetsCreateCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:

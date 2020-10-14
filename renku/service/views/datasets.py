@@ -16,28 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets view."""
-import os
-from pathlib import Path
-
 from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
-from git import GitCommandError, Repo
 
-from renku.core.commands.dataset import add_file, create_dataset, dataset_remove
-from renku.core.commands.save import repo_sync
-from renku.core.models import json
-from renku.core.utils.contexts import chdir
-from renku.service.config import INTERNAL_FAILURE_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
+from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.datasets_add_file import DatasetsAddFileCtrl
 from renku.service.controllers.datasets_create import DatasetsCreateCtrl
 from renku.service.controllers.datasets_edit import DatasetsEditCtrl
 from renku.service.controllers.datasets_files_list import DatasetsFilesListCtrl
+from renku.service.controllers.datasets_import import DatasetsImportCtrl
 from renku.service.controllers.datasets_list import DatasetsListCtrl
 from renku.service.controllers.datasets_remove import DatasetsRemoveCtrl
 from renku.service.controllers.datasets_unlink import DatasetsUnlinkCtrl
-from renku.service.jobs.contexts import enqueue_retry
-from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
-from renku.service.jobs.queues import DATASETS_JOB_QUEUE
 from renku.service.serializers.datasets import (
     DatasetAddRequest,
     DatasetAddResponseRPC,
@@ -56,7 +46,6 @@ from renku.service.serializers.datasets import (
     DatasetUnlinkRequest,
     DatasetUnlinkResponseRPC,
 )
-from renku.service.views import error_response, result_response
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
@@ -154,27 +143,7 @@ def remove_dataset_view(user_data, cache):
 @requires_identity
 def import_dataset_view(user_data, cache):
     """Import a dataset view."""
-    user = cache.ensure_user(user_data)
-    ctx = DatasetImportRequest().load(request.json)
-    project = cache.get_project(user, ctx["project_id"])
-    job = cache.make_job(
-        user, project=project, job_data={"renku_op": "dataset_import", "client_extras": ctx.get("client_extras")}
-    )
-
-    with enqueue_retry(DATASETS_JOB_QUEUE) as queue:
-        queue.enqueue(
-            dataset_import,
-            user_data,
-            job.job_id,
-            project.project_id,
-            ctx["dataset_uri"],
-            name=ctx.get("name"),
-            extract=ctx.get("extract", False),
-            timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
-            result_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
-        )
-
-    return result_response(DatasetImportResponseRPC(), job)
+    return DatasetsImportCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @use_kwargs(DatasetEditRequest)

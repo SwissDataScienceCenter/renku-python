@@ -20,8 +20,6 @@ from renku.core.commands.dataset import create_dataset, dataset_remove
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.serializers.datasets import (
-    DatasetCreateRequest,
-    DatasetCreateResponseRPC,
     DatasetRemoveRequest,
     DatasetRemoveResponseRPC,
 )
@@ -35,7 +33,7 @@ class DatasetsRemoveCtrl(ServiceCtrl, ReadWithSyncOperation):
     RESPONSE_SERIALIZER = DatasetRemoveResponseRPC()
 
     def __init__(self, cache, user_data, request_data):
-        """Construct a datasets edit list controller."""
+        """Construct a datasets remove controller."""
         self.ctx = DatasetsRemoveCtrl.REQUEST_SERIALIZER.load(request_data)
 
         if self.ctx.get("commit_message") is None:
