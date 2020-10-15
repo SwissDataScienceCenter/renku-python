@@ -35,6 +35,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.refs import LinkReference
+from tests.utils import assert_dataset_is_mutated
 
 
 def test_datasets_create_clean(runner, project, client):
@@ -889,61 +890,29 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory):
         assert new_file.basename not in [file_.path.name for file_ in dataset.files]
 
 
-def test_dataset_1rm(tmpdir, runner, project, client, subdirectory):
+def test_dataset_rm(runner, client, directory_tree, subdirectory):
     """Test removal of a dataset."""
-    # try to delete non existing dataset
-    result = runner.invoke(cli, ["dataset", "rm"])
-    assert 2 == result.exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", str(directory_tree)]).exit_code
 
-    result = runner.invoke(cli, ["dataset", "rm", "does-not-exist"])
-    assert 2 == result.exit_code
+    dataset = client.load_dataset("my-dataset")
+    assert client.load_dataset("my-dataset")
+    assert (client.path / dataset.path).exists()
 
-    # create a dataset
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
-    assert "OK" in result.output
-
-    # create some data
-    paths = []
-    for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
-        new_file.write(str(i))
-        paths.append(str(new_file))
-
-    # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False,)
-    assert 0 == result.exit_code
-
-    # try to delete a non empty dataset
     result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
-    assert 0 == result.exit_code
 
-    # check output
+    assert 0 == result.exit_code, result.output
     assert "OK" in result.output
     assert not client.load_dataset("my-dataset")
+    assert not (client.path / dataset.path).exists()
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code
 
 
-def test_dataset_rm_commit(tmpdir, runner, project, client):
-    """Test removal of a dataset repository state."""
-    # create a dataset
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code
-    assert "OK" in result.output
-
-    # try to delete a non empty dataset
-    result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
-    assert 0 == result.exit_code
-
-    # check output
-    assert "OK" in result.output
-    assert not client.load_dataset("my-dataset")
-
-    # Dirty repository check.
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+def test_dataset_rm_failure(runner, client):
+    """Test errors in removal of a dataset."""
+    assert 2 == runner.invoke(cli, ["dataset", "rm"]).exit_code
+    assert 1 == runner.invoke(cli, ["dataset", "rm", "does-not-exist"]).exit_code
 
 
 def test_dataset_overwrite_no_confirm(runner, project):
@@ -983,7 +952,7 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
     dataset = client.load_dataset("dataset")
     assert " new description " == dataset.description
     assert "original title" == dataset.title
-    assert {creator1, creator2} == {c.full_identity for c in dataset.creators}
+    assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
 
     result = runner.invoke(cli, ["dataset", "edit", "dataset", "-t", " new title "], catch_exceptions=False)
     assert 0 == result.exit_code
@@ -998,7 +967,7 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
     dataset = client.load_dataset("dataset")
     assert " new description " == dataset.description
     assert "new title" == dataset.title
-    assert {creator1, creator2} == {c.full_identity for c in dataset.creators}
+    assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
     assert {"keyword-2", "keyword-3"} == set(dataset.keywords)
 
 
@@ -1045,7 +1014,7 @@ def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     assert type(provider) is DataverseProvider
 
 
-def test_dataset_tag(tmpdir, runner, project, subdirectory):
+def test_dataset_tag(tmpdir, runner, project, client, subdirectory):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code
     assert "OK" in result.output
@@ -1557,3 +1526,83 @@ def test_workflow_with_external_file(runner, client, directory_tree, project, ru
 
     attributes = (client.path / ".gitattributes").read_text().split()
     assert "data/output.txt" in attributes
+
+
+@pytest.mark.parametrize(
+    "args", [["dataset", "create", "my-data"], ["dataset", "add", "--create", "my-data", "README.md"]]
+)
+def test_immutability_at_creation(runner, client, args):
+    """Test first dataset's ID is the same as metadata directory."""
+    assert 0 == runner.invoke(cli, args).exit_code
+
+    dataset = client.load_dataset("my-data")
+    assert str(dataset.path).endswith(dataset.identifier)
+
+
+def test_immutability_for_files(directory_tree, runner, client):
+    """Test dataset's ID changes after a change to dataset files."""
+    assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
+
+    old_dataset = client.load_dataset("my-data")
+
+    # Add some files
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-data", str(directory_tree)]).exit_code
+
+    dataset = client.load_dataset("my-data")
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+    old_dataset = dataset
+
+    # Remove some files
+    assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "-I", "file1", "--yes"]).exit_code
+
+    dataset = client.load_dataset("my-data")
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_immutability_after_edit(runner, client):
+    """Test dataset's ID changes after editing a dataset."""
+    assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
+
+    old_dataset = client.load_dataset("my-data")
+
+    assert 0 == runner.invoke(cli, ["dataset", "edit", "my-data", "-k", "new-data"]).exit_code
+
+    dataset = client.load_dataset("my-data")
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_immutability_for_tags(runner, client):
+    """Test dataset's ID does NOT changes after a change to dataset tags."""
+    assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
+
+    old_dataset = client.load_dataset("my-data")
+
+    # Add a tag
+    assert 0 == runner.invoke(cli, ["dataset", "tag", "my-data", "new-tag"]).exit_code
+
+    dataset = client.load_dataset("my-data")
+    assert old_dataset._id == dataset._id
+    old_dataset = dataset
+
+    # Remove a tag
+    assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "my-data", "new-tag"]).exit_code
+
+    dataset = client.load_dataset("my-data")
+    assert old_dataset._id == dataset._id
+
+
+def test_immutability_after_remove(directory_tree, runner, client):
+    """Test dataset is mutated one final time when it is removed."""
+    assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
+
+    old_dataset = client.load_dataset("my-data")
+
+    assert 0 == runner.invoke(cli, ["dataset", "rm", "my-data"]).exit_code
+
+    assert client.load_dataset("my-data") is None
+
+    # Checkout previous commit that has dataset's final version
+    client.repo.git.checkout("HEAD~")
+
+    dataset = client.load_dataset("my-data")
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)

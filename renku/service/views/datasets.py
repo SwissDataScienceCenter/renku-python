@@ -223,7 +223,7 @@ def remove_dataset_view(user, cache):
         return error_response(INVALID_PARAMS_ERROR_CODE, "invalid project_id argument")
 
     with chdir(project.abs_path):
-        dataset_remove([ctx["name"]], commit_message=ctx["commit_message"])
+        dataset_remove(ctx["name"], commit_message=ctx["commit_message"])
 
     try:
         _, ctx["remote_branch"] = repo_sync(Repo(project.abs_path), remote="origin")
