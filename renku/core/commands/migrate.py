@@ -31,10 +31,14 @@ from .client import pass_local_client
 @pass_local_client
 def migrations_check(client):
     """Public function for a migrations check."""
+
+    template_update_possible, current_version, new_version = is_template_update_possible(client)
     return (
         is_migration_required(client),
         not is_project_unsupported(client),
-        is_template_update_possible(client),
+        template_update_possible,
+        current_version,
+        new_version,
         bool(client.project.automated_update),
         is_docker_update_possible(client),
     )

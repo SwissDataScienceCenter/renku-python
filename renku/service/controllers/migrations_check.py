@@ -47,6 +47,8 @@ class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
             migration_required,
             project_supported,
             template_update_possible,
+            current_template_version,
+            latest_template_version,
             automated_update,
             docker_update_possible,
         ) = migrations_check()
@@ -54,6 +56,8 @@ class MigrationsCheckCtrl(ServiceCtrl, ReadOperationMixin):
         return {
             "migration_required": migration_required,
             "template_update_possible": template_update_possible,
+            "current_template_version": current_template_version,
+            "latest_template_version": latest_template_version,
             "automated_template_update": automated_update,
             "docker_update_possible": docker_update_possible,
             "project_supported": project_supported,

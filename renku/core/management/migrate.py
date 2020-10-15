@@ -98,7 +98,7 @@ def migrate(
         and (force_template_update or client.project.automated_update)
     ):
         try:
-            template_updated = _update_template(client, progress_callback)
+            template_updated, _, _ = _update_template(client, progress_callback)
         except TemplateUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -146,23 +146,24 @@ def _update_template(client, check_only=False, progress_callback=None):
     project = client.project
 
     if not project.template_version:
-        return False
+        return False, None, None
 
     template_manifest, template_folder, template_source, template_version = fetch_template(
         project.template_source, project.template_ref, progress_callback
     )
 
+    current_version = None
     if template_source == "renku":
         current_version = pkg_resources.parse_version(template_version)
         template_version = pkg_resources.parse_version(project.template_version)
         if template_version >= current_version:
-            return False
+            return False, project.template_version, current_version
     else:
         if template_version == project.template_version:
-            return False
+            return False, project.template_version, template_version
 
     if check_only:
-        return True
+        return True, project.template_version, current_version if current_version else template_version
 
     if progress_callback:
         progress_callback("Updating project from template...")
@@ -238,7 +239,7 @@ def _update_template(client, check_only=False, progress_callback=None):
         updated = "\n".join(updated_files)
         progress_callback(f"Updated project from template, updated files:\n{updated}")
 
-    return True
+    return True, project.template_version, current_version if current_version else template_version
 
 
 def _update_dockerfile(client, check_only=False, progress_callback=None):

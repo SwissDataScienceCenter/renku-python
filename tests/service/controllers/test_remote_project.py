@@ -99,11 +99,15 @@ def test_remote_project_context():
             migration_required,
             project_supported,
             template_update_possible,
+            current_template_version,
+            latest_template_version,
             automated_update_possible,
             docker_update_possible,
         ) = migrations_check()
         assert migration_required is True
         assert template_update_possible is False
+        assert current_template_version is None
+        assert latest_template_version is None
         assert automated_update_possible is False
         assert docker_update_possible is False
         assert project_supported is True
