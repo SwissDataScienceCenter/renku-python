@@ -5,6 +5,6 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "build(deps-dev): "
+      prefix: "build(deps): "
       include: "scope"
     target-branch: "dependabot-updates"
