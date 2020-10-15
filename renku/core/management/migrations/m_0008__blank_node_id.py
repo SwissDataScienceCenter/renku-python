@@ -15,17 +15,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers utils for interacting with remote source code management tools."""
-import re
+"""Dataset metadata migrations."""
+
+from renku.core.management.migrations.models.v8 import get_client_datasets
 
 
-def strip_and_lower(input):
-    """Adjust chars to make the input compatible as scm source."""
-    return re.sub(r"\s", r"-", input.strip()).lower()
+def migrate(client):
+    """Migration function."""
+    _fix_dataset_metadata(client)
 
 
-def git_unicode_unescape(s, encoding="utf-8"):
-    """Undoes git/gitpython unicode encoding."""
-    if s.startswith('"'):
-        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
-    return s
+def _fix_dataset_metadata(client):
+    for dataset in get_client_datasets(client):
+        dataset.to_yaml()
