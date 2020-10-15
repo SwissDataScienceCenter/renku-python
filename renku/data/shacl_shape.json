@@ -379,6 +379,12 @@
                }
             },
             {
+               "path": "prov:wasDerivedFrom",
+               "sh:class": {
+                  "@id": "schema:URL"
+               }
+            },
+            {
                "nodeKind": "sh:Literal",
                "path": "schema:url",
                "datatype": {

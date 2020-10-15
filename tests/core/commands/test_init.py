@@ -36,45 +36,29 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import migrate
 from tests.utils import raises
 
-TEMPLATE_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
-TEMPLATE_ID = "python-minimal"
-TEMPLATE_INDEX = 1
-TEMPLATE_REF = "0.1.11"
-METADATA = {"description": "nodesc"}
-DEFAULT_METADATA = {
-    "__template_source__": "renku",
-    "__template_ref__": "master",
-    "__template_id__": "python-minimal",
-    "__namespace__": "",
-    "__repository__": "",
-    "__project_slug__": "",
-}
-FAKE = "NON_EXISTING"
-NAME = "myname"
-
 template_local = Path(pkg_resources.resource_filename("renku", "templates"))
 
 
-@pytest.mark.parametrize(
-    "url, ref, result, error",
-    [
-        (TEMPLATE_URL, TEMPLATE_REF, True, None),
-        (FAKE, TEMPLATE_REF, None, errors.GitError),
-        (TEMPLATE_URL, FAKE, None, errors.GitError),
-    ],
-)
 @pytest.mark.integration
-def test_fetch_template_from_git(url, ref, result, error):
+def test_fetch_template_from_git(template):
     """Test fetching a template.
 
     It fetches a template from remote and verifies that the manifest
     file is there.
     """
-    with TemporaryDirectory() as tempdir:
-        with raises(error):
-            manifest_file, _ = fetch_template_from_git(url, ref, Path(tempdir))
-            assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
-            assert manifest_file.exists()
+    # ? Can't parametrize with fixtures yet
+    # ? REF: https://docs.pytest.org/en/stable/proposals/parametrize_with_fixtures.html
+    parametrize = [
+        {"url": template["url"], "ref": template["ref"], "error": None},
+        {"url": "fake", "ref": template["ref"], "error": errors.GitError},
+        {"url": template["url"], "ref": "fake", "error": errors.GitError},
+    ]
+    for parameters in parametrize:
+        with TemporaryDirectory() as tempdir:
+            with raises(parameters["error"]):
+                manifest_file, _ = fetch_template_from_git(parameters["url"], parameters["ref"], Path(tempdir))
+                assert Path(tempdir) / TEMPLATE_MANIFEST == manifest_file
+                assert manifest_file.exists()
 
 
 def test_read_template_manifest():
@@ -133,7 +117,7 @@ def test_read_template_manifest():
 
 
 @pytest.mark.integration
-def test_fetch_template_from_git_and_read_manifest():
+def test_fetch_template_from_git_and_read_manifest(template):
     """Test template fetch and manifest reading.
 
     It fetches a local template, reads the manifest, checkouts the
@@ -141,7 +125,7 @@ def test_fetch_template_from_git_and_read_manifest():
     """
     with TemporaryDirectory() as tempdir:
         template_path = Path(tempdir)
-        fetch_template_from_git(TEMPLATE_URL, TEMPLATE_REF, template_path)
+        fetch_template_from_git(template["url"], template["ref"], template_path)
         manifest = read_template_manifest(template_path, checkout=True)
         for template in manifest:
             template_folder = template_path / template["folder"]
@@ -175,7 +159,7 @@ def test_validate_template():
             assert validate_template(template_folder) is True
 
 
-def test_create_from_template(local_client):
+def test_create_from_template(local_client, template):
     """Test repository creation from a template.
 
     It creates a renku projects from one of the local templates and it verifies
@@ -186,7 +170,9 @@ def test_create_from_template(local_client):
         shutil.copytree(str(template_local), str(temppath))
         manifest = read_template_manifest(temppath)
         template_path = temppath / manifest[0]["folder"]
-        create_from_template(template_path, local_client, NAME, {**DEFAULT_METADATA, **METADATA})
+        create_from_template(
+            template_path, local_client, "name", {**template["default_metadata"], **template["metadata"]}
+        )
         template_files = [
             f
             for f in local_client.path.glob("**/*")
@@ -199,7 +185,7 @@ def test_create_from_template(local_client):
             assert expected_file.exists()
 
 
-def test_template_filename(local_client):
+def test_template_filename(local_client, template):
     """Test using a template with dynamic filenames.
     """
     with TemporaryDirectory() as tempdir:
@@ -212,12 +198,12 @@ def test_template_filename(local_client):
 
         (local_client.path / ".renku").mkdir()
 
-        create_from_template(template_folder, local_client, name="test", metadata=DEFAULT_METADATA)
+        create_from_template(template_folder, local_client, name="test", metadata=template["default_metadata"])
 
         assert (local_client.path / "test.r").exists()
 
 
-def test_update_from_template(local_client, mocker):
+def test_update_from_template(local_client, mocker, template):
     """Test repository update from a template."""
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir) / "local"
@@ -227,8 +213,8 @@ def test_update_from_template(local_client, mocker):
         create_from_template(
             template_path,
             local_client,
-            NAME,
-            {**DEFAULT_METADATA, **METADATA},
+            "name",
+            {**template["default_metadata"], **template["metadata"]},
             template_version="0.0.1",
             automated_update=True,
         )
@@ -266,7 +252,7 @@ def test_update_from_template(local_client, mocker):
             assert content != new_content
 
 
-def test_update_from_template_with_modified_files(local_client, mocker):
+def test_update_from_template_with_modified_files(local_client, mocker, template):
     """Test repository update from a template with modified local files."""
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir) / "local"
@@ -276,8 +262,8 @@ def test_update_from_template_with_modified_files(local_client, mocker):
         create_from_template(
             template_path,
             local_client,
-            NAME,
-            {**DEFAULT_METADATA, **METADATA},
+            "name",
+            {**template["default_metadata"], **template["metadata"]},
             template_version="0.0.1",
             automated_update=True,
         )
@@ -323,7 +309,7 @@ def test_update_from_template_with_modified_files(local_client, mocker):
                 assert content != new_content
 
 
-def test_update_from_template_with_immutable_modified_files(local_client, mocker):
+def test_update_from_template_with_immutable_modified_files(local_client, mocker, template):
     """Test repository update from a template with modified local immutable files."""
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir) / "local"
@@ -333,8 +319,8 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
         create_from_template(
             template_path,
             local_client,
-            NAME,
-            {**DEFAULT_METADATA, **METADATA},
+            "name",
+            {**template["default_metadata"], **template["metadata"]},
             template_version="0.0.1",
             automated_update=True,
             immutable_template_files=["README.md"],
@@ -372,7 +358,7 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
             migrate(local_client)
 
 
-def test_update_template_dockerfile(local_client, mocker):
+def test_update_template_dockerfile(local_client, mocker, template):
     """Test repository Dockerfile update."""
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir) / "local"
@@ -392,8 +378,8 @@ def test_update_template_dockerfile(local_client, mocker):
         create_from_template(
             template_path,
             local_client,
-            NAME,
-            {**DEFAULT_METADATA, **METADATA},
+            "name",
+            {**template["default_metadata"], **template["metadata"]},
             template_version="0.0.1",
             automated_update=True,
         )
@@ -421,7 +407,7 @@ def test_update_template_dockerfile(local_client, mocker):
         assert "0.0.2" in dockerfile
 
 
-def test_update_from_template_with_new_variable(local_client, mocker):
+def test_update_from_template_with_new_variable(local_client, mocker, template):
     """Test repository update from a template with a new template variable required."""
     with TemporaryDirectory() as tempdir:
         temppath = Path(tempdir) / "local"
@@ -431,8 +417,8 @@ def test_update_from_template_with_new_variable(local_client, mocker):
         create_from_template(
             template_path,
             local_client,
-            NAME,
-            {**DEFAULT_METADATA, **METADATA},
+            "name",
+            {**template["default_metadata"], **template["metadata"]},
             template_version="0.0.1",
             automated_update=True,
         )

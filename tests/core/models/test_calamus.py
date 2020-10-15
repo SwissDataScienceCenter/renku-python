@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.models.calamus import JsonLDSchema, fields
+from renku.core.models.calamus import JsonLDSchema, Uri, fields
 
 
 @pytest.mark.parametrize("value", [{"field": "http://datascience.ch"}, "http://datascience.ch"])
@@ -33,7 +33,7 @@ def test_uri_field_serialization(value):
     schema = fields.Namespace("http://schema.org/")
 
     class EntitySchema(JsonLDSchema):
-        field = fields.Uri(schema.field, allow_none=True)
+        field = Uri(schema.field, allow_none=True)
 
         class Meta:
             rdf_type = schema.Entity
@@ -42,6 +42,9 @@ def test_uri_field_serialization(value):
     entity = Entity(field=value)
 
     data = EntitySchema().dump(entity)
+
+    if "@id" in data:
+        del data["@id"]
 
     assert data == {"@type": ["http://schema.org/Entity"], "http://schema.org/field": value}
 
@@ -57,7 +60,7 @@ def test_uri_field_deserialization(value):
     schema = fields.Namespace("http://schema.org/")
 
     class EntitySchema(JsonLDSchema):
-        field = fields.Uri(schema.field, allow_none=True)
+        field = Uri(schema.field, allow_none=True)
 
         class Meta:
             rdf_type = schema.Entity

@@ -15,17 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers utils for interacting with remote source code management tools."""
-import re
+"""Renku service version view tests."""
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 
 
-def strip_and_lower(input):
-    """Adjust chars to make the input compatible as scm source."""
-    return re.sub(r"\s", r"-", input.strip()).lower()
+def test_version(svc_client):
+    """Test expected response from version endpoint."""
+    from renku import __version__
 
+    response = svc_client.get("/version")
+    assert "result" in response.json
+    data = response.json["result"]
 
-def git_unicode_unescape(s, encoding="utf-8"):
-    """Undoes git/gitpython unicode encoding."""
-    if s.startswith('"'):
-        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
-    return s
+    assert {"latest_version", "supported_project_version"} == set(data.keys())
+    assert __version__ == data["latest_version"]
+    assert SUPPORTED_PROJECT_VERSION == data["supported_project_version"]

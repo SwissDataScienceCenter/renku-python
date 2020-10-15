@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
@@ -15,17 +13,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers utils for interacting with remote source code management tools."""
-import re
+"""Renku service version view."""
+from flask import Blueprint
+
+from renku.service.config import SERVICE_PREFIX
+from renku.service.controllers.version import VersionCtrl
+from renku.service.views.decorators import handle_validation_except, header_doc
+
+VERSION_BLUEPRINT_TAG = "version"
+version_blueprint = Blueprint("version", __name__, url_prefix=SERVICE_PREFIX)
 
 
-def strip_and_lower(input):
-    """Adjust chars to make the input compatible as scm source."""
-    return re.sub(r"\s", r"-", input.strip()).lower()
-
-
-def git_unicode_unescape(s, encoding="utf-8"):
-    """Undoes git/gitpython unicode encoding."""
-    if s.startswith('"'):
-        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
-    return s
+@header_doc(description="Display version of the service.", tags=(VERSION_BLUEPRINT_TAG,))
+@version_blueprint.route(
+    "/version", methods=["GET"], provide_automatic_options=False,
+)
+@handle_validation_except
+def version():
+    """Version view."""
+    return VersionCtrl().to_response()

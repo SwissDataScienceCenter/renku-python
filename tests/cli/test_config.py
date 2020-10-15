@@ -94,7 +94,7 @@ def test_config_remove_value_locally(client, runner, project, global_config_dir,
     assert "some-value" not in result.output
 
 
-def test_local_config_committed(client, runner, data_repository, directory_tree, global_config_dir):
+def test_local_config_committed(client, runner, data_repository, global_config_dir):
     """Test local configuration update is committed only when it is changed."""
     commit_sha_before = client.repo.head.object.hexsha
 

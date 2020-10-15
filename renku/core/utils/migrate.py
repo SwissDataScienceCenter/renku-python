@@ -57,7 +57,7 @@ def get_pre_0_3_4_datasets_metadata(client):
 
     project_is_pre_0_3 = int(read_project_version(client)) < 2
     if project_is_pre_0_3:
-        return (client.path / DATA_DIR).rglob(client.METADATA)
+        return (client.path / DATA_DIR).glob(f"*/{client.METADATA}")
     return []
 
 

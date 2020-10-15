@@ -31,7 +31,9 @@ from renku.cli import cli
 from renku.core import errors
 from renku.core.commands.clone import project_clone
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
+from tests.utils import assert_dataset_is_mutated
 
 
 @pytest.mark.integration
@@ -183,7 +185,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
         ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
         ("10.5281/zenodo.1494915", "no files have been found"),
         ("https://zenodo.org/record/2621201248", "record not found"),
-        (("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX"), "record not found",),
+        ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX", "record not found",),
     ],
 )
 @pytest.mark.integration
@@ -199,7 +201,7 @@ def test_dataset_import_expected_err(runner, project, doi, err):
     "url",
     [
         "https://zenodo.org/record/2621208",
-        ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMR"),
+        "https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMR",
     ],
 )
 @pytest.mark.integration
@@ -284,7 +286,7 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
     "url",
     [
         "https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",
-        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/"),
+        "https://dev.renku.ch/projects/renku-testing/project-9/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2/",
     ],
 )
 def test_dataset_import_renkulab_dataset(runner, project, client, url):
@@ -302,6 +304,19 @@ def test_dataset_import_renkulab_dataset(runner, project, client, url):
 
     dataset = [d for d in client.datasets.values()][0]
     assert dataset.same_as.url["@id"] == url
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client):
+    """Test dataset imported from Renku projects have correct directory hierarchy."""
+    url = "https://dev.renku.ch/datasets/1a637fd1-a7a6-4d1f-b9aa-157e7033cd1c"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url]).exit_code
+
+    dataset = client.load_dataset("remote")
+    assert (client.path / dataset.data_dir / "README.md").exists()
+    assert (client.path / dataset.data_dir / "python" / "data" / "README.md").exists()
+    assert (client.path / dataset.data_dir / "r" / "data" / "README.md").exists()
 
 
 @pytest.mark.integration
@@ -325,21 +340,29 @@ def test_dataset_import_renku_fail(runner, client, monkeypatch, url):
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2",])
+def test_dataset_import_renku_missing_project(runner, client, missing_kg_project_responses, url):
+    """Test dataset import fails if cannot clone repo."""
+    result = runner.invoke(cli, ["dataset", "import", url], input="y")
+    assert 1 == result.exit_code
+    assert "Cannot find these projects in the knowledge graph" in result.output
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "url,exit_code",
     [
         ("https://dev.renku.ch/projects/renku-testing/project-9/", 2),
-        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/b9f7b21b-8b00-42a2-976a-invalid", 2),
+        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/b9f7b21b-8b00-42a2-976a-invalid", 1),
         ("https://dev.renku.ch/datasets/10.5281%2Fzenodo.666", 1),
     ],
 )
 def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
     """Test usage errors in Renku dataset import."""
-    result = runner.invoke(cli, ["dataset", "import", url], input="y")
-    assert exit_code == result.exit_code
+    assert exit_code == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
-    result = runner.invoke(cli, ["dataset"])
-    assert 0 == result.exit_code
+    assert 0 == runner.invoke(cli, ["dataset"]).exit_code
 
 
 @pytest.mark.integration
@@ -347,13 +370,24 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2"])
 def test_dataset_reimport_renkulab_dataset(runner, project, url):
     """Test dataset import for existing dataset"""
-    result = runner.invoke(cli, ["dataset", "import", url], input="y")
-    assert "OK" in result.output
-    assert 0 == result.exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
     assert 1 == result.exit_code
     assert "Dataset exists" in result.output
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_renku_dataset_import_missing_lfs_objects(runner, project):
+    """Test importing a dataset with missing LFS objects fails."""
+    result = runner.invoke(
+        cli, ["dataset", "import", "--yes", "https://dev.renku.ch/datasets/5c11e321-2bea-458c-94ce-abccf4257a54"]
+    )
+
+    assert 1 == result.exit_code
+    assert "Error: Cannot pull LFS objects from server" in result.output
+    assert "[404] Object does not exist on the server or you don't have permissions to access it" in result.output
 
 
 @pytest.mark.integration
@@ -440,21 +474,21 @@ def test_dataset_export_upload_tag(
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "2.0"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="3")
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "2.0"] + params)
 
     assert 0 == result.exit_code
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "2/2" in result.output
+    assert "2/2" in result.output, result.output
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="2")
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "1.0"] + params)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
     assert "1/1" in result.output
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")  # HEAD
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
@@ -734,45 +768,19 @@ def test_add_data_from_git(runner, client, params, path):
 @flaky(max_runs=10, min_passes=1)
 def test_add_data_from_git_with_wildcards(runner, client, params, files):
     """Test add data using wildcards to datasets from a git repository."""
-    REMOTE = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+    remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", REMOTE] + params, catch_exceptions=False,
+        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", remote] + params, catch_exceptions=False,
     )
     assert 0 == result.exit_code
     assert files == set(os.listdir("data/remote"))
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", REMOTE] + params, catch_exceptions=False,
+        cli, ["dataset", "add", "remote", "--ref", "0.5.2", "-d", "new", remote] + params, catch_exceptions=False,
     )
     assert 0 == result.exit_code
     assert files == set(os.listdir("data/remote/new"))
-
-
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-def test_add_from_git_copies_metadata(runner, client):
-    """Test an import from a git repository keeps creators name."""
-    # create a dataset and add a file to it
-    result = runner.invoke(
-        cli,
-        [
-            "dataset",
-            "add",
-            "remote",
-            "--create",
-            "--ref",
-            "v0.3.0",
-            "-s",
-            "README.rst",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
-        ],
-        catch_exceptions=False,
-    )
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-
-    dataset = client.load_dataset("remote")
-    assert dataset.files[0].name == "README.rst"
 
 
 @pytest.mark.integration
@@ -820,36 +828,38 @@ def read_dataset_file_metadata(client, name, filename):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("params", [[], ["-I", "CHANGES.rst"], ["-I", "C*"], ["remote"]])
+@pytest.mark.parametrize("params", [[], ["-I", "README.md"], ["-I", "R*"], ["remote"]])
 @flaky(max_runs=10, min_passes=1)
 def test_dataset_update(client, runner, params):
     """Test local copy is updated when remote file is updates."""
-    url = "https://github.com/SwissDataScienceCenter/renku-python.git"
+    url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     # Add dataset to project
-    result = runner.invoke(
-        cli,
-        ["dataset", "add", "--create", "remote", "--ref", "v0.3.0", "-s", "CHANGES.rst", url,],
-        catch_exceptions=False,
-    )
+    result = runner.invoke(cli, ["dataset", "add", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    before = read_dataset_file_metadata(client, "remote", "CHANGES.rst")
+    before = read_dataset_file_metadata(client, "remote", "README.md")
 
-    result = runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False)
-    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+    assert 0 == runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False).exit_code
 
-    after = read_dataset_file_metadata(client, "remote", "CHANGES.rst")
-    assert after._id == before._id
+    after = read_dataset_file_metadata(client, "remote", "README.md")
+
+    assert after._id != before._id
     assert after._label != before._label
-    assert after.added == before.added
+    assert after.added != before.added
     assert after.url == before.url
-    assert after.based_on._id == before.based_on._id
+    assert after.source == before.source
+    assert after.based_on._id != before.based_on._id
     assert after.based_on._label != before.based_on._label
     assert after.based_on.based_on is None
     assert after.based_on.path == before.based_on.path
     assert after.based_on.source == url
     assert after.based_on.url == url
+    commit_sha = after.based_on._label.split("@")[0]
+    assert commit_sha in after.based_on._id
+
+    result = runner.invoke(cli, ["doctor"])
+    assert 0 == result.exit_code, result.output
 
 
 @pytest.mark.integration
@@ -902,10 +912,10 @@ def test_dataset_invalid_update(client, runner, params):
             "--create",
             "remote",
             "-s",
-            "docs/authors.rst",
+            "README.md",
             "--ref",
-            "v0.3.0",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
+            "0.3.0",
+            "https://github.com/SwissDataScienceCenter/renku-jupyter.git",
         ],
         catch_exceptions=False,
     )
@@ -918,7 +928,7 @@ def test_dataset_invalid_update(client, runner, params):
 @pytest.mark.integration
 @pytest.mark.parametrize("params", [[], ["-I", "CHANGES.rst"], ["-I", "CH*"], ["dataset-1", "dataset-2"]])
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_update_multiple_datasets(client, runner, data_repository, directory_tree, params):
+def test_dataset_update_multiple_datasets(client, runner, data_repository, params):
     """Test update with multiple datasets."""
     path1 = client.path / DATA_DIR / "dataset-1" / "CHANGES.rst"
     path2 = client.path / DATA_DIR / "dataset-2" / "CHANGES.rst"
@@ -968,7 +978,7 @@ def test_dataset_update_multiple_datasets(client, runner, data_repository, direc
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_empty_update(client, runner, data_repository, directory_tree):
+def test_empty_update(client, runner, data_repository):
     """Test update when nothing changed does not create a commit."""
     # Add dataset to project
     result = runner.invoke(
@@ -979,17 +989,17 @@ def test_empty_update(client, runner, data_repository, directory_tree):
             "--create",
             "remote",
             "--ref",
-            "v0.3.0",
+            "0.3.0",
             "-s",
-            "CHANGES.rst",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
+            "README.md",
+            "https://github.com/SwissDataScienceCenter/renku-jupyter.git",
         ],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
     commit_sha_before = client.repo.head.object.hexsha
-    result = runner.invoke(cli, ["dataset", "update", "--ref", "v0.3.0"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "update", "--ref", "0.3.0"], catch_exceptions=False)
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
@@ -1123,8 +1133,8 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
             "add",
             "dataset",
             "-s",
-            "CHANGES.rst",
-            "https://github.com/SwissDataScienceCenter/renku-python.git",
+            "README.md",
+            "https://github.com/SwissDataScienceCenter/renku-project-template.git",
         ],
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
@@ -1273,7 +1283,7 @@ def test_add_removes_credentials(runner, client, url):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "url", [("https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile")]
+    "url", ["https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"]
 )
 def test_check_disk_space(runner, client, monkeypatch, url):
     """Check adding to dataset prompts if disk space is not enough."""
@@ -1344,3 +1354,52 @@ def test_dataset_add_dropbox(runner, client, project, url, size):
 
     datafile = Path(project) / "data/my-dropbox-data" / filename
     assert size == len(datafile.read_text())
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_immutability_at_import(runner, client):
+    """Test first dataset's ID after import is the same as metadata directory."""
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-dataset", "10.7910/DVN/F4NUMR"]).exit_code
+
+    dataset = client.load_dataset("my-dataset")
+    assert str(dataset.path).endswith(dataset.identifier)
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_immutability_after_import(runner, client):
+    """Test first dataset's ID after import is the same as metadata directory."""
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-dataset", "10.7910/DVN/F4NUMR"]).exit_code
+
+    old_dataset = client.load_dataset("my-dataset")
+
+    # Make some modification in dataset
+    assert 0 == runner.invoke(cli, ["dataset", "edit", "my-dataset", "-k", "new-data"]).exit_code
+
+    dataset = client.load_dataset("my-dataset")
+    mutator = Person.from_git(client.repo)
+    assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://dev.renku.ch/datasets/9dde49ee-031a-4568-b193-a58892e26534",
+        "https://dev.renku.ch/datasets/6baee173-9338-4679-8a80-03f4b1a9a86e",
+        "https://dev.renku.ch/datasets/b956c47f-9182-4e6d-8d5a-c161b97c195c",
+        "https://dev.renku.ch/datasets/0dc3a120-e4af-4a4c-a888-70d1719c4631",
+    ],
+)
+@flaky(max_runs=10, min_passes=1)
+def test_import_returns_last_dataset_version(runner, client, url):
+    """Test importing with any identifier returns the last version of dataset."""
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-dataset", url]).exit_code
+
+    dataset = client.load_dataset("my-dataset")
+
+    initial_identifier = "9dde49ee-031a-4568-b193-a58892e26534"
+    latest_identifier = "0dc3a120-e4af-4a4c-a888-70d1719c4631"
+    assert dataset.identifier not in [initial_identifier, latest_identifier]
+    assert f"https://dev.renku.ch/datasets/{latest_identifier}" == dataset.same_as.url["@id"]

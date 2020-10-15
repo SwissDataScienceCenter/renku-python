@@ -15,17 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers utils for interacting with remote source code management tools."""
-import re
+"""Renku service version controller."""
+from renku import __version__
+from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.service.controllers.api.abstract import ServiceCtrl
+from renku.service.serializers.version import VersionResponseRPC
+from renku.service.views import result_response
 
 
-def strip_and_lower(input):
-    """Adjust chars to make the input compatible as scm source."""
-    return re.sub(r"\s", r"-", input.strip()).lower()
+class VersionCtrl(ServiceCtrl):
+    """Version controller."""
 
+    RESPONSE_SERIALIZER = VersionResponseRPC()
 
-def git_unicode_unescape(s, encoding="utf-8"):
-    """Undoes git/gitpython unicode encoding."""
-    if s.startswith('"'):
-        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
-    return s
+    def to_response(self):
+        """Serialize to service version response."""
+        return result_response(
+            VersionCtrl.RESPONSE_SERIALIZER,
+            {"latest_version": __version__, "supported_project_version": SUPPORTED_PROJECT_VERSION,},
+        )

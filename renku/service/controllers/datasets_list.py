@@ -46,12 +46,5 @@ class DatasetsListCtrl(ServiceCtrl, ReadOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        self.ctx["datasets"] = []
-
-        if "project_id" in self.ctx:
-            self.ctx["datasets"] = self.local()
-
-        elif "git_url" in self.ctx:
-            self.ctx["datasets"] = self.remote()
-
+        self.ctx["datasets"] = self.execute_op()
         return result_response(DatasetsListCtrl.RESPONSE_SERIALIZER, self.ctx)
