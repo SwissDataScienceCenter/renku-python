@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for datasets."""
+import textwrap
 
 from renku.core.models.json import dumps
 
@@ -27,7 +28,15 @@ def tabular(client, datasets, *, columns=None):
     if not columns:
         columns = "id,date_created,name,creators,tags,version"
 
+    _create_dataset_short_description(datasets)
+
     return tabulate(collection=datasets, columns=columns, columns_mapping=DATASETS_COLUMNS)
+
+
+def _create_dataset_short_description(datasets):
+    for dataset in datasets:
+        lines = textwrap.wrap(dataset.description, width=64, max_lines=5) if dataset.description else []
+        dataset.short_description = "\n".join(lines)
 
 
 def jsonld(client, datasets, **kwargs):
@@ -54,4 +63,5 @@ DATASETS_COLUMNS = {
     "version": ("version", None),
     "title": ("title", "title"),
     "keywords": ("keywords_csv", "keywords"),
+    "description": ("short_description", "description"),
 }

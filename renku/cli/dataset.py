@@ -301,12 +301,12 @@ Listing all files in the project associated with a dataset.
 .. code-block:: console
 
     $ renku dataset ls-files
-    DATASET NAME         ADDED                PATH
-    -------------------  -------------------  -----------------------------
-    my-dataset           2020-02-28 16:48:09  data/my-dataset/addme
-    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1
+    DATASET NAME         ADDED                PATH                           LFS
+    -------------------  -------------------  -----------------------------  ----
+    my-dataset           2020-02-28 16:48:09  data/my-dataset/addme          *
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file2
-    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -329,10 +329,10 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
 .. code-block:: console
 
     $ renku dataset ls-files --include "file*" --exclude "file3"
-    DATASET NAME        ADDED                PATH
-    ------------------- -------------------  -----------------------------
-    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1
-    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2
+    DATASET NAME        ADDED                PATH                           LFS
+    ------------------- -------------------  -----------------------------  ----
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1  *
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2  *
 
 Unlink a file from a dataset:
 
@@ -552,7 +552,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
     "-c",
     "--columns",
     type=click.STRING,
-    default="dataset_name,added,size,path",
+    default="dataset_name,added,size,path,lfs",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,
