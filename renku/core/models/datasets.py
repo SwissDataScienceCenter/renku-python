@@ -242,6 +242,8 @@ class DatasetFile(Entity):
 
     source = attr.ib(default=None, kw_only=True)
 
+    is_lfs = attr.ib(default=False, kw_only=True)
+
     @added.default
     def _now(self):
         """Define default value for datetime fields."""
@@ -551,11 +553,22 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         if not self.files or not self.client:
             return
 
+        paths = [f.path for f in self.files]
+        attrs = self.client.find_attr(*paths)
+
         for file_ in self.files:
             path = Path(file_.path)
             file_exists = path.exists() or (path.is_symlink() and os.path.lexists(path))
 
-            if file_.client is None and file_exists:
+            if not file_exists:
+                continue
+
+            if attrs.get(str(path), {}).get("filter") == "lfs":
+                file_.is_lfs = True
+            else:
+                file_.is_lfs = False
+
+            if file_.client is None:
                 client, _, _ = self.client.resolve_in_submodules(
                     self.client.find_previous_commit(file_.path, revision="HEAD"), file_.path,
                 )
