@@ -97,18 +97,19 @@ def repo_sync(repo, message=None, remote=None, paths=None):
             raise errors.GitError("Cannot commit changes") from e
 
     try:
-        # push local changes to remote branch
+        # NOTE: Push local changes to remote branch.
         if origin.refs and repo.active_branch in origin.refs:
             origin.fetch()
             origin.pull(repo.active_branch)
 
-        origin.push(repo.active_branch)
+        result = origin.push(repo.active_branch)
+        if result and "[remote rejected] (pre-receive hook declined)" in result[0].summary:
+            # NOTE: Push to new remote branch if original one is protected.
+            pushed_branch = uuid4().hex
+            repo.create_head(pushed_branch)
+            repo.remote().push(pushed_branch)
+
     except git.exc.GitCommandError as e:
-        if "protected branches" not in e.stderr:
-            raise errors.GitError("Cannot push changes") from e
-        # push to new remote branch if original one is protected
-        pushed_branch = uuid4().hex
-        origin = repo.create_remote(pushed_branch, remote)
-        origin.push(repo.active_branch)
+        raise errors.GitError("Cannot push changes") from e
 
     return saved_paths, pushed_branch
