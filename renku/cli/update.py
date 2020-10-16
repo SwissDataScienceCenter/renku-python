@@ -59,7 +59,7 @@ In this situation, you can do effectively two things:
 
   .. code-block:: console
 
-     $ renku update
+     $ renku update --all
 
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
@@ -127,6 +127,7 @@ from renku.core.commands.client import pass_local_client
 from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph, _safe_path
 from renku.core.commands.options import option_siblings
+from renku.core.errors import ParameterError
 from renku.core.models.locals import with_reference
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.workflow.converters.cwl import CWLConverter
@@ -136,13 +137,21 @@ from renku.version import __version__, version_url
 @click.command()
 @click.option("--revision", default="HEAD")
 @click.option("--no-output", is_flag=True, default=False, help="Display commands without output files.")
+@click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all outdated files.")
 @option_siblings
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
+@click.pass_context
 @pass_local_client(
     clean=True, requires_migration=True, commit=True,
 )
-def update(client, revision, no_output, siblings, paths):
+def update(client, ctx, revision, no_output, update_all, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
+    if not paths and not update_all:
+        click.echo(ctx.get_help(), color=ctx.color)
+        return
+    elif paths and update_all:
+        raise ParameterError("Cannot use PATHS and --all/-a at the same time.")
+
     graph = Graph(client)
     outputs = graph.build(revision=revision, can_be_cwl=no_output, paths=paths)
     outputs = {node for node in outputs if graph.need_update(node)}

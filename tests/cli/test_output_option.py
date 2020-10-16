@@ -188,7 +188,7 @@ def test_explicit_inputs_in_subdirectories(renku_cli, client):
     exit_code, _ = renku_cli("status")
     assert 1 == exit_code
 
-    exit_code, _ = renku_cli("update")
+    exit_code, _ = renku_cli("update", "--all")
     assert 0 == exit_code
     assert (client.path / "foo" / "bar").exists()
     assert (client.path / "script.sh").exists()

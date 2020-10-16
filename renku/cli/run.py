@@ -237,7 +237,7 @@ from renku.core.models.cwl.command_line_tool import CommandLineToolFactory
     help="Allowed command exit-code.",
 )
 @option_isolation
-@click.argument("command_line", nargs=-1, type=click.UNPROCESSED)
+@click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
 @pass_local_client(
     clean=True, requires_migration=True, commit=True, ignore_std_streams=True,
 )
