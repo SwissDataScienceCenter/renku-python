@@ -75,7 +75,7 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "OK" in result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "-c", "name,creators"])
+    result = runner.invoke(cli, ["dataset", "ls", "-c", "name,creators"])
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert doi["name"] in result.output
@@ -135,7 +135,7 @@ def test_dataset_import_real_param(doi, runner, project, sleep_after, client):
     else:
         assert 1 == result.exit_code
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
 
@@ -149,7 +149,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
     result = runner.invoke(cli, ["dataset", "import", doi[0]], input=doi[1])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
 
@@ -173,7 +173,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     assert "Error: Dataset exists:" not in result.output
     assert "OK" in result.output
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "pyndl_naive_discriminat" in result.output
 
@@ -362,7 +362,8 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
     """Test usage errors in Renku dataset import."""
     assert exit_code == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
-    assert 0 == runner.invoke(cli, ["dataset"]).exit_code
+    result = runner.invoke(cli, ["dataset", "ls"])
+    assert 0 == result.exit_code
 
 
 @pytest.mark.integration

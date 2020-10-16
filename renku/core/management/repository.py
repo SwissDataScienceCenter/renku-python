@@ -120,11 +120,11 @@ class RepositoryApiMixin(GitCore):
         "requirements\\.txt",
     ]
 
-    _commit_activity_cache = {}
+    _commit_activity_cache = attr.ib(factory=dict)
 
-    _activity_index = None
+    _activity_index = attr.ib(default=None)
 
-    _remote_cache = {}
+    _remote_cache = attr.ib(factory=dict)
 
     def __attrs_post_init__(self):
         """Initialize computed attributes."""

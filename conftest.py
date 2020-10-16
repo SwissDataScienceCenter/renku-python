@@ -145,7 +145,7 @@ def run(runner, capsys):
     from renku.cli import cli
     from renku.core.utils.contexts import Isolation
 
-    def generate(args=("update",), cwd=None, **streams):
+    def generate(args=("update", "--all",), cwd=None, **streams):
         """Generate an output."""
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
