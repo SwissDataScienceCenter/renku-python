@@ -31,7 +31,9 @@ from renku.cli import cli
 from renku.core import errors
 from renku.core.commands.clone import project_clone
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
+from tests.utils import assert_dataset_is_mutated
 
 
 @pytest.mark.integration
@@ -352,17 +354,15 @@ def test_dataset_import_renku_missing_project(runner, client, missing_kg_project
     "url,exit_code",
     [
         ("https://dev.renku.ch/projects/renku-testing/project-9/", 2),
-        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/b9f7b21b-8b00-42a2-976a-invalid", 2),
+        ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/b9f7b21b-8b00-42a2-976a-invalid", 1),
         ("https://dev.renku.ch/datasets/10.5281%2Fzenodo.666", 1),
     ],
 )
 def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
     """Test usage errors in Renku dataset import."""
-    result = runner.invoke(cli, ["dataset", "import", url], input="y")
-    assert exit_code == result.exit_code
+    assert exit_code == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
-    result = runner.invoke(cli, ["dataset"])
-    assert 0 == result.exit_code
+    assert 0 == runner.invoke(cli, ["dataset"]).exit_code
 
 
 @pytest.mark.integration
@@ -370,9 +370,7 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2"])
 def test_dataset_reimport_renkulab_dataset(runner, project, url):
     """Test dataset import for existing dataset"""
-    result = runner.invoke(cli, ["dataset", "import", url], input="y")
-    assert "OK" in result.output
-    assert 0 == result.exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
     assert 1 == result.exit_code
@@ -476,21 +474,21 @@ def test_dataset_export_upload_tag(
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "2.0"])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="3")
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "2.0"] + params)
 
     assert 0 == result.exit_code
     assert "Exported to:" in result.output
     assert output in result.output
-    assert "2/2" in result.output
+    assert "2/2" in result.output, result.output
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="2")
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "-t", "1.0"] + params)
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
     assert "1/1" in result.output
 
-    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")
+    result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input="1")  # HEAD
 
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Exported to:" in result.output
@@ -1356,3 +1354,52 @@ def test_dataset_add_dropbox(runner, client, project, url, size):
 
     datafile = Path(project) / "data/my-dropbox-data" / filename
     assert size == len(datafile.read_text())
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_immutability_at_import(runner, client):
+    """Test first dataset's ID after import is the same as metadata directory."""
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-dataset", "10.7910/DVN/F4NUMR"]).exit_code
+
+    dataset = client.load_dataset("my-dataset")
+    assert str(dataset.path).endswith(dataset.identifier)
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_immutability_after_import(runner, client):
+    """Test first dataset's ID after import is the same as metadata directory."""
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-dataset", "10.7910/DVN/F4NUMR"]).exit_code
+
+    old_dataset = client.load_dataset("my-dataset")
+
+    # Make some modification in dataset
+    assert 0 == runner.invoke(cli, ["dataset", "edit", "my-dataset", "-k", "new-data"]).exit_code
+
+    dataset = client.load_dataset("my-dataset")
+    mutator = Person.from_git(client.repo)
+    assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://dev.renku.ch/datasets/9dde49ee-031a-4568-b193-a58892e26534",
+        "https://dev.renku.ch/datasets/6baee173-9338-4679-8a80-03f4b1a9a86e",
+        "https://dev.renku.ch/datasets/b956c47f-9182-4e6d-8d5a-c161b97c195c",
+        "https://dev.renku.ch/datasets/0dc3a120-e4af-4a4c-a888-70d1719c4631",
+    ],
+)
+@flaky(max_runs=10, min_passes=1)
+def test_import_returns_last_dataset_version(runner, client, url):
+    """Test importing with any identifier returns the last version of dataset."""
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-dataset", url]).exit_code
+
+    dataset = client.load_dataset("my-dataset")
+
+    initial_identifier = "9dde49ee-031a-4568-b193-a58892e26534"
+    latest_identifier = "0dc3a120-e4af-4a4c-a888-70d1719c4631"
+    assert dataset.identifier not in [initial_identifier, latest_identifier]
+    assert f"https://dev.renku.ch/datasets/{latest_identifier}" == dataset.same_as.url["@id"]
