@@ -201,7 +201,7 @@ repository; to force the delete use ``--delete`` argument. You can update to a
 specific branch, commit, or tag by passing ``--ref`` option.
 For datasets from providers like Dataverse or Zenodo, the whole dataset is
 updated to ensure consistency between the remote and local versions. Due to
-this limitation, the ``--include`` and ``--exclude`` flags are not compatible 
+this limitation, the ``--include`` and ``--exclude`` flags are not compatible
 with those datasets. Modifying those datasets locally will prevent them from
 being updated.
 
