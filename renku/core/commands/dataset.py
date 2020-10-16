@@ -160,7 +160,6 @@ def add_file(
     sources=(),
     destination="",
     ref=None,
-    with_metadata=None,
     urlscontext=contextlib.nullcontext,
     commit_message=None,
     progress=None,
@@ -178,7 +177,6 @@ def add_file(
         sources=sources,
         destination=destination,
         ref=ref,
-        with_metadata=with_metadata,
         urlscontext=urlscontext,
         progress=progress,
         interactive=interactive,
@@ -257,8 +255,6 @@ def _add_to_dataset(
                     click.echo(WARNING + msg)
 
             if with_metadata:
-                for file_ in dataset.files:
-                    file_.based_on = None
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
                 with_metadata.url = dataset._id
@@ -306,7 +302,7 @@ def file_unlink(client, name, include, exclude, interactive=False, yes=False, co
             (
                 "include or exclude filters not found.\n"
                 "Check available filters with `renku dataset unlink --help`\n"
-                "Hint: `renku dataset unlink mydataset -I myfile`"
+                "Hint: `renku dataset unlink my-dataset -I path`"
             )
         )
 
