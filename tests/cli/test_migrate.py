@@ -165,8 +165,8 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code
 
-    assert (repo_path / ".renku.lock").exists() is False
-    assert repo.is_dirty() is False
+    assert not (repo_path / ".renku.lock").exists()
+    assert not repo.is_dirty()
 
     ignored = (repo_path / ".gitignore").read_text()
     assert ".renku.lock" in ignored
