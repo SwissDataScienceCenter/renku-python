@@ -18,6 +18,16 @@
 Changes
 =======
 
+`0.11.6 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.5...v0.11.6>`__ (2020-10-16)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix bug where remote_cache caused project ids to leak
+   (`#1618 <https://github.com/SwissDataScienceCenter/renku-python/pulls/1618>`__)
+   (`3ef04fb <https://github.com/SwissDataScienceCenter/renku-python/commit/3ef04fb8b6091d87b235901f7dfa22728f67b540>`__)
+
 `0.11.5 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.4...v0.11.5>`__ (2020-10-13)
 ----------------------------------------------------------------------------------------------------------
 
