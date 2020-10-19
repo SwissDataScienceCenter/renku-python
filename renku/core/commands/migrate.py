@@ -46,3 +46,9 @@ def migrate_project(client, progress_callback=None, commit_message=None):
 def migrate_project_no_commit(client, progress_callback=None):
     """Migrate all project's entities but do not commit changes."""
     return migrate(client=client, progress_callback=progress_callback)
+
+
+@pass_local_client
+def is_renku_project(client):
+    """Check if repository is a renku project."""
+    return client.renku_metadata_path.exists()

@@ -19,7 +19,6 @@
 import os
 import shutil
 import urllib
-import uuid
 from pathlib import Path
 
 from renku.core.management.migrations.models.v3 import Dataset, Project, get_client_datasets
@@ -56,7 +55,7 @@ def _do_not_track_lock_file(client):
     # Add lock file to .gitignore.
     lock_file = ".renku.lock"
     gitignore = client.path / ".gitignore"
-    if lock_file not in gitignore.read_text():
+    if not gitignore.exists() or lock_file not in gitignore.read_text():
         gitignore.open("a").write("\n{0}\n".format(lock_file))
 
 
@@ -93,27 +92,30 @@ def _migrate_datasets_pre_v0_3(client):
 def _migrate_broken_dataset_paths(client):
     """Ensure all paths are using correct directory structure."""
     for dataset in get_client_datasets(client):
-        expected_path = client.renku_datasets_path / dataset.identifier
         if not dataset.name:
             dataset.name = generate_default_name(dataset.title, dataset.version)
 
         # migrate the refs
-        ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True,)
+        ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True)
+        expected_path = client.renku_datasets_path / dataset.identifier
         ref.set_reference(expected_path / client.METADATA)
 
-        old_dataset_path = client.renku_datasets_path / uuid.UUID(dataset.identifier).hex
+        if not expected_path.exists():
+            old_dataset_path = dataset.path
+            expected_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(old_dataset_path, expected_path)
 
         dataset.path = os.path.relpath(expected_path, client.path)
-
-        if not expected_path.exists():
-            shutil.move(old_dataset_path, expected_path)
 
         for file_ in dataset.files:
             file_path = Path(file_.path)
             if not file_path.exists() or file_.path.startswith(".."):
-                new_path = Path(
-                    os.path.abspath(client.renku_datasets_path / dataset.identifier / file_path)
-                ).relative_to(client.path)
+                if file_.path.startswith(".."):
+                    new_path = Path(
+                        os.path.abspath(client.renku_datasets_path / dataset.identifier / file_path)
+                    ).relative_to(client.path)
+                else:
+                    new_path = (client.path / DATA_DIR / file_path).relative_to(client.path)
 
                 file_.path = new_path
 

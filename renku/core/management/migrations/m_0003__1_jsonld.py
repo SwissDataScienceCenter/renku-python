@@ -251,7 +251,13 @@ def _migrate_types(data):
     """Fix types."""
     from renku.core.utils.migrate import migrate_types
 
-    migrate_types(data)
+    type_mapping = {
+        "dcterms:creator": ["prov:Person", "schema:Person"],
+        str(sorted(["foaf:Project", "prov:Location"])): ["prov:Location", "schema:Project"],
+        "schema:DigitalDocument": ["prov:Entity", "schema:DigitalDocument", "wfprov:Artifact"],
+    }
+
+    migrate_types(data, type_mapping=type_mapping)
 
 
 _PROJECT_FIELDS = {"_id", "created", "creator", "name", "updated", "version"}
