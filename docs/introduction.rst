@@ -24,12 +24,7 @@
 
    installation
    gettingstarted
-   comparison
    commands
-   models/index
-   management
-   plugins
+   internals
    changes
-   contributing
-   glossary
    license

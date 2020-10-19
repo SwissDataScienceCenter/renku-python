@@ -16,4 +16,12 @@
     limitations under the License.
 
 
-.. include:: ../CONTRIBUTING.rst
+Internals
+=========
+
+Internals of the ``renku-python`` library.
+
+.. toctree::
+   models/index
+   management
+   plugins
