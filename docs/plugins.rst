@@ -24,7 +24,7 @@ Runtime Plugins
 
 Runtime plugins are supported using the `pluggy <https://pluggy.readthedocs.io/en/latest/>`_ library.
 
-Runtime plugins can be created as python packages that contain the respective entrypoint definition in their `setup.py` file, like so:
+Runtime plugins can be created as Python packages that contain the respective entry point definition in their `setup.py` file, like so:
 
 .. code-block:: python
 
@@ -60,7 +60,7 @@ CLI Plugins
 
 Command-line interface plugins are supported using the `click-plugins <https://github.com/click-contrib/click-plugins>` library.
 
-As in case the runtime plugins, command-line plugins can be created as python packages that contain the respective entrypoint definition in their `setup.py` file, like so:
+As in case the runtime plugins, command-line plugins can be created as Python packages that contain the respective entry point definition in their `setup.py` file, like so:
 
 .. code-block:: python
 
