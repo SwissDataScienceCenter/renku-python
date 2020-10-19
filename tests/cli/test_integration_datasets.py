@@ -49,7 +49,7 @@ from tests.utils import assert_dataset_is_mutated
         },
         {
             "doi": "10.7910/DVN/F4NUMR",
-            "name": "replication_data_for_ca_2",
+            "name": "replication_data_for_ca_22",
             "creator": "James Druckman, Martin Kifer, Michael Parkin",
             "version": "2",
         },
@@ -314,9 +314,13 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
     assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url]).exit_code
 
     dataset = client.load_dataset("remote")
-    assert (client.path / dataset.data_dir / "README.md").exists()
-    assert (client.path / dataset.data_dir / "python" / "data" / "README.md").exists()
-    assert (client.path / dataset.data_dir / "r" / "data" / "README.md").exists()
+    paths = ["README.md", os.path.join("python", "data", "README.md"), os.path.join("r", "data", "README.md")]
+
+    for path in paths:
+        assert (client.path / dataset.data_dir / path).exists()
+        file_ = dataset.find_file(dataset.data_dir / path)
+        assert file_.based_on
+        assert file_.based_on.path.endswith(path)
 
 
 @pytest.mark.integration

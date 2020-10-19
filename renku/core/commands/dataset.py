@@ -151,7 +151,6 @@ def add_file(
     sources=(),
     destination="",
     ref=None,
-    with_metadata=None,
     urlscontext=contextlib.nullcontext,
     commit_message=None,
     progress=None,
@@ -169,7 +168,6 @@ def add_file(
         sources=sources,
         destination=destination,
         ref=ref,
-        with_metadata=with_metadata,
         urlscontext=urlscontext,
         progress=progress,
         interactive=interactive,
@@ -248,14 +246,11 @@ def _add_to_dataset(
                     click.echo(WARNING + msg)
 
             if with_metadata:
-                for file_ in dataset.files:
-                    file_.based_on = None
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
                 with_metadata.url = dataset._id
 
                 dataset.update_metadata_from(with_metadata)
-                dataset.same_as = with_metadata.same_as
 
     except DatasetNotFound:
         raise DatasetNotFound(
@@ -297,7 +292,7 @@ def file_unlink(client, name, include, exclude, interactive=False, yes=False, co
             (
                 "include or exclude filters not found.\n"
                 "Check available filters with `renku dataset unlink --help`\n"
-                "Hint: `renku dataset unlink mydataset -I myfile`"
+                "Hint: `renku dataset unlink my-dataset -I path`"
             )
         )
 
@@ -769,9 +764,9 @@ def _filter(client, names=None, creators=None, include=None, exclude=None, ignor
 
     if unused_names:
         unused_names = ", ".join(unused_names)
-        raise ParameterError(f"Dataset doesn't exist: {unused_names}")
+        raise ParameterError(f"Dataset does not exist: {unused_names}")
 
-    return sorted(records, key=lambda file_: file_.added)
+    return sorted(records, key=lambda r: r.added)
 
 
 @pass_local_client(
