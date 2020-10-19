@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets remove controller."""
-from renku.core.commands.dataset import create_dataset, dataset_remove
+from renku.core.commands.dataset import dataset_remove
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.serializers.datasets import DatasetRemoveRequest, DatasetRemoveResponseRPC
