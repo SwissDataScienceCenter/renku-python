@@ -46,7 +46,7 @@ from walrus import Database
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
-    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test"
+    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-qa/core-it-protected.git"
 )
 
 IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test")
@@ -983,6 +983,9 @@ def svc_protected_repo(svc_client):
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+
+    project_id = response.json["result"]["project_id"]
+    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
 
     yield svc_client, headers, payload, response
 

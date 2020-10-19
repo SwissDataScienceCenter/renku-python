@@ -350,16 +350,16 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
 
     EDITABLE_FIELDS = [
         "creators",
+        "date_created",
         "date_published",
         "description",
+        "files",
         "in_language",
         "keywords",
         "license",
         "title",
         "url",
         "version",
-        "date_created",
-        "files",
     ]
 
     _id = attr.ib(default=None, kw_only=True)
@@ -490,6 +490,8 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
             if val:
                 self._modified = True
                 setattr(self, field_, val)
+
+        self.same_as = other_dataset.same_as
 
         return self
 
