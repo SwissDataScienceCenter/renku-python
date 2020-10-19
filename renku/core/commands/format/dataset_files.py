@@ -16,11 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Serializers for dataset list files."""
-import os
 import re
 from subprocess import PIPE, SubprocessError, run
 
-import humanize
+from humanize import naturalsize
 
 from .tabulate import tabulate
 
@@ -38,6 +37,9 @@ def tabular(client, records, *, columns=None):
     if "size" in columns.split(","):
         _get_lfs_file_sizes(client, records)
 
+    if "lfs" in columns.split(","):
+        _get_lfs_tracking(client, records)
+
     for record in records:
         record.creators = record.dataset.creators
 
@@ -49,9 +51,21 @@ def tabular(client, records, *, columns=None):
     )
 
 
+def _get_lfs_tracking(client, records):
+    """Check if files are tracked in git lfs."""
+    paths = [r.path for r in records]
+    attrs = client.find_attr(*paths)
+
+    for record in records:
+        if attrs.get(record.path, {}).get("filter") == "lfs":
+            record.is_lfs = True
+        else:
+            record.is_lfs = False
+
+
 def _get_lfs_file_sizes(client, records):
-    # Try to get file size from Git LFS
-    files_sizes = {}
+    """Try to get file size from Git LFS."""
+    lfs_files_sizes = {}
 
     try:
         lfs_run = run(
@@ -68,23 +82,17 @@ def _get_lfs_file_sizes(client, records):
             match = pattern.search(line)
             if not match:
                 continue
-            filepath, size = match.groups()
+            path, size = match.groups()
             # Fix alignment for bytes
             if size.endswith(" B"):
                 size = size.replace(" B", "  B")
-            files_sizes[filepath] = size
+            lfs_files_sizes[path] = size
+
+    non_lfs_files_sizes = {o.path: o.size for o in client.repo.tree().traverse() if o.path not in lfs_files_sizes}
+    non_lfs_files_sizes = {k: naturalsize(v).upper().replace("BYTES", " B") for k, v in non_lfs_files_sizes.items()}
 
     for record in records:
-        size = files_sizes.get(record.path)
-        if size is None:
-            try:
-                path = client.path / record.path
-                size = os.path.getsize(path)
-                size = humanize.naturalsize(size).upper()
-                size = size.replace("BYTES", " B")
-            except OSError:
-                pass
-
+        size = lfs_files_sizes.get(record.path) or non_lfs_files_sizes.get(record.path)
         record.size = size
 
 
@@ -108,6 +116,7 @@ DATASET_FILES_FORMATS = {
 
 DATASET_FILES_COLUMNS = {
     "added": ("added", None),
+    "commit": ("commit_sha", "commit"),
     "creators": ("creators_csv", "creators"),
     "creators_full": ("creators_full_csv", "creators"),
     "dataset": ("title", "dataset"),
@@ -116,6 +125,7 @@ DATASET_FILES_COLUMNS = {
     "short_name": ("dataset_name", "dataset name"),
     "dataset_name": ("dataset_name", "dataset name"),
     "size": ("size", None),
+    "lfs": ("is_lfs", "lfs"),
 }
 
 DATASET_FILES_COLUMNS_ALIGNMENTS = {"size": "right"}

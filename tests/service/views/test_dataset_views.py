@@ -936,7 +936,7 @@ def test_edit_datasets_view(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    assert {"warnings", "edited"} == set(response.json["result"])
+    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert {"title": "my new title", "keywords": ["keyword1"]} == response.json["result"]["edited"]
 
 
@@ -945,7 +945,8 @@ def test_edit_datasets_view(svc_client_with_repo):
 def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""
     svc_client, headers, payload, response = svc_protected_repo
-    assert response
+
+    assert_rpc_response(response)
     assert {"result"} == set(response.json.keys())
 
     payload = {
@@ -954,11 +955,8 @@ def test_protected_branch(svc_protected_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
-    assert response
 
-    if "error" in response.json.keys() and response.json["error"]["migration_required"]:
-        # TODO: Fix this test to work with new project versions
-        return
+    assert_rpc_response(response)
     assert {"result"} == set(response.json.keys())
     assert "master" != response.json["result"]["remote_branch"]
 
@@ -971,8 +969,10 @@ def test_unlink_file(unlink_file_setup):
     svc_client, headers, unlink_payload = unlink_file_setup
 
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers,)
+    assert_rpc_response(response, with_key="result")
 
-    assert {"result": {"unlinked": ["README.md"]}} == response.json
+    assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())
+    assert ["README.md"] == response.json["result"]["unlinked"]
 
 
 @pytest.mark.integration

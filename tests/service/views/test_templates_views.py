@@ -27,7 +27,6 @@ from flaky import flaky
 from renku.core.commands.init import fetch_template, read_template_manifest
 from renku.core.utils.scm import strip_and_lower
 from renku.service.config import INVALID_PARAMS_ERROR_CODE
-from tests.core.commands.test_init import TEMPLATE_ID, TEMPLATE_INDEX, TEMPLATE_REF, TEMPLATE_URL
 
 
 @pytest.mark.service
@@ -44,8 +43,8 @@ def test_read_manifest_from_template(svc_client_with_templates):
     assert response.json["result"]["templates"]
     templates = response.json["result"]["templates"]
     assert len(templates) > 0
-    default_template = templates[TEMPLATE_INDEX - 1]
-    assert default_template["folder"] == TEMPLATE_ID
+    default_template = templates[template_params["index"] - 1]
+    assert default_template["folder"] == template_params["id"]
 
 
 @pytest.mark.service
@@ -63,7 +62,7 @@ def test_compare_manifests(svc_client_with_templates):
 
     with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        manifest_file = fetch_template(TEMPLATE_URL, TEMPLATE_REF, temp_path)
+        manifest_file = fetch_template(template_params["url"], template_params["ref"], temp_path)
         manifest = read_template_manifest(temp_path)
 
         assert manifest_file and manifest_file.exists()
@@ -71,7 +70,7 @@ def test_compare_manifests(svc_client_with_templates):
 
         templates_service = response.json["result"]["templates"]
         templates_local = manifest
-        default_index = TEMPLATE_INDEX - 1
+        default_index = template_params["index"] - 1
         assert templates_service[default_index] == templates_local[default_index]
 
 
@@ -145,10 +144,11 @@ def test_service_default_init_parameters(svc_client_templates_creation, mocker):
             "__sanitized_project_name__",
         ]
     ) <= set(metadata.keys())
-    assert metadata["__template_source__"] == "https://github.com/SwissDataScienceCenter/renku-project-template"
-    assert metadata["__template_ref__"] == "0.1.11"
-    assert metadata["__template_id__"] == "python-minimal"
-    assert metadata["__namespace__"] == "contact"
-    assert metadata["__repository__"] == "https://dev.renku.ch/gitlab"
-    assert metadata["__project_slug__"] == f"contact/{project_name}"
+    assert metadata["__template_source__"] == payload["url"]
+    assert metadata["__template_ref__"] == payload["ref"]
+    assert metadata["__template_id__"] == payload["identifier"]
+    assert metadata["__namespace__"] == payload["project_namespace"]
+    assert metadata["__repository__"] == payload["project_repository"]
     assert metadata["__sanitized_project_name__"] == project_name
+    payload_namespace = payload["project_namespace"]
+    assert metadata["__project_slug__"] == f"{payload_namespace}/{project_name}"

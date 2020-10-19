@@ -17,17 +17,68 @@
 # limitations under the License.
 """Manage the set of CWL files created by ``renku`` commands.
 
-With no arguments, shows a list of captured CWL files. Several subcommands
-are available to perform operations on CWL files.
+Manipulating workflows
+~~~~~~~~~~~~~~~~~~~~~~
 
-Reference tools and workflows
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Listing workflows:
 
-Managing large number of tools and workflows with automatically generated
-names may be cumbersome. The names can be added to the last executed
-``run``, ``rerun`` or ``update`` command by running
-``renku workflow set-name <name>``. The name can be added to an arbitrary
-file in ``.renku/workflow/*.cwl`` anytime later.
+.. code-block:: console
+
+    $ renku workflow ls
+    26be2e8d66f74130a087642768f2cef0_rerun.yaml:
+    199c4b9d462f4b27a4513e5e55f76eb2_cat.yaml:
+    9bea2eccf9624de387d9b06e61eec0b6_rerun.yaml:
+    b681b4e229764ceda161f6551370af12_update.yaml:
+    25d0805243e3468d92a3786df782a2c4_rerun.yaml:
+
+Each ``*.yaml`` file corresponds to a renku run/update/rerun execution.
+
+Exporting workflows:
+
+You can export the workflow to create a file as Common Workflow Language
+by using:
+
+.. code-block:: console
+
+    $ renku workflow set-name create output_file
+    baseCommand:
+    - cat
+    class: CommandLineTool
+    cwlVersion: v1.0
+    id: 22943eca-fa4c-4f3b-a92d-f6ac7badc0d2
+    inputs:
+    - default:
+        class: File
+        path: /home/user/project/intermediate
+    id: inputs_1
+    inputBinding:
+        position: 1
+    type: File
+    - default:
+        class: File
+        path: /home/user/project/intermediate2
+    id: inputs_2
+    inputBinding:
+        position: 2
+    type: File
+    outputs:
+    - id: output_stdout
+    streamable: false
+    type: stdout
+    requirements:
+    InitialWorkDirRequirement:
+        listing:
+        - entry: $(inputs.inputs_1)
+        entryname: intermediate
+        writable: false
+        - entry: $(inputs.inputs_2)
+        entryname: intermediate2
+        writable: false
+    stdout: output_file
+
+You can use ``--revision`` to specify the revision of the output file to
+generate the workflow for. You can also export to a file directly with
+``-o <path>``.
 """
 
 from collections import defaultdict
@@ -53,24 +104,28 @@ def _deref(ref):
     return ref[len("workflows/") :]
 
 
-@click.group(invoke_without_command=True)
+@click.group()
+def workflow():
+    """Workflow commands."""
+    pass
+
+
+@workflow.command("ls")
 @pass_local_client(requires_migration=True)
-@click.pass_context
-def workflow(ctx, client):
+def list_workflows(client):
     """List or manage workflows with subcommands."""
-    if ctx.invoked_subcommand is None:
-        from renku.core.models.refs import LinkReference
+    from renku.core.models.refs import LinkReference
 
-        names = defaultdict(list)
-        for ref in LinkReference.iter_items(client, common_path="workflows"):
-            names[ref.reference.name].append(ref.name)
+    names = defaultdict(list)
+    for ref in LinkReference.iter_items(client, common_path="workflows"):
+        names[ref.reference.name].append(ref.name)
 
-        for path in client.workflow_path.glob("*.yaml"):
-            click.echo(
-                "{path}: {names}".format(
-                    path=path.name, names=", ".join(click.style(_deref(name), fg="green") for name in names[path.name]),
-                )
+    for path in client.workflow_path.glob("*.yaml"):
+        click.echo(
+            "{path}: {names}".format(
+                path=path.name, names=", ".join(click.style(_deref(name), fg="green") for name in names[path.name]),
             )
+        )
 
 
 def validate_path(ctx, param, value):

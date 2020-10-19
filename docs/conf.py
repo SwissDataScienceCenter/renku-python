@@ -22,7 +22,7 @@ from __future__ import print_function
 import os
 import re
 import sys
-from os.path import abspath, join, dirname
+from os.path import abspath, dirname, join
 
 import requests
 import sphinx.environment

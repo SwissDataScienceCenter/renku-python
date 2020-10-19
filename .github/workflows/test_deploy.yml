@@ -222,7 +222,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        brew update
+        brew update || true
         brew install git-lfs shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel twine
@@ -232,7 +232,7 @@ jobs:
     - name: Test with pytest
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -v -m "not integration and not publish and not serial" -n auto tests/cli
+      run: pytest -v -m "not integration and not publish and not serial" -n 2 tests/cli
     - name: Test with pytest(serial)
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
@@ -255,7 +255,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          brew update
+          brew update || true
           brew install git-lfs shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install setuptools wheel twine
@@ -265,7 +265,7 @@ jobs:
       - name: Test with pytest
         env:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish" -n auto tests/core
+        run: pytest -v -m "not integration and not publish" -n 2 tests/core
 
   test-macos-service:
     runs-on: macos-latest
@@ -284,7 +284,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          brew update
+          brew update || true
           brew install git-lfs shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install setuptools wheel twine
@@ -294,7 +294,7 @@ jobs:
       - name: Test with pytest
         env:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish" -n auto tests/service
+        run: pytest -v -m "not integration and not publish" -n 2 tests/service
 
   test-linux-integration:
     runs-on: ubuntu-latest
@@ -348,7 +348,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        brew update
+        brew update || true
         brew install git-lfs shellcheck node || brew link --overwrite node
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel
@@ -361,7 +361,7 @@ jobs:
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -m integration -v -n auto
+      run: pytest -m integration -v -n 2
 
   publish-pypi:
     runs-on: ubuntu-latest

@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset tests."""
+import copy
+import datetime
 import os
 import shutil
 import stat
@@ -26,12 +28,12 @@ from git import Repo
 
 from renku.core import errors
 from renku.core.commands.dataset import add_file, create_dataset, file_unlink, list_datasets, list_files
-from renku.core.errors import ParameterError
+from renku.core.errors import OperationError, ParameterError
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import Dataset
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
-from tests.utils import raises
+from tests.utils import assert_dataset_is_mutated, raises
 
 
 @pytest.mark.parametrize(
@@ -40,28 +42,26 @@ from tests.utils import raises
         ("", "temp", False, None),
         ("file://", "temp", True, None),
         ("", "tempp", False, errors.ParameterError),
-        ("http://", "example.com/file", False, None),
-        ("https://", "example.com/file", True, None),
+        ("http://", "example.com/file1", False, None),
+        ("https://", "example.com/file1", True, None),
         ("bla://", "file", False, errors.UrlSchemeNotSupported),
     ],
 )
-def test_data_add(scheme, path, overwrite, error, client, data_file, directory_tree, dataset_responses):
+def test_data_add(scheme, path, overwrite, error, client, directory_tree, dataset_responses):
     """Test data import."""
     with raises(error):
         if path == "temp":
-            path = str(data_file)
-        elif path == "tempdir":
-            path = str(directory_tree)
+            path = str(directory_tree / "file1")
 
         with client.with_dataset("dataset", create=True) as d:
             d.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
             client.add_data_to_dataset(d, ["{}{}".format(scheme, path)], overwrite=overwrite)
 
-        target_path = os.path.join(DATA_DIR, "dataset", "file")
+        target_path = os.path.join(DATA_DIR, "dataset", "file1")
 
         with open(target_path) as f:
-            assert f.read() == "1234"
+            assert f.read() == "123"
 
         assert d.find_file(target_path)
 
@@ -81,19 +81,20 @@ def test_data_add_recursive(directory_tree, client):
     """Test recursive data imports."""
     with client.with_dataset("dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
-        client.add_data_to_dataset(dataset, [directory_tree.join("dir2").strpath])
+        client.add_data_to_dataset(dataset, [str(directory_tree / "dir1")])
 
-        assert os.path.basename(os.path.dirname(dataset.files[0].path)) == "dir2"
+        assert os.path.basename(os.path.dirname(dataset.files[0].path)) == "dir1"
 
 
-def test_git_repo_import(client, dataset, tmpdir, data_repository):
-    """Test an import from a git repository."""
-    # add data from local repo
-    client.add_data_to_dataset(dataset, [os.path.join(os.path.dirname(data_repository.git_dir), "dir2")])
-    path = os.path.join(DATA_DIR, "dataset", "dir2", "file2")
-    assert os.stat(path)
-    path = os.path.join("dir2", "file2")
-    assert dataset.files[0].path.endswith(path)
+def test_git_repo_import(client, dataset, data_repository):
+    """Test adding data from a local git repository."""
+    client.add_data_to_dataset(dataset, [os.path.join(os.path.dirname(data_repository.git_dir), "dir1")])
+    path2 = os.path.join(DATA_DIR, "dataset", "dir1", "file2")
+    path3 = os.path.join(DATA_DIR, "dataset", "dir1", "file3")
+
+    assert os.stat(path2)
+    assert os.stat(path3)
+    assert {path2, path3} == {f.path for f in dataset.files}
 
 
 @pytest.mark.parametrize(
@@ -103,7 +104,7 @@ def test_git_repo_import(client, dataset, tmpdir, data_repository):
         [{"http://schema.org/name": "me", "http://schema.org/email": "me@example.com",}],
     ],
 )
-def test_creator_parse(creators, data_file):
+def test_creator_parse(creators):
     """Test that different options for specifying creators work."""
     dataset = Dataset(name="dataset", creators=creators)
     creator = Person(name="me", email="me@example.com")
@@ -192,7 +193,65 @@ def test_unlink_default(directory_tree, client):
     """Test unlink default behaviour."""
     with chdir(client.path):
         create_dataset("dataset")
-        add_file([directory_tree.join("dir2").strpath], "dataset")
+        add_file([str(directory_tree / "dir1")], "dataset")
 
     with pytest.raises(ParameterError):
         file_unlink("dataset", (), ())
+
+
+def test_mutate(client):
+    """Test metadata change after dataset mutation."""
+    dataset = Dataset(
+        client=client,
+        name="my-dataset",
+        creators=[Person.from_string("John Doe <john.doe@mail.com>")],
+        date_published=datetime.datetime.now(datetime.timezone.utc),
+        same_as="http://some-url",
+    )
+    old_dataset = copy.deepcopy(dataset)
+
+    dataset.mutate()
+
+    mutator = Person.from_git(client.repo)
+    assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
+
+
+def test_mutator_is_added_once(client):
+    """Test mutator of a dataset is added only once to its creators list."""
+    mutator = Person.from_git(client.repo)
+
+    dataset = Dataset(
+        client=client,
+        name="my-dataset",
+        creators=[mutator],
+        date_published=datetime.datetime.now(datetime.timezone.utc),
+        same_as="http://some-url",
+    )
+    old_dataset = copy.deepcopy(dataset)
+
+    dataset.mutate()
+
+    assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
+    assert 1 == len(dataset.creators)
+
+
+def test_mutate_is_done_once():
+    """Test dataset mutation can be done only once."""
+    dataset = Dataset(name="my-dataset", creators=[])
+    before_id = dataset._id
+
+    dataset.mutate()
+    after_id = dataset._id
+
+    assert before_id != after_id
+
+    dataset.mutate()
+    assert after_id == dataset._id
+
+
+def test_cannot_mutate_immutable_dataset():
+    """Check immutable datasets cannot be modified."""
+    dataset = Dataset(name="my-dataset", creators=[], immutable=True)
+
+    with pytest.raises(OperationError):
+        dataset.mutate()

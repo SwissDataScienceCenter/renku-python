@@ -88,21 +88,11 @@ def edit_dataset(client, name, title, description, creators, keywords=None, comm
     creators, no_email_warnings = _construct_creators(creators, ignore_email=True)
     title = title.strip() if isinstance(title, str) else ""
 
-    updated = []
-
     with client.with_dataset(name=name) as dataset:
-        if creators:
-            dataset.creators = creators
-            updated.append("creators")
-        if description:
-            dataset.description = description
-            updated.append("description")
-        if title:
-            dataset.title = title
-            updated.append("title")
-        if keywords:
-            dataset.keywords = keywords
-            updated.append("keywords")
+        dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
+
+    possible_updates = {"creators": creators, "description": description, "keywords": keywords, "title": title}
+    updated = [k for k, v in possible_updates.items() if v]
 
     return updated, no_email_warnings
 
@@ -160,7 +150,6 @@ def add_file(
     sources=(),
     destination="",
     ref=None,
-    with_metadata=None,
     urlscontext=contextlib.nullcontext,
     commit_message=None,
     progress=None,
@@ -178,7 +167,6 @@ def add_file(
         sources=sources,
         destination=destination,
         ref=ref,
-        with_metadata=with_metadata,
         urlscontext=urlscontext,
         progress=progress,
         interactive=interactive,
@@ -257,14 +245,11 @@ def _add_to_dataset(
                     click.echo(WARNING + msg)
 
             if with_metadata:
-                for file_ in dataset.files:
-                    file_.based_on = None
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
                 with_metadata.url = dataset._id
 
-                dataset.update_metadata(with_metadata)
-                dataset.same_as = with_metadata.same_as
+                dataset.update_metadata_from(with_metadata)
 
     except DatasetNotFound:
         raise DatasetNotFound(
@@ -284,6 +269,8 @@ def list_files(client, datasets=None, creators=None, include=None, exclude=None,
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
+        record.creators_csv = record.dataset.creators_csv
+        record.creators_full_csv = record.dataset.creators_full_csv
 
     if format is None:
         return records
@@ -304,7 +291,7 @@ def file_unlink(client, name, include, exclude, interactive=False, yes=False, co
             (
                 "include or exclude filters not found.\n"
                 "Check available filters with `renku dataset unlink --help`\n"
-                "Hint: `renku dataset unlink mydataset -I myfile`"
+                "Hint: `renku dataset unlink my-dataset -I path`"
             )
         )
 
@@ -334,54 +321,25 @@ def file_unlink(client, name, include, exclude, interactive=False, yes=False, co
     return records
 
 
-@pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
-)
-def dataset_remove(
-    client,
-    names,
-    with_output=False,
-    datasetscontext=contextlib.nullcontext,
-    referencescontext=contextlib.nullcontext,
-    commit_message=None,
-):
+@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS)
+def dataset_remove(client, name, commit_message=None):
     """Delete a dataset."""
-    datasets = {name: client.get_dataset_path(name) for name in names}
+    dataset = client.load_dataset(name=name, strict=True)
+    dataset.mutate()
+    dataset.to_yaml()
 
-    if not datasets:
-        raise ParameterError("use dataset name or identifier", param_hint="names")
+    client.repo.git.add(dataset.path)
+    client.repo.index.commit("renku dataset rm: final mutation")
 
-    unknown = [name for name, path in datasets.items() if not path or not path.exists()]
-    if unknown:
-        raise ParameterError("unknown datasets " + ", ".join(unknown), param_hint="names")
+    ref_path = client.get_dataset_path(name)
 
-    datasets = set(datasets.values())
+    metadata_path = client.path / dataset.path
+    shutil.rmtree(metadata_path, ignore_errors=True)
+
     references = list(LinkReference.iter_items(client, common_path="datasets"))
-
-    if not with_output:
-        for dataset in datasets:
-            if dataset and dataset.exists():
-                dataset.unlink()
-
-        for ref in references:
-            if ref.reference in datasets:
-                ref.delete()
-
-        return datasets, references
-
-    datasets_c = datasetscontext(datasets)
-
-    with datasets_c as bar:
-        for dataset in bar:
-            if dataset and dataset.exists():
-                dataset.unlink()
-
-    references_c = referencescontext(references)
-
-    with references_c as bar:
-        for ref in bar:
-            if ref.reference in datasets:
-                ref.delete()
+    for ref in references:
+        if ref.reference == ref_path:
+            ref.delete()
 
 
 @pass_local_client(clean=True, requires_migration=True, commit=False)
@@ -475,9 +433,7 @@ def export_dataset(
     return result
 
 
-@pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
-)
+@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS)
 def import_dataset(
     client, uri, name="", extract=False, with_prompt=False, yes=False, commit_message=None, progress=None,
 ):
@@ -531,12 +487,11 @@ def import_dataset(
     if not files:
         raise ParameterError("Dataset {} has no files.".format(uri))
 
-    dataset.same_as = Url(url_id=remove_credentials(uri))
-
     if not provider.is_git_based:
         if not name:
             name = generate_default_name(dataset.title, dataset.version)
 
+        dataset.same_as = Url(url_id=remove_credentials(uri))
         if is_doi(dataset.identifier):
             dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
 
@@ -563,13 +518,18 @@ def import_dataset(
     else:
         name = name or dataset.name
 
+        if not dataset.data_dir:
+            raise OperationError(f"Data directory for dataset must be set: {dataset.name}")
+
+        sources = [f"{dataset.data_dir}/**"]
+        for file_ in dataset.files:
+            try:
+                Path(file_.path).relative_to(dataset.data_dir)
+            except ValueError:  # Files that are not in dataset's data directory
+                sources.append(file_.path)
+
         _add_to_dataset(
-            client,
-            urls=[record.project_url],
-            name=name,
-            sources=[f.path for f in files],
-            with_metadata=dataset,
-            create=True,
+            client, urls=[record.project_url], name=name, sources=sources, with_metadata=dataset, create=True,
         )
 
 
@@ -664,8 +624,11 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
         creators = set(creators)
 
     records = []
+    unused_names = set(names)
     for dataset in client.datasets.values():
         if not names or dataset.name in names:
+            if unused_names:
+                unused_names.remove(dataset.name)
             for file_ in dataset.files:
                 file_.dataset = dataset
                 file_.client = client
@@ -679,7 +642,11 @@ def _filter(client, names=None, creators=None, include=None, exclude=None):
                 if match:
                     records.append(file_)
 
-    return sorted(records, key=lambda file_: file_.added)
+    if unused_names:
+        unused_names = ", ".join(unused_names)
+        raise ParameterError(f"Dataset does not exist: {unused_names}")
+
+    return sorted(records, key=lambda r: r.added)
 
 
 @pass_local_client(

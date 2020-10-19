@@ -109,7 +109,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
         if HAS_SENTRY:
             import sentry_sdk
 
-            sentry_sdk.init()
+            sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"))
 
     def main(self, *args, **kwargs):
         """Catch all exceptions."""

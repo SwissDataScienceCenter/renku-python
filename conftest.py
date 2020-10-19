@@ -46,7 +46,7 @@ from walrus import Database
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
-    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test"
+    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-qa/core-it-protected.git"
 )
 
 IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test")
@@ -145,7 +145,7 @@ def run(runner, capsys):
     from renku.cli import cli
     from renku.core.utils.contexts import Isolation
 
-    def generate(args=("update",), cwd=None, **streams):
+    def generate(args=("update", "--all",), cwd=None, **streams):
         """Generate an output."""
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
@@ -170,14 +170,6 @@ def isolated_runner():
 
 
 @pytest.fixture()
-def data_file(tmpdir):
-    """Create a sample data file."""
-    p = tmpdir.mkdir("data").join("file")
-    p.write("1234")
-    return p
-
-
-@pytest.fixture()
 def repository(tmpdir):
     """Yield a Renku repository."""
     from renku.cli import cli
@@ -188,6 +180,46 @@ def repository(tmpdir):
         assert 0 == result.exit_code
 
         yield os.path.realpath(project_path)
+
+
+@pytest.fixture()
+def template():
+    """Yield template data."""
+    template = {
+        "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
+        "id": "python-minimal",
+        "index": 1,
+        "ref": "0.1.11",
+        "metadata": {"description": "nodesc"},
+    }
+
+    yield template
+
+
+@pytest.fixture()
+def project_init(template):
+    """Yield template data."""
+    data = {
+        "test_project": "test-new-project",
+        "test_project_alt": "test-new-project-2",
+    }
+
+    commands = {
+        "init": ["init", "."],
+        "init_test": ["init", data["test_project"]],
+        "init_alt": ["init", data["test_project_alt"]],
+        "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
+        "id": ["--template-id", template["id"]],
+        "index": ["--template-index", template["index"]],
+        "force": ["--force"],
+        "list": ["--list-templates"],
+        "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
+        "parameters_equal_missing": ["--parameter", "p3:v3"],
+        "parameters_equal_early": ["--parameter", "=p4v3"],
+        "confirm": len(set(template["metadata"].keys())) * "\n",
+    }
+
+    yield data, commands
 
 
 @pytest.fixture()
@@ -319,25 +351,43 @@ def dataset_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
 
         def request_callback(request):
-            return (200, {"Content-Type": "application/text"}, "1234")
+            return (200, {"Content-Type": "application/text"}, "123")
 
-        rsps.add_callback(responses.GET, "http://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.GET, "https://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.GET, "http://example.com/file.ext?foo=bar", callback=request_callback)
-        rsps.add_callback(responses.HEAD, "http://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.HEAD, "https://example.com/file", callback=request_callback)
-        rsps.add_callback(responses.HEAD, "http://example.com/file.ext?foo=bar", callback=request_callback)
+        rsps.add_callback(responses.GET, "http://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.GET, "https://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.GET, "http://example.com/file1.ext?foo=bar", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "http://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "https://example.com/file1", callback=request_callback)
+        rsps.add_callback(responses.HEAD, "http://example.com/file1.ext?foo=bar", callback=request_callback)
+        yield rsps
+
+
+@pytest.fixture
+def missing_kg_project_responses():
+    """KG project query responses for missing project."""
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
+
+        def request_callback(request):
+            return (404, {"Content-Type": "application/text"}, json.dumps({"message": "no project found"}))
+
+        rsps.add_callback(
+            responses.GET, re.compile("http(s)*://dev.renku.ch/knowledge-graph/projects/.*"), callback=request_callback
+        )
+        rsps.add_passthru(re.compile("http(s)*://dev.renku.ch/datasets/.*"))
+        rsps.add_passthru(re.compile("http(s)*://dev.renku.ch/knowledge-graph/datasets/.*"))
         yield rsps
 
 
 @pytest.fixture()
-def directory_tree(tmpdir):
+def directory_tree(tmp_path):
     """Create a test directory tree."""
     # initialize
-    p = tmpdir.mkdir("directory_tree")
-    p.join("file").write("1234")
-    p.join("dir2").mkdir()
-    p.join("dir2/file2").write("5678")
+    p = tmp_path / "directory_tree"
+    p.mkdir()
+    p.joinpath("file1").write_text("123")
+    p.joinpath("dir1").mkdir()
+    p.joinpath("dir1/file2").write_text("456")
+    p.joinpath("dir1/file3").write_text("789")
     return p
 
 
@@ -347,19 +397,19 @@ def data_repository(directory_tree):
     from git import Actor, Repo
 
     # initialize
-    repo = Repo.init(directory_tree.strpath)
+    repo = Repo.init(str(directory_tree))
 
     # add a file
-    repo.index.add([directory_tree.join("file").strpath])
+    repo.index.add([str(directory_tree / "file1")])
     repo.index.commit("test commit", author=Actor("me", "me@example.com"))
 
     # commit changes to the same file with a different user
-    directory_tree.join("file").write("5678")
-    repo.index.add([directory_tree.join("file").strpath])
+    directory_tree.joinpath("file1").write_text("5678")
+    repo.index.add([str(directory_tree / "file1")])
     repo.index.commit("test commit", author=Actor("me2", "me2@example.com"))
 
     # commit a second file
-    repo.index.add([directory_tree.join("dir2/file2").strpath])
+    repo.index.add([str(directory_tree / "dir1" / "file2")])
     repo.index.commit("test commit", author=Actor("me", "me@example.com"))
 
     # return the repo
@@ -682,28 +732,6 @@ def sleep_after():
     time.sleep(0.5)
 
 
-@pytest.fixture
-def remote_project(data_repository, directory_tree):
-    """A second Renku project with a dataset."""
-    from renku.cli import cli
-
-    runner = CliRunner()
-
-    with runner.isolated_filesystem() as project_path:
-        runner.invoke(cli, ["-S", "init", ".", "--template-id", "python-minimal"], "\n")
-        result = runner.invoke(cli, ["-S", "dataset", "create", "remote-dataset"])
-        assert 0 == result.exit_code
-
-        result = runner.invoke(
-            cli,
-            ["-S", "dataset", "add", "-s", "file", "-s", "dir2", "remote-dataset", directory_tree.strpath],
-            catch_exceptions=False,
-        )
-        assert 0 == result.exit_code
-
-        yield runner, project_path
-
-
 @pytest.fixture()
 def datapack_zip(directory_tree):
     """Returns dummy data folder as a zip archive."""
@@ -888,31 +916,27 @@ def svc_client_with_repo(svc_client_setup):
     yield svc_client, deepcopy(headers), project_id, url_components
 
 
-@pytest.fixture(scope="module")
-def svc_client_with_templates(svc_client, mock_redis, authentication_headers):
+@pytest.fixture()
+def svc_client_with_templates(svc_client, mock_redis, authentication_headers, template):
     """Setup and teardown steps for templates tests."""
-    from tests.core.commands.test_init import TEMPLATE_REF, TEMPLATE_URL
-
-    template = {"url": TEMPLATE_URL, "ref": TEMPLATE_REF}
 
     yield svc_client, authentication_headers, template
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
     from renku.core.utils.requests import retry
     from renku.core.utils.scm import strip_and_lower
-    from tests.core.commands.test_init import METADATA, TEMPLATE_ID
 
     svc_client, authentication_headers, template = svc_client_with_templates
     parameters = []
-    for parameter in METADATA.keys():
-        parameters.append({"key": parameter, "value": METADATA[parameter]})
+    for parameter in template["metadata"].keys():
+        parameters.append({"key": parameter, "value": template["metadata"][parameter]})
 
     payload = {
         **template,
-        "identifier": TEMPLATE_ID,
+        "identifier": template["id"],
         "parameters": parameters,
         "project_name": f"Test renku-core {uuid.uuid4().hex[:12]}",
         "project_namespace": "contact",
@@ -951,6 +975,9 @@ def svc_protected_repo(svc_client):
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+
+    project_id = response.json["result"]["project_id"]
+    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
 
     yield svc_client, headers, payload, response
 

@@ -28,7 +28,9 @@ from renku.service.jobs.queues import QUEUES, WorkerQueues
 from renku.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
 
 if os.getenv("SENTRY_DSN"):
-    sentry_sdk.init(os.getenv("SENTRY_DSN"), integrations=[RqIntegration()])
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"), environment=os.getenv("SENTRY_ENV"), integrations=[RqIntegration()],
+    )
 
 
 @contextmanager
@@ -40,7 +42,7 @@ def worker(queue_list):
         # NOTE: logging configuration has been moved to `.work(logging_level=)`
         worker_log.info(f"worker log level set to {DEPLOYMENT_LOG_LEVEL}")
 
-        rq_worker = Worker(queue_list, connection=WorkerQueues.connection)
+        rq_worker = Worker(queue_list, connection=WorkerQueues.connection, log_job_description=False)
         worker_log.info("worker created")
 
         return rq_worker
@@ -70,7 +72,7 @@ if __name__ == "__main__":
 
     if not queues:
         raise ConfigurationError(
-            ("Worker queues not specified. " "Please, set RENKU_SVC_WORKER_QUEUES environment variable.")
+            "Worker queues not specified. " "Please, set RENKU_SVC_WORKER_QUEUES environment variable."
         )
 
     start_worker([queue_name.strip() for queue_name in queues.strip().split(",")])
