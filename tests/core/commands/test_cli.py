@@ -56,7 +56,7 @@ def test_run_from_non_root(runner, client, cwd):
     path = client.path / cwd
     path.mkdir(parents=True, exist_ok=True)
     with chdir(path):
-        result = runner.invoke(cli, ["dataset"])
+        result = runner.invoke(cli, ["dataset", "ls"])
         assert 0 == result.exit_code
         assert "Run CLI commands only from project's root" in result.output
 
@@ -64,7 +64,7 @@ def test_run_from_non_root(runner, client, cwd):
         assert 0 == result.exit_code
         assert "Run CLI commands only from project" not in result.output
 
-    result = runner.invoke(cli, ["dataset"])
+    result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code
     assert "Run CLI commands only from project's root" not in result.output
 
@@ -378,7 +378,7 @@ def test_file_tracking(isolated_runner, project_init):
     os.chdir("test-project")
     result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
-    result = runner.invoke(cli, ["config", "lfs_threshold", "0b"])
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
     assert 0 == result.exit_code
 
     result = runner.invoke(cli, ["run", "touch", "tracked"])
@@ -819,7 +819,7 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     os.chdir("test-project")
     result = runner.invoke(cli, commands["init"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code
-    result = runner.invoke(cli, ["config", "lfs_threshold", "0b"])
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
     assert 0 == result.exit_code
 
     with Path(".renkulfsignore").open("w") as f:
