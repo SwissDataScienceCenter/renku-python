@@ -16,9 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service migrate project controller."""
-from git import Repo
-
-from renku.core.commands.save import repo_sync
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.jobs.contexts import enqueue_retry

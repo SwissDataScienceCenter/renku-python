@@ -18,9 +18,7 @@
 """Renku service cache views."""
 from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
-from git import Repo
 
-from renku.core.commands.save import repo_sync
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.cache_files_upload import UploadFilesCtrl
 from renku.service.controllers.cache_list_projects import ListProjectsCtrl
@@ -28,9 +26,6 @@ from renku.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
 from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
-from renku.service.jobs.contexts import enqueue_retry
-from renku.service.jobs.project import execute_migration, migrate_job
-from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
 from renku.service.serializers.cache import (
     FileListResponseRPC,
     FileUploadRequest,
@@ -38,13 +33,11 @@ from renku.service.serializers.cache import (
     ProjectCloneRequest,
     ProjectCloneResponseRPC,
     ProjectListResponseRPC,
-    ProjectMigrateAsyncResponseRPC,
     ProjectMigrateRequest,
     ProjectMigrateResponseRPC,
     ProjectMigrationCheckRequest,
     ProjectMigrationCheckResponseRPC,
 )
-from renku.service.views import result_response
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
