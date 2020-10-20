@@ -143,6 +143,7 @@ install_requires = [
     "calamus>=0.3.3,<0.3.4",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
+    "click-plugins==1.1.1",
     "cryptography>=2.7,<=2.9.2",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
