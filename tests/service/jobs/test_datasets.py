@@ -215,7 +215,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
     assert response
     assert_rpc_response(response)
-    assert {"files", "name", "project_id"} == set(response.json["result"].keys())
+    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
     dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
     old_commit = Repo(dest).head.commit
