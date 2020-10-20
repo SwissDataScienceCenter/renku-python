@@ -22,19 +22,30 @@ import pyld
 from renku.core.models.jsonld import read_yaml
 
 
-def migrate_types(data, type_mapping=None):
+def migrate_types(data):
     """Fix data types."""
-    default_type_mapping = {
+    type_mapping = {
         "dcterms:creator": ["prov:Person", "schema:Person"],
         "schema:Person": ["prov:Person", "schema:Person"],
         str(sorted(["foaf:Project", "prov:Location"])): ["prov:Location", "schema:Project"],
         "schema:DigitalDocument": ["prov:Entity", "schema:DigitalDocument", "wfprov:Artifact"],
     }
 
-    type_mapping = type_mapping or default_type_mapping
+    def remove_type(data_):
+        data_.pop("@type", None)
+        for key, value in data_.items():
+            if isinstance(value, dict):
+                remove_type(value)
+            elif isinstance(value, (list, tuple, set)):
+                for v in value:
+                    if isinstance(v, dict):
+                        remove_type(v)
 
     def replace_types(data_):
         for key, value in data_.items():
+            if key == "@context" and isinstance(value, dict):
+                remove_type(value)
+
             if key == "@type":
                 if not isinstance(value, str):
                     value = str(sorted(value))
