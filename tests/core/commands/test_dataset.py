@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset tests."""
+import copy
+import datetime
 import os
 import shutil
 import stat
@@ -26,12 +28,12 @@ from git import Repo
 
 from renku.core import errors
 from renku.core.commands.dataset import add_file, create_dataset, file_unlink, list_datasets, list_files
-from renku.core.errors import ParameterError
+from renku.core.errors import OperationError, ParameterError
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.datasets import Dataset
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
-from tests.utils import raises
+from tests.utils import assert_dataset_is_mutated, raises
 
 
 @pytest.mark.parametrize(
@@ -195,3 +197,61 @@ def test_unlink_default(directory_tree, client):
 
     with pytest.raises(ParameterError):
         file_unlink("dataset", (), ())
+
+
+def test_mutate(client):
+    """Test metadata change after dataset mutation."""
+    dataset = Dataset(
+        client=client,
+        name="my-dataset",
+        creators=[Person.from_string("John Doe <john.doe@mail.com>")],
+        date_published=datetime.datetime.now(datetime.timezone.utc),
+        same_as="http://some-url",
+    )
+    old_dataset = copy.deepcopy(dataset)
+
+    dataset.mutate()
+
+    mutator = Person.from_git(client.repo)
+    assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
+
+
+def test_mutator_is_added_once(client):
+    """Test mutator of a dataset is added only once to its creators list."""
+    mutator = Person.from_git(client.repo)
+
+    dataset = Dataset(
+        client=client,
+        name="my-dataset",
+        creators=[mutator],
+        date_published=datetime.datetime.now(datetime.timezone.utc),
+        same_as="http://some-url",
+    )
+    old_dataset = copy.deepcopy(dataset)
+
+    dataset.mutate()
+
+    assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
+    assert 1 == len(dataset.creators)
+
+
+def test_mutate_is_done_once():
+    """Test dataset mutation can be done only once."""
+    dataset = Dataset(name="my-dataset", creators=[])
+    before_id = dataset._id
+
+    dataset.mutate()
+    after_id = dataset._id
+
+    assert before_id != after_id
+
+    dataset.mutate()
+    assert after_id == dataset._id
+
+
+def test_cannot_mutate_immutable_dataset():
+    """Check immutable datasets cannot be modified."""
+    dataset = Dataset(name="my-dataset", creators=[], immutable=True)
+
+    with pytest.raises(OperationError):
+        dataset.mutate()

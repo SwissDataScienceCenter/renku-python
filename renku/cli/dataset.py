@@ -61,7 +61,7 @@ Listing all datasets:
 
 .. code-block:: console
 
-    $ renku dataset
+    $ renku dataset ls
     ID        NAME           TITLE          VERSION
     --------  -------------  -------------  ---------
     0ad1cb9a  some-dataset   Some Dataset
@@ -72,7 +72,7 @@ comma-separated list of column names:
 
 .. code-block:: console
 
-    $ renku dataset --columns id,name,date_created,creators
+    $ renku dataset ls --columns id,name,date_created,creators
     ID        NAME           CREATED              CREATORS
     --------  -------------  -------------------  ---------
     0ad1cb9a  some-dataset   2020-03-19 16:39:46  sam
@@ -85,7 +85,7 @@ flag for it:
 
 .. code-block:: console
 
-    $ renku dataset --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
+    $ renku dataset ls --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
     ID        NAME                 TITLE               VERSION
     a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
     c2d80abe  ds1                  ds1
@@ -301,12 +301,12 @@ Listing all files in the project associated with a dataset.
 .. code-block:: console
 
     $ renku dataset ls-files
-    DATASET NAME         ADDED                PATH
-    -------------------  -------------------  -----------------------------
-    my-dataset           2020-02-28 16:48:09  data/my-dataset/addme
-    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1
+    DATASET NAME         ADDED                PATH                           LFS
+    -------------------  -------------------  -----------------------------  ----
+    my-dataset           2020-02-28 16:48:09  data/my-dataset/addme          *
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file2
-    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3
+    my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -329,10 +329,10 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
 .. code-block:: console
 
     $ renku dataset ls-files --include "file*" --exclude "file3"
-    DATASET NAME        ADDED                PATH
-    ------------------- -------------------  -----------------------------
-    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1
-    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2
+    DATASET NAME        ADDED                PATH                           LFS
+    ------------------- -------------------  -----------------------------  ----
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1  *
+    my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2  *
 
 Unlink a file from a dataset:
 
@@ -420,7 +420,13 @@ def prompt_tag_selection(tags):
     return None
 
 
-@click.group(invoke_without_command=True)
+@click.group()
+def dataset():
+    """Dataset commands."""
+    pass
+
+
+@dataset.command("ls")
 @click.option("--revision", default=None)
 @click.option("--format", type=click.Choice(DATASETS_FORMATS), default="tabular", help="Choose an output format.")
 @click.option(
@@ -433,11 +439,8 @@ def prompt_tag_selection(tags):
     show_default=True,
 )
 @click.pass_context
-def dataset(ctx, revision, format, columns):
+def list_dataset(ctx, revision, format, columns):
     """Handle datasets."""
-    if ctx.invoked_subcommand is not None:
-        return
-
     click.echo(list_datasets(revision=revision, format=format, columns=columns))
 
 
@@ -552,7 +555,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
     "-c",
     "--columns",
     type=click.STRING,
-    default="dataset_name,added,size,path",
+    default="dataset_name,added,size,path,lfs",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,
@@ -575,16 +578,10 @@ def unlink(name, include, exclude, yes):
 
 
 @dataset.command("rm")
-@click.argument("names", nargs=-1)
-def remove(names):
+@click.argument("name")
+def remove(name):
     """Delete a dataset."""
-    datasetscontext = partial(
-        progressbar, label="Removing metadata files".ljust(30), item_show_func=lambda item: str(item) if item else ""
-    )
-    referencescontext = partial(
-        progressbar, label="Removing aliases".ljust(30), item_show_func=lambda item: item.name if item else "",
-    )
-    dataset_remove(names, with_output=True, datasetscontext=datasetscontext, referencescontext=referencescontext)
+    dataset_remove(name)
     click.secho("OK", fg="green")
 
 

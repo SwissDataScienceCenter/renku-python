@@ -30,7 +30,7 @@ from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrati
 @pytest.mark.parametrize(
     "command",
     [
-        ["config", "key", "value"],
+        ["config", "set", "key", "value"],
         ["dataset", "create", "new"],
         ["dataset", "add", "new", "README.md"],
         ["dataset", "edit", "new"],
@@ -48,8 +48,8 @@ from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrati
         ["show", "outputs"],
         ["show", "siblings"],
         ["status"],
-        ["update"],
-        ["workflow"],
+        ["update", "--all"],
+        ["workflow", "ls"],
     ],
 )
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
@@ -66,7 +66,7 @@ def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_su
     "command",
     [
         ["clone", "uri"],
-        ["config", "key"],
+        ["config", "show", "key"],
         ["dataset"],
         ["dataset", "ls-files"],
         ["dataset", "ls-tags", "new"],
@@ -165,8 +165,8 @@ def test_remove_committed_lock_file(isolated_runner, old_project):
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code
 
-    assert (repo_path / ".renku.lock").exists() is False
-    assert repo.is_dirty() is False
+    assert not (repo_path / ".renku.lock").exists()
+    assert not repo.is_dirty()
 
     ignored = (repo_path / ".gitignore").read_text()
     assert ".renku.lock" in ignored

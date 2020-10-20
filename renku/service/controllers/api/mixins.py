@@ -18,10 +18,10 @@
 """Renku service controller mixin."""
 
 from abc import ABCMeta, abstractmethod
+from pathlib import Path
 
 from git import Repo
 
-from renku.core.commands.save import repo_sync
 from renku.core.errors import RenkuException
 from renku.core.utils.contexts import chdir
 from renku.service.controllers.utils.remote_project import RemoteProject
@@ -38,6 +38,8 @@ class ReadOperationMixin(metaclass=ABCMeta):
         self.user_data = user_data
         self.request_data = request_data
 
+        # NOTE: This is absolute project path and its set before invocation of `renku_op`,
+        # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
         self.project_path = None
 
     @property
@@ -73,7 +75,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
         project = RemoteProject(self.user_data, self.request_data)
 
         with project.remote() as path:
-            self.project_path = path
+            self.project_path = Path(path)
             return self.renku_op()
 
 
@@ -82,6 +84,8 @@ class ReadWithSyncOperation(ReadOperationMixin, metaclass=ABCMeta):
 
     def sync(self, remote="origin"):
         """Sync with remote."""
+        from renku.core.commands.save import repo_sync
+
         if self.project_path is None:
             raise RenkuException("unable to sync with remote since no operation has been executed")
 

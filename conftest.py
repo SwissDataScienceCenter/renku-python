@@ -46,7 +46,7 @@ from walrus import Database
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
-    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test"
+    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-qa/core-it-protected.git"
 )
 
 IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test")
@@ -145,7 +145,7 @@ def run(runner, capsys):
     from renku.cli import cli
     from renku.core.utils.contexts import Isolation
 
-    def generate(args=("update",), cwd=None, **streams):
+    def generate(args=("update", "--all",), cwd=None, **streams):
         """Generate an output."""
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
@@ -759,12 +759,16 @@ def datapack_tar(directory_tree):
 @pytest.fixture(scope="module")
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
+    from renku.core.commands import save
     from renku.service.cache.base import BaseCache
     from renku.service.cache.models.file import File
     from renku.service.cache.models.job import Job
     from renku.service.cache.models.project import Project
     from renku.service.cache.models.user import User
     from renku.service.jobs.queues import WorkerQueues
+
+    def repo_sync_mock(p, remote=None):
+        return None, "origin"
 
     monkey_patch = MonkeyPatch()
     with monkey_patch.context() as m:
@@ -779,6 +783,8 @@ def mock_redis():
         m.setattr(User, "__database__", fake_model_db)
         m.setattr(File, "__database__", fake_model_db)
         m.setattr(Project, "__database__", fake_model_db)
+
+        save.repo_sync = repo_sync_mock
 
         yield
 
@@ -975,6 +981,9 @@ def svc_protected_repo(svc_client):
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+
+    project_id = response.json["result"]["project_id"]
+    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
 
     yield svc_client, headers, payload, response
 

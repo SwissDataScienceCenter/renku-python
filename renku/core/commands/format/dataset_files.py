@@ -37,6 +37,9 @@ def tabular(client, records, *, columns=None):
     if "size" in columns.split(","):
         _get_lfs_file_sizes(client, records)
 
+    if "lfs" in columns.split(","):
+        _get_lfs_tracking(client, records)
+
     for record in records:
         record.creators = record.dataset.creators
 
@@ -48,8 +51,20 @@ def tabular(client, records, *, columns=None):
     )
 
 
+def _get_lfs_tracking(client, records):
+    """Check if files are tracked in git lfs."""
+    paths = [r.path for r in records]
+    attrs = client.find_attr(*paths)
+
+    for record in records:
+        if attrs.get(record.path, {}).get("filter") == "lfs":
+            record.is_lfs = True
+        else:
+            record.is_lfs = False
+
+
 def _get_lfs_file_sizes(client, records):
-    # Try to get file size from Git LFS
+    """Try to get file size from Git LFS."""
     lfs_files_sizes = {}
 
     try:
@@ -110,6 +125,7 @@ DATASET_FILES_COLUMNS = {
     "short_name": ("dataset_name", "dataset name"),
     "dataset_name": ("dataset_name", "dataset name"),
     "size": ("size", None),
+    "lfs": ("is_lfs", "lfs"),
 }
 
 DATASET_FILES_COLUMNS_ALIGNMENTS = {"size": "right"}

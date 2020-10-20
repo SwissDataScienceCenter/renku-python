@@ -115,13 +115,13 @@ class DatasetAddFile(Schema):
 class DatasetAddRequest(Schema):
     """Request schema for a dataset add file view."""
 
-    project_id = fields.String(required=True)
     name = fields.String(required=True)
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
 
     create_dataset = fields.Boolean(missing=False)
     force = fields.Boolean(missing=False)
 
+    project_id = fields.String(required=True)
     commit_message = fields.String()
     client_extras = fields.String()
 

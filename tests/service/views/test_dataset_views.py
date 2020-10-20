@@ -805,7 +805,7 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
     assert user_job.job_id in [job["job_id"] for job in response.json["result"]["jobs"]]
 
 
-@pytest.mark.parametrize("url", ["https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3",])
+@pytest.mark.parametrize("url", ["https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"])
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
@@ -826,7 +826,7 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata, mock_redis)
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
 
     assert_rpc_response(response)
-    assert {"files", "name", "project_id"} == set(response.json["result"])
+    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"])
     job_id = response.json["result"]["files"][0]["job_id"]
 
     user_job = cache.get_job(user, job_id)
@@ -861,7 +861,7 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata, mock_re
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers,)
 
     assert_rpc_response(response)
-    assert {"files", "name", "project_id"} == set(response.json["result"])
+    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"])
 
     for file in response.json["result"]["files"]:
         job_id = file["job_id"]
@@ -945,7 +945,8 @@ def test_edit_datasets_view(svc_client_with_repo):
 def test_protected_branch(svc_protected_repo):
     """Test adding a file to protected branch."""
     svc_client, headers, payload, response = svc_protected_repo
-    assert response
+
+    assert_rpc_response(response)
     assert {"result"} == set(response.json.keys())
 
     payload = {
@@ -954,11 +955,8 @@ def test_protected_branch(svc_protected_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
-    assert response
 
-    if "error" in response.json.keys() and response.json["error"]["migration_required"]:
-        # TODO: Fix this test to work with new project versions
-        return
+    assert_rpc_response(response)
     assert {"result"} == set(response.json.keys())
     assert "master" != response.json["result"]["remote_branch"]
 

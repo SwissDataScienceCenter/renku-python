@@ -33,7 +33,7 @@ from renku.core.commands.echo import WARNING, progressbar
 
 
 @click.command(name="rm")
-@click.argument("sources", type=click.Path(exists=True), nargs=-1)
+@click.argument("sources", type=click.Path(exists=True), nargs=-1, required=True)
 @pass_local_client(
     clean=True, commit=True,
 )

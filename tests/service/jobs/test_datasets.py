@@ -30,7 +30,7 @@ from renku.service.utils import make_project_path
 from tests.service.views.test_dataset_views import assert_rpc_response
 
 
-@pytest.mark.parametrize("url", [("https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/")])
+@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/428c3626-1c56-463d-8753-336470cc6917/"])
 @pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_dataset_url_import_job(url, svc_client_with_repo):
@@ -215,7 +215,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
     assert response
     assert_rpc_response(response)
-    assert {"files", "name", "project_id"} == set(response.json["result"].keys())
+    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
     dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
     old_commit = Repo(dest).head.commit
