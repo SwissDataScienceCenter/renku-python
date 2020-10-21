@@ -67,7 +67,7 @@ def _migrate_datasets_pre_v0_3(client):
 
         dataset = Dataset.from_yaml(old_path, client=client)
         dataset.title = name
-        dataset.name = name
+        dataset.name = generate_default_name(name)
         new_path = client.renku_datasets_path / dataset.identifier / client.METADATA
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -94,6 +94,8 @@ def _migrate_broken_dataset_paths(client):
     for dataset in get_client_datasets(client):
         if not dataset.name:
             dataset.name = generate_default_name(dataset.title, dataset.version)
+        else:
+            dataset.name = generate_default_name(dataset.name)
 
         # migrate the refs
         ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True)

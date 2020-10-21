@@ -1310,7 +1310,7 @@ def test_check_disk_space(runner, client, monkeypatch, url):
 
 @pytest.mark.migration
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_migration_submodule_datasets(isolated_runner, old_repository_with_submodules):
     """Test migration of datasets that use submodules."""
     from renku.core.management import LocalClient

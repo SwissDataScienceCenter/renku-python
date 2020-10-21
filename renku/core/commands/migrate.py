@@ -17,7 +17,9 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.management.migrate import is_migration_required, is_project_unsupported, migrate
+from renku.core.management.migrate import is_migration_required, is_project_unsupported
+from renku.core.management.migrate import is_renku_project as is_renku_project_helper
+from renku.core.management.migrate import migrate
 
 from .client import pass_local_client
 
@@ -51,4 +53,4 @@ def migrate_project_no_commit(client, progress_callback=None):
 @pass_local_client
 def is_renku_project(client):
     """Check if repository is a renku project."""
-    return client.renku_metadata_path.exists()
+    return is_renku_project_helper(client)
