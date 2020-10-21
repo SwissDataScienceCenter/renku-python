@@ -324,7 +324,7 @@ def test_relative_path_for_directory_input(client, run, renku_cli):
 
 
 def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
-    """Test automatic file update."""
+    """Test calling update with no args does nothing."""
     cwd = Path(project)
     data = cwd / DATA_DIR
     data.mkdir(exist_ok=True, parents=True)
@@ -337,10 +337,6 @@ def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
 
     exit_code, run = renku_cli("run", "wc", "-c", stdin=source, stdout=output)
     assert 0 == exit_code
-    assert 0 == len(run.subprocesses)
-
-    with output.open("r") as f:
-        assert f.read().strip() == "1"
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
