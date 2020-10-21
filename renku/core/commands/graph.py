@@ -272,7 +272,11 @@ class Graph(object):
                         if all(member.path != d.path for d in dependencies) and any(
                             u.startswith(member.path) for u in usage_paths
                         ):
-                            dependencies = [d for d in dependencies if not d.path.startswith(member.path)]
+                            dependencies = [
+                                d
+                                for d in dependencies
+                                if not (self.client.path / member.path).is_dir() or not d.path.startswith(member.path)
+                            ]
                             dependencies.append(member)
 
         from renku.core.models.sort import topological
