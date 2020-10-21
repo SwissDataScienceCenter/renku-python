@@ -45,7 +45,7 @@ class DatasetsRemoveCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        return dataset_remove([self.ctx["name"]], commit_message=self.ctx["commit_message"])
+        return dataset_remove(self.ctx["name"], commit_message=self.ctx["commit_message"])
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
