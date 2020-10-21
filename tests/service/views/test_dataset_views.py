@@ -98,6 +98,13 @@ def test_remove_dataset_view(svc_client_with_repo):
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
 
+    # NOTE: Ensure that dataset does not exists in this project anymore!
+    response = svc_client.get("/datasets.list", query_string={"project_id": project_id}, headers=headers)
+    assert "result" in response.json
+
+    datasets = [ds["name"] for ds in response.json["result"]["datasets"]]
+    assert payload["name"] not in datasets
+
 
 @pytest.mark.service
 @pytest.mark.integration
