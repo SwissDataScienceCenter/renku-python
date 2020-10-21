@@ -700,7 +700,7 @@ def update(names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
     progress_context = partial(progressbar, label="Checking files for updates")
     update_datasets(
-        names=names,
+        names=list(names),
         creators=creators,
         include=include,
         exclude=exclude,
