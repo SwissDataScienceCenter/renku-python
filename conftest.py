@@ -527,7 +527,7 @@ def old_dataset_project(tmp_path_factory):
 @pytest.fixture
 def old_repository_with_submodules(request, tmpdir_factory):
     """Prepares a testing repo that has datasets using git submodules."""
-    name = "old-dataset-with-submodule-v0.6.0"
+    name = "old-datasets-v0.6.0-with-submodules"
     base_path = Path(__file__).parent / "tests" / "fixtures" / f"{name}.tar.gz"
 
     working_dir = tmpdir_factory.mktemp(name)

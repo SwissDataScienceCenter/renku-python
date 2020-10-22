@@ -83,6 +83,8 @@ class Person(Base):
 class Project(Base):
     """Project migration model."""
 
+    agent_version = None
+
     @classmethod
     def from_yaml(cls, path, client):
         """Read content from YAML file."""
@@ -92,6 +94,9 @@ class Project(Base):
         if not self.creator:
             self.creator = Person.from_git(client.repo)
 
+        if not self.name:
+            self.name = client.remote.get("name")
+
         if not self._id or "NULL/NULL" in self._id:
             self._id = generate_project_id(client=client, name=self.name, creator=self.creator)
 
@@ -99,6 +104,10 @@ class Project(Base):
 
     def to_yaml(self, path):
         """Write content to a YAML file."""
+        from renku import __version__
+
+        self.agent_version = __version__
+
         data = ProjectSchemaV3().dump(self)
         jsonld.write_yaml(path=path, data=data)
 
@@ -202,9 +211,9 @@ class ProjectSchemaV3(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(missing=None)
+    agent_version = fields.String(schema.agent, missing="pre-0.11.0")
     name = fields.String(schema.name, missing=None)
     created = fields.DateTime(schema.dateCreated, missing=None)
-    updated = fields.DateTime(schema.dateUpdated, missing=None)
     version = fields.String(schema.schemaVersion, missing=1)
     creator = fields.Nested(schema.creator, PersonSchemaV3, missing=None)
 
@@ -355,4 +364,10 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
 def get_client_datasets(client):
     """Return Dataset migration models for a client."""
     paths = client.renku_datasets_path.rglob(client.METADATA)
-    return [Dataset.from_yaml(path=path, client=client) for path in paths]
+    datasets = []
+    for path in paths:
+        dataset = Dataset.from_yaml(path=path, client=client)
+        dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, client.path)
+        datasets.append(dataset)
+
+    return datasets

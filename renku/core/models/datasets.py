@@ -833,7 +833,7 @@ def is_dataset_name_valid(name):
     return name and LinkReference.check_ref_format(name, no_slashes=True) and "/" not in name
 
 
-def generate_default_name(dataset_title, dataset_version):
+def generate_default_name(dataset_title, dataset_version=None):
     """Get dataset name."""
     # For compatibility with older versions use name as name
     # if it is valid; otherwise, use encoded name
