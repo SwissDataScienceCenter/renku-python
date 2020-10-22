@@ -1366,35 +1366,27 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
     """Test migration of datasets that use submodules."""
     from renku.core.management import LocalClient
 
-    repo = old_repository_with_submodules
-    project_path = repo.working_dir
+    project_path = old_repository_with_submodules.working_dir
     os.chdir(project_path)
 
-    assert {"local-repo", "r10e-ds-py"} == {s.name for s in repo.submodules}
+    assert {"remote-renku-project"} == {s.name for s in old_repository_with_submodules.submodules}
 
     result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code
 
-    assert [] == repo.submodules
+    assert [] == old_repository_with_submodules.submodules
 
     client = LocalClient(path=project_path)
 
-    with client.with_dataset("local") as dataset:
-        for file_ in dataset.files:
-            path = Path(file_.path)
-            assert path.exists()
-            assert not path.is_symlink()
-            assert file_.based_on is None
-
-    with client.with_dataset("remote") as dataset:
-        for file_ in dataset.files:
-            path = Path(file_.path)
-            assert path.exists()
-            assert not path.is_symlink()
-            assert file_.based_on is not None
-            assert file_.based_on.based_on is None
-            assert file_.name == file_.based_on.name
-            assert "https://github.com/SwissDataScienceCenter/r10e-ds-py.git" == file_.based_on.source
+    dataset = client.load_dataset("remote")
+    for file_ in dataset.files:
+        path = Path(file_.path)
+        assert path.exists()
+        assert not path.is_symlink()
+        assert file_.based_on is not None
+        assert file_.based_on.based_on is None
+        assert file_.name == file_.based_on.name
+        assert "https://dev.renku.ch/gitlab/mohammad.alisafaee/remote-renku-project.git" == file_.based_on.source
 
 
 @pytest.mark.integration
