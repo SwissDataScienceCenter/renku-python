@@ -31,14 +31,27 @@ def migrate_types(data):
         "schema:DigitalDocument": ["prov:Entity", "schema:DigitalDocument", "wfprov:Artifact"],
     }
 
-    def replace_types(data):
-        for key, value in data.items():
+    def remove_type(data_):
+        data_.pop("@type", None)
+        for key, value in data_.items():
+            if isinstance(value, dict):
+                remove_type(value)
+            elif isinstance(value, (list, tuple, set)):
+                for v in value:
+                    if isinstance(v, dict):
+                        remove_type(v)
+
+    def replace_types(data_):
+        for key, value in data_.items():
+            if key == "@context" and isinstance(value, dict):
+                remove_type(value)
+
             if key == "@type":
                 if not isinstance(value, str):
                     value = str(sorted(value))
                 new_type = type_mapping.get(value)
                 if new_type:
-                    data[key] = new_type
+                    data_[key] = new_type
             elif isinstance(value, dict):
                 replace_types(value)
             elif isinstance(value, (list, tuple, set)):
