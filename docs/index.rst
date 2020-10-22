@@ -15,9 +15,17 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+.. raw:: html
+
+   <meta http-equiv="refresh" content="0; url=introduction.html">
+
+.. include:: _sidebar.rst.inc
+
 .. include:: ../README.rst
    :end-before: Renku for Users
 
-.. include:: gettingstarted.rst
+.. include:: introduction.rst
+   :start-after: installation-before-reference:
+   :end-before: installation-after-reference:
 
-.. include:: _sidebar.rst.inc
+.. include:: gettingstarted.rst

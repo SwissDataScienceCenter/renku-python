@@ -17,6 +17,7 @@
 
 Getting Started
 ===============
+.. _gettingstarted-reference:
 
 Interaction with the platform can take place via the command-line
 interface (CLI).

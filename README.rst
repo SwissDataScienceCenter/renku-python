@@ -61,6 +61,8 @@ Renku for Users
 Installation
 ------------
 
+.. _installation-reference:
+
 Renku releases and development versions are available from `PyPI
 <https://pypi.org/project/renku/>`_. You can install it using any tool that
 knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
@@ -74,8 +76,11 @@ knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
    on Windows.
 
 
+.. _pipx-before-reference:
+
 ``pipx``
 ~~~~~~~~
+.. _pipx-after-reference:
 
 First, `install pipx <https://github.com/pipxproject/pipx#install-pipx>`_
 and make sure that the ``$PATH`` is correctly configured.
@@ -112,8 +117,11 @@ To install a development release:
     $ pipx install --pip-args pre renku
 
 
+.. _pip-before-reference:
+
 ``pip``
 ~~~~~~~
+.. _pip-after-reference:
 
 ::
 
@@ -133,8 +141,11 @@ if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
 
+.. _docker-before-reference:
+
 Docker
 ~~~~~~
+.. _docker-after-reference:
 
 The containerized version of the CLI can be launched using Docker command.
 

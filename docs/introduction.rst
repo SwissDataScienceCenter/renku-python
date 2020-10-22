@@ -15,16 +15,62 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-
 .. include:: ../README.rst
    :end-before: Renku for Users
 
-
 .. toctree::
-
+   :hidden:
+   
    installation
    gettingstarted
    commands
    internals
    changes
    license
+
+.. _installation-before-reference:
+
+.. raw:: html
+
+   <h2>Installation</h2>
+
+
+.. include:: ../README.rst
+   :start-after: installation-reference:
+   :end-before: pipx-before-reference:
+
+.. raw:: html
+
+   <h3>pipx</h3>
+
+
+.. include:: ../README.rst
+   :start-after: pipx-after-reference:
+   :end-before: pip-before-reference:
+
+.. raw:: html
+
+   <h3>pip</h3>
+
+
+.. include:: ../README.rst
+   :start-after: pip-after-reference:
+   :end-before: docker-before-reference:
+
+.. raw:: html
+
+   <h3>Docker</h3>
+
+
+.. include:: ../README.rst
+   :start-after: docker-after-reference:
+   :end-before: CLI Example
+
+.. _installation-after-reference:
+
+.. raw:: html
+
+   <h2>Getting Started</h2>
+
+.. include:: gettingstarted.rst
+   :start-after: gettingstarted-reference:
