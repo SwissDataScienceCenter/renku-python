@@ -32,7 +32,7 @@ from renku.service.views import result_response
 
 
 class UploadFilesCtrl(ServiceCtrl, ReadOperationMixin):
-    """Controller for migrations check endpoint."""
+    """Controller for upload files endpoint."""
 
     REQUEST_SERIALIZER = FileUploadRequest()
     RESPONSE_SERIALIZER = FileUploadResponseRPC()
