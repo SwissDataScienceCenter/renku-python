@@ -38,10 +38,6 @@
 .. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renku-python.svg
    :target: https://github.com/SwissDataScienceCenter/renku-python/blob/master/LICENSE
 
-.. image:: https://pullreminders.com/badge.svg
-   :target: https://pullreminders.com?ref=badge
-   :alt: Pull reminders
-
 A Python library for the `Renku collaborative data science platform
 <https://github.com/SwissDataScienceCenter/renku>`_. It includes a CLI and SDK
 for end-users as well as a service backend. It provides functionality for the
