@@ -35,7 +35,7 @@ def user_project_clone(cache, user_data, project_data):
     user = cache.ensure_user(user_data)
 
     if local_path.exists():
-        shutil.rmtree(str(local_path))
+        shutil.rmtree(local_path)
 
         for project in cache.get_projects(user):
             if project.git_url == project_data["git_url"]:

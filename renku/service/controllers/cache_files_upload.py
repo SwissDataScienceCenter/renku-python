@@ -74,7 +74,7 @@ class UploadFilesCtrl(ServiceCtrl, ReadOperationMixin):
             unpack_dir = "{0}.unpacked".format(file_path.name)
             temp_dir = file_path.parent / Path(unpack_dir)
             if temp_dir.exists():
-                shutil.rmtree(str(temp_dir))
+                shutil.rmtree(temp_dir)
             temp_dir.mkdir(exist_ok=True)
 
             try:
@@ -83,13 +83,13 @@ class UploadFilesCtrl(ServiceCtrl, ReadOperationMixin):
                 return RenkuException("unable to unpack archive")
 
             for file_ in temp_dir.glob("**/*"):
-                relative_path = file_.relative_to(CACHE_UPLOADS_PATH / self.user.user_id)
+                relative_path = file_.relative_to(user_cache_dir)
 
                 file_obj = {
                     "file_name": file_.name,
-                    "file_size": os.stat(str(file_path)).st_size,
+                    "file_size": os.stat(file_).st_size,
                     "relative_path": str(relative_path),
-                    "is_dir": relative_path.is_dir(),
+                    "is_dir": file_.is_dir(),
                 }
 
                 files.append(file_obj)
@@ -97,9 +97,9 @@ class UploadFilesCtrl(ServiceCtrl, ReadOperationMixin):
         else:
             relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / self.user.user_id)
 
-            self.response_builder["file_size"] = os.stat(str(file_path)).st_size
+            self.response_builder["file_size"] = os.stat(file_path).st_size
             self.response_builder["relative_path"] = str(relative_path)
-            self.response_builder["is_dir"] = relative_path.is_dir()
+            self.response_builder["is_dir"] = file_path.is_dir()
 
             files.append(self.response_builder)
 
