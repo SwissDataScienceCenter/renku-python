@@ -752,7 +752,7 @@ def test_add_data_from_git(runner, client, params, path):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     assert Path(path).exists()
 
-    file_ = read_dataset_file_metadata(client, "remote", path)
+    file_ = client.load_dataset("remote").find_file(path)
     assert file_.url.endswith(os.path.join("files", "blob", path))
     assert file_.source == remote
     assert file_.based_on.source == remote
@@ -822,16 +822,6 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
     assert message in result.output
 
 
-def read_dataset_file_metadata(client, name, filename):
-    """Return metadata from dataset's YAML file."""
-    with client.with_dataset(name) as dataset:
-        assert client.get_dataset_path(dataset.title).exists()
-
-        for file_ in dataset.files:
-            if file_.path.endswith(filename):
-                return file_
-
-
 @pytest.mark.integration
 @pytest.mark.parametrize("params", [[], ["-I", "README.md"], ["-I", "R*"], ["remote"]])
 @flaky(max_runs=10, min_passes=1)
@@ -843,11 +833,12 @@ def test_dataset_update(client, runner, params):
     result = runner.invoke(cli, ["dataset", "add", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url])
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    before = read_dataset_file_metadata(client, "remote", "README.md")
+    path = os.path.join(DATA_DIR, "remote", "README.md")
+    before = client.load_dataset("remote").find_file(path)
 
     assert 0 == runner.invoke(cli, ["dataset", "update"] + params, catch_exceptions=False).exit_code
 
-    after = read_dataset_file_metadata(client, "remote", "README.md")
+    after = client.load_dataset("remote").find_file(path)
 
     assert after._id != before._id
     assert after._label != before._label
@@ -860,8 +851,8 @@ def test_dataset_update(client, runner, params):
     assert after.based_on.path == before.based_on.path
     assert after.based_on.source == url
     assert after.based_on.url == url
-    commit_sha = after.based_on._label.split("@")[0]
-    assert commit_sha in after.based_on._id
+    object_hash = client.repo.git.rev_parse(f"HEAD:{str(path)}")
+    assert object_hash in after.based_on._id
 
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, result.output
@@ -1025,7 +1016,8 @@ def test_import_from_renku_project(tmpdir, client, runner, url):
     with chdir(remote_client.path):
         runner.invoke(cli, ["migrate"])
 
-    file_ = read_dataset_file_metadata(remote_client, "testing-create-04", "ie_data_with_TRCAPE.xls")
+    path = os.path.join(DATA_DIR, "testing-create-04", "ie_data_with_TRCAPE.xls")
+    file_ = remote_client.load_dataset("testing-create-04").find_file(path)
 
     result = runner.invoke(
         cli,
@@ -1046,8 +1038,8 @@ def test_import_from_renku_project(tmpdir, client, runner, url):
     )
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
 
-    path = "new-directory/ie_data_with_TRCAPE.xls"
-    metadata = read_dataset_file_metadata(client, "remote-dataset", path)
+    path = os.path.join(DATA_DIR, "remote-dataset", "new-directory", "ie_data_with_TRCAPE.xls")
+    metadata = client.load_dataset("remote-dataset").find_file(path)
     assert metadata.based_on._id == file_._id
     assert metadata.based_on._label == file_._label
     assert metadata.based_on.path == file_.path

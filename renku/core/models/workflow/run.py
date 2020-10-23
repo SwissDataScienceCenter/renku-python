@@ -54,7 +54,7 @@ def _entity_from_path(client, path, commit):
         entity_cls = Collection
 
     if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)):
-        return client.load_dataset_from_path(path, commit=commit)
+        return client.load_dataset_from_path(path, commit=commit, replace_file_ids=True)
     else:
         return entity_cls(commit=commit, client=client, path=str(path),)
 
@@ -230,6 +230,9 @@ class Run(CommitMixin):
     def activity(self):
         """Return the activity object."""
         return self._activity() if self._activity else None
+
+    def default_id(self):
+        """Configure calculated ID."""
 
     def to_argv(self):
         """Convert run into argv list."""

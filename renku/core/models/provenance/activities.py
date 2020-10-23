@@ -189,7 +189,7 @@ class Activity(CommitMixin, ReferenceMixin):
 
         # TODO: use a factory method to generate the entity
         if str(path).startswith(os.path.join(client.renku_home, client.DATASETS)) and not deleted:
-            entity = client.load_dataset_from_path(path, commit=commit)
+            entity = client.load_dataset_from_path(path, commit=commit, replace_file_ids=True)
         else:
             entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection,)
 

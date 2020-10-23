@@ -1606,3 +1606,30 @@ def test_immutability_after_remove(directory_tree, runner, client):
 
     dataset = client.load_dataset("my-data")
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_datasets_file_uses_hash_object_as_id(runner, client, directory_tree):
+    """Test files added to datasets use Git object id in their id."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "-c", str(directory_tree / "file1")]).exit_code
+
+    path = os.path.join(DATA_DIR, "my-dataset", "file1")
+    object_hash = client.repo.git.rev_parse(f"HEAD:{path}")
+    file_ = client.load_dataset("my-dataset").find_file(path)
+
+    assert object_hash in file_._id
+
+
+def test_replace_id_of_datasets_file(runner, client, directory_tree):
+    """Test object id can be replaced with commit hash in dataset files."""
+    assert 0 == runner.invoke(cli, ["dataset", "add", "my-dataset", "-c", str(directory_tree / "file1")]).exit_code
+
+    path = os.path.join(DATA_DIR, "my-dataset", "file1")
+    object_hash = client.repo.git.rev_parse(f"HEAD:{path}")
+    file_ = client.load_dataset("my-dataset").find_file(path)
+
+    file_.replace_id()
+
+    commit = client.find_previous_commit(path)
+
+    assert object_hash not in file_._id
+    assert commit.hexsha in file_._id

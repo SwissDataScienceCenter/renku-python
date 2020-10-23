@@ -108,12 +108,12 @@ class DatasetsApiMixin(object):
             result[path] = self.load_dataset_from_path(path)
         return result
 
-    def load_dataset_from_path(self, path, commit=None):
+    def load_dataset_from_path(self, path, commit=None, replace_file_ids=False):
         """Return a dataset from a given path."""
         path = Path(path)
         if not path.is_absolute():
             path = self.path / path
-        return Dataset.from_yaml(path, client=self, commit=commit)
+        return Dataset.from_yaml(path, client=self, commit=commit, replace_file_ids=replace_file_ids)
 
     def get_dataset_path(self, name):
         """Get dataset path from name."""
@@ -817,6 +817,8 @@ class DatasetsApiMixin(object):
             if commit_sha != remote_commit_sha:
                 src = Path(repo.working_dir) / based_on.path
                 dst = self.renku_path.parent / file_.path
+
+                file_.based_on.client = remote_client
 
                 if src.exists():
                     # Fetch file if it is tracked by Git LFS

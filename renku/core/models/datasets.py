@@ -27,6 +27,7 @@ from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 import attr
 from attr.validators import instance_of
+from git import GitCommandError
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
@@ -306,6 +307,45 @@ class DatasetFile(Entity):
         """Create JSON-LD."""
         return DatasetFileSchema().dump(self)
 
+    def default_id(self):
+        """Generate ID."""
+        # Determine the hostname for the resource URIs.
+        # If RENKU_DOMAIN is set, it overrides the host from remote.
+        # Default is localhost.
+        host = "localhost"
+        if self.client:
+            host = self.client.remote.get("host") or host
+        host = os.environ.get("RENKU_DOMAIN") or host
+
+        revision = self.commit.hexsha if self.commit else "HEAD"
+        object_hash = _get_object_hash(self.client, revision, self.path) or "UNCOMMITTED"
+
+        # always set the id by the identifier
+        return urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{object_hash}/{quote(str(self.path))}"))
+
+    def replace_id(self):
+        """Replace object hash with commit hash in ID."""
+        if not self._id or not self._label:
+            return
+
+        parsed_url = urlparse(self._id)
+        match = re.match(r"/blob/([\w]+)/.*", parsed_url.path)
+        if not match:
+            return
+
+        object_hash = match.group(1)
+        commit_sha = self._label.split("@")[1]
+        path = parsed_url.path.replace(object_hash, commit_sha)
+
+        self._id = parsed_url._replace(path=path).geturl()
+
+
+def _get_object_hash(client, revision, path):
+    try:
+        return client.repo.git.rev_parse(f"{revision}:{str(path)}")
+    except GitCommandError:
+        return None
+
 
 def _convert_dataset_files(value):
     """Convert dataset files."""
@@ -578,8 +618,6 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         """Replace identifier and update all related fields."""
         self.identifier = new_identifier
         self._set_id()
-        self.url = self._id
-        self._label = self.identifier
 
     def _get_host(self):
         # Determine the hostname for the resource URIs.
@@ -590,16 +628,20 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
             host = self.client.remote.get("host") or host
         return os.environ.get("RENKU_DOMAIN") or host
 
+    def default_id(self):
+        """Configure calculated ID."""
+        return generate_dataset_id(client=self.client, identifier=self.identifier)
+
     def _set_id(self):
-        self._id = generate_dataset_id(client=self.client, identifier=self.identifier)
+        self._id = self.default_id()
+        self.url = self._id
+        self._label = self.identifier
 
     def __attrs_post_init__(self):
         """Post-Init hook."""
         super().__attrs_post_init__()
 
         self._set_id()
-        self.url = self._id
-        self._label = self.identifier
 
         if self.derived_from:
             host = self._get_host()
@@ -657,12 +699,16 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
                 file_.client = client
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None):
+    def from_yaml(cls, path, client=None, commit=None, replace_file_ids=False):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
 
         self = cls.from_jsonld(data=data, client=client, commit=commit)
         self.__reference__ = path
+
+        if replace_file_ids:
+            for file_ in self.files:
+                file_.replace_id()
 
         return self
 
