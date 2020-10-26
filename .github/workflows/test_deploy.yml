@@ -72,6 +72,8 @@ jobs:
         git config --global --add user.name "Renku @ SDSC"
         git config --global --add user.email "renku@datascience.ch"
     - name: Test docs
+      env:
+        SIDEBAR: 1
       run: ./run-tests.sh -d
 
   test-distro:
