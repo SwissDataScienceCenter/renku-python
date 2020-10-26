@@ -432,7 +432,7 @@ class DockerfileUpdateError(RenkuException):
 
 
 class MigrationError(RenkuException):
-    """Raised when something wen't running during migrations."""
+    """Raised when something went wrong during migrations."""
 
 
 class RenkuImportError(RenkuException):
