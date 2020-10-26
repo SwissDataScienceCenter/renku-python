@@ -17,13 +17,9 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from renku.core.management.migrate import (
-    is_docker_update_possible,
-    is_migration_required,
-    is_project_unsupported,
-    is_template_update_possible,
-    migrate,
-)
+from renku.core.management.migrate import is_docker_update_possible, is_migration_required, is_project_unsupported
+from renku.core.management.migrate import is_renku_project as is_renku_project_helper
+from renku.core.management.migrate import is_template_update_possible, migrate
 
 from .client import pass_local_client
 
@@ -91,3 +87,9 @@ def migrate_project_no_commit(
         skip_migrations=skip_migrations,
         progress_callback=progress_callback,
     )
+
+
+@pass_local_client
+def is_renku_project(client):
+    """Check if repository is a renku project."""
+    return is_renku_project_helper(client)

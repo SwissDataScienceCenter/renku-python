@@ -61,12 +61,12 @@ def check_for_migration(client):
 
 def is_migration_required(client):
     """Check if project requires migration."""
-    return _is_renku_project(client) and _get_project_version(client) < SUPPORTED_PROJECT_VERSION
+    return is_renku_project(client) and _get_project_version(client) < SUPPORTED_PROJECT_VERSION
 
 
 def is_project_unsupported(client):
     """Check if this version of Renku cannot work with the project."""
-    return _is_renku_project(client) and _get_project_version(client) > SUPPORTED_PROJECT_VERSION
+    return is_renku_project(client) and _get_project_version(client) > SUPPORTED_PROJECT_VERSION
 
 
 def is_template_update_possible(client):
@@ -89,7 +89,7 @@ def migrate(
 ):
     """Apply all migration files to the project."""
     template_updated = docker_updated = False
-    if not _is_renku_project(client):
+    if not is_renku_project(client):
         return False, template_updated, docker_updated
 
     if (
@@ -293,7 +293,8 @@ def _get_project_version(client):
         return 1
 
 
-def _is_renku_project(client):
+def is_renku_project(client):
+    """Check if repository is a renku project."""
     try:
         return client.project is not None
     except ValueError:  # Error in loading due to an older schema

@@ -21,7 +21,8 @@ import os
 import click
 
 from renku.core.commands.client import pass_local_client
-from renku.core.commands.migrate import migrate_project, migrate_project_no_commit
+from renku.core.commands.echo import WARNING
+from renku.core.commands.migrate import is_renku_project, migrate_project, migrate_project_no_commit
 
 
 @click.command()
@@ -40,6 +41,8 @@ def migrate(no_commit):
     if result:
         click.secho("OK", fg="green")
     else:
+        if not is_renku_project():
+            click.secho(WARNING + "Not a renku project.")
         click.secho("No migrations required.")
 
 

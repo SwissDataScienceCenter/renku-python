@@ -26,6 +26,7 @@ from marshmallow import EXCLUDE
 from renku.core.commands.init import create_from_template_local, read_template_manifest
 from renku.core.utils.contexts import chdir
 from renku.service.config import INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
+from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import (
     ManifestTemplatesRequest,
     ManifestTemplatesResponseRPC,
@@ -34,7 +35,6 @@ from renku.service.serializers.templates import (
 )
 from renku.service.utils import make_new_project_path, new_repo_push
 from renku.service.views import error_response, result_response
-from renku.service.views.cache import _project_clone
 from renku.service.views.decorators import (
     accepts_json,
     handle_base_except,
@@ -68,7 +68,7 @@ templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SE
 def read_manifest_from_template(user, cache):
     """Read templates from the manifest file of a template repository."""
     project_data = ManifestTemplatesRequest().load({**user, **request.args,}, unknown=EXCLUDE)
-    project = _project_clone(user, project_data)
+    project = user_project_clone(user, project_data)
     manifest = read_template_manifest(project.abs_path)
 
     return result_response(ManifestTemplatesResponseRPC(), {"templates": manifest})
@@ -96,7 +96,7 @@ def create_project_from_template(user, cache):
     ctx = ProjectTemplateRequest().load({**user, **request.json,}, unknown=EXCLUDE)
 
     # Clone project and find target template
-    template_project = _project_clone(user, ctx)
+    template_project = user_project_clone(user, ctx)
     templates = read_template_manifest(template_project.abs_path)
     template = next((template for template in templates if template["folder"] == ctx["identifier"]), None)
     if template is None:

@@ -16,42 +16,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache views."""
-import os
-import shutil
-from pathlib import Path
-
-import patoolib
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
-from git import Repo
-from marshmallow import EXCLUDE
-from patoolib.util import PatoolError
 
-from renku.core.commands.clone import project_clone
-from renku.core.commands.save import repo_sync
-from renku.service.config import CACHE_UPLOADS_PATH, INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX, SUPPORTED_ARCHIVES
-from renku.service.controllers.migrations_check import MigrationsCheckCtrl
-from renku.service.jobs.contexts import enqueue_retry
-from renku.service.jobs.project import execute_migration, migrate_job
-from renku.service.jobs.queues import MIGRATIONS_JOB_QUEUE
-from renku.service.logger import service_log
+from renku.service.config import SERVICE_PREFIX
+from renku.service.controllers.cache_files_upload import UploadFilesCtrl
+from renku.service.controllers.cache_list_projects import ListProjectsCtrl
+from renku.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
+from renku.service.controllers.cache_migrate_project import MigrateProjectCtrl
+from renku.service.controllers.cache_migrations_check import MigrationsCheckCtrl
+from renku.service.controllers.cache_project_clone import ProjectCloneCtrl
 from renku.service.serializers.cache import (
     FileListResponseRPC,
     FileUploadRequest,
     FileUploadResponseRPC,
-    ProjectCloneContext,
     ProjectCloneRequest,
     ProjectCloneResponseRPC,
     ProjectListResponseRPC,
-    ProjectMigrateAsyncResponseRPC,
     ProjectMigrateRequest,
     ProjectMigrateResponseRPC,
     ProjectMigrationCheckRequest,
     ProjectMigrationCheckResponseRPC,
-    extract_file,
 )
-from renku.service.utils import make_project_path
-from renku.service.views import result_response
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
@@ -73,15 +59,9 @@ cache_blueprint = Blueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 @handle_common_except
 @requires_cache
 @requires_identity
-def list_uploaded_files_view(user, cache):
+def list_uploaded_files_view(user_data, cache):
     """List uploaded files ready to be added to projects."""
-    user = cache.ensure_user(user)
-
-    files = [f for f in cache.get_files(user) if f.exists()]
-
-    response = {"files": sorted(files, key=lambda rec: (rec.is_dir, rec.relative_path))}
-
-    return result_response(FileListResponseRPC(), response)
+    return ListUploadedFilesCtrl(cache, user_data).to_response()
 
 
 @use_kwargs(FileUploadRequest)
@@ -95,97 +75,9 @@ def list_uploaded_files_view(user, cache):
 @handle_common_except
 @requires_cache
 @requires_identity
-def upload_file_view(user, cache):
+def upload_file_view(user_data, cache):
     """Upload file or archive of files."""
-    user = cache.ensure_user(user)
-    file = extract_file(request)
-
-    response_builder = {
-        "file_name": file.filename,
-        "content_type": file.content_type,
-        "is_archive": file.content_type in SUPPORTED_ARCHIVES,
-    }
-    response_builder.update(FileUploadRequest().load(request.args))
-
-    user_cache_dir = CACHE_UPLOADS_PATH / user.user_id
-    user_cache_dir.mkdir(exist_ok=True)
-
-    file_path = user_cache_dir / file.filename
-    if file_path.exists():
-        if response_builder.get("override_existing", False):
-            file_path.unlink()
-        else:
-            return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": "file exists",})
-
-    file.save(str(file_path))
-
-    files = []
-    if response_builder["unpack_archive"] and response_builder["is_archive"]:
-        unpack_dir = "{0}.unpacked".format(file_path.name)
-        temp_dir = file_path.parent / Path(unpack_dir)
-        if temp_dir.exists():
-            shutil.rmtree(str(temp_dir))
-        temp_dir.mkdir(exist_ok=True)
-
-        try:
-            patoolib.extract_archive(str(file_path), outdir=str(temp_dir))
-        except PatoolError:
-            return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": "unable to unpack archive"})
-
-        for file_ in temp_dir.glob("**/*"):
-            relative_path = file_.relative_to(CACHE_UPLOADS_PATH / user.user_id)
-
-            file_obj = {
-                "file_name": file_.name,
-                "file_size": os.stat(str(file_path)).st_size,
-                "relative_path": str(relative_path),
-                "is_dir": relative_path.is_dir(),
-            }
-
-            files.append(file_obj)
-
-    else:
-        relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / user.user_id)
-
-        response_builder["file_size"] = os.stat(str(file_path)).st_size
-        response_builder["relative_path"] = str(relative_path)
-        response_builder["is_dir"] = relative_path.is_dir()
-
-        files.append(response_builder)
-
-    files = cache.set_files(user, files)
-    return result_response(FileUploadResponseRPC(), {"files": files})
-
-
-@requires_cache
-def _project_clone(cache, user_data, project_data):
-    """Clones the project for a given user."""
-    local_path = make_project_path(user_data, project_data)
-    user = cache.ensure_user(user_data)
-
-    if local_path.exists():
-        shutil.rmtree(str(local_path))
-
-        for project in cache.get_projects(user):
-            if project.git_url == project_data["git_url"]:
-                project.delete()
-
-    local_path.mkdir(parents=True, exist_ok=True)
-
-    repo = project_clone(
-        project_data["url_with_auth"],
-        local_path,
-        depth=project_data["depth"] if project_data["depth"] != 0 else None,
-        raise_git_except=True,
-        config={"user.name": project_data["fullname"], "user.email": project_data["email"],},
-        checkout_rev=project_data["ref"],
-    )
-
-    service_log.debug(f"project successfully cloned: {repo}")
-    service_log.debug(f"project folder exists: {local_path.exists()}")
-
-    project = cache.make_project(user, project_data)
-    return project
+    return UploadFilesCtrl(cache, user_data, request).to_response()
 
 
 @use_kwargs(ProjectCloneRequest)
@@ -200,13 +92,11 @@ def _project_clone(cache, user_data, project_data):
 )
 @handle_common_except
 @accepts_json
+@requires_cache
 @requires_identity
-def project_clone_view(user_data):
+def project_clone_view(user_data, cache):
     """Clone a remote repository."""
-    project_data = ProjectCloneContext().load({**user_data, **request.json}, unknown=EXCLUDE)
-    project = _project_clone(user_data, project_data)
-
-    return result_response(ProjectCloneResponseRPC(), project)
+    return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @marshal_with(ProjectListResponseRPC)
@@ -219,11 +109,9 @@ def project_clone_view(user_data):
 @handle_common_except
 @requires_cache
 @requires_identity
-def list_projects_view(user, cache):
+def list_projects_view(user_data, cache):
     """List cached projects."""
-    projects = [project for project in cache.get_projects(cache.ensure_user(user)) if project.abs_path.exists()]
-
-    return result_response(ProjectListResponseRPC(), {"projects": projects})
+    return ListProjectsCtrl(cache, user_data).to_response()
 
 
 @use_kwargs(ProjectMigrateRequest)
@@ -241,51 +129,7 @@ def list_projects_view(user, cache):
 @requires_identity
 def migrate_project_view(user_data, cache):
     """Migrate specified project."""
-    ctx = ProjectMigrateRequest().load(request.json)
-    user = cache.ensure_user(user_data)
-
-    project = cache.get_project(user, ctx["project_id"])
-
-    force_template_update = ctx.get("force_template_update", False)
-    skip_template_update = ctx.get("skip_template_update", False)
-    skip_docker_update = ctx.get("skip_docker_update", False)
-    skip_migrations = ctx.get("skip_migrations", False)
-    commit_message = ctx.get("commit_message", None)
-
-    if ctx.get("is_delayed", False):
-        job = cache.make_job(
-            user, project=project, job_data={"renku_op": "migrate_job", "client_extras": ctx.get("client_extras")}
-        )
-
-        with enqueue_retry(MIGRATIONS_JOB_QUEUE) as queue:
-            queue.enqueue(
-                migrate_job,
-                user_data,
-                project.project_id,
-                job.job_id,
-                force_template_update,
-                skip_template_update,
-                skip_docker_update,
-                skip_migrations,
-                commit_message,
-            )
-
-        return result_response(ProjectMigrateAsyncResponseRPC(), job)
-
-    messages, was_migrated, template_migrated, docker_migrated = execute_migration(
-        project, force_template_update, skip_template_update, skip_docker_update, skip_migrations, commit_message
-    )
-    response = {
-        "messages": messages,
-        "was_migrated": was_migrated,
-        "template_migrated": template_migrated,
-        "docker_migrated": docker_migrated,
-    }
-
-    if was_migrated:
-        _, response["remote_branch"] = repo_sync(Repo(project.abs_path), remote="origin")
-
-    return result_response(ProjectMigrateResponseRPC(), response)
+    return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @use_kwargs(ProjectMigrationCheckRequest)
