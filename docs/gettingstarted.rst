@@ -26,9 +26,8 @@ Start by creating for folder where you want to keep your Renku project:
 
 .. code-block:: console
 
-   $ mkdir -p ~/temp/my-renku-project
-   $ cd ~/temp/my-renku-project
-   $ renku init
+   $ renku init my-renku-project
+   $ cd my-renku-project
 
 Create a dataset and add data to it:
 
