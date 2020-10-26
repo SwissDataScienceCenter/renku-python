@@ -25,7 +25,7 @@ from flaky import flaky
 
 from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
-from renku.service.config import INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE
+from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 
 
 @pytest.mark.service
@@ -95,7 +95,6 @@ def test_file_upload_override(svc_client):
 
     assert response
     assert 200 == response.status_code
-
     assert {"result"} == set(response.json.keys())
     assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
     old_file_id = response.json["result"]["files"][0]["file_id"]
@@ -108,7 +107,7 @@ def test_file_upload_override(svc_client):
     assert 200 == response.status_code
 
     assert {"error"} == set(response.json.keys())
-    assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
+    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
     assert "file exists" == response.json["error"]["reason"]
 
     response = svc_client.post(
@@ -148,7 +147,7 @@ def test_file_upload_same_file(svc_client):
     assert response
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
+    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
     assert "file exists" == response.json["error"]["reason"]
 
 
@@ -374,6 +373,7 @@ def test_clone_projects_invalid_headers(svc_client):
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers,)
     assert response
+
     assert {"result"} == set(response.json.keys())
 
     response = svc_client.get(
