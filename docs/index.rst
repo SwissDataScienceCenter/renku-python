@@ -15,67 +15,17 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+.. raw:: html
+
+   <meta http-equiv="refresh" content="0; url=introduction.html">
+
+.. include:: _sidebar.rst.inc
 
 .. include:: ../README.rst
-   :end-before: CLI Example
+   :end-before: Renku for Users
 
-Getting Started
-===============
+.. include:: introduction.rst
+   :start-after: installation-before-reference:
+   :end-before: installation-after-reference:
 
-Interaction with the platform can take place via the command-line
-interface (CLI).
-
-Start by creating for folder where you want to keep your Renku project:
-
-.. code-block:: console
-
-   $ mkdir -p ~/temp/my-renku-project
-   $ cd ~/temp/my-renku-project
-   $ renku init
-
-Create a dataset and add data to it:
-
-.. code-block:: console
-
-   $ renku dataset create my-dataset
-   $ renku dataset add my-dataset https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/README.rst
-
-Run an analysis:
-
-.. code-block:: console
-
-   $ renku run wc < data/my-dataset/README.rst > wc_readme
-
-Trace the data provenance:
-
-.. code-block:: console
-
-    $ renku log wc_readme
-
-These are the basics, but there is much more that Renku allows you to do with
-your data analysis workflows.
-
-For more information about using `renku`, refer to the `renku --help`.
-
-Project Information
-===================
-
-.. toctree::
-   :maxdepth: 1
-
-   license
-   contributing
-   changes
-   glossary
-
-Full Table of Contents
-======================
-
-.. toctree::
-   :maxdepth: 2
-
-   comparison
-   commands
-   models/index
-   management
-   plugins
+.. include:: gettingstarted.rst
