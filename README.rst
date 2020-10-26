@@ -38,10 +38,6 @@
 .. image:: https://img.shields.io/github/license/SwissDataScienceCenter/renku-python.svg
    :target: https://github.com/SwissDataScienceCenter/renku-python/blob/master/LICENSE
 
-.. image:: https://pullreminders.com/badge.svg
-   :target: https://pullreminders.com?ref=badge
-   :alt: Pull reminders
-
 A Python library for the `Renku collaborative data science platform
 <https://github.com/SwissDataScienceCenter/renku>`_. It includes a CLI and SDK
 for end-users as well as a service backend. It provides functionality for the
@@ -61,14 +57,26 @@ Renku for Users
 Installation
 ------------
 
+.. _installation-reference:
+
 Renku releases and development versions are available from `PyPI
 <https://pypi.org/project/renku/>`_. You can install it using any tool that
 knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
 <https://github.com/pipxproject/pipx>`_.
 
+.. note::
+   
+   We do not officially support Windows at this moment. The way Windows 
+   handles paths and symlinks interferes with some renku functionality.
+   We recommend using the Windows Subsystem for Linux (WSL) to use renku
+   on Windows.
+
+
+.. _pipx-before-reference:
 
 ``pipx``
 ~~~~~~~~
+.. _pipx-after-reference:
 
 First, `install pipx <https://github.com/pipxproject/pipx#install-pipx>`_
 and make sure that the ``$PATH`` is correctly configured.
@@ -105,8 +113,11 @@ To install a development release:
     $ pipx install --pip-args pre renku
 
 
+.. _pip-before-reference:
+
 ``pip``
 ~~~~~~~
+.. _pip-after-reference:
 
 ::
 
@@ -126,8 +137,11 @@ if you would like to work with the command line interface and you do not need
 the Python library to be importable.
 
 
+.. _docker-before-reference:
+
 Docker
 ~~~~~~
+.. _docker-after-reference:
 
 The containerized version of the CLI can be launched using Docker command.
 

@@ -16,8 +16,8 @@
     limitations under the License.
 
 
-Low-level API
-=============
+Repository API
+==============
 
 This API is built on top of Git and Git-LFS.
 

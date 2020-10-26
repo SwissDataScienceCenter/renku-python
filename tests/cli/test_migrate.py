@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``migrate`` command."""
+import os
 from pathlib import Path
 
 import pytest
@@ -24,64 +25,6 @@ from renku import LocalClient
 from renku.cli import cli
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-
-
-@pytest.mark.migration
-@pytest.mark.parametrize(
-    "command",
-    [
-        ["config", "set", "key", "value"],
-        ["dataset", "create", "new"],
-        ["dataset", "add", "new", "README.md"],
-        ["dataset", "edit", "new"],
-        ["dataset", "unlink", "new"],
-        ["dataset", "rm", "new"],
-        ["dataset", "update"],
-        ["dataset", "export", "new", "zenodo"],
-        ["dataset", "import", "uri"],
-        ["dataset", "rm-tags", "news"],
-        ["log"],
-        ["mv", "news"],
-        ["rerun", "data"],
-        ["run", "echo"],
-        ["show", "inputs"],
-        ["show", "outputs"],
-        ["show", "siblings"],
-        ["status"],
-        ["update", "--all"],
-        ["workflow", "ls"],
-    ],
-)
-def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
-    """Test commands that fail on projects created by old version of renku."""
-    runner = isolated_runner
-    result = runner.invoke(cli, command)
-    assert 1 == result.exit_code, result.output
-    output = result.output
-    assert "Project version is outdated and a migration is required" in output
-
-
-@pytest.mark.migration
-@pytest.mark.parametrize(
-    "command",
-    [
-        ["clone", "uri"],
-        ["config", "show", "key"],
-        ["dataset"],
-        ["dataset", "ls-files"],
-        ["dataset", "ls-tags", "new"],
-        ["doctor"],
-        ["githooks", "install"],
-        ["help"],
-        ["init"],
-        ["storage", "check"],
-    ],
-)
-def test_commands_work_on_old_repository(isolated_runner, old_repository_with_submodules, command):
-    """Test commands that do not require migration."""
-    runner = isolated_runner
-    result = runner.invoke(cli, command)
-    assert "a migration is required" not in result.output
 
 
 @pytest.mark.migration
@@ -299,3 +242,73 @@ def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_proj
     assert not dataset.same_as._id.startswith("_:")
     assert not dataset.tags[0]._id.startswith("_:")
     assert isinstance(dataset.license, str)
+
+
+@pytest.mark.migration
+def test_migrate_non_renku_repository(isolated_runner):
+    """Test migration prints proper message when run on non-renku repo."""
+    from git import Repo
+
+    Repo.init(".")
+    os.mkdir(".renku")
+
+    result = isolated_runner.invoke(cli, ["migrate"])
+
+    assert 0 == result.exit_code, result.output
+    assert "Warning: Not a renku project." in result.output
+    assert "No migrations required." in result.output
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["config", "set", "key", "value"],
+        ["dataset", "create", "new"],
+        ["dataset", "add", "new", "README.md"],
+        ["dataset", "edit", "new"],
+        ["dataset", "unlink", "new"],
+        ["dataset", "rm", "new"],
+        ["dataset", "update"],
+        ["dataset", "export", "new", "zenodo"],
+        ["dataset", "import", "uri"],
+        ["dataset", "rm-tags", "news"],
+        ["log"],
+        ["mv", "news"],
+        ["rerun", "data"],
+        ["run", "echo"],
+        ["show", "inputs"],
+        ["show", "outputs"],
+        ["show", "siblings"],
+        ["status"],
+        ["update", "--all"],
+        ["workflow", "ls"],
+    ],
+)
+def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
+    """Test commands that fail on projects created by old version of renku."""
+    result = isolated_runner.invoke(cli, command)
+    assert 1 == result.exit_code, result.output
+    assert "Project version is outdated and a migration is required" in result.output
+
+
+@pytest.mark.migration
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["clone", "uri"],
+        ["config", "show", "key"],
+        ["dataset"],
+        ["dataset", "ls-files"],
+        ["dataset", "ls-tags", "new"],
+        ["doctor"],
+        ["githooks", "install"],
+        ["help"],
+        ["init"],
+        ["storage", "check"],
+    ],
+)
+def test_commands_work_on_old_repository(isolated_runner, old_repository_with_submodules, command):
+    """Test commands that do not require migration."""
+    result = isolated_runner.invoke(cli, command)
+    assert "Project version is outdated and a migration is required" not in result.output
