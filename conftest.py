@@ -189,7 +189,6 @@ def template():
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "id": "python-minimal",
         "index": 1,
-        "ref": "0.1.11",
         "metadata": {"description": "nodesc"},
         "default_metadata": {
             "__template_source__": "renku",
