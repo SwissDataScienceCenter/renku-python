@@ -203,247 +203,112 @@ def test_template_filename(local_client, template):
         assert (local_client.path / "test.r").exists()
 
 
-def test_update_from_template(local_client, mocker, template):
+def test_update_from_template(local_client, template_update):
     """Test repository update from a template."""
-    with TemporaryDirectory() as tempdir:
-        temppath = Path(tempdir) / "local"
-        shutil.copytree(str(template_local), str(temppath))
-        manifest = read_template_manifest(temppath)
-        template_path = temppath / manifest[0]["folder"]
-        create_from_template(
-            template_path,
-            local_client,
-            "name",
-            {**template["default_metadata"], **template["metadata"]},
-            template_version="0.0.1",
-            automated_update=True,
-        )
-        project_files = [
-            f
-            for f in local_client.path.glob("**/*")
-            if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
-            and not str(f).endswith(".renku/template_checksums.json")
-        ]
-        template_files = []
-        for project_file in project_files:
-            expected_file = template_path / project_file.relative_to(local_client.path)
-            template_files.append(expected_file)
-            assert expected_file.exists()
+    res = template_update()
+    project_files = res["project_files"]
+    template_files = res["template_files"]
 
-        # NOTE: Update from template
-        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
-        fetch_template.return_value = (manifest, temppath, "renku", "0.0.2")
+    project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
 
-        project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
+    for p in template_files:
+        if p.is_dir():
+            continue
+        p.write_text(f"{p.read_text()}\nmodified")
 
-        for p in template_files:
-            if p.is_dir():
-                continue
-            p.write_text(f"{p.read_text()}\nmodified")
+    migrate(local_client, skip_docker_update=True)
 
-        migrate(local_client, skip_docker_update=True)
+    for p in project_files:
+        if p.is_dir():
+            continue
+        content = project_files_before[p]
+        new_content = p.read_text()
+        assert content != new_content
 
-        for p in project_files:
-            if p.is_dir():
-                continue
-            content = project_files_before[p]
-            new_content = p.read_text()
+
+def test_update_from_template_with_modified_files(local_client, template_update):
+    """Test repository update from a template with modified local files."""
+    res = template_update()
+    project_files = res["project_files"]
+    template_files = res["template_files"]
+
+    project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
+
+    for p in template_files:
+        if p.is_dir():
+            continue
+        p.write_text(f"{p.read_text()}\nmodified")
+
+    # NOTE: modify local file
+    modified_file = next(f for f in project_files if str(f).endswith("README.md"))
+    modified_local_content = modified_file.read_text() + "\nlocal modification"
+    modified_file.write_text(modified_local_content)
+
+    migrate(local_client, skip_docker_update=True)
+
+    for p in project_files:
+        if p.is_dir():
+            continue
+        content = project_files_before[p]
+        new_content = p.read_text()
+        if p == modified_file:
+            assert modified_local_content == new_content
+        else:
             assert content != new_content
 
 
-def test_update_from_template_with_modified_files(local_client, mocker, template):
-    """Test repository update from a template with modified local files."""
-    with TemporaryDirectory() as tempdir:
-        temppath = Path(tempdir) / "local"
-        shutil.copytree(str(template_local), str(temppath))
-        manifest = read_template_manifest(temppath)
-        template_path = temppath / manifest[0]["folder"]
-        create_from_template(
-            template_path,
-            local_client,
-            "name",
-            {**template["default_metadata"], **template["metadata"]},
-            template_version="0.0.1",
-            automated_update=True,
-        )
-        project_files = [
-            f
-            for f in local_client.path.glob("**/*")
-            if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
-            and not str(f).endswith(".renku/template_checksums.json")
-        ]
-        template_files = []
-        for project_file in project_files:
-            expected_file = template_path / project_file.relative_to(local_client.path)
-            template_files.append(expected_file)
-            assert expected_file.exists()
-
-        # NOTE: Update from template
-        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
-        fetch_template.return_value = (manifest, temppath, "renku", "0.0.2")
-
-        project_files_before = {p: p.read_text() for p in project_files if not p.is_dir()}
-
-        for p in template_files:
-            if p.is_dir():
-                continue
-            p.write_text(f"{p.read_text()}\nmodified")
-
-        # NOTE: modify local file
-        modified_file = next(f for f in project_files if str(f).endswith("README.md"))
-        modified_local_content = modified_file.read_text() + "\nlocal modification"
-        modified_file.write_text(modified_local_content)
-
-        migrate(local_client, skip_docker_update=True)
-
-        for p in project_files:
-            if p.is_dir():
-                continue
-            content = project_files_before[p]
-            new_content = p.read_text()
-            if p == modified_file:
-                assert modified_local_content == new_content
-            else:
-                assert content != new_content
-
-
-def test_update_from_template_with_immutable_modified_files(local_client, mocker, template):
+def test_update_from_template_with_immutable_modified_files(local_client, mocker, template_update):
     """Test repository update from a template with modified local immutable files."""
-    with TemporaryDirectory() as tempdir:
-        temppath = Path(tempdir) / "local"
-        shutil.copytree(str(template_local), str(temppath))
-        manifest = read_template_manifest(temppath)
-        template_path = temppath / manifest[0]["folder"]
-        create_from_template(
-            template_path,
-            local_client,
-            "name",
-            {**template["default_metadata"], **template["metadata"]},
-            template_version="0.0.1",
-            automated_update=True,
-            immutable_template_files=["README.md"],
-        )
-        project_files = [
-            f
-            for f in local_client.path.glob("**/*")
-            if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
-            and not str(f).endswith(".renku/template_checksums.json")
-        ]
-        template_files = []
-        for project_file in project_files:
-            expected_file = template_path / project_file.relative_to(local_client.path)
-            template_files.append(expected_file)
-            assert expected_file.exists()
+    res = template_update(immutable_files=["README.md"])
+    project_files = res["project_files"]
+    template_files = res["template_files"]
 
-        # NOTE: Update from template
-        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
-        fetch_template.return_value = (manifest, temppath, "renku", "0.0.2")
+    for p in template_files:
+        if p.is_dir():
+            continue
+        p.write_text(f"{p.read_text()}\nmodified")
 
-        for p in template_files:
-            if p.is_dir():
-                continue
-            p.write_text(f"{p.read_text()}\nmodified")
+    # NOTE: modify local file
+    modified_file = next(f for f in project_files if str(f).endswith("README.md"))
+    modified_local_content = modified_file.read_text() + "\nlocal modification"
+    modified_file.write_text(modified_local_content)
 
-        # NOTE: modify local file
-        modified_file = next(f for f in project_files if str(f).endswith("README.md"))
-        modified_local_content = modified_file.read_text() + "\nlocal modification"
-        modified_file.write_text(modified_local_content)
-
-        with pytest.raises(
-            errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
-        ):
-            migrate(local_client)
-
-
-def test_update_template_dockerfile(local_client, mocker, template):
-    """Test repository Dockerfile update."""
-    with TemporaryDirectory() as tempdir:
-        temppath = Path(tempdir) / "local"
-        shutil.copytree(str(template_local), str(temppath))
-        manifest = read_template_manifest(temppath)
-        template_path = temppath / manifest[0]["folder"]
-
-        import renku
-
-        mocker.patch.object(renku, "__version__", return_value="0.0.1")
-
-        # TODO: remove this once the renku template contains RENKU_VERSION
-        dockerfile_path = template_path / "Dockerfile"
-        dockerfile = dockerfile_path.read_text()
-        dockerfile_path.write_text(f"{dockerfile}\nARG RENKU_VERSION=0.0.1")
-
-        create_from_template(
-            template_path,
-            local_client,
-            "name",
-            {**template["default_metadata"], **template["metadata"]},
-            template_version="0.0.1",
-            automated_update=True,
-        )
-        project_files = [
-            f
-            for f in local_client.path.glob("**/*")
-            if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
-            and not str(f).endswith(".renku/template_checksums.json")
-        ]
-        template_files = []
-        for project_file in project_files:
-            expected_file = template_path / project_file.relative_to(local_client.path)
-            template_files.append(expected_file)
-            assert expected_file.exists()
-
-        mocker.patch.object(renku, "__version__", "0.0.2")
-
-        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
-        fetch_template.return_value = (manifest, temppath, "renku", "0.0.1")
-
+    with pytest.raises(
+        errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
+    ):
         migrate(local_client)
 
-        dockerfile = (local_client.path / "Dockerfile").read_text()
-        assert "0.0.2" in dockerfile
+
+def test_update_template_dockerfile(local_client, mocker, template_update):
+    """Test repository Dockerfile update."""
+    template_update(docker=True, after_template_version="0.0.1")
+
+    import renku
+
+    mocker.patch.object(renku, "__version__", "0.0.2")
+
+    migrate(local_client)
+
+    dockerfile = (local_client.path / "Dockerfile").read_text()
+    assert "0.0.2" in dockerfile
 
 
-def test_update_from_template_with_new_variable(local_client, mocker, template):
+def test_update_from_template_with_new_variable(local_client, mocker, template_update):
     """Test repository update from a template with a new template variable required."""
-    with TemporaryDirectory() as tempdir:
-        temppath = Path(tempdir) / "local"
-        shutil.copytree(str(template_local), str(temppath))
-        manifest = read_template_manifest(temppath)
-        template_path = temppath / manifest[0]["folder"]
-        create_from_template(
-            template_path,
-            local_client,
-            "name",
-            {**template["default_metadata"], **template["metadata"]},
-            template_version="0.0.1",
-            automated_update=True,
-        )
-        project_files = [
-            f
-            for f in local_client.path.glob("**/*")
-            if ".git" not in str(f)
-            and not str(f).endswith(".renku/metadata.yml")
-            and not str(f).endswith(".renku/template_checksums.json")
-        ]
-        template_files = []
-        for project_file in project_files:
-            expected_file = template_path / project_file.relative_to(local_client.path)
-            template_files.append(expected_file)
-            assert expected_file.exists()
+    res = template_update()
+    manifest = res["manifest"]
+    manifest_path = res["manifest_path"]
+    template_files = res["template_files"]
 
-        # NOTE: Update from template
-        manifest[0]["variables"]["__new_arbitrary_template_value__"] = None
-        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
-        fetch_template.return_value = (manifest, temppath, "renku", "0.0.2")
+    # NOTE: Add new template variable
+    manifest[0]["variables"]["__new_arbitrary_template_value__"] = None
+    fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
+    fetch_template.return_value = (manifest, manifest_path, "renku", "0.0.2")
 
-        for p in template_files:
-            if p.is_dir():
-                continue
-            p.write_text(f"{p.read_text()}\nmodified")
+    for p in template_files:
+        if p.is_dir():
+            continue
+        p.write_text(f"{p.read_text()}\nmodified")
 
-        with pytest.raises(errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"):
-            migrate(local_client)
+    with pytest.raises(errors.TemplateUpdateError, match=r".*Can't update template, it now requires variable.*"):
+        migrate(local_client)
