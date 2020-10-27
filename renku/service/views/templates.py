@@ -18,6 +18,7 @@
 """Renku service templates view."""
 from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
+
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
