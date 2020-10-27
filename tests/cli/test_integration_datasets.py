@@ -789,6 +789,23 @@ def test_add_data_from_git_with_wildcards(runner, client, params, files):
 
 
 @pytest.mark.integration
+@flaky(max_runs=1, min_passes=1)
+def test_add_data_in_multiple_places_from_git(runner, client):
+    """Test add same data to datasets in multiple places from a git repository."""
+    url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+
+    assert 0 == runner.invoke(cli, ["dataset", "create", "remote"]).exit_code
+
+    args = ["dataset", "add", "remote", "--ref", "0.3.0"]
+    assert 0 == runner.invoke(cli, args + ["-s", "docker", url]).exit_code
+    assert 0 == runner.invoke(cli, args + ["-s", "docker/base/Dockerfile", url]).exit_code
+
+    dataset = client.load_dataset("remote")
+    assert dataset.find_file(dataset.data_dir / "Dockerfile")
+    assert dataset.find_file(dataset.data_dir / "docker" / "base" / "Dockerfile")
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "params,n_urls,message",
     [

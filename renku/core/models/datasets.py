@@ -31,7 +31,7 @@ from marshmallow import EXCLUDE, pre_dump
 
 from renku.core import errors
 from renku.core.models import jsonld as jsonld
-from renku.core.models.calamus import JsonLDSchema, Nested, Uri, fields, prov, rdfs, renku, schema
+from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.entities import Entity, EntitySchema
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
@@ -761,7 +761,7 @@ class DatasetFileSchema(EntitySchema):
         model = DatasetFile
         unknown = EXCLUDE
 
-    added = fields.DateTime(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
+    added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     name = fields.String(schema.name, missing=None)
     url = fields.String(schema.url, missing=None)
     based_on = Nested(schema.isBasedOn, "DatasetFileSchema", missing=None, propagate_client=False)
