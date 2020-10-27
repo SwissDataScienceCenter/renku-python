@@ -87,6 +87,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     anonymous_headers = deepcopy(headers)
     anonymous_headers["Authorization"] = "Bearer None"
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
+
     assert response
     assert response.json["error"]
     assert "Cannot push changes" in response.json["error"]["reason"]
