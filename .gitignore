@@ -69,6 +69,7 @@ coverage.xml
 docs/_build/
 docs/.doctrees/
 docs/_sidebar.rst.inc
+_sidebar.rst.inc
 
 # PyBuilder
 target/
