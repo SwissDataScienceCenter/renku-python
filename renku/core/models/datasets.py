@@ -33,7 +33,6 @@ from renku.core import errors
 from renku.core.models import jsonld as jsonld
 from renku.core.models.calamus import JsonLDSchema, Nested, Uri, fields, prov, rdfs, renku, schema
 from renku.core.models.entities import Entity, EntitySchema
-from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.models.refs import LinkReference
 from renku.core.utils.datetime8601 import parse_date
@@ -343,7 +342,7 @@ def _convert_keyword(keywords):
 
 
 @attr.s
-class Dataset(Entity, CreatorMixin, ReferenceMixin):
+class Dataset(Entity, CreatorMixin):
     """Represent a dataset."""
 
     SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
@@ -400,6 +399,8 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
     _modified = attr.ib(default=False, init=False)
 
     _mutated = attr.ib(default=False, init=False)
+
+    _metadata_path = attr.ib(default=None, init=False)
 
     @date_created.default
     def _now(self):
@@ -525,13 +526,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
             else:
                 raise errors.InvalidFileOperation(f"Destination file already exists: {new_file.path}")
 
-        renamed = attr.evolve(self, files=files)
-        setattr(renamed, "__reference__", self.__reference__)
-
-        if self.__source__:
-            setattr(renamed, "__source__", self.__source__.copy())
-
-        return renamed
+        self.files = files
 
     def unlink_file(self, path, missing_ok=False):
         """Unlink a file from dataset.
@@ -662,7 +657,7 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         data = jsonld.read_yaml(path)
 
         self = cls.from_jsonld(data=data, client=client, commit=commit)
-        self.__reference__ = path
+        self._metadata_path = path
 
         return self
 
@@ -677,13 +672,14 @@ class Dataset(Entity, CreatorMixin, ReferenceMixin):
         schema_class = schema_class or DatasetSchema
         return schema_class(client=client, commit=commit, flattened=True).load(data)
 
-    def to_yaml(self):
+    def to_yaml(self, path=None):
         """Write an instance to the referenced YAML file."""
         if self._modified and not self.immutable:
             self.mutate()
 
+        self._metadata_path = path or self._metadata_path
         data = DatasetSchema(flattened=True).dump(self)
-        jsonld.write_yaml(path=self.__reference__, data=data)
+        jsonld.write_yaml(path=self._metadata_path, data=data)
 
     def as_jsonld(self):
         """Create JSON-LD."""

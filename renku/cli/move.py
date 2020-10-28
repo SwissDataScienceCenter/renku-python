@@ -86,7 +86,7 @@ def move(ctx, client, sources, destination):
                     renames[file_.path] = destinations[filepath]
 
             if renames:
-                dataset = dataset.rename_files(lambda key: renames.get(key, key))
+                dataset.rename_files(lambda key: renames.get(key, key))
 
                 dataset.to_yaml()
 
