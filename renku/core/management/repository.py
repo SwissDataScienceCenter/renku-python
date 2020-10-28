@@ -35,7 +35,6 @@ from werkzeug.utils import cached_property, secure_filename
 from renku.core import errors
 from renku.core.compat import Path
 from renku.core.management.config import RENKU_HOME
-from renku.core.models.locals import with_reference
 from renku.core.models.projects import Project
 from renku.core.models.refs import LinkReference
 
@@ -406,12 +405,11 @@ class RepositoryApiMixin(GitCore):
             metadata = Project.from_yaml(metadata_path, client=self)
         else:
             metadata = Project(name=name, client=self)
-            metadata.__reference__ = metadata_path
 
         yield metadata
 
         if not read_only:
-            metadata.to_yaml()
+            metadata.to_yaml(path=metadata_path)
 
     @contextmanager
     def with_workflow_storage(self):
@@ -430,10 +428,9 @@ class RepositoryApiMixin(GitCore):
 
             path = workflow_path / step_name
 
-            with with_reference(path):
-                run = step.run.generate_process_run(client=self, commit=self.repo.head.commit, path=path,)
-                run.to_yaml()
-                self.add_to_activity_index(run)
+            run = step.run.generate_process_run(client=self, commit=self.repo.head.commit, path=path,)
+            run.to_yaml(path=path)
+            self.add_to_activity_index(run)
 
     def init_repository(self, force=False, user=None):
         """Initialize an empty Renku repository."""

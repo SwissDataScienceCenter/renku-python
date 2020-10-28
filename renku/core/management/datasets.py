@@ -50,7 +50,6 @@ from renku.core.models.datasets import (
     is_dataset_name_valid,
 )
 from renku.core.models.git import GitURL
-from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.utils.urls import remove_credentials
@@ -198,23 +197,22 @@ class DatasetsApiMixin(object):
 
         keywords = keywords or ()
 
-        with with_reference(metadata_path):
-            dataset = Dataset(
-                client=self,
-                identifier=identifier,
-                name=name,
-                title=title,
-                path=dataset_path,
-                description=description,
-                creators=creators,
-                keywords=keywords,
-                immutable=True,  # No mutation required when first creating a dataset
-            )
+        dataset = Dataset(
+            client=self,
+            identifier=identifier,
+            name=name,
+            title=title,
+            path=dataset_path,
+            description=description,
+            creators=creators,
+            keywords=keywords,
+            immutable=True,  # No mutation required when first creating a dataset
+        )
 
         dataset_ref = LinkReference.create(client=self, name="datasets/" + name)
         dataset_ref.set_reference(metadata_path)
 
-        dataset.to_yaml()
+        dataset.to_yaml(path=metadata_path)
 
         return dataset, metadata_path, dataset_ref
 

@@ -28,7 +28,6 @@ from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
 from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.datastructures import Collection
-from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
 
@@ -36,7 +35,7 @@ PROJECT_URL_PATH = "projects"
 
 
 @attr.s(slots=True,)
-class Project(ReferenceMixin):
+class Project:
     """Represent a project."""
 
     name = attr.ib(default=None,)
@@ -66,6 +65,8 @@ class Project(ReferenceMixin):
     creator = attr.ib(default=None, kw_only=True)
 
     _id = attr.ib(kw_only=True, default=None)
+
+    _metadata_path = attr.ib(default=None, init=False)
 
     @created.default
     def _now(self):
@@ -104,7 +105,7 @@ class Project(ReferenceMixin):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
         self = cls.from_jsonld(data=data, client=client)
-        self.__reference__ = path
+        self._metadata_path = path
 
         return self
 
@@ -118,14 +119,15 @@ class Project(ReferenceMixin):
 
         return ProjectSchema(client=client).load(data)
 
-    def to_yaml(self):
+    def to_yaml(self, path=None):
         """Write an instance to the referenced YAML file."""
         from renku import __version__
 
         self.agent_version = __version__
 
+        self._metadata_path = path or self._metadata_path
         data = ProjectSchema().dump(self)
-        jsonld.write_yaml(path=self.__reference__, data=data)
+        jsonld.write_yaml(path=self._metadata_path, data=data)
 
     def as_jsonld(self):
         """Create JSON-LD."""

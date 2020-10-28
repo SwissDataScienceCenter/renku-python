@@ -23,26 +23,23 @@ from pathlib import Path
 import attr
 
 
-class PathFormatterMixin:
+class _PathFormatterMixin:
     """Format path property."""
 
     def __str__(self):
         """Simple conversion to string."""
-        reference = self.__reference__
-        if reference:
-            return str(os.path.normpath(str(reference.parent / self.path)))
         return os.path.relpath(os.path.abspath(str(self.path)), os.path.realpath(os.getcwd()))
 
 
 @attr.s
-class File(PathFormatterMixin):
+class File(_PathFormatterMixin):
     """Represent a file."""
 
     path = attr.ib(converter=Path)
 
 
 @attr.s
-class Directory(PathFormatterMixin):
+class Directory(_PathFormatterMixin):
     """Represent a directory."""
 
     # TODO add validation to allow only directories
