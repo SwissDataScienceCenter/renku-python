@@ -16,25 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service templates view."""
-
-import shutil
-
 from flask import Blueprint, request
 from flask_apispec import marshal_with, use_kwargs
-from marshmallow import EXCLUDE
 
-from renku.core.commands.init import create_from_template_local, read_template_manifest
-from renku.core.utils.contexts import chdir
-from renku.service.config import INVALID_PARAMS_ERROR_CODE, SERVICE_PREFIX
-from renku.service.controllers.utils.project_clone import user_project_clone
+from renku.service.config import SERVICE_PREFIX
+from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
+from renku.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 from renku.service.serializers.templates import (
     ManifestTemplatesRequest,
     ManifestTemplatesResponseRPC,
     ProjectTemplateRequest,
     ProjectTemplateResponseRPC,
 )
-from renku.service.utils import make_new_project_path, new_repo_push
-from renku.service.views import error_response, result_response
 from renku.service.views.decorators import (
     accepts_json,
     handle_base_except,
@@ -65,17 +58,13 @@ templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SE
 @accepts_json
 @requires_cache
 @requires_identity
-def read_manifest_from_template(user, cache):
+def read_manifest_from_template(user_data, cache):
     """Read templates from the manifest file of a template repository."""
-    project_data = ManifestTemplatesRequest().load({**user, **request.args,}, unknown=EXCLUDE)
-    project = user_project_clone(user, project_data)
-    manifest = read_template_manifest(project.abs_path)
-
-    return result_response(ManifestTemplatesResponseRPC(), {"templates": manifest})
+    return TemplatesReadManifestCtrl(cache, user_data, dict(request.args)).to_response()
 
 
 @use_kwargs(ProjectTemplateRequest)
-@marshal_with(ProjectTemplateRequest)
+@marshal_with(ProjectTemplateResponseRPC)
 @header_doc(
     "Create a new project starting from a target template available in a " "remote repositpry.",
     tags=(TEMPLATES_BLUEPRINT_TAG,),
@@ -91,60 +80,6 @@ def read_manifest_from_template(user, cache):
 @accepts_json
 @requires_cache
 @requires_identity
-def create_project_from_template(user, cache):
+def create_project_from_template(user_data, cache):
     """Create a new project starting form target template."""
-    ctx = ProjectTemplateRequest().load({**user, **request.json,}, unknown=EXCLUDE)
-
-    # Clone project and find target template
-    template_project = user_project_clone(user, ctx)
-    templates = read_template_manifest(template_project.abs_path)
-    template = next((template for template in templates if template["folder"] == ctx["identifier"]), None)
-    if template is None:
-        return error_response(INVALID_PARAMS_ERROR_CODE, "invalid identifier for target repository")
-
-    # Verify missing parameters
-    template_parameters = template.get("variables", {})
-    provided_parameters = {p["key"]: p["value"] for p in ctx["parameters"]}
-    missing_keys = list(template_parameters.keys() - provided_parameters.keys())
-    if len(missing_keys) > 0:
-        return error_response(INVALID_PARAMS_ERROR_CODE, f"missing parameter: {missing_keys[0]}")
-
-    # Create new path
-    new_project_path = make_new_project_path(user, ctx)
-    if new_project_path.exists():
-        shutil.rmtree(str(new_project_path))
-    new_project_path.mkdir(parents=True, exist_ok=True)
-
-    default_metadata = {
-        "__template_source__": ctx["git_url"],
-        "__template_ref__": ctx["ref"],
-        "__template_id__": ctx["identifier"],
-        "__automated_update__": template.get("allow_template_update", True),
-        "__namespace__": ctx["project_namespace"],
-        "__repository__": ctx["project_repository"],
-        "__sanitized_project_name__": ctx["project_name_stripped"],
-        "__project_slug__": ctx["project_slug"],
-    }
-
-    # prepare data and init new project
-    source_path = template_project.abs_path / ctx["identifier"]
-    git_user = {"email": user["email"], "name": user["fullname"]}
-    with chdir(new_project_path):
-        create_from_template_local(
-            source_path,
-            ctx["project_name"],
-            provided_parameters,
-            default_metadata,
-            git_user,
-            ctx["url"],
-            ctx["ref"],
-            "service",
-        )
-    new_repo_push(new_project_path, ctx["new_project_url_with_auth"])
-
-    resp = {
-        "url": ctx["new_project_url"],
-        "namespace": ctx["project_namespace"],
-        "name": ctx["project_name_stripped"],
-    }
-    return result_response(ProjectTemplateResponseRPC(), resp)
+    return TemplatesCreateProjectCtrl(cache, user_data, dict(request.json)).to_response()
