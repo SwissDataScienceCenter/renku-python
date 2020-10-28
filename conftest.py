@@ -1239,6 +1239,7 @@ def large_file(tmp_path_factory, client):
 def ctrl_init(svc_client_cache):
     """Cache object for controller testing."""
     from renku.service.serializers.headers import UserIdentityHeaders
+
     _, headers, cache = svc_client_cache
 
     headers["Authorization"] = "Bearer not-a-token"
