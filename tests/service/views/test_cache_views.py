@@ -586,6 +586,8 @@ def test_check_migrations_local(svc_client_setup):
     assert 200 == response.status_code
 
     assert response.json["result"]["migration_required"]
+    assert not response.json["result"]["template_update_possible"]
+    assert not response.json["result"]["docker_update_possible"]
     assert response.json["result"]["project_supported"]
     assert response.json["result"]["project_version"]
     assert response.json["result"]["latest_version"]
@@ -601,6 +603,8 @@ def test_check_migrations_remote(svc_client_setup, it_remote_repo):
     assert 200 == response.status_code
 
     assert response.json["result"]["migration_required"]
+    assert not response.json["result"]["template_update_possible"]
+    assert not response.json["result"]["docker_update_possible"]
     assert response.json["result"]["project_supported"]
     assert response.json["result"]["project_version"]
     assert response.json["result"]["latest_version"]
@@ -616,4 +620,6 @@ def test_check_no_migrations(svc_client_with_repo):
 
     assert 200 == response.status_code
     assert not response.json["result"]["migration_required"]
+    assert not response.json["result"]["template_update_possible"]
+    assert not response.json["result"]["docker_update_possible"]
     assert response.json["result"]["project_supported"]

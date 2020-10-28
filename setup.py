@@ -44,13 +44,13 @@ class DownloadTemplates(Command):
         pass
 
     def run(self):
-        from renku.core.commands.init import fetch_template, read_template_manifest
+        from renku.core.commands.init import fetch_template_from_git, read_template_manifest
 
         with TemporaryDirectory() as tempdir:
             # download and extract template data
             temppath = Path(tempdir)
             print("downloading Renku templates...")
-            fetch_template(URL, REFERENCE, temppath)
+            fetch_template_from_git(URL, REFERENCE, temppath)
             read_template_manifest(temppath, checkout=True)
 
             # copy templates
@@ -111,7 +111,7 @@ tests_require = [
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.2", "renku-sphinx-theme==0.1.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.2", "sphinx-rtd-theme==0.5.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
     "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.9"],

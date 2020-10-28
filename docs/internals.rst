@@ -1,5 +1,5 @@
 ..
-    Copyright 2019-2020 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2020 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,24 +15,13 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-.. _glossary:
 
-Glossary
-========
+Internals
+=========
 
-.. glossary::
+Internals of the ``renku-python`` library.
 
-   inputs
-      Files and/or directories which are required for running tools.
-
-   outputs
-      Files and/or directories which are created or modified during
-      an execution of a tool.
-
-   tool
-      A description of a standalone, non-interactive program which can be
-      invoked on some inputs, produces outputs, and then terminates
-      [#cwl-tool]_.
-
-
-.. [#cwl-tool] https://www.commonwl.org/v1.0/CommandLineTool.html
+.. toctree::
+   models/index
+   management
+   plugins

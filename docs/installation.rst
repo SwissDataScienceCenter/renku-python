@@ -15,5 +15,9 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+Installation
+============
 
-.. include:: ../CONTRIBUTING.rst
+.. include:: ../README.rst
+   :start-after: installation-reference:
+   :end-before: CLI Example
