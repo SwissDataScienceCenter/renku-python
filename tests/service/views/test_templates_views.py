@@ -26,7 +26,7 @@ from flaky import flaky
 
 from renku.core.commands.init import fetch_template_from_git, read_template_manifest
 from renku.core.utils.scm import strip_and_lower
-from renku.service.config import INVALID_PARAMS_ERROR_CODE
+from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 
 
 @pytest.mark.service
@@ -41,8 +41,10 @@ def test_read_manifest_from_template(svc_client_with_templates):
     assert response
     assert {"result"} == set(response.json.keys())
     assert response.json["result"]["templates"]
+
     templates = response.json["result"]["templates"]
     assert len(templates) > 0
+
     default_template = templates[template_params["index"] - 1]
     assert default_template["folder"] == template_params["id"]
 
@@ -85,6 +87,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     anonymous_headers = deepcopy(headers)
     anonymous_headers["Authorization"] = "Bearer None"
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=anonymous_headers)
+
     assert response
     assert response.json["error"]
     assert "Cannot push changes" in response.json["error"]["reason"]
@@ -96,14 +99,14 @@ def test_create_project_from_template(svc_client_templates_creation):
         response = svc_client.post(
             "/templates.create_project", data=json.dumps(payload_without_parameters), headers=headers
         )
-
         assert response
         assert response.json["error"]
-        assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
+        assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
         assert "missing parameter" in response.json["error"]["reason"]
 
     # successfully push with proper authentication
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
+
     assert response
     assert {"result"} == set(response.json.keys())
     stripped_name = strip_and_lower(payload["project_name"])
@@ -118,37 +121,3 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert {"result"} == set(response.json.keys())
     assert expected_url == response.json["result"]["url"]
     assert rm_remote() is True
-
-
-def test_service_default_init_parameters(svc_client_templates_creation, mocker):
-    """Test that the default parameters are set in template initialisation."""
-    create_from_template = mocker.patch("renku.service.views.templates.create_from_template_local")
-    mocker.patch("renku.service.views.templates.new_repo_push")
-    svc_client, headers, payload, rm_remote = svc_client_templates_creation
-    response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
-    assert response
-    assert {"result"} == set(response.json.keys())
-
-    project_name = strip_and_lower(payload["project_name"])
-
-    create_from_template.assert_called_once()
-    metadata = create_from_template.call_args[0][3]
-    assert set(
-        [
-            "__template_source__",
-            "__template_ref__",
-            "__template_id__",
-            "__namespace__",
-            "__repository__",
-            "__project_slug__",
-            "__sanitized_project_name__",
-        ]
-    ) <= set(metadata.keys())
-    assert metadata["__template_source__"] == payload["url"]
-    assert metadata["__template_ref__"] == payload["ref"]
-    assert metadata["__template_id__"] == payload["identifier"]
-    assert metadata["__namespace__"] == payload["project_namespace"]
-    assert metadata["__repository__"] == payload["project_repository"]
-    assert metadata["__sanitized_project_name__"] == project_name
-    payload_namespace = payload["project_namespace"]
-    assert metadata["__project_slug__"] == f"{payload_namespace}/{project_name}"
