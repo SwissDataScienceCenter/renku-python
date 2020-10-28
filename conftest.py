@@ -43,7 +43,6 @@ from click.testing import CliRunner
 from git import Repo
 from walrus import Database
 
-from renku.service.serializers.headers import UserIdentityHeaders
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
@@ -1239,6 +1238,7 @@ def large_file(tmp_path_factory, client):
 @pytest.fixture()
 def ctrl_init(svc_client_cache):
     """Cache object for controller testing."""
+    from renku.service.serializers.headers import UserIdentityHeaders
     _, headers, cache = svc_client_cache
 
     headers["Authorization"] = "Bearer not-a-token"
