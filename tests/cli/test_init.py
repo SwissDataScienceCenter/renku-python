@@ -303,6 +303,7 @@ def test_default_init_parameters(isolated_runner, mocker, project_init, template
     """Test that the default parameters are set in template initialisation."""
     create_from_template = mocker.patch("renku.cli.init.create_from_template")
     mocker.patch("renku.cli.githooks.install")
+
     data, commands = project_init
 
     new_project = Path(data["test_project"])
