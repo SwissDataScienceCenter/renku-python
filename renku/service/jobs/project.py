@@ -28,7 +28,9 @@ from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
 
 
-def execute_migration(project, commit_message):
+def execute_migration(
+    project, force_template_update, skip_template_update, skip_docker_update, skip_migrations, commit_message
+):
     """Execute project migrations."""
     messages = []
     worker_log.debug(f"migrating {project.abs_path}")
@@ -38,14 +40,31 @@ def execute_migration(project, commit_message):
         messages.append(msg)
 
     with chdir(project.abs_path):
-        was_migrated = migrate_project(progress_callback=collect_message, commit_message=commit_message)
+        was_migrated, template_migrated, docker_migrated = migrate_project(
+            progress_callback=collect_message,
+            force_template_update=force_template_update,
+            skip_template_update=skip_template_update,
+            skip_docker_update=skip_docker_update,
+            skip_migrations=skip_migrations,
+            commit_message=commit_message,
+        )
 
     worker_log.debug(f"migration finished - was_migrated={was_migrated}")
-    return messages, was_migrated
+    return messages, was_migrated, template_migrated, docker_migrated
 
 
 @requires_cache
-def migrate_job(cache, user_data, project_id, user_job_id, commit_message):
+def migrate_job(
+    cache,
+    user_data,
+    project_id,
+    user_job_id,
+    force_template_update,
+    skip_template_update,
+    skip_docker_update,
+    skip_migrations,
+    commit_message,
+):
     """Execute migrations job."""
     user = cache.ensure_user(user_data)
     worker_log.debug(f"executing dataset import job for {user.user_id}:{user.fullname}")
@@ -54,10 +73,14 @@ def migrate_job(cache, user_data, project_id, user_job_id, commit_message):
 
     try:
         project = cache.get_project(user, project_id)
-        messages, was_migrated = execute_migration(project, commit_message)
+        messages, was_migrated, template_migrated, docker_migrated = execute_migration(
+            project, force_template_update, skip_template_update, skip_docker_update, skip_migrations, commit_message
+        )
 
         user_job.update_extras("messages", messages)
         user_job.update_extras("was_migrated", was_migrated)
+        user_job.update_extras("template_migrated", template_migrated)
+        user_job.update_extras("docker_migrated", docker_migrated)
 
         worker_log.debug("operation successful - syncing with remote")
         _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")

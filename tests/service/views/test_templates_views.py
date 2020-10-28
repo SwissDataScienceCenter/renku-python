@@ -24,7 +24,7 @@ from tempfile import TemporaryDirectory
 import pytest
 from flaky import flaky
 
-from renku.core.commands.init import fetch_template, read_template_manifest
+from renku.core.commands.init import fetch_template_from_git, read_template_manifest
 from renku.core.utils.scm import strip_and_lower
 from renku.service.config import INVALID_PARAMS_ERROR_CODE
 
@@ -62,7 +62,7 @@ def test_compare_manifests(svc_client_with_templates):
 
     with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        manifest_file = fetch_template(template_params["url"], template_params["ref"], temp_path)
+        manifest_file, _ = fetch_template_from_git(template_params["url"], template_params["ref"], temp_path)
         manifest = read_template_manifest(temp_path)
 
         assert manifest_file and manifest_file.exists()

@@ -704,7 +704,7 @@ class DatasetsApiMixin(object):
         if is_project_unsupported(client):
             return files
 
-        migrate(client)
+        migrate(client, skip_template_update=True, skip_docker_update=True)
 
         for _, dataset in client.datasets.items():
             for file_ in dataset.files:
