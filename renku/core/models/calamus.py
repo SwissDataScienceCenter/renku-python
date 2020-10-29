@@ -157,6 +157,7 @@ class DateTimeList(fields.DateTime):
         value = normalize_value(value)
 
         if isinstance(value, (list, tuple, set)):
+            value = sorted(value)
             value = value[0] if len(value) > 0 else None
 
         return super()._deserialize(value, attr, data, **kwargs)
