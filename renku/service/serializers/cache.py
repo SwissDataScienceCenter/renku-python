@@ -155,6 +155,7 @@ class ProjectCloneResponse(Schema):
 
     project_id = fields.String(required=True)
     git_url = fields.String(required=True)
+    initialized = fields.Boolean(default=False)
 
 
 class ProjectCloneResponseRPC(JsonRPCResponse):
@@ -179,6 +180,10 @@ class ProjectMigrateRequest(Schema):
     """Request schema for project migrate."""
 
     project_id = fields.String(required=True)
+    force_template_update = fields.Boolean(default=False)
+    skip_template_update = fields.Boolean(default=False)
+    skip_docker_update = fields.Boolean(default=False)
+    skip_migrations = fields.Boolean(default=False)
     is_delayed = fields.Boolean(default=False)
     client_extras = fields.String()
     commit_message = fields.String()
@@ -196,6 +201,8 @@ class ProjectMigrateResponse(Schema):
     """Response schema for project migrate."""
 
     was_migrated = fields.Boolean()
+    template_migrated = fields.Boolean()
+    docker_migrated = fields.Boolean()
     messages = fields.List(fields.String)
 
 
@@ -231,6 +238,10 @@ class ProjectMigrationCheckResponse(Schema):
     """Response schema for project migration check."""
 
     migration_required = fields.Boolean()
+    template_update_possible = fields.Boolean()
+    current_template_version = fields.String(allow_none=True)
+    latest_template_version = fields.String(allow_none=True)
+    docker_update_possible = fields.Boolean()
     project_supported = fields.Boolean()
     project_version = fields.String()
     latest_version = fields.String()

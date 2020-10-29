@@ -423,6 +423,18 @@ class ExportError(RenkuException):
     """Raised when a dataset cannot be exported."""
 
 
+class TemplateUpdateError(RenkuException):
+    """Raised when a project couldn't be updated from its template."""
+
+
+class DockerfileUpdateError(RenkuException):
+    """Raised when the renku version in the Dockerfile couldn't be updated."""
+
+
+class MigrationError(RenkuException):
+    """Raised when something went wrong during migrations."""
+
+
 class RenkuImportError(RenkuException):
     """Raised when a dataset cannot be imported."""
 

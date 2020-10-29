@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache views."""
+"""Renku service project remote abstraction tests."""
 import pytest
 from marshmallow import ValidationError
 
@@ -95,6 +95,19 @@ def test_remote_project_context():
         assert renku.__version__ == latest_version
         assert "pre-0.11.0" == project_version
 
-        migration_required, project_supported = migrations_check()
+        (
+            migration_required,
+            project_supported,
+            template_update_possible,
+            current_template_version,
+            latest_template_version,
+            automated_update_possible,
+            docker_update_possible,
+        ) = migrations_check()
         assert migration_required is True
+        assert template_update_possible is False
+        assert current_template_version is None
+        assert latest_template_version is None
+        assert automated_update_possible is False
+        assert docker_update_possible is False
         assert project_supported is True

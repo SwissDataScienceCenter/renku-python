@@ -40,6 +40,10 @@ class MigrateProjectCtrl(ServiceCtrl, ReadWithSyncOperation):
         """Construct controller."""
         self.ctx = MigrateProjectCtrl.REQUEST_SERIALIZER.load(request_data)
 
+        self.force_template_update = self.ctx.get("force_template_update", False)
+        self.skip_template_update = self.ctx.get("skip_template_update", False)
+        self.skip_docker_update = self.ctx.get("skip_docker_update", False)
+        self.skip_migrations = self.ctx.get("skip_migrations", False)
         self.commit_message = self.ctx.get("commit_message", None)
         super(MigrateProjectCtrl, self).__init__(cache, user_data, request_data)
 
@@ -52,8 +56,20 @@ class MigrateProjectCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        messages, was_migrated = execute_migration(self.project, self.commit_message)
-        response = {"messages": messages, "was_migrated": was_migrated}
+        messages, was_migrated, template_migrated, docker_migrated = execute_migration(
+            self.project,
+            self.force_template_update,
+            self.skip_template_update,
+            self.skip_docker_update,
+            self.skip_migrations,
+            self.commit_message,
+        )
+        response = {
+            "messages": messages,
+            "was_migrated": was_migrated,
+            "template_migrated": template_migrated,
+            "docker_migrated": docker_migrated,
+        }
 
         if was_migrated:
             response["remote_branch"] = self.sync()

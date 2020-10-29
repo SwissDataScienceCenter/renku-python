@@ -86,6 +86,12 @@ def test_import_from_template(local_client):
                 "description": "description",
                 "date_created": "now",
                 "date_updated": "now",
+                "__template_source__": "renku",
+                "__template_ref__": "master",
+                "__template_id__": "python-minimal",
+                "__namespace__": "",
+                "__repository__": "",
+                "__project_slug__": "",
             }
         local_client.import_from_template(template_path, metadata)
         compiled_file = local_client.path / output_file

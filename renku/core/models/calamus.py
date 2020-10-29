@@ -146,6 +146,23 @@ class StringList(fields._JsonLDField, marshmallow.fields.String, marshmallow.fie
             raise ValueError("Invalid type for field {}: {}".format(self.name, type(value)))
 
 
+class DateTimeList(fields.DateTime):
+    """A DateTime field that might be a list when deserializing."""
+
+    def __init__(self, *args, **kwargs):
+        """Create an instance."""
+        super().__init__(*args, **kwargs)
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        value = normalize_value(value)
+
+        if isinstance(value, (list, tuple, set)):
+            value = sorted(value)
+            value = value[0] if len(value) > 0 else None
+
+        return super()._deserialize(value, attr, data, **kwargs)
+
+
 class Nested(fields.Nested):
     """Nested field that passes along client and commit info."""
 

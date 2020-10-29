@@ -27,7 +27,14 @@ from redis import RedisError
 from sentry_sdk import capture_exception
 from werkzeug.exceptions import HTTPException
 
-from renku.core.errors import MigrationRequired, RenkuException
+from renku.core.errors import (
+    DockerfileUpdateError,
+    MigrationError,
+    MigrationRequired,
+    RenkuException,
+    TemplateUpdateError,
+    UninitializedProject,
+)
 from renku.service.cache import cache
 from renku.service.config import (
     GIT_ACCESS_DENIED_ERROR_CODE,
@@ -140,8 +147,33 @@ def handle_renku_except(f):
                 "reason": str(e),
             }
 
+            if isinstance(e, UninitializedProject):
+                err_response["project_initialization_required"] = True
+
             if isinstance(e, MigrationRequired):
                 err_response["migration_required"] = True
+
+            return jsonify(error=err_response)
+
+    return decorated_function
+
+
+def handle_migration_except(f):
+    """Wrapper which handles exceptions during migrations."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except (TemplateUpdateError, DockerfileUpdateError, MigrationError) as e:
+            err_response = {
+                "code": RENKU_EXCEPTION_ERROR_CODE,
+                "reason": str(e),
+                "template_update_failed": isinstance(e, TemplateUpdateError),
+                "dockerfile_update_failed": isinstance(e, DockerfileUpdateError),
+                "migrations_failed": isinstance(e, MigrationError),
+            }
 
             return jsonify(error=err_response)
 

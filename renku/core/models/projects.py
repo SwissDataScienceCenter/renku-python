@@ -26,9 +26,8 @@ from marshmallow.decorators import pre_dump
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.core.models.datastructures import Collection
-from renku.core.models.locals import ReferenceMixin
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
 
@@ -36,7 +35,7 @@ PROJECT_URL_PATH = "projects"
 
 
 @attr.s(slots=True,)
-class Project(ReferenceMixin):
+class Project:
     """Represent a project."""
 
     name = attr.ib(default=None,)
@@ -47,11 +46,27 @@ class Project(ReferenceMixin):
 
     agent_version = attr.ib(converter=str, default="pre-0.11.0")
 
+    template_source = attr.ib(type=str, default=None)
+
+    template_ref = attr.ib(type=str, default=None)
+
+    template_id = attr.ib(type=str, default=None)
+
+    template_version = attr.ib(type=str, default=None)
+
+    template_metadata = attr.ib(type=str, default="{}")
+
+    immutable_template_files = attr.ib(factory=list)
+
+    automated_update = attr.ib(converter=bool, default=False)
+
     client = attr.ib(default=None, kw_only=True)
 
     creator = attr.ib(default=None, kw_only=True)
 
     _id = attr.ib(kw_only=True, default=None)
+
+    _metadata_path = attr.ib(default=None, init=False)
 
     @created.default
     def _now(self):
@@ -90,7 +105,7 @@ class Project(ReferenceMixin):
         """Return an instance from a YAML file."""
         data = jsonld.read_yaml(path)
         self = cls.from_jsonld(data=data, client=client)
-        self.__reference__ = path
+        self._metadata_path = path
 
         return self
 
@@ -104,14 +119,15 @@ class Project(ReferenceMixin):
 
         return ProjectSchema(client=client).load(data)
 
-    def to_yaml(self):
+    def to_yaml(self, path=None):
         """Write an instance to the referenced YAML file."""
         from renku import __version__
 
         self.agent_version = __version__
 
+        self._metadata_path = path or self._metadata_path
         data = ProjectSchema().dump(self)
-        jsonld.write_yaml(path=self.__reference__, data=data)
+        jsonld.write_yaml(path=self._metadata_path, data=data)
 
     def as_jsonld(self):
         """Create JSON-LD."""
@@ -171,6 +187,13 @@ class ProjectSchema(JsonLDSchema):
     created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     version = fields.String(schema.schemaVersion, missing=1)
     agent_version = fields.String(schema.agent, missing="pre-0.11.0")
+    template_source = fields.String(renku.templateSource, missing=None)
+    template_ref = fields.String(renku.templateReference, missing=None)
+    template_id = fields.String(renku.templateId, missing=None)
+    template_version = fields.String(renku.templateVersion, missing=None)
+    template_metadata = fields.String(renku.templateMetadata, missing=None)
+    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
+    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=False)
     creator = Nested(schema.creator, PersonSchema, missing=None)
     _id = fields.Id(init_name="id", missing=None)
 

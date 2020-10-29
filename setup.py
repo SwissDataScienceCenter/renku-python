@@ -44,13 +44,13 @@ class DownloadTemplates(Command):
         pass
 
     def run(self):
-        from renku.core.commands.init import fetch_template, read_template_manifest
+        from renku.core.commands.init import fetch_template_from_git, read_template_manifest
 
         with TemporaryDirectory() as tempdir:
             # download and extract template data
             temppath = Path(tempdir)
             print("downloading Renku templates...")
-            fetch_template(URL, REFERENCE, temppath)
+            fetch_template_from_git(URL, REFERENCE, temppath)
             read_template_manifest(temppath, checkout=True)
 
             # copy templates

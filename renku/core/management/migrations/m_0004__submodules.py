@@ -78,7 +78,9 @@ def _migrate_submodule_based_datasets(client):
 
     for remote_client in remote_clients.values():
         if not is_project_unsupported(remote_client):
-            migrate(remote_client)
+            migrate(
+                remote_client, skip_template_update=True, skip_docker_update=True,
+            )
 
     metadata = {}
 
