@@ -33,6 +33,7 @@ from renku.core.errors import (
     MigrationRequired,
     RenkuException,
     TemplateUpdateError,
+    UninitializedProject,
 )
 from renku.service.cache import cache
 from renku.service.config import (
@@ -145,6 +146,9 @@ def handle_renku_except(f):
                 "code": RENKU_EXCEPTION_ERROR_CODE,
                 "reason": str(e),
             }
+
+            if isinstance(e, UninitializedProject):
+                err_response["project_initialization_required"] = True
 
             if isinstance(e, MigrationRequired):
                 err_response["migration_required"] = True

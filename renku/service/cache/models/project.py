@@ -21,7 +21,7 @@ import shutil
 import time
 from datetime import datetime
 
-from walrus import DateTimeField, IntegerField, Model, TextField
+from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
 
 from renku.service.cache.base import BaseCache
 from renku.service.config import CACHE_PROJECTS_PATH
@@ -45,6 +45,7 @@ class Project(Model):
     email = TextField()
     owner = TextField()
     token = TextField()
+    initialized = BooleanField()
 
     @property
     def abs_path(self):

@@ -784,6 +784,7 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
         "owner": "me",
         "token": "awesome token",
         "git_url": "git@gitlab.com",
+        "initialized": True,
     }
 
     project_obj = cache.make_project(user, project_meta)

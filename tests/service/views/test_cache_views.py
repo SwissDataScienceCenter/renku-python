@@ -253,6 +253,7 @@ def test_clone_projects_with_auth(svc_client):
 
     assert response
     assert {"result"} == set(response.json.keys())
+    assert response.json["result"]["initialized"]
 
 
 @pytest.mark.service
