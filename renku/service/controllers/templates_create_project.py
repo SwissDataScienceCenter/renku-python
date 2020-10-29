@@ -104,6 +104,10 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
 
         return project, provided_parameters
 
+    def new_project_push(self, project_path):
+        """Push new project to the remote."""
+        return new_repo_push(project_path, self.ctx["new_project_url_with_auth"])
+
     def new_project(self):
         """Create new project from template."""
         template_project, provided_parameters = self.setup_template()
@@ -121,7 +125,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
                 self.ctx["ref"],
                 "service",
             )
-        new_repo_push(new_project_path, self.ctx["new_project_url_with_auth"])
+        self.new_project_push(new_project_path)
 
         return {
             "url": self.ctx["new_project_url"],

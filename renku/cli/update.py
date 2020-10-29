@@ -128,7 +128,6 @@ from renku.core.commands.cwl_runner import execute
 from renku.core.commands.graph import Graph, _safe_path
 from renku.core.commands.options import option_siblings
 from renku.core.errors import ParameterError
-from renku.core.models.locals import with_reference
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.workflow.converters.cwl import CWLConverter
 from renku.version import __version__, version_url
@@ -195,8 +194,7 @@ def update(client, ctx, revision, no_output, update_all, siblings, paths):
 
     workflow.update_id_and_label_from_commit_path(client, client.repo.head.commit, path)
 
-    with with_reference(path):
-        cls = WorkflowRun if workflow.subprocesses else ProcessRun
-        run = cls.from_run(run=workflow, client=client, path=path, update_commits=True)
-        run.to_yaml()
-        client.add_to_activity_index(run)
+    cls = WorkflowRun if workflow.subprocesses else ProcessRun
+    run = cls.from_run(run=workflow, client=client, path=path, update_commits=True)
+    run.to_yaml(path=path)
+    client.add_to_activity_index(run)
