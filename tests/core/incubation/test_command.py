@@ -18,7 +18,7 @@
 """Test command builder."""
 from pathlib import Path
 
-from renku.core.incubation.command import Command
+from renku.core.incubation.command import Command, CommandResult
 
 
 def test_dataset_add_command(project, tmpdir):
@@ -41,7 +41,10 @@ def test_dataset_add_command(project, tmpdir):
     data_file = tmpdir / Path("somefile")
     data_file.write_text("1,2,3", encoding="utf-8")
 
-    add_to_dataset.execute([str(data_file)], "ds1")
+    result = add_to_dataset.execute([str(data_file)], "ds1")
+    assert result.status == CommandResult.SUCCESS
+    assert not result.error
+
     files = list_files(datasets=["ds1"])
 
     assert isinstance(files, list)

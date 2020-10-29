@@ -18,6 +18,7 @@
 """Command builder."""
 
 import contextlib
+import functools
 from collections import defaultdict
 
 import click
@@ -33,10 +34,14 @@ from renku.core.management.repository import default_path
 def check_finalized(f):
     """Decorator to prevent modification of finalized builders."""
 
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        """Check finalized status."""
+        """Decorator to prevent modification of finalized builders."""
+        if not args or not isinstance(args[0], Command):
+            raise errors.ParameterError("Command hooks need to be `Command` object methods.")
+
         if args[0].finalized:
-            raise errors.CommandFinalizedError("Cannot modify a finalized command.")
+            raise errors.CommandFinalizedError("Cannot modify a finalized `Command`.")
 
         return f(*args, **kwargs)
 
@@ -140,7 +145,8 @@ class Command(object):
     @check_finalized
     def build(self):
         """Build (finalize) the command."""
-        assert self._operation is not None
+        if not self._operation:
+            raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
         self.add_pre_hook(self.CLIENT_HOOK_PRIORITY, self._pre_hook)
 
         self._finalized = True
@@ -239,7 +245,7 @@ class Commit(Command):
             commit=True,
             commit_empty=self._commit_empty,
             commit_message=self._message,
-            commit_only=self._commit_filter_paths,
+            commit_only=list(*self._commit_filter_paths),
             ignore_std_streams=not builder._track_std_streams,
             raise_if_empty=self._raise_empty,
         )
