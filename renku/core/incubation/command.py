@@ -51,7 +51,7 @@ def check_finalized(f):
 class Command(object):
     """Base renku command builder."""
 
-    CLIENT_HOOK_PRIORITY = 5
+    CLIENT_HOOK_ORDER = 1
 
     def __init__(self):
         """__init__ of Command."""
@@ -94,10 +94,10 @@ class Command(object):
 
         context = {}
         if any(self.pre_hooks):
-            priorities = sorted(self.pre_hooks.keys(), reverse=True)
+            order = sorted(self.pre_hooks.keys())
 
-            for p in priorities:
-                for hook in self.pre_hooks[p]:
+            for o in order:
+                for hook in self.pre_hooks[o]:
                     hook(self, context)
 
         output = None
@@ -111,10 +111,10 @@ class Command(object):
         result = CommandResult(output, error, CommandResult.FAILURE if error else CommandResult.SUCCESS)
 
         if any(self.post_hooks):
-            priorities = sorted(self.post_hooks.keys(), reverse=True)
+            order = sorted(self.post_hooks.keys())
 
-            for p in priorities:
-                for hook in self.post_hooks[p]:
+            for o in order:
+                for hook in self.post_hooks[o]:
                     hook(self, context, result)
 
         return result
@@ -127,27 +127,27 @@ class Command(object):
         return self._finalized
 
     @check_finalized
-    def add_pre_hook(self, priority, hook):
+    def add_pre_hook(self, order, hook):
         """Add a pre-execution hook."""
         if hasattr(self, "_builder"):
-            self._builder.add_pre_hook(priority, hook)
+            self._builder.add_pre_hook(order, hook)
         else:
-            self.pre_hooks[priority].append(hook)
+            self.pre_hooks[order].append(hook)
 
     @check_finalized
-    def add_post_hook(self, priority, hook):
+    def add_post_hook(self, order, hook):
         """Add a post-execution hook."""
         if hasattr(self, "_builder"):
-            self._builder.add_post_hook(priority, hook)
+            self._builder.add_post_hook(order, hook)
         else:
-            self.post_hooks[priority].append(hook)
+            self.post_hooks[order].append(hook)
 
     @check_finalized
     def build(self):
         """Build (finalize) the command."""
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
-        self.add_pre_hook(self.CLIENT_HOOK_PRIORITY, self._pre_hook)
+        self.add_pre_hook(self.CLIENT_HOOK_ORDER, self._pre_hook)
 
         self._finalized = True
 
@@ -168,9 +168,9 @@ class Command(object):
         return self
 
     @check_finalized
-    def with_commit(self):
+    def with_commit(self, message=None, commit_if_empty=False, raise_if_empty=False, commit_only=None):
         """Create a commit."""
-        return Commit(self)
+        return Commit(self, message, commit_if_empty, raise_if_empty, commit_only)
 
     @check_finalized
     def lock_project(self):
@@ -196,42 +196,15 @@ class Command(object):
 class Commit(Command):
     """Builder for commands that create a commit."""
 
-    DEFAULT_PRIORITY = 4
+    DEFAULT_ORDER = 3
 
-    def __init__(self, builder):
+    def __init__(self, builder, message=None, commit_if_empty=False, raise_if_empty=False, commit_only=None):
         """__init__ of Commit."""
         self._builder = builder
-        self._message = None
-        self._commit_empty = False
-        self._raise_empty = False
-
-    @check_finalized
-    def commit_message(self, message):
-        """Set the commit message."""
         self._message = message
-
-        return self
-
-    @check_finalized
-    def commit_only(self, *paths):
-        """Set which paths to commit."""
-        self._commit_filter_paths = paths
-
-        return self
-
-    @check_finalized
-    def commit_if_empty(self):
-        """Whether to create an empty commit."""
-        self._commit_empty = True
-
-        return self
-
-    @check_finalized
-    def raise_if_empty(self):
-        """Whether to raise an exception if no files changed."""
-        self._raise_empty = True
-
-        return self
+        self._commit_if_empty = commit_if_empty
+        self._raise_if_empty = raise_if_empty
+        self._commit_filter_paths = None
 
     def _pre_hook(self, builder, context):
         """Hook to create a commit transaction."""
@@ -243,18 +216,18 @@ class Commit(Command):
         transaction = context["client"].transaction(
             clean=False,
             commit=True,
-            commit_empty=self._commit_empty,
+            commit_empty=self._commit_if_empty,
             commit_message=self._message,
-            commit_only=list(*self._commit_filter_paths),
+            commit_only=self._commit_filter_paths,
             ignore_std_streams=not builder._track_std_streams,
-            raise_if_empty=self._raise_empty,
+            raise_if_empty=self._raise_if_empty,
         )
         context["stack"].enter_context(transaction)
 
     @check_finalized
     def build(self):
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_PRIORITY, self._pre_hook)
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
 
@@ -262,7 +235,7 @@ class Commit(Command):
 class RequireMigration(Command):
     """Builder to check for migrations."""
 
-    DEFAULT_PRIORITY = 4
+    DEFAULT_ORDER = 2
 
     def __init__(self, builder):
         """__init__ of RequireMigration."""
@@ -278,7 +251,7 @@ class RequireMigration(Command):
     @check_finalized
     def build(self):
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_PRIORITY, self._pre_hook)
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
 
@@ -286,7 +259,7 @@ class RequireMigration(Command):
 class RequireClean(Command):
     """Builder to check if repo is clean."""
 
-    DEFAULT_PRIORITY = 4
+    DEFAULT_ORDER = 3
 
     def __init__(self, builder):
         """__init__ of RequireClean."""
@@ -301,7 +274,7 @@ class RequireClean(Command):
     @check_finalized
     def build(self):
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_PRIORITY, self._pre_hook)
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
 
@@ -309,7 +282,7 @@ class RequireClean(Command):
 class ProjectLock(Command):
     """Builder to get a project wide lock."""
 
-    DEFAULT_PRIORITY = 3
+    DEFAULT_ORDER = 4
 
     def __init__(self, builder):
         """__init__ of ProjectLock."""
@@ -327,7 +300,7 @@ class ProjectLock(Command):
     @check_finalized
     def build(self):
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_PRIORITY, self._pre_hook)
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
 
@@ -335,7 +308,7 @@ class ProjectLock(Command):
 class DatasetLock(Command):
     """Builder to lock on a dataset."""
 
-    DEFAULT_PRIORITY = 2
+    DEFAULT_ORDER = 5
 
     def __init__(self, builder):
         """__init__ of DatasetLock."""
@@ -347,7 +320,7 @@ class DatasetLock(Command):
     @check_finalized
     def build(self):
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_PRIORITY, self._pre_hook)
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
 
