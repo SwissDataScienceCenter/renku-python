@@ -321,3 +321,34 @@ def test_relative_path_for_directory_input(client, run, renku_cli):
     assert 1 == len(cwl.inputs)
     assert isinstance(cwl.inputs[0].consumes, Collection)
     assert "data" == cwl.inputs[0].consumes.path
+
+
+def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
+    """Test calling update with no args does nothing."""
+    cwd = Path(project)
+    data = cwd / DATA_DIR
+    data.mkdir(exist_ok=True, parents=True)
+    source = cwd / "source.txt"
+    output = data / "result.txt"
+
+    repo = git.Repo(project)
+
+    update_and_commit("1", source, repo)
+
+    exit_code, run = renku_cli("run", "wc", "-c", stdin=source, stdout=output)
+    assert 0 == exit_code
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code
+
+    update_and_commit("12", source, repo)
+
+    result = runner.invoke(cli, ["status"])
+    assert 1 == result.exit_code
+
+    before_commit = repo.head.commit
+
+    exit_code, run = renku_cli("update")
+    assert 0 == exit_code
+
+    assert before_commit == repo.head.commit
