@@ -38,7 +38,6 @@ from renku.core.models.entities import (
     Entity,
     EntitySchema,
 )
-from renku.core.models.locals import ReferenceMixin
 from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
 from renku.core.utils.scm import git_unicode_unescape
@@ -91,7 +90,7 @@ def _set_entity_client_commit(entity, client, commit):
 
 
 @attr.s(cmp=False,)
-class Activity(CommitMixin, ReferenceMixin):
+class Activity(CommitMixin):
     """Represent an activity in the repository."""
 
     _id = attr.ib(default=None, kw_only=True)
@@ -112,6 +111,8 @@ class Activity(CommitMixin, ReferenceMixin):
     ended_at_time = attr.ib(kw_only=True)
 
     agents = attr.ib(kw_only=True)
+
+    _metadata_path = attr.ib(default=None, init=False)
 
     def default_generated(self):
         """Create default ``generated``."""
@@ -369,14 +370,15 @@ class Activity(CommitMixin, ReferenceMixin):
         data = jsonld.read_yaml(path)
 
         self = cls.from_jsonld(data=data, client=client, commit=commit)
-        self.__reference__ = path
+        self._metadata_path = path
 
         return self
 
-    def to_yaml(self):
+    def to_yaml(self, path=None):
         """Write an instance to the referenced YAML file."""
+        self._metadata_path = path or self._metadata_path
         data = ActivitySchema(flattened=True).dump(self)
-        jsonld.write_yaml(path=self.__reference__, data=data)
+        jsonld.write_yaml(path=self._metadata_path, data=data)
 
     @classmethod
     def from_jsonld(cls, data, client=None, commit=None):
@@ -550,10 +552,11 @@ class ProcessRun(Activity):
         # Activity itself
         yield self.association.plan
 
-    def to_yaml(self):
+    def to_yaml(self, path=None):
         """Write an instance to the referenced YAML file."""
+        self._metadata_path = path or self._metadata_path
         data = ProcessRunSchema(flattened=True).dump(self)
-        jsonld.write_yaml(path=self.__reference__, data=data)
+        jsonld.write_yaml(path=self._metadata_path, data=data)
 
     @classmethod
     def from_jsonld(cls, data, client=None, commit=None):
@@ -688,10 +691,11 @@ class WorkflowRun(ProcessRun):
 
         super().__attrs_post_init__()
 
-    def to_yaml(self):
+    def to_yaml(self, path=None):
         """Write an instance to the referenced YAML file."""
+        self._metadata_path = path or self._metadata_path
         data = WorkflowRunSchema(flattened=True).dump(self)
-        jsonld.write_yaml(path=self.__reference__, data=data)
+        jsonld.write_yaml(path=self._metadata_path, data=data)
 
     @classmethod
     def from_jsonld(cls, data, client=None, commit=None):

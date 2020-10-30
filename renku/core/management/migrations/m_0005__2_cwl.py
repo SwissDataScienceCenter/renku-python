@@ -31,7 +31,6 @@ from werkzeug.utils import secure_filename
 
 from renku.core.management.migrations.models.v3 import Dataset
 from renku.core.models.entities import Collection, Entity
-from renku.core.models.locals import with_reference
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
@@ -287,19 +286,18 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
     absolute_path = client.workflow_path / step_name
     path = absolute_path.relative_to(client.path)
 
-    with with_reference(absolute_path):
-        run.path = path
-        process_run = ProcessRun.from_run(run, client, path, commit=commit)
-        process_run.invalidated = _invalidations_from_commit(client, commit)
+    run.path = path
+    process_run = ProcessRun.from_run(run, client, path, commit=commit)
+    process_run.invalidated = _invalidations_from_commit(client, commit)
 
-        # HACK: This fixes broken SoftwareAgent due to rebases done by users
-        if isinstance(process_run.association.agent, Person) or not process_run.association.agent.label.startswith(
-            "renku "
-        ):
-            process_run.association.agent = default_missing_software_agent
-        process_run.to_yaml()
-        client.add_to_activity_index(process_run)
-        return process_run, absolute_path
+    # HACK: This fixes broken SoftwareAgent due to rebases done by users
+    if isinstance(process_run.association.agent, Person) or not process_run.association.agent.label.startswith(
+        "renku "
+    ):
+        process_run.association.agent = default_missing_software_agent
+    process_run.to_yaml(path=absolute_path)
+    client.add_to_activity_index(process_run)
+    return process_run, absolute_path
 
 
 def _migrate_composite_step(client, workflow, path, commit=None):
@@ -326,17 +324,16 @@ def _migrate_composite_step(client, workflow, path, commit=None):
         subprocess, _ = _migrate_single_step(client, subrun, path, parent_commit=commit)
         run.add_subprocess(subprocess)
 
-    with with_reference(run.path):
-        wf = WorkflowRun.from_run(run, client, run.path, commit=commit)
+    wf = WorkflowRun.from_run(run, client, run.path, commit=commit)
 
-        # HACK: This fixes broken SoftwareAgent due to rebases done by users
-        if isinstance(wf.association.agent, Person) or not wf.association.agent.label.startswith("renku "):
-            wf.association.agent = default_missing_software_agent
-        for p in wf._processes:
-            if isinstance(p.association.agent, Person) or not p.association.agent.label.startswith("renku "):
-                p.association.agent = default_missing_software_agent
-        wf.to_yaml()
-        client.add_to_activity_index(wf)
+    # HACK: This fixes broken SoftwareAgent due to rebases done by users
+    if isinstance(wf.association.agent, Person) or not wf.association.agent.label.startswith("renku "):
+        wf.association.agent = default_missing_software_agent
+    for p in wf._processes:
+        if isinstance(p.association.agent, Person) or not p.association.agent.label.startswith("renku "):
+            p.association.agent = default_missing_software_agent
+    wf.to_yaml(run.path)
+    client.add_to_activity_index(wf)
 
     return wf, run.path
 

@@ -78,3 +78,34 @@ def test_migration_required_flag(svc_client_setup):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
 
     assert response.json["error"]["migration_required"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_project_uninitialized(svc_client, it_remote_non_renku_repo, authentication_headers):
+    """Check migration required failure."""
+    payload = {"git_url": it_remote_non_renku_repo}
+
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=authentication_headers,)
+
+    assert response
+    assert "result" in response.json
+    assert "error" not in response.json
+
+    project_id = response.json["result"]["project_id"]
+    initialized = response.json["result"]["initialized"]
+
+    assert not initialized
+
+    payload = {
+        "project_id": project_id,
+        "name": "{0}".format(uuid.uuid4().hex),
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=authentication_headers,)
+
+    assert response
+    assert "error" in response.json
+    assert "project_initialization_required" in response.json["error"]
+    assert response.json["error"]["project_initialization_required"]

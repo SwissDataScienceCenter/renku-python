@@ -124,8 +124,7 @@ def test_creators_with_same_email(tmp_path):
     creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
     dataset = Dataset(name="dataset", creators=creators)
     path = tmp_path / "dataset.yml"
-    dataset.__reference__ = path
-    dataset.to_yaml()
+    dataset.to_yaml(path=path)
 
     dataset = Dataset.from_yaml(path)
     assert 1 == len(dataset.creators)

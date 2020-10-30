@@ -95,4 +95,4 @@ def clone(
         except GitCommandError as e:
             raise errors.GitError("Cannot install Git LFS") from e
 
-    return repo
+    return repo, bool(client.project)

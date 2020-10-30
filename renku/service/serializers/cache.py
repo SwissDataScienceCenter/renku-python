@@ -155,6 +155,7 @@ class ProjectCloneResponse(Schema):
 
     project_id = fields.String(required=True)
     git_url = fields.String(required=True)
+    initialized = fields.Boolean(default=False)
 
 
 class ProjectCloneResponseRPC(JsonRPCResponse):

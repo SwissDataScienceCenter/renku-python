@@ -50,6 +50,9 @@ IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
 )
 
 IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test")
+IT_REMOTE_NON_RENKU_REPO_URL = os.getenv(
+    "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-non-renku"
+)
 IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
@@ -57,6 +60,12 @@ IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 def it_remote_repo():
     """Returns a remote path to integration test repository."""
     return IT_REMOTE_REPO_URL
+
+
+@pytest.fixture(scope="module")
+def it_remote_non_renku_repo():
+    """Returns a remote path to integration test repository."""
+    return IT_REMOTE_NON_RENKU_REPO_URL
 
 
 @contextlib.contextmanager
@@ -329,6 +338,7 @@ def project_metadata(project):
         "owner": "me",
         "token": "awesome token",
         "git_url": "git@gitlab.com",
+        "initialized": True,
     }
 
     yield project, metadata
@@ -1233,3 +1243,16 @@ def large_file(tmp_path_factory, client):
         file_.write("some data")
 
     yield path
+
+
+@pytest.fixture()
+def ctrl_init(svc_client_cache):
+    """Cache object for controller testing."""
+    from renku.service.serializers.headers import UserIdentityHeaders
+
+    _, headers, cache = svc_client_cache
+
+    headers["Authorization"] = "Bearer not-a-token"
+    user_data = UserIdentityHeaders().load(headers)
+
+    return cache, user_data

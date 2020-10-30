@@ -162,7 +162,7 @@ class Dataset(Base):
         """Read content from YAML file."""
         data = jsonld.read_yaml(path)
         self = DatasetSchemaV3(client=client, commit=commit).load(data)
-        self.__reference__ = path
+        self._metadata_path = path
         return self
 
     def to_yaml(self, path=None):
@@ -170,7 +170,7 @@ class Dataset(Base):
         from renku.core.management import LocalClient
 
         data = DatasetSchemaV3().dump(self)
-        path = path or self.__reference__ or os.path.join(self.path, LocalClient.METADATA)
+        path = path or self._metadata_path or os.path.join(self.path, LocalClient.METADATA)
         jsonld.write_yaml(path=path, data=data)
 
 
