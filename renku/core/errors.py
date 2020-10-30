@@ -442,3 +442,11 @@ class RenkuImportError(RenkuException):
         """Embed exception and build a custom message."""
         self.exp = exp
         super(RenkuImportError, self).__init__(msg)
+
+
+class CommandNotFinalizedError(RenkuException):
+    """Raised when a non-finalized command is executed."""
+
+
+class CommandFinalizedError(RenkuException):
+    """Raised when trying to modify a finalized command builder."""
