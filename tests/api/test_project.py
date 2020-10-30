@@ -18,6 +18,7 @@
 """Tests for Project API."""
 
 import os
+
 import pytest
 
 from renku.api import Project
@@ -30,5 +31,34 @@ def test_get_project(client, sub_path):
     working_dir.mkdir(exist_ok=True, parents=True)
     os.chdir(working_dir)
 
-    with Project() as p:
-        assert client.path == p.client.path
+    with Project() as project:
+        assert client.path == project.path
+
+
+def test_get_project_multiple(client):
+    """Test getting Project context multiple times within a repository."""
+    with Project() as project_1:
+        pass
+
+    with Project() as project_2:
+        pass
+
+    assert project_1.path == project_2.path
+
+
+def test_get_or_create_project(client):
+    """Test getting Project context or creating one yileds similar results."""
+    with Project() as project_1:
+        pass
+
+    project_2 = Project()
+
+    assert project_1.path == project_2.path
+
+
+def test_get_project_outside_a_renku_project(directory_tree):
+    """Test creating a Project object in a non-renku directory."""
+    os.chdir(directory_tree)
+
+    with Project() as project:
+        assert project.client is not None

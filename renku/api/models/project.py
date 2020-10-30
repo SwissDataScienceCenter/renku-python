@@ -16,13 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """API Project context."""
-
-from pathlib import Path
+from functools import wraps
 
 from git import GitError, Repo
 from werkzeug.local import LocalStack
-
-from renku.core.management.config import RENKU_HOME
 
 
 class Project:
@@ -31,12 +28,12 @@ class Project:
     _project_contexts = LocalStack()
 
     def __init__(self):
-        self._client = None
-
-    def __enter__(self):
         self._client = _get_local_client()
 
+    def __enter__(self):
         self._project_contexts.push(self)
+
+        return self
 
     def __exit__(self, type, value, traceback):
         project_context = self._project_contexts.pop()
@@ -48,10 +45,26 @@ class Project:
         """Return the LocalClient instance."""
         return self._client
 
+    @property
+    def path(self):
+        """Absolute path to project's root directory."""
+        return self._client.path.resolve()
 
-def get_current_project():
-    """Return current Project object if any."""
-    return Project._project_contexts.top
+
+def ensure_project_context(fn):
+    """Check existence of a project context."""
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        project = _get_current_project() or Project()
+        return fn(*args, **kwargs, project=project)
+
+    return wrapper
+
+
+def _get_current_project():
+    """Return current project context if any or a new project object."""
+    return Project._project_contexts.top if Project._project_contexts.top else None
 
 
 def _get_local_client():
@@ -60,8 +73,8 @@ def _get_local_client():
     try:
         repo = Repo(".", search_parent_directories=True)
     except GitError:
-        pass
+        path = "."
     else:
-        project_root = Path(repo.git_dir).parent
-        if (project_root / RENKU_HOME).exists():
-            return LocalClient(project_root)
+        path = repo.working_dir
+
+    return LocalClient(path)

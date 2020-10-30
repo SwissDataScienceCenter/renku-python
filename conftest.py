@@ -404,13 +404,22 @@ def client_with_lfs_warning(project):
 
 
 @pytest.fixture
-def dataset(client):
-    """Create a dataset."""
+def client_with_datasets(client, directory_tree):
+    """A client with datasets."""
     from renku.core.models.provenance.agents import Person
 
-    with client.with_dataset("dataset", create=True) as dataset:
-        dataset.creators = [Person(**{"affiliation": "xxx", "email": "me@example.com", "id": "me_id", "name": "me",})]
-    return dataset
+    person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
+    person_2 = Person.from_string("P2 <p2@example.com>")
+
+    client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+
+    with client.with_dataset("dataset-2", create=True) as dataset:
+        dataset.keywords = ["dataset", "2"]
+        dataset.creators = [person_1, person_2]
+
+        client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+
+    yield client
 
 
 @pytest.fixture(params=[".", "some/sub/directory"])
