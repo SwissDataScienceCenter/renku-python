@@ -139,6 +139,7 @@ def test_cleanup_project_old_keys(svc_client_cache, service_job):
         "owner": "me",
         "token": "awesome token",
         "git_url": "git@gitlab.com",
+        "initialized": True,
     }
     project = cache.make_project(user, project)
     os.makedirs(str(project.abs_path), exist_ok=True)
@@ -175,6 +176,7 @@ def test_job_constructor_lock(svc_client_cache, service_job):
         "owner": "me",
         "token": "awesome token",
         "git_url": "git@gitlab.com",
+        "initialized": True,
     }
     project = cache.make_project(user, project)
     os.makedirs(str(project.abs_path), exist_ok=True)

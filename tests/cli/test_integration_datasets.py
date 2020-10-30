@@ -1236,7 +1236,7 @@ def test_renkulab_clone(runner, monkeypatch, url):
 def test_renkulab_clone_with_config(tmpdir, url):
     """Test cloning of a Renku repo and existence of required settings."""
     with chdir(str(tmpdir)):
-        repo = project_clone(url, config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"})
+        repo, _ = project_clone(url, config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"})
 
         assert "master" == repo.active_branch.name
         reader = repo.config_reader()
@@ -1252,7 +1252,7 @@ def test_renkulab_clone_with_config(tmpdir, url):
 def test_renkulab_clone_checkout_rev(tmpdir, url):
     """Test cloning of a repo checking out a rev with static config."""
     with chdir(str(tmpdir)):
-        repo = project_clone(
+        repo, _ = project_clone(
             url,
             config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"},
             checkout_rev="97f907e1a3f992d4acdc97a35df73b8affc917a6",
@@ -1272,7 +1272,7 @@ def test_renkulab_clone_checkout_rev(tmpdir, url):
 def test_renku_clone_checkout_revs(tmpdir, rev):
     """Test cloning of a Renku repo checking out a rev."""
     with chdir(str(tmpdir)):
-        repo = project_clone("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
+        repo, _ = project_clone("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
 
         assert rev == repo.active_branch.name
 

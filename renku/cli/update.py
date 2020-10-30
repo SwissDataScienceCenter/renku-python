@@ -140,9 +140,7 @@ from renku.version import __version__, version_url
 @option_siblings
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @click.pass_context
-@pass_local_client(
-    clean=True, requires_migration=True, commit=True,
-)
+@pass_local_client(clean=True, requires_migration=True, commit=True, commit_empty=False)
 def update(client, ctx, revision, no_output, update_all, siblings, paths):
     """Update existing files by rerunning their outdated workflow."""
     if not paths and not update_all:

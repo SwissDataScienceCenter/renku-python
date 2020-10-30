@@ -43,7 +43,7 @@ def user_project_clone(cache, user_data, project_data):
 
     local_path.mkdir(parents=True, exist_ok=True)
 
-    repo = project_clone(
+    repo, initialized = project_clone(
         project_data["url_with_auth"],
         local_path,
         depth=project_data["depth"] if project_data["depth"] != 0 else None,
@@ -51,6 +51,8 @@ def user_project_clone(cache, user_data, project_data):
         config={"user.name": project_data["fullname"], "user.email": project_data["email"],},
         checkout_rev=project_data["ref"],
     )
+
+    project_data["initialized"] = initialized
 
     service_log.debug(f"project successfully cloned: {repo}")
     service_log.debug(f"project folder exists: {local_path.exists()}")
