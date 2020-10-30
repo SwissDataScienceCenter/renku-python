@@ -97,6 +97,42 @@ jobs:
     - name: test with twine
       run: twine check dist/*
 
+  test-linux-api:
+    runs-on: ubuntu-latest
+    needs: [set-matrix]
+    strategy:
+      max-parallel: 3
+      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install system packages
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libyaml-0-2 libyaml-dev
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install coveralls setuptools wheel
+        python -m pip install -e .[nodocs]
+        python setup.py --version
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test with pytest
+      run: pytest -v -m "not integration and not publish and not serial" -n auto tests/api
+    - name: Coveralls
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+      run: coveralls
+      continue-on-error: true
+
   test-linux-cli:
     runs-on: ubuntu-latest
     needs: [set-matrix]
@@ -206,6 +242,35 @@ jobs:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
         run: coveralls
         continue-on-error: true
+
+  test-macos-api:
+    runs-on: macos-latest
+    needs: [set-matrix]
+    strategy:
+      max-parallel: 3
+      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        brew update || true
+        brew install git-lfs shellcheck node || brew link --overwrite node
+        python -m pip install --upgrade pip
+        python -m pip install setuptools wheel twine
+        python -m pip install -e .[all]
+        git config --global --add user.name "Renku @ SDSC"
+        git config --global --add user.email "renku@datascience.ch"
+    - name: Test with pytest
+      env:
+        RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+      run: pytest -v -m "not integration and not publish and not serial" -n 2 tests/api
 
   test-macos-cli:
     runs-on: macos-latest
