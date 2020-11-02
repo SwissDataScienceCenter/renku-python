@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets add controller."""
 import json
+import os
 from pathlib import Path
 
 from renku.core.commands.dataset import add_file
@@ -79,6 +80,8 @@ class DatasetsAddFileCtrl(ServiceCtrl, ReadWithSyncOperation):
                         commit_message,
                         self.ctx["name"],
                         _file["file_url"],
+                        job_timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
+                        result_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
                     )
                     enqueued_paths.append(_file["file_url"])
 
