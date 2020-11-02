@@ -255,9 +255,9 @@
         },
         "flask-swagger-ui": {
             "hashes": [
-                "sha256:42d098997e06b04f992609c4945cc990738b269c153d8388fc59a91a5dfcee9e"
+                "sha256:f329752a65b2940ada8eeb57bce613f7c0a12856a9c31063bb9e33798554c9ed"
             ],
-            "version": "==3.25.0"
+            "version": "==3.36.0"
         },
         "frozendict": {
             "hashes": [
@@ -275,11 +275,15 @@
         },
         "gitpython": {
             "hashes": [
-                "sha256:43da89427bdf18bf07f1164c6d415750693b4d50e28fc9b68de706245147b9dd",
-                "sha256:e426c3b587bd58c482f0b7fe6145ff4ac7ae6c82673fc656f489719abca6f4cb"
+                "sha256:6eea89b655917b500437e9668e4a12eabdcf00229a0df1762aabd692ef9b746b",
+                "sha256:befa4d101f91bad1b632df4308ec64555db684c360bd7d2130b4807d49ce86b8"
             ],
+<<<<<<< Updated upstream
             "markers": "python_version >= '3.4'",
             "version": "==3.1.0"
+=======
+            "version": "==3.1.11"
+>>>>>>> Stashed changes
         },
         "humanfriendly": {
             "hashes": [
@@ -455,11 +459,15 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:67bf4cae9d3275b3fc74bd7ff88a7c98ee8c57c94b251a67b031dc293ecc4b76",
-                "sha256:a2a5eefb4b75a3b43f05be1cca0b6686adf56af7465c3ca629e5ad8d1e1fe13d"
+                "sha256:4bc31ab18133083b12893c61f2fc38b93c390d3fd6ae2ac61980b7dc936a1afa",
+                "sha256:97ad6acaf727be986330969cff16040fce051510759ca709de9cd48093c55d04"
             ],
+<<<<<<< Updated upstream
             "markers": "python_version >= '3.5'",
             "version": "==3.7.1"
+=======
+            "version": "==3.9.0"
+>>>>>>> Stashed changes
         },
         "mistune": {
             "hashes": [
