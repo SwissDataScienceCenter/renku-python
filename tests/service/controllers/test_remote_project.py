@@ -21,7 +21,6 @@ from marshmallow import ValidationError
 
 import renku
 from renku.core.commands.migrate import migrations_check, migrations_versions
-from renku.core.errors import ConfigurationError
 from renku.service.controllers.utils.remote_project import RemoteProject
 
 
