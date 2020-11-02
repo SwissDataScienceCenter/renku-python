@@ -75,7 +75,7 @@ def test_project_metadata_remote_err():
 
     request_data["git_url"] = "httpz://dev.renku.ch/gitlab/contact/import-me"
 
-    with pytest.raises(ConfigurationError):
+    with pytest.raises(ValidationError):
         RemoteProject(user_data, request_data)
 
 
