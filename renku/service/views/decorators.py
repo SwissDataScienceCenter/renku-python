@@ -46,6 +46,7 @@ from renku.service.config import (
     RENKU_EXCEPTION_ERROR_CODE,
 )
 from renku.service.serializers.headers import UserIdentityHeaders
+from renku.service.utils.flatten import squash
 from renku.service.views import error_response
 
 
@@ -117,6 +118,7 @@ def handle_schema_except(f):
 
 def handle_validation_except(f):
     """Wrapper which handles marshmallow `ValidationError`."""
+
     # noqa
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -126,10 +128,10 @@ def handle_validation_except(f):
         except ValidationError as e:
             capture_exception(e)
 
-            error_messages = [f"`{key.replace('_', '')}` - {', '.join(value)}" for key, value in e.messages.items()]
-            error_message = "; ".join(error_messages)
+            reasons = [f"`{key}` - {', '.join(value)}" for key, value in squash(e.messages).items()]
+            error_message = f"Validation error: {'; '.join(reasons)}"
 
-            return error_response(INVALID_PARAMS_ERROR_CODE, f"Validation error: {error_message}")
+            return error_response(INVALID_PARAMS_ERROR_CODE, error_message)
 
     return decorated_function
 
@@ -254,7 +256,7 @@ def handle_base_except(f):
 
         except (Exception, BaseException, OSError, IOError) as e:
             capture_exception(e)
-            breakpoint()
+
             internal_error = "internal error"
             if hasattr(e, "stderr"):
                 internal_error += ": {0}".format(" ".join(e.stderr.strip().split("\n")))

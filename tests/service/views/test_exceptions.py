@@ -113,7 +113,7 @@ def test_project_uninitialized(svc_client, it_remote_non_renku_repo, authenticat
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "git_url,expected",
     [
@@ -122,8 +122,8 @@ def test_project_uninitialized(svc_client, it_remote_non_renku_repo, authenticat
             "https://github.com/SwissDataScienceCenter",
             {"error": {"code": -32602, "reason": "Validation error: `schema` - Invalid `git_url`"}},
         ),
-        ("https://test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found."}}),
-        ("https://www.test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found."}}),
+        ("https://test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
+        ("https://www.test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
     ],
 )
 def test_invalid_git_remote(git_url, expected, svc_client_with_templates):
