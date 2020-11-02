@@ -240,6 +240,11 @@ class ZenodoRecordSerializer:
         """Get record version."""
         return self.metadata.version
 
+    @property
+    def latest_uri(self):
+        """Get uri of latest version."""
+        return self.links.get("latest_html")
+
     def is_last_version(self, uri):
         """Check if this record is the latest version."""
         return ZenodoProvider.record_id(self.links.get("latest_html")) == self.record_id
