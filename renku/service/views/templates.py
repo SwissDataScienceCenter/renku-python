@@ -30,12 +30,7 @@ from renku.service.serializers.templates import (
 )
 from renku.service.views.decorators import (
     accepts_json,
-    handle_base_except,
     handle_common_except,
-    handle_git_except,
-    handle_renku_except,
-    handle_schema_except,
-    handle_validation_except,
     header_doc,
     requires_cache,
     requires_identity,

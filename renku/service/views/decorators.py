@@ -249,7 +249,7 @@ def handle_base_except(f):
         except GitError as e:
             capture_exception(e)
 
-            error_message = f"Failed to execute git operation."
+            error_message = "Failed to execute git operation."
             return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
 
         except (Exception, BaseException, OSError, IOError) as e:
