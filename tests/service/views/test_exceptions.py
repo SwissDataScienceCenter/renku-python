@@ -131,6 +131,6 @@ def test_invalid_git_remote(git_url, expected, svc_client_with_templates):
     svc_client, headers, template_params = svc_client_with_templates
     template_params["url"] = git_url
     response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
-    breakpoint()
+
     assert response
     assert expected == response.json
