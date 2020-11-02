@@ -31,6 +31,7 @@ from renku.service.serializers.templates import (
 from renku.service.views.decorators import (
     accepts_json,
     handle_base_except,
+    handle_common_except,
     handle_git_except,
     handle_renku_except,
     handle_schema_except,
@@ -50,11 +51,7 @@ templates_blueprint = Blueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SE
 @templates_blueprint.route(
     "/templates.read_manifest", methods=["GET"], provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
-@handle_schema_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
@@ -72,11 +69,7 @@ def read_manifest_from_template(user_data, cache):
 @templates_blueprint.route(
     "/templates.create_project", methods=["POST"], provide_automatic_options=False,
 )
-@handle_base_except
-@handle_git_except
-@handle_renku_except
-@handle_validation_except
-@handle_schema_except
+@handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity

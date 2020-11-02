@@ -21,7 +21,7 @@ from functools import wraps
 
 from flask import jsonify, request
 from flask_apispec import doc
-from git import GitCommandError
+from git import GitCommandError, GitError
 from marshmallow import ValidationError
 from redis import RedisError
 from sentry_sdk import capture_exception
@@ -126,7 +126,10 @@ def handle_validation_except(f):
         except ValidationError as e:
             capture_exception(e)
 
-            return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": e.messages,})
+            error_messages = [f"`{key.replace('_', '')}` - {', '.join(value)}" for key, value in e.messages.items()]
+            error_message = "; ".join(error_messages)
+
+            return error_response(INVALID_PARAMS_ERROR_CODE, f"Validation error: {error_message}")
 
     return decorated_function
 
@@ -193,11 +196,18 @@ def handle_git_except(f):
 
             error_code = GIT_ACCESS_DENIED_ERROR_CODE if "Access denied" in e.stderr else GIT_UNKNOWN_ERROR_CODE
 
-            # strip oauth tokens
-            error_reason = format(" ".join(e.stderr.strip().split("\n")))
-            error_reason_safe = re.sub("^(.+)(oauth2:)(.+)(@)(.+)$", r"\1\2<token-hidden>\4\5", error_reason)
+            if "is this a git repository?" in e.stderr:
+                error_reason = "Repository could not be found"
+            elif "Access denied" in e.stderr:
+                error_reason = "Repository could not be accessed - Do you have access rights?"
+            else:
+                error_reason = format(" ".join(e.stderr.strip().split("\n")))
 
-            return jsonify(error={"code": error_code, "reason": f"git error: {error_reason_safe}"})
+                # strip oauth tokens
+                error_reason_safe = re.sub("^(.+)(oauth2:)(.+)(@)(.+)$", r"\1\2<token-hidden>\4\5", error_reason)
+                error_reason = f"git error: {error_reason_safe}"
+
+            return error_response(error_code, error_reason)
 
     return decorated_function
 
@@ -229,14 +239,22 @@ def handle_base_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
+
         except HTTPException as e:  # handle general werkzeug exception
             capture_exception(e)
 
-            return error_response(e.code, e.description)
+            error_message = f"Failed to contact external service. Received response {e.code} ({e.description})."
+            return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
+
+        except GitError as e:
+            capture_exception(e)
+
+            error_message = f"Failed to execute git operation."
+            return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
 
         except (Exception, BaseException, OSError, IOError) as e:
             capture_exception(e)
-
+            breakpoint()
             internal_error = "internal error"
             if hasattr(e, "stderr"):
                 internal_error += ": {0}".format(" ".join(e.stderr.strip().split("\n")))
