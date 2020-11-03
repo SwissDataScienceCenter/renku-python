@@ -18,6 +18,107 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.6...v0.12.0>`__ (2020-11-03)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix bug where remote_cache caused project ids to leak
+   (`#1618 <https://github.com/SwissDataScienceCenter/renku-python/issues/1618>`__)
+   (`3ef04fb <https://github.com/SwissDataScienceCenter/renku-python/commit/3ef04fb8b6091d87b235901f7dfa22728f67b540>`__)
+-  **core:** fix graph building for nodes with same subpath
+   (`#1625 <https://github.com/SwissDataScienceCenter/renku-python/issues/1625>`__)
+   (`7cae9be <https://github.com/SwissDataScienceCenter/renku-python/commit/7cae9be483a3ec4d1d68de2c6cc9251ee8c6a9a8>`__)
+-  **core:** fix importing a dataset referenced from non-existent
+   projects
+   (`#1574 <https://github.com/SwissDataScienceCenter/renku-python/issues/1574>`__)
+   (`92b8bf8 <https://github.com/SwissDataScienceCenter/renku-python/commit/92b8bf8b2f0727d8fe5a7ea601123e70568bc94d>`__)
+-  **core:** fix old dataset migration and activity dataset outputs
+   (`#1603 <https://github.com/SwissDataScienceCenter/renku-python/issues/1603>`__)
+   (`a5339e2 <https://github.com/SwissDataScienceCenter/renku-python/commit/a5339e219e9cdf606f32bf2dd78e28be5ddd6f11>`__)
+-  **core:** fix project migration getting overwritten with old metadata
+   (`#1581 <https://github.com/SwissDataScienceCenter/renku-python/issues/1581>`__)
+   (`c5a5960 <https://github.com/SwissDataScienceCenter/renku-python/commit/c5a5960e3e7eba908acef90701b9b4e296ca860a>`__)
+-  **core:** fix update creating a commit when showing help
+   (`#1627 <https://github.com/SwissDataScienceCenter/renku-python/issues/1627>`__)
+   (`529e582 <https://github.com/SwissDataScienceCenter/renku-python/commit/529e5825647a319c7dd1b468301f961191fef6d3>`__)
+-  **core:** fixes git encoding of paths with unicode characters
+   (`#1538 <https://github.com/SwissDataScienceCenter/renku-python/issues/1538>`__)
+   (`053dac9 <https://github.com/SwissDataScienceCenter/renku-python/commit/053dac99a1f0f99b05a5aff4fbeb6175f277565b>`__)
+-  **core:** make Run migration ids unique by relative path instead of
+   absolute
+   (`#1573 <https://github.com/SwissDataScienceCenter/renku-python/issues/1573>`__)
+   (`cf96310 <https://github.com/SwissDataScienceCenter/renku-python/commit/cf96310d68eb94dc931820d602ce81df7086bd00>`__)
+-  **dataset:** broken directory hierarchy after renku dataset imports
+   (`#1576 <https://github.com/SwissDataScienceCenter/renku-python/issues/1576>`__)
+   (`9dcffce <https://github.com/SwissDataScienceCenter/renku-python/commit/9dcffce18dd81f9520a2bc5aa84c5d989537ccf9>`__)
+-  **dataset:** deserialization error
+   (`#1675 <https://github.com/SwissDataScienceCenter/renku-python/issues/1675>`__)
+   (`420653f <https://github.com/SwissDataScienceCenter/renku-python/commit/420653f3c7b6f53fb22eda6fa2ded3333801dcf0>`__)
+-  **dataset:** error when adding same file multiple times
+   (`#1639 <https://github.com/SwissDataScienceCenter/renku-python/issues/1639>`__)
+   (`05bfde7 <https://github.com/SwissDataScienceCenter/renku-python/commit/05bfde79ada00c1dca1def3530419683ceea0820>`__)
+-  **dataset:** explicit failure when cannot pull LFS objects
+   (`#1590 <https://github.com/SwissDataScienceCenter/renku-python/issues/1590>`__)
+   (`3b05816 <https://github.com/SwissDataScienceCenter/renku-python/commit/3b05816d86b32326ef06d21752fb7493b0c60af9>`__)
+-  **dataset:** invalid generated name in migration
+   (`#1593 <https://github.com/SwissDataScienceCenter/renku-python/issues/1593>`__)
+   (`89b2e43 <https://github.com/SwissDataScienceCenter/renku-python/commit/89b2e43df7122d4fc31c359d86b874fb3cccdad2>`__)
+-  **dataset:** remove blank nodes
+   (`#1602 <https://github.com/SwissDataScienceCenter/renku-python/issues/1602>`__)
+   (`478f08c <https://github.com/SwissDataScienceCenter/renku-python/commit/478f08c4388f65a4369c7f5119897ee060cece26>`__)
+-  **dataset:** set isBasedOn for renku datasets
+   (`#1617 <https://github.com/SwissDataScienceCenter/renku-python/issues/1617>`__)
+   (`3aee6b8 <https://github.com/SwissDataScienceCenter/renku-python/commit/3aee6b84c673ee5005a642168556c10e5ea4bd4f>`__)
+-  **dataset:** update local files metadata when overwriting
+   (`#1582 <https://github.com/SwissDataScienceCenter/renku-python/issues/1582>`__)
+   (`59eaf25 <https://github.com/SwissDataScienceCenter/renku-python/commit/59eaf25e37c737a2adfffbb3890a545b6e88b496>`__)
+-  **dataset:** various migration issues
+   (`#1620 <https://github.com/SwissDataScienceCenter/renku-python/issues/1620>`__)
+   (`f24c2e4 <https://github.com/SwissDataScienceCenter/renku-python/commit/f24c2e4003d6bd2b53fb19e3494cce3651957921>`__)
+-  **service:** correctely set job timeout
+   (`#1677 <https://github.com/SwissDataScienceCenter/renku-python/issues/1677>`__)
+   (`25f0eb6 <https://github.com/SwissDataScienceCenter/renku-python/commit/25f0eb65e31ed60f09825972f8172338fbf302bf>`__)
+-  **service:** dataset rm endpoint supports new core API
+   (`#1622 <https://github.com/SwissDataScienceCenter/renku-python/issues/1622>`__)
+   (`e71916e <https://github.com/SwissDataScienceCenter/renku-python/commit/e71916ef2d75ee2ef34f43301dea3da790f53107>`__)
+-  **service:** push to protected branches
+   (`#1614 <https://github.com/SwissDataScienceCenter/renku-python/issues/1614>`__)
+   (`34c7f92 <https://github.com/SwissDataScienceCenter/renku-python/commit/34c7f921ea04bfbfdbf08c85da165414efc315a6>`__)
+-  **service:** raise exception on uninitialized projects
+   (`#1624 <https://github.com/SwissDataScienceCenter/renku-python/issues/1624>`__)
+   (`a2025c3 <https://github.com/SwissDataScienceCenter/renku-python/commit/a2025c317c75371aec692d79882c3089c211bfaa>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** add click plugin support
+   (`#1604 <https://github.com/SwissDataScienceCenter/renku-python/issues/1604>`__)
+   (`47b007f <https://github.com/SwissDataScienceCenter/renku-python/commit/47b007ff782432d75b0a9fd71476581ddc2d62dc>`__)
+-  **cli:** adds consistent behaviour for cli commands
+   (`#1523 <https://github.com/SwissDataScienceCenter/renku-python/issues/1523>`__)
+   (`20b7248 <https://github.com/SwissDataScienceCenter/renku-python/commit/20b7248be39093a616c237e7c71700eda1271bc3>`__)
+-  **cli:** show lfs status of dataset files
+   (`#1575 <https://github.com/SwissDataScienceCenter/renku-python/issues/1575>`__)
+   (`a1c3e2a <https://github.com/SwissDataScienceCenter/renku-python/commit/a1c3e2af84d502f1e67288ea791ef2f910bc67af>`__)
+-  **cli:** verbose output for renku show
+   (`#1524 <https://github.com/SwissDataScienceCenter/renku-python/issues/1524>`__)
+   (`dae968c <https://github.com/SwissDataScienceCenter/renku-python/commit/dae968cdf0052c47603f0b8189ea24ee0b410d9a>`__)
+-  **core:** Adds renku dataset update for Zenodo and Dataverse
+   (`#1331 <https://github.com/SwissDataScienceCenter/renku-python/issues/1331>`__)
+   (`e38c51f <https://github.com/SwissDataScienceCenter/renku-python/commit/e38c51f084c2d7e59088de385f7eae035043f9c1>`__)
+-  **dataset:** list dataset description
+   (`#1588 <https://github.com/SwissDataScienceCenter/renku-python/issues/1588>`__)
+   (`7e13857 <https://github.com/SwissDataScienceCenter/renku-python/commit/7e1385796336741afef2044183bf853cdaab31d3>`__)
+-  **service:** adds template and dockerfile migration to migration
+   endpoint
+   (`#1509 <https://github.com/SwissDataScienceCenter/renku-python/issues/1509>`__)
+   (`ea01795 <https://github.com/SwissDataScienceCenter/renku-python/commit/ea017959de835e2a6882b932c480113f87d33502>`__)
+-  **service:** adds version endpoint
+   (`#1548 <https://github.com/SwissDataScienceCenter/renku-python/issues/1548>`__)
+   (`6193df6 <https://github.com/SwissDataScienceCenter/renku-python/commit/6193df622cc9e9635f41bbb645a0adee3299043b>`__)
+
 `0.11.6 <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.5...v0.11.6>`__ (2020-10-16)
 ----------------------------------------------------------------------------------------------------------
 
