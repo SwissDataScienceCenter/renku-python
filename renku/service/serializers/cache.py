@@ -144,16 +144,15 @@ class ProjectCloneContext(ProjectCloneRequest):
         """Set owner and name fields."""
         try:
             git_url = GitURL.parse(data["git_url"])
-
-            if git_url.owner is None:
-                raise ValidationError("Invalid `git_url`")
-            if git_url.name is None:
-                raise ValidationError("Invalid `git_url`")
-
         except ConfigurationError as e:
             raise ValidationError("Invalid `git_url`") from e
 
+        if git_url.owner is None:
+            raise ValidationError("Invalid `git_url`")
         data["owner"] = git_url.owner
+
+        if git_url.name is None:
+            raise ValidationError("Invalid `git_url`")
         data["name"] = git_url.name
 
         return data

@@ -46,7 +46,7 @@ from renku.service.config import (
     RENKU_EXCEPTION_ERROR_CODE,
 )
 from renku.service.serializers.headers import UserIdentityHeaders
-from renku.service.utils.flatten import squash
+from renku.service.utils.squash import squash
 from renku.service.views import error_response
 
 
@@ -206,7 +206,7 @@ def handle_git_except(f):
                 error_reason = format(" ".join(e.stderr.strip().split("\n")))
 
                 # strip oauth tokens
-                error_reason_safe = re.sub("^(.+)(oauth2:)(.+)(@)(.+)$", r"\1\2<token-hidden>\4\5", error_reason)
+                error_reason_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_reason)
                 error_reason = f"git error: {error_reason_safe}"
 
             return error_response(error_code, error_reason)
