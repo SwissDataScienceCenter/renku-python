@@ -20,7 +20,7 @@ import collections
 
 
 def squash(data, parent_key="", sep="."):
-    """Squash deeply nested dictionary. """
+    """Squash deeply nested dictionary."""
     items = []
     for k, v in data.items():
         k = str(k)
