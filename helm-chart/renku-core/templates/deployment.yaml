@@ -14,6 +14,10 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '8765'
       labels:
         app.kubernetes.io/name: {{ include "renku-core.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
@@ -27,6 +31,14 @@ spec:
         - name: shared-volume
           emptyDir: {}
       containers:
+      {{ if .Values.metrics.enabled }}
+        - name: {{ .Chart.Name}}-rqmetrics
+          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
+          env:
+            - name: RQ_REDIS_HOST
+              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+      {{ end }}
         - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
