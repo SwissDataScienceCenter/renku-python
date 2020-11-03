@@ -111,7 +111,7 @@ class GitURL(object):
             if matches:
                 return cls(href=href, regex=regex, **matches.groupdict())
         else:
-            raise errors.ConfigurationError('"{href} is not a valid Git remote.'.format(href=href))
+            raise errors.ConfigurationError("`{href}` is not a valid Git remote.".format(href=href))
 
     @property
     def image(self):

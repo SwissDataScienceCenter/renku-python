@@ -50,7 +50,6 @@ from renku.core.models.datasets import (
     is_dataset_name_valid,
 )
 from renku.core.models.git import GitURL
-from renku.core.models.locals import with_reference
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.utils.urls import remove_credentials
@@ -198,23 +197,22 @@ class DatasetsApiMixin(object):
 
         keywords = keywords or ()
 
-        with with_reference(metadata_path):
-            dataset = Dataset(
-                client=self,
-                identifier=identifier,
-                name=name,
-                title=title,
-                path=dataset_path,
-                description=description,
-                creators=creators,
-                keywords=keywords,
-                immutable=True,  # No mutation required when first creating a dataset
-            )
+        dataset = Dataset(
+            client=self,
+            identifier=identifier,
+            name=name,
+            title=title,
+            path=dataset_path,
+            description=description,
+            creators=creators,
+            keywords=keywords,
+            immutable=True,  # No mutation required when first creating a dataset
+        )
 
         dataset_ref = LinkReference.create(client=self, name="datasets/" + name)
         dataset_ref.set_reference(metadata_path)
 
-        dataset.to_yaml()
+        dataset.to_yaml(path=metadata_path)
 
         return dataset, metadata_path, dataset_ref
 
@@ -704,7 +702,7 @@ class DatasetsApiMixin(object):
         if is_project_unsupported(client):
             return files
 
-        migrate(client)
+        migrate(client, skip_template_update=True, skip_docker_update=True)
 
         for _, dataset in client.datasets.items():
             for file_ in dataset.files:
@@ -774,7 +772,7 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def update_dataset_files(self, files, ref, delete=False):
+    def update_dataset_git_files(self, files, ref, delete=False):
         """Update files and dataset metadata according to their remotes.
 
         :param files: List of files to be updated
@@ -838,7 +836,7 @@ class DatasetsApiMixin(object):
 
         if not updated_files and (not delete or not deleted_files):
             # Nothing to commit or update
-            return deleted_files
+            return [], deleted_files
 
         # Commit changes in files
 
@@ -870,7 +868,7 @@ class DatasetsApiMixin(object):
         for dataset in modified_datasets.values():
             dataset.to_yaml()
 
-        return deleted_files
+        return updated_files, deleted_files
 
     def _create_external_file(self, src, dst):
         """Create a new external file."""
@@ -1045,7 +1043,7 @@ class DatasetsApiMixin(object):
             except PermissionError:
                 raise errors.InvalidFileOperation("Cannot delete files in {}: Permission denied".format(repo_path))
 
-        repo = clone(url, path=str(repo_path), install_githooks=False)
+        repo, _ = clone(url, path=str(repo_path), install_githooks=False)
 
         # Because the name of the default branch is not always 'master', we
         # create an alias of the default branch when cloning the repo. It

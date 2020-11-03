@@ -117,7 +117,7 @@ class RenkuProvider(ProviderApi):
     def _migrate_project(self, client):
         if is_project_unsupported(client):
             return
-        migrate(client)
+        migrate(client, skip_template_update=True, skip_docker_update=True)
 
     @staticmethod
     def _get_dataset_info(uri):
@@ -260,3 +260,13 @@ class _RenkuRecordSerializer:
         """Extract dataset id from uri."""
         u = urllib.parse.urlparse(uri)
         return Path(u.path).name
+
+    @property
+    def version(self):
+        """Get record version."""
+        return self._dataset.version
+
+    @property
+    def latest_uri(self):
+        """Get uri of latest version."""
+        return self._dataset._id

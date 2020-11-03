@@ -41,6 +41,7 @@ from renku.service.serializers.cache import (
 from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
+    handle_migration_except,
     header_doc,
     requires_cache,
     requires_identity,
@@ -122,6 +123,7 @@ def list_projects_view(user_data, cache):
     "/cache.migrate", methods=["POST"], provide_automatic_options=False,
 )
 @handle_common_except
+@handle_migration_except
 @accepts_json
 @requires_cache
 @requires_identity

@@ -50,6 +50,9 @@ IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
 )
 
 IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-qa/core-integration-test")
+IT_REMOTE_NON_RENKU_REPO_URL = os.getenv(
+    "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-non-renku"
+)
 IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
@@ -57,6 +60,12 @@ IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 def it_remote_repo():
     """Returns a remote path to integration test repository."""
     return IT_REMOTE_REPO_URL
+
+
+@pytest.fixture(scope="module")
+def it_remote_non_renku_repo():
+    """Returns a remote path to integration test repository."""
+    return IT_REMOTE_NON_RENKU_REPO_URL
 
 
 @contextlib.contextmanager
@@ -189,8 +198,16 @@ def template():
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "id": "python-minimal",
         "index": 1,
-        "ref": "0.1.11",
+        "ref": "master",
         "metadata": {"description": "nodesc"},
+        "default_metadata": {
+            "__template_source__": "renku",
+            "__template_ref__": "master",
+            "__template_id__": "python-minimal",
+            "__namespace__": "",
+            "__repository__": "",
+            "__project_slug__": "",
+        },
     }
 
     yield template
@@ -220,6 +237,72 @@ def project_init(template):
     }
 
     yield data, commands
+
+
+@pytest.fixture
+def template_update(tmpdir, local_client, mocker, template):
+    """Create a mocked template for updates."""
+
+    def _template_update(immutable_files=None, docker=False, after_template_version="0.0.2"):
+        """Fetches an updatable template with various options."""
+        import pkg_resources
+
+        from renku.core.commands.init import create_from_template, read_template_manifest
+
+        template_local = Path(pkg_resources.resource_filename("renku", "templates"))
+
+        # NOTE: get template
+        tempdir = tmpdir.mkdir("template")
+        temppath = Path(tempdir) / "local"
+        shutil.copytree(str(template_local), str(temppath))
+        manifest = read_template_manifest(temppath)
+        template_path = temppath / manifest[0]["folder"]
+
+        if docker:
+            import renku
+
+            mocker.patch.object(renku, "__version__", return_value="0.0.1")
+
+            # TODO: remove this once the renku template contains RENKU_VERSION
+            dockerfile_path = template_path / "Dockerfile"
+            dockerfile = dockerfile_path.read_text()
+            dockerfile_path.write_text(f"{dockerfile}\nARG RENKU_VERSION=0.0.1")
+
+        # NOTE: init project from template
+        create_from_template(
+            template_path,
+            local_client,
+            "name",
+            {**template["default_metadata"], **template["metadata"]},
+            template_version="0.0.1",
+            immutable_template_files=immutable_files or [],
+            automated_update=True,
+        )
+        project_files = [
+            f
+            for f in local_client.path.glob("**/*")
+            if ".git" not in str(f)
+            and not str(f).endswith(".renku/metadata.yml")
+            and not str(f).endswith(".renku/template_checksums.json")
+        ]
+        template_files = []
+        for project_file in project_files:
+            expected_file = template_path / project_file.relative_to(local_client.path)
+            template_files.append(expected_file)
+            assert expected_file.exists()
+
+        fetch_template = mocker.patch("renku.core.commands.init.fetch_template")
+        fetch_template.return_value = (manifest, temppath, "renku", after_template_version)
+
+        return {
+            "template_files": template_files,
+            "project_files": project_files,
+            "manifest": manifest,
+            "manifest_path": temppath,
+            "template_path": template_path,
+        }
+
+    yield _template_update
 
 
 @pytest.fixture()
@@ -255,6 +338,7 @@ def project_metadata(project):
         "owner": "me",
         "token": "awesome token",
         "git_url": "git@gitlab.com",
+        "initialized": True,
     }
 
     yield project, metadata
@@ -327,6 +411,25 @@ def dataset(client):
     with client.with_dataset("dataset", create=True) as dataset:
         dataset.creators = [Person(**{"affiliation": "xxx", "email": "me@example.com", "id": "me_id", "name": "me",})]
     return dataset
+
+
+@pytest.fixture
+def client_with_datasets(client, directory_tree):
+    """A client with datasets."""
+    from renku.core.models.provenance.agents import Person
+
+    person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
+    person_2 = Person.from_string("P2 <p2@example.com>")
+
+    client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+
+    with client.with_dataset("dataset-2", create=True) as dataset:
+        dataset.keywords = ["dataset", "2"]
+        dataset.creators = [person_1, person_2]
+
+        client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+
+    yield client
 
 
 @pytest.fixture(params=[".", "some/sub/directory"])
@@ -1159,3 +1262,16 @@ def large_file(tmp_path_factory, client):
         file_.write("some data")
 
     yield path
+
+
+@pytest.fixture()
+def ctrl_init(svc_client_cache):
+    """Cache object for controller testing."""
+    from renku.service.serializers.headers import UserIdentityHeaders
+
+    _, headers, cache = svc_client_cache
+
+    headers["Authorization"] = "Bearer not-a-token"
+    user_data = UserIdentityHeaders().load(headers)
+
+    return cache, user_data

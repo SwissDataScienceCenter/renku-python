@@ -149,7 +149,7 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_invalid_creator(svc_client_with_repo):
     """Create a new dataset with metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -167,7 +167,7 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
     assert response
     assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
 
-    expected_err = {"creators": {"0": {"name": ["Field may not be null."]}}}
+    expected_err = "Validation error: `creators.0.name` - Field may not be null."
     assert expected_err == response.json["error"]["reason"]
 
 
@@ -215,7 +215,7 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=30, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_create_dataset_view_unknown_param(svc_client_with_repo):
     """Create new dataset by specifying unknown parameters."""
     svc_client, headers, project_id, _ = svc_client_with_repo
@@ -228,7 +228,9 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
     assert_rpc_response(response, with_key="error")
 
     assert INVALID_PARAMS_ERROR_CODE == response.json["error"]["code"]
-    assert {"remote_name"} == set(response.json["error"]["reason"].keys())
+
+    expected_reason = "Validation error: `remote_name` - Unknown field."
+    assert expected_reason == response.json["error"]["reason"]
 
 
 @pytest.mark.service
@@ -784,6 +786,7 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
         "owner": "me",
         "token": "awesome token",
         "git_url": "git@gitlab.com",
+        "initialized": True,
     }
 
     project_obj = cache.make_project(user, project_meta)
@@ -992,7 +995,8 @@ def test_unlink_file_no_filter_error(unlink_file_setup):
 
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers,)
 
-    assert {"error": {"code": -32602, "reason": {"_schema": ["one of the filters must be specified"]}}} == response.json
+    expected_reason = "Validation error: `schema` - one of the filters must be specified"
+    assert {"error": {"code": -32602, "reason": expected_reason}} == response.json
 
 
 @pytest.mark.integration

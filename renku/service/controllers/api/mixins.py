@@ -22,7 +22,9 @@ from pathlib import Path
 
 from git import Repo
 
-from renku.core.errors import RenkuException
+from renku.core.errors import RenkuException, UninitializedProject
+from renku.core.management.config import RENKU_HOME
+from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import chdir
 from renku.service.controllers.utils.remote_project import RemoteProject
 
@@ -65,6 +67,10 @@ class ReadOperationMixin(metaclass=ABCMeta):
     def local(self):
         """Execute operation against service cache."""
         project = self.cache.get_project(self.user, self.context["project_id"])
+
+        if not project.initialized:
+            raise UninitializedProject(project.abs_path)
+
         self.project_path = project.abs_path
 
         with chdir(self.project_path):
@@ -76,6 +82,10 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
         with project.remote() as path:
             self.project_path = Path(path)
+
+            if not (self.project_path / RENKU_HOME / RepositoryApiMixin.METADATA).exists():
+                raise UninitializedProject(self.project_path)
+
             return self.renku_op()
 
 

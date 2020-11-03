@@ -16,8 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate project to the latest Renku version."""
+import os
+
 import click
 
+from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import WARNING
 from renku.core.commands.migrate import is_renku_project, migrate_project, migrate_project_no_commit
 
@@ -27,9 +30,13 @@ from renku.core.commands.migrate import is_renku_project, migrate_project, migra
 def migrate(no_commit):
     """Migrate to latest Renku version."""
     if no_commit:
-        result = migrate_project_no_commit(progress_callback=click.secho)
+        result, _, _ = migrate_project_no_commit(
+            skip_template_update=True, skip_docker_update=True, progress_callback=click.secho,
+        )
     else:
-        result = migrate_project(progress_callback=click.secho)
+        result, _, _ = migrate_project(
+            skip_template_update=True, skip_docker_update=True, progress_callback=click.secho,
+        )
 
     if result:
         click.secho("OK", fg="green")
@@ -37,3 +44,16 @@ def migrate(no_commit):
         if not is_renku_project():
             click.secho(WARNING + "Not a renku project.")
         click.secho("No migrations required.")
+
+
+@click.command()
+@click.argument(
+    "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
+)
+@pass_local_client
+def check_immutable_template_files(client, paths):
+    """Check specified paths if they are marked immutable in the template."""
+    paths = client.check_immutable_template_files(*paths)
+    if paths:
+        click.echo(os.linesep.join(paths))
+        exit(1)

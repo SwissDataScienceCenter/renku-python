@@ -15,13 +15,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache views."""
+"""Renku service project remote abstraction tests."""
 import pytest
 from marshmallow import ValidationError
 
 import renku
 from renku.core.commands.migrate import migrations_check, migrations_versions
-from renku.core.errors import ConfigurationError
 from renku.service.controllers.utils.remote_project import RemoteProject
 
 
@@ -75,7 +74,7 @@ def test_project_metadata_remote_err():
 
     request_data["git_url"] = "httpz://dev.renku.ch/gitlab/contact/import-me"
 
-    with pytest.raises(ConfigurationError):
+    with pytest.raises(ValidationError):
         RemoteProject(user_data, request_data)
 
 
@@ -95,6 +94,19 @@ def test_remote_project_context():
         assert renku.__version__ == latest_version
         assert "pre-0.11.0" == project_version
 
-        migration_required, project_supported = migrations_check()
+        (
+            migration_required,
+            project_supported,
+            template_update_possible,
+            current_template_version,
+            latest_template_version,
+            automated_update_possible,
+            docker_update_possible,
+        ) = migrations_check()
         assert migration_required is True
+        assert template_update_possible is False
+        assert current_template_version is None
+        assert latest_template_version is None
+        assert automated_update_possible is False
+        assert docker_update_possible is False
         assert project_supported is True

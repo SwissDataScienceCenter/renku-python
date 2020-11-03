@@ -87,3 +87,17 @@ def test_calamus(client, dataset_metadata_before_calamus):
     file_ = dataset.find_file("data/dataverse/local/result.csv")
     assert file_.external is False
     assert "file://../../../../tmp/result.csv" == file_.url
+
+
+def test_dataset_with_multiple_project_version(client_with_datasets):
+    """Test deserialization of a dataset where contains different project versions."""
+    max_version = "42000"
+
+    # Change project version for a single file
+    with client_with_datasets.with_dataset("dataset-2") as dataset:
+        file_ = dataset.find_file(dataset.data_dir / "file1")
+        file_._project.version = max_version
+
+    dataset = client_with_datasets.load_dataset("dataset-2")
+
+    assert {max_version} == {f._project.version for f in dataset.files}

@@ -40,6 +40,7 @@ class ProjectSchema(Schema):
     email = fields.String(required=True)
     owner = fields.String(required=True)
     token = fields.String(required=True)
+    initialized = fields.Boolean(default=False)
 
     @post_load
     def make_project(self, data, **options):
