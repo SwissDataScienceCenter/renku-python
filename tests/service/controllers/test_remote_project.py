@@ -21,7 +21,6 @@ from marshmallow import ValidationError
 
 import renku
 from renku.core.commands.migrate import migrations_check, migrations_versions
-from renku.core.errors import ConfigurationError
 from renku.service.controllers.utils.remote_project import RemoteProject
 
 
@@ -75,7 +74,7 @@ def test_project_metadata_remote_err():
 
     request_data["git_url"] = "httpz://dev.renku.ch/gitlab/contact/import-me"
 
-    with pytest.raises(ConfigurationError):
+    with pytest.raises(ValidationError):
         RemoteProject(user_data, request_data)
 
 
