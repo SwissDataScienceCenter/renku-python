@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Job queues."""
+import os
+
 from rq import Queue
 
 from renku.service.cache.base import BaseCache
@@ -47,4 +49,6 @@ class WorkerQueues:
     @staticmethod
     def get(name):
         """Get specific queue object."""
-        return Queue(name, connection=WorkerQueues.connection)
+        return Queue(
+            name, connection=WorkerQueues.connection, default_timeout=int(os.getenv("WORKER_DEFAULT_JOBS_TIMEOUT", 600))
+        )
