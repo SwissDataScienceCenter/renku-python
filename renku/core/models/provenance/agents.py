@@ -141,11 +141,11 @@ class PersonSchema(JsonLDSchema):
         model = Person
         unknown = EXCLUDE
 
-    name = StringList(schema.name, fields.String(), missing=None)
+    name = StringList(schema.name, missing=None)
     email = fields.String(schema.email, missing=None)
-    label = StringList(rdfs.label, fields.String(), missing=None)
-    affiliation = StringList(schema.affiliation, fields.String(), missing=None)
-    alternate_name = StringList(schema.alternateName, fields.String(), missing=None)
+    label = StringList(rdfs.label, missing=None)
+    affiliation = StringList(schema.affiliation, missing=None)
+    alternate_name = StringList(schema.alternateName, missing=None)
     _id = fields.Id(init_name="id")
 
 

@@ -116,34 +116,22 @@ class Uri(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.Dic
             raise ValueError("Invalid type for field {}: {}".format(self.name, type(value)))
 
 
-class StringList(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.List):
+class StringList(fields.String):
     """A String field that might be a list when deserializing."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, return_max_value=True, **kwargs):
         """Create an instance."""
         super().__init__(*args, **kwargs)
-
-    def _serialize(self, value, attr, obj, **kwargs):
-        if isinstance(value, list):
-            value = value[0] if value else None
-        if isinstance(value, str):
-            value = super(fields._JsonLDField, self)._serialize(value, attr, obj, **kwargs)
-            if self.parent.opts.add_value_types:
-                value = {"@value": value, "@type": "http://www.w3.org/2001/XMLSchema#string"}
-
-        return value
+        self.return_max_value = return_max_value
 
     def _deserialize(self, value, attr, data, **kwargs):
         value = normalize_value(value)
-        if not value:
-            return None
-        elif isinstance(value, str):
-            return value
-        elif isinstance(value, list):
-            value = super(marshmallow.fields.String, self)._deserialize(value, attr, data, **kwargs)
-            return value[0] if len(value) > 0 else None
-        else:
-            raise ValueError("Invalid type for field {}: {}".format(self.name, type(value)))
+
+        if isinstance(value, (list, tuple, set)):
+            value = sorted(value, reverse=self.return_max_value)
+            value = value[0] if len(value) > 0 else None
+
+        return super()._deserialize(value, attr, data, **kwargs)
 
 
 class DateTimeList(fields.DateTime):
