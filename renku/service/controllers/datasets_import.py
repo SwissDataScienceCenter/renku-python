@@ -65,7 +65,7 @@ class DatasetsImportCtrl(ServiceCtrl, ReadWithSyncOperation):
                 self.ctx["dataset_uri"],
                 name=self.ctx.get("name"),
                 extract=self.ctx.get("extract", False),
-                timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
+                job_timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
                 result_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
             )
 

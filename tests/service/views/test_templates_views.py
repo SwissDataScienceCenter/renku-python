@@ -31,7 +31,7 @@ from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_read_manifest_from_template(svc_client_with_templates):
     """Check reading manifest template."""
     svc_client, headers, template_params = svc_client_with_templates
@@ -51,7 +51,7 @@ def test_read_manifest_from_template(svc_client_with_templates):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_compare_manifests(svc_client_with_templates):
     """Check reading manifest template."""
     svc_client, headers, template_params = svc_client_with_templates
@@ -78,7 +78,7 @@ def test_compare_manifests(svc_client_with_templates):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=5, min_passes=1)
+@flaky(max_runs=10, min_passes=1)
 def test_create_project_from_template(svc_client_templates_creation):
     """Check reading manifest template."""
     svc_client, headers, payload, rm_remote = svc_client_templates_creation

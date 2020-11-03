@@ -111,10 +111,10 @@ tests_require = [
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.2", "sphinx-rtd-theme==0.5.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.1", "sphinx-rtd-theme==0.5.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.9"],
+    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.19.3"],
     "tests": tests_require,
 }
 
@@ -138,21 +138,21 @@ for name, reqs in extras_require.items():
 
 install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
-    "apispec>=3.3.1,<=3.3.2",
+    "apispec>=3.3.1,<=4.0.0",
     "attrs>=19.3.0,<=20.2.0",
     "calamus>=0.3.3,<0.3.4",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
     "click-plugins==1.1.1",
-    "cryptography>=2.7,<=2.9.2",
+    "cryptography>=3.2,<=3.2",
     "cwlgen>=0.4.0,<=0.4.2",
     "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "flask==1.1.2",
-    "flask-apispec==0.10.0",
-    "flask-swagger-ui==3.25.0",
-    "gitpython==3.1.0",
+    "flask-apispec==0.11.0",
+    "flask-swagger-ui==3.36.0",
+    "gitpython==3.1.11",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
     "pathspec>=0.7.0,<=0.8.0",
@@ -173,7 +173,7 @@ install_requires = [
     "rq==1.5.1",
     "rq-scheduler==0.10.0",
     "ndg-httpsclient==0.5.1",
-    "marshmallow==3.7.1",
+    "marshmallow==3.9.0",
     "setuptools_scm>=3.1.0,<=4.1.2",
     "tabulate>=0.7.7,<=0.8.7",
     "tqdm>=4.48.1,<=4.48.2",
