@@ -111,10 +111,10 @@ tests_require = [
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.2.2", "sphinx-rtd-theme==0.5.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.1", "sphinx-rtd-theme==0.5.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.9"],
+    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.19.3"],
     "tests": tests_require,
 }
 
@@ -150,7 +150,7 @@ install_requires = [
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "flask==1.1.2",
-    "flask-apispec==0.10.0",
+    "flask-apispec==0.11.0",
     "flask-swagger-ui==3.36.0",
     "gitpython==3.1.11",
     "humanize>=2.5.0,<2.7.0",
