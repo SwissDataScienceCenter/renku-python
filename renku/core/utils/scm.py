@@ -17,11 +17,17 @@
 # limitations under the License.
 """Helpers utils for interacting with remote source code management tools."""
 import re
+from unicodedata import normalize
 
 
-def strip_and_lower(input):
+def normalize_to_ascii(input_string):
     """Adjust chars to make the input compatible as scm source."""
-    return re.sub(r"\s", r"-", input.strip()).lower()
+    mappings = [(r"\s+", r"-",), (r"/+", "-"), (r"-+", "-")]
+    cleaned = input_string
+    for mapping in mappings:
+        cleaned = re.sub(mapping[0], mapping[1], cleaned.strip())
+
+    return normalize("NFKD", cleaned.lower()).encode("ascii", "ignore").decode("utf-8")
 
 
 def git_unicode_unescape(s, encoding="utf-8"):

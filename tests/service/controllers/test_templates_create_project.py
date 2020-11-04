@@ -16,7 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service templates create project controller tests."""
-from renku.core.utils.scm import strip_and_lower
+import pytest
+
+from renku.core.utils.scm import normalize_to_ascii
 
 
 def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, mocker):
@@ -85,6 +87,32 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
     assert payload["project_namespace"] == received_metadata["__namespace__"]
     assert payload["project_repository"] == received_metadata["__repository__"]
 
-    project_name = strip_and_lower(payload["project_name"])
+    project_name = normalize_to_ascii(payload["project_name"])
     assert project_name == received_metadata["__sanitized_project_name__"]
     assert f"{payload['project_namespace']}/{project_name}" == received_metadata["__project_slug__"]
+
+
+@pytest.mark.parametrize(
+    "project_name,expected_name",
+    [
+        ("Test renku-core é", "test-renku-core-e"),
+        ("Test   renku-core   /é", "test-renku-core-e"),
+        ("Test/renku-core", "test-renku-core"),
+    ],
+)
+def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client_templates_creation, mocker):
+    """Test template create project controller correct set of project name."""
+    from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
+
+    cache, user_data = ctrl_init
+    svc_client, headers, payload, rm_remote = svc_client_templates_creation
+    payload["project_name"] = project_name
+
+    ctrl = TemplatesCreateProjectCtrl(cache, user_data, payload)
+    mocker.patch.object(ctrl, "new_project_push", return_value=None)
+    response = ctrl.to_response()
+
+    # Check response.
+    assert {"result"} == response.json.keys()
+    assert {"url", "namespace", "name"} == response.json["result"].keys()
+    assert expected_name == response.json["result"]["name"]
