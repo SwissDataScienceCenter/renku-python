@@ -16,12 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helpers utils for interacting with remote source code management tools."""
+import re
 
 
 def normalize_to_ascii(input_string):
     """Adjust chars to make the input compatible as scm source."""
     return "-".join(
-        [component for component in input_string.replace("/", " ").split(" ") if component and component.isascii()]
+        [
+            component
+            for component in re.sub(r"[^\x00-\x7F]+", " ", input_string).replace("/", " ").split(" ")
+            if component and component.isascii()
+        ]
     ).lower()
 
 

@@ -101,6 +101,8 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         ("é Test é renku-core ", "test-renku-core"),
         ("Test/renku-core", "test-renku-core"),
         ("Test 😁", "test"),
+        ("invalid wörd", "invalid-w-rd"),
+        ("invalid wörd and another invalid wórd", "invalid-w-rd-and-another-invalid-w-rd"),
     ],
 )
 def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client_templates_creation, mocker):
