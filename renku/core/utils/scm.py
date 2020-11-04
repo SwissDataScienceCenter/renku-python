@@ -16,8 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helpers utils for interacting with remote source code management tools."""
-import re
-from unicodedata import normalize
 
 
 def normalize_to_ascii(input_string):
