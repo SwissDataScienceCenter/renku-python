@@ -95,9 +95,12 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 @pytest.mark.parametrize(
     "project_name,expected_name",
     [
-        ("Test renku-core é", "test-renku-core-e"),
-        ("Test   renku-core   /é", "test-renku-core-e"),
+        ("Test   renku-core   /é", "test-renku-core"),
+        ("Test renku-core é", "test-renku-core"),
+        ("Test é renku-core ", "test-renku-core"),
+        ("é Test é renku-core ", "test-renku-core"),
         ("Test/renku-core", "test-renku-core"),
+        ("Test 😁", "test"),
     ],
 )
 def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client_templates_creation, mocker):

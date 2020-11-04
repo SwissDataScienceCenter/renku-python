@@ -22,12 +22,9 @@ from unicodedata import normalize
 
 def normalize_to_ascii(input_string):
     """Adjust chars to make the input compatible as scm source."""
-    mappings = [(r"\s+", r"-",), (r"/+", "-"), (r"-+", "-")]
-    cleaned = input_string
-    for mapping in mappings:
-        cleaned = re.sub(mapping[0], mapping[1], cleaned.strip())
-
-    return normalize("NFKD", cleaned.lower()).encode("ascii", "ignore").decode("utf-8")
+    return "-".join(
+        [component for component in input_string.replace("/", " ").split(" ") if component and component.isascii()]
+    ).lower()
 
 
 def git_unicode_unescape(s, encoding="utf-8"):

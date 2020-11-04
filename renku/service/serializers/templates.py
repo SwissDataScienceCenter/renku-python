@@ -67,10 +67,9 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     @pre_load()
     def create_new_project_url(self, data, **kwargs):
         """Set owner and name fields."""
-        project_name_stripped = normalize_to_ascii(data["project_name"])
-        new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
-
         try:
+            project_name_stripped = normalize_to_ascii(data["project_name"])
+            new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
             _ = GitURL.parse(new_project_url)
         except UnicodeError as e:
             raise ValidationError("`git_url` contains unsupported characters") from e
