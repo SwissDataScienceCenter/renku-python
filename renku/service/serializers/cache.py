@@ -124,6 +124,8 @@ class ProjectCloneContext(ProjectCloneRequest):
         """Validates git url."""
         try:
             GitURL.parse(value)
+        except UnicodeError as e:
+            raise ValidationError("`git_url` contains unsupported characters") from e
         except ConfigurationError as e:
             raise ValidationError("Invalid `git_url`") from e
 
@@ -144,6 +146,8 @@ class ProjectCloneContext(ProjectCloneRequest):
         """Set owner and name fields."""
         try:
             git_url = GitURL.parse(data["git_url"])
+        except UnicodeError as e:
+            raise ValidationError("`git_url` contains unsupported characters") from e
         except ConfigurationError as e:
             raise ValidationError("Invalid `git_url`") from e
 
