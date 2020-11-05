@@ -106,7 +106,7 @@ class GitURL(object):
     @classmethod
     def parse(cls, href):
         """Derive URI components."""
-        if href.isascii() is False:
+        if not href.isascii():
             raise UnicodeError(f"`{href}` is not a valid Git remote")
 
         for regex in _REPOSITORY_URLS:

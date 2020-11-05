@@ -22,7 +22,7 @@ import re
 def normalize_to_ascii(input_string, sep="-"):
     """Adjust chars to make the input compatible as scm source."""
     return (
-        f"{sep}".join(
+        sep.join(
             [
                 component
                 for component in re.sub(r"[^a-zA-Z0-9_.-]+", " ", input_string).split(" ")
@@ -30,7 +30,7 @@ def normalize_to_ascii(input_string, sep="-"):
             ]
         )
         .lower()
-        .strip(f"{sep}")
+        .strip(sep)
     )
 
 
