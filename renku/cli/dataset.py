@@ -389,7 +389,7 @@ from renku.core.commands.dataset import (
     tag_dataset_with_client,
     update_datasets,
 )
-from renku.core.commands.echo import WARNING, progressbar
+from renku.core.commands.echo import INFO, WARNING, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
@@ -531,7 +531,7 @@ def edit(name, title, description, creators, keyword):
 def add(name, urls, external, force, overwrite, create, sources, destination, ref):
     """Add data to a dataset."""
     progress = partial(progressbar, label="Adding data to dataset")
-    add_file(
+    messages, warning_messages, nothing_to_commit = add_file(
         urls=urls,
         name=name,
         external=external,
@@ -545,7 +545,20 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
         progress=_DownloadProgressbar,
         interactive=True,
     )
-    click.secho("OK", fg="green")
+
+    if messages:
+        for msg in messages:
+            click.echo(INFO + msg)
+
+    if warning_messages:
+        for msg in warning_messages:
+            click.echo(WARNING + msg)
+
+    if nothing_to_commit:
+        click.echo("Error: There is nothing to commit.")
+        exit(1)
+    else:
+        click.secho("OK", fg="green")
 
 
 @dataset.command("ls-files")
@@ -632,7 +645,7 @@ def export_(name, provider, publish, tag, dataverse_server, dataverse_name):
     try:
         output = export_dataset(
             name=name,
-            provider=provider,
+            provider_name=provider,
             publish=publish,
             tag=tag,
             handle_access_token_fn=prompt_access_token,

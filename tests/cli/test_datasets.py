@@ -1164,7 +1164,7 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
 def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1"], catch_exceptions=False,)
 
-    assert 2 == result.exit_code
+    assert 1 == result.exit_code
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code
     assert "OK" in result.output

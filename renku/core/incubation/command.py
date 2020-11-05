@@ -381,7 +381,12 @@ class DatasetLock(Command):
         self._builder = builder
 
     def _pre_hook(self, builder, context, *args, **kwargs):
-        raise NotImplementedError()
+        if "client" not in context:
+            raise ValueError("Commit builder needs a LocalClient to be set.")
+        if "stack" not in context:
+            raise ValueError("Commit builder needs a stack to be set.")
+
+        context["stack"].enter_context(context["client"].lock)
 
     @check_finalized
     def build(self):

@@ -392,7 +392,7 @@ class DatasetsApiMixin(object):
 
         dataset.update_files(dataset_files)
 
-        return warning_messages, messages
+        return messages, warning_messages
 
     def _check_protected_path(self, path):
         """Checks if a path is a protected path."""
