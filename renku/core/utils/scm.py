@@ -25,8 +25,8 @@ def normalize_to_ascii(input_string, sep="-"):
         sep.join(
             [
                 component
-                for component in re.sub(r"[^a-zA-Z0-9_.-]+", " ", input_string).split(" ")
-                if component and component.isascii()
+                for component in re.sub(r"[^a-zA-Z0-9_.-]+", " ", input_string.replace(sep, " ")).split(" ")
+                if component and component.encode("ascii", "ignore").decode("utf-8").isascii()
             ]
         )
         .lower()

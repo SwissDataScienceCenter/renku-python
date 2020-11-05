@@ -112,6 +112,9 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         ("test!!!!_pro-ject~", "test-_pro-ject"),
         ("Test:-)", "test"),
         ("-Test:-)-", "test"),
+        ("test----aua", "test-aua"),
+        ("test --üäüaua", "test-aua"),
+        ("---- test --üäüaua ----", "test-aua"),
     ],
 )
 def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client_templates_creation, mocker):
@@ -132,7 +135,7 @@ def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client
     assert expected_name == response.json["result"]["name"]
 
 
-@pytest.mark.parametrize("project_name", ["здрасти"])
+@pytest.mark.parametrize("project_name", ["здрасти", "---- --üäü ----"])
 def test_except_project_name_handler(project_name, ctrl_init, svc_client_templates_creation, mocker):
     """Test template create project controller exception raised."""
     from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
