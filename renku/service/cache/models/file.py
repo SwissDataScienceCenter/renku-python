@@ -52,6 +52,15 @@ class File(Model):
         """Full path of cached file."""
         return CACHE_UPLOADS_PATH / self.user_id / self.relative_path
 
+    @property
+    def age(self):
+        """Returns file's age in seconds."""
+        # NOTE: `created_at` field is aligned to UTC timezone.
+        created_at = (self.created_at - datetime.utcfromtimestamp(0)).total_seconds()
+        utc_since = (datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds()
+        age = int(utc_since - created_at)
+        return age
+
     def exists(self):
         """Ensure a file exists on file system."""
         if self.abs_path.exists():
@@ -69,11 +78,7 @@ class File(Model):
             return True
 
         ttl = ttl or int(os.getenv("RENKU_SVC_CLEANUP_TTL_FILES", 1800))
-
-        created_at = (self.created_at - datetime.utcfromtimestamp(0)).total_seconds() * 1e3
-
-        age = ((time.time() * 1e3) - created_at) / 1e3
-        return self.exists() and age >= ttl
+        return self.age >= ttl
 
     def purge(self):
         """Removes file from file system and cache."""

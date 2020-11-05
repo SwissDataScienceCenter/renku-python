@@ -52,6 +52,15 @@ class Project(Model):
         """Full path of cached project."""
         return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.name
 
+    @property
+    def age(self):
+        """Returns project's age in seconds."""
+        # NOTE: `created_at` field is aligned to UTC timezone.
+        created_at = (self.created_at - datetime.utcfromtimestamp(0)).total_seconds()
+        utc_since = (datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds()
+        age = int(utc_since - created_at)
+        return age
+
     def exists(self):
         """Ensure a project exists on file system."""
         return self.abs_path.exists()
@@ -64,12 +73,9 @@ class Project(Model):
             # we should mark it for deletion.
             return True
 
+        # NOTE: time to live measured in seconds
         ttl = ttl or int(os.getenv("RENKU_SVC_CLEANUP_TTL_PROJECTS", 1800))
-
-        created_at = (self.created_at - datetime.utcfromtimestamp(0)).total_seconds() * 1e3
-
-        age = ((time.time() * 1e3) - created_at) / 1e3
-        return self.exists() and age >= ttl
+        return self.age >= ttl
 
     def purge(self):
         """Removes project from file system and cache."""
