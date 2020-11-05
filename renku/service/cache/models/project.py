@@ -18,7 +18,6 @@
 """Renku service cache project related models."""
 import os
 import shutil
-import time
 from datetime import datetime
 
 from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
