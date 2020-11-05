@@ -25,7 +25,7 @@ import pytest
 from flaky import flaky
 
 from renku.core.commands.init import fetch_template_from_git, read_template_manifest
-from renku.core.utils.scm import strip_and_lower
+from renku.core.utils.scm import normalize_to_ascii
 from renku.service.config import RENKU_EXCEPTION_ERROR_CODE
 
 
@@ -109,7 +109,7 @@ def test_create_project_from_template(svc_client_templates_creation):
 
     assert response
     assert {"result"} == set(response.json.keys())
-    stripped_name = strip_and_lower(payload["project_name"])
+    stripped_name = normalize_to_ascii(payload["project_name"])
     assert stripped_name == response.json["result"]["name"]
     expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name,)
     assert expected_url == response.json["result"]["url"]
