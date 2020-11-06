@@ -40,10 +40,7 @@ from .types import PATH_OBJECTS, Directory, File
 
 STARTED_AT = int(time.time() * 1000)
 
-RENKU_TMP_DIR = os.path.join(RENKU_HOME, "tmp")
-RENKU_FILELIST_PATH = os.getenv("RENKU_FILELIST_PATH", RENKU_TMP_DIR)
-INDIRECT_INPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, "inputs.txt")
-INDIRECT_OUTPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, "outputs.txt")
+RENKU_TMP = "tmp"
 
 
 @attr.s
@@ -548,19 +545,21 @@ class CommandLineToolFactory(object):
     def delete_indirect_files_list(self):
         """Remove indirect inputs and outputs list."""
         try:
-            path = str(self.working_dir / INDIRECT_INPUTS_LIST)
+            path = get_indirect_inputs_path(self.working_dir)
             os.remove(path)
         except FileNotFoundError:
             pass
         try:
-            path = str(self.working_dir / INDIRECT_OUTPUTS_LIST)
+            path = get_indirect_outputs_path(self.working_dir)
             os.remove(path)
         except FileNotFoundError:
             pass
 
     def add_indirect_inputs(self):
         """Read indirect inputs list and add them to explicit inputs."""
-        for indirect_input in self.read_files_list(INDIRECT_INPUTS_LIST):
+        path = get_indirect_inputs_path(self.working_dir)
+
+        for indirect_input in self.read_files_list(path):
             # treat indirect inputs like explicit inputs
             self.explicit_inputs.append(indirect_input)
 
@@ -570,7 +569,9 @@ class CommandLineToolFactory(object):
 
     def add_indirect_outputs(self):
         """Read indirect outputs list and add them to explicit outputs."""
-        for indirect_output in self.read_files_list(INDIRECT_OUTPUTS_LIST):
+        path = get_indirect_outputs_path(self.working_dir)
+
+        for indirect_output in self.read_files_list(path):
             # treat indirect outputs like explicit outputs
             self.explicit_outputs.append(indirect_output)
 
@@ -585,3 +586,29 @@ class CommandLineToolFactory(object):
                         yield Path(os.path.abspath(line))
         except FileNotFoundError:
             return
+
+
+def get_indirect_inputs_path(client_path):
+    """Return path to file that contains indirect inputs list."""
+    parent = _get_indirect_parent_path(client_path)
+    return parent / "inputs.txt"
+
+
+def get_indirect_outputs_path(client_path):
+    """Return path to file that contains indirect outputs list."""
+    parent = _get_indirect_parent_path(client_path)
+    return parent / "outputs.txt"
+
+
+def _get_indirect_parent_path(client_path):
+    renku_indirect_path = os.getenv("RENKU_INDIRECT_PATH") or ""
+
+    base = (Path(client_path) / RENKU_HOME / RENKU_TMP).resolve()
+    parent = (base / renku_indirect_path).resolve()
+
+    try:
+        parent.relative_to(base)
+    except ValueError:
+        raise errors.InvalidFileOperation(f"Invalid value for RENKU_INDIRECT_PATH env var: {renku_indirect_path}.")
+
+    return parent

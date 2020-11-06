@@ -1265,3 +1265,15 @@ def ctrl_init(svc_client_cache):
     user_data = UserIdentityHeaders().load(headers)
 
     return cache, user_data
+
+
+@pytest.fixture
+def reset_environment(svc_client, mock_redis):
+    """Restore environment variable to their values before test execution."""
+    current_environment = os.environ.copy()
+
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(current_environment)
