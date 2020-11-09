@@ -15,27 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helpers utils for interacting with remote source code management tools."""
-import re
+"""Utilities for renku service controllers."""
+import collections
 
 
-def normalize_to_ascii(input_string, sep="-"):
-    """Adjust chars to make the input compatible as scm source."""
-    return (
-        sep.join(
-            [
-                component
-                for component in re.sub(r"[^a-zA-Z0-9_.-]+", " ", input_string).split(" ")
-                if component and component.isascii()
-            ]
-        )
-        .lower()
-        .strip(sep)
-    )
+def squash(data, parent_key="", sep="."):
+    """Squash deeply nested dictionary."""
+    items = []
+    for k, v in data.items():
+        k = str(k)
+        if k[0] == "_":
+            k = k[1:]
 
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(squash(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
 
-def git_unicode_unescape(s, encoding="utf-8"):
-    """Undoes git/gitpython unicode encoding."""
-    if s.startswith('"'):
-        return s.strip('"').encode("latin1").decode("unicode-escape").encode("latin1").decode(encoding)
-    return s
+    return dict(items)

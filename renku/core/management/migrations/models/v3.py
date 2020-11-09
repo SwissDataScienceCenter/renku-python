@@ -22,7 +22,18 @@ import os
 from marshmallow import EXCLUDE, post_load, pre_load
 
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, Uri, fields, prov, rdfs, renku, schema, wfprov
+from renku.core.models.calamus import (
+    DateTimeList,
+    JsonLDSchema,
+    StringList,
+    Uri,
+    fields,
+    prov,
+    rdfs,
+    renku,
+    schema,
+    wfprov,
+)
 from renku.core.models.datasets import generate_dataset_tag_id, generate_url_id
 from renku.core.models.git import get_user_info
 from renku.core.models.projects import generate_project_id
@@ -35,6 +46,8 @@ class Base:
     def __init__(self, **kwargs):
         """Initialize an instance."""
         self.client = None
+
+        kwargs.setdefault("_id", None)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -185,11 +198,11 @@ class PersonSchemaV3(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id()
-    name = fields.String(schema.name)
+    name = StringList(schema.name)
     email = fields.String(schema.email, missing=None)
-    label = fields.String(rdfs.label)
-    affiliation = fields.String(schema.affiliation, missing=None)
-    alternate_name = fields.String(schema.alternateName, missing=None)
+    label = StringList(rdfs.label)
+    affiliation = StringList(schema.affiliation, missing=None)
+    alternate_name = StringList(schema.alternateName, missing=None)
 
     @post_load
     def make_instance(self, data, **kwargs):
@@ -213,8 +226,8 @@ class ProjectSchemaV3(JsonLDSchema):
     _id = fields.Id(missing=None)
     agent_version = fields.String(schema.agent, missing="pre-0.11.0")
     name = fields.String(schema.name, missing=None)
-    created = fields.DateTime(schema.dateCreated, missing=None)
-    version = fields.String(schema.schemaVersion, missing=1)
+    created = DateTimeList(schema.dateCreated, missing=None)
+    version = StringList(schema.schemaVersion, missing="1")
     creator = fields.Nested(schema.creator, PersonSchemaV3, missing=None)
 
 

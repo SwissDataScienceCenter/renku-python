@@ -105,13 +105,16 @@ class GitURL(object):
 
     @classmethod
     def parse(cls, href):
-        """Derive basic informations."""
+        """Derive URI components."""
+        if not href.isascii():
+            raise UnicodeError(f"`{href}` is not a valid Git remote")
+
         for regex in _REPOSITORY_URLS:
             matches = re.search(regex, href)
             if matches:
                 return cls(href=href, regex=regex, **matches.groupdict())
         else:
-            raise errors.ConfigurationError('"{href} is not a valid Git remote.'.format(href=href))
+            raise errors.ConfigurationError(f"`{href}` is not a valid Git remote")
 
     @property
     def image(self):
