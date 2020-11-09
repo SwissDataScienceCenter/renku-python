@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service exception tests for all endpoints."""
+"""Check exceptions raised on views."""
 import json
 import uuid
 
@@ -109,3 +109,28 @@ def test_project_uninitialized(svc_client, it_remote_non_renku_repo, authenticat
     assert "error" in response.json
     assert "project_initialization_required" in response.json["error"]
     assert response.json["error"]["project_initialization_required"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+@pytest.mark.parametrize(
+    "git_url,expected",
+    [
+        ("https://github.com", {"error": {"code": -32602, "reason": "Validation error: `schema` - Invalid `git_url`"}}),
+        (
+            "https://github.com/SwissDataScienceCenter",
+            {"error": {"code": -32602, "reason": "Validation error: `schema` - Invalid `git_url`"}},
+        ),
+        ("https://test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
+        ("https://www.test.com/test2/test3", {"error": {"code": -32001, "reason": "Repository could not be found"}}),
+    ],
+)
+def test_invalid_git_remote(git_url, expected, svc_client_with_templates):
+    """Check reading manifest template."""
+    svc_client, headers, template_params = svc_client_with_templates
+    template_params["url"] = git_url
+    response = svc_client.get("/templates.read_manifest", query_string=template_params, headers=headers)
+
+    assert response
+    assert expected == response.json

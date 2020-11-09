@@ -413,6 +413,25 @@ def dataset(client):
     return dataset
 
 
+@pytest.fixture
+def client_with_datasets(client, directory_tree):
+    """A client with datasets."""
+    from renku.core.models.provenance.agents import Person
+
+    person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
+    person_2 = Person.from_string("P2 <p2@example.com>")
+
+    client.create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+
+    with client.with_dataset("dataset-2", create=True) as dataset:
+        dataset.keywords = ["dataset", "2"]
+        dataset.creators = [person_1, person_2]
+
+        client.add_data_to_dataset(dataset=dataset, urls=[str(p) for p in directory_tree.glob("*")])
+
+    yield client
+
+
 @pytest.fixture(params=[".", "some/sub/directory"])
 def subdirectory(project, request):
     """Runs tests in root directory and a subdirectory."""
@@ -1017,7 +1036,7 @@ def svc_client_with_templates(svc_client, mock_redis, authentication_headers, te
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
     from renku.core.utils.requests import retry
-    from renku.core.utils.scm import strip_and_lower
+    from renku.core.utils.scm import normalize_to_ascii
 
     svc_client, authentication_headers, template = svc_client_with_templates
     parameters = []
@@ -1036,7 +1055,7 @@ def svc_client_templates_creation(svc_client_with_templates):
     # clenup by invoking the GitLab delete API
     # TODO: consider using the project delete endpoint once implemented
     def remove_project():
-        project_slug = "{0}/{1}".format(payload["project_namespace"], strip_and_lower(payload["project_name"]))
+        project_slug = "{0}/{1}".format(payload["project_namespace"], normalize_to_ascii(payload["project_name"]))
 
         project_slug_encoded = urllib.parse.quote(project_slug, safe="")
         project_delete_url = "{0}/api/v4/projects/{1}".format(payload["project_repository"], project_slug_encoded)

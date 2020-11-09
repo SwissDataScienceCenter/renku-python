@@ -26,7 +26,7 @@ from marshmallow.decorators import pre_dump
 
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.models import jsonld
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
+from renku.core.models.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, prov, renku, schema
 from renku.core.models.datastructures import Collection
 from renku.core.models.provenance.agents import Person, PersonSchema
 from renku.core.utils.datetime8601 import parse_date
@@ -184,8 +184,8 @@ class ProjectSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     name = fields.String(schema.name, missing=None)
-    created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    version = fields.String(schema.schemaVersion, missing=1)
+    created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
+    version = StringList(schema.schemaVersion, missing="1")
     agent_version = fields.String(schema.agent, missing="pre-0.11.0")
     template_source = fields.String(renku.templateSource, missing=None)
     template_ref = fields.String(renku.templateReference, missing=None)

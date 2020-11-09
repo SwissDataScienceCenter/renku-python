@@ -18,14 +18,31 @@
 """Migration models V8."""
 
 import os
+from pathlib import Path
 
 from marshmallow import EXCLUDE, pre_dump
 
 from renku.core.models import jsonld
 from renku.core.models.calamus import Uri, fields, schema
+from renku.core.models.entities import generate_file_id
 
 from .v3 import CreatorMixinSchemaV3, DatasetTagSchemaV3, EntitySchemaV3, LanguageSchemaV3, PersonSchemaV3, UrlSchemaV3
 from .v7 import Base, DatasetFileSchemaV7
+
+
+class DatasetFile(Base):
+    """DatasetFile migration model."""
+
+    def __init__(self, **kwargs):
+        """Initialize an instance."""
+        super().__init__(**kwargs)
+
+        if hasattr(self, "path") and (not self._id or self._id.startswith("_:")):
+            hexsha = "UNCOMMITTED"
+            if self.client and Path(self.path).exists():
+                hexsha = self.client.find_previous_commit().hexsha
+
+            self._id = generate_file_id(client=self.client, hexsha=hexsha, path=self.path)
 
 
 class Dataset(Base):
@@ -43,9 +60,23 @@ class Dataset(Base):
         """Write content to a YAML file."""
         from renku.core.management import LocalClient
 
+        for file_ in self.files:
+            file_._project = self._project
+
         data = DatasetSchemaV8(flattened=True).dump(self)
         path = path or self._metadata_path or os.path.join(self.path, LocalClient.METADATA)
         jsonld.write_yaml(path=path, data=data)
+
+
+class DatasetFileSchemaV8(DatasetFileSchemaV7):
+    """DatasetFile schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = schema.DigitalDocument
+        model = DatasetFile
+        unknown = EXCLUDE
 
 
 class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
@@ -62,7 +93,7 @@ class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
     date_created = fields.DateTime(schema.dateCreated, missing=None)
     date_published = fields.DateTime(schema.datePublished, missing=None)
     description = fields.String(schema.description, missing=None)
-    files = fields.Nested(schema.hasPart, DatasetFileSchemaV7, many=True)
+    files = fields.Nested(schema.hasPart, DatasetFileSchemaV8, many=True)
     identifier = fields.String(schema.identifier)
     in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
     keywords = fields.List(schema.keywords, fields.String())

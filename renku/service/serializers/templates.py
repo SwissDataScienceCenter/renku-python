@@ -23,7 +23,7 @@ from marshmallow import Schema, ValidationError, fields, post_load, pre_load, va
 
 from renku.core.errors import ConfigurationError
 from renku.core.models.git import GitURL
-from renku.core.utils.scm import strip_and_lower
+from renku.core.utils.scm import normalize_to_ascii
 from renku.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.service.serializers.cache import ProjectCloneContext
 from renku.service.serializers.rpc import JsonRPCResponse
@@ -40,7 +40,6 @@ class ManifestTemplatesRequest(ProjectCloneContext):
     def set_git_url(self, data, **kwargs):
         """Set git_url field."""
         data["git_url"] = data["url"]
-
         return data
 
 
@@ -68,8 +67,15 @@ class ProjectTemplateRequest(ManifestTemplatesRequest):
     @pre_load()
     def create_new_project_url(self, data, **kwargs):
         """Set owner and name fields."""
-        project_name_stripped = strip_and_lower(data["project_name"])
-        new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
+        try:
+            project_name_stripped = normalize_to_ascii(data["project_name"])
+            new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
+            _ = GitURL.parse(new_project_url)
+        except UnicodeError as e:
+            raise ValidationError("`git_url` contains unsupported characters") from e
+        except ConfigurationError as e:
+            raise ValidationError("Invalid `git_url`") from e
+
         project_slug = f"{data['project_namespace']}/{project_name_stripped}"
         data["new_project_url"] = new_project_url
         data["project_name_stripped"] = project_name_stripped
