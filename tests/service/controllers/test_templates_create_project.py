@@ -108,13 +108,22 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         ("'My Input String", "my-input-string"),
         ("My Input String", "my-input-string"),
         (" a new project ", "a-new-project"),
-        ("test!_pro-ject~", "test-_pro-ject"),
-        ("test!!!!_pro-ject~", "test-_pro-ject"),
+        ("test!_pro-ject~", "test-pro-ject"),
+        ("test!!!!_pro-ject~", "test-pro-ject"),
         ("Test:-)", "test"),
         ("-Test:-)-", "test"),
         ("test----aua", "test-aua"),
         ("test --üäüaua", "test-aua"),
         ("---- test --üäüaua ----", "test-aua"),
+        ("---- test --üäü", "test"),
+        ("Caffè", "caff"),
+        ("my.repo", "my-repo"),
+        ("my......repo", "my-repo"),
+        ("my_repo", "my-repo"),
+        ("my_______repo", "my-repo"),
+        ("-.my___repo.", "my-repo"),
+        (".my___-...repo..", "my-repo"),
+        ("-.-my-repo.", "my-repo"),
     ],
 )
 def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client_templates_creation, mocker):
@@ -135,7 +144,7 @@ def test_project_name_handler(project_name, expected_name, ctrl_init, svc_client
     assert expected_name == response.json["result"]["name"]
 
 
-@pytest.mark.parametrize("project_name", ["здрасти", "---- --üäü ----"])
+@pytest.mark.parametrize("project_name", ["здрасти", "---- --üäü ----", "-.-", "...", "----", "~.---", "`~~"])
 def test_except_project_name_handler(project_name, ctrl_init, svc_client_templates_creation, mocker):
     """Test template create project controller exception raised."""
     from renku.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
