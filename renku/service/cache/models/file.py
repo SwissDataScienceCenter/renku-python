@@ -55,9 +55,7 @@ class File(Model):
     def age(self):
         """Returns file's age in seconds."""
         # NOTE: `created_at` field is aligned to UTC timezone.
-        created_at = (self.created_at - datetime.utcfromtimestamp(0)).total_seconds()
-        utc_since = (datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds()
-        age = int(utc_since - created_at)
+        age = int((datetime.utcnow() - self.created_at).total_seconds())
         return age
 
     def exists(self):
