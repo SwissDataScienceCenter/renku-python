@@ -102,11 +102,8 @@ from collections import namedtuple
 
 import click
 
-from renku.core import errors
-from renku.core.commands.client import pass_local_client
-from renku.core.commands.graph import Graph
-from renku.core.models.entities import Entity
-from renku.core.models.provenance.activities import ProcessRun
+from renku.cli.utils.callback import ClickCallback
+from renku.core.commands.show import get_inputs, get_outputs, get_siblings
 from renku.core.models.tabulate import tabulate
 
 Result = namedtuple("Result", ["path", "commit", "time", "workflow"])
@@ -119,7 +116,6 @@ def show():
 
     NOTE: The command produces a machine-readable output.
     """
-    pass
 
 
 @show.command()
@@ -127,38 +123,14 @@ def show():
 @click.option("-f", "--flat", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_local_client(requires_migration=True)
-def siblings(client, revision, flat, verbose, paths):
+def siblings(revision, flat, verbose, paths):
     """Show siblings for given paths."""
-    graph = Graph(client)
-    nodes = graph.build(paths=paths, revision=revision)
-    nodes = [n for n in nodes if not isinstance(n, Entity) or n.parent]
+    communicator = ClickCallback()
 
-    sibling_sets = {frozenset([n]) for n in set(nodes)}
-    for node in nodes:
-        try:
-            sibling_sets.add(frozenset(graph.siblings(node)))
-        except errors.InvalidOutputPath:
-            # ignore nodes that aren't outputs if no path was supplied
-            if paths:
-                raise
-            else:
-                sibling_sets.discard({node})
-
-    result_sets = []
-    for candidate in sibling_sets:
-        new_result = []
-
-        for result in result_sets:
-            if candidate & result:
-                candidate |= result
-            else:
-                new_result.append(result)
-
-        result_sets = new_result
-        result_sets.append(candidate)
-
-    result = [[sibling_name(graph, node, verbose) for node in r] for r in result_sets]
+    result = (
+        get_siblings().with_communicator(communicator).build().execute(revision=revision, verbose=verbose, paths=paths)
+    )
+    result = result.output
 
     if flat:
         click.echo("\n".join({n for r in result for n in r}))
@@ -170,45 +142,25 @@ def siblings(client, revision, flat, verbose, paths):
 @click.option("--revision", default="HEAD")
 @click.option("-v", "--verbose", is_flag=True)
 @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
-@pass_local_client(requires_migration=True)
 @click.pass_context
-def inputs(ctx, client, revision, verbose, paths):
+def inputs(ctx, revision, verbose, paths):
     r"""Show inputs files in the repository.
 
     <PATHS>    Files to show. If no files are given all input files are shown.
     """
-    graph = Graph(client)
-    paths = set(paths)
-    nodes = graph.build(revision=revision)
-    commits = {node.activity.commit if hasattr(node, "activity") else node.commit for node in nodes}
-    commits |= {node.activity.commit for node in nodes if hasattr(node, "activity")}
-    candidates = {(node.commit, node.path) for node in nodes if not paths or node.path in paths}
+    communicator = ClickCallback()
 
-    input_paths = {}
-
-    for commit in commits:
-        activity = graph.activities.get(commit)
-        if not activity:
-            continue
-
-        if isinstance(activity, ProcessRun):
-            for usage in activity.qualified_usage:
-                for entity in usage.entity.entities:
-                    path = str((usage.client.path / entity.path).relative_to(client.path))
-                    usage_key = (entity.commit, entity.path)
-
-                    if path not in input_paths and usage_key in candidates:
-                        input_paths[path] = Result(
-                            path=path, commit=entity.commit, time=activity.started_at_time, workflow=activity.path
-                        )
+    result = get_inputs().with_communicator(communicator).build().execute(revision=revision, paths=paths)
+    input_paths = result.output
 
     if not verbose:
-        click.echo("\n".join(graph._format_path(path) for path in input_paths))
+        click.echo("\n".join(input_paths.keys()))
     else:
         records = list(input_paths.values())
         records.sort(key=lambda v: v[0])
         HEADERS["time"] = "usage time"
         click.echo(tabulate(collection=records, headers=HEADERS))
+
     ctx.exit(0 if not paths or len(input_paths) == len(paths) else 1)
 
 
@@ -216,28 +168,19 @@ def inputs(ctx, client, revision, verbose, paths):
 @click.option("--revision", default="HEAD")
 @click.option("-v", "--verbose", is_flag=True)
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
-@pass_local_client(requires_migration=True)
 @click.pass_context
-def outputs(ctx, client, revision, verbose, paths):
+def outputs(ctx, revision, verbose, paths):
     r"""Show output files in the repository.
 
     <PATHS>    Files to show. If no files are given all output files are shown.
     """
-    graph = Graph(client)
-    filter_ = graph.build(paths=paths, revision=revision)
-    output_paths = {}
+    communicator = ClickCallback()
 
-    for activity in graph.activities.values():
-        if isinstance(activity, ProcessRun):
-            for entity in activity.generated:
-                if entity.path not in graph.output_paths:
-                    continue
-                output_paths[entity.path] = Result(
-                    path=entity.path, commit=entity.commit, time=activity.ended_at_time, workflow=activity.path
-                )
+    result = get_outputs().with_communicator(communicator).build().execute(revision=revision, paths=paths)
+    filter_, output_paths = result.output
 
     if not verbose:
-        click.echo("\n".join(graph._format_path(path) for path in output_paths.keys()))
+        click.echo("\n".join(output_paths.keys()))
     else:
         records = list(output_paths.values())
         records.sort(key=lambda v: v[0])
@@ -256,13 +199,3 @@ def outputs(ctx, client, revision, verbose, paths):
             if tree.get(output) is None:
                 ctx.exit(1)
                 return
-
-
-def sibling_name(graph, node, verbose=False):
-    """Return the display name of a sibling."""
-    name = graph._format_path(node.path)
-
-    if verbose:
-        name = "{} @ {}".format(name, node.commit)
-
-    return name

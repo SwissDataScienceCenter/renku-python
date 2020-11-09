@@ -429,7 +429,9 @@ class Graph(object):
             if (node.commit, node.path) not in output_keys:
                 continue
 
-            assert hasattr(node, "activity"), node
+            if not hasattr(node, "activity"):
+                continue
+
             assert isinstance(node.activity, ProcessRun)
 
             plan = node.activity.association.plan
