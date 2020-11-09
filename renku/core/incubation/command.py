@@ -24,7 +24,6 @@ from collections import defaultdict
 import click
 
 from renku.core import errors
-from renku.core.commands.git import get_git_isolation
 from renku.core.management import LocalClient
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import check_for_migration
@@ -60,6 +59,7 @@ class Command(object):
         self._operation = None
         self._finalized = False
         self._track_std_streams = False
+        self._git_isolation = False
 
     def __getattr__(self, name):
         """Bubble up attributes of wrapped builders."""
@@ -80,7 +80,7 @@ class Command(object):
         stack = contextlib.ExitStack()
 
         # Handle --isolation option:
-        if get_git_isolation():
+        if self._git_isolation:
             client = stack.enter_context(client.worktree())
 
         context["client"] = client
@@ -180,6 +180,13 @@ class Command(object):
     def track_std_streams(self):
         """Whether to track STD streams or not."""
         self._track_std_streams = True
+
+        return self
+
+    @check_finalized
+    def with_git_isolation(self):
+        """Whether to run in git isolation or not."""
+        self._git_isolation = True
 
         return self
 

@@ -24,6 +24,8 @@ import yaml
 
 from renku.core.incubation.command import Command, CommandResult
 
+from .git import get_git_isolation
+
 
 def _uuid_representer(dumper, data):
     """Add UUID serializer for YAML."""
@@ -63,6 +65,10 @@ def pass_local_client(
 
         if not ignore_std_streams:
             cmd = cmd.track_std_streams()
+
+        # Handle --isolation option:
+        if get_git_isolation():
+            cmd = cmd.with_git_isolation()
 
         if clean:
             cmd = cmd.require_clean()
