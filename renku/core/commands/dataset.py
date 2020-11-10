@@ -89,11 +89,14 @@ def edit_dataset(client, name, title, description, creators, keywords=None, comm
     creators, no_email_warnings = _construct_creators(creators, ignore_email=True)
     title = title.strip() if isinstance(title, str) else ""
 
-    with client.with_dataset(name=name) as dataset:
-        dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
-
     possible_updates = {"creators": creators, "description": description, "keywords": keywords, "title": title}
     updated = [k for k, v in possible_updates.items() if v]
+
+    if not updated:
+        return [], no_email_warnings
+
+    with client.with_dataset(name=name) as dataset:
+        dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
 
     return updated, no_email_warnings
 
