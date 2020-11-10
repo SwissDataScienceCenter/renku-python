@@ -20,7 +20,10 @@ from contextlib import contextmanager
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.exceptions import RequestException
 from urllib3.util.retry import Retry
+
+from renku.core.errors import RenkuException
 
 
 @contextmanager
@@ -33,4 +36,7 @@ def retry(total_requests=10, backoff_factor=1, statuses=(500, 502, 503, 504, 429
     _session.mount("http://", HTTPAdapter(max_retries=retries))
     _session.mount("https://", HTTPAdapter(max_retries=retries))
 
-    yield _session
+    try:
+        yield _session
+    except RequestException as e:
+        raise RenkuException("renku operation failed due to network connection failure") from e
