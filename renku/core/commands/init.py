@@ -200,7 +200,18 @@ def create_from_template(
 
 @pass_local_client
 def create_from_template_local(
-    client, template_path, name, metadata={}, default_metadata={}, user=None, source=None, ref=None, invoked_from=None
+    client,
+    template_path,
+    name,
+    metadata={},
+    default_metadata={},
+    template_version=None,
+    immutable_template_files=[],
+    automated_template_update=False,
+    user=None,
+    source=None,
+    ref=None,
+    invoked_from=None,
 ):
     """Initialize a new project from a template.
 
@@ -218,6 +229,9 @@ def create_from_template_local(
         client=client,
         name=name,
         metadata=metadata,
+        template_version=template_version,
+        immutable_template_files=immutable_template_files,
+        automated_update=automated_template_update,
         force=False,
         user=user,
         commit_message=commit_message,
