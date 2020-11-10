@@ -38,5 +38,5 @@ def retry(total_requests=10, backoff_factor=1, statuses=(500, 502, 503, 504, 429
 
     try:
         yield _session
-    except (ConnectionError, RequestException) as e:
+    except RequestException as e:
         raise RenkuException("renku operation failed due to network connection failure") from e
