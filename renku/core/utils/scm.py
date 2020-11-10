@@ -21,6 +21,10 @@ import re
 
 def normalize_to_ascii(input_string, sep="-"):
     """Adjust chars to make the input compatible as scm source."""
+    replace_all = [sep, "_", "."]
+    for replacement in replace_all:
+        input_string = input_string.replace(replacement, " ")
+
     return (
         sep.join(
             [
