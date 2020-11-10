@@ -404,16 +404,6 @@ def client_with_lfs_warning(project):
 
 
 @pytest.fixture
-def dataset(client):
-    """Create a dataset."""
-    from renku.core.models.provenance.agents import Person
-
-    with client.with_dataset("dataset", create=True) as dataset:
-        dataset.creators = [Person(**{"affiliation": "xxx", "email": "me@example.com", "id": "me_id", "name": "me",})]
-    return dataset
-
-
-@pytest.fixture
 def client_with_datasets(client, directory_tree):
     """A client with datasets."""
     from renku.core.models.provenance.agents import Person
@@ -1275,3 +1265,15 @@ def ctrl_init(svc_client_cache):
     user_data = UserIdentityHeaders().load(headers)
 
     return cache, user_data
+
+
+@pytest.fixture
+def reset_environment(svc_client, mock_redis):
+    """Restore environment variable to their values before test execution."""
+    current_environment = os.environ.copy()
+
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(current_environment)
