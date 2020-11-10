@@ -20,7 +20,7 @@ from contextlib import contextmanager
 
 import requests
 from requests.adapters import HTTPAdapter
-from requests.exceptions import ConnectionError, RequestException
+from requests.exceptions import RequestException
 from urllib3.util.retry import Retry
 
 from renku.core.errors import RenkuException
