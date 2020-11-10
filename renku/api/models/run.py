@@ -17,13 +17,14 @@
 # limitations under the License.
 """API Workflow Models."""
 
+from os import PathLike
 from pathlib import Path
 
 from renku.api.models.project import ensure_project_context
 from renku.core.models.cwl.command_line_tool import get_indirect_inputs_path, get_indirect_outputs_path
 
 
-class _PathBase:
+class _PathBase(PathLike):
     @ensure_project_context
     def __init__(self, path, project):
         self._path = Path(path)
@@ -37,6 +38,10 @@ class _PathBase:
     @staticmethod
     def _get_indirect_list_path(project_path):
         raise NotImplementedError
+
+    def __fspath__(self):
+        """Abstract method of PathLike."""
+        return str(self._path)
 
     @property
     def path(self):

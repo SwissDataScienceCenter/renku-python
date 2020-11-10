@@ -80,3 +80,19 @@ def test_indirect_inputs_outputs(client):
 
     assert path_1 == command_line_tool.get_indirect_inputs_path(client.path).read_text().strip()
     assert path_2 == command_line_tool.get_indirect_outputs_path(client.path).read_text().strip()
+
+
+def test_open_inputs(client):
+    """Test inputs can be passed to open function."""
+    with open(Input("input.txt"), "w") as f:
+        f.write("some data")
+
+    assert "some data" == (client.path / "input.txt").read_text()
+
+
+def test_open_outputs(client):
+    """Test outputs can be passed to open function."""
+    with open(Output("output.txt"), "w") as f:
+        f.write("some data")
+
+    assert "some data" == (client.path / "output.txt").read_text()
