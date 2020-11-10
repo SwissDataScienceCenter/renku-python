@@ -228,7 +228,7 @@ class CommandLineToolFactory(object):
             repo.git.add(*output_paths)
 
             if repo.is_dirty():
-                commit_msg = ("renku run: " "committing {} newly added files").format(len(output_paths))
+                commit_msg = f"renku run: committing {len(output_paths)} newly added files"
 
                 committer = Actor("renku {0}".format(__version__), version_url)
 
@@ -522,6 +522,8 @@ class CommandLineToolFactory(object):
             if explicit_input in input_paths:
                 continue
 
+            input_paths.append(explicit_input)
+
             try:
                 explicit_input.relative_to(self.working_dir)
             except ValueError:
@@ -557,11 +559,12 @@ class CommandLineToolFactory(object):
 
     def add_indirect_inputs(self):
         """Read indirect inputs list and add them to explicit inputs."""
-        path = get_indirect_inputs_path(self.working_dir)
+        indirect_inputs_list = get_indirect_inputs_path(self.working_dir)
 
-        for indirect_input in self.read_files_list(path):
+        for indirect_input in self._read_files_list(indirect_inputs_list):
             # treat indirect inputs like explicit inputs
-            self.explicit_inputs.append(indirect_input)
+            path = Path(os.path.abspath(indirect_input))
+            self.explicit_inputs.append(path)
 
         # add new explicit inputs (if any) to inputs
         for input in self.find_explicit_inputs():
@@ -569,13 +572,15 @@ class CommandLineToolFactory(object):
 
     def add_indirect_outputs(self):
         """Read indirect outputs list and add them to explicit outputs."""
-        path = get_indirect_outputs_path(self.working_dir)
+        indirect_outputs_list = get_indirect_outputs_path(self.working_dir)
 
-        for indirect_output in self.read_files_list(path):
+        for indirect_output in self._read_files_list(indirect_outputs_list):
             # treat indirect outputs like explicit outputs
-            self.explicit_outputs.append(indirect_output)
+            path = Path(os.path.abspath(indirect_output))
+            self.explicit_outputs.append(path)
 
-    def read_files_list(self, files_list):
+    @staticmethod
+    def _read_files_list(files_list):
         """Read files list where each line is a filepath."""
         try:
             path = str(files_list)
