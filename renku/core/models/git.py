@@ -23,6 +23,7 @@ import re
 import attr
 
 from renku.core import errors
+from renku.core.utils.scm import is_ascii
 
 _RE_PROTOCOL = r"(?P<protocol>(git\+)?(https?|git|ssh|rsync))\://"
 
@@ -106,7 +107,7 @@ class GitURL(object):
     @classmethod
     def parse(cls, href):
         """Derive URI components."""
-        if not href.isascii():
+        if not is_ascii(href):
             raise UnicodeError(f"`{href}` is not a valid Git remote")
 
         for regex in _REPOSITORY_URLS:
