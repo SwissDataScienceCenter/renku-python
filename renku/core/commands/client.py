@@ -17,18 +17,13 @@
 # limitations under the License.
 """Client utilities."""
 
-import contextlib
 import functools
 import uuid
 
-import click
 import yaml
 
-from renku.core.management import LocalClient
+from renku.core.incubation.command import Command, CommandResult
 
-from ..management.config import RENKU_HOME
-from ..management.migrate import check_for_migration
-from ..management.repository import default_path
 from .git import get_git_isolation
 
 
@@ -66,41 +61,34 @@ def pass_local_client(
         )
 
     def new_func(*args, **kwargs):
-        ctx = click.get_current_context(silent=True)
-        if ctx is None:
-            client = LocalClient(path=default_path(), renku_home=RENKU_HOME, external_storage_requested=True,)
-            ctx = click.Context(click.Command(method))
-        else:
-            client = ctx.ensure_object(LocalClient)
+        cmd = Command().command(method)
 
-        stack = contextlib.ExitStack()
+        if not ignore_std_streams:
+            cmd = cmd.track_std_streams()
 
         # Handle --isolation option:
         if get_git_isolation():
-            client = stack.enter_context(client.worktree())
+            cmd = cmd.with_git_isolation()
+
+        if clean:
+            cmd = cmd.require_clean()
 
         if requires_migration:
-            check_for_migration(client)
+            cmd = cmd.require_migration()
 
-        transaction = client.transaction(
-            clean=clean,
-            commit=commit,
-            commit_empty=commit_empty,
-            commit_message=kwargs.get("commit_message", None),
-            commit_only=commit_only,
-            ignore_std_streams=ignore_std_streams,
-            raise_if_empty=raise_if_empty,
-        )
-        stack.enter_context(transaction)
+        if commit:
+            cmd = cmd.with_commit(commit_only=commit_only, commit_if_empty=commit_empty, raise_if_empty=raise_if_empty)
 
         if lock or (lock is None and commit):
-            stack.enter_context(client.lock)
+            cmd = cmd.lock_project()
 
-        result = None
-        if ctx:
-            with stack:
-                result = ctx.invoke(method, client, *args, **kwargs)
+        cmd.build()
 
-        return result
+        result = cmd.execute(*args, **kwargs)
+
+        if result.status == CommandResult.FAILURE:
+            raise result.error
+
+        return result.output
 
     return functools.update_wrapper(new_func, method)
