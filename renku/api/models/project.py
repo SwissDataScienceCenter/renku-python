@@ -15,7 +15,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""API Project context."""
+r"""Renku API Project.
+
+Project class acts as a context for other Renku entities like Dataset, or
+Inputs/Outputs. It provides access to internals of a Renku project for such
+entities.
+
+Normally, you do not need to create an instance of Project class directly
+unless you want to have access to Project metadata (e.g. path). To separate
+parts of your script that uses Renku entities, you can create a Project context
+manager and interact with Renku inside it:
+
+.. code-block:: python
+
+    from renku.api import Project, Input
+
+    with Project():
+        input_1 = Input("data_1")
+
+"""
 from functools import wraps
 
 from git import GitError, Repo

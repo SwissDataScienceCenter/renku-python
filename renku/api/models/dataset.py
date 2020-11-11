@@ -15,7 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""API Dataset."""
+r"""Renku API Dataset.
+
+Dataset class allows listing datasets and files inside a Renku project and
+accessing their metadata.
+
+To get a list of available datasets in a Renku project use ``list`` method:
+
+.. code-block:: python
+
+    from renku.api import Dataset
+
+    datasets = Dataset.list()
+
+You can then access metadata of a dataset like ``name``, ``title``,
+``keywords``, etc. To get the list of files inside a dataset use ``files``
+property:
+
+.. code-block:: python
+
+    for dataset_file in dataset.files:
+        print(dataset_file.path)
+
+"""
 
 from renku.api.models.project import ensure_project_context
 from renku.core.models.datasets import Dataset as CoreDataset

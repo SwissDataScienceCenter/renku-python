@@ -24,6 +24,7 @@
    installation
    gettingstarted
    commands
+   api
    internals
    changes
    license
