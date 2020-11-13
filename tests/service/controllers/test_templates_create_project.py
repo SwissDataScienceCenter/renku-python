@@ -49,7 +49,6 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "token",
         "email",
         "project_repository",
-        "project_id",
         "url",
         "identifier",
         "initialized",
@@ -67,7 +66,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "url_with_auth",
         "user_id",
     }
-    assert expected_context == set(ctrl.context.keys())
+    assert expected_context.issubset(set(ctrl.context.keys()))
 
     received_metadata = ctrl.default_metadata
     expected_metadata = {

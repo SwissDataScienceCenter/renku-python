@@ -19,6 +19,11 @@
 import re
 
 
+def is_ascii(data):
+    """Check if provided string contains only ascii characters."""
+    return len(data) == len(data.encode())
+
+
 def normalize_to_ascii(input_string, sep="-"):
     """Adjust chars to make the input compatible as scm source."""
     replace_all = [sep, "_", "."]
@@ -30,7 +35,7 @@ def normalize_to_ascii(input_string, sep="-"):
             [
                 component
                 for component in re.sub(r"[^a-zA-Z0-9_.-]+", " ", input_string).split(" ")
-                if component and component.isascii()
+                if component and is_ascii(component)
             ]
         )
         .lower()

@@ -272,7 +272,7 @@ jobs:
     - name: Test with pytest
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -v -m "not integration and not publish and not serial" -n 2 tests/api
+      run: pytest -v -m "not integration and not publish and not serial" tests/api
 
   test-macos-cli:
     runs-on: macos-latest
@@ -301,7 +301,7 @@ jobs:
     - name: Test with pytest
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -v -m "not integration and not publish and not serial" -n 2 tests/cli
+      run: pytest -v -m "not integration and not publish and not serial" tests/cli
     - name: Test with pytest(serial)
       env:
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
@@ -334,7 +334,7 @@ jobs:
       - name: Test with pytest
         env:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and not serial" -n 2 tests/core
+        run: pytest -v -m "not integration and not publish and not serial" tests/core
       - name: Test with pytest(serial)
         env:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
@@ -367,7 +367,7 @@ jobs:
       - name: Test with pytest
         env:
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish" -n 2 tests/service
+        run: pytest -v -m "not integration and not publish" tests/service
 
   test-linux-integration:
     runs-on: ubuntu-latest
@@ -407,7 +407,7 @@ jobs:
     runs-on: macos-latest
     needs: [set-matrix]
     strategy:
-      max-parallel: 3
+      max-parallel: 1
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     if: "startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'"
     steps:
@@ -434,7 +434,7 @@ jobs:
         IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-      run: pytest -m integration -v -n 2
+      run: pytest -m integration -v
 
   publish-pypi:
     runs-on: ubuntu-latest
