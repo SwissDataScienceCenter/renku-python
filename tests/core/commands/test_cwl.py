@@ -345,7 +345,7 @@ def test_existing_output_directory(client, runner, project):
 
     cwl, _ = CWLConverter.convert(run.association.plan, client)
 
-    assert 0 == len([r for r in cwl.requirements if hasattr(r, "listing")])
+    assert 1 == len([r for r in cwl.requirements if hasattr(r, "listing")])
 
     output.mkdir(parents=True, exist_ok=True)
     with factory.watch(client) as tool:

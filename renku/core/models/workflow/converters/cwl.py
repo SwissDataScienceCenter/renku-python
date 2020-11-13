@@ -279,6 +279,34 @@ class CWLConverter(object):
         for argument in step.arguments:
             tool_object.inputs.append(CWLConverter._convert_argument(argument))
 
+        workdir_req.listing.append(
+            cwlgen.InitialWorkDirRequirement.Dirent(
+                entry="$(inputs.input_renku_metadata)", entryname=".renku", writable=False
+            )
+        )
+        tool_object.inputs.append(
+            cwlgen.CommandInputParameter(
+                "input_renku_metadata",
+                param_type="Directory",
+                input_binding=None,
+                default={"path": os.path.abspath(os.path.join(basedir, ".renku")), "class": "Directory"},
+            )
+        )
+
+        workdir_req.listing.append(
+            cwlgen.InitialWorkDirRequirement.Dirent(
+                entry="$(inputs.input_git_directory)", entryname=".git", writable=False
+            )
+        )
+        tool_object.inputs.append(
+            cwlgen.CommandInputParameter(
+                "input_git_directory",
+                param_type="Directory",
+                input_binding=None,
+                default={"path": os.path.abspath(os.path.join(basedir, ".git")), "class": "Directory"},
+            )
+        )
+
         if workdir_req.listing:
             tool_object.requirements.append(workdir_req)
         if jsrequirement:
