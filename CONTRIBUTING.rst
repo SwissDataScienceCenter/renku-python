@@ -196,6 +196,7 @@ Full list of user-facing scopes which are in use:
   * :code:`core` - General scope for describing all core elements of Renku project.
   * :code:`service` - General scope for describing interaction or operation of Renku as a service.
   * :code:`cli` - General scope for describing interaction through CLI.
+  * :code:`api` - General scope for describing Renku API.
 
 
 **PLEASE NOTE:** Types which are defined to be picked up for change log (:code:`feat:` and :code:`fix:`) should always contain
