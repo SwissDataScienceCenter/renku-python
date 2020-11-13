@@ -19,6 +19,6 @@
 
 from renku.api.models.dataset import Dataset
 from renku.api.models.project import Project
-from renku.api.models.run import Input, Output
+from renku.api.models.run import Input, Output, Parameter
 
-__all__ = ("Dataset", "Input", "Output", "Project")
+__all__ = ("Dataset", "Input", "Output", "Parameter", "Project")

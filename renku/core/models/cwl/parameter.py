@@ -153,3 +153,11 @@ class WorkflowOutputParameter(OutputParameter):
     """Define an output parameter for a Workflow."""
 
     outputSource = attr.ib(default=None)
+
+
+@attr.s
+class RunParameter:
+    """Define a parameter for a Workflow that is not passed via command-line."""
+
+    name = attr.ib(default=None)
+    value = attr.ib(default=None)

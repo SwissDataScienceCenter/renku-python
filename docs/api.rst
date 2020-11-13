@@ -34,7 +34,7 @@ Renku Python API
 
 .. _api-run:
 
-``Inputs and Outputs``
-----------------------
+``Inputs, Outputs, and Parameters``
+-----------------------------------
 
 .. automodule:: renku.api.models.run
