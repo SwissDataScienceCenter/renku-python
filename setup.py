@@ -90,15 +90,15 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==19.10b0",
-    "check-manifest>=0.37,<0.45",
+    "check-manifest>=0.37,<0.46",
     "coverage>=4.5.3,<5.4",
-    "fakeredis>=1.4.1,<1.4.4",
+    "fakeredis>=1.4.1,<1.4.5",
     "flake8>=3.8,<3.9",
     "flaky==3.7.0",
     "freezegun>=0.3.12,<1.0.1",
-    "isort>=5.3.2,<5.6.0",
+    "isort>=5.3.2,<5.7.0",
     "pydocstyle>=3.0.0,<5.1.2",
-    "pytest-black>=0.3.10,<=0.3.11",
+    "pytest-black>=0.3.10,<0.3.13",
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.11.0",
     "pytest-flake8>=1.0.6,<=1.0.6",
@@ -106,15 +106,15 @@ tests_require = [
     "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
     "pytest-xdist>=1.34.0,<2.2.0",
-    "pytest>=4.0.0,<6.1.1",
-    "responses>=0.7.0,<0.12.1",
+    "pytest>=4.0.0,<6.1.3",
+    "responses>=0.7.0,<0.12.2",
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.1", "sphinx-rtd-theme==0.5.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.2", "sphinx-rtd-theme==0.5.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.19.3"],
+    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.9"],
     "tests": tests_require,
 }
 
@@ -170,10 +170,10 @@ install_requires = [
     "rdflib==4.2.2",
     "rdflib-jsonld>=0.4.0,<0.5.0",
     "requests>=2.23.0,<=2.24.0",
-    "rq==1.5.1",
+    "rq==1.6.1",
     "rq-scheduler==0.10.0",
     "ndg-httpsclient==0.5.1",
-    "marshmallow==3.9.0",
+    "marshmallow==3.9.1",
     "setuptools_scm>=3.1.0,<=4.1.2",
     "tabulate>=0.7.7,<=0.8.7",
     "tqdm>=4.48.1,<=4.48.2",
