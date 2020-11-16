@@ -46,7 +46,7 @@ def migrate(no_commit):
         click.secho("No migrations required.")
 
 
-@click.command()
+@click.command(hidden=True)
 @click.argument(
     "paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True,
 )

@@ -1009,7 +1009,9 @@ def svc_client_with_repo(svc_client_setup):
     """Service client with a remote repository."""
     svc_client, headers, project_id, url_components = svc_client_setup
 
-    response = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
     assert response.json["result"]
 
     yield svc_client, deepcopy(headers), project_id, url_components

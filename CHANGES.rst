@@ -18,6 +18,35 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.0...v0.12.1>`__ (2020-11-16)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** re-raise renku handled exception on network failure
+   (`#1623 <https://github.com/SwissDataScienceCenter/renku-python/issues/1623>`__)
+   (`4856a05 <https://github.com/SwissDataScienceCenter/renku-python/commit/4856a05fa15fa10f402fc95289a641c1f52617bc>`__)
+-  **dataset:** no commit if nothing is edited
+   (`#1706 <https://github.com/SwissDataScienceCenter/renku-python/issues/1706>`__)
+   (`a68edf6 <https://github.com/SwissDataScienceCenter/renku-python/commit/a68edf6c9d654e3fcf9203c530e9c7fdae256f76>`__)
+-  **service:** correctly determine resource age
+   (`#1695 <https://github.com/SwissDataScienceCenter/renku-python/issues/1695>`__)
+   (`40153f0 <https://github.com/SwissDataScienceCenter/renku-python/commit/40153f099ce684e96ffaf2502771c185921d0a96>`__)
+-  **service:** correctly set project_name slug on project create
+   (`#1691 <https://github.com/SwissDataScienceCenter/renku-python/issues/1691>`__)
+   (`234e1b3 <https://github.com/SwissDataScienceCenter/renku-python/commit/234e1b376727bffaad1ea8dc2a06e607bdebeb5c>`__)
+-  **service:** set template version and metadata correctly
+   (`#1708 <https://github.com/SwissDataScienceCenter/renku-python/issues/1708>`__)
+   (`ed98be3 <https://github.com/SwissDataScienceCenter/renku-python/commit/ed98be377d7ff405768ec2fbb44cd3d60949b9aa>`__)
+
+Features
+~~~~~~~~
+
+-  renku API
+   (`#1665 <https://github.com/SwissDataScienceCenter/renku-python/issues/1665>`__)
+   (`949a4aa <https://github.com/SwissDataScienceCenter/renku-python/commit/949a4aa46ef8b5a3c331ae34a6250e8d5cb433d2>`__)
+
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.11.6...v0.12.0>`__ (2020-11-03)
 ----------------------------------------------------------------------------------------------------
 
