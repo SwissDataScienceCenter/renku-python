@@ -312,3 +312,18 @@ def test_commands_work_on_old_repository(isolated_runner, old_repository_with_su
     """Test commands that do not require migration."""
     result = isolated_runner.invoke(cli, command)
     assert "Project version is outdated and a migration is required" not in result.output
+
+
+def test_commit_hook_with_immutable_modified_files(runner, local_client, mocker, template_update):
+    """Test repository update from a template with modified local immutable files."""
+    from renku.core.utils.contexts import chdir
+
+    template_update(immutable_files=["README.md"])
+
+    with chdir(local_client.path):
+        result = runner.invoke(cli, ["check-immutable-template-files", "Dockerfile"])
+        assert result.exit_code == 0
+
+        result = runner.invoke(cli, ["check-immutable-template-files", "README.md"])
+        assert result.exit_code == 1
+        assert "README.md" in result.output
