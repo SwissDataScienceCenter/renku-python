@@ -149,7 +149,7 @@ class CommandLineToolFactory(object):
         repo = client.repo
 
         # Remove indirect files list if any
-        self.delete_indirect_files_list()
+        delete_indirect_files_list(self.working_dir)
 
         from renku.core.plugins.pluginmanager import get_plugin_manager
 
@@ -167,7 +167,7 @@ class CommandLineToolFactory(object):
             self._include_indirect_parameters()
 
             # Remove indirect files list if any
-            self.delete_indirect_files_list()
+            delete_indirect_files_list(self.working_dir)
 
             # List of all output paths.
             output_paths = []
@@ -550,19 +550,6 @@ class CommandLineToolFactory(object):
             # appear on command-line
             yield CommandInputParameter(id="input_{0}".format(input_id), type=type, default=default, inputBinding=None)
 
-    def delete_indirect_files_list(self):
-        """Remove indirect inputs, outputs, and arguments list."""
-        paths = [
-            get_indirect_inputs_path(self.working_dir),
-            get_indirect_outputs_path(self.working_dir),
-            get_indirect_parameters_path(self.working_dir),
-        ]
-        for path in paths:
-            try:
-                os.remove(path)
-            except FileNotFoundError:
-                pass
-
     def add_indirect_inputs(self):
         """Read indirect inputs list and add them to explicit inputs."""
         indirect_inputs_list = get_indirect_inputs_path(self.working_dir)
@@ -602,6 +589,20 @@ class CommandLineToolFactory(object):
                         yield Path(os.path.abspath(line))
         except FileNotFoundError:
             return
+
+
+def delete_indirect_files_list(working_dir):
+    """Remove indirect inputs, outputs, and parameters list."""
+    paths = [
+        get_indirect_inputs_path(working_dir),
+        get_indirect_outputs_path(working_dir),
+        get_indirect_parameters_path(working_dir),
+    ]
+    for path in paths:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
 
 
 def get_indirect_inputs_path(client_path):

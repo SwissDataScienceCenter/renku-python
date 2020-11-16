@@ -282,6 +282,7 @@ class RunParameter:
     @staticmethod
     def generate_id(run_id, name):
         """Generate an id."""
+        name = urllib.parse.quote(name, safe="")
         return "{}/arguments/{}".format(run_id, name)
 
     def default_label(self):
