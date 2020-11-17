@@ -32,5 +32,5 @@ class IdentificationError(RenkuException):
     """User identification not found or failed validation."""
 
     def __init__(self, message):
-        """Build a custom message"""
+        """Build a custom message."""
         super(IdentificationError, self).__init__(message)
