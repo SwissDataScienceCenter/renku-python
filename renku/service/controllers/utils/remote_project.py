@@ -39,7 +39,7 @@ class RemoteProject:
             user_data = {
                 "owner": f"{ANONYMOUS_SESSION} session",
                 "name": f"{ANONYMOUS_SESSION}",
-                "token": f"{ANONYMOUS_SESSION}"
+                "token": f"{ANONYMOUS_SESSION}",
             }
 
         self.ctx = ProjectCloneContext().load({**user_data, **request_data}, unknown=EXCLUDE)

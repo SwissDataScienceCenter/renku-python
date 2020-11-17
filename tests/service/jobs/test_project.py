@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service project related job tests."""
 import json
+
 import jwt
 import pytest
 from werkzeug.utils import secure_filename

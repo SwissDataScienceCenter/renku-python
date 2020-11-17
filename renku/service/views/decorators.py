@@ -288,9 +288,7 @@ def header_doc(description, tags=()):
         description=description,
         params={
             "Authorization": {
-                "description": (
-                    "Used for users git oauth2 access. " "For example: " "```Bearer asdf-qwer-zxcv```"
-                ),
+                "description": ("Used for users git oauth2 access. " "For example: " "```Bearer asdf-qwer-zxcv```"),
                 "in": "header",
                 "type": "string",
             },
@@ -302,7 +300,7 @@ def header_doc(description, tags=()):
                 ),
                 "in": "header",
                 "type": "string",
-            }
+            },
         },
         tags=list(tags),
     )
