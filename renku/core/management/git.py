@@ -128,7 +128,10 @@ class GitCore:
     def dirty_paths(self):
         """Get paths of dirty files in the repository."""
         repo_path = self.repo.working_dir
-        return {os.path.join(repo_path, p) for p in self.repo.untracked_files + self.modified_paths}
+        return {
+            os.path.join(repo_path, p)
+            for p in self.repo.untracked_files + self.modified_paths + self.repo.index.diff("HEAD")
+        }
 
     @property
     def candidate_paths(self):

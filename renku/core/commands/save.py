@@ -23,6 +23,7 @@ from uuid import uuid4
 import git
 
 from renku.core import errors
+from renku.core.utils.scm import git_unicode_unescape
 
 from .client import pass_local_client
 
@@ -33,6 +34,18 @@ def save_and_push(client, message=None, remote=None, paths=None):
     client.setup_credential_helper()
     if not paths:
         paths = client.dirty_paths
+    else:
+        staged = client.repo.index.diff("HEAD")
+        if staged:
+            staged = {git_unicode_unescape(p.a_path) for p in staged}
+            not_passed = staged - set(paths)
+
+            if not_passed:
+                raise errors.RenkuSaveError(
+                    "These files are in the git staging area, but weren't passed to renku save. Unstage them or pass"
+                    + " them explicitely: \n"
+                    + "\n".join(not_passed)
+                )
 
     if paths:
         client.track_paths_in_storage(*paths)
