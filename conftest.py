@@ -638,6 +638,19 @@ def old_repository_with_submodules(request, tmpdir_factory):
     shutil.rmtree(working_dir)
 
 
+@pytest.fixture
+def unsupported_project(client):
+    """A client with a newer project version."""
+    with client.with_metadata() as project:
+        impossible_newer_version = 42000
+        project.version = impossible_newer_version
+
+    client.repo.git.add(".renku")
+    client.repo.index.commit("update renku.ini", skip_hooks=True)
+
+    yield client
+
+
 @pytest.fixture(autouse=True)
 def add_client(doctest_namespace):
     """Add Renku client to doctest namespace."""

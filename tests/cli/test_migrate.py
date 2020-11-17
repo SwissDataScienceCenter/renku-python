@@ -288,7 +288,7 @@ def test_migrate_non_renku_repository(isolated_runner):
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
     """Test commands that fail on projects created by old version of renku."""
     result = isolated_runner.invoke(cli, command)
-    assert 1 == result.exit_code, result.output
+    assert 3 == result.exit_code, result.output
     assert "Project version is outdated and a migration is required" in result.output
 
 

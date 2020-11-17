@@ -40,6 +40,12 @@ fi
 
 if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
   MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
+  if [ $? -eq 3 ]; then
+    echo "Cannot verify validity of the commit: Project is either unsupported or requires a migration."
+    echo
+    echo 'To commit anyway, use "git commit --no-verify".'
+    exit 1
+  fi
   if [ "$MODIFIED_OUTPUTS" ]; then
     echo 'You are trying to update generated files.'
     echo

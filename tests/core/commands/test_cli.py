@@ -20,6 +20,7 @@
 from __future__ import absolute_import, print_function
 
 import contextlib
+import datetime
 import os
 import subprocess
 import sys
@@ -118,6 +119,20 @@ def test_git_pre_commit_hook(runner, project, capsys):
     assert 0 == result.exit_code
 
     repo.index.commit("hello")
+
+
+def test_git_pre_commit_hook_in_unsupported_project(runner, unsupported_project):
+    """Test proper messaging in git hooks when project version is not supported."""
+    with unsupported_project.with_metadata() as project:
+        project.created = datetime.datetime.now(datetime.timezone.utc)
+
+    unsupported_project.repo.git.add("--all")
+
+    with pytest.raises(git.exc.HookExecutionError) as e:
+        unsupported_project.repo.index.commit("update project metadata")
+
+    assert "Cannot verify validity of the commit: Project is either unsupported or requires a migration" in str(e.value)
+    assert "You are trying to update generated files" not in str(e.value)
 
 
 def test_workflow(runner, project):
