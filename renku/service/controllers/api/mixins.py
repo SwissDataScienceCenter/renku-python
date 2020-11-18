@@ -26,6 +26,7 @@ from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import chdir
+from renku.service.cache.models.user import User
 from renku.service.controllers.utils.remote_project import RemoteProject
 from renku.service.errors import IdentificationError
 
@@ -36,8 +37,8 @@ def local_identity(method):
     @wraps(method)
     def _impl(self, *method_args, **method_kwargs):
         """Implementation of method wrapper."""
-        if not self.user:
-            raise IdentificationError("user identification is missing")
+        if not hasattr(self, "user") and not isinstance(getattr(self, "user", None), User):
+            raise IdentificationError("Cannot execute user operation while anonymous - user identification is missing.")
 
         return method(self, *method_args, **method_kwargs)
 

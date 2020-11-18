@@ -19,6 +19,7 @@
 import json
 import uuid
 
+import jwt
 import pytest
 from flaky import flaky
 from git import Repo
@@ -38,24 +39,33 @@ from tests.service.views.test_dataset_views import assert_rpc_response
 def test_dataset_url_import_job(url, svc_client_with_repo):
     """Test dataset import via url."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
-    user = {"user_id": headers["Renku-User-Id"]}
+
+    decoded = jwt.decode(headers["Renku-User"], "secret", algorithms=["HS256"], audience="renku",)
+    user_data = {
+        "fullname": decoded["name"],
+        "email": decoded["email"],
+        "user_id": encode_b64(secure_filename(decoded["email"])),
+        "token": headers["Authorization"].split("Bearer ")[-1],
+    }
+
     payload = {
         "project_id": project_id,
         "dataset_uri": url,
     }
+
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers,)
 
     assert response
     assert_rpc_response(response)
     assert {"job_id", "created_at"} == set(response.json["result"].keys())
 
-    dest = make_project_path(user, {"owner": url_components.owner, "name": url_components.name})
+    dest = make_project_path(user_data, {"owner": url_components.owner, "name": url_components.name})
 
     old_commit = Repo(dest).head.commit
     job_id = response.json["result"]["job_id"]
 
     dataset_import(
-        user, job_id, project_id, url,
+        user_data, job_id, project_id, url,
     )
 
     new_commit = Repo(dest).head.commit

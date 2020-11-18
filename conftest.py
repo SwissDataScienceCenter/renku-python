@@ -44,7 +44,6 @@ from click.testing import CliRunner
 from git import GitCommandError, Repo
 from walrus import Database
 
-from renku.service.serializers.headers import UserIdentityHeaders
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
@@ -919,6 +918,7 @@ def svc_client_cache(mock_redis, identity_headers):
 def integration_repo_path(headers, url_components):
     """Constructs integration repo path."""
     from renku.service.config import CACHE_PROJECTS_PATH
+    from renku.service.serializers.headers import UserIdentityHeaders
 
     user = UserIdentityHeaders().load(headers)
     project_path = CACHE_PROJECTS_PATH / user["user_id"] / url_components.owner / url_components.name

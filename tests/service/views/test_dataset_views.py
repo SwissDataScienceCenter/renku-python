@@ -28,7 +28,13 @@ import pytest
 from flaky import flaky
 from werkzeug.utils import secure_filename
 
-from renku.service.config import INVALID_HEADERS_ERROR_CODE, INVALID_PARAMS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from conftest import IT_REMOTE_REPO_URL
+from renku.service.config import (
+    GIT_ACCESS_DENIED_ERROR_CODE,
+    INVALID_HEADERS_ERROR_CODE,
+    INVALID_PARAMS_ERROR_CODE,
+    RENKU_EXCEPTION_ERROR_CODE,
+)
 from renku.service.serializers.headers import encode_b64
 from tests.utils import make_dataset_add_payload
 
@@ -432,6 +438,46 @@ def test_list_datasets_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_list_datasets_anonymous(svc_client_with_repo):
+    """Check listing of existing datasets."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    params = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params, headers={})
+    assert_rpc_response(response, with_key="error")
+    assert {"code", "reason"} == set(response.json["error"].keys())
+    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
+
+    expected_reason = "Cannot execute user operation while anonymous - user identification is missing."
+    assert expected_reason == response.json["error"]["reason"]
+
+    params = {
+        "git_url": IT_REMOTE_REPO_URL,
+    }
+    response = svc_client.get("/datasets.list", query_string=params, headers={})
+    assert_rpc_response(response, with_key="error")
+    assert {"code", "reason"} == set(response.json["error"].keys())
+    assert GIT_ACCESS_DENIED_ERROR_CODE == response.json["error"]["code"]
+
+    expected_reason = "Repository could not be accessed - Do you have access rights?"
+    assert expected_reason == response.json["error"]["reason"]
+
+    params = {
+        "git_url": "https://dev.renku.ch/gitlab/contact/no-renku",
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params, headers={})
+    assert_rpc_response(response)
+    assert {"datasets"} == set(response.json["result"].keys())
+    assert 1 == len(response.json["result"]["datasets"])
+
+
+@pytest.mark.service
+@pytest.mark.integration
 @flaky(max_runs=30, min_passes=1)
 def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo):
     """Check listing of existing datasets."""
@@ -467,6 +513,40 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 
     assert response
     assert_rpc_response(response, with_key="error")
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_list_dataset_files_anonymous(svc_client_with_repo):
+    """Check listing of existing dataset files."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    params = {"project_id": project_id, "name": "ds1"}
+    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
+    assert_rpc_response(response, with_key="error")
+    assert {"code", "reason"} == set(response.json["error"].keys())
+    assert RENKU_EXCEPTION_ERROR_CODE == response.json["error"]["code"]
+
+    expected_reason = "Cannot execute user operation while anonymous - user identification is missing."
+    assert expected_reason == response.json["error"]["reason"]
+
+    params = {"git_url": IT_REMOTE_REPO_URL, "name": "ds1"}
+    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
+    assert_rpc_response(response, with_key="error")
+    assert {"code", "reason"} == set(response.json["error"].keys())
+    assert GIT_ACCESS_DENIED_ERROR_CODE == response.json["error"]["code"]
+
+    expected_reason = "Repository could not be accessed - Do you have access rights?"
+    assert expected_reason == response.json["error"]["reason"]
+
+    params = {"git_url": "https://dev.renku.ch/gitlab/contact/no-renku", "name": "mydata"}
+
+    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
+    assert_rpc_response(response)
+
+    assert {"files", "name"} == set(response.json["result"].keys())
+    assert 1 == len(response.json["result"]["files"])
 
 
 @pytest.mark.service
