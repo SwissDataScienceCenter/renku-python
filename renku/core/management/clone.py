@@ -56,7 +56,10 @@ def clone(
         repo = Repo.clone_from(url, path, recursive=recursive, depth=depth, progress=progress)
     except GitCommandError as e:
         if not raise_git_except:
-            raise errors.GitError("Cannot clone remote Renku project: {}".format(url)) from e
+            lines = progress.other_lines + progress.error_lines if progress else []
+            error = "".join([f"\n\t{line}" for line in lines if line.strip()])
+            message = f"Cannot clone remote Renku project: Git exited with code {e.status} and error message:\n {error}"
+            raise errors.GitError(message)
 
         raise e
 
