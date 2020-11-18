@@ -25,7 +25,7 @@ import jwt
 import pytest
 from flaky import flaky
 
-from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
+from conftest import IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
 
