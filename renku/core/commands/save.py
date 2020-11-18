@@ -43,7 +43,7 @@ def save_and_push(client, message=None, remote=None, paths=None):
             if not_passed:
                 raise errors.RenkuSaveError(
                     "These files are in the git staging area, but weren't passed to renku save. Unstage them or pass"
-                    + " them explicitely: \n"
+                    + " them explicitly: \n"
                     + "\n".join(not_passed)
                 )
 
