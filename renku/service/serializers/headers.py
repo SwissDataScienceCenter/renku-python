@@ -101,12 +101,33 @@ class UserIdentityHeaders(Schema):
         decoded = jwt.decode(data, JWT_SECRET_TOKEN, algorithms=["HS256"], audience="renku",)
         return UserIdentityToken().load(decoded)
 
+    @staticmethod
+    def reset_old_headers(data):
+        """Process old version of old headers"""
+        # TODO: This should be removed once support for them is phased out.
+        if "renku-user-id" in data:
+            data.pop("renku-user-id")
+
+        if "renku-user-fullname" in data and "renku-user-email" in data:
+            renku_user = {
+                "aud": ["renku"],
+                "name": data.pop("renku-user-fullname"),
+                "email": data.pop("renku-user-email"),
+            }
+            data["renku-user"] = jwt.encode(renku_user, "secret", algorithm="HS256").decode("utf-8")
+
+        return data
+
     @pre_load
     def set_fields(self, data, **kwargs):
         """Set fields for serialization."""
-        expected_keys = [field.data_key for field in self.fields.values()]
+        # NOTE: We don't process headers which are not meant for determining identity.
+        # TODO: Remove old headers support once support for them is phased out.
+        old_keys = ["renku-user-id", "renku-user-fullname", "renku-user-email"]
+        expected_keys = old_keys + [field.data_key for field in self.fields.values()]
 
         data = {key.lower(): value for key, value in data.items() if key.lower() in expected_keys}
+        data = self.reset_old_headers(data)
 
         return data
 

@@ -16,34 +16,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for service header serializers."""
+import jwt
 
 from renku.service.serializers.headers import UserIdentityHeaders
 
 
 def test_header_serializer(identity_headers):
     """Check expected serialization for service headers."""
-    user_identity = UserIdentityHeaders().load(identity_headers)
-
+    decoded = jwt.decode(identity_headers["Renku-User"], "secret", algorithms=["HS256"], audience="renku")
     assert {
-        "sub",
-        "preferred_username",
-        "given_name",
-        "auth_time",
-        "acr",
-        "email_verified",
-        "typ",
-        "azp",
+        "jti",
         "exp",
         "nbf",
-        "aud",
-        "nonce",
-        "iss",
-        "jti",
-        "family_name",
-        "email",
-        "session_state",
         "iat",
-        "fullname",
-        "user_id",
-        "token",
-    } == set(user_identity.keys())
+        "iss",
+        "aud",
+        "sub",
+        "typ",
+        "azp",
+        "nonce",
+        "auth_time",
+        "session_state",
+        "acr",
+        "email_verified",
+        "preferred_username",
+        "given_name",
+        "family_name",
+        "name",
+        "email",
+    } == set(decoded.keys())
+
+    user_identity = UserIdentityHeaders().load(identity_headers)
+    assert {"fullname", "email", "user_id", "token"} == set(user_identity.keys())
+
+
+def test_old_headers():
+    """Test old version of headers."""
+    old_headers = {
+        "Content-Type": "application/json",
+        "Renku-User-Id": "user",
+        "Renku-User-FullName": "full name",
+        "Renku-User-Email": "renku@sdsc.ethz.ch",
+        "Authorization": "Bearer None",
+    }
+
+    user_identity = UserIdentityHeaders().load(old_headers)
+    assert {"fullname", "email", "user_id", "token"} == set(user_identity.keys())
