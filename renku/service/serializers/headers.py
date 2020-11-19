@@ -103,7 +103,7 @@ class UserIdentityHeaders(Schema):
 
     @staticmethod
     def reset_old_headers(data):
-        """Process old version of old headers"""
+        """Process old version of old headers."""
         # TODO: This should be removed once support for them is phased out.
         if "renku-user-id" in data:
             data.pop("renku-user-id")
