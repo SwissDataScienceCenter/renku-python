@@ -16,27 +16,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test command builder."""
-from pathlib import Path
 
 from renku.core.incubation.command import Command, CommandResult
 
 
-def test_dataset_add_command(project, tmpdir):
+def test_dataset_add_command(project, tmp_path):
     """test dataset add with builder."""
     from renku.core.commands.dataset import DATASET_METADATA_PATHS, _add_to_dataset, create_dataset, list_files
 
     add_to_dataset = (
         Command()
-        .command(_add_to_dataset)
         .require_clean()
         .require_migration()
         .with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
         .lock_project()
+        .command(_add_to_dataset)
         .build()
     )
 
     create_dataset("ds1", title="", description="", creators=[], commit_message="my awesome dataset")
-    data_file = tmpdir / Path("somefile")
+    data_file = tmp_path / "some-file"
     data_file.write_text("1,2,3", encoding="utf-8")
 
     result = add_to_dataset.execute([str(data_file)], "ds1")
@@ -46,4 +45,4 @@ def test_dataset_add_command(project, tmpdir):
     files = list_files(datasets=["ds1"])
 
     assert isinstance(files, list)
-    assert "somefile" in [file_.name for file_ in files]
+    assert "some-file" in [file_.name for file_ in files]
