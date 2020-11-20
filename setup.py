@@ -110,12 +110,24 @@ tests_require = [
     "responses>=0.7.0,<0.12.2",
 ]
 
+service_requires = [
+    "flask==1.1.2",
+    "flask-apispec==0.11.0",
+    "flask-swagger-ui==3.36.0",
+    "gunicorn",
+    "marshmallow==3.9.1",
+    "rq==1.6.1",
+    "rq-scheduler==0.10.0",
+    "sentry-sdk[flask]>=0.7.4,<0.17.9",
+    "walrus==0.8.1",
+]
+
 extras_require = {
     "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.2", "sphinx-rtd-theme==0.5.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
-    "sentry": ["sentry-sdk[flask]>=0.7.4,<0.17.9"],
     "tests": tests_require,
+    "service": service_requires,
 }
 
 setup_requires = [
@@ -149,9 +161,6 @@ install_requires = [
     "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
-    "flask==1.1.2",
-    "flask-apispec==0.11.0",
-    "flask-swagger-ui==3.36.0",
     "gitpython==3.1.11",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
@@ -170,14 +179,10 @@ install_requires = [
     "rdflib==4.2.2",
     "rdflib-jsonld>=0.4.0,<0.5.0",
     "requests>=2.23.0,<=2.24.0",
-    "rq==1.6.1",
-    "rq-scheduler==0.10.0",
     "ndg-httpsclient==0.5.1",
-    "marshmallow==3.9.1",
     "setuptools_scm>=3.1.0,<=4.1.2",
     "tabulate>=0.7.7,<=0.8.7",
     "tqdm>=4.48.1,<=4.48.2",
-    "walrus==0.8.1",
     "wcmatch>=6.0.0,<=6.1",
     "werkzeug>=0.15.5,<=1.0.1",
 ]

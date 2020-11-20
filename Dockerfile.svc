@@ -1,4 +1,4 @@
-FROM python:3.7-alpine
+FROM python:3.7-alpine as base
 
 RUN apk add --update --no-cache alpine-sdk g++ gcc linux-headers libxslt-dev python3-dev build-base openssl-dev libffi-dev git bash && \
     pip install --no-cache --upgrade pip setuptools pipenv requirements-builder
@@ -8,15 +8,22 @@ RUN apk add --no-cache --allow-untrusted \
     --repository http://dl-cdn.alpinelinux.org/alpine/latest-stable/main \
     --repository http://nl.alpinelinux.org/alpine/edge/community \
     git-lfs && \
-    git lfs install
+    git lfs install && \
+    addgroup -g 1000 shuhitsu && \
+    adduser -S -u 1000 -G shuhitsu shuhitsu && \
+    mkdir /svc && chown shuhitsu:shuhitsu /svc
 
 COPY setup.py README.rst CHANGES.rst /code/renku/
 WORKDIR /code/renku
-RUN requirements-builder -e all --level=pypi setup.py > requirements.txt && \
-    pip install -r requirements.txt && pip install gunicorn
+RUN requirements-builder -e service --level=pypi setup.py > /tmp/requirements.txt && \
+    pip install -r /tmp/requirements.txt && pip install gunicorn
 
 COPY . /code/renku
-RUN pip install -e .
+RUN pip install .[service]
+
+# shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
+# writing down renga verses and for the proceedings of the renga.
+USER shuhitsu
 
 ENTRYPOINT ["gunicorn", \
             "renku.service.entrypoint:app", \
