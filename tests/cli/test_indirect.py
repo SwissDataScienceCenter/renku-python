@@ -115,3 +115,68 @@ def test_duplicate_indirect_outputs(renku_cli, client):
 
     assert 0 == exit_code
     assert {"baz", "foo/bar"} == {o.produces.path for o in plan.outputs}
+
+
+def test_indirect_parameters(renku_cli, client):
+    """Test indirect parameters."""
+    with chdir(client.path):
+        Path(".renku/tmp").mkdir()
+
+        Path("script.sh").write_text(
+            """
+            echo param 1: 42 >> .renku/tmp/parameters.yml
+            echo param-2: 42.42 >> .renku/tmp/parameters.yml
+            echo param3: 42 >> .renku/tmp/parameters.yml
+            echo param 1: "forty-two" >> .renku/tmp/parameters.yml
+            """
+        )
+
+        client.repo.git.add("--all")
+        client.repo.index.commit("test setup")
+
+    exit_code, plan = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh")
+
+    assert 0 == exit_code
+    assert {"param 1", "param-2", "param3"} == {a.name for a in plan.run_parameters}
+    assert {"forty-two", "42.42", "42"} == {a.value for a in plan.run_parameters}
+    assert {"str", "float", "int"} == {a.type for a in plan.run_parameters}
+
+    param_1 = next(p for p in plan.run_parameters if p.name == "param 1")
+    assert " " not in param_1._id
+
+
+def test_indirect_parameters_update(renku_cli, client):
+    """Test updating of indirect parameters."""
+    with chdir(client.path):
+        Path(".renku/tmp").mkdir(exist_ok=True)
+
+        Path("script.sh").write_text(
+            """
+            echo param 1: "forty-two" >> .renku/tmp/parameters.yml
+            echo param-2: 42.42 >> .renku/tmp/parameters.yml
+            echo param3: 42 >> .renku/tmp/parameters.yml
+            """
+        )
+
+        client.repo.git.add("--all")
+        client.repo.index.commit("test setup")
+
+    renku_cli("run", "sh", "script.sh", stdout="result")
+
+    with chdir(client.path):
+        Path(".renku/tmp").mkdir(exist_ok=True)
+
+        Path("script.sh").write_text(
+            """
+            echo param 1: "forty-two-updated" >> .renku/tmp/parameters.yml
+            echo param-2: 42.42 >> .renku/tmp/parameters.yml
+            """
+        )
+
+        client.repo.git.add("--all")
+        client.repo.index.commit("test setup")
+
+    exit_code, plan = renku_cli("update", "--all")
+
+    assert 0 == exit_code
+    assert {"forty-two-updated", "42.42", "42"} == {a.value for a in plan.run_parameters}

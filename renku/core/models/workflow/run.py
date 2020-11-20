@@ -40,6 +40,8 @@ from renku.core.models.workflow.parameters import (
     CommandOutput,
     CommandOutputSchema,
     MappedIOStream,
+    RunParameter,
+    RunParameterSchema,
 )
 
 
@@ -150,6 +152,12 @@ def _convert_cmd_output(output, factory, client, commit, run_id):
     )
 
 
+def _convert_run_parameter(parameter, run_id):
+    """Convert a cwl run parameters to ``RunParameter``."""
+    id_ = RunParameter.generate_id(run_id=run_id, name=parameter.name)
+    return RunParameter(id=id_, name=parameter.name, value=parameter.value)
+
+
 @total_ordering
 @attr.s(cmp=False,)
 class Run(CommitMixin):
@@ -166,6 +174,8 @@ class Run(CommitMixin):
     inputs = attr.ib(kw_only=True, factory=list)
 
     outputs = attr.ib(kw_only=True, factory=list)
+
+    run_parameters = attr.ib(kw_only=True, factory=list)
 
     _activity = attr.ib(kw_only=True, default=None)
 
@@ -224,6 +234,7 @@ class Run(CommitMixin):
             arguments=[_convert_cmd_binding(a, client, commit) for a in factory.arguments] + arguments,
             inputs=inputs,
             outputs=outputs,
+            run_parameters=[_convert_run_parameter(a, run_id) for a in factory.run_parameters],
         )
 
     @property
@@ -409,6 +420,7 @@ class RunSchema(CommitMixinSchema):
     arguments = Nested(renku.hasArguments, CommandArgumentSchema, many=True, missing=None)
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
+    run_parameters = Nested(renku.hasRunParameters, RunParameterSchema, many=True, missing=None)
 
 
 class OrderedSubprocessSchema(JsonLDSchema):
