@@ -43,6 +43,8 @@ from click.testing import CliRunner
 from git import Repo
 from walrus import Database
 
+from renku.cli.utils.callback import ClickCallback
+from renku.core.utils import communication
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
@@ -1279,3 +1281,15 @@ def reset_environment(svc_client, mock_redis):
     finally:
         os.environ.clear()
         os.environ.update(current_environment)
+
+
+@pytest.fixture
+def click_communicator():
+    """Subscribes a ClickCallback during the test."""
+    communicator = ClickCallback()
+    communication.subscribe(communicator)
+
+    try:
+        yield
+    finally:
+        communication.unsubscribe(communicator)

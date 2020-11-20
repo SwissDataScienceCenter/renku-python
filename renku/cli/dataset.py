@@ -395,6 +395,7 @@ from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core.errors import DatasetNotFound, InvalidAccessToken
 from renku.core.management.datasets import DownloadProgressCallback
+from renku.core.utils import communication
 
 
 def prompt_access_token(exporter):
@@ -568,7 +569,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    click.echo(list_files(names, creators, include, exclude, format, columns))
+    communication.echo(list_files(names, creators, include, exclude, format, columns))
 
 
 @dataset.command()
