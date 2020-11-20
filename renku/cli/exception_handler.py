@@ -92,8 +92,10 @@ class RenkuExceptionsHandler(click.Group):
             exit_code = 1
             if isinstance(e, (ParameterError, UsageError)):
                 exit_code = 2
-            elif isinstance(e, (MigrationRequired, ProjectNotSupported)):
+            elif isinstance(e, MigrationRequired):
                 exit_code = 3
+            elif isinstance(e, ProjectNotSupported):
+                exit_code = 4
             sys.exit(exit_code)
 
 

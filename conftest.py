@@ -527,35 +527,17 @@ def clone_compressed_repository(base_path, name):
 
 
 @pytest.fixture(
-    params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git",],
-    scope="module",
+    params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git"]
 )
-def old_repository(request, tmp_path_factory):
+def old_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
     name = request.param
-    base_path = tmp_path_factory.mktemp(name)
+    base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
+    os.chdir(repository.working_dir)
+
     yield repository
-
-    shutil.rmtree(base_path)
-
-
-@pytest.fixture
-def old_project(old_repository):
-    """Create a test project."""
-    commit = old_repository.head.commit
-
-    repository_path = old_repository.working_dir
-
-    os.chdir(repository_path)
-
-    yield old_repository
-
-    os.chdir(repository_path)
-    old_repository.head.reset(commit, index=True, working_tree=True)
-    # remove any extra non-tracked files (.pyc, etc)
-    old_repository.git.clean("-xdff")
 
 
 @pytest.fixture(
@@ -584,10 +566,10 @@ def old_project(old_repository):
         },
     ],
 )
-def old_workflow_project(request, tmp_path_factory):
+def old_workflow_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
     name = request.param["name"]
-    base_path = tmp_path_factory.mktemp(name)
+    base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
     repository_path = repository.working_dir
 
@@ -604,37 +586,37 @@ def old_workflow_project(request, tmp_path_factory):
 
 
 @pytest.fixture
-def old_dataset_project(tmp_path_factory):
+def old_dataset_project(tmp_path):
     """Prepares a testing repo created by old version of renku."""
+    from renku import LocalClient
+
     name = "old-datasets-v0.9.1.git"
-    base_path = tmp_path_factory.mktemp(name)
+    base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
     os.chdir(repository.working_dir)
 
-    yield repository
-
-    shutil.rmtree(base_path)
+    yield LocalClient(path=repository.working_dir)
 
 
 @pytest.fixture
-def old_repository_with_submodules(request, tmpdir_factory):
+def old_repository_with_submodules(request, tmp_path):
     """Prepares a testing repo that has datasets using git submodules."""
     name = "old-datasets-v0.6.0-with-submodules"
     base_path = Path(__file__).parent / "tests" / "fixtures" / f"{name}.tar.gz"
 
-    working_dir = tmpdir_factory.mktemp(name)
+    working_dir = tmp_path / name
 
     with tarfile.open(str(base_path), "r") as repo:
-        repo.extractall(working_dir.strpath)
+        repo.extractall(working_dir)
 
     repo_path = working_dir / name
     repo = Repo(repo_path)
 
-    os.chdir(repo_path.strpath)
+    os.chdir(repo_path)
     yield repo
 
-    shutil.rmtree(repo_path.strpath)
+    shutil.rmtree(repo_path)
     shutil.rmtree(working_dir)
 
 
@@ -1259,9 +1241,9 @@ def no_lfs_size_limit(client):
 
 
 @pytest.fixture
-def large_file(tmp_path_factory, client):
+def large_file(tmp_path, client):
     """A file larger than the minimum LFS file size."""
-    path = tmp_path_factory.mktemp("large-file") / "large-file"
+    path = tmp_path / "large-file"
     with open(path, "w") as file_:
         file_.seek(client.minimum_lfs_file_size)
         file_.write("some data")
