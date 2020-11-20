@@ -21,7 +21,7 @@ import threading
 
 import pytest
 
-from renku.cli import cli
+from renku.cli.utils.callback import ClickCallback
 from renku.core.incubation.command import Command
 from renku.core.utils import communication
 from renku.service.utils.callback import ServiceCallback
@@ -75,21 +75,19 @@ def test_multi_threaded_communication(tmp_path):
     assert ["Hello world from thread-2!"] == communicator_2.messages
 
 
-def test_click_callback(isolated_runner, client_with_datasets, click_communicator):
+def test_click_callback(capsys):
     """Test communication with ClickCallback."""
-    result = isolated_runner.invoke(cli, ["dataset", "ls-files"])
+    communicator = ClickCallback()
+    command = Command().command(lambda _: communication.echo("Hello world!"))
+    command.with_communicator(communicator).build().execute()
 
-    assert 0 == result.exit_code
-    assert "dataset-2" in result.output
-    assert "file1" in result.output
-    assert "file2" in result.output
-    assert "file3" in result.output
+    assert "Hello world!" in capsys.readouterr().out
 
 
 @pytest.mark.serial
-def test_no_callback(isolated_runner, client_with_datasets):
+def test_no_callback(capsys):
     """Test communication does not print anything without a callback."""
-    result = isolated_runner.invoke(cli, ["dataset", "ls-files"])
+    command = Command().command(lambda _: communication.echo("Hello world!"))
+    command.build().execute()
 
-    assert 0 == result.exit_code
-    assert "dataset-2" not in result.output
+    assert "Hello world!" not in capsys.readouterr().out
