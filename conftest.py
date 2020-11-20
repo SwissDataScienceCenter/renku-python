@@ -23,6 +23,7 @@ import pathlib
 import re
 import secrets
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import time
@@ -33,14 +34,13 @@ from copy import deepcopy
 from pathlib import Path
 
 import fakeredis
-import git
 import pytest
 import requests
 import responses
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
-from git import Repo
+from git import GitCommandError, Repo
 from walrus import Database
 
 from tests.utils import make_dataset_add_payload
@@ -71,20 +71,21 @@ def it_remote_non_renku_repo():
 @contextlib.contextmanager
 def _isolated_filesystem(tmpdir, name=None, delete=True):
     """Click CliRunner ``isolated_filesystem`` but xdist compatible."""
-    cwd = os.getcwd()
+    from renku.core.utils.contexts import chdir
+
     if not name:
         name = secrets.token_hex(8)
     t = tmpdir.mkdir(name)
-    os.chdir(t)
-    try:
-        yield t
-    finally:
-        os.chdir(cwd)
-        if delete:
-            try:
-                shutil.rmtree(t)
-            except OSError:  # noqa: B014
-                pass
+
+    with chdir(t):
+        try:
+            yield t
+        finally:
+            if delete:
+                try:
+                    shutil.rmtree(t)
+                except OSError:  # noqa: B014
+                    pass
 
 
 @pytest.fixture()
@@ -124,7 +125,6 @@ def global_config_dir(monkeypatch, tmpdir):
 @pytest.fixture()
 def run_shell():
     """Create a shell cmd runner."""
-    import subprocess
 
     def run_(cmd, return_ps=None, sleep_for=None):
         """Spawn subprocess and execute shell command.
@@ -133,7 +133,7 @@ def run_shell():
         :param sleep_for: After executing command sleep for n seconds.
         :returns: Process object or tuple (stdout, stderr).
         """
-        ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,)
+        ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         if return_ps:
             return ps
@@ -308,23 +308,23 @@ def template_update(tmpdir, local_client, mocker, template):
 @pytest.fixture()
 def project(repository):
     """Create a test project."""
-    from git import Repo
-
     from renku.cli import cli
+    from renku.core.utils.contexts import chdir
 
     runner = CliRunner()
 
     repo = Repo(repository, search_parent_directories=True)
     commit = repo.head.commit
 
-    os.chdir(repository)
-    yield repository
-    os.chdir(repository)
-    repo.head.reset(commit, index=True, working_tree=True)
-    # INFO: remove any extra non-tracked files (.pyc, etc)
-    repo.git.clean("-xdff")
+    with chdir(repository):
+        yield repository
 
-    assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
+        os.chdir(repository)
+        repo.head.reset(commit, index=True, working_tree=True)
+        # INFO: remove any extra non-tracked files (.pyc, etc)
+        repo.git.clean("-xdff")
+
+        assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
 
 
 @pytest.fixture
@@ -531,13 +531,14 @@ def clone_compressed_repository(base_path, name):
 )
 def old_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
+    from renku.core.utils.contexts import chdir
+
     name = request.param
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    os.chdir(repository.working_dir)
-
-    yield repository
+    with chdir(repository.working_dir):
+        yield repository
 
 
 @pytest.fixture(
@@ -568,40 +569,41 @@ def old_project(request, tmp_path):
 )
 def old_workflow_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
+    from renku.core.utils.contexts import chdir
+
     name = request.param["name"]
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
     repository_path = repository.working_dir
 
-    os.chdir(repository_path)
-
-    yield {
-        "repo": repository,
-        "path": repository_path,
-        "log_path": request.param["log_path"],
-        "expected_strings": request.param["expected_strings"],
-    }
-
-    shutil.rmtree(base_path)
+    with chdir(repository_path):
+        yield {
+            "repo": repository,
+            "path": repository_path,
+            "log_path": request.param["log_path"],
+            "expected_strings": request.param["expected_strings"],
+        }
 
 
 @pytest.fixture
 def old_dataset_project(tmp_path):
     """Prepares a testing repo created by old version of renku."""
     from renku import LocalClient
+    from renku.core.utils.contexts import chdir
 
     name = "old-datasets-v0.9.1.git"
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    os.chdir(repository.working_dir)
-
-    yield LocalClient(path=repository.working_dir)
+    with chdir(repository.working_dir):
+        yield LocalClient(path=repository.working_dir)
 
 
 @pytest.fixture
 def old_repository_with_submodules(request, tmp_path):
     """Prepares a testing repo that has datasets using git submodules."""
+    from renku.core.utils.contexts import chdir
+
     name = "old-datasets-v0.6.0-with-submodules"
     base_path = Path(__file__).parent / "tests" / "fixtures" / f"{name}.tar.gz"
 
@@ -613,11 +615,8 @@ def old_repository_with_submodules(request, tmp_path):
     repo_path = working_dir / name
     repo = Repo(repo_path)
 
-    os.chdir(repo_path)
-    yield repo
-
-    shutil.rmtree(repo_path)
-    shutil.rmtree(working_dir)
+    with chdir(repo_path):
+        yield repo
 
 
 @pytest.fixture
@@ -980,7 +979,7 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
         with integration_repo(authentication_headers, url_components) as repo:
             try:
                 repo.remote().push(refspec=(":{0}".format(repo.active_branch.name)))
-            except git.exc.GitCommandError:
+            except GitCommandError:
                 pass
 
 
