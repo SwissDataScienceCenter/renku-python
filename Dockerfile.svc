@@ -16,7 +16,7 @@ RUN apk add --no-cache --allow-untrusted \
 COPY setup.py README.rst CHANGES.rst /code/renku/
 WORKDIR /code/renku
 RUN requirements-builder -e service --level=pypi setup.py > /tmp/requirements.txt && \
-    pip install -r /tmp/requirements.txt && pip install gunicorn
+    pip install -r /tmp/requirements.txt
 
 COPY . /code/renku
 RUN pip install .[service]
