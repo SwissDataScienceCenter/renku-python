@@ -450,3 +450,7 @@ class CommandNotFinalizedError(RenkuException):
 
 class CommandFinalizedError(RenkuException):
     """Raised when trying to modify a finalized command builder."""
+
+
+class RenkuSaveError(RenkuException):
+    """Raised when renku save doesn't work."""

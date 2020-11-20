@@ -511,8 +511,8 @@ jobs:
         fetch-depth: 0
     - name: set up environment variables
       run: |
-        echo ::set-env name=GIT_USER::"Renku Bot"
-        echo ::set-env name=GIT_EMAIL::"renku@datascience.ch"
+        echo "GIT_USER=Renku Bot" >> $GITHUB_ENV
+        echo "GIT_EMAIL=renku@datascience.ch" >> $GITHUB_ENV
     - name: Push chart and images
       uses: SwissDataScienceCenter/renku/actions/publish-chart@master
       env:
