@@ -20,6 +20,7 @@
 from __future__ import absolute_import, print_function
 
 import contextlib
+import datetime
 import os
 import subprocess
 import sys
@@ -118,6 +119,38 @@ def test_git_pre_commit_hook(runner, project, capsys):
     assert 0 == result.exit_code
 
     repo.index.commit("hello")
+
+
+def test_git_pre_commit_hook_in_old_project(isolated_runner, old_dataset_project):
+    """Test proper messaging in git hooks when project requires migration."""
+    assert 0 == isolated_runner.invoke(cli, ["githooks", "install"]).exit_code
+
+    with old_dataset_project.with_metadata() as project:
+        project.created = datetime.datetime.now(datetime.timezone.utc)
+
+    old_dataset_project.repo.git.add("--all")
+
+    with pytest.raises(git.exc.HookExecutionError) as e:
+        old_dataset_project.repo.index.commit("update project metadata")
+
+    assert "Cannot verify validity of the commit: Project metadata is outdated." in str(e.value)
+    assert "Run 'renku migrate' command to fix the issue." in str(e.value)
+    assert "You are trying to update generated files" not in str(e.value)
+
+
+def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
+    """Test proper messaging in git hooks when project version is not supported."""
+    with unsupported_project.with_metadata() as project:
+        project.created = datetime.datetime.now(datetime.timezone.utc)
+
+    unsupported_project.repo.git.add("--all")
+
+    with pytest.raises(git.exc.HookExecutionError) as e:
+        unsupported_project.repo.index.commit("update project metadata")
+
+    assert "Cannot verify validity of the commit: Project was created with a newer version of Renku." in str(e.value)
+    assert "Upgrade Renku to the latest version." in str(e.value)
+    assert "You are trying to update generated files" not in str(e.value)
 
 
 def test_workflow(runner, project):
