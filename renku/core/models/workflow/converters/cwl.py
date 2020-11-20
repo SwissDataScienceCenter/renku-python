@@ -293,8 +293,8 @@ class CWLConverter(object):
             )
         )
 
-        # TODO: Remove ".git" once https://github.com/SwissDataScienceCenter/renku-python/issues/1043 is done because we
-        # won't need the git history to correctly load metadata.
+        # TODO: ".git" is not required once https://github.com/SwissDataScienceCenter/renku-python/issues/1043 is done
+        # because we won't need the git history to correctly load metadata. The following two statements can be removed.
         workdir_req.listing.append(
             cwlgen.InitialWorkDirRequirement.Dirent(
                 entry="$(inputs.input_git_directory)", entryname=".git", writable=False
