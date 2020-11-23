@@ -27,7 +27,7 @@ from marshmallow.utils import isoformat
 from werkzeug.utils import secure_filename
 
 from renku.service.cache.models.project import Project
-from renku.service.serializers.headers import encode_b64, JWT_TOKEN_SECRET
+from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 
 
 @pytest.mark.service
