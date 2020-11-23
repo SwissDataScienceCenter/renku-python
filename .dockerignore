@@ -1,9 +1,13 @@
 .cache
 .pytest_cache
+.venv
+.vscode
 __pycache__
 
 build
 dist
+docs
+tests
 
 *.mo
 *.pyc
@@ -21,3 +25,5 @@ docker-compose-dev.yml
 Procfile*
 
 helm-chart
+
+Dockerfile*

@@ -20,6 +20,8 @@ import os
 import tempfile
 from pathlib import Path
 
+import pkg_resources
+
 GIT_ACCESS_DENIED_ERROR_CODE = -32000
 GIT_UNKNOWN_ERROR_CODE = -32001
 
@@ -56,4 +58,4 @@ SUPPORTED_ARCHIVES = [
 ]
 
 SERVICE_PREFIX = os.getenv("CORE_SERVICE_PREFIX", "/")
-LOGGER_CONFIG_FILE = Path("renku") / "service" / "logging.yaml"
+LOGGER_CONFIG_FILE = Path(pkg_resources.resource_filename("renku", "service/logging.yaml"))
