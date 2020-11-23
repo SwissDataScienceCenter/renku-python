@@ -22,6 +22,7 @@ from functools import wraps
 from flask import jsonify, request
 from flask_apispec import doc
 from git import GitCommandError, GitError
+from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
 from redis import RedisError
 from sentry_sdk import capture_exception
@@ -148,6 +149,23 @@ def handle_validation_except(f):
             error_message = f"Validation error: {'; '.join(reasons)}"
 
             return error_response(INVALID_PARAMS_ERROR_CODE, error_message)
+
+    return decorated_function
+
+
+def handle_jwt_except(f):
+    """Wrapper which handles invalid JWT."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except (ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
+            capture_exception(e)
+
+            error_message = f"invalid web token"
+            return error_response(INVALID_HEADERS_ERROR_CODE, error_message)
 
     return decorated_function
 
@@ -288,7 +306,7 @@ def header_doc(description, tags=()):
         description=description,
         params={
             "Authorization": {
-                "description": ("Used for users git oauth2 access. " "For example: " "```Bearer asdf-qwer-zxcv```"),
+                "description": "Used for users git oauth2 access. For example: ```Bearer asdf-qwer-zxcv```",
                 "in": "header",
                 "type": "string",
             },
@@ -317,6 +335,7 @@ def handle_common_except(f):
         @handle_validation_except
         @handle_renku_except
         @handle_git_except
+        @handle_jwt_except
         def _wrapped(*args_, **kwargs_):
             return f(*args_, **kwargs_)
 

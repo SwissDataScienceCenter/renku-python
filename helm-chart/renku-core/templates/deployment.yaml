@@ -53,6 +53,8 @@ spec:
               value: "0"
             - name: REDIS_PASSWORD
               value:
+            - name: RENKU_JWT_TOKEN_SECRET
+              value: {{ .Values.jwtTokenSecret }}
             - name: CACHE_DIR
               value: {{ .Values.cacheDirectory }}
             - name: RENKU_SVC_CLEANUP_INTERVAL

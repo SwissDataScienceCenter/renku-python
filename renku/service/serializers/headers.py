@@ -24,7 +24,7 @@ import jwt
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 from werkzeug.utils import secure_filename
 
-JWT_SECRET_TOKEN = os.getenv("RENKU_JWT_TOKEN", "secret")
+JWT_TOKEN_SECRET = os.getenv("RENKU_JWT_TOKEN_SECRET", "bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn")
 
 
 def decode_b64(value):
@@ -98,7 +98,7 @@ class UserIdentityHeaders(Schema):
     @staticmethod
     def decode_user(data):
         """Extract renku user from a JWT."""
-        decoded = jwt.decode(data, JWT_SECRET_TOKEN, algorithms=["HS256"], audience="renku",)
+        decoded = jwt.decode(data, JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku",)
         return UserIdentityToken().load(decoded)
 
     @staticmethod
@@ -114,7 +114,7 @@ class UserIdentityHeaders(Schema):
                 "name": data.pop("renku-user-fullname"),
                 "email": data.pop("renku-user-email"),
             }
-            data["renku-user"] = jwt.encode(renku_user, "secret", algorithm="HS256").decode("utf-8")
+            data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8")
 
         return data
 

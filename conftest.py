@@ -43,7 +43,9 @@ from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import GitCommandError, Repo
 from walrus import Database
+from werkzeug.utils import secure_filename
 
+from renku.service.serializers.headers import encode_b64
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
@@ -1012,6 +1014,17 @@ def svc_client_setup(integration_lifecycle):
         current.checkout()
 
     yield svc_client, deepcopy(headers), project_id, url_components
+
+
+@pytest.fixture
+def svc_client_with_user(svc_client_cache):
+    """Service client with a predefined user."""
+    svc_client, headers, cache = svc_client_cache
+
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
+
+    yield svc_client, headers, cache, user
 
 
 @pytest.fixture
