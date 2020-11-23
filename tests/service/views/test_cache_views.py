@@ -28,6 +28,7 @@ from flaky import flaky
 from conftest import IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from renku.service.serializers.headers import JWT_TOKEN_SECRET
 
 
 @pytest.mark.service
@@ -191,7 +192,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
     }
 
     headers_user2 = {
-        "Renku-User": jwt.encode(jwt_data, "secret", algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
         "Authorization": identity_headers["Authorization"],
     }
 

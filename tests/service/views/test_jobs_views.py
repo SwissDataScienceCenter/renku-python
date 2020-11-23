@@ -27,7 +27,7 @@ from marshmallow.utils import isoformat
 from werkzeug.utils import secure_filename
 
 from renku.service.cache.models.project import Project
-from renku.service.serializers.headers import encode_b64
+from renku.service.serializers.headers import encode_b64, JWT_TOKEN_SECRET
 
 
 @pytest.mark.service
@@ -153,12 +153,10 @@ def test_job_details_empty(svc_client, identity_headers):
 
 
 @pytest.mark.service
-def test_job_details_by_user(svc_client_cache):
+def test_job_details_by_user(svc_client_with_user):
     """Check job details for a user."""
-    svc_client, headers, cache = svc_client_cache
+    svc_client, headers, cache, user = svc_client_with_user
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
-    user = cache.ensure_user({"user_id": user_id})
     jobs = [
         {
             "job_id": uuid.uuid4().hex,
@@ -202,7 +200,7 @@ def test_job_details_by_user(svc_client_cache):
 
     excluded_user_headers = {
         "Content-Type": "application/json",
-        "Renku-User": jwt.encode(jwt_data, "secret", algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
         "Authorization": headers["Authorization"],
     }
 
