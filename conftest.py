@@ -45,7 +45,7 @@ from git import GitCommandError, Repo
 from walrus import Database
 from werkzeug.utils import secure_filename
 
-from renku.service.serializers.headers import encode_b64
+from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
@@ -965,7 +965,7 @@ def identity_headers():
 
     headers = {
         "Content-Type": "application/json",
-        "Renku-User": jwt.encode(jwt_data, "secret", algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
         "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
     }
 

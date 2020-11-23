@@ -18,12 +18,12 @@
 """Tests for service header serializers."""
 import jwt
 
-from renku.service.serializers.headers import UserIdentityHeaders
+from renku.service.serializers.headers import JWT_TOKEN_SECRET, UserIdentityHeaders
 
 
 def test_header_serializer(identity_headers):
     """Check expected serialization for service headers."""
-    decoded = jwt.decode(identity_headers["Renku-User"], "secret", algorithms=["HS256"], audience="renku")
+    decoded = jwt.decode(identity_headers["Renku-User"], JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku")
     assert {
         "jti",
         "exp",
