@@ -164,7 +164,7 @@ def handle_jwt_except(f):
         except (ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
             capture_exception(e)
 
-            error_message = f"invalid web token"
+            error_message = "invalid web token"
             return error_response(INVALID_HEADERS_ERROR_CODE, error_message)
 
     return decorated_function

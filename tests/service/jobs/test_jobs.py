@@ -24,11 +24,9 @@ import uuid
 import pytest
 from flaky import flaky
 from marshmallow import EXCLUDE
-from werkzeug.utils import secure_filename
 
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
-from renku.service.serializers.headers import encode_b64
 from renku.service.serializers.templates import ManifestTemplatesRequest
 from tests.service.views.test_dataset_views import assert_rpc_response
 
