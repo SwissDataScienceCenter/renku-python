@@ -12,3 +12,5 @@ charts:
         contextPath: .
         dockerfilePath: Dockerfile.svc
         valuesPath: image
+        buildArgs:
+          CLEAN_INSTALL: "1"
