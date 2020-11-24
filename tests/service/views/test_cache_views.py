@@ -553,7 +553,9 @@ def test_execute_migrations(svc_client_setup):
     """Check execution of all migrations."""
     svc_client, headers, project_id, _ = svc_client_setup
 
-    response = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
 
     assert 200 == response.status_code
     assert response.json["result"]["was_migrated"]

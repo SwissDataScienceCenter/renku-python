@@ -24,11 +24,11 @@ from collections import defaultdict
 import click
 
 from renku.core import errors
-from renku.core.commands.git import get_git_isolation
 from renku.core.management import LocalClient
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import check_for_migration
 from renku.core.management.repository import default_path
+from renku.core.utils import communication
 
 
 def check_finalized(f):
@@ -48,7 +48,7 @@ def check_finalized(f):
     return wrapper
 
 
-class Command(object):
+class Command:
     """Base renku command builder."""
 
     CLIENT_HOOK_ORDER = 1
@@ -59,7 +59,8 @@ class Command(object):
         self.post_hooks = defaultdict(list)
         self._operation = None
         self._finalized = False
-        self._track_std_streams = True
+        self._track_std_streams = False
+        self._git_isolation = False
 
     def __getattr__(self, name):
         """Bubble up attributes of wrapped builders."""
@@ -68,7 +69,14 @@ class Command(object):
 
         raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
 
-    def _pre_hook(self, builder, context):
+    def __setattr__(self, name, value):
+        """Set attributes of wrapped builders."""
+        if hasattr(self, "_builder") and self.__class__ is not self._builder.__class__:
+            self._builder.__setattr__(name, value)
+
+        object.__setattr__(self, name, value)
+
+    def _pre_hook(self, builder, context, *args, **kwargs):
         """Setup local client."""
         ctx = click.get_current_context(silent=True)
         if ctx is None:
@@ -80,12 +88,15 @@ class Command(object):
         stack = contextlib.ExitStack()
 
         # Handle --isolation option:
-        if get_git_isolation():
+        if self._git_isolation:
             client = stack.enter_context(client.worktree())
 
         context["client"] = client
         context["stack"] = stack
         context["click_context"] = ctx
+
+    def _post_hook(self, builder, context, result, *args, **kwargs):
+        """Post-hook method."""
 
     def execute(self, *args, **kwargs):
         """Execute the wrapped operation.
@@ -103,7 +114,7 @@ class Command(object):
 
             for o in order:
                 for hook in self.pre_hooks[o]:
-                    hook(self, context)
+                    hook(self, context, *args, **kwargs)
 
         output = None
         error = None
@@ -120,7 +131,7 @@ class Command(object):
 
             for o in order:
                 for hook in self.post_hooks[o]:
-                    hook(self, context, result)
+                    hook(self, context, result, *args, **kwargs)
 
         return result
 
@@ -184,6 +195,13 @@ class Command(object):
         return self
 
     @check_finalized
+    def with_git_isolation(self):
+        """Whether to run in git isolation or not."""
+        self._git_isolation = True
+
+        return self
+
+    @check_finalized
     def with_commit(self, message=None, commit_if_empty=False, raise_if_empty=False, commit_only=None):
         """Create a commit.
 
@@ -196,12 +214,12 @@ class Command(object):
 
     @check_finalized
     def lock_project(self):
-        """Aquire a lock for the whole project."""
+        """Acquire a lock for the whole project."""
         return ProjectLock(self)
 
     @check_finalized
     def lock_dataset(self):
-        """Aquire a lock for a dataset."""
+        """Acquire a lock for a dataset."""
         return DatasetLock(self)
 
     @check_finalized
@@ -213,6 +231,11 @@ class Command(object):
     def require_clean(self):
         """Check that the repository is clean."""
         return RequireClean(self)
+
+    @check_finalized
+    def with_communicator(self, communicator):
+        """Create a communicator."""
+        return Communicator(self, communicator)
 
 
 class Commit(Command):
@@ -232,9 +255,9 @@ class Commit(Command):
         self._message = message
         self._commit_if_empty = commit_if_empty
         self._raise_if_empty = raise_if_empty
-        self._commit_filter_paths = None
+        self._commit_filter_paths = commit_only
 
-    def _pre_hook(self, builder, context):
+    def _pre_hook(self, builder, context, *args, **kwargs):
         """Hook to create a commit transaction."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -245,7 +268,7 @@ class Commit(Command):
             clean=False,
             commit=True,
             commit_empty=self._commit_if_empty,
-            commit_message=self._message,
+            commit_message=self._message or kwargs.get("commit_message"),
             commit_only=self._commit_filter_paths,
             ignore_std_streams=not builder._track_std_streams,
             raise_if_empty=self._raise_if_empty,
@@ -269,7 +292,7 @@ class RequireMigration(Command):
         """__init__ of RequireMigration."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context):
+    def _pre_hook(self, builder, context, *args, **kwargs):
         """Check if migration is necessary."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -293,7 +316,7 @@ class RequireClean(Command):
         """__init__ of RequireClean."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context):
+    def _pre_hook(self, builder, context, *args, **kwargs):
         """Check if repo is clean."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -316,7 +339,7 @@ class ProjectLock(Command):
         """__init__ of ProjectLock."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context):
+    def _pre_hook(self, builder, context, *args, **kwargs):
         """Lock the project."""
         if "client" not in context:
             raise ValueError("Commit builder needs a LocalClient to be set.")
@@ -342,7 +365,7 @@ class DatasetLock(Command):
         """__init__ of DatasetLock."""
         self._builder = builder
 
-    def _pre_hook(self, builder, context):
+    def _pre_hook(self, builder, context, *args, **kwargs):
         raise NotImplementedError()
 
     @check_finalized
@@ -353,7 +376,35 @@ class DatasetLock(Command):
         return self._builder.build()
 
 
-class CommandResult(object):
+class Communicator(Command):
+    """Hook for logging and interaction with user."""
+
+    DEFAULT_ORDER = 6
+
+    def __init__(self, builder, communicator):
+        """__init__ of Communicator.
+
+        :param communicator: Instance of CommunicationCallback.
+        """
+        self._builder = builder
+        self._communicator = communicator
+
+    def _pre_hook(self, builder, context, *args, **kwargs):
+        communication.subscribe(self._communicator)
+
+    def _post_hook(self, builder, context, result, *args, **kwargs):
+        communication.unsubscribe(self._communicator)
+
+    @check_finalized
+    def build(self):
+        """Build the command."""
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
+
+        return self._builder.build()
+
+
+class CommandResult:
     """The result of a command.
 
     The return value of the command is set as `.output`, if there was an error, it is set as `.error`, and

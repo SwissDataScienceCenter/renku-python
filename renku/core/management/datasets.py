@@ -102,10 +102,13 @@ class DatasetsApiMixin(object):
     def datasets(self):
         """Return mapping from path to dataset."""
         result = {}
-        paths = self.renku_datasets_path.rglob(self.METADATA)
-        for path in paths:
+        for path in self.get_datasets_metadata_files():
             result[path] = self.load_dataset_from_path(path)
         return result
+
+    def get_datasets_metadata_files(self):
+        """Return a generator of datasets metadata files."""
+        return self.renku_datasets_path.rglob(self.METADATA)
 
     def load_dataset_from_path(self, path, commit=None):
         """Return a dataset from a given path."""
