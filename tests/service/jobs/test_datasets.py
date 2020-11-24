@@ -28,7 +28,7 @@ from werkzeug.utils import secure_filename
 from renku.core.errors import DatasetExistsError, ParameterError
 from renku.service.jobs.cleanup import cache_project_cleanup
 from renku.service.jobs.datasets import dataset_add_remote_file, dataset_import
-from renku.service.serializers.headers import encode_b64
+from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 from renku.service.utils import make_project_path
 from tests.service.views.test_dataset_views import assert_rpc_response
 
@@ -40,7 +40,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     """Test dataset import via url."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    decoded = jwt.decode(headers["Renku-User"], "secret", algorithms=["HS256"], audience="renku",)
+    decoded = jwt.decode(headers["Renku-User"], JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku",)
     user_data = {
         "fullname": decoded["name"],
         "email": decoded["email"],

@@ -23,7 +23,7 @@ import pytest
 from werkzeug.utils import secure_filename
 
 from renku.service.jobs.project import migrate_job
-from renku.service.serializers.headers import encode_b64
+from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 
 
 @pytest.mark.service
@@ -32,7 +32,7 @@ def test_migrations_job(svc_client_setup):
     """Check migrations job for successful execution of migrations."""
     svc_client, headers, project_id, _ = svc_client_setup
 
-    decoded = jwt.decode(headers["Renku-User"], "secret", algorithms=["HS256"], audience="renku",)
+    decoded = jwt.decode(headers["Renku-User"], JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku",)
     user_data = {
         "fullname": decoded["name"],
         "email": decoded["email"],
