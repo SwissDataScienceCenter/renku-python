@@ -159,9 +159,9 @@ existence of these two files and adds their content to the list of explicit
 inputs and outputs. Renku will then delete these two files.
 
 By default, Renku looks for these two files in ``.renku/tmp`` directory. One
-can change this default location by setting ``RENKU_FILELIST_PATH``
-environment variable. When set, it points to the directory within the
-project's directory where ``inputs.txt`` and ``outputs.txt`` reside.
+can change this default location by setting ``RENKU_INDIRECT_PATH``
+environment variable. When set, it points to a sub-directory within the
+``.renku/tmp`` directory where ``inputs.txt`` and ``outputs.txt`` reside.
 
 Exit codes
 ~~~~~~~~~~

@@ -244,13 +244,22 @@ def test_update_from_template_with_modified_files(local_client, template_update)
     modified_local_content = modified_file.read_text() + "\nlocal modification"
     modified_file.write_text(modified_local_content)
 
+    # NOTE: delete local file
+    deleted_file = next(f for f in project_files if str(f).endswith("README.md"))
+    deleted_file.unlink()
+
     migrate(local_client, skip_docker_update=True)
 
     for p in project_files:
         if p.is_dir():
             continue
+        if p == deleted_file:
+            assert not p.exists()
+            continue
+
         content = project_files_before[p]
         new_content = p.read_text()
+
         if p == modified_file:
             assert modified_local_content == new_content
         else:
@@ -272,6 +281,27 @@ def test_update_from_template_with_immutable_modified_files(local_client, mocker
     modified_file = next(f for f in project_files if str(f).endswith("README.md"))
     modified_local_content = modified_file.read_text() + "\nlocal modification"
     modified_file.write_text(modified_local_content)
+
+    with pytest.raises(
+        errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."
+    ):
+        migrate(local_client)
+
+
+def test_update_from_template_with_immutable_deleted_files(local_client, mocker, template_update):
+    """Test repository update from a template with deleted local immutable files."""
+    res = template_update(immutable_files=["README.md"])
+    project_files = res["project_files"]
+    template_files = res["template_files"]
+
+    for p in template_files:
+        if p.is_dir():
+            continue
+        p.write_text(f"{p.read_text()}\nmodified")
+
+    # NOTE: modify local file
+    deleted_file = next(f for f in project_files if str(f).endswith("README.md"))
+    deleted_file.unlink()
 
     with pytest.raises(
         errors.TemplateUpdateError, match=r"Can't update template as immutable template file .* has local changes."

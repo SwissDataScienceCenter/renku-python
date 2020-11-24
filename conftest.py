@@ -23,6 +23,7 @@ import pathlib
 import re
 import secrets
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import time
@@ -33,14 +34,13 @@ from copy import deepcopy
 from pathlib import Path
 
 import fakeredis
-import git
 import pytest
 import requests
 import responses
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
-from git import Repo
+from git import GitCommandError, Repo
 from walrus import Database
 
 from tests.utils import make_dataset_add_payload
@@ -71,20 +71,21 @@ def it_remote_non_renku_repo():
 @contextlib.contextmanager
 def _isolated_filesystem(tmpdir, name=None, delete=True):
     """Click CliRunner ``isolated_filesystem`` but xdist compatible."""
-    cwd = os.getcwd()
+    from renku.core.utils.contexts import chdir
+
     if not name:
         name = secrets.token_hex(8)
     t = tmpdir.mkdir(name)
-    os.chdir(t)
-    try:
-        yield t
-    finally:
-        os.chdir(cwd)
-        if delete:
-            try:
-                shutil.rmtree(t)
-            except OSError:  # noqa: B014
-                pass
+
+    with chdir(t):
+        try:
+            yield t
+        finally:
+            if delete:
+                try:
+                    shutil.rmtree(t)
+                except OSError:  # noqa: B014
+                    pass
 
 
 @pytest.fixture()
@@ -124,7 +125,6 @@ def global_config_dir(monkeypatch, tmpdir):
 @pytest.fixture()
 def run_shell():
     """Create a shell cmd runner."""
-    import subprocess
 
     def run_(cmd, return_ps=None, sleep_for=None):
         """Spawn subprocess and execute shell command.
@@ -133,7 +133,7 @@ def run_shell():
         :param sleep_for: After executing command sleep for n seconds.
         :returns: Process object or tuple (stdout, stderr).
         """
-        ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,)
+        ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         if return_ps:
             return ps
@@ -308,23 +308,23 @@ def template_update(tmpdir, local_client, mocker, template):
 @pytest.fixture()
 def project(repository):
     """Create a test project."""
-    from git import Repo
-
     from renku.cli import cli
+    from renku.core.utils.contexts import chdir
 
     runner = CliRunner()
 
     repo = Repo(repository, search_parent_directories=True)
     commit = repo.head.commit
 
-    os.chdir(repository)
-    yield repository
-    os.chdir(repository)
-    repo.head.reset(commit, index=True, working_tree=True)
-    # INFO: remove any extra non-tracked files (.pyc, etc)
-    repo.git.clean("-xdff")
+    with chdir(repository):
+        yield repository
 
-    assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
+        os.chdir(repository)
+        repo.head.reset(commit, index=True, working_tree=True)
+        # INFO: remove any extra non-tracked files (.pyc, etc)
+        repo.git.clean("-xdff")
+
+        assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
 
 
 @pytest.fixture
@@ -401,16 +401,6 @@ def client_with_lfs_warning(project):
     client.repo.git.add(".renku/renku.ini")
     client.repo.index.commit("update renku.ini")
     yield client
-
-
-@pytest.fixture
-def dataset(client):
-    """Create a dataset."""
-    from renku.core.models.provenance.agents import Person
-
-    with client.with_dataset("dataset", create=True) as dataset:
-        dataset.creators = [Person(**{"affiliation": "xxx", "email": "me@example.com", "id": "me_id", "name": "me",})]
-    return dataset
 
 
 @pytest.fixture
@@ -537,35 +527,18 @@ def clone_compressed_repository(base_path, name):
 
 
 @pytest.fixture(
-    params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git",],
-    scope="module",
+    params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git"]
 )
-def old_repository(request, tmp_path_factory):
+def old_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
+    from renku.core.utils.contexts import chdir
+
     name = request.param
-    base_path = tmp_path_factory.mktemp(name)
+    base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    yield repository
-
-    shutil.rmtree(base_path)
-
-
-@pytest.fixture
-def old_project(old_repository):
-    """Create a test project."""
-    commit = old_repository.head.commit
-
-    repository_path = old_repository.working_dir
-
-    os.chdir(repository_path)
-
-    yield old_repository
-
-    os.chdir(repository_path)
-    old_repository.head.reset(commit, index=True, working_tree=True)
-    # remove any extra non-tracked files (.pyc, etc)
-    old_repository.git.clean("-xdff")
+    with chdir(repository.working_dir):
+        yield repository
 
 
 @pytest.fixture(
@@ -594,58 +567,69 @@ def old_project(old_repository):
         },
     ],
 )
-def old_workflow_project(request, tmp_path_factory):
+def old_workflow_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
+    from renku.core.utils.contexts import chdir
+
     name = request.param["name"]
-    base_path = tmp_path_factory.mktemp(name)
+    base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
     repository_path = repository.working_dir
 
-    os.chdir(repository_path)
-
-    yield {
-        "repo": repository,
-        "path": repository_path,
-        "log_path": request.param["log_path"],
-        "expected_strings": request.param["expected_strings"],
-    }
-
-    shutil.rmtree(base_path)
+    with chdir(repository_path):
+        yield {
+            "repo": repository,
+            "path": repository_path,
+            "log_path": request.param["log_path"],
+            "expected_strings": request.param["expected_strings"],
+        }
 
 
 @pytest.fixture
-def old_dataset_project(tmp_path_factory):
+def old_dataset_project(tmp_path):
     """Prepares a testing repo created by old version of renku."""
+    from renku import LocalClient
+    from renku.core.utils.contexts import chdir
+
     name = "old-datasets-v0.9.1.git"
-    base_path = tmp_path_factory.mktemp(name)
+    base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    os.chdir(repository.working_dir)
-
-    yield repository
-
-    shutil.rmtree(base_path)
+    with chdir(repository.working_dir):
+        yield LocalClient(path=repository.working_dir)
 
 
 @pytest.fixture
-def old_repository_with_submodules(request, tmpdir_factory):
+def old_repository_with_submodules(request, tmp_path):
     """Prepares a testing repo that has datasets using git submodules."""
+    from renku.core.utils.contexts import chdir
+
     name = "old-datasets-v0.6.0-with-submodules"
     base_path = Path(__file__).parent / "tests" / "fixtures" / f"{name}.tar.gz"
 
-    working_dir = tmpdir_factory.mktemp(name)
+    working_dir = tmp_path / name
 
     with tarfile.open(str(base_path), "r") as repo:
-        repo.extractall(working_dir.strpath)
+        repo.extractall(working_dir)
 
     repo_path = working_dir / name
     repo = Repo(repo_path)
 
-    os.chdir(repo_path.strpath)
-    yield repo
+    with chdir(repo_path):
+        yield repo
 
-    shutil.rmtree(repo_path.strpath)
-    shutil.rmtree(working_dir)
+
+@pytest.fixture
+def unsupported_project(client):
+    """A client with a newer project version."""
+    with client.with_metadata() as project:
+        impossible_newer_version = 42000
+        project.version = impossible_newer_version
+
+    client.repo.git.add(".renku")
+    client.repo.index.commit("update renku.ini", skip_hooks=True)
+
+    yield client
 
 
 @pytest.fixture(autouse=True)
@@ -995,7 +979,7 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
         with integration_repo(authentication_headers, url_components) as repo:
             try:
                 repo.remote().push(refspec=(":{0}".format(repo.active_branch.name)))
-            except git.exc.GitCommandError:
+            except GitCommandError:
                 pass
 
 
@@ -1019,7 +1003,9 @@ def svc_client_with_repo(svc_client_setup):
     """Service client with a remote repository."""
     svc_client, headers, project_id, url_components = svc_client_setup
 
-    response = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
     assert response.json["result"]
 
     yield svc_client, deepcopy(headers), project_id, url_components
@@ -1036,7 +1022,7 @@ def svc_client_with_templates(svc_client, mock_redis, authentication_headers, te
 def svc_client_templates_creation(svc_client_with_templates):
     """Setup and teardown steps for templates tests."""
     from renku.core.utils.requests import retry
-    from renku.core.utils.scm import strip_and_lower
+    from renku.core.utils.scm import normalize_to_ascii
 
     svc_client, authentication_headers, template = svc_client_with_templates
     parameters = []
@@ -1055,7 +1041,7 @@ def svc_client_templates_creation(svc_client_with_templates):
     # clenup by invoking the GitLab delete API
     # TODO: consider using the project delete endpoint once implemented
     def remove_project():
-        project_slug = "{0}/{1}".format(payload["project_namespace"], strip_and_lower(payload["project_name"]))
+        project_slug = "{0}/{1}".format(payload["project_namespace"], normalize_to_ascii(payload["project_name"]))
 
         project_slug_encoded = urllib.parse.quote(project_slug, safe="")
         project_delete_url = "{0}/api/v4/projects/{1}".format(payload["project_repository"], project_slug_encoded)
@@ -1254,9 +1240,9 @@ def no_lfs_size_limit(client):
 
 
 @pytest.fixture
-def large_file(tmp_path_factory, client):
+def large_file(tmp_path, client):
     """A file larger than the minimum LFS file size."""
-    path = tmp_path_factory.mktemp("large-file") / "large-file"
+    path = tmp_path / "large-file"
     with open(path, "w") as file_:
         file_.seek(client.minimum_lfs_file_size)
         file_.write("some data")
@@ -1275,3 +1261,15 @@ def ctrl_init(svc_client_cache):
     user_data = UserIdentityHeaders().load(headers)
 
     return cache, user_data
+
+
+@pytest.fixture
+def reset_environment(svc_client, mock_redis):
+    """Restore environment variable to their values before test execution."""
+    current_environment = os.environ.copy()
+
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(current_environment)

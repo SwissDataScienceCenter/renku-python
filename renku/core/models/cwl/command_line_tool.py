@@ -26,6 +26,7 @@ from pathlib import Path
 
 import attr
 import click
+import yaml
 from git import Actor
 
 from renku.core import errors
@@ -35,15 +36,12 @@ from renku.version import __version__, version_url
 
 from ...management.config import RENKU_HOME
 from ..datastructures import DirectoryTree
-from .parameter import CommandInputParameter, CommandLineBinding, CommandOutputParameter
+from .parameter import CommandInputParameter, CommandLineBinding, CommandOutputParameter, RunParameter
 from .types import PATH_OBJECTS, Directory, File
 
 STARTED_AT = int(time.time() * 1000)
 
-RENKU_TMP_DIR = os.path.join(RENKU_HOME, "tmp")
-RENKU_FILELIST_PATH = os.getenv("RENKU_FILELIST_PATH", RENKU_TMP_DIR)
-INDIRECT_INPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, "inputs.txt")
-INDIRECT_OUTPUTS_LIST = os.path.join(RENKU_FILELIST_PATH, "outputs.txt")
+RENKU_TMP = "tmp"
 
 
 @attr.s
@@ -71,6 +69,7 @@ class CommandLineToolFactory(object):
     arguments = attr.ib(init=False)
     inputs = attr.ib(init=False)
     outputs = attr.ib(init=False)
+    run_parameters = attr.ib(default=None, init=False)
 
     successCodes = attr.ib(default=attr.Factory(list))  # list(int)
 
@@ -88,6 +87,7 @@ class CommandLineToolFactory(object):
         self.arguments = []
         self.inputs = []
         self.outputs = []
+        self.run_parameters = []
 
         if self.stdin:
             input_ = next(self.guess_inputs(str(self.working_dir / self.stdin)))
@@ -149,7 +149,7 @@ class CommandLineToolFactory(object):
         repo = client.repo
 
         # Remove indirect files list if any
-        self.delete_indirect_files_list()
+        delete_indirect_files_list(self.working_dir)
 
         from renku.core.plugins.pluginmanager import get_plugin_manager
 
@@ -163,8 +163,11 @@ class CommandLineToolFactory(object):
             # Include indirect inputs and outputs before further processing
             self.add_indirect_inputs()
             self.add_indirect_outputs()
+
+            self._include_indirect_parameters()
+
             # Remove indirect files list if any
-            self.delete_indirect_files_list()
+            delete_indirect_files_list(self.working_dir)
 
             # List of all output paths.
             output_paths = []
@@ -231,7 +234,7 @@ class CommandLineToolFactory(object):
             repo.git.add(*output_paths)
 
             if repo.is_dirty():
-                commit_msg = ("renku run: " "committing {} newly added files").format(len(output_paths))
+                commit_msg = f"renku run: committing {len(output_paths)} newly added files"
 
                 committer = Actor("renku {0}".format(__version__), version_url)
 
@@ -525,6 +528,8 @@ class CommandLineToolFactory(object):
             if explicit_input in input_paths:
                 continue
 
+            input_paths.append(explicit_input)
+
             try:
                 explicit_input.relative_to(self.working_dir)
             except ValueError:
@@ -545,24 +550,14 @@ class CommandLineToolFactory(object):
             # appear on command-line
             yield CommandInputParameter(id="input_{0}".format(input_id), type=type, default=default, inputBinding=None)
 
-    def delete_indirect_files_list(self):
-        """Remove indirect inputs and outputs list."""
-        try:
-            path = str(self.working_dir / INDIRECT_INPUTS_LIST)
-            os.remove(path)
-        except FileNotFoundError:
-            pass
-        try:
-            path = str(self.working_dir / INDIRECT_OUTPUTS_LIST)
-            os.remove(path)
-        except FileNotFoundError:
-            pass
-
     def add_indirect_inputs(self):
         """Read indirect inputs list and add them to explicit inputs."""
-        for indirect_input in self.read_files_list(INDIRECT_INPUTS_LIST):
+        indirect_inputs_list = get_indirect_inputs_path(self.working_dir)
+
+        for indirect_input in self._read_files_list(indirect_inputs_list):
             # treat indirect inputs like explicit inputs
-            self.explicit_inputs.append(indirect_input)
+            path = Path(os.path.abspath(indirect_input))
+            self.explicit_inputs.append(path)
 
         # add new explicit inputs (if any) to inputs
         for input in self.find_explicit_inputs():
@@ -570,11 +565,20 @@ class CommandLineToolFactory(object):
 
     def add_indirect_outputs(self):
         """Read indirect outputs list and add them to explicit outputs."""
-        for indirect_output in self.read_files_list(INDIRECT_OUTPUTS_LIST):
-            # treat indirect outputs like explicit outputs
-            self.explicit_outputs.append(indirect_output)
+        indirect_outputs_list = get_indirect_outputs_path(self.working_dir)
 
-    def read_files_list(self, files_list):
+        for indirect_output in self._read_files_list(indirect_outputs_list):
+            # treat indirect outputs like explicit outputs
+            path = Path(os.path.abspath(indirect_output))
+            self.explicit_outputs.append(path)
+
+    def _include_indirect_parameters(self):
+        run_parameters = read_indirect_parameters(self.working_dir)
+
+        self.run_parameters = [RunParameter(name=k, value=v) for k, v in run_parameters.items()]
+
+    @staticmethod
+    def _read_files_list(files_list):
         """Read files list where each line is a filepath."""
         try:
             path = str(files_list)
@@ -585,3 +589,76 @@ class CommandLineToolFactory(object):
                         yield Path(os.path.abspath(line))
         except FileNotFoundError:
             return
+
+
+def delete_indirect_files_list(working_dir):
+    """Remove indirect inputs, outputs, and parameters list."""
+    paths = [
+        get_indirect_inputs_path(working_dir),
+        get_indirect_outputs_path(working_dir),
+        get_indirect_parameters_path(working_dir),
+    ]
+    for path in paths:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+
+def get_indirect_inputs_path(client_path):
+    """Return path to file that contains indirect inputs list."""
+    parent = _get_indirect_parent_path(client_path)
+    return parent / "inputs.txt"
+
+
+def get_indirect_outputs_path(client_path):
+    """Return path to file that contains indirect outputs list."""
+    parent = _get_indirect_parent_path(client_path)
+    return parent / "outputs.txt"
+
+
+def get_indirect_parameters_path(client_path):
+    """Return path to file that contains indirect parameters list."""
+    parent = _get_indirect_parent_path(client_path)
+    return parent / "parameters.yml"
+
+
+def _get_indirect_parent_path(client_path):
+    renku_indirect_path = os.getenv("RENKU_INDIRECT_PATH") or ""
+
+    base = (Path(client_path) / RENKU_HOME / RENKU_TMP).resolve()
+    parent = (base / renku_indirect_path).resolve()
+
+    try:
+        parent.relative_to(base)
+    except ValueError:
+        raise errors.InvalidFileOperation(f"Invalid value for RENKU_INDIRECT_PATH env var: {renku_indirect_path}.")
+
+    return parent
+
+
+def read_indirect_parameters(working_dir):
+    """Read and return indirect parameters."""
+    path = get_indirect_parameters_path(working_dir)
+
+    if not path.exists():
+        return {}
+
+    data = yaml.safe_load(path.read_text())
+
+    if not isinstance(data, dict):
+        raise errors.OperationError("Run parameters must be a dictionary.")
+
+    return data
+
+
+def add_indirect_parameter(working_dir, name, value):
+    """Add a parameter to indirect parameters."""
+    data = read_indirect_parameters(working_dir)
+    data[name] = value
+
+    yaml_data = yaml.dump(data)
+
+    path = get_indirect_parameters_path(working_dir)
+    path.parent.mkdir(exist_ok=True, parents=True)
+    path.write_text(yaml_data)

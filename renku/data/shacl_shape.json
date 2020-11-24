@@ -765,6 +765,12 @@
                }
             },
             {
+               "sh:class": {
+                  "@id": "renku:RunParameter"
+               },
+               "path": "renku:hasRunParameter"
+            },
+            {
                "path": "wfprov:wasPartOfWorkflowRun",
                "sh:class": {
                   "@id": "wfprov:WorkflowRun"
@@ -972,6 +978,12 @@
             },
             {
                "sh:class": {
+                  "@id": "renku:RunParameter"
+               },
+               "path": "renku:hasRunParameters"
+            },
+            {
+               "sh:class": {
                   "@id": "renku:CommandInput"
                },
                "path": "renku:hasInputs"
@@ -1052,6 +1064,53 @@
                "datatype": {
                   "@id": "xsd:string"
                }
+            }
+         ]
+      },
+      {
+         "@id": "_:renkuRunParameterShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:RunParameter",
+         "property": [
+            {
+               "nodeKind": "sh:Literal",
+               "path": "rdfs:label",
+               "datatype": {
+                  "@id": "xsd:string"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:name",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:type",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "renku:value",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1
             }
          ]
       },

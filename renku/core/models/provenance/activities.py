@@ -28,7 +28,7 @@ from git import NULL_TREE
 from marshmallow import EXCLUDE
 
 from renku.core.models import jsonld
-from renku.core.models.calamus import Nested, fields, oa, prov, rdfs, wfprov
+from renku.core.models.calamus import Nested, fields, oa, prov, rdfs, renku, wfprov
 from renku.core.models.cwl.annotation import AnnotationSchema
 from renku.core.models.entities import (
     Collection,
@@ -42,6 +42,7 @@ from renku.core.models.refs import LinkReference
 from renku.core.models.workflow.run import Run
 from renku.core.utils.scm import git_unicode_unescape
 
+from ..workflow.parameters import RunParameter, RunParameterSchema
 from .agents import Person, PersonSchema, SoftwareAgentSchema, renku_agent
 from .qualified import Association, AssociationSchema, Generation, GenerationSchema, Usage, UsageSchema
 
@@ -416,6 +417,8 @@ class ProcessRun(Activity):
 
     qualified_usage = attr.ib(kw_only=True, default=None)
 
+    run_parameter = attr.ib(kw_only=True, default=None)
+
     def __attrs_post_init__(self):
         """Calculate properties."""
         super().__attrs_post_init__()
@@ -521,8 +524,20 @@ class ProcessRun(Activity):
         agent = SoftwareAgent.from_commit(commit)
         association = Association(agent=agent, id=id_ + "/association", plan=run)
 
+        run_parameter = []
+
+        for parameter in run.run_parameters:
+            parameter_id = f"{id_}/{parameter.name}"
+            run_parameter.append(RunParameter(name=parameter.name, value=parameter.value, id=parameter_id))
+
         process_run = cls(
-            id=id_, qualified_usage=usages, association=association, client=client, commit=commit, path=path
+            id=id_,
+            qualified_usage=usages,
+            association=association,
+            client=client,
+            commit=commit,
+            path=path,
+            run_parameter=run_parameter,
         )
 
         generated = []
@@ -745,6 +760,7 @@ class ProcessRunSchema(ActivitySchema):
     association = Nested(prov.qualifiedAssociation, AssociationSchema)
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     qualified_usage = Nested(prov.qualifiedUsage, UsageSchema, many=True)
+    run_parameter = Nested(renku.hasRunParameter, RunParameterSchema, many=True)
 
 
 class WorkflowRunSchema(ProcessRunSchema):

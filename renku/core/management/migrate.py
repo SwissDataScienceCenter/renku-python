@@ -99,7 +99,7 @@ def migrate(
         and (force_template_update or client.project.automated_update)
     ):
         try:
-            template_updated, _, _ = _update_template(client, progress_callback)
+            template_updated, _, _ = _update_template(client, progress_callback=progress_callback)
         except TemplateUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -107,7 +107,7 @@ def migrate(
 
     if not skip_docker_update:
         try:
-            docker_updated = _update_dockerfile(client, progress_callback)
+            docker_updated = _update_dockerfile(client, progress_callback=progress_callback)
         except DockerfileUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -154,18 +154,17 @@ def _update_template(client, check_only=False, progress_callback=None):
         project.template_source, project.template_ref, progress_callback
     )
 
-    current_version = None
     if template_source == "renku":
-        current_version = pkg_resources.parse_version(template_version)
-        template_version = pkg_resources.parse_version(project.template_version)
-        if template_version >= current_version:
+        template_version = pkg_resources.parse_version(template_version)
+        current_version = pkg_resources.parse_version(project.template_version)
+        if template_version <= current_version:
             return False, project.template_version, current_version
     else:
         if template_version == project.template_version:
             return False, project.template_version, template_version
 
     if check_only:
-        return True, project.template_version, current_version if current_version else template_version
+        return True, project.template_version, template_version
 
     if progress_callback:
         progress_callback("Updating project from template...")
@@ -202,6 +201,10 @@ def _update_template(client, check_only=False, progress_callback=None):
     for file in template_path.glob("**/*"):
         rel_path = file.relative_to(template_path)
         destination = client.path / rel_path
+
+        # NOTE: the path could contain template variables, we need to template it
+        destination = Path(Template(str(destination)).render(metadata))
+
         try:
             # parse file and process it
             template = Template(file.read_text())
@@ -214,15 +217,24 @@ def _update_template(client, check_only=False, progress_callback=None):
                 byte_block = content_bytes[i * blocksize : (i + 1) * blocksize]
                 sha256_hash.update(byte_block)
             new_template_hash = sha256_hash.hexdigest()
-            current_hash = client._content_hash(destination)
 
-            local_changes = current_hash != checksums[str(rel_path)]
-            remote_changes = new_template_hash != checksums[str(rel_path)]
+            if not destination.exists() and str(rel_path) not in checksums:
+                # NOTE: new file in template
+                local_changes = False
+                remote_changes = True
+            else:
+                current_hash = None  # NOTE: None if user deleted file locally
+
+                if destination.exists():
+                    current_hash = client._content_hash(destination)
+
+                local_changes = current_hash != checksums[str(rel_path)]
+                remote_changes = new_template_hash != checksums[str(rel_path)]
 
             if local_changes:
                 if remote_changes and str(rel_path) in project.immutable_template_files:
                     # NOTE: There are local changes in a file that should not be changed by users,
-                    # and the file as updated in the template as well. So the template can't be updated.
+                    # and the file was updated in the template as well. So the template can't be updated.
                     raise TemplateUpdateError(
                         f"Can't update template as immutable template file {rel_path} has local changes."
                     )
@@ -230,7 +242,6 @@ def _update_template(client, check_only=False, progress_callback=None):
             elif not remote_changes:
                 continue
 
-            destination = Path(Template(str(destination)).render(metadata))
             destination.write_text(rendered_content)
         except IsADirectoryError:
             destination.mkdir(parents=True, exist_ok=True)
@@ -241,7 +252,10 @@ def _update_template(client, check_only=False, progress_callback=None):
         updated = "\n".join(updated_files)
         progress_callback(f"Updated project from template, updated files:\n{updated}")
 
-    return True, project.template_version, current_version if current_version else template_version
+    project.template_version = template_version
+    project.to_yaml()
+
+    return True, project.template_version, template_version
 
 
 def _update_dockerfile(client, check_only=False, progress_callback=None):

@@ -607,6 +607,7 @@ class RepositoryApiMixin(GitCore):
                 # parse file and process it
                 template = Template(file.read_text())
                 rendered_content = template.render(metadata)
+                # NOTE: the path could contain template variables, we need to template it
                 destination = Path(Template(str(destination)).render(metadata))
                 destination.write_text(rendered_content)
                 checksums[str(rel_path)] = self._content_hash(destination)

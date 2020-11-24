@@ -29,7 +29,6 @@ from flaky import flaky
 
 from renku.cli import cli
 from renku.core import errors
-from renku.core.commands.clone import project_clone
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.models.provenance.agents import Person
 from renku.core.utils.contexts import chdir
@@ -1248,97 +1247,6 @@ def test_files_are_tracked_in_lfs(runner, client, no_lfs_size_limit):
     assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
     path = "data/dataset/{}".format(filename)
     assert path in subprocess.check_output(["git", "lfs", "ls-files"]).decode()
-
-
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
-def test_renkulab_clone(runner, monkeypatch, url):
-    """Test cloning of a Renku repo and existence of required settings."""
-    from renku.core.management.storage import StorageApiMixin
-
-    with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ["clone", url, project_path])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-        assert (Path(project_path) / "Dockerfile").exists()
-
-        # Check Git hooks are installed
-        result = runner.invoke(cli, ["githooks", "install"])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-        assert "Hook already exists." in result.output
-
-        result = runner.invoke(cli, ["migrate"])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-
-        # Check Git LFS is enabled
-        with monkeypatch.context() as monkey:
-            # Pretend that git-lfs is not installed.
-            monkey.setattr(StorageApiMixin, "storage_installed", False)
-            # Repo is using external storage but it's not installed.
-            result = runner.invoke(cli, ["run", "touch", "output"])
-
-            assert "External storage is not configured" in result.output
-            assert 1 == result.exit_code, result.output + str(result.stderr_bytes)
-
-
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
-def test_renkulab_clone_with_config(tmpdir, url):
-    """Test cloning of a Renku repo and existence of required settings."""
-    with chdir(str(tmpdir)):
-        repo, _ = project_clone(url, config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"})
-
-        assert "master" == repo.active_branch.name
-        reader = repo.config_reader()
-        reader.values()
-
-        lfs_config = dict(reader.items("filter.lfs"))
-        assert "0" == lfs_config.get("custom")
-
-
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
-def test_renkulab_clone_checkout_rev(tmpdir, url):
-    """Test cloning of a repo checking out a rev with static config."""
-    with chdir(str(tmpdir)):
-        repo, _ = project_clone(
-            url,
-            config={"user.name": "sam", "user.email": "s@m.i", "filter.lfs.custom": "0"},
-            checkout_rev="97f907e1a3f992d4acdc97a35df73b8affc917a6",
-        )
-
-        assert "97f907e1a3f992d4acdc97a35df73b8affc917a6" == str(repo.active_branch)
-        reader = repo.config_reader()
-        reader.values()
-
-        lfs_config = dict(reader.items("filter.lfs"))
-        assert "0" == lfs_config.get("custom")
-
-
-@pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-@pytest.mark.parametrize("rev", ["test-branch", "my-tag",])
-def test_renku_clone_checkout_revs(tmpdir, rev):
-    """Test cloning of a Renku repo checking out a rev."""
-    with chdir(str(tmpdir)):
-        repo, _ = project_clone("https://dev.renku.ch/gitlab/contact/no-renku.git", checkout_rev=rev,)
-
-        assert rev == repo.active_branch.name
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize("path,expected_path", [("", "project-9"), (".", "."), ("new-name", "new-name")])
-@flaky(max_runs=10, min_passes=1)
-def test_renku_clone_uses_project_name(runner, monkeypatch, path, expected_path):
-    """Test renku clone uses project name as target-path by default."""
-    remote = "https://dev.renku.ch/gitlab/renku-testing/project-9"
-
-    with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ["clone", remote, path])
-        assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
-        assert (Path(project_path) / expected_path / "Dockerfile").exists()
 
 
 @pytest.mark.integration

@@ -26,9 +26,6 @@ from pathlib import Path
 @contextlib.contextmanager
 def chdir(path):
     """Change the current working directory."""
-    if isinstance(path, Path):
-        path = str(path)
-
     cwd = os.getcwd()
     os.chdir(path)
     try:

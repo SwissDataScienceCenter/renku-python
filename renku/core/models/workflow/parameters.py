@@ -25,7 +25,7 @@ import uuid
 import attr
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, rdfs, renku, schema
 from renku.core.models.entities import CollectionSchema, EntitySchema
 
 
@@ -273,7 +273,7 @@ class CommandOutput(CommandParameter):
 
     def default_label(self):
         """Set default label."""
-        return 'Command Output Template "{}"'.format(self.produces.path)
+        return 'Command Output "{}"'.format(self.produces.path)
 
     def to_argv(self):
         """String representation (sames as cmd argument)."""
@@ -315,6 +315,53 @@ class CommandOutput(CommandParameter):
 
 
 @attr.s(cmp=False,)
+class RunParameter:
+    """A run parameter that is set inside the script."""
+
+    _id = attr.ib(default=None, kw_only=True)
+
+    _label = attr.ib(default=None, kw_only=True)
+
+    name = attr.ib(default=None, type=str, kw_only=True)
+
+    value = attr.ib(default=None, type=str, kw_only=True)
+
+    type = attr.ib(default=None, type=str, kw_only=True)
+
+    @staticmethod
+    def generate_id(run_id, name):
+        """Generate an id."""
+        name = urllib.parse.quote(name, safe="")
+        return "{}/parameters/{}".format(run_id, name)
+
+    def default_label(self):
+        """Set default label."""
+        return 'Run Parameter "{}"'.format(self.name)
+
+    def __attrs_post_init__(self):
+        """Post-init hook."""
+        if not self._label:
+            self._label = self.default_label()
+
+        if not self.type:
+            self.type = type(self.value).__name__
+
+    @classmethod
+    def from_jsonld(cls, data):
+        """Create an instance from JSON-LD data."""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, dict):
+            raise ValueError(data)
+
+        return RunParameterSchema().load(data)
+
+    def as_jsonld(self):
+        """Create JSON-LD."""
+        return RunParameterSchema().dump(self)
+
+
+@attr.s(cmp=False,)
 class CommandOutputTemplate(CommandParameter):
     """Template for outputs of a Plan."""
 
@@ -331,7 +378,7 @@ class CommandOutputTemplate(CommandParameter):
 
     def default_label(self):
         """Set default label."""
-        return 'Command Output "{}"'.format(self.produces)
+        return 'Command Output Template "{}"'.format(self.produces)
 
     def to_argv(self):
         """String representation (sames as cmd argument)."""
@@ -467,3 +514,20 @@ class CommandOutputTemplateSchema(CommandParameterSchema):
     create_folder = fields.Boolean(renku.createFolder)
     mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
     produces = fields.String(renku.produces)
+
+
+class RunParameterSchema(JsonLDSchema):
+    """CommandParameter schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.RunParameter]
+        model = RunParameter
+        unknown = EXCLUDE
+
+    _id = fields.Id(init_name="id")
+    _label = fields.String(rdfs.label, init_name="label")
+    name = fields.String(schema.name)
+    value = fields.String(renku.value)
+    type = fields.String(renku.type)

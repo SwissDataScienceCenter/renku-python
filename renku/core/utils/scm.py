@@ -19,9 +19,28 @@
 import re
 
 
-def strip_and_lower(input):
+def is_ascii(data):
+    """Check if provided string contains only ascii characters."""
+    return len(data) == len(data.encode())
+
+
+def normalize_to_ascii(input_string, sep="-"):
     """Adjust chars to make the input compatible as scm source."""
-    return re.sub(r"\s", r"-", input.strip()).lower()
+    replace_all = [sep, "_", "."]
+    for replacement in replace_all:
+        input_string = input_string.replace(replacement, " ")
+
+    return (
+        sep.join(
+            [
+                component
+                for component in re.sub(r"[^a-zA-Z0-9_.-]+", " ", input_string).split(" ")
+                if component and is_ascii(component)
+            ]
+        )
+        .lower()
+        .strip(sep)
+    )
 
 
 def git_unicode_unescape(s, encoding="utf-8"):

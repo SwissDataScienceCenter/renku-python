@@ -974,12 +974,12 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory):
 @pytest.mark.parametrize("dirty", [False, True])
 def test_dataset_edit_no_change(runner, client, project, dirty):
     """Check metadata editing does not commit when there is no change."""
-    if dirty:
-        with (client.path / "dirty_file").open("w") as fp:
-            fp.write("a")
-
     result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title"])
     assert 0 == result.exit_code
+
+    if dirty:
+        with client.with_metadata() as project:
+            project.name = "new-name"
 
     commit_sha_before = client.repo.head.object.hexsha
 
@@ -989,6 +989,7 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
 
     commit_sha_after = client.repo.head.object.hexsha
     assert commit_sha_after == commit_sha_before
+    assert dirty is client.repo.is_dirty()
 
 
 @pytest.mark.parametrize(

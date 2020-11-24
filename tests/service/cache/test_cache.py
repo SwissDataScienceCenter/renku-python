@@ -17,6 +17,8 @@
 # limitations under the License.
 """Test service cache."""
 import datetime
+import os
+import time
 import uuid
 
 import pytest
@@ -170,6 +172,20 @@ def test_service_cache_set_files(svc_client_cache):
     received_files = cache.set_files(user, files)
     received_names = set([file_.file_name for file_ in received_files])
 
+    files_age = set([file_.age for file_ in received_files])
+    assert {0} == files_age
+
+    files_ttl_exp = set([file_.ttl_expired() for file_ in received_files])
+    assert {False} == files_ttl_exp
+
+    time.sleep(2)
+    os.environ["RENKU_SVC_CLEANUP_TTL_FILES"] = "1"
+    files_age = set([file_.age for file_ in received_files])
+    assert {2} == files_age
+
+    files_ttl_exp = set([file_.ttl_expired() for file_ in received_files])
+    assert {True} == files_ttl_exp
+
     received_users = set([file_.user_id for file_ in received_files])
 
     assert expected.issubset(received_names)
@@ -226,3 +242,28 @@ def test_service_cache_invalidate_file(svc_client_cache):
 
     file = cache.get_file(user, file_obj.file_id)
     assert file is None
+
+
+def test_service_cache_make_project(svc_client_cache):
+    """Test service create project."""
+    client, _, cache = svc_client_cache
+
+    user = cache.ensure_user({"user_id": uuid.uuid4().hex})
+    project_data = {
+        "name": "renku-project-template",
+        "depth": 1,
+        "git_url": "https://github.com/SwissDataScienceCenter/renku-project-template",
+        "email": "contact@justsam.io",
+        "fullname": "renku the frog",
+        "token": "None",
+        "owner": "SwissDataScienceCenter",
+    }
+    project = cache.make_project(user, project_data)
+    time.sleep(1)
+    assert project.age == 1
+    assert not project.ttl_expired()
+
+    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1"
+    time.sleep(1)
+    assert project.age == 2
+    assert project.ttl_expired()

@@ -40,6 +40,21 @@ fi
 
 if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
   MODIFIED_OUTPUTS=$(renku show outputs "${MODIFIED_FILES[@]}")
+  EXIT_CODE=$?
+  if [ $EXIT_CODE -eq 3 ]; then
+    echo "Cannot verify validity of the commit: Project metadata is outdated."
+    echo "Run 'renku migrate' command to fix the issue."
+    echo
+    echo 'To commit anyway, use "git commit --no-verify".'
+    exit 1
+  fi
+  if [ $EXIT_CODE -eq 4 ]; then
+    echo "Cannot verify validity of the commit: Project was created with a newer version of Renku."
+    echo "Upgrade Renku to the latest version."
+    echo
+    echo 'To commit anyway, use "git commit --no-verify".'
+    exit 1
+  fi
   if [ "$MODIFIED_OUTPUTS" ]; then
     echo 'You are trying to update generated files.'
     echo
@@ -51,7 +66,7 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
     echo 'To commit anyway, use "git commit --no-verify".'
     exit 1
   fi
-  IMMUTABLE_TEMPLATE_FILES=$(renku check-immutable-template-files "${MODIFIED_FILES[@]}")
+  IMMUTABLE_TEMPLATE_FILES=$(renku migrate check-immutable-template-files "${MODIFIED_FILES[@]}")
   if [ "$IMMUTABLE_TEMPLATE_FILES" ]; then
     echo 'You are trying to update files marked as immutable in your project template.'
     echo 'This would prevent the project from being updated with new versions of the template in the future.'

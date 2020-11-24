@@ -25,7 +25,7 @@ from typing import Dict
 import click
 from git import NULL_TREE, GitCommandError
 
-from renku.cli.update import run_workflow
+from renku.cli.update import execute_workflow
 from renku.core.commands.client import pass_local_client
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
@@ -184,7 +184,7 @@ def update(client, dry_run):
         for run in runs:
             parent_process.add_subprocess(run)
 
-    run_workflow(client=client, workflow=parent_process, output_paths=None)
+    execute_workflow(client=client, workflow=parent_process, output_paths=None)
 
 
 @graph.command()

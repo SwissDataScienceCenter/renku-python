@@ -25,9 +25,9 @@ from renku.core.models.datasets import Dataset
 from renku.core.utils.uuid import is_uuid
 
 
-def test_dataset_deserialization(client, dataset):
+def test_dataset_deserialization(client_with_datasets):
     """Test Dataset deserialization."""
-    dataset_ = Dataset.from_yaml(client.get_dataset_path("dataset"), client=client)
+    dataset = Dataset.from_yaml(client_with_datasets.get_dataset_path("dataset-1"), client=client_with_datasets)
 
     dataset_types = {
         "date_created": [datetime.datetime],
@@ -39,11 +39,11 @@ def test_dataset_deserialization(client, dataset):
     }
 
     for attribute, type_ in dataset_types.items():
-        assert type(dataset_.__getattribute__(attribute)) in type_
+        assert type(dataset.__getattribute__(attribute)) in type_
 
     creator_types = {"email": str, "_id": str, "name": str, "affiliation": str}
 
-    creator = dataset.creators[0]
+    creator = client_with_datasets.load_dataset("dataset-1").creators[0]
 
     for attribute, type_ in creator_types.items():
         assert type(getattr(creator, attribute)) is type_
