@@ -40,7 +40,11 @@ class ListProjectsCtrl(ServiceCtrl, ReadOperationMixin):
     def list_projects(self):
         """List locally cache projects."""
         projects = [project for project in self.cache.get_projects(self.user) if project.abs_path.exists()]
-        return {"projects": projects}
+        projects.sort(key=lambda p: p.created_at)
+
+        latest = {p.git_url: p for p in projects}
+
+        return {"projects": list(latest.values())}
 
     def renku_op(self):
         """Renku operation for the controller."""

@@ -28,7 +28,7 @@ from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
-from renku.service.utils import make_new_project_path, new_repo_push
+from renku.service.utils import new_repo_push
 from renku.service.views import result_response
 
 
@@ -80,13 +80,26 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
 
     def setup_new_project(self):
         """Setup new project for initialization."""
-        new_project_path = make_new_project_path(self.user_data, self.ctx)
+        # TODO: Request attribute naming on create project and read manifest is not consistent.
+        new_project_data = {
+            "clone_depth": self.ctx["depth"],
+            "git_url": self.ctx["new_project_url"],
+            "name": self.ctx["project_name_stripped"],
+            "fullname": self.ctx["fullname"],
+            "email": self.ctx["email"],
+            "owner": self.ctx["owner"],
+            "token": self.ctx["token"],
+            "initialized": True,
+        }
+        project = self.cache.make_project(self.user, new_project_data)
 
+        new_project_path = project.abs_path
         if new_project_path.exists():
             shutil.rmtree(new_project_path)
+
         new_project_path.mkdir(parents=True, exist_ok=True)
 
-        return new_project_path
+        return project
 
     def setup_template(self):
         """Reads template manifest."""
@@ -115,7 +128,8 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
     def new_project(self):
         """Create new project from template."""
         template_project, provided_parameters = self.setup_template()
-        new_project_path = self.setup_new_project()
+        new_project = self.setup_new_project()
+        new_project_path = new_project.abs_path
 
         source_path = template_project.abs_path / self.ctx["identifier"]
 
@@ -133,6 +147,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
                 self.ctx["ref"],
                 "service",
             )
+
         self.new_project_push(new_project_path)
 
         return {
