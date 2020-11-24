@@ -45,7 +45,6 @@ from git import GitCommandError, Repo
 from walrus import Database
 from werkzeug.utils import secure_filename
 
-from renku.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 from tests.utils import make_dataset_add_payload
 
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
@@ -941,6 +940,8 @@ def integration_repo(headers, url_components):
 @pytest.fixture(scope="module")
 def identity_headers():
     """Get authentication headers."""
+    from renku.service.serializers.headers import JWT_TOKEN_SECRET
+
     jwt_data = {
         "jti": "12345",
         "exp": int(time.time()) + 1e6,
@@ -1019,6 +1020,8 @@ def svc_client_setup(integration_lifecycle):
 @pytest.fixture
 def svc_client_with_user(svc_client_cache):
     """Service client with a predefined user."""
+    from renku.service.serializers.headers import encode_b64
+
     svc_client, headers, cache = svc_client_cache
 
     user_id = encode_b64(secure_filename("andi@bleuler.com"))
