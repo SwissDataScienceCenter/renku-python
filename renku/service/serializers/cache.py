@@ -113,8 +113,8 @@ class ProjectCloneContext(ProjectCloneRequest):
     timestamp = fields.Integer(missing=time.time() * 1e3)
 
     name = fields.String(required=True)
-    fullname = fields.String(required=True)
-    email = fields.String(required=True)
+    fullname = fields.String()
+    email = fields.String()
     owner = fields.String(required=True)
     token = fields.String(required=True)
     ref = fields.String(missing="master")

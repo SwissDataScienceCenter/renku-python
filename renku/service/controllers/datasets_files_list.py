@@ -33,6 +33,7 @@ class DatasetsFilesListCtrl(ServiceCtrl, ReadOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct a datasets files list controller."""
         self.ctx = DatasetsFilesListCtrl.REQUEST_SERIALIZER.load(request_data)
+
         super(DatasetsFilesListCtrl, self).__init__(cache, user_data, request_data)
 
     @property

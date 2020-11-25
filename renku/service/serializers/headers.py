@@ -18,9 +18,13 @@
 """Renku service headers serializers."""
 import base64
 import binascii
+import os
 
-from marshmallow import Schema, ValidationError, fields, pre_load
+import jwt
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 from werkzeug.utils import secure_filename
+
+JWT_TOKEN_SECRET = os.getenv("RENKU_JWT_TOKEN_SECRET", "bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn")
 
 
 def decode_b64(value):
@@ -32,20 +36,58 @@ def decode_b64(value):
         return value
 
 
+def encode_b64(value):
+    """Encode value to base64."""
+    if isinstance(value, str):
+        value = bytes(value, "utf-8")
+
+    return base64.b64encode(value).decode("utf-8")
+
+
+class UserIdentityToken(Schema):
+    """User identity token schema."""
+
+    jti = fields.String()
+    exp = fields.Integer()
+    nbf = fields.Integer()
+    iat = fields.Integer()
+    iss = fields.String()
+    aud = fields.List(fields.String())
+    sub = fields.String()
+    typ = fields.String()
+    azp = fields.String()
+    nonce = fields.String()
+    auth_time = fields.Integer()
+    session_state = fields.String()
+    acr = fields.String()
+    email_verified = fields.Boolean()
+    preferred_username = fields.String()
+    given_name = fields.String()
+    family_name = fields.String()
+
+    email = fields.String(required=True)
+    name = fields.String(required=True)
+    user_id = fields.String()  # INFO: Generated post load.
+
+    @post_load
+    def set_user_id(self, data, **kwargs):
+        """Sets users id."""
+        data["user_id"] = encode_b64(secure_filename(data["email"]))
+        return data
+
+
 class UserIdentityHeaders(Schema):
     """User identity schema."""
 
-    user_id = fields.String(required=True, data_key="renku-user-id")
-    fullname = fields.String(data_key="renku-user-fullname")
-    email = fields.String(data_key="renku-user-email")
-    token = fields.String(data_key="authorization")
+    user_token = fields.String(required=True, data_key="renku-user")
+    auth_token = fields.String(required=True, data_key="authorization")
 
-    def extract_token(self, data):
-        """Extract token."""
-        value = data.get("authorization", "")
-        components = value.split(" ")
+    @staticmethod
+    def decode_token(token):
+        """Extract authorization token."""
+        components = token.split(" ")
 
-        rfc_compliant = value.lower().startswith("bearer")
+        rfc_compliant = token.lower().startswith("bearer")
         rfc_compliant &= len(components) == 2
 
         if not rfc_compliant:
@@ -53,21 +95,49 @@ class UserIdentityHeaders(Schema):
 
         return components[-1]
 
-    @pre_load()
-    def set_fields(self, data, **kwargs):
-        """Set fields for serialization."""
-        expected_keys = [field.data_key for field in self.fields.values()]
+    @staticmethod
+    def decode_user(data):
+        """Extract renku user from a JWT."""
+        decoded = jwt.decode(data, JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku",)
+        return UserIdentityToken().load(decoded)
 
-        data = {key.lower(): value for key, value in data.items() if key.lower() in expected_keys}
+    @staticmethod
+    def reset_old_headers(data):
+        """Process old version of old headers."""
+        # TODO: This should be removed once support for them is phased out.
+        if "renku-user-id" in data:
+            data.pop("renku-user-id")
 
-        if "renku-user-fullname" in data:
-            data["renku-user-fullname"] = decode_b64(data["renku-user-fullname"])
-
-        if "renku-user-email" in data:
-            data["renku-user-email"] = decode_b64(data["renku-user-email"])
-
-        if {"renku-user-id", "authorization"}.issubset(set(data.keys())):
-            data["renku-user-id"] = secure_filename(data["renku-user-id"])
-            data["authorization"] = self.extract_token(data)
+        if "renku-user-fullname" in data and "renku-user-email" in data:
+            renku_user = {
+                "aud": ["renku"],
+                "name": data.pop("renku-user-fullname"),
+                "email": data.pop("renku-user-email"),
+            }
+            data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8")
 
         return data
+
+    @pre_load
+    def set_fields(self, data, **kwargs):
+        """Set fields for serialization."""
+        # NOTE: We don't process headers which are not meant for determining identity.
+        # TODO: Remove old headers support once support for them is phased out.
+        old_keys = ["renku-user-id", "renku-user-fullname", "renku-user-email"]
+        expected_keys = old_keys + [field.data_key for field in self.fields.values()]
+
+        data = {key.lower(): value for key, value in data.items() if key.lower() in expected_keys}
+        data = self.reset_old_headers(data)
+
+        return data
+
+    @post_load
+    def set_user(self, data, **kwargs):
+        """Extract user object from a JWT."""
+        user = self.decode_user(data["user_token"])
+        return {
+            "fullname": user.pop("name"),
+            "email": user.pop("email"),
+            "user_id": user.pop("user_id"),
+            "token": self.decode_token(data["auth_token"]),
+        }
