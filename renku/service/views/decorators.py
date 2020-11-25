@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service view decorators."""
+import os
 import re
 from functools import wraps
 
@@ -25,7 +26,7 @@ from git import GitCommandError, GitError
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
 from redis import RedisError
-from sentry_sdk import capture_exception
+from sentry_sdk import capture_exception, set_context
 from werkzeug.exceptions import HTTPException
 
 from renku.core.errors import (
@@ -95,6 +96,11 @@ def handle_redis_except(f):
         try:
             return f(*args, **kwargs)
         except (RedisError, OSError) as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
+
             capture_exception(e)
 
             return jsonify(error={"code": REDIS_EXCEPTION_ERROR_CODE, "reason": e.messages})
