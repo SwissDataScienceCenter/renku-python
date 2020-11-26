@@ -43,16 +43,16 @@ from .git import GitCore
 DEFAULT_DATA_DIR = "data"
 
 
-def default_path():
+def default_path(path="."):
     """Return default repository path."""
     from git import InvalidGitRepositoryError
 
     from renku.core.commands.git import get_git_home
 
     try:
-        return get_git_home()
+        return get_git_home(path=path)
     except InvalidGitRepositoryError:
-        return "."
+        return path
 
 
 def path_converter(path):
