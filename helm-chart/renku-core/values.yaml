@@ -22,8 +22,8 @@ gitLFSSkipSmudge: 1
 jwtTokenSecret: bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn
 
 image:
-  repository: renku/renku-core
-  tag: 'latest'
+  repository: rrrrrok/renku-core
+  tag: '0.12.1-9f7fb95a'
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
