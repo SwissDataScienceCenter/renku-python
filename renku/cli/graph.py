@@ -76,6 +76,7 @@ def generate(client, force):
     dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
     provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
 
+
     # client.provenance_path.mkdir(exist_ok=True)
 
     for n, commit in enumerate(commits):
@@ -266,7 +267,7 @@ def _get_modified_paths(client, plans_usages):
 
 def _include_dataset_metadata(dependency_graph, client):
     """Add dataset metadata to the provenance graph."""
-    for commit in client.iter_commits(path=[".renku/datasets/*"]):
+    for commit in client.repo.iter_commits(paths=[".renku/datasets/*"]):
         for file_ in commit.diff(commit.parents or NULL_TREE):
             # Ignore deleted files (they appear as ADDED in this backwards diff)
             if file_.change_type == "A":
@@ -274,7 +275,7 @@ def _include_dataset_metadata(dependency_graph, client):
 
             path: str = file_.a_path
 
-            if not path.startswith(".renku/datasets") or not path.endswith(".yaml"):
+            if not path.startswith(".renku/datasets") or not path.endswith(".yml"):
                 continue
 
             dataset_file = _migrate_dataset(client=client, metadata_path=client.path / path)

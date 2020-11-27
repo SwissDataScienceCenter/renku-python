@@ -38,6 +38,7 @@ class ProvenanceGraph:
         self._order = 1 if len(self._activities) == 0 else max([a.order for a in self._activities]) + 1
         self._graph = None
         self._loaded = False
+        self._custom_bindings = []
 
     # @property
     # def provenance_files_path(self):
@@ -48,6 +49,14 @@ class ProvenanceGraph:
     def activities(self):
         """Return a map from order to activity."""
         return {a.order: a for a in self._activities}
+
+    @property
+    def custom_bindings(self):
+        return self._custom_bindings
+
+    @custom_bindings.setter
+    def custom_bindings(self, bindings):
+        self._custom_bindings = bindings
 
     def add(self, node: Union[Activity, ActivityCollection]):
         """Add an Activity/ActivityCollection to the graph."""
@@ -114,6 +123,20 @@ class ProvenanceGraph:
         self._create_rdf_graph()
         return self._graph
 
+    def _bindings(self, graph):
+        # default bindings
+        graph.bind("prov", "http://www.w3.org/ns/prov#")
+        graph.bind("foaf", "http://xmlns.com/foaf/0.1/")
+        graph.bind("wf", "http://www.w3.org/2005/01/wf/flow#")
+        graph.bind("wfprov", "http://purl.org/wf4ever/wfprov#")
+        graph.bind("schema", "http://schema.org/")
+        graph.bind("renku", "https://swissdatasciencecenter.github.io/renku-ontology#")
+
+        # custom bindings
+        for i in self.custom_bindings:
+            graph.bind(i[0], i[1])
+        return graph
+
     def _create_rdf_graph(self):
         # import json
         # import pyld
@@ -125,13 +148,7 @@ class ProvenanceGraph:
             return
 
         self._graph = ConjunctiveGraph().parse(location=str(self._path), format="json-ld")
-
-        self._graph.bind("prov", "http://www.w3.org/ns/prov#")
-        self._graph.bind("foaf", "http://xmlns.com/foaf/0.1/")
-        self._graph.bind("wf", "http://www.w3.org/2005/01/wf/flow#")
-        self._graph.bind("wfprov", "http://purl.org/wf4ever/wfprov#")
-        self._graph.bind("schema", "http://schema.org/")
-        self._graph.bind("renku", "https://swissdatasciencecenter.github.io/renku-ontology#")
+        self._graph = self._bindings(self._graph)
 
     @classmethod
     def create_rdf_graph_from_files(cls, provenance_path):
