@@ -72,7 +72,7 @@ spec:
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
-              value: "1"
+              value: {{ .Values.gitLFSSkipSmudge | quote }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -108,7 +108,7 @@ spec:
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
-              value: "1"
+              value: {{ .Values.gitLFSSkipSmudge | quote }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -165,7 +165,7 @@ spec:
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
             - name: GIT_LFS_SKIP_SMUDGE
-              value: "1"
+              value: {{ .Values.gitLFSSkipSmudge | quote }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
