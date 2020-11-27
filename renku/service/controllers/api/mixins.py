@@ -20,12 +20,13 @@ from abc import ABCMeta, abstractmethod
 from functools import wraps
 from pathlib import Path
 
+import click
 from git import Repo
 
 from renku.core.errors import RenkuException, UninitializedProject
+from renku.core.management import LocalClient
 from renku.core.management.config import RENKU_HOME
-from renku.core.management.repository import RepositoryApiMixin
-from renku.core.utils.contexts import chdir
+from renku.core.management.repository import RepositoryApiMixin, default_path
 from renku.service.cache.models.user import User
 from renku.service.controllers.utils.remote_project import RemoteProject
 from renku.service.errors import IdentificationError
@@ -91,7 +92,12 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
         self.project_path = project.abs_path
 
-        with chdir(self.project_path):
+        with click.Context(
+            click.Command("create_from_template"),
+            obj=LocalClient(
+                path=default_path(self.project_path), renku_home=RENKU_HOME, external_storage_requested=True,
+            ),
+        ).scope():
             return self.renku_op()
 
     def remote(self):
