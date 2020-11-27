@@ -29,12 +29,15 @@ RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && pip install -e .
 # writing down renga verses and for the proceedings of the renga.
 USER shuhitsu
 
-ENTRYPOINT [ \
-    "gunicorn", \
-    "renku.service.entrypoint:app", \
-    "-b", "0.0.0.0:8080", \
-    "--timeout", "600", \
-    "--workers", "32", \
-    "--worker-class", "gthread", \
-    "--threads", "1"\
+ENV RENKU_SVC_NUM_WORKERS 1
+ENV RENKU_SVC_NUM_THREADS 1
+CMD [ \
+    "sh", "-c", \
+    "gunicorn \
+    renku.service.entrypoint:app \
+    -b 0.0.0.0:8080 \
+    --timeout 600 \
+    --workers $RENKU_SVC_NUM_WORKERS \
+    --worker-class gthread \
+    --threads $RENKU_SVC_NUM_THREADS" \
 ]

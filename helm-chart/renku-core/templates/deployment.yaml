@@ -67,6 +67,14 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            {{ if .Values.nWorkers }}
+            - name: RENKU_SVC_NUM_WORKERS
+              value: {{ .Values.nWorkers | quote }}
+            {{ end }}
+            {{ if .Values.nThreads }}
+            - name: RENKU_SVC_NUM_THREADS
+              value: {{ .Values.nThreads | quote }}
+            {{ end }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
