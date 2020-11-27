@@ -75,6 +75,8 @@ spec:
             - name: RENKU_SVC_NUM_THREADS
               value: {{ .Values.nThreads | quote }}
             {{ end }}
+            - name: GIT_LFS_SKIP_SMUDGE
+              value: {{ .Values.gitLFSSkipSmudge | quote }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
