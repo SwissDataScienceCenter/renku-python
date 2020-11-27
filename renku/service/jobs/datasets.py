@@ -16,14 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset jobs."""
+import click
 from git import GitCommandError, Repo
 from urllib3.exceptions import HTTPError
 
 from renku.core.commands.dataset import add_file, import_dataset
 from renku.core.commands.save import repo_sync
 from renku.core.errors import ParameterError, RenkuException
+from renku.core.management import LocalClient
+from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DownloadProgressCallback
-from renku.core.utils.contexts import chdir
+from renku.core.management.repository import default_path
 from renku.service.cache.serializers.job import JobSchema
 from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
@@ -75,7 +78,12 @@ def dataset_import(
     try:
         worker_log.debug(f"retrieving metadata for project {project_id}")
         project = cache.get_project(user, project_id)
-        with chdir(project.abs_path):
+        with click.Context(
+            click.Command("create_from_template"),
+            obj=LocalClient(
+                path=default_path(project.abs_path), renku_home=RENKU_HOME, external_storage_requested=True,
+            ),
+        ).scope():
             worker_log.debug(f"project found in cache - importing dataset {dataset_uri}")
             import_dataset(
                 dataset_uri,
@@ -112,7 +120,12 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
         worker_log.debug(f"checking metadata for project {project_id}")
         project = cache.get_project(user, project_id)
 
-        with chdir(project.abs_path):
+        with click.Context(
+            click.Command("create_from_template"),
+            obj=LocalClient(
+                path=default_path(project.abs_path), renku_home=RENKU_HOME, external_storage_requested=True,
+            ),
+        ).scope():
             urls = url if isinstance(url, list) else [url]
 
             worker_log.debug(f"adding files {urls} to dataset {name}")

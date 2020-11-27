@@ -16,13 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Project related jobs."""
+import click
 from git import GitCommandError, Repo
 from urllib3.exceptions import HTTPError
 
 from renku.core.commands.migrate import migrate_project
 from renku.core.commands.save import repo_sync
 from renku.core.errors import ParameterError, RenkuException
-from renku.core.utils.contexts import chdir
+from renku.core.management import LocalClient
+from renku.core.management.config import RENKU_HOME
+from renku.core.management.repository import default_path
 from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
 
@@ -38,7 +41,10 @@ def execute_migration(
         """Collect migration message."""
         messages.append(msg)
 
-    with chdir(project.abs_path):
+    with click.Context(
+        click.Command("create_from_template"),
+        obj=LocalClient(path=default_path(project.abs_path), renku_home=RENKU_HOME, external_storage_requested=True,),
+    ).scope():
         was_migrated, template_migrated, docker_migrated = migrate_project(
             progress_callback=collect_message,
             force_template_update=force_template_update,
