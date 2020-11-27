@@ -111,8 +111,8 @@ class UserIdentityHeaders(Schema):
         if "renku-user-fullname" in data and "renku-user-email" in data:
             renku_user = {
                 "aud": ["renku"],
-                "name": data.pop("renku-user-fullname"),
-                "email": data.pop("renku-user-email"),
+                "name": decode_b64(data.pop("renku-user-fullname")),
+                "email": decode_b64(data.pop("renku-user-email")),
             }
             data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8")
 
