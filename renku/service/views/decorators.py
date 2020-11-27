@@ -185,6 +185,10 @@ def handle_renku_except(f):
         try:
             return f(*args, **kwargs)
         except RenkuException as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
             capture_exception(e)
 
             err_response = {
@@ -234,6 +238,10 @@ def handle_git_except(f):
         try:
             return f(*args, **kwargs)
         except GitCommandError as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
             capture_exception(e)
 
             error_code = GIT_ACCESS_DENIED_ERROR_CODE if "Access denied" in e.stderr else GIT_UNKNOWN_ERROR_CODE
@@ -289,12 +297,20 @@ def handle_base_except(f):
             return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
 
         except GitError as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
             capture_exception(e)
 
             error_message = "Failed to execute git operation."
             return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
 
         except (Exception, BaseException, OSError, IOError) as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
             capture_exception(e)
 
             internal_error = "internal error"
