@@ -15,6 +15,13 @@ cleanupFilesTTL: 1800
 cleanupProjectsTTL: 1800
 logLevel: INFO
 
+# override to automatically pull LFS data on clone
+gitLFSSkipSmudge: 1
+
+# concurrency settings for the main service
+nWorkers:
+nThreads:
+
 # NOTE: Make sure token secret is greater or equal to 32 bytes.
 jwtTokenSecret: bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn
 

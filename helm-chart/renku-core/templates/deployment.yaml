@@ -39,6 +39,61 @@ spec:
             - name: RQ_REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
       {{ end }}
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: REDIS_HOST
+              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DATABASE
+              value: "0"
+            - name: REDIS_PASSWORD
+              value:
+            - name: CACHE_DIR
+              value: {{ .Values.cacheDirectory }}
+            - name: PROJECT_CLONE_DEPTH_DEFAULT
+              value: {{ .Values.projectCloneDepth | quote }}
+            - name: TEMPLATE_CLONE_DEPTH_DEFAULT
+              value: {{ .Values.templateCloneDepth | quote }}
+            - name: CORE_SERVICE_PREFIX
+              value: /renku
+            - name: RENKU_SVC_SWAGGER_URL
+              value: /renku/openapi.json
+            - name: SERVICE_LOG_LEVEL
+              value: {{ .Values.logLevel }}
+            - name: SENTRY_DSN
+              value: {{ .Values.sentry.dsn }}
+            - name: SENTRY_ENV
+              value: {{ .Values.sentry.environment }}
+            {{ if .Values.nWorkers }}
+            - name: RENKU_SVC_NUM_WORKERS
+              value: {{ .Values.nWorkers | quote }}
+            {{ end }}
+            {{ if .Values.nThreads }}
+            - name: RENKU_SVC_NUM_THREADS
+              value: {{ .Values.nThreads | quote }}
+            {{ end }}
+            - name: GIT_LFS_SKIP_SMUDGE
+              value: {{ .Values.gitLFSSkipSmudge | quote }}
+          volumeMounts:
+            - name: shared-volume
+              mountPath: {{ .Values.cacheDirectory }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
         - name: {{ .Chart.Name }}-datasets-workers
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -71,6 +126,8 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            - name: GIT_LFS_SKIP_SMUDGE
+              value: {{ .Values.gitLFSSkipSmudge | quote }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -105,6 +162,8 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
+            - name: GIT_LFS_SKIP_SMUDGE
+              value: {{ .Values.gitLFSSkipSmudge | quote }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ .Values.cacheDirectory }}
@@ -131,52 +190,6 @@ spec:
               value: {{ .Values.sentry.dsn }}
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
-
-        - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: REDIS_HOST
-              value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
-            - name: REDIS_PORT
-              value: "6379"
-            - name: REDIS_DATABASE
-              value: "0"
-            - name: REDIS_PASSWORD
-              value:
-            - name: CACHE_DIR
-              value: {{ .Values.cacheDirectory }}
-            - name: PROJECT_CLONE_DEPTH_DEFAULT
-              value: {{ .Values.projectCloneDepth | quote }}
-            - name: TEMPLATE_CLONE_DEPTH_DEFAULT
-              value: {{ .Values.templateCloneDepth | quote }}
-            - name: CORE_SERVICE_PREFIX
-              value: /renku
-            - name: RENKU_SVC_SWAGGER_URL
-              value: /renku/openapi.json
-            - name: SERVICE_LOG_LEVEL
-              value: {{ .Values.logLevel }}
-            - name: SENTRY_DSN
-              value: {{ .Values.sentry.dsn }}
-            - name: SENTRY_ENV
-              value: {{ .Values.sentry.environment }}
-          volumeMounts:
-            - name: shared-volume
-              mountPath: {{ .Values.cacheDirectory }}
-          ports:
-            - name: http
-              containerPort: 8080
-              protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
