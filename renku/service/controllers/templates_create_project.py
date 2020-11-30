@@ -18,15 +18,12 @@
 """Renku service template create project controller."""
 import shutil
 
-import click
 import git
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import create_from_template_local, read_template_manifest
 from renku.core.errors import RenkuException
-from renku.core.management import LocalClient
-from renku.core.management.config import RENKU_HOME
-from renku.core.management.repository import default_path
+from renku.core.utils.contexts import click_context
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
@@ -122,12 +119,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
 
         source_path = template_project.abs_path / self.ctx["identifier"]
 
-        with click.Context(
-            click.Command("create_from_template"),
-            obj=LocalClient(
-                path=default_path(new_project_path), renku_home=RENKU_HOME, external_storage_requested=True,
-            ),
-        ).scope():
+        with click_context(new_project_path, "create_from_template"):
             create_from_template_local(
                 source_path,
                 self.ctx["project_name"],

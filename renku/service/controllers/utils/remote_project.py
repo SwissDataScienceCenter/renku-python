@@ -21,13 +21,10 @@ import tempfile
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
-import click
 from git import Repo
 from marshmallow import EXCLUDE
 
-from renku.core.management import LocalClient
-from renku.core.management.config import RENKU_HOME
-from renku.core.management.repository import default_path
+from renku.core.utils.contexts import click_context
 from renku.service.serializers.cache import ProjectCloneContext
 
 ANONYMOUS_SESSION = "anonymous"
@@ -68,8 +65,5 @@ class RemoteProject:
         """Retrieve project metadata."""
         with tempfile.TemporaryDirectory() as td:
             Repo.clone_from(self.remote_url.geturl(), td, branch=self.branch, depth=1)
-            with click.Context(
-                click.Command("create_from_template"),
-                obj=LocalClient(path=default_path(td), renku_home=RENKU_HOME, external_storage_requested=True,),
-            ).scope():
+            with click_context(td, "remote_project"):
                 yield td
