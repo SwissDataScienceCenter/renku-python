@@ -154,7 +154,12 @@ class RepositoryApiMixin(GitCore):
     @property
     def latest_agent(self):
         """Returns latest agent version used in the repository."""
-        return self.project.agent_version
+        try:
+            return self.project.agent_version
+        except ValueError as e:
+            if "Project name not set" in str(e):
+                return None
+            raise
 
     @property
     def lock(self):
