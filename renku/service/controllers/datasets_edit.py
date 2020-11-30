@@ -45,14 +45,20 @@ class DatasetsEditCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        edited, warnings = edit_dataset(
-            self.ctx["name"],
-            self.ctx.get("title"),
-            self.ctx.get("description"),
-            self.ctx.get("creators"),
-            keywords=self.ctx.get("keywords"),
-            commit_message=self.ctx["commit_message"],
+        result = (
+            edit_dataset()
+            .with_commit_message(self.ctx["commit_message"])
+            .build()
+            .execute(
+                self.ctx["name"],
+                self.ctx.get("title"),
+                self.ctx.get("description"),
+                self.ctx.get("creators"),
+                keywords=self.ctx.get("keywords"),
+            )
         )
+
+        edited, warnings = result.output
         return edited, warnings
 
     def to_response(self):

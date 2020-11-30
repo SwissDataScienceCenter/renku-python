@@ -379,7 +379,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client, subdire
     result = runner.invoke(
         cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
 
     # Further, add with --create fails
     result = runner.invoke(

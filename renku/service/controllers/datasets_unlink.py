@@ -55,14 +55,19 @@ class DatasetsUnlinkCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        return file_unlink(
-            name=self.ctx["name"],
-            include=self.ctx.get("include_filters"),
-            exclude=self.ctx.get("exclude_filters"),
-            yes=True,
-            interactive=False,
-            commit_message=self.ctx["commit_message"],
+        result = (
+            file_unlink()
+            .with_commit_message(self.ctx["commit_message"])
+            .build()
+            .execute(
+                name=self.ctx["name"],
+                include=self.ctx.get("include_filters"),
+                exclude=self.ctx.get("exclude_filters"),
+                yes=True,
+            )
         )
+
+        return result.output
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""

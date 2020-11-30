@@ -103,7 +103,7 @@ class Command:
     def _post_hook(self, builder, context, result, *args, **kwargs):
         """Post-hook method."""
 
-    def execute(self, *args, **kwargs):
+    def execute(self, *args, raise_exceptions=True, **kwargs):
         """Execute the wrapped operation.
 
         First executes `pre_hooks` in ascending `order`, passing a read/write context between them.
@@ -123,20 +123,23 @@ class Command:
 
         output = None
         error = None
+
         try:
             with context["stack"]:
                 output = context["click_context"].invoke(self._operation, context["client"], *args, **kwargs)
         except errors.RenkuException as e:
             error = e
+            if raise_exceptions:
+                raise
+        finally:
+            result = CommandResult(output, error, CommandResult.FAILURE if error else CommandResult.SUCCESS)
 
-        result = CommandResult(output, error, CommandResult.FAILURE if error else CommandResult.SUCCESS)
+            if any(self.post_hooks):
+                order = sorted(self.post_hooks.keys())
 
-        if any(self.post_hooks):
-            order = sorted(self.post_hooks.keys())
-
-            for o in order:
-                for hook in self.post_hooks[o]:
-                    hook(self, context, result, *args, **kwargs)
+                for o in order:
+                    for hook in self.post_hooks[o]:
+                        hook(self, context, result, *args, **kwargs)
 
         return result
 
@@ -283,7 +286,7 @@ class Commit(Command):
             clean=False,
             commit=True,
             commit_empty=self._commit_if_empty,
-            commit_message=self._message or kwargs.get("commit_message"),
+            commit_message=self._message,
             commit_only=self._commit_filter_paths,
             ignore_std_streams=not builder._track_std_streams,
             raise_if_empty=self._raise_if_empty,
@@ -296,6 +299,13 @@ class Commit(Command):
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
+
+    @check_finalized
+    def with_commit_message(self, message):
+        """Set a new commit message."""
+        self._message = message
+
+        return self
 
 
 class RequireMigration(Command):
