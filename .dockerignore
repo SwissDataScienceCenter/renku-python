@@ -6,8 +6,6 @@ __pycache__
 
 build
 dist
-docs
-tests
 
 *.mo
 *.pyc
@@ -19,11 +17,4 @@ tests
 *.egg-info
 .eggs
 
-docker-compose.yml
-docker-compose-dev.yml
-
 Procfile*
-
-helm-chart
-
-Dockerfile*

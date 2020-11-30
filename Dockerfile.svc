@@ -19,17 +19,25 @@ RUN requirements-builder -e service --level=pypi setup.py > /tmp/requirements.tx
     pip install -r /tmp/requirements.txt
 
 COPY . /code/renku
-RUN pip install -e .[service]
+
+# Set CLEAN_INSTALL to a non-null value to ensure that only a committed version of
+# renku-python is installed in the image. This is the default for chartpress builds.
+ARG CLEAN_INSTALL
+RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && pip install -e .[service]
 
 # shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
 # writing down renga verses and for the proceedings of the renga.
 USER shuhitsu
 
-ENTRYPOINT ["gunicorn", \
-            "renku.service.entrypoint:app", \
-            "-b", "0.0.0.0:8080", \
-            "--timeout", "600", \
-            "--workers", "4", \
-            "--worker-class", "gthread", \
-            "--threads", "8"\
+ENV RENKU_SVC_NUM_WORKERS 1
+ENV RENKU_SVC_NUM_THREADS 1
+CMD [ \
+    "sh", "-c", \
+    "gunicorn \
+    renku.service.entrypoint:app \
+    -b 0.0.0.0:8080 \
+    --timeout 600 \
+    --workers $RENKU_SVC_NUM_WORKERS \
+    --worker-class gthread \
+    --threads $RENKU_SVC_NUM_THREADS" \
 ]

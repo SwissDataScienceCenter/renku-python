@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate project to the latest Renku version."""
+import json
 import os
 
 import click
@@ -29,6 +30,8 @@ from renku.core.commands.migrate import (
     check_project,
     migrate_project,
     migrate_project_no_commit,
+    migrations_check,
+    migrations_versions,
 )
 from renku.core.errors import MigrationRequired, ProjectNotSupported
 
@@ -64,6 +67,37 @@ def migrate(check, no_commit):
         if check_project() == NON_RENKU_REPOSITORY:
             click.secho(WARNING + "Not a renku project.")
         click.secho("No migrations required.")
+
+
+@click.command(hidden=True)
+def migrationscheck():
+    """Check status of the project and current renku-python version."""
+    latest_version, project_version = migrations_versions()
+    (
+        migration_required,
+        project_supported,
+        template_update_possible,
+        current_template_version,
+        latest_template_version,
+        automated_update,
+        docker_update_possible,
+    ) = migrations_check()
+
+    click.echo(
+        json.dumps(
+            {
+                "latest_version": latest_version,
+                "project_version": project_version,
+                "migration_required": migration_required,
+                "project_supported": project_supported,
+                "template_update_possible": template_update_possible,
+                "current_template_version": str(current_template_version),
+                "latest_template_version": str(latest_template_version),
+                "automated_update": automated_update,
+                "docker_update_possible": docker_update_possible,
+            }
+        )
+    )
 
 
 @click.command(hidden=True)
