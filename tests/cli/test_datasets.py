@@ -1302,6 +1302,37 @@ def test_lfs_hook(runner, client, subdirectory, large_file):
     assert "large files tracked" == commit.message
 
 
+def test_lfs_hook_autocommit(runner, client, subdirectory, large_file):
+    """Test committing large files to Git gets automatically added to lfs."""
+    result = runner.invoke(cli, ["config", "set", "autocommit_lfs", "true"])
+    assert 0 == result.exit_code
+
+    shutil.copy(large_file, client.path)
+    client.repo.git.add("--all")
+
+    result = client.repo.git.commit(message="large files not in LFS", with_extended_output=True)
+    assert large_file.name in result[1]
+    assert ".gitattributes" in result[1]
+    assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
+    assert "Adding files to LFS" in result[2]
+    assert 'Tracking "large-file"' in result[2]
+
+
+def test_lfs_hook_autocommit_env(runner, client, subdirectory, large_file):
+    """Test committing large files to Git gets automatically added to lfs."""
+    os.environ["AUTOCOMMIT_LFS"] = "true"
+
+    shutil.copy(large_file, client.path)
+    client.repo.git.add("--all")
+
+    result = client.repo.git.commit(message="large files not in LFS", with_extended_output=True)
+    assert large_file.name in result[1]
+    assert ".gitattributes" in result[1]
+    assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
+    assert "Adding files to LFS" in result[2]
+    assert 'Tracking "large-file"' in result[2]
+
+
 def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
     """Test committing large files to Git."""
     result = runner.invoke(cli, ["--no-external-storage", "dataset", "add", "-c", "my-dataset", str(large_file)])
