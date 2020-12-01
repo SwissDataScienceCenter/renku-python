@@ -27,6 +27,7 @@ from apispec.ext.marshmallow import MarshmallowPlugin
 from flask import Flask, request
 from flask_apispec import FlaskApiSpec
 from flask_swagger_ui import get_swaggerui_blueprint
+from jwt import InvalidTokenError
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
@@ -34,6 +35,7 @@ from sentry_sdk.integrations.rq import RqIntegration
 from renku.service.cache import cache
 from renku.service.config import API_SPEC_URL, API_VERSION, CACHE_DIR, OPENAPI_VERSION, SERVICE_NAME, SWAGGER_URL
 from renku.service.logger import service_log
+from renku.service.serializers.headers import JWT_TOKEN_SECRET
 from renku.service.utils.json_encoder import SvcJSONEncoder
 from renku.service.views.cache import (
     CACHE_BLUEPRINT_TAG,
@@ -172,5 +174,8 @@ def exceptions(e):
 
 
 if __name__ == "__main__":
+    if len(JWT_TOKEN_SECRET) < 32:
+        raise InvalidTokenError("web token must be greater or equal to 32 bytes")
+
     app.logger.handlers.extend(service_log.handlers)
     app.run()

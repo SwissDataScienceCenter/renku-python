@@ -22,13 +22,12 @@ import os
 import sys
 from pathlib import Path
 
+import click
+
 
 @contextlib.contextmanager
 def chdir(path):
     """Change the current working directory."""
-    if isinstance(path, Path):
-        path = str(path)
-
     cwd = os.getcwd()
     os.chdir(path)
     try:
@@ -87,3 +86,16 @@ class Isolation(contextlib.ExitStack):
         for key, value in kwargs.items():
             if value is not None:
                 self.enter_context(self.CONTEXTS[key](value))
+
+
+def click_context(path, command):
+    """Provide a click context with repo path injected."""
+
+    from renku.core.management import LocalClient
+    from renku.core.management.config import RENKU_HOME
+    from renku.core.management.repository import default_path
+
+    return click.Context(
+        click.Command(command),
+        obj=LocalClient(path=default_path(path), renku_home=RENKU_HOME, external_storage_requested=True),
+    ).scope()

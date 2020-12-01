@@ -590,6 +590,28 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client):
         assert inode not in original_inodes
 
 
+@pytest.mark.serial
+def test_dataset_add_many(tmpdir, runner, project, client):
+    """Test adding many files to dataset."""
+
+    # create a dataset
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code
+    assert "OK" in result.output
+
+    paths = []
+    for i in range(1000):
+        new_file = tmpdir.join("file_{0}".format(i))
+        new_file.write(str(i))
+        paths.append(str(new_file))
+
+    # add data
+    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths,)
+    assert 0 == result.exit_code
+
+    assert len(client.repo.head.commit.message) <= 100
+
+
 def test_dataset_file_path_from_subdirectory(runner, client, subdirectory):
     """Test adding a file into a dataset and check path independent
     of the CWD """

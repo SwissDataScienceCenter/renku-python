@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,22 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service exceptions."""
-from renku.core.errors import RenkuException
-
-
-class ProjectNotFound(RenkuException):
-    """Project reference not found exception."""
-
-    def __init__(self, project_id):
-        """Build a custom message."""
-        message = f'project_id "{project_id}" not found'
-        super(ProjectNotFound, self).__init__(message)
-
-
-class IdentificationError(RenkuException):
-    """User identification not found or failed validation."""
-
-    def __init__(self, message):
-        """Build a custom message."""
-        super(IdentificationError, self).__init__(message)
+"""Renku CLI utility methods."""
