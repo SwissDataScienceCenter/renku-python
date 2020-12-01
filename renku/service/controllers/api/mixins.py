@@ -25,7 +25,7 @@ from git import Repo
 from renku.core.errors import RenkuException, UninitializedProject
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
-from renku.core.utils.contexts import chdir
+from renku.core.utils.contexts import click_context
 from renku.service.cache.models.user import User
 from renku.service.controllers.utils.remote_project import RemoteProject
 from renku.service.errors import IdentificationError
@@ -91,7 +91,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
         self.project_path = project.abs_path
 
-        with chdir(self.project_path):
+        with click_context(self.project_path, "renku_op"):
             return self.renku_op()
 
     def remote(self):

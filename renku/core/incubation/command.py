@@ -61,6 +61,7 @@ class Command:
         self._finalized = False
         self._track_std_streams = False
         self._git_isolation = False
+        self._working_directory = None
 
     def __getattr__(self, name):
         """Bubble up attributes of wrapped builders."""
@@ -80,7 +81,11 @@ class Command:
         """Setup local client."""
         ctx = click.get_current_context(silent=True)
         if ctx is None:
-            client = LocalClient(path=default_path(), renku_home=RENKU_HOME, external_storage_requested=True,)
+            client = LocalClient(
+                path=default_path(self._working_directory or "."),
+                renku_home=RENKU_HOME,
+                external_storage_requested=True,
+            )
             ctx = click.Context(click.Command(builder._operation))
         else:
             client = ctx.ensure_object(LocalClient)
@@ -184,6 +189,16 @@ class Command:
         :param operation: The function to wrap in the command builder.
         """
         self._operation = operation
+
+        return self
+
+    @check_finalized
+    def working_directory(self, directory):
+        """Set the working directory for the command.
+
+        :param directory: The working directory to work in.
+        """
+        self._working_directory = directory
 
         return self
 

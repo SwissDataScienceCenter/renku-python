@@ -22,7 +22,7 @@ from urllib3.exceptions import HTTPError
 from renku.core.commands.migrate import migrate_project
 from renku.core.commands.save import repo_sync
 from renku.core.errors import ParameterError, RenkuException
-from renku.core.utils.contexts import chdir
+from renku.core.utils.contexts import click_context
 from renku.service.logger import worker_log
 from renku.service.views.decorators import requires_cache
 
@@ -38,7 +38,7 @@ def execute_migration(
         """Collect migration message."""
         messages.append(msg)
 
-    with chdir(project.abs_path):
+    with click_context(project.abs_path, "execute_migration"):
         was_migrated, template_migrated, docker_migrated = migrate_project(
             progress_callback=collect_message,
             force_template_update=force_template_update,
