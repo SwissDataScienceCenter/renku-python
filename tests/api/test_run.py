@@ -19,8 +19,9 @@
 
 from pathlib import Path
 
-from renku.api import Input, Output, Project
+from renku.api import Input, Output, Parameter, Project
 from renku.core.models.cwl import command_line_tool
+from renku.core.models.cwl.command_line_tool import read_indirect_parameters
 
 
 def test_indirect_inputs(client):
@@ -96,3 +97,20 @@ def test_open_outputs(client):
         f.write("some data")
 
     assert "some data" == (client.path / "output.txt").read_text()
+
+
+def test_parameters(client):
+    """Test defining parameters."""
+    p1 = Parameter("parameter 1", 42)
+
+    with Project():
+        p2 = Parameter("param-2", "42")
+
+    p3 = Parameter(" parameter 3 ", 42.42)
+
+    assert (42, "42", 42.42) == (p1, p2, p3)
+
+    data = read_indirect_parameters(client.path)
+
+    assert {"parameter 1", "param-2", " parameter 3 "} == set(data.keys())
+    assert {42, "42", 42.42} == set(data.values())

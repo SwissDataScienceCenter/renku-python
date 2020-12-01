@@ -43,16 +43,16 @@ from .git import GitCore
 DEFAULT_DATA_DIR = "data"
 
 
-def default_path():
+def default_path(path="."):
     """Return default repository path."""
     from git import InvalidGitRepositoryError
 
     from renku.core.commands.git import get_git_home
 
     try:
-        return get_git_home()
+        return get_git_home(path=path)
     except InvalidGitRepositoryError:
-        return "."
+        return path
 
 
 def path_converter(path):
@@ -154,7 +154,12 @@ class RepositoryApiMixin(GitCore):
     @property
     def latest_agent(self):
         """Returns latest agent version used in the repository."""
-        return self.project.agent_version
+        try:
+            return self.project.agent_version
+        except ValueError as e:
+            if "Project name not set" in str(e):
+                return None
+            raise
 
     @property
     def lock(self):
@@ -554,6 +559,7 @@ class RepositoryApiMixin(GitCore):
                 # parse file and process it
                 template = Template(file.read_text())
                 rendered_content = template.render(metadata)
+                # NOTE: the path could contain template variables, we need to template it
                 destination = Path(Template(str(destination)).render(metadata))
                 destination.write_text(rendered_content)
                 checksums[str(rel_path)] = self._content_hash(destination)

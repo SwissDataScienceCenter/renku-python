@@ -87,6 +87,8 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
     assert payload["project_namespace"] == received_metadata["__namespace__"]
     assert payload["project_repository"] == received_metadata["__repository__"]
 
+    assert ctrl.template_version
+
     project_name = normalize_to_ascii(payload["project_name"])
     assert project_name == received_metadata["__sanitized_project_name__"]
     assert f"{payload['project_namespace']}/{project_name}" == received_metadata["__project_slug__"]

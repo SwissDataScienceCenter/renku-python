@@ -33,7 +33,7 @@ import attr
 import git
 
 from renku.core import errors
-from renku.core.utils.scm import git_unicode_unescape
+from renku.core.utils.scm import git_unicode_unescape, shorten_message
 from renku.core.utils.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = "DIFF"
@@ -128,7 +128,8 @@ class GitCore:
     def dirty_paths(self):
         """Get paths of dirty files in the repository."""
         repo_path = self.repo.working_dir
-        return {os.path.join(repo_path, p) for p in self.repo.untracked_files + self.modified_paths}
+        staged_files = self.repo.index.diff("HEAD") if self.repo.head.is_valid() else []
+        return {os.path.join(repo_path, p) for p in self.repo.untracked_files + self.modified_paths + staged_files}
 
     @property
     def candidate_paths(self):
@@ -233,7 +234,9 @@ class GitCore:
                 w.set_value("credential", "helper", "cache")
 
     @contextmanager
-    def commit(self, commit_only=None, commit_empty=True, raise_if_empty=False, commit_message=None):
+    def commit(
+        self, commit_only=None, commit_empty=True, raise_if_empty=False, commit_message=None, abbreviate_message=True
+    ):
         """Automatic commit."""
         from git import Actor
 
@@ -316,6 +319,9 @@ class GitCore:
             argv = [os.path.basename(sys.argv[0])] + [remove_credentials(arg) for arg in sys.argv[1:]]
 
             commit_message = " ".join(argv)
+
+        if abbreviate_message:
+            commit_message = shorten_message(commit_message)
 
         try:
             project = self.project

@@ -54,3 +54,28 @@ def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
     assert 0 == result.exit_code
     assert "tracked" in result.output
     assert "save changes" in client.repo.head.commit.message
+
+
+def test_save_with_staged(runner, project, client_with_remote, tmpdir_factory):
+    """Test saving local changes."""
+    client = client_with_remote["client"]
+    with (client.path / "tracked").open("w") as fp:
+        fp.write("tracked file")
+
+    with (client.path / "modified").open("w") as fp:
+        fp.write("modified file")
+
+    client.repo.git.add("tracked")
+
+    result = runner.invoke(cli, ["save", "-m", "save changes", "modified"], catch_exceptions=False)
+
+    assert 1 == result.exit_code
+    assert "These files are in the git staging area, but " in result.output
+    assert "tracked" in result.output
+    assert "tracked" in [f.a_path for f in client.repo.index.diff("HEAD")]
+    assert "modified" in client.repo.untracked_files
+
+    result = runner.invoke(cli, ["save", "-m", "save changes", "tracked", "modified"], catch_exceptions=False)
+
+    assert 0 == result.exit_code
+    assert {"tracked", "modified"} == {f.a_path for f in client.repo.head.commit.diff("HEAD~1")}

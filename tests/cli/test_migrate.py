@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``migrate`` command."""
+import json
 import os
 from pathlib import Path
 
@@ -45,6 +46,25 @@ def test_migrate_project(isolated_runner, old_project):
     client = LocalClient(path=old_project.working_dir)
     assert client.project
     assert client.project.name
+
+
+@pytest.mark.migration
+def test_migration_check(isolated_runner, project):
+    """Test migrate on old repository."""
+    result = isolated_runner.invoke(cli, ["migrationscheck"])
+    assert 0 == result.exit_code
+    output = json.loads(result.output)
+    assert output.keys() == {
+        "latest_version",
+        "project_version",
+        "migration_required",
+        "project_supported",
+        "template_update_possible",
+        "current_template_version",
+        "latest_template_version",
+        "automated_update",
+        "docker_update_possible",
+    }
 
 
 @pytest.mark.migration
@@ -181,7 +201,7 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     assert 0 == result.exit_code
     assert "OK" in result.output
 
-    client = LocalClient(path=old_dataset_project.working_dir)
+    client = old_dataset_project
 
     dataset = client.load_dataset("dataverse")
     assert dataset._id.endswith("/datasets/1d2ed1e4-3aeb-4f25-90b2-38084ee3d86c")
@@ -236,7 +256,7 @@ def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_proj
     """Test migration of datasets with blank nodes creates IRI identifiers."""
     assert 0 == isolated_runner.invoke(cli, ["migrate"]).exit_code
 
-    dataset = LocalClient(path=old_dataset_project.working_dir).load_dataset("201901_us_flights_1")
+    dataset = old_dataset_project.load_dataset("201901_us_flights_1")
 
     assert not dataset.creators[0]._id.startswith("_:")
     assert not dataset.same_as._id.startswith("_:")
@@ -257,6 +277,38 @@ def test_migrate_non_renku_repository(isolated_runner):
     assert 0 == result.exit_code, result.output
     assert "Warning: Not a renku project." in result.output
     assert "No migrations required." in result.output
+
+
+@pytest.mark.migration
+def test_migrate_check_on_old_project(isolated_runner, old_repository_with_submodules):
+    """Test migration check on an old project."""
+    result = isolated_runner.invoke(cli, ["migrate", "--check"])
+
+    assert 3 == result.exit_code
+    assert "Project version is outdated and a migration is required" in result.output
+
+
+@pytest.mark.migration
+def test_migrate_check_on_unsupported_project(isolated_runner, unsupported_project):
+    """Test migration check on an unsupported project."""
+    result = isolated_runner.invoke(cli, ["migrate", "--check"])
+
+    assert 4 == result.exit_code
+    assert "Project is not supported by this version of Renku." in result.output
+
+
+@pytest.mark.migration
+def test_migrate_check_on_non_renku_repository(isolated_runner):
+    """Test migration check on non-renku repo."""
+    from git import Repo
+
+    Repo.init(".")
+    os.mkdir(".renku")
+
+    result = isolated_runner.invoke(cli, ["migrate", "--check"])
+
+    assert 0 == result.exit_code, result.output
+    assert "Warning: Not a renku project." in result.output
 
 
 @pytest.mark.migration
@@ -288,7 +340,7 @@ def test_migrate_non_renku_repository(isolated_runner):
 def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_submodules, command):
     """Test commands that fail on projects created by old version of renku."""
     result = isolated_runner.invoke(cli, command)
-    assert 1 == result.exit_code, result.output
+    assert 3 == result.exit_code, result.output
     assert "Project version is outdated and a migration is required" in result.output
 
 
@@ -312,3 +364,18 @@ def test_commands_work_on_old_repository(isolated_runner, old_repository_with_su
     """Test commands that do not require migration."""
     result = isolated_runner.invoke(cli, command)
     assert "Project version is outdated and a migration is required" not in result.output
+
+
+def test_commit_hook_with_immutable_modified_files(runner, local_client, mocker, template_update):
+    """Test repository update from a template with modified local immutable files."""
+    from renku.core.utils.contexts import chdir
+
+    template_update(immutable_files=["README.md"])
+
+    with chdir(local_client.path):
+        result = runner.invoke(cli, ["check-immutable-template-files", "Dockerfile"])
+        assert result.exit_code == 0
+
+        result = runner.invoke(cli, ["check-immutable-template-files", "README.md"])
+        assert result.exit_code == 1
+        assert "README.md" in result.output

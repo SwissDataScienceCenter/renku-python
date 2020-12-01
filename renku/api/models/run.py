@@ -15,13 +15,42 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""API Workflow Models."""
+r"""Renku API Workflow Models.
+
+Input and Output classes can be used to define inputs and outputs of a script
+within the same script. Paths defined with these classes are added to explicit
+inputs and outputs in the workflow's metadata. For example, the following
+mark a ``data/data.csv`` as an input to the script:
+
+.. code-block:: python
+
+    from renku.api import Input
+
+    with open(Input("data/data.csv")) as input_data:
+        for line in input_data:
+            print(line)
+
+
+Users can track parameters' values in a workflow by defining them using
+``Parameter`` function.
+
+.. code-block:: python
+
+    from renku.api import Parameter
+
+    nc = Parameter(name="n_components", value=10)
+
+"""
 
 from os import PathLike
 from pathlib import Path
 
 from renku.api.models.project import ensure_project_context
-from renku.core.models.cwl.command_line_tool import get_indirect_inputs_path, get_indirect_outputs_path
+from renku.core.models.cwl.command_line_tool import (
+    add_indirect_parameter,
+    get_indirect_inputs_path,
+    get_indirect_outputs_path,
+)
 
 
 class _PathBase(PathLike):
@@ -63,3 +92,14 @@ class Output(_PathBase):
     @staticmethod
     def _get_indirect_list_path(project_path):
         return get_indirect_outputs_path(project_path)
+
+
+@ensure_project_context
+def parameter(name, value, project):
+    """Store parameter's name and value."""
+    add_indirect_parameter(project.path, name=name, value=value)
+
+    return value
+
+
+Parameter = parameter

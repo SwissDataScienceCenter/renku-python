@@ -28,6 +28,7 @@ from renku.core.management import LocalClient
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import check_for_migration
 from renku.core.management.repository import default_path
+from renku.core.utils import communication
 
 
 def check_finalized(f):
@@ -47,7 +48,7 @@ def check_finalized(f):
     return wrapper
 
 
-class Command(object):
+class Command:
     """Base renku command builder."""
 
     CLIENT_HOOK_ORDER = 1
@@ -60,6 +61,7 @@ class Command(object):
         self._finalized = False
         self._track_std_streams = False
         self._git_isolation = False
+        self._working_directory = None
 
     def __getattr__(self, name):
         """Bubble up attributes of wrapped builders."""
@@ -68,11 +70,22 @@ class Command(object):
 
         raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
 
+    def __setattr__(self, name, value):
+        """Set attributes of wrapped builders."""
+        if hasattr(self, "_builder") and self.__class__ is not self._builder.__class__:
+            self._builder.__setattr__(name, value)
+
+        object.__setattr__(self, name, value)
+
     def _pre_hook(self, builder, context, *args, **kwargs):
         """Setup local client."""
         ctx = click.get_current_context(silent=True)
         if ctx is None:
-            client = LocalClient(path=default_path(), renku_home=RENKU_HOME, external_storage_requested=True,)
+            client = LocalClient(
+                path=default_path(self._working_directory or "."),
+                renku_home=RENKU_HOME,
+                external_storage_requested=True,
+            )
             ctx = click.Context(click.Command(builder._operation))
         else:
             client = ctx.ensure_object(LocalClient)
@@ -86,6 +99,9 @@ class Command(object):
         context["client"] = client
         context["stack"] = stack
         context["click_context"] = ctx
+
+    def _post_hook(self, builder, context, result, *args, **kwargs):
+        """Post-hook method."""
 
     def execute(self, *args, **kwargs):
         """Execute the wrapped operation.
@@ -177,6 +193,16 @@ class Command(object):
         return self
 
     @check_finalized
+    def working_directory(self, directory):
+        """Set the working directory for the command.
+
+        :param directory: The working directory to work in.
+        """
+        self._working_directory = directory
+
+        return self
+
+    @check_finalized
     def track_std_streams(self):
         """Whether to track STD streams or not."""
         self._track_std_streams = True
@@ -203,12 +229,12 @@ class Command(object):
 
     @check_finalized
     def lock_project(self):
-        """Aquire a lock for the whole project."""
+        """Acquire a lock for the whole project."""
         return ProjectLock(self)
 
     @check_finalized
     def lock_dataset(self):
-        """Aquire a lock for a dataset."""
+        """Acquire a lock for a dataset."""
         return DatasetLock(self)
 
     @check_finalized
@@ -220,6 +246,11 @@ class Command(object):
     def require_clean(self):
         """Check that the repository is clean."""
         return RequireClean(self)
+
+    @check_finalized
+    def with_communicator(self, communicator):
+        """Create a communicator."""
+        return Communicator(self, communicator)
 
 
 class Commit(Command):
@@ -360,7 +391,35 @@ class DatasetLock(Command):
         return self._builder.build()
 
 
-class CommandResult(object):
+class Communicator(Command):
+    """Hook for logging and interaction with user."""
+
+    DEFAULT_ORDER = 6
+
+    def __init__(self, builder, communicator):
+        """__init__ of Communicator.
+
+        :param communicator: Instance of CommunicationCallback.
+        """
+        self._builder = builder
+        self._communicator = communicator
+
+    def _pre_hook(self, builder, context, *args, **kwargs):
+        communication.subscribe(self._communicator)
+
+    def _post_hook(self, builder, context, result, *args, **kwargs):
+        communication.unsubscribe(self._communicator)
+
+    @check_finalized
+    def build(self):
+        """Build the command."""
+        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
+
+        return self._builder.build()
+
+
+class CommandResult:
     """The result of a command.
 
     The return value of the command is set as `.output`, if there was an error, it is set as `.error`, and

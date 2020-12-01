@@ -79,7 +79,7 @@ from renku.cli.exception_handler import IssueFromTraceback
 from renku.cli.githooks import githooks as githooks_command
 from renku.cli.init import init as init_command
 from renku.cli.log import log
-from renku.cli.migrate import migrate
+from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.cli.move import move
 from renku.cli.remove import remove
 from renku.cli.rerun import rerun
@@ -196,6 +196,8 @@ cli.add_command(githooks_command)
 cli.add_command(init_command)
 cli.add_command(log)
 cli.add_command(migrate)
+cli.add_command(migrationscheck)
+cli.add_command(check_immutable_template_files)
 cli.add_command(move)
 cli.add_command(remove)
 cli.add_command(rerun)
