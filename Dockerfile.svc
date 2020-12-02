@@ -29,8 +29,8 @@ RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && pip install -e .
 # writing down renga verses and for the proceedings of the renga.
 USER shuhitsu
 
-ENV RENKU_SVC_NUM_WORKERS 1
-ENV RENKU_SVC_NUM_THREADS 1
+ENV RENKU_SVC_NUM_WORKERS 4
+ENV RENKU_SVC_NUM_THREADS 8
 CMD [ \
     "sh", "-c", \
     "gunicorn \
