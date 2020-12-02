@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent run templates."""
+
 import copy
 import pathlib
 import urllib.parse
@@ -49,7 +50,6 @@ class Plan:
         self.command = command
         self.id_ = id_
         self.inputs = inputs or []
-        # TODO create a shorter name
         self.name = name or "{}-{}".format(secure_filename(self.command), uuid.uuid4().hex)
         self.outputs = outputs or []
         self.success_codes = success_codes or []

@@ -374,9 +374,9 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
         return data
 
 
-def get_client_datasets(client, metadata_path):
+def get_client_datasets(client):
     """Return Dataset migration models for a client."""
-    paths = [metadata_path] if metadata_path else client.renku_datasets_path.rglob(client.METADATA)
+    paths = client.renku_datasets_path.rglob(client.METADATA)
     datasets = []
     for path in paths:
         dataset = Dataset.from_yaml(path=path, client=client)

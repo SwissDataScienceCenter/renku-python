@@ -480,6 +480,9 @@ class RepositoryApiMixin(GitCore):
 
     def update_graphs(self, activity_run):
         """Update Dependency and Provenance graphs from a ProcessRun/WorkflowRun."""
+        if not self.has_graph_files():
+            return
+
         dependency_graph = DependencyGraph.from_json(self.dependency_graph_path)
         provenance_graph = ProvenanceGraph.from_json(self.provenance_graph_path)
 
@@ -489,6 +492,10 @@ class RepositoryApiMixin(GitCore):
 
         dependency_graph.to_json()
         provenance_graph.to_json()
+
+    def has_graph_files(self):
+        """Return true if dependency or provenance graph exists."""
+        return self.dependency_graph_path.exists() or self.provenance_graph_path.exists()
 
     def init_repository(self, force=False, user=None):
         """Initialize an empty Renku repository."""

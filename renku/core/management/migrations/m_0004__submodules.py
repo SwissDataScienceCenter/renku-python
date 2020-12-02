@@ -29,12 +29,12 @@ from renku.core.models.entities import generate_file_id, generate_label
 from renku.core.utils.urls import remove_credentials
 
 
-def migrate(client, metadata_path):
+def migrate(client):
     """Migration function."""
-    _migrate_submodule_based_datasets(client, metadata_path)
+    _migrate_submodule_based_datasets(client)
 
 
-def _migrate_submodule_based_datasets(client, metadata_path):
+def _migrate_submodule_based_datasets(client):
     from renku.core.management import LocalClient
     from renku.core.management.migrate import is_project_unsupported, migrate
 
@@ -53,7 +53,7 @@ def _migrate_submodule_based_datasets(client, metadata_path):
     repo_paths = []
     symlinks = []
 
-    for dataset in get_client_datasets(client, metadata_path):
+    for dataset in get_client_datasets(client):
         for file_ in dataset.files:
             path = client.path / file_.path
             if not path.is_symlink():
@@ -78,7 +78,9 @@ def _migrate_submodule_based_datasets(client, metadata_path):
 
     for remote_client in remote_clients.values():
         if not is_project_unsupported(remote_client):
-            migrate(remote_client, skip_template_update=True, skip_docker_update=True, metadata_path=metadata_path)
+            migrate(
+                remote_client, skip_template_update=True, skip_docker_update=True,
+            )
 
     metadata = {}
 
@@ -124,7 +126,7 @@ def _migrate_submodule_based_datasets(client, metadata_path):
             except ValueError:
                 pass
 
-    for dataset in get_client_datasets(client, metadata_path):
+    for dataset in get_client_datasets(client):
         for file_ in dataset.files:
             if file_.path in metadata:
                 based_on, url = metadata[file_.path]

@@ -16,10 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent a run."""
+
 import json
 import pathlib
 import uuid
-from collections import deque
 from typing import List, Union
 from urllib.parse import quote, urljoin, urlparse
 
@@ -56,7 +56,7 @@ class Activity:
         generated=None,
         invalidated=None,
         order=None,
-        # project=None,  # TODO: project._id get messed up when generating and then running commands
+        # project=None,  # TODO: project._id gets messed up when generating and then running commands
         qualified_usage=None,
         started_at_time=None,
     ):
@@ -78,16 +78,14 @@ class Activity:
     @classmethod
     def from_process_run(cls, process_run: ProcessRun, plan: Plan, client, order=None):
         """Create an Activity from a ProcessRun."""
-        # TODO: make id generation idempotent
         activity_id = Activity.generate_id(client)
 
         association = Association(agent=process_run.association.agent, id=f"{activity_id}/association", plan=plan)
 
-        # FIXME: The same entity can have the same id during different times in its lifetime (e.g. different commit_sha,
+        # NOTE: The same entity can have the same id during different times in its lifetime (e.g. different commit_sha,
         # but the same content). When it gets flattened, some fields will have multiple values which will cause an error
         # during deserialization. Make sure that no such Entity attributes exists (store those information in the
         # Generation object).
-        # TODO: This should be fixed in Calamus by creating different ids for such an entity.
 
         qualified_usage = _convert_qualified_usage(process_run.qualified_usage, activity_id, client)
 
@@ -111,6 +109,7 @@ class Activity:
     @staticmethod
     def generate_id(client):
         """Generate an identifier for an activity."""
+        # TODO: make id generation idempotent
         host = get_host(client)
         return urljoin(f"https://{host}", pathlib.posixpath.join("activities", str(uuid.uuid4())))
 
@@ -131,52 +130,27 @@ class Activity:
 
 def _convert_qualified_usage(qualified_usage: List[Usage], activity_id, client) -> List[Usage]:
     """Convert a qualified Usages."""
-    # TODO: sort qualified_usage based on position
     usages = []
-    collections = deque()
 
     for usage in qualified_usage:
         commit_sha = _extract_commit_sha(entity_id=usage.entity._id)
         entity = _convert_usage_entity(usage.entity, commit_sha, activity_id, client)
         assert entity, f"Top entity was not found for Usage: {usage._id}, {usage.entity.path}"
 
-        usage_id = urljoin(
-            activity_id, pathlib.posixpath.join("usage", usage.role, entity.checksum, quote(entity.path))
-        )
+        id_ = pathlib.posixpath.join("usage", str(uuid.uuid4()), entity.checksum, quote(entity.path))
+        usage_id = f"{activity_id}/{id_}"
         duplicates_found = any([u for u in usages if u._id == usage_id])
         assert not duplicates_found
 
         new_usage = Usage(id=usage_id, entity=entity, role=usage.role)
         usages.append(new_usage)
 
-        if isinstance(entity, Collection):
-            collections.append((entity, usage.role))
-
-    # # Create Usage objects for sub-files/directories
-    # while collections:
-    #     collection, role = collections.popleft()
-    #     for entity in collection.members:
-    #         assert entity.checksum is not None
-    #         usage_id = urljoin(
-    #             activity_id, pathlib.posixpath.join("usage", role, entity.checksum, quote(entity.path))
-    #         )
-    #         # Do not include child usages if a similar usage exists
-    #         if any([u for u in usages if u._id == usage_id]):
-    #             continue
-    #         new_usage = Usage(id=usage_id, entity=entity, role=role)
-    #         usages.append(new_usage)
-    #
-    #         if isinstance(entity, Collection):
-    #             collections.append((entity, role))
-
     return usages
 
 
 def _convert_generated(generated: List[Generation], activity_id, client) -> List[Generation]:
     """Convert Generations."""
-    # TODO: sort generated based on position
     generations = []
-    collections = deque()
 
     for generation in generated:
         commit_sha = _extract_commit_sha(entity_id=generation.entity._id)
@@ -184,42 +158,14 @@ def _convert_generated(generated: List[Generation], activity_id, client) -> List
         assert entity, f"Root entity was not found for Generation: {generation._id}"
 
         quoted_path = quote(entity.path)
-        generation_id = urljoin(
-            activity_id, pathlib.posixpath.join("generation", generation.role, entity.checksum, quoted_path)
-        )
+        id_ = pathlib.posixpath.join("generation", str(uuid.uuid4()), entity.checksum, quoted_path)
+        generation_id = f"{activity_id}/{id_}"
 
-        # FIXME: It's possible to get duplicate generations in test_output_directory_with_output_option
-        # duplicates_found = any([g for g in generations if g._id == generation_id])
-        # assert not duplicates_found
-        duplicates = [g for g in generations if g._id == generation_id]
-        for d in duplicates:
-            assert d.role == generation.role
-            assert d.path == generation.path
-            if isinstance(generation, Collection):
-                assert len(d.members) == len(generation.members)
+        duplicates_found = any([g for g in generations if g._id == generation_id])
+        assert not duplicates_found
 
         new_generation = Generation(id=generation_id, entity=entity, role=generation.role)
         generations.append(new_generation)
-
-        if isinstance(entity, Collection):
-            collections.append((entity, generation.role))
-
-    # # Create Generation objects for sub-files/directories
-    # while collections:
-    #     collection, role = collections.popleft()
-    #     for entity in collection.members:
-    #         assert entity.checksum is not None
-    #         generation_id = urljoin(
-    #             activity_id, pathlib.posixpath.join("generation", role, entity.checksum, quote(entity.path))
-    #         )
-    #         # Do not include child generations if a similar generation exists
-    #         if any([u for u in generations if u._id == generation_id]):
-    #             continue
-    #         new_generation = Generation(id=generation_id, entity=entity, role=role)
-    #         generations.append(new_generation)
-    #
-    #         if isinstance(entity, Collection):
-    #             collections.append((entity, role))
 
     return generations
 
@@ -233,7 +179,6 @@ def _convert_usage_entity(entity: Entity, revision, activity_id, client) -> Unio
 
     checksum = _get_object_hash(revision=revision, path=entity.path, client=client)
     if not checksum:
-        # print(f"Cannot find Usage entity hash {revision}:{entity.path}")
         return None
 
     id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
@@ -260,14 +205,15 @@ def _convert_generation_entity(entity: Entity, revision, activity_id, client) ->
     """
     assert isinstance(entity, Entity)
 
-    entity_commit = client.find_previous_commit(paths=entity.path, revision=revision)
+    try:
+        entity_commit = client.find_previous_commit(paths=entity.path, revision=revision)
+    except KeyError:
+        return None
     if entity_commit.hexsha != revision:
-        # print(f"Entity {entity._id} was not modified in its parent commit: {revision}")
         return None
 
     checksum = _get_object_hash(revision=revision, path=entity.path, client=client)
     if not checksum:
-        # print(f"Cannot find Generation entity hash {revision}/{entity.path}")
         return None
 
     id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
@@ -321,10 +267,8 @@ def _get_object_hash(revision, path, client):
     try:
         return client.repo.git.rev_parse(f"{revision}:{str(path)}")
     except GitCommandError:
-        # NOTE: Either the file was not there when the command ran but was there when workflows were  migrated (this
+        # NOTE: Either the file was not there when the command ran but was there when workflows were migrated (this
         # can happen only for Usage) or the project is broken. We assume the former here.
-        # TODO: what if the project is broken
-        # raise ValueError(f"Cannot get object hash '{revision}:{path}'")
         return None
 
 
@@ -345,7 +289,7 @@ class ActivityCollection:
     def __init__(self, activities=None):
         """Initialize."""
         self._activities = activities or []
-        self._path = None  # TODO: Calamus complains if this is in parameters list
+        self._path = None
 
     @classmethod
     def from_activity_run(cls, activity_run: ActivityRun, dependency_graph: DependencyGraph, client):
@@ -462,7 +406,7 @@ class ActivityCollectionSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = schema.Collection
+        rdf_type = renku.ActivityCollection
         model = ActivityCollection
         unknown = EXCLUDE
 

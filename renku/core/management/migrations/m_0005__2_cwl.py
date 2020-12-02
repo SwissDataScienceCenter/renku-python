@@ -43,7 +43,7 @@ default_missing_software_agent = SoftwareAgent(
 )
 
 
-def migrate(client, metadata_path):
+def migrate(client):
     """Migration function."""
     _migrate_old_workflows(client)
 

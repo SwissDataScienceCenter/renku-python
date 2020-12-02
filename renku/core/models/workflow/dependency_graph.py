@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent dependency graph."""
+
 import json
 from collections import deque
 from pathlib import Path
@@ -36,7 +37,7 @@ class DependencyGraph:
     def __init__(self, plans=None):
         """Initialized."""
         self._plans = plans or []
-        self._path = None  # TODO: Calamus complains if this is in parameters list
+        self._path = None
 
         self._graph = networkx.DiGraph()
         self._graph.add_nodes_from(self._plans)
@@ -49,7 +50,7 @@ class DependencyGraph:
             return existing_plan
 
         assert not any([p for p in self._plans if p.name == plan.name]), f"Duplicate name {plan.id_}, {plan.name}"
-        # FIXME its possible to have the same identifier but different list of arguments (e.g.
+        # FIXME it's possible to have the same identifier but different list of arguments (e.g.
         # test_rerun_with_edited_inputs)
         same_id_found = [p for p in self._plans if p.id_ == plan.id_]
         if same_id_found:
@@ -160,7 +161,7 @@ class DependencyGraph:
         if Path(path).exists():
             with open(path) as file_:
                 data = json.load(file_)
-                self = cls.from_jsonld(data=data)
+                self = cls.from_jsonld(data=data) if data else DependencyGraph(plans=[])
         else:
             self = DependencyGraph(plans=[])
 

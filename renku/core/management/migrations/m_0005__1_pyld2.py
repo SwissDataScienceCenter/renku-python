@@ -20,14 +20,14 @@
 import re
 
 
-def migrate(client, metadata_path):
+def migrate(client):
     """Migration function."""
-    migrate_datasets_for_pyld2(client, metadata_path)
+    migrate_datasets_for_pyld2(client)
 
 
-def migrate_datasets_for_pyld2(client, metadata_path):
+def migrate_datasets_for_pyld2(client):
     """Migrate type scoped contexts of datasets."""
-    paths = [metadata_path] if metadata_path else (client.path / client.renku_datasets_path).rglob(client.METADATA)
+    paths = (client.path / client.renku_datasets_path).rglob(client.METADATA)
 
     for path in paths:
         with path.open("r") as dataset:

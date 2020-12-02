@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PoC command for testing the new graph design."""
+
 import functools
 import sys
 from collections import defaultdict
@@ -26,6 +27,7 @@ import click
 from git import NULL_TREE, GitCommandError
 
 from renku.cli.update import execute_workflow
+from renku.core import errors
 from renku.core.commands.client import pass_local_client
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
@@ -44,7 +46,7 @@ GRAPH_METADATA_PATHS = [
 ]
 
 
-@click.group()
+@click.group(hidden=True)
 def graph():
     """Proof-of-Concept command for testing the new graph design."""
 
@@ -54,11 +56,15 @@ def graph():
 @pass_local_client(requires_migration=True, commit=True, commit_empty=False, commit_only=GRAPH_METADATA_PATHS)
 def generate(client, force):
     """Create new graph metadata."""
+
+    def create_empty_graph_files():
+        # Create empty graph files as defaults
+        client.dependency_graph_path.write_text("[]")
+        client.provenance_graph_path.write_text("[]")
+
     commits = list(client.repo.iter_commits())
     n_commits = len(commits)
     commits = reversed(commits)
-
-    # commits = list(commits)[2810:]
 
     if force:
         try:
@@ -70,15 +76,15 @@ def generate(client, force):
         except FileNotFoundError:
             pass
     else:
-        if client.dependency_graph_path.exists() or client.provenance_graph_path.exists():
-            raise RuntimeError("Graph files exist. Use --force to regenerate the graph.")
+        if client.has_graph_files():
+            raise errors.OperationError("Graph files exist. Use --force to regenerate the graph.")
+
+    create_empty_graph_files()
 
     dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
     provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
 
-    # client.provenance_path.mkdir(exist_ok=True)
-
-    for n, commit in enumerate(commits):
+    for n, commit in enumerate(commits, start=1):
         print(f"\rProcessing commits {n}/{n_commits}\r", end="", file=sys.stderr)
 
         for file_ in commit.diff(commit.parents or NULL_TREE):
@@ -91,34 +97,24 @@ def generate(client, force):
             if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
                 continue
 
-            # target_path = client.provenance_path / f"{Path(path).stem}.json"
-            # if target_path.exists():
-            #     raise RuntimeError(f"Target file exists: {target_path}. Use --force to regenerate the graph.")
-
-            # print(f"\rProcessing commits {n}/{n_commits} workflow file: {os.path.basename(path)}\r", file=sys.stderr)
-
             workflow = ActivityRun.from_yaml(path=path, client=client)
             activity_collection = ActivityCollection.from_activity_run(workflow, dependency_graph, client)
 
-            # activity_collection.to_json(path=target_path)
             provenance_graph.add(activity_collection)
 
     dependency_graph.to_json()
     provenance_graph.to_json()
 
-    click.secho("OK", fg="green")
+    click.secho("\nOK", fg="green")
 
 
 @graph.command()
-# @click.argument("paths", type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @pass_local_client(requires_migration=False)
 def status(client):
     r"""Equivalent of `renku status`."""
     with measure("BUILD AND QUERY GRAPH"):
         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
         plans_usages = pg.get_latest_plans_usages()
-
-    # print(plans_usages)
 
     with measure("CALCULATE MODIFIED"):
         modified, deleted = _get_modified_paths(client=client, plans_usages=plans_usages)
@@ -154,8 +150,6 @@ def update(client, dry_run):
         pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
         plans_usages = pg.get_latest_plans_usages()
 
-    # print(plans_usages)
-
     with measure("CALCULATE MODIFIED"):
         modified, deleted = _get_modified_paths(client=client, plans_usages=plans_usages)
 
@@ -184,7 +178,9 @@ def update(client, dry_run):
         for run in runs:
             parent_process.add_subprocess(run)
 
-    execute_workflow(client=client, workflow=parent_process, output_paths=None)
+    execute_workflow(
+        client=client, workflow=parent_process, output_paths=None, command_name="update", update_commits=True
+    )
 
 
 @graph.command()
@@ -262,26 +258,3 @@ def _get_modified_paths(client, plans_usages):
                 modified.add(plan_usage)
 
     return modified, deleted
-
-
-def _include_dataset_metadata(dependency_graph, client):
-    """Add dataset metadata to the provenance graph."""
-    for commit in client.iter_commits(path=[".renku/datasets/*"]):
-        for file_ in commit.diff(commit.parents or NULL_TREE):
-            # Ignore deleted files (they appear as ADDED in this backwards diff)
-            if file_.change_type == "A":
-                continue
-
-            path: str = file_.a_path
-
-            if not path.startswith(".renku/datasets") or not path.endswith(".yaml"):
-                continue
-
-            dataset_file = _migrate_dataset(client=client, metadata_path=client.path / path)
-
-            dependency_graph._graph.parse(location=str(dataset_file), format="json-ld")
-
-
-def _migrate_dataset(client, metadata_path: Path):
-    uuid = metadata_path.parent
-    return client.path / ".renku" / "tmp" / uuid
