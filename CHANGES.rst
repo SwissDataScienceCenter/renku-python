@@ -18,6 +18,47 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.1...v0.12.2>`__ (2020-12-02)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** correctly generate project id for gitlab (sub)groups
+   (`#1746 <https://github.com/SwissDataScienceCenter/renku-python/issues/1746>`__)
+   (`3fc29ad <https://github.com/SwissDataScienceCenter/renku-python/commit/3fc29ad8c754e060cd9b344fa6f11331ad59b23e>`__)
+-  **core:** fixes renku save to work with already staged changes
+   (`#1739 <https://github.com/SwissDataScienceCenter/renku-python/issues/1739>`__)
+   (`1a8b7ad <https://github.com/SwissDataScienceCenter/renku-python/commit/1a8b7adf9d30a44c87f7ef8127df845a9f9f41fd>`__)
+-  **core:** adds pre-commit hook message for unsupported projects
+   (`#1730 <https://github.com/SwissDataScienceCenter/renku-python/issues/1730>`__)
+   (`7f1731d <https://github.com/SwissDataScienceCenter/renku-python/commit/7f1731de7661ee05178fce54606079941fe67dc8>`__)
+-  **service:** removes chdir calls in service
+   (`#1767 <https://github.com/SwissDataScienceCenter/renku-python/issues/1767>`__)
+   (`4da22cb <https://github.com/SwissDataScienceCenter/renku-python/commit/4da22cb8b88621df5087640c8aca68e48a56a0e1>`__)
+
+Features
+~~~~~~~~
+
+-  **api:** adds user-api parameters support
+   (`#1723 <https://github.com/SwissDataScienceCenter/renku-python/issues/1723>`__)
+   (`6ee2862 <https://github.com/SwissDataScienceCenter/renku-python/commit/6ee286241f689d781c67b65e4b45297f5fe2fa59>`__)
+-  **cli:** adds migrationscheck command
+   (`#1761 <https://github.com/SwissDataScienceCenter/renku-python/issues/1761>`__)
+   (`b33ed35 <https://github.com/SwissDataScienceCenter/renku-python/commit/b33ed35ef6bf52c73b1c689e907feffcd80608c3>`__)
+-  **cli:** automatically track files in git-lfs if necessary
+   (`#1775 <https://github.com/SwissDataScienceCenter/renku-python/issues/1775>`__)
+   (`866163a <https://github.com/SwissDataScienceCenter/renku-python/commit/866163a7ff12afae51f9cf3fe0ec7fad9d40d26b>`__)
+-  **cli:** better error messages for renku clone
+   (`#1738 <https://github.com/SwissDataScienceCenter/renku-python/issues/1738>`__)
+   (`78bb2ad <https://github.com/SwissDataScienceCenter/renku-python/commit/78bb2ad5b3f0edb0f030e76e74b5e45cfea8de89>`__)
+-  **core:** shorten commit messages to 100 characters for readability
+   (`#1749 <https://github.com/SwissDataScienceCenter/renku-python/issues/1749>`__)
+   (`af50947 <https://github.com/SwissDataScienceCenter/renku-python/commit/af50947a1e1efaf4dd12a4f589a07c086505e5b1>`__)
+-  **service:** move user identification to jwt
+   (`#1520 <https://github.com/SwissDataScienceCenter/renku-python/issues/1520>`__)
+   (`d45c4c3 <https://github.com/SwissDataScienceCenter/renku-python/commit/d45c4c3062fc36abc650160d48a3bccde38cea84>`__)
+
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.0...v0.12.1>`__ (2020-11-16)
 ----------------------------------------------------------------------------------------------------
 
