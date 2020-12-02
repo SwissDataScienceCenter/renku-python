@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``migrate`` command."""
+import json
 import os
 from pathlib import Path
 
@@ -45,6 +46,25 @@ def test_migrate_project(isolated_runner, old_project):
     client = LocalClient(path=old_project.working_dir)
     assert client.project
     assert client.project.name
+
+
+@pytest.mark.migration
+def test_migration_check(isolated_runner, project):
+    """Test migrate on old repository."""
+    result = isolated_runner.invoke(cli, ["migrationscheck"])
+    assert 0 == result.exit_code
+    output = json.loads(result.output)
+    assert output.keys() == {
+        "latest_version",
+        "project_version",
+        "migration_required",
+        "project_supported",
+        "template_update_possible",
+        "current_template_version",
+        "latest_template_version",
+        "automated_update",
+        "docker_update_possible",
+    }
 
 
 @pytest.mark.migration

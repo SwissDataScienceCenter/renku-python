@@ -34,6 +34,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import fakeredis
+import jwt
 import pytest
 import requests
 import responses
@@ -42,6 +43,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from git import GitCommandError, Repo
 from walrus import Database
+from werkzeug.utils import secure_filename
 
 from tests.utils import make_dataset_add_payload
 
@@ -897,7 +899,7 @@ def svc_client(mock_redis):
 
 
 @pytest.fixture()
-def svc_client_cache(mock_redis):
+def svc_client_cache(mock_redis, identity_headers):
     """Service jobs fixture."""
     from renku.service.entrypoint import create_app
 
@@ -909,14 +911,7 @@ def svc_client_cache(mock_redis):
     ctx = flask_app.app_context()
     ctx.push()
 
-    headers = {
-        "Content-Type": "application/json",
-        "Renku-User-Id": "user",
-        "Renku-User-FullName": "full name",
-        "Renku-User-Email": "renku@sdsc.ethz.ch",
-    }
-
-    yield testing_client, headers, flask_app.config.get("cache")
+    yield testing_client, identity_headers, flask_app.config.get("cache")
 
     ctx.pop()
 
@@ -924,8 +919,10 @@ def svc_client_cache(mock_redis):
 def integration_repo_path(headers, url_components):
     """Constructs integration repo path."""
     from renku.service.config import CACHE_PROJECTS_PATH
+    from renku.service.serializers.headers import UserIdentityHeaders
 
-    project_path = CACHE_PROJECTS_PATH / headers["Renku-User-Id"] / url_components.owner / url_components.name
+    user = UserIdentityHeaders().load(headers)
+    project_path = CACHE_PROJECTS_PATH / user["user_id"] / url_components.owner / url_components.name
 
     return project_path
 
@@ -941,13 +938,35 @@ def integration_repo(headers, url_components):
 
 
 @pytest.fixture(scope="module")
-def authentication_headers():
+def identity_headers():
     """Get authentication headers."""
+    from renku.service.serializers.headers import JWT_TOKEN_SECRET
+
+    jwt_data = {
+        "jti": "12345",
+        "exp": int(time.time()) + 1e6,
+        "nbf": 0,
+        "iat": 1595317694,
+        "iss": "https://stable.dev.renku.ch/auth/realms/Renku",
+        "aud": ["renku"],
+        "sub": "12345",
+        "typ": "ID",
+        "azp": "renku",
+        "nonce": "12345",
+        "auth_time": 1595317694,
+        "session_state": "12345",
+        "acr": "1",
+        "email_verified": False,
+        "preferred_username": "andi@bleuler.com",
+        "given_name": "Andreas",
+        "family_name": "Bleuler",
+        "name": "Andreas Bleuler",
+        "email": "andi@bleuler.com",
+    }
+
     headers = {
         "Content-Type": "application/json",
-        "Renku-User-Id": "b4b4de0eda0f471ab82702bd5c367fa7",
-        "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@justsam.io",
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
         "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
     }
 
@@ -955,7 +974,7 @@ def authentication_headers():
 
 
 @pytest.fixture(scope="module")
-def integration_lifecycle(svc_client, mock_redis, authentication_headers):
+def integration_lifecycle(svc_client, mock_redis, identity_headers):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
 
@@ -963,7 +982,7 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
 
     payload = {"git_url": IT_REMOTE_REPO_URL}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=authentication_headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
     assert response
     assert "result" in response.json
@@ -972,11 +991,11 @@ def integration_lifecycle(svc_client, mock_redis, authentication_headers):
     project_id = response.json["result"]["project_id"]
     assert isinstance(uuid.UUID(project_id), uuid.UUID)
 
-    yield svc_client, authentication_headers, project_id, url_components
+    yield svc_client, identity_headers, project_id, url_components
 
     # Teardown step: Delete all branches except master (if needed).
-    if integration_repo_path(authentication_headers, url_components).exists():
-        with integration_repo(authentication_headers, url_components) as repo:
+    if integration_repo_path(identity_headers, url_components).exists():
+        with integration_repo(identity_headers, url_components) as repo:
             try:
                 repo.remote().push(refspec=(":{0}".format(repo.active_branch.name)))
             except GitCommandError:
@@ -999,6 +1018,19 @@ def svc_client_setup(integration_lifecycle):
 
 
 @pytest.fixture
+def svc_client_with_user(svc_client_cache):
+    """Service client with a predefined user."""
+    from renku.service.serializers.headers import encode_b64
+
+    svc_client, headers, cache = svc_client_cache
+
+    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user = cache.ensure_user({"user_id": user_id})
+
+    yield svc_client, headers, cache, user
+
+
+@pytest.fixture
 def svc_client_with_repo(svc_client_setup):
     """Service client with a remote repository."""
     svc_client, headers, project_id, url_components = svc_client_setup
@@ -1011,11 +1043,11 @@ def svc_client_with_repo(svc_client_setup):
     yield svc_client, deepcopy(headers), project_id, url_components
 
 
-@pytest.fixture()
-def svc_client_with_templates(svc_client, mock_redis, authentication_headers, template):
+@pytest.fixture
+def svc_client_with_templates(svc_client, mock_redis, identity_headers, template):
     """Setup and teardown steps for templates tests."""
 
-    yield svc_client, authentication_headers, template
+    yield svc_client, identity_headers, template
 
 
 @pytest.fixture()
@@ -1055,26 +1087,18 @@ def svc_client_templates_creation(svc_client_with_templates):
 
 
 @pytest.fixture
-def svc_protected_repo(svc_client):
+def svc_protected_repo(svc_client, identity_headers):
     """Service client with remote protected repository."""
-    headers = {
-        "Content-Type": "application/json",
-        "Renku-User-Id": "{0}".format(uuid.uuid4().hex),
-        "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@justsam.io",
-        "Authorization": "Bearer {0}".format(IT_GIT_ACCESS_TOKEN),
-    }
-
     payload = {
         "git_url": IT_PROTECTED_REMOTE_REPO_URL,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     project_id = response.json["result"]["project_id"]
-    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
+    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=identity_headers)
 
-    yield svc_client, headers, payload, response
+    yield svc_client, identity_headers, payload, response
 
 
 @pytest.fixture(
@@ -1103,16 +1127,6 @@ def svc_protected_repo(svc_client):
         {
             "url": "/datasets.create",
             "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
-        },
-        {
-            "url": "/datasets.files_list",
-            "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json",},
-        },
-        {
-            "url": "/datasets.list",
-            "allowed_method": "GET",
             "headers": {"Content-Type": "application/json", "accept": "application/json",},
         },
         {

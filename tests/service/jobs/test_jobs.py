@@ -63,11 +63,10 @@ def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job, mock
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_cleanup_files_old_keys(svc_client_cache, service_job, tmp_path):
+def test_cleanup_files_old_keys(svc_client_with_user, service_job, tmp_path):
     """Cleanup old project."""
-    svc_client, headers, cache = svc_client_cache
+    svc_client, headers, cache, user = svc_client_with_user
 
-    user = cache.ensure_user({"user_id": "user"})
     mydata = tmp_path / "mydata.json"
     mydata.write_text("1,2,3")
 
@@ -130,11 +129,10 @@ def test_cleanup_old_project(datapack_zip, svc_client_with_repo, service_job, mo
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_cleanup_project_old_keys(svc_client_cache, service_job):
+def test_cleanup_project_old_keys(svc_client_with_user, service_job):
     """Cleanup old project with old hset keys."""
-    svc_client, headers, cache = svc_client_cache
+    svc_client, headers, cache, user = svc_client_with_user
 
-    user = cache.ensure_user({"user_id": "user"})
     project = {
         "project_id": uuid.uuid4().hex,
         "name": "my-project",
@@ -167,11 +165,10 @@ def test_cleanup_project_old_keys(svc_client_cache, service_job):
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_job_constructor_lock(svc_client_cache, service_job):
+def test_job_constructor_lock(svc_client_with_user, service_job):
     """Test correct locking construction."""
-    svc_client, headers, cache = svc_client_cache
+    svc_client, headers, cache, user = svc_client_with_user
 
-    user = cache.ensure_user({"user_id": "user"})
     project = {
         "project_id": uuid.uuid4().hex,
         "name": "my-project",
@@ -182,6 +179,7 @@ def test_job_constructor_lock(svc_client_cache, service_job):
         "git_url": "git@gitlab.com",
         "initialized": True,
     }
+
     project = cache.make_project(user, project)
     os.makedirs(str(project.abs_path), exist_ok=True)
 

@@ -24,8 +24,10 @@ from urllib.parse import urlparse
 from git import Repo
 from marshmallow import EXCLUDE
 
-from renku.core.utils.contexts import chdir
+from renku.core.utils.contexts import click_context
 from renku.service.serializers.cache import ProjectCloneContext
+
+ANONYMOUS_SESSION = "anonymous"
 
 
 class RemoteProject:
@@ -33,6 +35,13 @@ class RemoteProject:
 
     def __init__(self, user_data, request_data):
         """Construct remote controller."""
+        if not user_data:
+            user_data = {
+                "owner": f"{ANONYMOUS_SESSION} session",
+                "name": f"{ANONYMOUS_SESSION}",
+                "token": f"{ANONYMOUS_SESSION}",
+            }
+
         self.ctx = ProjectCloneContext().load({**user_data, **request_data}, unknown=EXCLUDE)
 
         self.git_url = self.ctx["url_with_auth"]
@@ -54,6 +63,7 @@ class RemoteProject:
     @contextmanager
     def remote(self):
         """Retrieve project metadata."""
-        with tempfile.TemporaryDirectory() as td, chdir(td):
+        with tempfile.TemporaryDirectory() as td:
             Repo.clone_from(self.remote_url.geturl(), td, branch=self.branch, depth=1)
-            yield td
+            with click_context(td, "remote_project"):
+                yield td

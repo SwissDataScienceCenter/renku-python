@@ -23,7 +23,7 @@ from marshmallow import EXCLUDE
 
 from renku.core.commands.init import create_from_template_local, read_template_manifest
 from renku.core.errors import RenkuException
-from renku.core.utils.contexts import chdir
+from renku.core.utils.contexts import click_context
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
@@ -118,7 +118,8 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
         new_project_path = self.setup_new_project()
 
         source_path = template_project.abs_path / self.ctx["identifier"]
-        with chdir(new_project_path):
+
+        with click_context(new_project_path, "create_from_template"):
             create_from_template_local(
                 source_path,
                 self.ctx["project_name"],

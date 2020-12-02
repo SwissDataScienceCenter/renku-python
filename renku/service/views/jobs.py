@@ -22,7 +22,7 @@ from renku.service.config import SERVICE_PREFIX
 from renku.service.errors import ProjectNotFound
 from renku.service.serializers.jobs import JobDetailsResponseRPC, JobListResponseRPC
 from renku.service.views import result_response
-from renku.service.views.decorators import handle_validation_except, header_doc, requires_cache, requires_identity
+from renku.service.views.decorators import handle_common_except, header_doc, requires_cache, requires_identity
 
 JOBS_BLUEPRINT_TAG = "jobs"
 jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
@@ -32,7 +32,7 @@ jobs_blueprint = Blueprint("jobs", __name__, url_prefix=SERVICE_PREFIX)
 @jobs_blueprint.route(
     "/jobs", methods=["GET"], provide_automatic_options=False,
 )
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def list_jobs(user_data, cache):
@@ -56,13 +56,12 @@ def list_jobs(user_data, cache):
 @jobs_blueprint.route(
     "/jobs/<job_id>", methods=["GET"], provide_automatic_options=False,
 )
-@handle_validation_except
+@handle_common_except
 @requires_cache
 @requires_identity
 def job_details(user_data, cache, job_id):
     """Show details for a specific job."""
     user = cache.ensure_user(user_data)
-
     job = cache.get_job(user, job_id)
 
     if not job or not job.project_id:
