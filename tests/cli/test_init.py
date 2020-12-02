@@ -19,6 +19,7 @@
 import os
 from pathlib import Path
 
+import git
 import pytest
 
 from renku.cli import cli
@@ -143,6 +144,45 @@ def test_init(isolated_runner, project_init):
     )
     assert 2 == result.exit_code
     assert "Use either --template-id or --template-index, not both" in result.output
+
+
+@pytest.mark.parametrize(
+    "remote",
+    [
+        (
+            "https://user:password@dev.renku.ch/gitlab/group/subgroup/project.git",
+            "https://dev.renku.ch/projects/group/subgroup/project",
+        ),
+        ("ssh://@dev.renku.ch:group/subgroup/project.git", "https://dev.renku.ch/projects/group/subgroup/project"),
+        (
+            "https://user:password@dev.renku.ch/gitlab/group/subgroup/subsubgroup/project.git",
+            "https://dev.renku.ch/projects/group/subgroup/subsubgroup/project",
+        ),
+        (
+            "https://user:password@dev.renku.ch/group/subgroup/project.git",
+            "https://dev.renku.ch/projects/group/subgroup/project",
+        ),
+        ("https://user:password@dev.renku.ch/user/project.git", "https://dev.renku.ch/projects/user/project"),
+    ],
+)
+def test_init_with_git_remote(isolated_runner, project_init, remote):
+    """Test project initialization with remote and possibly gitlab groups set."""
+    data, commands = project_init
+
+    # create the project
+    new_project = Path(data["test_project"])
+    new_project.mkdir()
+    repo = git.Repo.init(new_project)
+    repo.create_remote("origin", remote[0])
+    result = isolated_runner.invoke(
+        cli, commands["init_test"] + commands["id"] + commands["force"], commands["confirm"]
+    )
+    assert 0 == result.exit_code
+    assert new_project.exists()
+    assert (new_project / ".renku").exists()
+    assert (new_project / ".renku" / "renku.ini").exists()
+    assert (new_project / ".renku" / "metadata.yml").exists()
+    assert remote[1] in (new_project / ".renku" / "metadata.yml").read_text()
 
 
 def test_init_force_in_empty_dir(isolated_runner, project_init):
