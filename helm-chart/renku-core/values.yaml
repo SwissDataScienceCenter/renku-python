@@ -18,7 +18,8 @@ logLevel: INFO
 # override to automatically pull LFS data on clone
 gitLFSSkipSmudge: 1
 
-# concurrency settings for the main service
+# Concurrency settings for the main service:
+# the default it 4 workers with 8 threads set in the Dockerfile
 nWorkers:
 nThreads:
 
