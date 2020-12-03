@@ -1292,9 +1292,9 @@ def test_lfs_hook(runner, client, subdirectory, large_file):
     # Commit fails when file is not tracked in LFS
     with pytest.raises(git.exc.HookExecutionError) as e:
         client.repo.index.commit("large files not in LFS")
-        output = str(e)
-        assert "You are trying to commit large files to Git" in output
-        assert large_file.name in output
+
+    assert "You are trying to commit large files to Git" in e.value.stdout
+    assert large_file.name in e.value.stdout
 
     # Can be committed after being tracked in LFS
     client.track_paths_in_storage(large_file.name)
@@ -1310,7 +1310,11 @@ def test_lfs_hook_autocommit(runner, client, subdirectory, large_file):
     shutil.copy(large_file, client.path)
     client.repo.git.add("--all")
 
-    result = client.repo.git.commit(message="large files not in LFS", with_extended_output=True)
+    result = client.repo.git.commit(
+        message="large files not in LFS",
+        with_extended_output=True,
+        env={"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+    )
     assert large_file.name in result[1]
     assert ".gitattributes" in result[1]
     assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
@@ -1325,7 +1329,11 @@ def test_lfs_hook_autocommit_env(runner, client, subdirectory, large_file):
     shutil.copy(large_file, client.path)
     client.repo.git.add("--all")
 
-    result = client.repo.git.commit(message="large files not in LFS", with_extended_output=True)
+    result = client.repo.git.commit(
+        message="large files not in LFS",
+        with_extended_output=True,
+        env={"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+    )
     assert large_file.name in result[1]
     assert ".gitattributes" in result[1]
     assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
