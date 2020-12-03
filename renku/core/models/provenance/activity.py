@@ -26,7 +26,8 @@ from urllib.parse import quote, urljoin, urlparse
 from git import GitCommandError
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
+from renku.core.models.cwl.annotation import AnnotationSchema
 from renku.core.models.entities import Collection, Entity, EntitySchema
 from renku.core.models.provenance.activities import Activity as ActivityRun
 from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
@@ -59,6 +60,7 @@ class Activity:
         # project=None,  # TODO: project._id gets messed up when generating and then running commands
         qualified_usage=None,
         started_at_time=None,
+        annotations=None,
     ):
         """Initialize."""
         self.agents = agents
@@ -71,8 +73,9 @@ class Activity:
         # self.project = project
         self.qualified_usage = qualified_usage
         self.started_at_time = started_at_time
+        self.annotations = annotations
+
         # TODO: _was_informed_by = attr.ib(kw_only=True,)
-        # TODO: annotations = attr.ib(kw_only=True, default=None)
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
@@ -104,6 +107,7 @@ class Activity:
             # project=process_run._project,
             qualified_usage=qualified_usage,
             started_at_time=process_run.started_at_time,
+            annotations=process_run.annotations,
         )
 
     @staticmethod
@@ -394,9 +398,9 @@ class ActivitySchema(JsonLDSchema):
     # project = Nested(schema.isPartOf, ProjectSchema, missing=None)
     qualified_usage = Nested(prov.qualifiedUsage, UsageSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
+    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
 
     # TODO: _was_informed_by = fields.List(prov.wasInformedBy, fields.IRI(), init_name="was_informed_by")
-    # TODO: annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     # TODO: influenced = Nested(prov.influenced, CollectionSchema, many=True)
 
 

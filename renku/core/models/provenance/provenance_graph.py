@@ -38,11 +38,22 @@ class ProvenanceGraph:
         self._order = 1 if len(self._activities) == 0 else max([a.order for a in self._activities]) + 1
         self._graph = None
         self._loaded = False
+        self._custom_bindings = {}
 
     @property
     def activities(self):
         """Return a map from order to activity."""
         return {a.order: a for a in self._activities}
+
+    @property
+    def custom_bindings(self):
+        """Return custom bindings."""
+        return self._custom_bindings
+
+    @custom_bindings.setter
+    def custom_bindings(self, custom_bindings):
+        """Set custom prefix to namespace bindings."""
+        self._custom_bindings = custom_bindings
 
     def add(self, node: Union[Activity, ActivityCollection]):
         """Add an Activity/ActivityCollection to the graph."""
@@ -114,11 +125,15 @@ class ProvenanceGraph:
         self._graph = ConjunctiveGraph().parse(location=str(self._path), format="json-ld")
 
         self._graph.bind("foaf", "http://xmlns.com/foaf/0.1/")
+        self._graph.bind("oa", "http://www.w3.org/ns/oa#")
         self._graph.bind("prov", "http://www.w3.org/ns/prov#")
         self._graph.bind("renku", "https://swissdatasciencecenter.github.io/renku-ontology#")
         self._graph.bind("schema", "http://schema.org/")
         self._graph.bind("wf", "http://www.w3.org/2005/01/wf/flow#")
         self._graph.bind("wfprov", "http://purl.org/wf4ever/wfprov#")
+
+        for prefix, namespace in self._custom_bindings.items():
+            self._graph.bind(prefix, namespace, replace=True)
 
     def get_latest_plans_usages(self):
         """Return a list of tuples with path and check of all Usage paths."""
