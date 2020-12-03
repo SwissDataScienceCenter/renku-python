@@ -26,3 +26,51 @@ jobs:
         RENKUBOT_RANCHER_BEARER_TOKEN: ${{ secrets.RENKUBOT_RANCHER_BEARER_TOKEN }}
         renku: "@development"
         renku_core: "@${{ github.head_ref }}"
+  test-pr:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    needs: deploy-pr
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install dependencies
+      run: |
+        sudo apt-get update -y && sudo apt-get install -y grep
+        pip install yq
+    - name: Test the PR
+      env:
+        RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
+      run: |
+        export RENKU_RELEASE="ci-renku-python-${{ github.event.number }}-renku"
+
+        RENKU_PYTHON_VERSION=$(git rev-parse HEAD)
+        echo "Passing renku-python version $RENKU_PYTHON_VERSION"
+
+        git clone https://github.com/SwissDataScienceCenter/renku.git /tmp/renku
+        cd /tmp/renku/
+        git checkout development
+        cd acceptance-tests
+        COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose build --build-arg renku_python_ref=${RENKU_PYTHON_VERSION} sbt
+        docker-compose run -e RENKU_TEST_URL=https://${RENKU_RELEASE}.dev.renku.ch \
+                           -e RENKU_TEST_FULL_NAME="Renku Bot" \
+                           -e RENKU_TEST_EMAIL="renku@datascience.ch" \
+                           -e RENKU_TEST_REGISTER="1" \
+                           -e RENKU_TEST_USERNAME="renku-test" \
+                           -e RENKU_TEST_PASSWORD="$RENKU_BOT_DEV_PASSWORD" \
+                           -e RENKU_TEST_ANON_AVAILABLE="true" sbt
+    - name: Prepare artifact for packaging on failure
+      if: failure()
+      run: |
+        mkdir test-artifacts
+        cp target/*.png test-artifacts 2>/dev/null || :
+        cp target/*.log test-artifacts 2>/dev/null || :
+        sudo rm -rf target/20*/.renku/cache 2>/dev/null || :
+        cp -r target/20* test-artifacts 2>/dev/null || :
+    - name: Upload screenshots on failure
+      if: failure()
+      uses: actions/upload-artifact@v1
+      with:
+        name: acceptance-test-artifacts
+        path: test-artifacts
