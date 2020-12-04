@@ -18,11 +18,12 @@
 """Renku service template create project controller."""
 import shutil
 
+import git
 from marshmallow import EXCLUDE
 
 from renku.core.commands.init import create_from_template_local, read_template_manifest
 from renku.core.errors import RenkuException
-from renku.core.utils.contexts import chdir
+from renku.core.utils.contexts import click_context
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.controllers.utils.project_clone import user_project_clone
@@ -95,6 +96,9 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
         if self.template is None:
             raise RenkuException("invalid identifier for target repository")
 
+        repo = git.Repo(str(project.abs_path))
+        self.template_version = repo.head.commit.hexsha
+
         # Verify missing parameters
         template_parameters = self.template.get("variables", {})
         provided_parameters = {p["key"]: p["value"] for p in self.ctx["parameters"]}
@@ -114,12 +118,16 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, ReadOperationMixin):
         new_project_path = self.setup_new_project()
 
         source_path = template_project.abs_path / self.ctx["identifier"]
-        with chdir(new_project_path):
+
+        with click_context(new_project_path, "create_from_template"):
             create_from_template_local(
                 source_path,
                 self.ctx["project_name"],
                 provided_parameters,
                 self.default_metadata,
+                self.template_version,
+                self.template.get("immutable_template_files", []),
+                self.template.get("allow_template_update", False),
                 self.git_user,
                 self.ctx["url"],
                 self.ctx["ref"],

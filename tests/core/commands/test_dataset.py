@@ -86,11 +86,12 @@ def test_data_add_recursive(directory_tree, client):
         assert os.path.basename(os.path.dirname(dataset.files[0].path)) == "dir1"
 
 
-def test_git_repo_import(client, dataset, data_repository):
+def test_git_repo_import(client_with_datasets, data_repository):
     """Test adding data from a local git repository."""
-    client.add_data_to_dataset(dataset, [os.path.join(os.path.dirname(data_repository.git_dir), "dir1")])
-    path2 = os.path.join(DATA_DIR, "dataset", "dir1", "file2")
-    path3 = os.path.join(DATA_DIR, "dataset", "dir1", "file3")
+    dataset = client_with_datasets.load_dataset("dataset-1")
+    client_with_datasets.add_data_to_dataset(dataset, [os.path.join(os.path.dirname(data_repository.git_dir), "dir1")])
+    path2 = os.path.join(DATA_DIR, "dataset-1", "dir1", "file2")
+    path3 = os.path.join(DATA_DIR, "dataset-1", "dir1", "file3")
 
     assert os.stat(path2)
     assert os.stat(path3)
@@ -131,8 +132,9 @@ def test_creators_with_same_email(tmp_path):
     assert dataset.creators[0].name in ["me", "me2"]
 
 
-def test_dataset_serialization(dataset):
+def test_dataset_serialization(client_with_datasets):
     """Test dataset (de)serialization."""
+    dataset = client_with_datasets.load_dataset("dataset-1")
 
     def read_value(key):
         return dataset_metadata.get(key)[0].get("@value")

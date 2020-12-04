@@ -16,16 +16,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache view tests."""
+import copy
 import io
 import json
 import uuid
 
+import jwt
 import pytest
 from flaky import flaky
 
-from conftest import IT_GIT_ACCESS_TOKEN, IT_REMOTE_REPO_URL
+from conftest import IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
 from renku.service.config import INVALID_HEADERS_ERROR_CODE, RENKU_EXCEPTION_ERROR_CODE
+from renku.service.serializers.headers import JWT_TOKEN_SECRET
 
 
 @pytest.mark.service
@@ -42,10 +45,9 @@ def test_serve_api_spec(svc_client):
 
 
 @pytest.mark.service
-def test_list_upload_files_all(svc_client):
+def test_list_upload_files_all(svc_client, identity_headers):
     """Check list uploaded files view."""
-    headers_user = {"Content-Type": "application/json", "accept": "application/json", "Renku-User-Id": "user"}
-    response = svc_client.get("/cache.files_list", headers=headers_user)
+    response = svc_client.get("/cache.files_list", headers=identity_headers)
 
     assert {"result"} == set(response.json.keys())
 
@@ -69,12 +71,13 @@ def test_list_upload_files_all_no_auth(svc_client):
 
 
 @pytest.mark.service
-def test_file_upload(svc_client):
+def test_file_upload(svc_client, identity_headers):
     """Check successful file upload."""
-    headers_user = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user,
+        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), uuid.uuid4().hex),), headers=headers,
     )
 
     assert response
@@ -85,12 +88,15 @@ def test_file_upload(svc_client):
 
 
 @pytest.mark.service
-def test_file_upload_override(svc_client):
+def test_file_upload_override(svc_client, identity_headers):
     """Check successful file upload."""
-    headers_user = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    filename = uuid.uuid4().hex
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user,
+        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename),), headers=headers,
     )
 
     assert response
@@ -100,7 +106,7 @@ def test_file_upload_override(svc_client):
     old_file_id = response.json["result"]["files"][0]["file_id"]
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user,
+        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename),), headers=headers,
     )
 
     assert response
@@ -112,9 +118,9 @@ def test_file_upload_override(svc_client):
 
     response = svc_client.post(
         "/cache.files_upload",
-        data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),),
+        data=dict(file=(io.BytesIO(b"this is a test"), filename),),
         query_string={"override_existing": True},
-        headers=headers_user,
+        headers=headers,
     )
 
     assert response
@@ -126,11 +132,15 @@ def test_file_upload_override(svc_client):
 
 
 @pytest.mark.service
-def test_file_upload_same_file(svc_client):
+def test_file_upload_same_file(svc_client, identity_headers):
     """Check successful file upload with same file uploaded twice."""
-    headers_user1 = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    filename = uuid.uuid4().hex
+
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user1,
+        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename),), headers=headers,
     )
 
     assert response
@@ -141,7 +151,7 @@ def test_file_upload_same_file(svc_client):
     assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile.txt"),), headers=headers_user1,
+        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename),), headers=headers,
     )
 
     assert response
@@ -164,13 +174,30 @@ def test_file_upload_no_auth(svc_client):
 
 
 @pytest.mark.service
-def test_file_upload_with_users(svc_client):
+def test_file_upload_with_users(svc_client, identity_headers):
     """Check successful file upload and listing based on user auth header."""
-    headers_user1 = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
-    headers_user2 = {"Renku-User-Id": "{0}".format(uuid.uuid4().hex)}
+    headers_user1 = copy.deepcopy(identity_headers)
+    headers_user1.pop("Content-Type")
+
+    filename = uuid.uuid4().hex
+
+    jwt_data = {
+        "aud": ["renku"],
+        "email_verified": False,
+        "preferred_username": "user1@platform2.com",
+        "given_name": "user",
+        "family_name": "user one",
+        "name": "User One",
+        "email": "user1@platform2.com",
+    }
+
+    headers_user2 = {
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Authorization": identity_headers["Authorization"],
+    }
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt"),), headers=headers_user1
+        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename),), headers=headers_user1
     )
 
     assert {"result"} == set(response.json.keys())
@@ -180,7 +207,7 @@ def test_file_upload_with_users(svc_client):
     assert 200 == response.status_code
 
     response = svc_client.post(
-        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), "datafile1.txt"),), headers=headers_user2
+        "/cache.files_upload", data=dict(file=(io.BytesIO(b"this is a test"), filename),), headers=headers_user2
     )
 
     assert response
@@ -191,17 +218,15 @@ def test_file_upload_with_users(svc_client):
     assert response
 
     assert {"result"} == set(response.json.keys())
-    assert 1 == len(response.json["result"]["files"])
+    assert 0 < len(response.json["result"]["files"])
 
-    file = response.json["result"]["files"][0]
-    assert file_id == file["file_id"]
-    assert 0 < file["file_size"]
+    assert file_id in [file["file_id"] for file in response.json["result"]["files"]]
 
 
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_no_auth(svc_client):
+def test_clone_projects_no_auth(svc_client, identity_headers):
     """Check error on cloning of remote repository."""
     payload = {
         "git_url": IT_REMOTE_REPO_URL,
@@ -217,16 +242,7 @@ def test_clone_projects_no_auth(svc_client):
     err_message = "user identification is incorrect or missing"
     assert err_message == response.json["error"]["reason"]
 
-    headers = {
-        "Content-Type": "application/json",
-        "accept": "application/json",
-        "Renku-User-Id": "{0}".format(uuid.uuid4().hex),
-        "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@justsam.io",
-        "Authorization": f"Bearer {IT_GIT_ACCESS_TOKEN}",
-    }
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert response
     assert {"result"} == set(response.json.keys())
 
@@ -234,22 +250,13 @@ def test_clone_projects_no_auth(svc_client):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_with_auth(svc_client):
+def test_clone_projects_with_auth(svc_client, identity_headers):
     """Check cloning of remote repository."""
-    headers = {
-        "Content-Type": "application/json",
-        "accept": "application/json",
-        "Renku-User-Id": "{0}".format(uuid.uuid4().hex),
-        "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@justsam.io",
-        "Authorization": "Bearer {0}".format(IT_GIT_ACCESS_TOKEN),
-    }
-
     payload = {
         "git_url": IT_REMOTE_REPO_URL,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -259,47 +266,39 @@ def test_clone_projects_with_auth(svc_client):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_multiple(svc_client):
+def test_clone_projects_multiple(svc_client, identity_headers):
     """Check multiple cloning of remote repository."""
     project_ids = []
-
-    headers = {
-        "Content-Type": "application/json",
-        "Renku-User-Id": "{0}".format(uuid.uuid4().hex),
-        "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@justsam.io",
-        "Authorization": "Bearer {0}".format(IT_GIT_ACCESS_TOKEN),
-    }
 
     payload = {
         "git_url": IT_REMOTE_REPO_URL,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert response
 
     assert {"result"} == set(response.json.keys())
     project_ids.append(response.json["result"])
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
     project_ids.append(response.json["result"])
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
     project_ids.append(response.json["result"])
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
     last_pid = response.json["result"]["project_id"]
 
-    response = svc_client.get("/cache.project_list", headers=headers)
+    response = svc_client.get("/cache.project_list", headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -314,21 +313,13 @@ def test_clone_projects_multiple(svc_client):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_list_view_errors(svc_client):
+def test_clone_projects_list_view_errors(svc_client, identity_headers):
     """Check cache state of cloned projects with no headers."""
-    headers = {
-        "Content-Type": "application/json",
-        "Renku-User-Id": "{0}".format(uuid.uuid4().hex),
-        "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@justsam.io",
-        "Authorization": "Bearer {0}".format(IT_GIT_ACCESS_TOKEN),
-    }
-
     payload = {
         "git_url": IT_REMOTE_REPO_URL,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     assert response
     assert {"result"} == set(response.json.keys())
 
@@ -343,7 +334,7 @@ def test_clone_projects_list_view_errors(svc_client):
     assert {"error"} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
-    response = svc_client.get("/cache.project_list", headers=headers)
+    response = svc_client.get("/cache.project_list", headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
@@ -357,22 +348,13 @@ def test_clone_projects_list_view_errors(svc_client):
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_clone_projects_invalid_headers(svc_client):
+def test_clone_projects_invalid_headers(svc_client, identity_headers):
     """Check cache state of cloned projects with invalid headers."""
-    headers = {
-        "Content-Type": "application/json",
-        "accept": "application/json",
-        "Renku-User-Id": "{0}".format(uuid.uuid4().hex),
-        "Renku-User-FullName": "Not Sam",
-        "Renku-User-Email": "not@sam.io",
-        "Authorization": f"Bearer {IT_GIT_ACCESS_TOKEN}",
-    }
-
     payload = {
         "git_url": IT_REMOTE_REPO_URL,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=headers,)
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
     assert response
 
     assert {"result"} == set(response.json.keys())
@@ -385,7 +367,7 @@ def test_clone_projects_invalid_headers(svc_client):
     assert {"error"} == set(response.json.keys())
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
-    response = svc_client.get("/cache.project_list", headers=headers)
+    response = svc_client.get("/cache.project_list", headers=identity_headers)
     assert response
     assert {"result"} == set(response.json.keys())
     assert 1 == len(response.json["result"]["projects"])
@@ -553,7 +535,9 @@ def test_execute_migrations(svc_client_setup):
     """Check execution of all migrations."""
     svc_client, headers, project_id, _ = svc_client_setup
 
-    response = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=headers)
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
 
     assert 200 == response.status_code
     assert response.json["result"]["was_migrated"]

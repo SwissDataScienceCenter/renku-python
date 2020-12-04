@@ -18,12 +18,16 @@
 """Renku service job tests."""
 import io
 import os
+import time
 import uuid
 
 import pytest
 from flaky import flaky
+from marshmallow import EXCLUDE
 
+from renku.service.controllers.utils.project_clone import user_project_clone
 from renku.service.jobs.cleanup import cache_files_cleanup, cache_project_cleanup
+from renku.service.serializers.templates import ManifestTemplatesRequest
 from tests.service.views.test_dataset_views import assert_rpc_response
 
 
@@ -59,11 +63,10 @@ def test_cleanup_old_files(datapack_zip, svc_client_with_repo, service_job, mock
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_cleanup_files_old_keys(svc_client_cache, service_job, tmp_path):
+def test_cleanup_files_old_keys(svc_client_with_user, service_job, tmp_path):
     """Cleanup old project."""
-    svc_client, headers, cache = svc_client_cache
+    svc_client, headers, cache, user = svc_client_with_user
 
-    user = cache.ensure_user({"user_id": "user"})
     mydata = tmp_path / "mydata.json"
     mydata.write_text("1,2,3")
 
@@ -126,11 +129,10 @@ def test_cleanup_old_project(datapack_zip, svc_client_with_repo, service_job, mo
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_cleanup_project_old_keys(svc_client_cache, service_job):
+def test_cleanup_project_old_keys(svc_client_with_user, service_job):
     """Cleanup old project with old hset keys."""
-    svc_client, headers, cache = svc_client_cache
+    svc_client, headers, cache, user = svc_client_with_user
 
-    user = cache.ensure_user({"user_id": "user"})
     project = {
         "project_id": uuid.uuid4().hex,
         "name": "my-project",
@@ -163,11 +165,10 @@ def test_cleanup_project_old_keys(svc_client_cache, service_job):
 
 @pytest.mark.service
 @pytest.mark.jobs
-def test_job_constructor_lock(svc_client_cache, service_job):
+def test_job_constructor_lock(svc_client_with_user, service_job):
     """Test correct locking construction."""
-    svc_client, headers, cache = svc_client_cache
+    svc_client, headers, cache, user = svc_client_with_user
 
-    user = cache.ensure_user({"user_id": "user"})
     project = {
         "project_id": uuid.uuid4().hex,
         "name": "my-project",
@@ -178,6 +179,7 @@ def test_job_constructor_lock(svc_client_cache, service_job):
         "git_url": "git@gitlab.com",
         "initialized": True,
     }
+
     project = cache.make_project(user, project)
     os.makedirs(str(project.abs_path), exist_ok=True)
 
@@ -189,3 +191,55 @@ def test_job_constructor_lock(svc_client_cache, service_job):
     assert user.user_id == job.user_id
 
     assert project.project_id in {_id.decode("utf-8") for _id in job.locked.members()}
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_project_cleanup_success(svc_client_cache):
+    """Test project cleanup through the job."""
+    client, _, cache = svc_client_cache
+
+    user_data = {
+        "user_id": uuid.uuid4().hex,
+        "email": "contact@justsam.io",
+        "fullname": "renku the frog",
+        "token": "None",
+    }
+    project_data = {
+        "name": "renku-project-template",
+        "depth": 1,
+        "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
+        "owner": "SwissDataScienceCenter",
+    }
+    project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
+    assert "user_id" not in project_data.keys()
+    project_one = user_project_clone(user_data, project_data)
+    time.sleep(1)
+
+    assert project_one.age == 1
+    assert not project_one.ttl_expired()
+    assert project_one.exists()
+
+    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1"
+    time.sleep(1)
+    assert project_one.age == 2
+    assert project_one.ttl_expired()
+
+    cache_project_cleanup()
+
+    project_data.pop("project_id")
+    project_data = ManifestTemplatesRequest().load({**user_data, **project_data}, unknown=EXCLUDE)
+    assert "user_id" not in project_data.keys()
+    user = cache.get_user(user_data["user_id"])
+    projects = cache.get_projects(user)
+    assert [] == [p.project_id for p in projects]
+
+    project_two = user_project_clone(user_data, project_data)
+    os.environ["RENKU_SVC_CLEANUP_TTL_PROJECTS"] = "1800"
+    time.sleep(1)
+
+    assert project_two.age == 1
+    assert not project_two.ttl_expired()
+    assert project_two.exists()
+
+    assert project_one.project_id != project_two.project_id

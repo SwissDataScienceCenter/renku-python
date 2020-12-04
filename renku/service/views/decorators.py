@@ -16,15 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service view decorators."""
+import os
 import re
 from functools import wraps
 
 from flask import jsonify, request
 from flask_apispec import doc
-from git import GitCommandError
+from git import GitCommandError, GitError
+from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
 from redis import RedisError
-from sentry_sdk import capture_exception
+from sentry_sdk import capture_exception, set_context
 from werkzeug.exceptions import HTTPException
 
 from renku.core.errors import (
@@ -46,6 +48,7 @@ from renku.service.config import (
     RENKU_EXCEPTION_ERROR_CODE,
 )
 from renku.service.serializers.headers import UserIdentityHeaders
+from renku.service.utils.squash import squash
 from renku.service.views import error_response
 
 
@@ -56,14 +59,30 @@ def requires_identity(f):
     def decorated_function(*args, **kws):
         """Represents decorated function."""
         try:
-            user = UserIdentityHeaders().load(request.headers)
+            user_identity = UserIdentityHeaders().load(request.headers)
         except (ValidationError, KeyError) as e:
             capture_exception(e)
 
             err_message = "user identification is incorrect or missing"
             return jsonify(error={"code": INVALID_HEADERS_ERROR_CODE, "reason": err_message})
 
-        return f(user, *args, **kws)
+        return f(user_identity, *args, **kws)
+
+    return decorated_function
+
+
+def optional_identity(f):
+    """Wrapper which indicates partial dependency on user identification."""
+
+    @wraps(f)
+    def decorated_function(*args, **kws):
+        """Represents decorated function."""
+        try:
+            user_identity = UserIdentityHeaders().load(request.headers)
+        except (ValidationError, KeyError):
+            return f(None, *args, **kws)
+
+        return f(user_identity, *args, **kws)
 
     return decorated_function
 
@@ -77,6 +96,11 @@ def handle_redis_except(f):
         try:
             return f(*args, **kwargs)
         except (RedisError, OSError) as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
+
             capture_exception(e)
 
             return jsonify(error={"code": REDIS_EXCEPTION_ERROR_CODE, "reason": e.messages})
@@ -117,6 +141,7 @@ def handle_schema_except(f):
 
 def handle_validation_except(f):
     """Wrapper which handles marshmallow `ValidationError`."""
+
     # noqa
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -126,7 +151,27 @@ def handle_validation_except(f):
         except ValidationError as e:
             capture_exception(e)
 
-            return jsonify(error={"code": INVALID_PARAMS_ERROR_CODE, "reason": e.messages,})
+            reasons = [f"`{key}` - {', '.join(value)}" for key, value in squash(e.messages).items()]
+            error_message = f"Validation error: {'; '.join(reasons)}"
+
+            return error_response(INVALID_PARAMS_ERROR_CODE, error_message)
+
+    return decorated_function
+
+
+def handle_jwt_except(f):
+    """Wrapper which handles invalid JWT."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except (ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError) as e:
+            capture_exception(e)
+
+            error_message = "invalid web token"
+            return error_response(INVALID_HEADERS_ERROR_CODE, error_message)
 
     return decorated_function
 
@@ -140,6 +185,10 @@ def handle_renku_except(f):
         try:
             return f(*args, **kwargs)
         except RenkuException as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
             capture_exception(e)
 
             err_response = {
@@ -189,15 +238,26 @@ def handle_git_except(f):
         try:
             return f(*args, **kwargs)
         except GitCommandError as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
             capture_exception(e)
 
             error_code = GIT_ACCESS_DENIED_ERROR_CODE if "Access denied" in e.stderr else GIT_UNKNOWN_ERROR_CODE
 
-            # strip oauth tokens
-            error_reason = format(" ".join(e.stderr.strip().split("\n")))
-            error_reason_safe = re.sub("^(.+)(oauth2:)(.+)(@)(.+)$", r"\1\2<token-hidden>\4\5", error_reason)
+            if "is this a git repository?" in e.stderr:
+                error_reason = "Repository could not be found"
+            elif "Access denied" in e.stderr:
+                error_reason = "Repository could not be accessed - Do you have access rights?"
+            else:
+                error_reason = format(" ".join(e.stderr.strip().split("\n")))
 
-            return jsonify(error={"code": error_code, "reason": f"git error: {error_reason_safe}"})
+                # strip oauth tokens
+                error_reason_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_reason)
+                error_reason = f"git error: {error_reason_safe}"
+
+            return error_response(error_code, error_reason)
 
     return decorated_function
 
@@ -229,12 +289,28 @@ def handle_base_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
+
         except HTTPException as e:  # handle general werkzeug exception
             capture_exception(e)
 
-            return error_response(e.code, e.description)
+            error_message = f"Failed to contact external service. Received response {e.code} ({e.description})."
+            return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
+
+        except GitError as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
+            capture_exception(e)
+
+            error_message = "Failed to execute git operation."
+            return error_response(INTERNAL_FAILURE_ERROR_CODE, error_message)
 
         except (Exception, BaseException, OSError, IOError) as e:
+            try:
+                set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
+            except (Exception, BaseException):
+                pass
             capture_exception(e)
 
             internal_error = "internal error"
@@ -252,38 +328,18 @@ def header_doc(description, tags=()):
         description=description,
         params={
             "Authorization": {
-                "description": (
-                    "Used for users git oauth2 access. " "For example: " "```Authorization: Bearer asdf-qwer-zxcv```"
-                ),
+                "description": "Used for users git oauth2 access. For example: ```Bearer asdf-qwer-zxcv```",
                 "in": "header",
                 "type": "string",
-                "required": True,
             },
-            "Renku-User-Id": {
+            "Renku-User": {
                 "description": (
-                    "Used for identification of the users. "
+                    "JWT used for identification of the users. "
                     "For example: "
-                    "```Renku-User-Id: sasdsa-sadsd-gsdsdh-gfdgdsd```"
+                    "```a9bd31fb.bfad4899b8bdf.d0908fab19d```"
                 ),
                 "in": "header",
                 "type": "string",
-                "required": True,
-            },
-            "Renku-User-FullName": {
-                "description": (
-                    "Used for commit author signature. " "For example: " "```Renku-User-FullName: Rok Roskar```"
-                ),
-                "in": "header",
-                "type": "string",
-                "required": True,
-            },
-            "Renku-User-Email": {
-                "description": (
-                    "Used for commit author signature. " "For example: " "```Renku-User-Email: dev@renkulab.io```"
-                ),
-                "in": "header",
-                "type": "string",
-                "required": True,
             },
         },
         tags=list(tags),
@@ -301,6 +357,7 @@ def handle_common_except(f):
         @handle_validation_except
         @handle_renku_except
         @handle_git_except
+        @handle_jwt_except
         def _wrapped(*args_, **kwargs_):
             return f(*args_, **kwargs_)
 

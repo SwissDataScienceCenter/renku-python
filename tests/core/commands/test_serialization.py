@@ -25,9 +25,9 @@ from renku.core.models.datasets import Dataset
 from renku.core.utils.uuid import is_uuid
 
 
-def test_dataset_deserialization(client, dataset):
+def test_dataset_deserialization(client_with_datasets):
     """Test Dataset deserialization."""
-    dataset_ = Dataset.from_yaml(client.get_dataset_path("dataset"), client=client)
+    dataset = Dataset.from_yaml(client_with_datasets.get_dataset_path("dataset-1"), client=client_with_datasets)
 
     dataset_types = {
         "date_created": [datetime.datetime],
@@ -39,11 +39,11 @@ def test_dataset_deserialization(client, dataset):
     }
 
     for attribute, type_ in dataset_types.items():
-        assert type(dataset_.__getattribute__(attribute)) in type_
+        assert type(dataset.__getattribute__(attribute)) in type_
 
     creator_types = {"email": str, "_id": str, "name": str, "affiliation": str}
 
-    creator = dataset.creators[0]
+    creator = client_with_datasets.load_dataset("dataset-1").creators[0]
 
     for attribute, type_ in creator_types.items():
         assert type(getattr(creator, attribute)) is type_
@@ -87,3 +87,17 @@ def test_calamus(client, dataset_metadata_before_calamus):
     file_ = dataset.find_file("data/dataverse/local/result.csv")
     assert file_.external is False
     assert "file://../../../../tmp/result.csv" == file_.url
+
+
+def test_dataset_with_multiple_project_version(client_with_datasets):
+    """Test deserialization of a dataset where contains different project versions."""
+    max_version = "42000"
+
+    # Change project version for a single file
+    with client_with_datasets.with_dataset("dataset-2") as dataset:
+        file_ = dataset.find_file(dataset.data_dir / "file1")
+        file_._project.version = max_version
+
+    dataset = client_with_datasets.load_dataset("dataset-2")
+
+    assert {max_version} == {f._project.version for f in dataset.files}

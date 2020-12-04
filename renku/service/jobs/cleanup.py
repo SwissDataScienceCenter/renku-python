@@ -35,7 +35,7 @@ def cache_files_cleanup():
             if file.is_locked(jobs):
                 continue
 
-            if file.ttl_expired():
+            if file.exists() and file.ttl_expired():
                 worker_log.debug(f"purging file {file.file_id}:{file.file_name}")
                 file.purge()
 
@@ -54,6 +54,6 @@ def cache_project_cleanup():
             if project.is_locked(jobs):
                 continue
 
-            if project.ttl_expired():
+            if project.exists() and project.ttl_expired():
                 worker_log.debug(f"purging project {project.project_id}:{project.name}")
                 project.purge()

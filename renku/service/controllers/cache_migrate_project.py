@@ -71,7 +71,7 @@ class MigrateProjectCtrl(ServiceCtrl, ReadWithSyncOperation):
             "docker_migrated": docker_migrated,
         }
 
-        if was_migrated:
+        if was_migrated or template_migrated or docker_migrated:
             response["remote_branch"] = self.sync()
 
         return response

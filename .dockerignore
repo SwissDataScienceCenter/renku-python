@@ -1,5 +1,7 @@
 .cache
 .pytest_cache
+.venv
+.vscode
 __pycache__
 
 build
@@ -15,9 +17,4 @@ dist
 *.egg-info
 .eggs
 
-docker-compose.yml
-docker-compose-dev.yml
-
 Procfile*
-
-helm-chart

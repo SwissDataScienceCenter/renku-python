@@ -102,10 +102,13 @@ class DatasetsApiMixin(object):
     def datasets(self):
         """Return mapping from path to dataset."""
         result = {}
-        paths = self.renku_datasets_path.rglob(self.METADATA)
-        for path in paths:
+        for path in self.get_datasets_metadata_files():
             result[path] = self.load_dataset_from_path(path)
         return result
+
+    def get_datasets_metadata_files(self):
+        """Return a generator of datasets metadata files."""
+        return self.renku_datasets_path.rglob(self.METADATA)
 
     def load_dataset_from_path(self, path, commit=None):
         """Return a dataset from a given path."""
@@ -772,7 +775,7 @@ class DatasetsApiMixin(object):
 
         return dataset
 
-    def update_dataset_files(self, files, ref, delete=False):
+    def update_dataset_git_files(self, files, ref, delete=False):
         """Update files and dataset metadata according to their remotes.
 
         :param files: List of files to be updated
@@ -836,7 +839,7 @@ class DatasetsApiMixin(object):
 
         if not updated_files and (not delete or not deleted_files):
             # Nothing to commit or update
-            return deleted_files
+            return [], deleted_files
 
         # Commit changes in files
 
@@ -868,7 +871,7 @@ class DatasetsApiMixin(object):
         for dataset in modified_datasets.values():
             dataset.to_yaml()
 
-        return deleted_files
+        return updated_files, deleted_files
 
     def _create_external_file(self, src, dst):
         """Create a new external file."""

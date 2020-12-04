@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
     - 'setup.py'
+    branches-ignore:
+      - 'dependabot/**'
 
 jobs:
   update-pipfile:
