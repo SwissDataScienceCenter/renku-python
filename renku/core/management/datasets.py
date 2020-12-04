@@ -453,7 +453,7 @@ class DatasetsApiMixin(object):
     def _add_from_urls(self, urls, destination, destination_names, extract):
         listeners = communication.get_listeners()
 
-        def add_from_url(function, **kwargs):
+        def subscribe_communication_listeners(function, **kwargs):
             try:
                 for communicator in listeners:
                     communication.subscribe(communicator)
@@ -467,7 +467,12 @@ class DatasetsApiMixin(object):
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
-                    add_from_url, self._add_from_url, url=url, destination=destination, extract=extract, filename=name,
+                    subscribe_communication_listeners,
+                    self._add_from_url,
+                    url=url,
+                    destination=destination,
+                    extract=extract,
+                    filename=name,
                 )
                 for url, name in zip(urls, destination_names)
             }

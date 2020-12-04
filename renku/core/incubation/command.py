@@ -102,13 +102,15 @@ class Command:
 
     def _post_hook(self, builder, context, result, *args, **kwargs):
         """Post-hook method."""
+        if result.error:
+            raise result.error
 
-    def execute(self, *args, raise_exceptions=True, **kwargs):
+    def execute(self, *args, **kwargs):
         """Execute the wrapped operation.
 
         First executes `pre_hooks` in ascending `order`, passing a read/write context between them.
         It then calls the wrapped `operation`. The result of the operation then gets pass to all the `post_hooks`,
-        also in ascending `order`. It then returns the result or error if there was one.
+        but in descending `order`. It then returns the result or error if there was one.
         """
         if not self.finalized:
             raise errors.CommandNotFinalizedError("Call `build()` before executing a command")
@@ -129,17 +131,15 @@ class Command:
                 output = context["click_context"].invoke(self._operation, context["client"], *args, **kwargs)
         except errors.RenkuException as e:
             error = e
-            if raise_exceptions:
-                raise
-        finally:
-            result = CommandResult(output, error, CommandResult.FAILURE if error else CommandResult.SUCCESS)
 
-            if any(self.post_hooks):
-                order = sorted(self.post_hooks.keys())
+        result = CommandResult(output, error, CommandResult.FAILURE if error else CommandResult.SUCCESS)
 
-                for o in order:
-                    for hook in self.post_hooks[o]:
-                        hook(self, context, result, *args, **kwargs)
+        if any(self.post_hooks):
+            order = sorted(self.post_hooks.keys(), reverse=True)
+
+            for o in order:
+                for hook in self.post_hooks[o]:
+                    hook(self, context, result, *args, **kwargs)
 
         return result
 
@@ -180,6 +180,7 @@ class Command:
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
         self.add_pre_hook(self.CLIENT_HOOK_ORDER, self._pre_hook)
+        self.add_post_hook(self.CLIENT_HOOK_ORDER, self._post_hook)
 
         self._finalized = True
 

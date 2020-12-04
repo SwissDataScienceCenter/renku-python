@@ -164,23 +164,22 @@ def _add_to_dataset(
     if sources and len(urls) > 1:
         raise UsageError('Cannot use "--source" with multiple URLs.')
 
-    if communication.has_prompt():
-        if total_size is None:
-            total_size = 0
-            for url in urls:
-                try:
-                    with requests.get(url, stream=True, allow_redirects=True) as r:
-                        total_size += int(r.headers.get("content-length", 0))
-                except requests.exceptions.RequestException:
-                    pass
-        usage = shutil.disk_usage(client.path)
+    if total_size is None:
+        total_size = 0
+        for url in urls:
+            try:
+                with requests.get(url, stream=True, allow_redirects=True) as r:
+                    total_size += int(r.headers.get("content-length", 0))
+            except requests.exceptions.RequestException:
+                pass
+    usage = shutil.disk_usage(client.path)
 
-        if total_size > usage.free:
-            mb = 2 ** 20
-            message = "Insufficient disk space (required: {:.2f} MB" "/available: {:.2f} MB). ".format(
-                total_size / mb, usage.free / mb
-            )
-            raise OperationError(message)
+    if total_size > usage.free:
+        mb = 2 ** 20
+        message = "Insufficient disk space (required: {:.2f} MB" "/available: {:.2f} MB). ".format(
+            total_size / mb, usage.free / mb
+        )
+        raise OperationError(message)
 
     try:
         with client.with_dataset(name=name, create=create) as dataset:
@@ -393,7 +392,7 @@ def _export_dataset(
 def export_dataset():
     """Command for exporting a dataset to 3rd party provider."""
     command = Command().command(_export_dataset).lock_dataset()
-    return command.require_migration().require_clean().with_commit(commit_only=DATASET_METADATA_PATHS)
+    return command.require_migration().require_clean()
 
 
 def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False):
@@ -568,7 +567,7 @@ def _update_datasets(
                 client, uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
             )
 
-            communication.echo("Updated dataset {} from remote provider".format(dataset.name))
+            communication.echo(f"Updated dataset {dataset.name} from remote provider")
 
             if names:
                 names.remove(dataset.name)
