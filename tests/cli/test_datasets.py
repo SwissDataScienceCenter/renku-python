@@ -1537,7 +1537,8 @@ def test_unavailable_external_files(runner, client, directory_tree, subdirectory
     assert str(target) in result.output
 
 
-def test_external_file_update(runner, client, directory_tree, project, subdirectory):
+@pytest.mark.serial
+def test_external_file_update(runner, client, directory_tree, subdirectory):
     """Check updating external files."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code
@@ -1554,7 +1555,8 @@ def test_external_file_update(runner, client, directory_tree, project, subdirect
     assert current_commit != previous_commit
 
 
-def test_workflow_with_external_file(runner, client, directory_tree, project, run, subdirectory, no_lfs_size_limit):
+@pytest.mark.serial
+def test_workflow_with_external_file(runner, client, directory_tree, run, subdirectory, no_lfs_size_limit):
     """Check using external files in workflows."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code

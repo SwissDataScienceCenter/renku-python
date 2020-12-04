@@ -410,7 +410,7 @@ class DatasetLock(Command):
 class Communicator(Command):
     """Hook for logging and interaction with user."""
 
-    DEFAULT_ORDER = 6
+    DEFAULT_ORDER = 2
 
     def __init__(self, builder, communicator):
         """__init__ of Communicator.
