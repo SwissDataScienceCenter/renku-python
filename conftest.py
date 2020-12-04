@@ -845,6 +845,20 @@ def datapack_tar(directory_tree):
     yield Path(workspace_dir.name) / "datapack.tar"
 
 
+@pytest.fixture()
+def datapack_gz(directory_tree):
+    """Returns dummy data folder as a tar archive."""
+    from renku.core.utils.contexts import chdir
+
+    workspace_dir = tempfile.TemporaryDirectory()
+    with chdir(workspace_dir.name):
+        shutil.make_archive("datapack", "gztar", str(directory_tree))
+
+    shutil.move(Path(workspace_dir.name) / "datapack.tar.gz", Path(workspace_dir.name) / "datapack.gz")
+
+    yield Path(workspace_dir.name) / "datapack.gz"
+
+
 @pytest.fixture(scope="module")
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
