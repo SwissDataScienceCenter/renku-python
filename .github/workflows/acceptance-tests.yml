@@ -8,6 +8,10 @@ on:
     - synchronize
     - reopened
     - closed
+    paths:
+    - renku/service
+    - renku/core
+    - helm-chart
 
 jobs:
   deploy-pr:
@@ -89,7 +93,8 @@ jobs:
         RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_KUBECONFIG }}
         RENKU_RELEASE: "ci-${{ github.event.number }}-renku"
         RENKU_NAMESPACE: "ci-${{ github.event.number }}-renku"
-      run: |
+      with:
+        command: |
           echo "$RENKUBOT_KUBECONFIG" > renkubot-kube.config
           chmod 400 renkubot-kube.config
           kubectl delete ns $RENKU_NAMESPACE
