@@ -426,7 +426,7 @@ def test_upload_zip_archive(datapack_zip, svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
-    """Upload zip archive with unpack."""
+    """Upload tar archive with unpack."""
     svc_client, headers, project_id, _ = svc_client_with_repo
     headers.pop("Content-Type")
 
@@ -467,13 +467,79 @@ def test_upload_tar_unpack_archive(datapack_tar, svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 def test_upload_tar_archive(datapack_tar, svc_client_with_repo):
-    """Upload zip archive."""
+    """Upload tar archive."""
     svc_client, headers, project_id, _ = svc_client_with_repo
     headers.pop("Content-Type")
 
     response = svc_client.post(
         "/cache.files_upload",
         data=dict(file=(io.BytesIO(datapack_tar.read_bytes()), datapack_tar.name),),
+        query_string={"unpack_archive": False, "override_existing": True,},
+        headers=headers,
+    )
+
+    assert response
+
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert 1 == len(response.json["result"]["files"])
+
+    for file_ in response.json["result"]["files"]:
+        assert file_["is_archive"]
+        assert not file_["unpack_archive"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_upload_gz_unpack_archive(datapack_gz, svc_client_with_repo):
+    """Upload gz archive with unpack."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    headers.pop("Content-Type")
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(file=(io.BytesIO(datapack_gz.read_bytes()), datapack_gz.name, "application/x-gzip"),),
+        query_string={"unpack_archive": True, "override_existing": True,},
+        headers=headers,
+    )
+
+    assert response
+
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert response.json["result"]["files"]
+
+    for file_ in response.json["result"]["files"]:
+        assert not file_["is_archive"]
+        assert not file_["unpack_archive"]
+
+    response = svc_client.get("/cache.files_list", headers=headers,)
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert response.json["result"]["files"]
+
+    dirs = filter(lambda x: x["is_dir"], response.json["result"]["files"])
+    assert list(dirs)
+
+    files = filter(lambda x: not x["is_dir"], response.json["result"]["files"])
+    assert list(files)
+
+    paths = [_file["relative_path"] for _file in files]
+    assert sorted(paths) == paths
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_upload_gz_archive(datapack_gz, svc_client_with_repo):
+    """Upload gz archive."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    headers.pop("Content-Type")
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(file=(io.BytesIO(datapack_gz.read_bytes()), datapack_gz.name, "application/x-gzip"),),
         query_string={"unpack_archive": False, "override_existing": True,},
         headers=headers,
     )
