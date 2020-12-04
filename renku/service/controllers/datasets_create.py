@@ -45,13 +45,17 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        return create_dataset(
-            self.ctx["name"],
-            title=self.ctx.get("title"),
-            creators=self.ctx.get("creators"),
-            description=self.ctx.get("description"),
-            keywords=self.ctx.get("keywords"),
-            commit_message=self.ctx["commit_message"],
+        return (
+            create_dataset()
+            .with_commit_message(self.ctx["commit_message"])
+            .build()
+            .execute(
+                name=self.ctx["name"],
+                title=self.ctx.get("title"),
+                creators=self.ctx.get("creators"),
+                description=self.ctx.get("description"),
+                keywords=self.ctx.get("keywords"),
+            )
         )
 
     def to_response(self):

@@ -19,46 +19,13 @@
 from git import GitCommandError, Repo
 from urllib3.exceptions import HTTPError
 
-from renku.core.commands.dataset import add_file, import_dataset
+from renku.core.commands.dataset import add_to_dataset, import_dataset
 from renku.core.commands.save import repo_sync
 from renku.core.errors import ParameterError, RenkuException
-from renku.core.management.datasets import DownloadProgressCallback
 from renku.core.utils.contexts import click_context
-from renku.service.cache.serializers.job import JobSchema
 from renku.service.logger import worker_log
+from renku.service.utils.callback import ServiceCallback
 from renku.service.views.decorators import requires_cache
-
-
-class DatasetImportJobProcess(DownloadProgressCallback):
-    """Track dataset import job progress."""
-
-    schema = JobSchema()
-
-    def __init__(self, cache, job):
-        """Construct dataset import job progress."""
-        self.cache = cache
-        self.job = job
-
-        super().__init__(None, None)
-
-    def __call__(self, description, total_size):
-        """Job progress call."""
-        self.job.extras = {
-            "description": description,
-            "total_size": total_size,
-        }
-
-        super().__init__(description, total_size)
-        return self
-
-    def update(self, size):
-        """Update status."""
-        self.job.extras["progress_size"] = size
-        self.job.save()
-
-    def finalize(self):
-        """Finalize job tracking."""
-        self.job.complete()
 
 
 @requires_cache
@@ -77,13 +44,10 @@ def dataset_import(
         project = cache.get_project(user, project_id)
         with click_context(project.abs_path, "dataset_import"):
             worker_log.debug(f"project found in cache - importing dataset {dataset_uri}")
-            import_dataset(
-                dataset_uri,
-                name,
-                extract,
-                commit_message=f"service: dataset import {dataset_uri}",
-                progress=DatasetImportJobProcess(cache, user_job),
-            )
+            communicator = ServiceCallback(user_job=user_job)
+
+            command = import_dataset().with_commit_message(f"service: dataset import {dataset_uri}")
+            command.with_communicator(communicator).build().execute(dataset_uri, name, extract, yes=True)
 
             worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")
@@ -103,7 +67,7 @@ def dataset_import(
 def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset, commit_message, name, url):
     """Add a remote file to a specified dataset."""
     user = cache.ensure_user(user)
-    worker_log.debug((f"executing dataset add remote " f"file job for {user.user_id}:{user.fullname}"))
+    worker_log.debug(f"executing dataset add remote file job for {user.user_id}:{user.fullname}")
 
     user_job = cache.get_job(user, user_job_id)
     user_job.in_progress()
@@ -116,7 +80,10 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
             urls = url if isinstance(url, list) else [url]
 
             worker_log.debug(f"adding files {urls} to dataset {name}")
-            add_file(urls, name, create=create_dataset, commit_message=commit_message)
+            command = add_to_dataset().with_commit_message(commit_message).build()
+            result = command.execute(urls=urls, name=name, create=create_dataset)
+            if result.error:
+                raise result.error
 
             worker_log.debug("operation successful - syncing with remote")
             _, remote_branch = repo_sync(Repo(project.abs_path), remote="origin")

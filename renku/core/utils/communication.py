@@ -40,7 +40,7 @@ class CommunicationCallback:
     def error(self, msg):
         """Write an error message."""
 
-    def confirm(self, msg, abort=False):
+    def confirm(self, msg, abort=False, warning=False):
         """Get confirmation for an action."""
 
     def start_progress(self, name, total, **kwargs):
@@ -52,6 +52,12 @@ class CommunicationCallback:
     def finalize_progress(self, name):
         """End a progress tracker."""
 
+    def has_prompt(self):
+        """Return True if communicator provides a direct prompt to users."""
+
+    def prompt(self, msg, type=None, default=None):
+        """Show a message prompt."""
+
 
 class _CommunicationManger(CommunicationCallback):
     """Manages all communication callback objects."""
@@ -59,6 +65,12 @@ class _CommunicationManger(CommunicationCallback):
     def __init__(self):
         super().__init__()
         self._listeners = []
+
+    @property
+    def listeners(self):
+        """Return subscribed listeners."""
+        with CommunicationCallback.lock:
+            return self._listeners.copy()
 
     def subscribe(self, listener):
         """Add a new listener for communications."""
@@ -96,13 +108,26 @@ class _CommunicationManger(CommunicationCallback):
             for listener in self._listeners:
                 listener.error(msg)
 
-    def confirm(self, msg, abort=False):
+    def has_prompt(self):
+        """Return True if any communicator provides a direct prompt to users."""
+        with CommunicationCallback.lock:
+            for listener in self._listeners:
+                if listener.has_prompt():
+                    return True
+
+    def confirm(self, msg, abort=False, warning=False):
         """Get confirmation for an action."""
         with CommunicationCallback.lock:
-            result = True
             for listener in self._listeners:
-                result = result and listener.confirm(msg, abort)
-            return result
+                if listener.has_prompt():
+                    return listener.confirm(msg, abort, warning)
+
+    def prompt(self, msg, type=None, default=None):
+        """Show a message prompt from the first callback that has a prompt."""
+        with CommunicationCallback.lock:
+            for listener in self._listeners:
+                if listener.has_prompt():
+                    return listener.prompt(msg, type, default)
 
     def start_progress(self, name, total, **kwargs):
         """Create a new progress tracker."""
@@ -176,9 +201,21 @@ def error(msg):
 
 
 @ensure_manager
-def confirm(msg, abort=False):
+def has_prompt():
+    """Return True if communicator provides a direct prompt to users."""
+    return True
+
+
+@ensure_manager
+def confirm(msg, abort=False, warning=False):
     """Get confirmation for an action from all listeners."""
-    _thread_local.communication_manager.confirm(msg, abort)
+    return _thread_local.communication_manager.confirm(msg, abort, warning)
+
+
+@ensure_manager
+def prompt(msg, type=None, default=None):
+    """Show a message prompt."""
+    return _thread_local.communication_manager.prompt(msg, type, default)
 
 
 @ensure_manager
@@ -199,6 +236,12 @@ def finalize_progress(name):
     _thread_local.communication_manager.finalize_progress(name)
 
 
+@ensure_manager
+def get_listeners():
+    """Return a list of subscribed listeners."""
+    return _thread_local.communication_manager.listeners
+
+
 __all__ = [
     "CommunicationCallback",
     "subscribe",
@@ -206,6 +249,9 @@ __all__ = [
     "info",
     "warn",
     "error",
+    "has_prompt",
+    "confirm",
+    "prompt",
     "start_progress",
     "update_progress",
     "finalize_progress",

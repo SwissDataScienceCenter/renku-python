@@ -43,7 +43,8 @@ class DatasetsFilesListCtrl(ServiceCtrl, ReadOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        return list_files(datasets=[self.ctx["name"]])
+        result = list_files().build().execute(datasets=[self.ctx["name"]])
+        return result.output
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
