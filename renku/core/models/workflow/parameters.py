@@ -230,7 +230,7 @@ class CommandInputTemplate(CommandParameter):
         if not self.mapped_to:
             return ""
 
-        return " < {}".format(self.consumes.path)
+        return " < {}".format(self.consumes)
 
     def __attrs_post_init__(self):
         """Post-init hook."""
@@ -390,9 +390,9 @@ class CommandOutputTemplate(CommandParameter):
             return ""
 
         if self.mapped_to.stream_type == "stdout":
-            return " > {}".format(self.produces.path)
+            return " > {}".format(self.produces)
 
-        return " 2> {}".format(self.produces.path)
+        return " 2> {}".format(self.produces)
 
     def __attrs_post_init__(self):
         """Post-init hook."""

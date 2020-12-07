@@ -19,24 +19,19 @@
 
 import functools
 import sys
-from collections import defaultdict
 from pathlib import Path
-from typing import Dict
 
 import click
-from git import NULL_TREE, GitCommandError
 
-from renku.cli.update import execute_workflow
-from renku.core import errors
-from renku.core.commands.client import pass_local_client
+from renku.cli.utils.callback import ClickCallback
+from renku.cli.utils.click import CaseInsensitiveChoice
+from renku.core.incubation.command import Command
+from renku.core.incubation.graph import export_graph, generate_graph
+from renku.core.incubation.graph import status as get_status
+from renku.core.incubation.graph import update as perform_update
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
-from renku.core.models.entities import Entity
-from renku.core.models.provenance.activities import Activity as ActivityRun
-from renku.core.models.provenance.activity import ActivityCollection
-from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.dependency_graph import DependencyGraph
-from renku.core.models.workflow.run import Run
 from renku.core.utils.contexts import measure
 
 GRAPH_METADATA_PATHS = [
@@ -53,144 +48,87 @@ def graph():
 
 @graph.command()
 @click.option("-f", "--force", is_flag=True, help="Delete existing metadata and regenerate all.")
-@pass_local_client(requires_migration=True, commit=True, commit_empty=False, commit_only=GRAPH_METADATA_PATHS)
 def generate(client, force):
     """Create new graph metadata."""
 
-    def create_empty_graph_files():
-        # Create empty graph files as defaults
-        client.dependency_graph_path.write_text("[]")
-        client.provenance_graph_path.write_text("[]")
-
-    commits = list(client.repo.iter_commits())
-    n_commits = len(commits)
-    commits = reversed(commits)
-
-    if force:
-        try:
-            client.dependency_graph_path.unlink()
-        except FileNotFoundError:
-            pass
-        try:
-            client.provenance_graph_path.unlink()
-        except FileNotFoundError:
-            pass
-    else:
-        if client.has_graph_files():
-            raise errors.OperationError("Graph files exist. Use --force to regenerate the graph.")
-
-    create_empty_graph_files()
-
-    dependency_graph = DependencyGraph.from_json(client.dependency_graph_path)
-    provenance_graph = ProvenanceGraph.from_json(client.provenance_graph_path)
-
-    for n, commit in enumerate(commits, start=1):
-        print(f"\rProcessing commits {n}/{n_commits}\r", end="", file=sys.stderr)
-
-        for file_ in commit.diff(commit.parents or NULL_TREE):
-            # Ignore deleted files (they appear as ADDED in this backwards diff)
-            if file_.change_type == "A":
-                continue
-
-            path: str = file_.a_path
-
-            if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
-                continue
-
-            workflow = ActivityRun.from_yaml(path=path, client=client)
-            activity_collection = ActivityCollection.from_activity_run(workflow, dependency_graph, client)
-
-            provenance_graph.add(activity_collection)
-
-    dependency_graph.to_json()
-    provenance_graph.to_json()
+    communicator = ClickCallback()
+    (generate_graph().with_communicator(communicator).build().execute(force=force))
 
     click.secho("\nOK", fg="green")
 
 
 @graph.command()
-@pass_local_client(requires_migration=False)
-def status(client):
+@click.pass_context
+def status(ctx, client):
     r"""Equivalent of `renku status`."""
-    with measure("BUILD AND QUERY GRAPH"):
-        pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
-        plans_usages = pg.get_latest_plans_usages()
 
-    with measure("CALCULATE MODIFIED"):
-        modified, deleted = _get_modified_paths(client=client, plans_usages=plans_usages)
+    communicator = ClickCallback()
+    result = get_status().with_communicator(communicator).build().execute()
+
+    stales, modified, deleted = result.output
 
     if not modified and not deleted:
         click.secho("Everything is up-to-date.", fg="green")
         return
 
-    stales = defaultdict(set)
+    if stales:
+        click.echo(
+            f"Outdated outputs({len(stales)}):\n"
+            '  (use "renku log [<file>...]" to see the full lineage)\n'
+            '  (use "renku update [<file>...]" to '
+            "generate the file from its latest inputs)\n"
+        )
+        for k, v in stales.items():
+            paths = click.style(", ".join(sorted(v)), fg="red", bold=True)
+            click.echo(f"\t{k}:{paths}")
+        click.echo()
+    else:
+        click.secho("All files were generated from the latest inputs.", fg="green")
 
-    with measure("CALCULATE UPDATES"):
-        dg = DependencyGraph.from_json(client.dependency_graph_path)
-        for plan_id, path, _ in modified:
-            paths = dg.get_dependent_paths(plan_id, path)
-            for p in paths:
-                stales[p].add(path)
+    if modified:
+        click.echo(
+            f"Modified inputs({len(modified)}):\n"
+            '  (use "renku log --revision <sha1> <file>" to see a lineage '
+            "for the given revision)\n"
+        )
+        for v in modified:
+            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
+        click.echo()
 
-    print(f"Updates: {len(stales)}", "".join(sorted([f"\n\t{k}: {', '.join(sorted(v))}" for k, v in stales.items()])))
-    print()
-    modified = {v[1] for v in modified}
-    print(f"Modified: {len(modified)}", "".join(sorted([f"\n\t{v}" for v in modified])))
-    print()
-    deleted = {v[1] for v in deleted}
-    print(f"Deleted: {len(deleted)}", "".join(sorted([f"\n\t{v}" for v in deleted])))
+    if deleted:
+        click.echo(
+            "Deleted files used to generate outputs:\n"
+            '  (use "git show <sha1>:<file>" to see the file content '
+            "for the given revision)\n"
+        )
+        for v in deleted:
+            click.echo(click.style(f"\t{v}", fg="blue", bold=True))
+
+        click.echo()
+
+    ctx.exit(1 if stales else 0)
 
 
 @graph.command()
 @click.option("-n", "--dry-run", is_flag=True, help="Show steps that will be updated without running them.")
-@pass_local_client(clean=True, requires_migration=True, commit=True, commit_empty=False)
 def update(client, dry_run):
     r"""Equivalent of `renku update`."""
-    with measure("BUILD AND QUERY GRAPH"):
-        pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
-        plans_usages = pg.get_latest_plans_usages()
 
-    with measure("CALCULATE MODIFIED"):
-        modified, deleted = _get_modified_paths(client=client, plans_usages=plans_usages)
-
-    if not modified:
-        click.secho("Everything is up-to-date.", fg="green")
-        return
-
-    with measure("CALCULATE UPDATES"):
-        dg = DependencyGraph.from_json(client.dependency_graph_path)
-        plans, plans_with_deleted_inputs = dg.get_downstream(modified, deleted)
-
-    if plans_with_deleted_inputs:
-        print(
-            "The following steps cannot be executed because one of their inputs is deleted:",
-            "".join((f"\n\t{p}" for p in plans_with_deleted_inputs)),
-        )
-
-    if dry_run:
-        print("The following steps will be executed:", "".join((f"\n\t{p}" for p in plans)))
-        return
-
-    with measure("CONVERTING RUNS"):
-        entities_cache: Dict[str, Entity] = {}
-        runs = [p.to_run(client, entities_cache) for p in plans]
-        parent_process = Run(client=client)
-        for run in runs:
-            parent_process.add_subprocess(run)
-
-    execute_workflow(
-        client=client, workflow=parent_process, output_paths=None, command_name="update", update_commits=True
-    )
+    communicator = ClickCallback()
+    perform_update().with_communicator(communicator).build().execute()
 
 
 @graph.command()
 @click.argument("path", type=click.Path(exists=False, dir_okay=False))
-@pass_local_client
 def save(client, path):
     r"""Save dependency graph as PNG."""
     with measure("CREATE DEPENDENCY GRAPH"):
-        dg = DependencyGraph.from_json(client.dependency_graph_path)
-        dg.to_png(path=path)
+
+        def _to_png(client, path):
+            dg = DependencyGraph.from_json(client.dependency_graph_path)
+            dg.to_png(path=path)
+
+        Command().command(_to_png).build().execute(path=path)
 
 
 def _dot(rdf_graph, simple=True, debug=False, landscape=False):
@@ -231,30 +169,13 @@ _FORMATS = {
     "dot-full-landscape": _dot_full_landscape,
     "dot-debug": _dot_debug,
     "json-ld": _json_ld,
+    "jsonld": _json_ld,
 }
 
 
 @graph.command()
-@click.option("--format", type=click.Choice(_FORMATS), default="json-ld", help="Choose an output format.")
-@pass_local_client(requires_migration=False)
-def log(client, format):
+@click.option("--format", type=CaseInsensitiveChoice(_FORMATS), default="json-ld", help="Choose an output format.")
+def export(client, format):
     r"""Equivalent of `renku log --format json-ld`."""
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
-
-    _FORMATS[format](pg.rdf_graph)
-
-
-def _get_modified_paths(client, plans_usages):
-    modified = set()
-    deleted = set()
-    for plan_usage in plans_usages:
-        _, path, checksum = plan_usage
-        try:
-            current_checksum = client.repo.git.rev_parse(f"HEAD:{str(path)}")
-        except GitCommandError:
-            deleted.add(plan_usage)
-        else:
-            if current_checksum != checksum:
-                modified.add(plan_usage)
-
-    return modified, deleted
+    communicator = ClickCallback()
+    (export_graph().with_communicator(communicator).build().execute(format=_FORMATS[format]))

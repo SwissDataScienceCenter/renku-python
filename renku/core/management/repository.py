@@ -106,9 +106,6 @@ class RepositoryApiMixin(GitCore):
     DEPENDENCY_GRAPH = "dependency.json"
     """File for storing dependency graph."""
 
-    PROVENANCE = "provenance"
-    """Directory for storing provenance graph."""
-
     PROVENANCE_GRAPH = "provenance.json"
     """File for storing ProvenanceGraph."""
 
@@ -202,11 +199,6 @@ class RepositoryApiMixin(GitCore):
     def template_checksums(self):
         """Return a ``Path`` instance to the template checksums file."""
         return self.renku_path / self.TEMPLATE_CHECKSUMS
-
-    @property
-    def provenance_path(self):
-        """Path to store activity files."""
-        return self.renku_path / self.PROVENANCE
 
     @property
     def provenance_graph_path(self):

@@ -143,8 +143,6 @@ def _convert_qualified_usage(qualified_usage: List[Usage], activity_id, client) 
 
         id_ = pathlib.posixpath.join("usage", str(uuid.uuid4()), entity.checksum, quote(entity.path))
         usage_id = f"{activity_id}/{id_}"
-        duplicates_found = any([u for u in usages if u._id == usage_id])
-        assert not duplicates_found
 
         new_usage = Usage(id=usage_id, entity=entity, role=usage.role)
         usages.append(new_usage)
@@ -164,9 +162,6 @@ def _convert_generated(generated: List[Generation], activity_id, client) -> List
         quoted_path = quote(entity.path)
         id_ = pathlib.posixpath.join("generation", str(uuid.uuid4()), entity.checksum, quoted_path)
         generation_id = f"{activity_id}/{id_}"
-
-        duplicates_found = any([g for g in generations if g._id == generation_id])
-        assert not duplicates_found
 
         new_generation = Generation(id=generation_id, entity=entity, role=generation.role)
         generations.append(new_generation)
@@ -188,14 +183,14 @@ def _convert_usage_entity(entity: Entity, revision, activity_id, client) -> Unio
     id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
 
     if isinstance(entity, Collection):
-        new_entity = Collection(id=id_, checksum=checksum, path=entity.path)  # , project=entity._project)
+        new_entity = Collection(id=id_, checksum=checksum, path=entity.path)
         for child in entity.members:
             new_child = _convert_usage_entity(child, revision, activity_id, client)
             if not new_child:
                 continue
             new_entity.members.append(new_child)
     else:
-        new_entity = Entity(id=id_, checksum=checksum, path=entity.path)  # , project=entity._project)
+        new_entity = Entity(id=id_, checksum=checksum, path=entity.path)
 
     assert type(new_entity) is type(entity)
 
@@ -223,14 +218,14 @@ def _convert_generation_entity(entity: Entity, revision, activity_id, client) ->
     id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
 
     if isinstance(entity, Collection):
-        new_entity = Collection(id=id_, checksum=checksum, path=entity.path)  # , project=entity._project)
+        new_entity = Collection(id=id_, checksum=checksum, path=entity.path)
         for child in entity.members:
             new_child = _convert_generation_entity(child, revision, activity_id, client)
             if not new_child:
                 continue
             new_entity.members.append(new_child)
     else:
-        new_entity = Entity(id=id_, checksum=checksum, path=entity.path)  # , project=entity._project)
+        new_entity = Entity(id=id_, checksum=checksum, path=entity.path)
 
     assert type(new_entity) is type(entity)
 
@@ -254,7 +249,7 @@ def _convert_invalidated_entity(entity: Entity, activity_id, client) -> Union[En
             return None
 
     id_ = _generate_entity_id(entity_checksum=checksum, path=entity.path, activity_id=activity_id)
-    new_entity = Entity(id=id_, checksum=checksum, path=entity.path)  # , project=entity._project)
+    new_entity = Entity(id=id_, checksum=checksum, path=entity.path)
     assert type(new_entity) is type(entity)
 
     return new_entity
@@ -277,7 +272,7 @@ def _get_object_hash(revision, path, client):
 
 
 def _extract_commit_sha(entity_id: str):
-    # /blob/a3bf8a165dd56da078b96f2ca2ff22f14a3bdd57/input
+    # NOTE: extracts commit sha from ids like /blob/a3bf8a165dd56da078b96f2ca2ff22f14a3bdd57/input
     path = urlparse(entity_id).path
     assert path.startswith("/blob/"), f"Invalid entity identifier: {entity_id}"
 
@@ -299,7 +294,7 @@ class ActivityCollection:
     def from_activity_run(cls, activity_run: ActivityRun, dependency_graph: DependencyGraph, client):
         """Convert a ProcessRun/WorkflowRun to ActivityCollection."""
 
-        def get_process_runs() -> list:
+        def get_process_runs(activity_run: ActivityRun) -> list:
             assert isinstance(activity_run, WorkflowRun)
             # Use Plan subprocesses to get activities because it is guaranteed to have correct order
             sorted_ids = [s.process._id for s in activity_run.association.plan.subprocesses]
@@ -315,7 +310,7 @@ class ActivityCollection:
             assert len(activities) == len(activity_run.subprocesses)
             return activities
 
-        process_runs = get_process_runs() if isinstance(activity_run, WorkflowRun) else [activity_run]
+        process_runs = get_process_runs(activity_run) if isinstance(activity_run, WorkflowRun) else [activity_run]
 
         self = ActivityCollection()
 
@@ -333,11 +328,6 @@ class ActivityCollection:
             self.add(activity)
 
         return self
-
-    @property
-    def max_order(self):
-        """Return max order of activities."""
-        return max([a.order for a in self._activities]) if self._activities else -1
 
     def add(self, activity):
         """Add an Activity."""
@@ -395,13 +385,9 @@ class ActivitySchema(JsonLDSchema):
     invalidated = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
     order = fields.Integer(renku.order)
     path = fields.String(prov.atLocation)
-    # project = Nested(schema.isPartOf, ProjectSchema, missing=None)
     qualified_usage = Nested(prov.qualifiedUsage, UsageSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-
-    # TODO: _was_informed_by = fields.List(prov.wasInformedBy, fields.IRI(), init_name="was_informed_by")
-    # TODO: influenced = Nested(prov.influenced, CollectionSchema, many=True)
 
 
 class ActivityCollectionSchema(JsonLDSchema):
