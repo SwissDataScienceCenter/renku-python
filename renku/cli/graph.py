@@ -19,7 +19,6 @@
 
 import functools
 import sys
-from pathlib import Path
 
 import click
 
@@ -29,16 +28,8 @@ from renku.core.incubation.command import Command
 from renku.core.incubation.graph import export_graph, generate_graph
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
-from renku.core.management.config import RENKU_HOME
-from renku.core.management.repository import RepositoryApiMixin
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.utils.contexts import measure
-
-GRAPH_METADATA_PATHS = [
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE),
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
-]
 
 
 @click.group(hidden=True)
@@ -48,7 +39,7 @@ def graph():
 
 @graph.command()
 @click.option("-f", "--force", is_flag=True, help="Delete existing metadata and regenerate all.")
-def generate(client, force):
+def generate(force):
     """Create new graph metadata."""
 
     communicator = ClickCallback()
@@ -59,7 +50,7 @@ def generate(client, force):
 
 @graph.command()
 @click.pass_context
-def status(ctx, client):
+def status(ctx):
     r"""Equivalent of `renku status`."""
 
     communicator = ClickCallback()
@@ -111,16 +102,16 @@ def status(ctx, client):
 
 @graph.command()
 @click.option("-n", "--dry-run", is_flag=True, help="Show steps that will be updated without running them.")
-def update(client, dry_run):
+def update(dry_run):
     r"""Equivalent of `renku update`."""
 
     communicator = ClickCallback()
-    perform_update().with_communicator(communicator).build().execute()
+    perform_update().with_communicator(communicator).build().execute(dry_run=dry_run)
 
 
 @graph.command()
 @click.argument("path", type=click.Path(exists=False, dir_okay=False))
-def save(client, path):
+def save(path):
     r"""Save dependency graph as PNG."""
     with measure("CREATE DEPENDENCY GRAPH"):
 
@@ -175,7 +166,7 @@ _FORMATS = {
 
 @graph.command()
 @click.option("--format", type=CaseInsensitiveChoice(_FORMATS), default="json-ld", help="Choose an output format.")
-def export(client, format):
+def export(format):
     r"""Equivalent of `renku log --format json-ld`."""
     communicator = ClickCallback()
     (export_graph().with_communicator(communicator).build().execute(format=_FORMATS[format]))

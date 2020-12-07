@@ -40,7 +40,6 @@ from renku.core.utils.scm import git_unicode_unescape
 
 GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE),
     Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
 ]
 
@@ -53,7 +52,7 @@ def _generate_graph(client, force):
         client.dependency_graph_path.write_text("[]")
         client.provenance_graph_path.write_text("[]")
 
-    commits = list(client.repo.iter_commits(paths=f"'{client.workflow_path}*.yaml'"))
+    commits = list(client.repo.iter_commits(paths=f"{client.workflow_path}*.yaml"))
     n_commits = len(commits)
     commits = reversed(commits)
 
@@ -78,7 +77,7 @@ def _generate_graph(client, force):
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"\rProcessing commits {n}/{n_commits}\r")
 
-        for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"'{client.workflow_path}*.yaml'"):
+        for file_ in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}*.yaml"):
             # Ignore deleted files (they appear as ADDED in this backwards diff)
             if file_.change_type == "A":
                 continue
@@ -163,13 +162,14 @@ def _update(client, dry_run):
         plans, plans_with_deleted_inputs = dg.get_downstream(modified, deleted)
 
     if plans_with_deleted_inputs:
+        formatted_deleted_plans = "".join((f"\n\t{p}" for p in plans_with_deleted_inputs))
         communication.warn(
-            "The following steps cannot be executed because one of their inputs is deleted:",
-            "".join((f"\n\t{p}" for p in plans_with_deleted_inputs)),
+            f"The following steps cannot be executed because one of their inputs is deleted: {formatted_deleted_plans}"
         )
 
     if dry_run:
-        communication.echo("The following steps would be executed:", "".join((f"\n\t{p}" for p in plans)))
+        formatted_plans = "".join((f"\n\t{p}" for p in plans))
+        communication.echo(f"The following steps would be executed:{formatted_plans}")
         return
 
     with measure("CONVERTING RUNS"):

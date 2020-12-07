@@ -56,6 +56,7 @@ from renku.service.views.datasets import (
     import_dataset_view,
     list_dataset_files_view,
     list_datasets_view,
+    remove_dataset_view,
     unlink_file_view,
 )
 from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, list_jobs
@@ -137,6 +138,7 @@ def build_routes(app):
     docs.register(create_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(import_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(edit_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
+    docs.register(remove_dataset_view, blueprint=DATASET_BLUEPRINT_TAG)
     docs.register(unlink_file_view, blueprint=DATASET_BLUEPRINT_TAG)
 
     docs.register(list_jobs, blueprint=JOBS_BLUEPRINT_TAG)
