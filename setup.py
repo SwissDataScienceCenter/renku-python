@@ -162,7 +162,7 @@ install_requires = [
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
     "gitpython==3.1.11",
-    "humanize>=2.5.0,<2.7.0",
+    "humanize>=2.5.0,<3.2.0",
     "jinja2>=2.10.3,<=2.11.2",
     "pathspec>=0.7.0,<=0.8.0",
     "patool==1.12",
