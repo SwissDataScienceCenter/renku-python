@@ -178,7 +178,7 @@ install_requires = [
     "pyjwt==1.7.1",
     "redis==3.5.3",
     "rdflib==4.2.2",
-    "rdflib-jsonld>=0.4.0,<0.5.0",
+    "rdflib-jsonld>=0.4.0,<0.6.0",
     "requests>=2.23.0,<=2.24.0",
     "ndg-httpsclient==0.5.1",
     "setuptools_scm>=3.1.0,<=4.1.2",
