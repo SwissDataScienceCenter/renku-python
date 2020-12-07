@@ -164,7 +164,7 @@ install_requires = [
     "gitpython==3.1.11",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
-    "pathspec>=0.7.0,<=0.8.0",
+    "pathspec>=0.7.0,<0.9.0",
     "patool==1.12",
     "pluggy==0.13.1",
     "psutil>=5.4.7,<=5.7.2",
