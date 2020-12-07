@@ -102,13 +102,15 @@ class Command:
 
     def _post_hook(self, builder, context, result, *args, **kwargs):
         """Post-hook method."""
+        if result.error:
+            raise result.error
 
     def execute(self, *args, **kwargs):
         """Execute the wrapped operation.
 
         First executes `pre_hooks` in ascending `order`, passing a read/write context between them.
         It then calls the wrapped `operation`. The result of the operation then gets pass to all the `post_hooks`,
-        also in ascending `order`. It then returns the result or error if there was one.
+        but in descending `order`. It then returns the result or error if there was one.
         """
         if not self.finalized:
             raise errors.CommandNotFinalizedError("Call `build()` before executing a command")
@@ -123,6 +125,7 @@ class Command:
 
         output = None
         error = None
+
         try:
             with context["stack"]:
                 output = context["click_context"].invoke(self._operation, context["client"], *args, **kwargs)
@@ -132,7 +135,7 @@ class Command:
         result = CommandResult(output, error, CommandResult.FAILURE if error else CommandResult.SUCCESS)
 
         if any(self.post_hooks):
-            order = sorted(self.post_hooks.keys())
+            order = sorted(self.post_hooks.keys(), reverse=True)
 
             for o in order:
                 for hook in self.post_hooks[o]:
@@ -177,6 +180,7 @@ class Command:
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
         self.add_pre_hook(self.CLIENT_HOOK_ORDER, self._pre_hook)
+        self.add_post_hook(self.CLIENT_HOOK_ORDER, self._post_hook)
 
         self._finalized = True
 
@@ -283,7 +287,7 @@ class Commit(Command):
             clean=False,
             commit=True,
             commit_empty=self._commit_if_empty,
-            commit_message=self._message or kwargs.get("commit_message"),
+            commit_message=self._message,
             commit_only=self._commit_filter_paths,
             ignore_std_streams=not builder._track_std_streams,
             raise_if_empty=self._raise_if_empty,
@@ -296,6 +300,13 @@ class Commit(Command):
         self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
 
         return self._builder.build()
+
+    @check_finalized
+    def with_commit_message(self, message):
+        """Set a new commit message."""
+        self._message = message
+
+        return self
 
 
 class RequireMigration(Command):
@@ -381,7 +392,12 @@ class DatasetLock(Command):
         self._builder = builder
 
     def _pre_hook(self, builder, context, *args, **kwargs):
-        raise NotImplementedError()
+        if "client" not in context:
+            raise ValueError("Commit builder needs a LocalClient to be set.")
+        if "stack" not in context:
+            raise ValueError("Commit builder needs a stack to be set.")
+
+        context["stack"].enter_context(context["client"].lock)
 
     @check_finalized
     def build(self):
@@ -394,7 +410,7 @@ class DatasetLock(Command):
 class Communicator(Command):
     """Hook for logging and interaction with user."""
 
-    DEFAULT_ORDER = 6
+    DEFAULT_ORDER = 2
 
     def __init__(self, builder, communicator):
         """__init__ of Communicator.

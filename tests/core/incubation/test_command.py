@@ -34,7 +34,7 @@ def test_dataset_add_command(project, tmp_path):
         .build()
     )
 
-    create_dataset("ds1", title="", description="", creators=[], commit_message="my awesome dataset")
+    create_dataset().with_commit_message("my dataset").build().execute("ds1", title="", description="", creators=[])
     data_file = tmp_path / "some-file"
     data_file.write_text("1,2,3", encoding="utf-8")
 
@@ -42,7 +42,7 @@ def test_dataset_add_command(project, tmp_path):
     assert result.status == CommandResult.SUCCESS
     assert not result.error
 
-    files = list_files(datasets=["ds1"])
+    files = list_files().build().execute(datasets=["ds1"]).output
 
     assert isinstance(files, list)
     assert "some-file" in [file_.name for file_ in files]
