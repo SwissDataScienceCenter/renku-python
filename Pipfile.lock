@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1c104452883c8013c6b925cc6679cc0223bed1f9843489061403366f13d1c658"
+            "sha256": "da4715b16d9513b36306eb29f787eac89199f995603e91fe3e41ea0d36c9e0d5"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -27,10 +27,10 @@
     "develop": {
         "certifi": {
             "hashes": [
-                "sha256:1f422849db327d534e3d0c5f02a263458c3955ec0aae4ff09b95f195c59f4edd",
-                "sha256:f05def092c44fbf25834a51509ef6e631dc19765ab8a57b4e7ab85531f0a9cf4"
+                "sha256:1a4995114262bffbc2413b159f2a1a480c969de6e6eb13ee966d470af86af59c",
+                "sha256:719a74fb9e33b9bd44cc7f3a8d94bc35e4049deebe19ba7d8e108280cfd59830"
             ],
-            "version": "==2020.11.8"
+            "version": "==2020.12.5"
         },
         "chardet": {
             "hashes": [
@@ -41,11 +41,11 @@
         },
         "chartpress": {
             "hashes": [
-                "sha256:b874a3599e9b0dcb18f98441307449d0002df6a7af78bdab3e792d72de398591",
-                "sha256:f0576da36f1b87bbda48300fce0ecc46b90b5f7335055c12d221e9dcb6070fcc"
+                "sha256:5f3fb0e865eb8bff1ce9400ba6e020d6f4b569412914d83a20d971897dd3b8ad",
+                "sha256:ec9429c77bfdf67b72493ccb10cbf0c2e1d28ed6c7785d047a8082a8a37e525c"
             ],
             "index": "pypi",
-            "version": "==1.0.1"
+            "version": "==1.0.2"
         },
         "docker": {
             "hashes": [
