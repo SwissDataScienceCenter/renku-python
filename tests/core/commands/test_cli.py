@@ -113,7 +113,8 @@ def test_git_pre_commit_hook(runner, project, capsys):
     repo.git.add("--all")
     with pytest.raises(git.HookExecutionError) as error:
         repo.index.commit("hello")
-        assert output.name in error.stdout
+
+    assert output.name in error.value.stdout
 
     result = runner.invoke(cli, ["githooks", "uninstall"])
     assert 0 == result.exit_code
@@ -133,9 +134,9 @@ def test_git_pre_commit_hook_in_old_project(isolated_runner, old_dataset_project
     with pytest.raises(git.exc.HookExecutionError) as e:
         old_dataset_project.repo.index.commit("update project metadata")
 
-    assert "Cannot verify validity of the commit: Project metadata is outdated." in str(e.value)
-    assert "Run 'renku migrate' command to fix the issue." in str(e.value)
-    assert "You are trying to update generated files" not in str(e.value)
+    assert "Cannot verify validity of the commit: Project metadata is outdated." in str(e.value.stdout)
+    assert "Run 'renku migrate' command to fix the issue." in str(e.value.stdout)
+    assert "You are trying to update generated files" not in str(e.value.stdout)
 
 
 def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
@@ -148,9 +149,11 @@ def test_git_pre_commit_hook_in_unsupported_project(unsupported_project):
     with pytest.raises(git.exc.HookExecutionError) as e:
         unsupported_project.repo.index.commit("update project metadata")
 
-    assert "Cannot verify validity of the commit: Project was created with a newer version of Renku." in str(e.value)
-    assert "Upgrade Renku to the latest version." in str(e.value)
-    assert "You are trying to update generated files" not in str(e.value)
+    assert "Cannot verify validity of the commit: Project was created with a newer version of Renku." in str(
+        e.value.stdout
+    )
+    assert "Upgrade Renku to the latest version." in str(e.value.stdout)
+    assert "You are trying to update generated files" not in str(e.value.stdout)
 
 
 def test_workflow(runner, project):

@@ -66,7 +66,7 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] ; then
     echo 'To commit anyway, use "git commit --no-verify".'
     exit 1
   fi
-  IMMUTABLE_TEMPLATE_FILES=$(renku migrate check-immutable-template-files "${MODIFIED_FILES[@]}")
+  IMMUTABLE_TEMPLATE_FILES=$(renku check-immutable-template-files "${MODIFIED_FILES[@]}")
   if [ "$IMMUTABLE_TEMPLATE_FILES" ]; then
     echo 'You are trying to update files marked as immutable in your project template.'
     echo 'This would prevent the project from being updated with new versions of the template in the future.'
@@ -84,17 +84,35 @@ fi
 if [ ${#ADDED_FILES[@]} -ne 0 ]; then
   UNTRACKED_PATHS=$(renku storage check-lfs-hook "${ADDED_FILES[@]}")
   if [ "$UNTRACKED_PATHS" ]; then
+
     echo 'You are trying to commit large files to Git instead of Git-LFS.'
     echo
-    echo 'Large files:'
-    for file in "${UNTRACKED_PATHS[@]}"; do
-      echo "$file"
-    done
-    echo
-    echo 'To track these files in Git LFS use "git lfs track <FILENAMES>".'
-    echo
-    echo 'To commit anyway, use "git commit --no-verify".'
-    exit 1
+    AUTOCOMMIT_LFS=${AUTOCOMMIT_LFS:=$(renku config show autocommit_lfs)}
+    if [ "$AUTOCOMMIT_LFS" = "true" ]; then
+      echo 'Adding files to LFS:'
+      for file in "${UNTRACKED_PATHS[@]}"; do
+        echo "$file"
+      done
+      echo
+      saveIFS=$IFS
+      IFS=$' '
+      files=${UNTRACKED_PATHS[*]}
+      git lfs track -- "$files"
+      git add .gitattributes
+      IFS=$saveIFS
+    else
+      echo 'Large files:'
+      for file in "${UNTRACKED_PATHS[@]}"; do
+        echo "$file"
+      done
+      echo
+      echo 'To track these files in Git LFS use "git lfs track <FILENAMES>".'
+      echo
+      echo 'To autocommit files to lfs, use "renku config set autocommit_lfs true".'
+      echo
+      echo 'To commit anyway, use "git commit --no-verify".'
+      exit 1
+    fi
   fi
 fi
 

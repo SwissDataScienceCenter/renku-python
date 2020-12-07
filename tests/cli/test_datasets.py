@@ -379,7 +379,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, client, subdire
     result = runner.invoke(
         cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)], catch_exceptions=False
     )
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, result.output
 
     # Further, add with --create fails
     result = runner.invoke(
@@ -1164,7 +1164,7 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project, client):
 def test_dataset_rm_tags_failure(tmpdir, runner, project, client):
     result = runner.invoke(cli, ["dataset", "rm-tags", "my-dataset", "1"], catch_exceptions=False,)
 
-    assert 2 == result.exit_code
+    assert 1 == result.exit_code
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code
     assert "OK" in result.output
@@ -1292,14 +1292,53 @@ def test_lfs_hook(runner, client, subdirectory, large_file):
     # Commit fails when file is not tracked in LFS
     with pytest.raises(git.exc.HookExecutionError) as e:
         client.repo.index.commit("large files not in LFS")
-        output = str(e)
-        assert "You are trying to commit large files to Git" in output
-        assert large_file.name in output
+
+    assert "You are trying to commit large files to Git" in e.value.stdout
+    assert large_file.name in e.value.stdout
 
     # Can be committed after being tracked in LFS
     client.track_paths_in_storage(large_file.name)
     commit = client.repo.index.commit("large files tracked")
     assert "large files tracked" == commit.message
+
+
+def test_lfs_hook_autocommit(runner, client, subdirectory, large_file):
+    """Test committing large files to Git gets automatically added to lfs."""
+    result = runner.invoke(cli, ["config", "set", "autocommit_lfs", "true"])
+    assert 0 == result.exit_code
+
+    shutil.copy(large_file, client.path)
+    client.repo.git.add("--all")
+
+    result = client.repo.git.commit(
+        message="large files not in LFS",
+        with_extended_output=True,
+        env={"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+    )
+    assert large_file.name in result[1]
+    assert ".gitattributes" in result[1]
+    assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
+    assert "Adding files to LFS" in result[2]
+    assert 'Tracking "large-file"' in result[2]
+
+
+def test_lfs_hook_autocommit_env(runner, client, subdirectory, large_file):
+    """Test committing large files to Git gets automatically added to lfs."""
+    os.environ["AUTOCOMMIT_LFS"] = "true"
+
+    shutil.copy(large_file, client.path)
+    client.repo.git.add("--all")
+
+    result = client.repo.git.commit(
+        message="large files not in LFS",
+        with_extended_output=True,
+        env={"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+    )
+    assert large_file.name in result[1]
+    assert ".gitattributes" in result[1]
+    assert "You are trying to commit large files to Git instead of Git-LFS" in result[2]
+    assert "Adding files to LFS" in result[2]
+    assert 'Tracking "large-file"' in result[2]
 
 
 def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
@@ -1498,7 +1537,8 @@ def test_unavailable_external_files(runner, client, directory_tree, subdirectory
     assert str(target) in result.output
 
 
-def test_external_file_update(runner, client, directory_tree, project, subdirectory):
+@pytest.mark.serial
+def test_external_file_update(runner, client, directory_tree, subdirectory):
     """Check updating external files."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code
@@ -1515,7 +1555,8 @@ def test_external_file_update(runner, client, directory_tree, project, subdirect
     assert current_commit != previous_commit
 
 
-def test_workflow_with_external_file(runner, client, directory_tree, project, run, subdirectory, no_lfs_size_limit):
+@pytest.mark.serial
+def test_workflow_with_external_file(runner, client, directory_tree, run, subdirectory, no_lfs_size_limit):
     """Check using external files in workflows."""
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code

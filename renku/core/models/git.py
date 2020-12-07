@@ -18,7 +18,9 @@
 """Git utilities."""
 
 import configparser
+import os
 import re
+from urllib.parse import urlparse
 
 import attr
 
@@ -27,7 +29,7 @@ from renku.core.utils.scm import is_ascii
 
 _RE_PROTOCOL = r"(?P<protocol>(git\+)?(https?|git|ssh|rsync))\://"
 
-_RE_USERNAME = r"(?:(?P<username>.+)@)*"
+_RE_USERNAME = r"(?:(?P<username>.+)@)?"
 
 _RE_USERNAME_PASSWORD = r"(?:(?P<username>[^:]+)(:(?P<password>[^@]+))?@)?"
 
@@ -41,11 +43,14 @@ _RE_HOSTNAME = (
 
 _RE_PORT = r":(?P<port>\d+)"
 
-_RE_PATHNAME = r"(?P<pathname>" r"(((?P<owner>[\w\-\.]+)/)?(?P<name>[\w\-\.]+)(\.git)?)?)"
+_RE_PATHNAME = r"(?P<pathname>(([\w\-\~\.]+)/)*?(((?P<owner>([\w\-\.]+/?)+)/)?(?P<name>[\w\-\.]+)(\.git)?)?)"
 
-_RE_PREFIXED_PATHNAME = r"(?P<pathname>(([\w\-\~\.]+)/)+" r"(?P<owner>[\w\-\.]+)/(?P<name>[\w\-\.]+)(\.git)?)"
+_RE_PATHNAME_WITH_GITLAB = (
+    r"(?P<pathname>((((gitlab/){0,1}|([\w\-\~\.]+/)*?)(?P<owner>([\w\-\.]+/)*[\w\-\.]+)/)?"
+    r"(?P<name>[\w\-\.]+)(\.git)?)?)"
+)
 
-_RE_UNIXPATH = r"(file\://)?(?P<pathname>\/$|((?=\/)|\.|\.\.)" r"(\/(?=[^/\0])[^/\0]+)*\/?)"
+_RE_UNIXPATH = r"(file\://)?(?P<pathname>\/$|((?=\/)|\.|\.\.)(\/(?=[^/\0])[^/\0]+)*\/?)"
 
 
 def _build(*parts):
@@ -56,17 +61,11 @@ def _build(*parts):
 #: Define possible repository URLs.
 _REPOSITORY_URLS = (
     # https://user:pass@example.com/owner/repo.git
-    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, r"/", _RE_PATHNAME),
-    # https://user:pass@example.com/prefix/owner/repo.git
-    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, r"/", _RE_PREFIXED_PATHNAME),
-    # https://user:pass@example.com:1234/owner/repo.git
-    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT, r"/", _RE_PATHNAME),
-    # https://user:pass@example.com:1234/prefix/owner/repo.git
-    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT, r"/", _RE_PREFIXED_PATHNAME),
+    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, r"/", _RE_PATHNAME_WITH_GITLAB),
+    # https://user:pass@example.com:gitlab/owner/repo.git
+    _build(_RE_PROTOCOL, _RE_USERNAME_PASSWORD, _RE_HOSTNAME, _RE_PORT, r"/", _RE_PATHNAME_WITH_GITLAB),
     # git@example.com:owner/repo.git
-    _build(_RE_USERNAME, _RE_HOSTNAME, r":", _RE_PATHNAME),
-    # git@example.com:prefix/owner/repo.git
-    _build(_RE_USERNAME, _RE_HOSTNAME, r":", _RE_PREFIXED_PATHNAME),
+    _build(_RE_USERNAME, _RE_HOSTNAME, r":", _RE_PATHNAME_WITH_GITLAB),
     # /path/to/repo
     _build(_RE_UNIXPATH),
 )
@@ -110,7 +109,25 @@ class GitURL(object):
         if not is_ascii(href):
             raise UnicodeError(f"`{href}` is not a valid Git remote")
 
-        for regex in _REPOSITORY_URLS:
+        url_regexes = _REPOSITORY_URLS
+
+        gitlab_url = os.environ.get("GITLAB_BASE_URL", None)
+
+        if gitlab_url:
+            # NOTE: use known gitlab url to simplify regex to make detection more robust
+            gitlab_url = urlparse(gitlab_url)
+            gitlab_re = _build(
+                _RE_PROTOCOL,
+                _RE_USERNAME_PASSWORD,
+                r"(?P<hostname>" + re.escape(gitlab_url.hostname) + ")",
+                r":(?P<port>" + gitlab_url.port + ")" if gitlab_url.port else None,
+                r"/",
+                re.escape(gitlab_url.path) + r"/" if gitlab_url.path else None,
+                _RE_PATHNAME,
+            )
+            url_regexes = (gitlab_re) + url_regexes
+
+        for regex in url_regexes:
             matches = re.search(regex, href)
             if matches:
                 return cls(href=href, regex=regex, **matches.groupdict())

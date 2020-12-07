@@ -23,13 +23,14 @@ from renku.core.utils.communication import CommunicationCallback
 class ServiceCallback(CommunicationCallback):
     """CommunicationCallback implementation for service messages."""
 
-    def __init__(self):
+    def __init__(self, user_job=None):
         """Create a new ``ServiceCallback``."""
         super().__init__()
 
         self.messages = []
         self.warnings = []
         self.errors = []
+        self._user_job = user_job
 
     def echo(self, msg):
         """Write a message."""
@@ -50,3 +51,19 @@ class ServiceCallback(CommunicationCallback):
     def confirm(self, msg, abort=False):
         """Get confirmation for an action using a prompt."""
         return False
+
+    def start_progress(self, name, total, **kwargs):
+        """Start job tracking."""
+        self._user_job.extras = {
+            "description": name,
+            "total_size": total,
+        }
+
+    def update_progress(self, name, amount):
+        """Update job status."""
+        self._user_job.extras["progress_size"] = amount
+        self._user_job.save()
+
+    def finalize_progress(self, name):
+        """End job tracking."""
+        self._user_job.complete()
