@@ -72,5 +72,7 @@ class RemoteProject:
                 if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
                     raise errors.UninitializedProject(td) from e  # NOTE: Project hzas no commits to check out
 
+                raise
+
             with click_context(td, "remote_project"):
                 yield td
