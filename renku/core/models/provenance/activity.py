@@ -17,7 +17,6 @@
 # limitations under the License.
 """Represent a run."""
 
-import json
 import pathlib
 import uuid
 from typing import List, Union
@@ -26,7 +25,7 @@ from urllib.parse import quote, urljoin, urlparse
 from git import GitCommandError
 from marshmallow import EXCLUDE
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, oa, prov, renku
 from renku.core.models.cwl.annotation import AnnotationSchema
 from renku.core.models.entities import Collection, Entity, EntitySchema
 from renku.core.models.provenance.activities import Activity as ActivityRun
@@ -333,39 +332,6 @@ class ActivityCollection:
         """Add an Activity."""
         self._activities.append(activity)
 
-    @classmethod
-    def from_json(cls, path):
-        """Return an instance from a file."""
-        with open(path) as file_:
-            data = json.load(file_)
-            self = cls.from_jsonld(data=data)
-            self._path = path
-
-            return self
-
-    def to_json(self, path=None):
-        """Write to file."""
-        path = path or self._path
-
-        data = self.to_jsonld()
-        with open(path, "w", encoding="utf-8") as file_:
-            json.dump(data, file_, ensure_ascii=False, sort_keys=True, indent=2)
-
-    @classmethod
-    def from_jsonld(cls, data):
-        """Create an instance from JSON-LD data."""
-        if isinstance(data, cls):
-            return data
-        elif not isinstance(data, list):
-            raise ValueError(data)
-
-        self = ActivityCollectionSchema(flattened=True).load(data)
-        self._activities.sort(key=lambda a: a.order)
-
-    def to_jsonld(self):
-        """Create JSON-LD."""
-        return ActivityCollectionSchema(flattened=True).dump(self)
-
 
 class ActivitySchema(JsonLDSchema):
     """Activity schema."""
@@ -388,16 +354,3 @@ class ActivitySchema(JsonLDSchema):
     qualified_usage = Nested(prov.qualifiedUsage, UsageSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-
-
-class ActivityCollectionSchema(JsonLDSchema):
-    """Activity schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = renku.ActivityCollection
-        model = ActivityCollection
-        unknown = EXCLUDE
-
-    _activities = Nested(schema.hasPart, ActivitySchema, many=True)
