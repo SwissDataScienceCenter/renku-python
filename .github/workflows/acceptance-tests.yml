@@ -9,9 +9,9 @@ on:
     - reopened
     - closed
     paths:
-    - renku/service/**
-    - renku/core/**
-    - helm-chart/**
+    # - renku/service/**
+    # - renku/core/**
+    # - helm-chart/**
 
 jobs:
   deploy-pr:
@@ -21,7 +21,7 @@ jobs:
     - uses: actions/checkout@v2
     - run: echo $REPO_NAME
       env:
-        REPO_NAME: ${{ github.repository.name }}
+        REPO_NAME: ${{ github.event.repository.name }}
     - name: renku build and deploy
       uses: SwissDataScienceCenter/renku/actions/deploy-renku@000-deploy-action
       env:
@@ -30,9 +30,9 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
         GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}
         KUBECONFIG: "${{ github.workspace }}/renkubot-kube.config"
-        RENKU_NAMESPACE: ci-rp-${{ github.event.number }}-renku
-        RENKU_TMP_NAMESPACE: ci-rp-${{ github.event.number }}-renku-tmp
-        RENKU_RELEASE: ci-rp-${{ github.event.number }}-renku
+        RENKU_NAMESPACE: ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku
+        RENKU_TMP_NAMESPACE: ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku-tmp
+        RENKU_RELEASE: ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku
         RENKU_VALUES_FILE: "${{ github.workspace }}/values.yaml"
         RENKU_VALUES: ${{ secrets.CI_RENKU_VALUES }}
         RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
@@ -55,7 +55,7 @@ jobs:
     - name: Test the PR
       env:
         RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
-        RENKU_RELEASE: "ci-rp-${{ github.event.number }}-renku"
+        RENKU_RELEASE: "ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku"
       run: |
         RENKU_PYTHON_VERSION=$(git rev-parse HEAD)
         echo "Passing rp version $RENKU_PYTHON_VERSION"
