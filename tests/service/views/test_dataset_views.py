@@ -859,7 +859,7 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
     """Test import a dataset."""
     client, headers, cache = svc_client_cache
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
     project_meta = {
@@ -908,7 +908,7 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata, mock_redis)
     project, project_meta = project_metadata
     client, headers, cache = svc_client_cache
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
     project_obj = cache.make_project(user, project_meta)
 
@@ -944,7 +944,7 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata, mock_re
     url_dbox = "https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0"
 
     client, headers, cache = svc_client_cache
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
     project_obj = cache.make_project(user, project_meta)
 

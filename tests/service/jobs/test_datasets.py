@@ -44,7 +44,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     user_data = {
         "fullname": decoded["name"],
         "email": decoded["email"],
-        "user_id": encode_b64(secure_filename(decoded["email"])),
+        "user_id": encode_b64(secure_filename(decoded["sub"])),
         "token": headers["Authorization"].split("Bearer ")[-1],
     }
 
@@ -87,7 +87,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     """Test dataset import via doi."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = {"user_id": user_id}
 
     payload = {
@@ -135,7 +135,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = {"user_id": user_id}
 
     payload = {
@@ -178,7 +178,7 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     """Test dataset import."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = {"user_id": user_id}
 
     payload = {
@@ -230,7 +230,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     """Test dataset add a remote file."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = {"user_id": user_id}
 
     payload = {"project_id": project_id, "name": uuid.uuid4().hex, "create_dataset": True, "files": [{"file_url": url}]}
@@ -259,7 +259,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 def test_dataset_project_lock(doi, svc_client_with_repo):
     """Test dataset project lock."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = {"user_id": user_id}
 
     payload = {

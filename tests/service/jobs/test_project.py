@@ -36,7 +36,7 @@ def test_migrations_job(svc_client_setup):
     user_data = {
         "fullname": decoded["name"],
         "email": decoded["email"],
-        "user_id": encode_b64(secure_filename(decoded["email"])),
+        "user_id": encode_b64(secure_filename(decoded["sub"])),
         "token": headers["Authorization"].split("Bearer ")[-1],
     }
 
