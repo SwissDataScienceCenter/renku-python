@@ -451,6 +451,12 @@ class Dataset(Entity, CreatorMixin):
             return Path(self.client.data_dir) / self.name
         return ""
 
+    @property
+    def original_identifier(self):
+        """Return the first identifier of the dataset."""
+        if self.path:
+            return Path(self.path).name
+
     def contains_any(self, files):
         """Check if files are already within a dataset."""
         for file_ in files:

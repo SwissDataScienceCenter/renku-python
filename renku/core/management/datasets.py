@@ -69,10 +69,27 @@ class DatasetsApiMixin(object):
     CACHE = "cache"
     """Directory to cache transient data."""
 
+    _temporary_datasets_path = None
+
     @property
     def renku_datasets_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
+        if self._temporary_datasets_path:
+            return self._temporary_datasets_path
+
         return self.path / self.renku_home / self.DATASETS
+
+    def set_temporary_datasets_path(self, path):
+        """Set path to Renku dataset metadata directory."""
+        self._temporary_datasets_path = path
+
+    def clear_temporary_datasets_path(self):
+        """Clear path to Renku dataset metadata directory."""
+        self._temporary_datasets_path = None
+
+    def is_using_temporary_datasets_path(self):
+        """Return true if temporary datasets path is set."""
+        return bool(self._temporary_datasets_path)
 
     @property
     def renku_pointers_path(self):

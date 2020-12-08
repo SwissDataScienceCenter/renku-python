@@ -41,6 +41,7 @@ from renku.core.utils.scm import git_unicode_unescape
 GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
     Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
+    Path(RENKU_HOME) / Path(RepositoryApiMixin.DATASET_PROVENANCE),
 ]
 
 
