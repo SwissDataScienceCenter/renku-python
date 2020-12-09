@@ -27,6 +27,7 @@ from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov
 from renku.core.models.datasets import DatasetFileSchema, DatasetSchema
 from renku.core.models.entities import CollectionSchema, EntitySchema
 from renku.core.models.provenance.agents import PersonSchema, SoftwareAgentSchema
+from renku.core.models.workflow.plan import PlanSchema
 from renku.core.models.workflow.run import RunSchema
 
 
@@ -164,7 +165,7 @@ class AssociationSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     _id = fields.Id(init_name="id")
-    plan = Nested(prov.hadPlan, RunSchema)
+    plan = Nested(prov.hadPlan, [PlanSchema, RunSchema])
     agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
 
 

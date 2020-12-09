@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Implement various context mananagers."""
+"""Implement various context managers."""
 
 import contextlib
 import os
@@ -86,6 +86,20 @@ class Isolation(contextlib.ExitStack):
         for key, value in kwargs.items():
             if value is not None:
                 self.enter_context(self.CONTEXTS[key](value))
+
+
+@contextlib.contextmanager
+def measure(message="TOTAL"):
+    """Measure execution time of enclosing code block."""
+    import time
+
+    start = time.time()
+    try:
+        yield
+    finally:
+        end = time.time()
+        total_seconds = float("%.2f" % (end - start))
+        print(f"{message}: {total_seconds} seconds")
 
 
 def click_context(path, command):

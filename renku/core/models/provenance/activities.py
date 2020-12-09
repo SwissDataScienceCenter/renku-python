@@ -232,7 +232,7 @@ class Activity(CommitMixin):
             # in this backwards diff
             if file_.change_type != "A":
                 continue
-            path_ = Path(file_.a_path)
+            path_ = Path(git_unicode_unescape(file_.a_path))
 
             index.add(str(path_))
 
