@@ -123,7 +123,7 @@ class DatasetFile:
             return
 
         parsed_url = urlparse(self.id)
-        return Path(parsed_url.path).name
+        return list(Path(parsed_url.path).parents)[-3].name
 
 
 class Dataset:
