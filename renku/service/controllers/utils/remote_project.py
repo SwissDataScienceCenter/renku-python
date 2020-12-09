@@ -70,7 +70,7 @@ class RemoteProject:
             except GitCommandError as e:
                 msg = str(e)
                 if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
-                    raise errors.UninitializedProject(td) from e  # NOTE: Project hzas no commits to check out
+                    raise errors.UninitializedProject(td) from e  # NOTE: Project has no commits to check out
 
                 raise
 

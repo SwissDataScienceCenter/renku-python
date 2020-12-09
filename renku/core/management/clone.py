@@ -73,7 +73,7 @@ def clone(
     except GitCommandError as e:
         msg = str(e)
         if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
-            return repo, False  # NOTE: Project hzas no commits to check out
+            return repo, False  # NOTE: Project has no commits to check out
 
         raise
 
