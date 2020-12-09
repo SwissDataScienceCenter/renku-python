@@ -55,6 +55,9 @@ IT_REMOTE_REPO_URL = os.getenv("IT_REMOTE_REPOSITORY", "https://dev.renku.ch/git
 IT_REMOTE_NON_RENKU_REPO_URL = os.getenv(
     "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-non-renku"
 )
+IT_REMOTE_NO_COMMITS_REPO_URL = os.getenv(
+    "IT_REMOTE_NO_COMMITS_REPO_URL", "https://dev.renku.ch/gitlab/renku-qa/core-it-no-commits"
+)
 IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
@@ -68,6 +71,12 @@ def it_remote_repo():
 def it_remote_non_renku_repo():
     """Returns a remote path to integration test repository."""
     return IT_REMOTE_NON_RENKU_REPO_URL
+
+
+@pytest.fixture(scope="module")
+def it_remote_no_commits_repo():
+    """Returns a remote path to integration test repository."""
+    return IT_REMOTE_NO_COMMITS_REPO_URL
 
 
 @contextlib.contextmanager
