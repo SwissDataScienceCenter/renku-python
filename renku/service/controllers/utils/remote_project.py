@@ -21,9 +21,10 @@ import tempfile
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
-from git import Repo
+from git import GitCommandError, Repo
 from marshmallow import EXCLUDE
 
+from renku.core import errors
 from renku.core.utils.contexts import click_context
 from renku.service.serializers.cache import ProjectCloneContext
 
@@ -64,6 +65,14 @@ class RemoteProject:
     def remote(self):
         """Retrieve project metadata."""
         with tempfile.TemporaryDirectory() as td:
-            Repo.clone_from(self.remote_url.geturl(), td, branch=self.branch, depth=1)
+            try:
+                Repo.clone_from(self.remote_url.geturl(), td, branch=self.branch, depth=1)
+            except GitCommandError as e:
+                msg = str(e)
+                if "is not a commit and a branch" in msg and "cannot be created from it" in msg:
+                    raise errors.UninitializedProject(td) from e  # NOTE: Project has no commits to check out
+
+                raise
+
             with click_context(td, "remote_project"):
                 yield td

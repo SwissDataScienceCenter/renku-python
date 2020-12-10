@@ -35,7 +35,7 @@ from renku.core.commands.providers import ProviderFactory
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationError, ParameterError, UsageError
 from renku.core.incubation.command import Command
 from renku.core.management.datasets import DATASET_METADATA_PATHS
-from renku.core.models.datasets import Url, generate_default_name
+from renku.core.models.datasets import DatasetDetailsJson, Url, generate_default_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
@@ -105,6 +105,17 @@ def edit_dataset():
     """Command for editing dataset metadata."""
     command = Command().command(_edit_dataset).lock_dataset()
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+
+
+def _show_dataset(client, name):
+    """Show detailed dataset information."""
+    dataset = client.load_dataset(name)
+    return DatasetDetailsJson().dump(dataset)
+
+
+def show_dataset():
+    """Command for showing detailed dataset information."""
+    return Command().command(_show_dataset)
 
 
 def _construct_creators(creators, ignore_email=False):

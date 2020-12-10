@@ -17,6 +17,7 @@
 # limitations under the License.
 """Helpers utils for handling URLs."""
 
+import os
 import urllib
 from urllib.parse import ParseResult
 
@@ -41,3 +42,12 @@ def remove_credentials(url):
         return ""
     parsed = urllib.parse.urlparse(url)
     return parsed._replace(netloc=parsed.hostname).geturl()
+
+
+def get_host(client):
+    """Return the hostname for the resource URIs.
+
+    Default is localhost. If RENKU_DOMAIN is set, it overrides the host from remote.
+    """
+    host = client.remote.get("host") or "localhost"
+    return os.environ.get("RENKU_DOMAIN") or host

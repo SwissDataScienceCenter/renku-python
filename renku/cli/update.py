@@ -166,15 +166,13 @@ def update(client, ctx, revision, no_output, update_all, siblings, paths):
     input_paths = {node.path for node in graph.nodes} - output_paths
 
     # Store the generated workflow used for updating paths.
-    workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs,)
+    workflow = graph.as_workflow(input_paths=input_paths, output_paths=output_paths, outputs=outputs)
 
-    execute_workflow(
-        client=client, workflow=workflow, output_paths=output_paths, command_name="update", update_commits=True
-    )
+    execute_workflow(client, workflow, output_paths, command_name="update", update_commits=True)
 
 
 def execute_workflow(client, workflow, output_paths, command_name, update_commits):
-    """Execute a Run."""
+    """Execute a Run with/without subprocesses."""
     wf, path = CWLConverter.convert(workflow, client)
     # Don't compute paths if storage is disabled.
     if client.check_external_storage():
@@ -215,6 +213,8 @@ def execute_workflow(client, workflow, output_paths, command_name, update_commit
     run = cls.from_run(run=workflow, client=client, path=path, update_commits=update_commits)
     run.to_yaml(path=path)
     client.add_to_activity_index(run)
+
+    client.update_graphs(run)
 
 
 def _update_run_parameters(run, working_dir):
