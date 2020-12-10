@@ -271,7 +271,9 @@ class Dataset:
 
     def update_from(self, dataset, client, revision, date):
         """Update metadata from a new version of the dataset."""
-        self._set_identifier(dataset.identifier)
+        assert (
+            self.identifier == dataset.identifier
+        ), f"Dataset is being updated with a different identifier `{dataset.identifier}`"
 
         self._update_files(dataset, client, revision, date)
 
@@ -470,7 +472,7 @@ class NewDatasetSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = schema.Dataset
+        rdf_type = [prov.Entity, schema.Dataset]
         model = Dataset
         unknown = EXCLUDE
 

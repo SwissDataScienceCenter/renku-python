@@ -31,6 +31,7 @@ from renku.core.management.config import RENKU_HOME
 from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.models.entities import Entity
+from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity as ActivityRun
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.datasets import DatasetProvenance
@@ -262,7 +263,7 @@ def _generate_datasets_provenance(client, force):
         datasets, deleted_datasets = _fetch_datasets(client, commit.hexsha, paths=paths, deleted_paths=deleted_paths)
 
         revision = commit.hexsha
-        date = commit.committed_datetime
+        date = commit.authored_datetime
 
         for dataset in datasets:
             datasets_provenance.update_dataset(dataset, client=client, revision=revision, date=date)
@@ -286,14 +287,11 @@ def _fetch_datasets(client, revision, paths, deleted_paths):
         except GitCommandError:  # Project metadata file does not exist
             return 1
 
-        metadata_path = datasets_path / "metadata.yml"
         try:
-            metadata_path.write_text(project_file_content)
-            return int(read_project_version_from_yaml(metadata_path))
+            yaml_data = load_yaml(project_file_content)
+            return int(read_project_version_from_yaml(yaml_data))
         except ValueError:
             return 1
-        finally:
-            metadata_path.unlink()
 
     def copy_and_migrate_datasets():
         existing = []

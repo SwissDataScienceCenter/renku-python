@@ -76,12 +76,12 @@ def get_pre_0_3_4_datasets_metadata(client):
 
 def read_project_version(client):
     """Read project version from metadata file."""
-    return read_project_version_from_yaml(client.renku_metadata_path)
+    yaml_data = read_yaml(client.renku_metadata_path)
+    return read_project_version_from_yaml(yaml_data)
 
 
-def read_project_version_from_yaml(path):
-    """Read project version from a metadata YAML file."""
-    yaml_data = read_yaml(path)
+def read_project_version_from_yaml(yaml_data):
+    """Read project version from YAML data."""
     jsonld = pyld.jsonld.expand(yaml_data)[0]
     jsonld = normalize(jsonld)
     return _get_jsonld_property(jsonld, "http://schema.org/schemaVersion", "1")
