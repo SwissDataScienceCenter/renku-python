@@ -41,6 +41,7 @@ from renku.core.models.datasets import (
     is_dataset_name_valid,
 )
 from renku.core.models.entities import Entity, EntitySchema
+from renku.core.models.projects import ProjectSchema
 from renku.core.models.provenance.agents import PersonSchema
 from renku.core.utils import communication
 from renku.core.utils.urls import get_host
@@ -51,20 +52,20 @@ class DatasetFile:
 
     def __init__(
         self,
-        path,
-        client=None,
         *,
+        client=None,
         based_on=None,
         date_added=None,
         date_deleted=None,
         entity=None,
         id=None,
         is_external=False,
+        path=None,
         source=None,
         url=None,
     ):
-        if not path:
-            raise errors.ParameterError("Dataset file path must be set.")
+        if not path and not entity:
+            raise errors.ParameterError("Entity or path must be set.")
 
         self._client = client
 
@@ -77,7 +78,7 @@ class DatasetFile:
         self.source = source
         self.url = url
 
-        self._update_client(client)
+        self._update_metadata()
 
     @staticmethod
     def generate_id(client, identifier, path):
@@ -97,7 +98,8 @@ class DatasetFile:
     @client.setter
     def client(self, client):
         """Set client."""
-        self._update_client(client)
+        self._client = client
+        self._update_metadata()
 
     @property
     def full_path(self):
@@ -109,14 +111,14 @@ class DatasetFile:
         """Return true if dataset is deleted and should not be accessed."""
         return self.date_deleted is not None
 
-    def _update_client(self, client):
-        """Set new client and update related fields."""
-        self._client = client
+    def _update_metadata(self):
+        """Update relevant fields after setting a new client."""
+        if not self._client:
+            return
 
         identifier = self._extract_identifier() or str(uuid.uuid4())
-        self.id = self.generate_id(client, identifier, self.entity.path)
-
-        self.url = generate_dataset_file_url(client=client, filepath=self.entity.path)
+        self.id = self.generate_id(self._client, identifier, self.entity.path)
+        self.url = generate_dataset_file_url(client=self._client, filepath=self.entity.path)
 
     def _extract_identifier(self):
         if not self.id:
@@ -132,8 +134,8 @@ class Dataset:
     def __init__(
         self,
         name,
-        client=None,
         *,
+        client=None,
         creators=None,
         date_created=None,
         date_deleted=None,
@@ -148,6 +150,7 @@ class Dataset:
         keywords=None,
         license=None,
         original_identifier=None,
+        project=None,
         same_as=None,
         tags=None,
         title=None,
@@ -157,8 +160,10 @@ class Dataset:
         if not is_dataset_name_valid(name):
             raise errors.ParameterError(f"Invalid dataset name: {name}")
 
-        self.name = name
         self._client = client
+        self.identifier = identifier or str(uuid.uuid4())
+        self.id = id or generate_dataset_id(client=client, identifier=self.identifier)
+        self.name = name
 
         self.creators = creators or []
         self.date_created = date_created or datetime.datetime.now(datetime.timezone.utc)
@@ -167,13 +172,12 @@ class Dataset:
         self.derived_from = derived_from
         self.description = description
         self.files = files or []
-        self.id = id
-        self.identifier = identifier or str(uuid.uuid4())
         self.immutable = immutable
         self.in_language = in_language
         self.keywords = keywords or []
         self.license = license
         self.original_identifier = original_identifier
+        self.project = project
         self.same_as = same_as
         self.tags = tags or []
         self.title = title
@@ -188,7 +192,7 @@ class Dataset:
         if self.date_published:
             self.date_created = None
 
-        self._update_client(client)
+        self._update_metadata()
 
     @classmethod
     def from_dataset(cls, dataset, client, revision):
@@ -226,40 +230,39 @@ class Dataset:
     @client.setter
     def client(self, client):
         """Set client."""
-        self._update_client(client)
+        self._client = client
+        self._update_metadata()
 
     def is_deleted(self):
         """Return true if dataset is deleted and should not be accessed."""
         return self.date_deleted is not None
 
-    def find_files(self, paths):
-        """Return all paths that are in files container."""
-        files_paths = {str(self.client.path / f.path) for f in self.files}
-        return {p for p in paths if str(p) in files_paths}
-
     def find_file(self, path, return_index=False):
         """Find a file in files container using its relative path."""
+        path = str(path)
         for index, file_ in enumerate(self.files):
-            if str(file_.path) == str(path):
+            if file_.entity.path == path:
                 if return_index:
                     return index
-                file_.client = self.client
                 return file_
 
     def _set_identifier(self, new_identifier):
         """Set identifier and update all related fields."""
         self.identifier = new_identifier
-        self.id = generate_dataset_id(client=self.client, identifier=self.identifier)
+        self.id = generate_dataset_id(client=self._client, identifier=self.identifier)
         self.url = self.id
 
-    def _update_client(self, client):
-        """Set new client and update related fields."""
-        self._client = client
+    def _update_metadata(self):
+        """Update relevant fields after setting a new client."""
+        if not self._client:
+            return
 
         self._set_identifier(self.identifier)
 
+        self.project = self._client.project
+
         if self.derived_from:
-            host = get_host(self.client)
+            host = get_host(self._client)
             derived_from_id = self.derived_from._id
             derived_from_url = self.derived_from.url.get("@id")
             u = urlparse(derived_from_url)
@@ -267,7 +270,7 @@ class Dataset:
             self.derived_from = Url(id=derived_from_id, url_id=derived_from_url)
 
         for file_ in self.files:
-            file_.client = client
+            file_.client = self._client
 
     def update_from(self, dataset, client, revision, date):
         """Update metadata from a new version of the dataset."""
@@ -283,8 +286,6 @@ class Dataset:
         self.date_published = dataset.date_published
         self.derived_from = dataset.derived_from
         self.description = dataset.description
-        self.id = None
-        self.identifier = None
         self.in_language = dataset.in_language
         self.keywords = dataset.keywords
         self.license = dataset.license
@@ -328,7 +329,6 @@ def _convert_dataset_files(files, client, revision):
         entity = Entity(id=id_, checksum=checksum, path=file_.path)
 
         dataset_file = DatasetFile(
-            path=file_.path,
             client=client,
             based_on=file_.based_on,
             date_added=file_.added,
@@ -376,12 +376,16 @@ class DatasetProvenance:
         assert len(datasets) <= 1, f"Found more than one with identifier `{identifier}`."
         return datasets[0] if datasets else None
 
+    def get_by_name(self, name):
+        """Return a list of datasets by name."""
+        return [d for d in self._datasets if d.name == name]
+
     @property
     def datasets(self):
         """Return list of datasets."""
         return self._datasets
 
-    def update_dataset(self, dataset, client=None, revision=None, date=None):
+    def update_dataset(self, dataset, client, revision=None, date=None):
         """Add/update a dataset according to its new content."""
         revision = revision or "HEAD"
         date = date or datetime.datetime.now(datetime.timezone.utc)
@@ -399,14 +403,14 @@ class DatasetProvenance:
 
         current_dataset.update_from(dataset, client, revision, date)
 
-    def remove_dataset(self, dataset, revision=None, date=None):
+    def remove_dataset(self, dataset, client, revision=None, date=None):
         """Remove a dataset."""
         revision = revision or "HEAD"
         date = date or datetime.datetime.now(datetime.timezone.utc)
         current_dataset = self.get(dataset.identifier)
         if not current_dataset:
-            communication.warn(f"Cannot find dataset to delete `{dataset.identifier}` at revision `{revision}`")
-            return
+            current_dataset = Dataset.from_dataset(dataset, client, revision)
+            self.add(current_dataset)
         assert not current_dataset.is_deleted(), f"Dataset `{current_dataset.name}` was deleted before."
         current_dataset.date_deleted = date
 
@@ -459,8 +463,8 @@ class NewDatasetFileSchema(JsonLDSchema):
     based_on = Nested(schema.isBasedOn, DatasetFileSchema, missing=None, propagate_client=False)
     date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     date_deleted = fields.DateTime(prov.invalidatedAtTime, missing=None, allow_none=True, format="iso")
-    entity = Nested(renku.entity, EntitySchema, missing=None)
-    id = fields.Id(init_name="id")
+    entity = Nested(renku.entity, EntitySchema)
+    id = fields.Id()
     is_external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)
     url = fields.String(schema.url, missing=None)
@@ -491,12 +495,14 @@ class NewDatasetSchema(JsonLDSchema):
     derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
     description = fields.String(schema.description, missing=None)
     files = Nested(schema.hasPart, NewDatasetFileSchema, many=True)
-    id = fields.Id(init_name="id", missing=None)
+    id = fields.Id(missing=None)
     identifier = fields.String(schema.identifier)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
     keywords = fields.List(schema.keywords, fields.String(), missing=None, allow_none=True)
     license = Uri(schema.license, missing=None, allow_none=True)
+    name = fields.String(schema.alternateName)
     original_identifier = fields.String(renku.originalIdentifier)
+    project = Nested(schema.isPartOf, ProjectSchema, missing=None)
     same_as = Nested(schema.sameAs, UrlSchema, missing=None)
     tags = Nested(schema.subjectOf, DatasetTagSchema, many=True)
     title = fields.String(schema.name)

@@ -75,6 +75,8 @@ def _create_dataset(client, name, title=None, description="", creators=None, key
         name=name, title=title, description=description, creators=creators, keywords=keywords
     )
 
+    client.update_datasets_provenance(dataset)
+
     return dataset
 
 
@@ -97,6 +99,8 @@ def _edit_dataset(client, name, title, description, creators, keywords=None):
 
     with client.with_dataset(name=name) as dataset:
         dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
+
+    client.update_datasets_provenance(dataset)
 
     return updated, no_email_warnings
 
@@ -213,6 +217,8 @@ def _add_to_dataset(
                 with_metadata.url = dataset._id
 
                 dataset.update_metadata_from(with_metadata)
+
+        client.update_datasets_provenance(dataset)
     except DatasetNotFound:
         raise DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -286,6 +292,7 @@ def _file_unlink(client, name, include, exclude, yes=False):
         dataset.unlink_file(item.path)
 
     dataset.to_yaml()
+    client.update_datasets_provenance(dataset)
 
     return records
 
@@ -301,6 +308,7 @@ def _remove_dataset(client, name):
     dataset = client.load_dataset(name=name, strict=True)
     dataset.mutate()
     dataset.to_yaml()
+    client.update_datasets_provenance(dataset, remove=True)
 
     client.repo.git.add(dataset.path)
     client.repo.index.commit("renku dataset rm: final mutation")
@@ -619,6 +627,9 @@ def _update_datasets(
         else:
             communication.echo("To update external files run update command with '--external' flag.")
 
+    if not possible_updates:
+        return
+
     updated_files, deleted_files = client.update_dataset_git_files(files=possible_updates, ref=ref, delete=delete)
 
     if deleted_files and not delete:
@@ -707,6 +718,7 @@ def _tag_dataset(client, name, tag, description, force=False):
         raise ParameterError(e)
     else:
         dataset.to_yaml()
+        client.update_datasets_provenance(dataset)
 
 
 def tag_dataset():
@@ -725,6 +737,7 @@ def _remove_dataset_tags(client, name, tags):
         raise ParameterError(e)
     else:
         dataset.to_yaml()
+        client.update_datasets_provenance(dataset)
 
 
 def remove_dataset_tags():

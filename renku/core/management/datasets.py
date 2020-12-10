@@ -51,6 +51,7 @@ from renku.core.models.datasets import (
 )
 from renku.core.models.git import GitURL
 from renku.core.models.provenance.agents import Person
+from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
 from renku.core.utils import communication
 from renku.core.utils.urls import remove_credentials
@@ -69,7 +70,11 @@ class DatasetsApiMixin(object):
     CACHE = "cache"
     """Directory to cache transient data."""
 
+    DATASETS_PROVENANCE = "dataset.json"
+    """File for storing datasets' provenance."""
+
     _temporary_datasets_path = None
+    _datasets_provenance = None
 
     @property
     def renku_datasets_path(self):
@@ -78,6 +83,11 @@ class DatasetsApiMixin(object):
             return self._temporary_datasets_path
 
         return self.path / self.renku_home / self.DATASETS
+
+    @property
+    def datasets_provenance_path(self):
+        """Path to store activity files."""
+        return self.renku_path / self.DATASETS_PROVENANCE
 
     def set_temporary_datasets_path(self, path):
         """Set path to Renku dataset metadata directory."""
@@ -97,6 +107,32 @@ class DatasetsApiMixin(object):
         path = self.path / self.renku_home / self.POINTERS
         path.mkdir(exist_ok=True)
         return path
+
+    @property
+    def datasets_provenance(self):
+        """Return dataset provenance if available."""
+        if not self.has_datasets_provenance_file():
+            return
+        if not self._datasets_provenance:
+            self._datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
+
+        return self._datasets_provenance
+
+    def update_datasets_provenance(self, dataset, remove=False):
+        """Update datasets provenance for a dataset."""
+        if not self.has_datasets_provenance_file():
+            return
+
+        if remove:
+            self.datasets_provenance.remove_dataset(dataset=dataset, client=self)
+        else:
+            self.datasets_provenance.update_dataset(dataset=dataset, client=self)
+
+        self.datasets_provenance.to_json()
+
+    def has_datasets_provenance_file(self):
+        """Return true if dependency or provenance graph exists."""
+        return self.datasets_provenance_path.exists()
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
@@ -891,6 +927,7 @@ class DatasetsApiMixin(object):
 
         for dataset in modified_datasets.values():
             dataset.to_yaml()
+            self.update_datasets_provenance(dataset)
 
         return updated_files, deleted_files
 
@@ -957,9 +994,10 @@ class DatasetsApiMixin(object):
         for dataset in updated_datasets.values():
             for file_ in dataset.files:
                 if str(self.path / file_.path) in updated_files_paths:
-                    file_.commit = commit
-                    file_._label = file_.default_label()
+                    file_.update_commit(commit)
+            dataset.mutate()
             dataset.to_yaml()
+            self.update_datasets_provenance(dataset)
 
     def _update_pointer_file(self, pointer_file_path):
         """Update a pointer file."""
@@ -1167,8 +1205,9 @@ def _check_url(url):
 
 
 DATASET_METADATA_PATHS = [
-    Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
-    Path(RENKU_HOME) / Path(DatasetsApiMixin.POINTERS),
-    Path(RENKU_HOME) / Path(LinkReference.REFS),
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
+    Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,
+    Path(RENKU_HOME) / LinkReference.REFS,
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
     ".gitattributes",
 ]

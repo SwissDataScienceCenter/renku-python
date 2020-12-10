@@ -28,13 +28,13 @@ from renku.cli.update import execute_workflow
 from renku.core import errors
 from renku.core.incubation.command import Command
 from renku.core.management.config import RENKU_HOME
+from renku.core.management.datasets import DatasetsApiMixin
 from renku.core.management.migrate import migrate
 from renku.core.management.repository import RepositoryApiMixin
 from renku.core.models.entities import Entity
 from renku.core.models.jsonld import load_yaml
 from renku.core.models.provenance.activities import Activity as ActivityRun
 from renku.core.models.provenance.activity import ActivityCollection
-from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
 from renku.core.models.workflow.dependency_graph import DependencyGraph
 from renku.core.models.workflow.run import Run
@@ -46,7 +46,7 @@ from renku.core.utils.scm import git_unicode_unescape
 GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
     Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.DATASET_PROVENANCE),
+    Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS_PROVENANCE),
 ]
 
 
@@ -233,7 +233,7 @@ def _get_modified_paths(client, plans_usages):
     return modified, deleted
 
 
-def _generate_datasets_provenance(client, force):
+def _generate_datasets_provenance(client, force=False):
     """Generate datasets provenance metadata."""
     commits = list(client.repo.iter_commits(paths=".renku/datasets/*"))
     n_commits = len(commits)
@@ -251,7 +251,7 @@ def _generate_datasets_provenance(client, force):
     # Create empty dataset provenance file
     client.datasets_provenance_path.write_text("[]")
 
-    datasets_provenance = DatasetProvenance.from_json(client.datasets_provenance_path)
+    datasets_provenance = client.datasets_provenance
 
     for n, commit in enumerate(commits, start=1):
         communication.echo(f"\rProcessing commits {n}/{n_commits}\r")
@@ -268,7 +268,7 @@ def _generate_datasets_provenance(client, force):
         for dataset in datasets:
             datasets_provenance.update_dataset(dataset, client=client, revision=revision, date=date)
         for dataset in deleted_datasets:
-            datasets_provenance.remove_dataset(dataset, revision=revision, date=date)
+            datasets_provenance.remove_dataset(dataset, client=client, revision=revision, date=date)
 
     datasets_provenance.to_json()
 
