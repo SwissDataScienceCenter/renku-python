@@ -118,7 +118,7 @@ service_requires = [
     "marshmallow==3.9.1",
     "rq==1.7.0",
     "rq-scheduler==0.10.0",
-    "sentry-sdk[flask]>=0.7.4,<0.19.5",
+    "sentry-sdk[flask]>=0.7.4,<0.19.6",
     "walrus==0.8.1",
 ]
 
