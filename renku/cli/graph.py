@@ -38,7 +38,6 @@ def graph():
 @click.option("-f", "--force", is_flag=True, help="Delete existing metadata and regenerate all.")
 def generate(force):
     """Create new graph metadata."""
-
     communicator = ClickCallback()
     generate_graph().with_communicator(communicator).build().execute(force=force)
 
@@ -49,7 +48,6 @@ def generate(force):
 @click.pass_context
 def status(ctx):
     r"""Equivalent of `renku status`."""
-
     communicator = ClickCallback()
     result = get_status().with_communicator(communicator).build().execute()
 
@@ -98,7 +96,6 @@ def status(ctx):
 @click.option("-n", "--dry-run", is_flag=True, help="Show steps that will be updated without running them.")
 def update(dry_run):
     r"""Equivalent of `renku update`."""
-
     communicator = ClickCallback()
     perform_update().with_communicator(communicator).build().execute(dry_run=dry_run)
 
@@ -120,11 +117,12 @@ def save(path):
 @click.option("--format", type=CaseInsensitiveChoice(FORMATS), default="json-ld", help="Choose an output format.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
 @click.option("--workflows-only", is_flag=True, help="Exclude datasets metadata from export.")
-def export(format, strict, workflows_only):
+@click.argument("paths", type=click.Path(exists=False), nargs=-1)
+def export(format, strict, workflows_only, paths):
     r"""Equivalent of `renku log --format json-ld`."""
     communicator = ClickCallback()
     export_graph().with_communicator(communicator).build().execute(
-        format=format, workflows_only=workflows_only, strict=strict
+        format=format, workflows_only=workflows_only, strict=strict, paths=paths
     )
 
 

@@ -131,6 +131,10 @@ class Activity:
         """Create JSON-LD."""
         return ActivitySchema(flattened=True).dump(self)
 
+    def to_jsonld_str(self):
+        """Create JSON-LD string."""
+        return ActivitySchema(flattened=True).dumps(self)
+
 
 def _convert_qualified_usage(qualified_usage: List[Usage], activity_id, client) -> List[Usage]:
     """Convert a qualified Usages."""

@@ -49,9 +49,9 @@ from renku.core.utils.scm import git_unicode_unescape
 from renku.core.utils.shacl import validate_graph
 
 GRAPH_METADATA_PATHS = [
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.DEPENDENCY_GRAPH),
-    Path(RENKU_HOME) / Path(RepositoryApiMixin.PROVENANCE_GRAPH),
-    Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS_PROVENANCE),
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
+    Path(RENKU_HOME) / RepositoryApiMixin.DEPENDENCY_GRAPH,
+    Path(RENKU_HOME) / RepositoryApiMixin.PROVENANCE_GRAPH,
 ]
 
 
@@ -220,7 +220,7 @@ def export_graph():
     return Command().command(_export_graph)
 
 
-def _export_graph(client, format, workflows_only, strict):
+def _export_graph(client, format, workflows_only, strict, paths=None):
     """Output graph in specific format."""
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
@@ -230,12 +230,17 @@ def _export_graph(client, format, workflows_only, strict):
     if strict and format not in ["json-ld", "jsonld"]:
         raise errors.SHACLValidationError(f"'--strict' not supported for '{format}'")
 
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
+    lazy = not bool(paths)
+    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=lazy)
+
 
     if not workflows_only:
         pg.rdf_graph.parse(location=str(client.datasets_provenance_path), format="json-ld")
 
-    graph = pg.rdf_graph
+    if paths:
+        graph = pg.get_subgraph(paths=paths)
+    else:
+        graph = pg.rdf_graph
 
     if strict:
         if format == "jsonld":
