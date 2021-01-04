@@ -179,5 +179,10 @@ if __name__ == "__main__":
     if len(JWT_TOKEN_SECRET) < 32:
         raise InvalidTokenError("web token must be greater or equal to 32 bytes")
 
+    if os.environ.get("DEBUG_MODE", "false") == "true":
+        import ptvsd
+
+        ptvsd.enable_attach()
+
     app.logger.handlers.extend(service_log.handlers)
     app.run()
