@@ -123,7 +123,7 @@ service_requires = [
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.2", "sphinx-rtd-theme==0.5.0",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.2", "sphinx-rtd-theme==0.5.0",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
     "tests": tests_require,
