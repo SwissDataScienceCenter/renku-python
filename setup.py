@@ -120,6 +120,7 @@ service_requires = [
     "rq-scheduler==0.10.0",
     "sentry-sdk[flask]>=0.7.4,<0.17.9",
     "walrus==0.8.1",
+    "ptvsd>=4.3.0,<4.4.0",
 ]
 
 extras_require = {
