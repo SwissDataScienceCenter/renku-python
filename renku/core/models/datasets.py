@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 import attr
+import marshmallow
 from attr.validators import instance_of
 from marshmallow import EXCLUDE, pre_dump
 
@@ -911,3 +912,25 @@ def generate_dataset_file_url(client, filepath):
     project_id = project_id._replace(path=path)
 
     return project_id.geturl()
+
+
+class DatasetCreatorsJson(marshmallow.Schema):
+    """Schema for the dataset creators."""
+
+    name = marshmallow.fields.String()
+    email = marshmallow.fields.String()
+    affiliation = marshmallow.fields.String()
+
+
+class DatasetDetailsJson(marshmallow.Schema):
+    """Serialize a dataset to a response object."""
+
+    name = marshmallow.fields.String(required=True)
+    version = marshmallow.fields.String(allow_none=True)
+    created_at = marshmallow.fields.String(allow_none=True, attribute="date_created")
+
+    title = marshmallow.fields.String()
+    creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))
+    description = marshmallow.fields.String()
+    keywords = marshmallow.fields.List(marshmallow.fields.String())
+    identifier = marshmallow.fields.String()

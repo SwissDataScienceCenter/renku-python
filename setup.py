@@ -177,6 +177,7 @@ install_requires = [
     "python-editor==1.0.4",
     "pyjwt==1.7.1",
     "redis==3.5.3",
+    "rich>=9.3.0,<9.4.0",
     "rdflib==4.2.2",
     "rdflib-jsonld>=0.4.0,<0.6.0",
     "requests>=2.23.0,<=2.24.0",
