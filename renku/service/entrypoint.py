@@ -175,6 +175,8 @@ def exceptions(e):
     return e.status_code
 
 
+app.debug = os.environ.get("DEBUG_MODE", "false") == "true"
+
 if __name__ == "__main__":
     if len(JWT_TOKEN_SECRET) < 32:
         raise InvalidTokenError("web token must be greater or equal to 32 bytes")
