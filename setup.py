@@ -175,7 +175,7 @@ install_requires = [
     "pyshacl==0.11.3.post1",
     "python-dateutil>=2.6.1,<=2.8.1",
     "python-editor==1.0.4",
-    "pyjwt==1.7.1",
+    "pyjwt==2.0.0",
     "redis==3.5.3",
     "rich>=9.3.0,<9.4.0",
     "rdflib==4.2.2",
