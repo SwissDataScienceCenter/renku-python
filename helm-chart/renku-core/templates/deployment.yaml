@@ -42,9 +42,17 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{ if eq .Values.debugMode "true"}}
-          args: ["--reload"]
-          {{end}}
+          {{ if .Values.debugMode }}
+          args: ["sh", "-c",
+                  "gunicorn --reload \
+                  renku.service.entrypoint:app \
+                  -b 0.0.0.0:8080 \
+                  --timeout 600 \
+                  --workers $(RENKU_SVC_NUM_WORKERS) \
+                  --worker-class gthread \
+                  --threads $(RENKU_SVC_NUM_THREADS)"
+                ]
+          {{ end }}
           env:
             - name: REDIS_HOST
               value: {{ include "call-nested" (list . "redis" "redis.fullname") }}-master
@@ -71,7 +79,7 @@ spec:
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
             - name: DEBUG_MODE
-              value: {{ .Values.debugMode | default "false"}}
+              value: {{ quote .Values.debugMode | default "false"}}
             {{ if .Values.nWorkers }}
             - name: RENKU_SVC_NUM_WORKERS
               value: {{ .Values.nWorkers | quote }}
