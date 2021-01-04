@@ -93,6 +93,43 @@ def test_datasets_create_with_metadata(runner, client, subdirectory):
     assert {"keyword-1", "keyword-2"} == set(dataset.keywords)
 
 
+def test_dataset_show(runner, client, subdirectory):
+    """Test creating a dataset with metadata."""
+    result = runner.invoke(
+        cli,
+        [
+            "dataset",
+            "create",
+            "my-dataset",
+            "--title",
+            "Long Title",
+            "--description",
+            "# t1\n## t2\nsome description here",
+            "-c",
+            "John Doe <john.doe@mail.ch>",
+            "-c",
+            "John Smiths<john.smiths@mail.ch>",
+            "-k",
+            "keyword-1",
+            "-k",
+            "keyword-2",
+        ],
+    )
+    assert 0 == result.exit_code
+    assert "OK" in result.output
+
+    result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
+    assert 0 == result.exit_code
+    assert "some description here" in result.output
+    assert "Long Title" in result.output
+    assert "keyword-1" in result.output
+    assert "keyword-2" in result.output
+    assert "Created: " in result.output
+    assert "Name: my-dataset" in result.output
+    assert "John Doe <john.doe@mail.ch>" in result.output
+    assert "##" not in result.output
+
+
 def test_datasets_create_different_names(runner, client):
     """Test creating datasets with same title but different name."""
     result = runner.invoke(cli, ["dataset", "create", "dataset-1", "--title", "title"])

@@ -102,7 +102,7 @@ tests_require = [
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.11.0",
     "pytest-flake8>=1.0.6,<=1.0.6",
-    "pytest-mock>=3.2.0,<3.4.0",
+    "pytest-mock>=3.2.0,<3.5.0",
     "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
     "pytest-xdist>=1.34.0,<2.2.0",
@@ -118,7 +118,7 @@ service_requires = [
     "marshmallow==3.9.1",
     "rq==1.7.0",
     "rq-scheduler==0.10.0",
-    "sentry-sdk[flask]>=0.7.4,<0.19.5",
+    "sentry-sdk[flask]>=0.7.4,<0.19.6",
     "walrus==0.8.1",
 ]
 
@@ -177,6 +177,7 @@ install_requires = [
     "python-editor==1.0.4",
     "pyjwt==1.7.1",
     "redis==3.5.3",
+    "rich>=9.3.0,<9.4.0",
     "rdflib==4.2.2",
     "rdflib-jsonld>=0.4.0,<0.6.0",
     "requests>=2.23.0,<=2.24.0",
