@@ -96,13 +96,13 @@ class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV8, many=True)
     identifier = fields.String(schema.identifier)
     in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
-    keywords = fields.List(schema.keywords, fields.String())
-    license = Uri(schema.license, missing=None, allow_none=True)
+    keywords = fields.List(schema.keywords, fields.String(), missing=None)
+    license = Uri(schema.license, allow_none=True, missing=None)
     name = fields.String(schema.alternateName, missing=None)
     same_as = fields.Nested(schema.sameAs, UrlSchemaV3, missing=None)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, missing=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url)
+    url = fields.String(schema.url, missing=None)
     version = fields.String(schema.version, missing=None)
 
     @pre_dump

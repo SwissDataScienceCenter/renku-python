@@ -61,6 +61,8 @@ def _do_not_track_lock_file(client):
 
 def _migrate_datasets_pre_v0_3(client):
     """Migrate datasets from Renku 0.3.x."""
+    if client.is_using_temporary_datasets_path():
+        return
 
     for old_path in get_pre_0_3_4_datasets_metadata(client):
         name = str(old_path.parent.relative_to(client.path / DATA_DIR))
@@ -97,15 +99,17 @@ def _migrate_broken_dataset_paths(client):
         else:
             dataset.name = generate_default_name(dataset.name)
 
-        # migrate the refs
-        ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True)
         expected_path = client.renku_datasets_path / dataset.identifier
-        ref.set_reference(expected_path / client.METADATA)
 
-        if not expected_path.exists():
-            old_dataset_path = dataset.path
-            expected_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(old_dataset_path, expected_path)
+        # migrate the refs
+        if not client.is_using_temporary_datasets_path():
+            ref = LinkReference.create(client=client, name="datasets/{0}".format(dataset.name), force=True)
+            ref.set_reference(expected_path / client.METADATA)
+
+            if not expected_path.exists():
+                old_dataset_path = dataset.path
+                expected_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(old_dataset_path, expected_path)
 
         dataset.path = os.path.relpath(expected_path, client.path)
 
@@ -162,7 +166,8 @@ def _fix_dataset_urls(client):
 def _migrate_dataset_and_files_project(client):
     """Ensure dataset files have correct project."""
     project = Project.from_yaml(client.renku_metadata_path, client)
-    project.to_yaml(client.renku_metadata_path)
+    if not client.is_using_temporary_datasets_path():
+        project.to_yaml(client.renku_metadata_path)
 
     for dataset in get_client_datasets(client):
         dataset._project = project
