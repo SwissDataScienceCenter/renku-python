@@ -65,8 +65,8 @@ knows how to handle PyPI packages. Our recommendation is to use `:code:pipx
 <https://github.com/pipxproject/pipx>`_.
 
 .. note::
-   
-   We do not officially support Windows at this moment. The way Windows 
+
+   We do not officially support Windows at this moment. The way Windows
    handles paths and symlinks interferes with some renku functionality.
    We recommend using the Windows Subsystem for Linux (WSL) to use renku
    on Windows.
@@ -240,6 +240,9 @@ To recreate environment with different version of Python, it's easy to do so wit
 Using External Debuggers
 ------------------------
 
+Local Machine
+~~~~~~~~~~~~~
+
 To run ``renku`` via e.g. the `Visual Studio Code debugger
 <https://code.visualstudio.com/docs/python/debugging>`_ you need run it via
 the python executable in whatever virtual environment was used to install ``renku``. If there is a package
@@ -275,3 +278,36 @@ If using Visual Studio Code, you may also want to set the ``Remote Attach`` conf
                 }
             ]
         },
+
+
+Kubernetes
+~~~~~~~~~~
+
+To debug a running renku-core service in a Kubernetes cluster, the service has to be deployed with the
+ `core.debugMode` flag set to `true`, like:
+ ::
+
+    core:
+      debugMode: true
+
+Then install the `Kubernetes extension <https://github.com/Azure/vscode-kubernetes-tools>`_
+and configure your local kubectl with the credentials needed for your cluster.
+
+Add a `.vscode/settings.json` in the renku-python project root and set the following two values:
+
+::
+    {
+        "vs-kubernetes": {
+            "vs-kubernetes.python-autodetect-remote-root": true,
+            "vs-kubernetes.python-remote-root": "/code/renku",
+        }
+    }
+
+You might also need to run the `Kubernetes: Use Namespace` commandlet in VSCode to pick the correct
+Kubernetes namespace.
+
+Once this is done, go to the `Kubernetes` tab in VSCode, right-click on your cluster -> Workloads -> Pods -> *-renku-core-*
+entry (not the *-renku-core-redis-* one) and pick `Debug (attach)`, select `core` and `python` and you should be good to go.
+
+You can also select `Attach Visual Studio Code` in the context menu to open a new instance of VSCode with write access to
+the source code in the remote pod.
