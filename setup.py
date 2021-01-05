@@ -153,7 +153,7 @@ install_requires = [
     "appdirs>=1.4.3,<=1.4.4 ",
     "apispec>=4.0.0,<=4.1.0",
     "attrs>=19.3.0,<=20.2.0",
-    "calamus>=0.3.3,<0.3.4",
+    "calamus>=0.3.6,<0.3.7",
     "click-completion>=0.5.0,<=0.5.3",
     "click>=7.0,<=7.1.2",
     "click-plugins==1.1.1",
