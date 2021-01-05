@@ -292,6 +292,12 @@ class DatasetFile(Entity):
         if not self.url and self.client:
             self.url = self.default_url()
 
+    def update_commit(self, commit):
+        """Set commit and update associated fields."""
+        self.commit = commit
+        self._id = self.default_id()
+        self._label = self.default_label()
+
     @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD data."""
@@ -451,6 +457,12 @@ class Dataset(Entity, CreatorMixin):
             return Path(self.client.data_dir) / self.name
         return ""
 
+    @property
+    def original_identifier(self):
+        """Return the first identifier of the dataset."""
+        if self.path:
+            return Path(self.path).name
+
     def contains_any(self, files):
         """Check if files are already within a dataset."""
         for file_ in files:
@@ -504,12 +516,15 @@ class Dataset(Entity, CreatorMixin):
         for new_file in files:
             old_file = self.find_file(new_file.path)
             if not old_file:
-                self._modified = True
                 new_files.append(new_file)
             elif new_file.commit != old_file.commit or new_file.added != old_file.added:
                 self.unlink_file(new_file.path)
                 new_files.append(new_file)
 
+        if not new_files:
+            return
+
+        self._modified = True
         self.files += new_files
 
         self._update_files_metadata()
@@ -723,7 +738,7 @@ class DatasetTagSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     name = fields.String(schema.name)
-    description = fields.String(schema.description)
+    description = fields.String(schema.description, missing=None)
     commit = fields.String(schema.location)
     created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
     dataset = fields.String(schema.about)
@@ -800,10 +815,10 @@ class DatasetSchema(EntitySchema, CreatorMixinSchema):
     description = fields.String(schema.description, missing=None)
     identifier = fields.String(schema.identifier)
     in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None, allow_none=True)
-    license = Uri(schema.license, missing=None, allow_none=True)
+    keywords = fields.List(schema.keywords, fields.String(), allow_none=True, missing=None)
+    license = Uri(schema.license, allow_none=True, missing=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url)
+    url = fields.String(schema.url, missing=None)
     version = fields.String(schema.version, missing=None)
     date_created = fields.DateTime(
         schema.dateCreated, missing=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",)
