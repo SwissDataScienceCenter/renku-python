@@ -46,6 +46,7 @@ def _migrate_project_metadata(client):
         jsonld_context=_INITIAL_JSONLD_PROJECT_CONTEXT,
         fields=_PROJECT_FIELDS,
         jsonld_translate=jsonld_translate,
+        persist_changes=not client.is_using_temporary_datasets_path(),
     )
 
 
@@ -75,7 +76,7 @@ def _migrate_datasets_metadata(client):
 
 
 def _apply_on_the_fly_jsonld_migrations(
-    path, jsonld_context, fields, client=None, jsonld_migrations=None, jsonld_translate=None
+    path, jsonld_context, fields, client=None, jsonld_migrations=None, jsonld_translate=None, persist_changes=True
 ):
     data = read_yaml(path)
 
@@ -138,7 +139,8 @@ def _apply_on_the_fly_jsonld_migrations(
 
     _migrate_types(data)
 
-    write_yaml(path, data)
+    if persist_changes:
+        write_yaml(path, data)
 
 
 def _migrate_dataset_schema(data, client):

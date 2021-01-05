@@ -122,7 +122,12 @@ class ProvenanceGraph:
         if self._graph:
             return
 
-        self._graph = ConjunctiveGraph().parse(location=str(self._path), format="json-ld")
+        self._graph = ConjunctiveGraph()
+
+        if not self._path.exists():
+            return
+
+        self._graph.parse(location=str(self._path), format="json-ld")
 
         self._graph.bind("foaf", "http://xmlns.com/foaf/0.1/")
         self._graph.bind("oa", "http://www.w3.org/ns/oa#")
