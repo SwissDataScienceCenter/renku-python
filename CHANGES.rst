@@ -26,6 +26,7 @@ Bug Fixes
 
 -  **core:** fix gitlab ID parsing when GITLAB_BASE_URL is set without
    port
+   (`#1823 <https://github.com/SwissDataScienceCenter/renku-python/pull/1823>`__)
    (`4f94165 <https://github.com/SwissDataScienceCenter/renku-python/commit/4f94165bbc84b1afd01e1ffcd6cf8a2a9ea25fb3>`__)
 -  **service:** add datasets.remove to swagger docs
    (`#1778 <https://github.com/SwissDataScienceCenter/renku-python/issues/1778>`__)
