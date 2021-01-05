@@ -296,6 +296,7 @@ and configure your local kubectl with the credentials needed for your cluster.
 Add a `.vscode/settings.json` in the renku-python project root and set the following two values:
 
 ::
+
     {
         "vs-kubernetes": {
             "vs-kubernetes.python-autodetect-remote-root": true,
