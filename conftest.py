@@ -433,6 +433,16 @@ def client_with_datasets(client, directory_tree):
     yield client
 
 
+@pytest.fixture()
+def client_with_datasets_provenance(client):
+    """A client with dataset provenance."""
+    from renku.core.incubation.graph import generate_datasets_provenance
+
+    generate_datasets_provenance().build().execute()
+
+    yield client
+
+
 @pytest.fixture(params=[".", "some/sub/directory"])
 def subdirectory(project, request):
     """Runs tests in root directory and a subdirectory."""
@@ -852,6 +862,20 @@ def datapack_tar(directory_tree):
         shutil.make_archive("datapack", "tar", str(directory_tree))
 
     yield Path(workspace_dir.name) / "datapack.tar"
+
+
+@pytest.fixture()
+def datapack_gz(directory_tree):
+    """Returns dummy data folder as a tar archive."""
+    from renku.core.utils.contexts import chdir
+
+    workspace_dir = tempfile.TemporaryDirectory()
+    with chdir(workspace_dir.name):
+        shutil.make_archive("datapack", "gztar", str(directory_tree))
+
+    shutil.move(Path(workspace_dir.name) / "datapack.tar.gz", Path(workspace_dir.name) / "datapack.gz")
+
+    yield Path(workspace_dir.name) / "datapack.gz"
 
 
 @pytest.fixture(scope="module")

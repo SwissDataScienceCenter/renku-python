@@ -53,7 +53,7 @@ class StandardOutput(CommunicationCallback):
         with CommunicationCallback.lock:
             print(msg, file=sys.stderr)
 
-    def confirm(self, msg, abort=False):
+    def confirm(self, msg, abort=False, warning=False):
         """Get confirmation for an action."""
         return False
 
@@ -116,6 +116,15 @@ class ClickCallback(StandardOutput):
         """Write an error message."""
         click.echo(self.ERROR + msg)
 
-    def confirm(self, msg, abort=False):
+    def has_prompt(self):
+        """Return True if communicator provides a direct prompt to users."""
+        return True
+
+    def confirm(self, msg, abort=False, warning=False):
         """Get confirmation for an action using a prompt."""
-        return click.confirm(msg, abort=abort)
+        prefix = self.WARNING if warning else ""
+        return click.confirm(prefix + msg, abort=abort)
+
+    def prompt(self, msg, type=None, default=None):
+        """Show a message prompt from the first callback that has a prompt."""
+        return click.prompt(msg, type=type, default=default)

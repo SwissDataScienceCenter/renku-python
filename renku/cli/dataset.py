@@ -85,11 +85,24 @@ flag for it:
 
 .. code-block:: console
 
-    $ renku dataset ls --revision=1103a42bd3006c94efcaf5d6a5e03a335f071215
+    $ renku dataset ls --revision=1103a42bd3006c94ef2af5d6a5e03a335f071215
     ID        NAME                 TITLE               VERSION
     a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
     c2d80abe  ds1                  ds1
 
+Showing dataset details:
+
+. code-block:: console
+
+    $ renku dataset show some-dataset
+    Some Dataset
+    ---------------
+    Just some dataset
+
+    Name: some-dataset
+    Created: 2020-12-09 13:52:06.640778+00:00
+    Creator(s): John Doe<john.doe@example.com> [SDSC]
+    Keywords: Dataset, Data
 
 Deleting a dataset:
 
@@ -309,7 +322,7 @@ Listing all files in the project associated with a dataset.
     $ renku dataset ls-files
     DATASET NAME         ADDED                PATH                           LFS
     -------------------  -------------------  -----------------------------  ----
-    my-dataset           2020-02-28 16:48:09  data/my-dataset/addme          *
+    my-dataset           2020-02-28 16:48:09  data/my-dataset/add-me         *
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file2
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
@@ -322,7 +335,7 @@ comma-separated list of column names:
     $ renku dataset ls-files --columns name,creators, path
     DATASET NAME         CREATORS   PATH
     -------------------  ---------  -----------------------------
-    my-dataset           sam        data/my-dataset/addme
+    my-dataset           sam        data/my-dataset/add-me
     my-dataset           sam        data/my-dataset/weather/file1
     my-dataset           sam        data/my-dataset/weather/file2
     my-dataset           sam        data/my-dataset/weather/file3
@@ -368,16 +381,17 @@ Unlink all files from a dataset:
 .. note:: The ``unlink`` command does not delete files,
     only the dataset record.
 """
-from functools import partial
 
 import click
 import requests
-from tqdm import tqdm
+from rich.console import Console
+from rich.markdown import Markdown
 
+from renku.cli.utils.callback import ClickCallback
+from renku.core import errors
 from renku.core.commands.dataset import (
-    add_file,
+    add_to_dataset,
     create_dataset,
-    dataset_remove,
     edit_dataset,
     export_dataset,
     file_unlink,
@@ -385,51 +399,20 @@ from renku.core.commands.dataset import (
     list_datasets,
     list_files,
     list_tags,
+    remove_dataset,
     remove_dataset_tags,
-    tag_dataset_with_client,
+    show_dataset,
+    tag_dataset,
     update_datasets,
 )
-from renku.core.commands.echo import WARNING, progressbar
 from renku.core.commands.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core.commands.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.core.errors import DatasetNotFound, InvalidAccessToken
-from renku.core.management.datasets import DownloadProgressCallback
-
-
-def prompt_access_token(exporter):
-    """Prompt user for an access token for a provider.
-
-    :return: The new access token
-    """
-    text_prompt = "You must configure an access token\n"
-    text_prompt += "Create one at: {0}\n".format(exporter.access_token_url())
-    text_prompt += "Access token"
-
-    return click.prompt(text_prompt, type=str)
-
-
-def prompt_tag_selection(tags):
-    """Prompt user to chose a tag or <HEAD>."""
-    # Prompt user to select a tag to export
-    tags = sorted(tags, key=lambda t: t.created)
-
-    text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
-
-    text_prompt += "\n".join("{}\t[{}]".format(t.name, i) for i, t in enumerate(tags, start=2))
-
-    text_prompt += "\n\nTag"
-    selection = click.prompt(text_prompt, type=click.IntRange(1, len(tags) + 1), default=1)
-
-    if selection > 1:
-        return tags[selection - 2]
-    return None
 
 
 @click.group()
 def dataset():
     """Dataset commands."""
-    pass
 
 
 @dataset.command("ls")
@@ -444,10 +427,10 @@ def dataset():
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
     show_default=True,
 )
-@click.pass_context
-def list_dataset(ctx, revision, format, columns):
+def list_dataset(revision, format, columns):
     """Handle datasets."""
-    click.echo(list_datasets(revision=revision, format=format, columns=columns))
+    result = list_datasets().build().execute(revision=revision, format=format, columns=columns)
+    click.echo(result.output)
 
 
 @dataset.command()
@@ -460,14 +443,22 @@ def list_dataset(ctx, revision, format, columns):
     "creators",
     default=None,
     multiple=True,
-    help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
 def create(name, title, description, creators, keyword):
     """Create an empty dataset in the current repo."""
+    communicator = ClickCallback()
     creators = creators or ()
 
-    new_dataset = create_dataset(name=name, title=title, description=description, creators=creators, keywords=keyword,)
+    result = (
+        create_dataset()
+        .with_communicator(communicator)
+        .build()
+        .execute(name=name, title=title, description=description, creators=creators, keywords=keyword)
+    )
+
+    new_dataset = result.output
 
     click.echo(f'Use the name "{new_dataset.name}" to refer to this dataset.')
     click.secho("OK", fg="green")
@@ -491,9 +482,13 @@ def edit(name, title, description, creators, keyword):
     creators = creators or ()
     keywords = keyword or ()
 
-    updated, no_email_warnings = edit_dataset(
-        name=name, title=title, description=description, creators=creators, keywords=keywords,
+    result = (
+        edit_dataset()
+        .build()
+        .execute(name=name, title=title, description=description, creators=creators, keywords=keywords,)
     )
+
+    updated, no_email_warnings = result.output
 
     if not updated:
         click.echo(
@@ -506,7 +501,36 @@ def edit(name, title, description, creators, keyword):
     else:
         click.echo("Successfully updated: {}.".format(", ".join(updated)))
         if no_email_warnings:
-            click.echo(WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
+            click.echo(ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
+
+
+@dataset.command("show")
+@click.argument("name")
+def show(name):
+    """Handle datasets."""
+    result = show_dataset().build().execute(name=name)
+    ds = result.output
+    click.secho(ds["title"], bold=True)
+    click.echo("-" * min(len(ds["title"]), click.get_terminal_size()[0]))
+
+    Console().print(Markdown(ds["description"]))
+    click.echo()
+    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(ds["name"], bold=True))
+    click.echo(click.style("Created: ", bold=True, fg="magenta") + ds["created_at"])
+
+    creators = []
+    for creator in ds["creators"]:
+        if creator["affiliation"]:
+            creators.append(f"{creator['name']} <{creator['email']}> [{creator['affiliation']}]")
+        else:
+            creators.append(f"{creator['name']} <{creator['email']}>")
+
+    click.echo(click.style("Creator(s): ", bold=True, fg="magenta") + ", ".join(creators))
+    if ds["keywords"]:
+        click.echo(click.style("Keywords: ", bold=True, fg="magenta") + ", ".join(ds["keywords"]))
+
+    if ds["version"]:
+        click.echo(click.style("Version: ", bold=True, fg="magenta") + ds["version"])
 
 
 @dataset.command()
@@ -520,18 +544,13 @@ def edit(name, title, description, creators, keyword):
     "-s", "--src", "--source", "sources", default=None, multiple=True, help="Path(s) within remote git repo to be added"
 )
 @click.option(
-    "-d",
-    "--dst",
-    "--destination",
-    "destination",
-    default="",
-    help="Destination file or directory within the dataset path",
+    "-d", "--dst", "--destination", "destination", default="", help="Destination directory within the dataset path"
 )
 @click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
 def add(name, urls, external, force, overwrite, create, sources, destination, ref):
     """Add data to a dataset."""
-    progress = partial(progressbar, label="Adding data to dataset")
-    add_file(
+    communicator = ClickCallback()
+    add_to_dataset().with_communicator(communicator).build().execute(
         urls=urls,
         name=name,
         external=external,
@@ -541,9 +560,6 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
         sources=sources,
         destination=destination,
         ref=ref,
-        urlscontext=progress,
-        progress=_DownloadProgressbar,
-        interactive=True,
     )
     click.secho("OK", fg="green")
 
@@ -552,7 +568,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 @click.argument("names", nargs=-1)
 @click.option(
     "--creators",
-    help="Filter files which where authored by specific creators. " "Multiple creators are specified by comma.",
+    help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
 )
 @click.option("-I", "--include", default=None, multiple=True, help="Include files matching given pattern.")
 @click.option("-X", "--exclude", default=None, multiple=True, help="Exclude files matching given pattern.")
@@ -568,7 +584,8 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 )
 def ls_files(names, creators, include, exclude, format, columns):
     """List files in dataset."""
-    click.echo(list_files(names, creators, include, exclude, format, columns))
+    result = list_files().build().execute(names, creators, include, exclude, format, columns)
+    click.echo(result.output)
 
 
 @dataset.command()
@@ -578,8 +595,8 @@ def ls_files(names, creators, include, exclude, format, columns):
 @click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
 def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
-    file_unlink(name=name, include=include, exclude=exclude, yes=yes, interactive=True)
-
+    communicator = ClickCallback()
+    file_unlink().with_communicator(communicator).build().execute(name=name, include=include, exclude=exclude, yes=yes)
     click.secho("OK", fg="green")
 
 
@@ -587,7 +604,7 @@ def unlink(name, include, exclude, yes):
 @click.argument("name")
 def remove(name):
     """Delete a dataset."""
-    dataset_remove(name)
+    remove_dataset().build().execute(name)
     click.secho("OK", fg="green")
 
 
@@ -598,7 +615,7 @@ def remove(name):
 @click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
-    tag_dataset_with_client(name, tag, description, force)
+    tag_dataset().build().execute(name, tag, description, force)
     click.secho("OK", fg="green")
 
 
@@ -607,7 +624,7 @@ def tag(name, tag, description, force):
 @click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
-    remove_dataset_tags(name, tags)
+    remove_dataset_tags().build().execute(name, tags)
     click.secho("OK", fg="green")
 
 
@@ -616,8 +633,8 @@ def remove_tags(name, tags):
 @click.option("--format", type=click.Choice(DATASET_TAGS_FORMATS), default="tabular", help="Choose an output format.")
 def ls_tags(name, format):
     """List all tags of a dataset."""
-    tags_output = list_tags(name, format)
-    click.echo(tags_output)
+    result = list_tags().build().execute(name, format)
+    click.echo(result.output)
 
 
 @dataset.command("export")
@@ -630,20 +647,18 @@ def ls_tags(name, format):
 def export_(name, provider, publish, tag, dataverse_server, dataverse_name):
     """Export data to 3rd party provider."""
     try:
-        output = export_dataset(
+        communicator = ClickCallback()
+        export_dataset().with_communicator(communicator).build().execute(
             name=name,
-            provider=provider,
+            provider_name=provider,
             publish=publish,
             tag=tag,
-            handle_access_token_fn=prompt_access_token,
-            handle_tag_selection_fn=prompt_tag_selection,
             dataverse_server_url=dataverse_server,
             dataverse_name=dataverse_name,
         )
-    except (ValueError, InvalidAccessToken, DatasetNotFound, requests.HTTPError) as e:
+    except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, requests.HTTPError) as e:
         raise click.BadParameter(e)
 
-    click.echo(output)
     click.secho("OK", fg="green")
 
 
@@ -657,39 +672,18 @@ def import_(uri, name, extract, yes):
 
     Supported providers: [Dataverse, Renku, Zenodo]
     """
-    import_dataset(uri=uri, name=name, extract=extract, with_prompt=True, yes=yes, progress=_DownloadProgressbar)
+    communicator = ClickCallback()
+    import_dataset().with_communicator(communicator).build().execute(uri=uri, name=name, extract=extract, yes=yes)
+
     click.secho(" " * 79 + "\r", nl=False)
     click.secho("OK", fg="green")
-
-
-class _DownloadProgressbar(DownloadProgressCallback):
-    def __init__(self, description, total_size):
-        """Default initializer."""
-        self._progressbar = tqdm(
-            total=total_size,
-            unit="iB",
-            unit_scale=True,
-            desc=description,
-            leave=False,
-            bar_format="{desc:.32}: {percentage:3.0f}%|{bar}{r_bar}",
-        )
-
-    def update(self, size):
-        """Update the status."""
-        if self._progressbar:
-            self._progressbar.update(size)
-
-    def finalize(self):
-        """Called once when the download is finished."""
-        if self._progressbar:
-            self._progressbar.close()
 
 
 @dataset.command("update")
 @click.argument("names", nargs=-1)
 @click.option(
     "--creators",
-    help="Filter files which where authored by specific creators. " "Multiple creators are specified by comma.",
+    help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
 )
 @click.option("-I", "--include", default=None, multiple=True, help="Include files matching given pattern.")
 @click.option("-X", "--exclude", default=None, multiple=True, help="Exclude files matching given pattern.")
@@ -698,8 +692,8 @@ class _DownloadProgressbar(DownloadProgressCallback):
 @click.option("-e", "--external", is_flag=True, help="Update external data.")
 def update(names, creators, include, exclude, ref, delete, external):
     """Updates files in dataset from a remote Git repo."""
-    progress_context = partial(progressbar, label="Checking files for updates")
-    update_datasets(
+    communicator = ClickCallback()
+    update_datasets().with_communicator(communicator).build().execute(
         names=list(names),
         creators=creators,
         include=include,
@@ -707,6 +701,5 @@ def update(names, creators, include, exclude, ref, delete, external):
         ref=ref,
         delete=delete,
         external=external,
-        progress_context=progress_context,
     )
     click.secho("OK", fg="green")

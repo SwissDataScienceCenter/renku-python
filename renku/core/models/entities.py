@@ -24,7 +24,7 @@ from urllib.parse import quote, urljoin
 
 import attr
 
-from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, rdfs, schema, wfprov
+from renku.core.models.calamus import JsonLDSchema, Nested, fields, prov, rdfs, renku, schema, wfprov
 from renku.core.models.projects import Project, ProjectSchema
 
 
@@ -92,6 +92,8 @@ class Entity(CommitMixin):
     _parent = attr.ib(
         default=None, kw_only=True, converter=lambda value: weakref.ref(value) if value is not None else None,
     )
+
+    checksum = attr.ib(default=None, kw_only=True, type=str)
 
     @classmethod
     def from_revision(cls, client, path, revision="HEAD", parent=None, find_previous=True, **kwargs):
@@ -234,6 +236,8 @@ class EntitySchema(CommitMixinSchema):
 
         rdf_type = [prov.Entity, wfprov.Artifact]
         model = Entity
+
+    checksum = fields.String(renku.checksum, missing=None)
 
 
 class CollectionSchema(EntitySchema):

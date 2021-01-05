@@ -97,12 +97,9 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
         ("10.5281/zenodo.3188334", "y"),
         ("10.7910/DVN/TJCLKP", "n"),
         ("10.7910/DVN/F4NUMR", "y"),
-        ("10.5281/zenodo.597964", "y"),
         ("10.5281/zenodo.3236928", "n"),
         ("10.5281/zenodo.2671633", "n"),
         ("10.5281/zenodo.3237420", "n"),
-        ("10.5281/zenodo.3236928", "n"),
-        ("10.5281/zenodo.3236928", "n"),
         ("10.5281/zenodo.2669459", "n"),
         ("10.5281/zenodo.2371189", "n"),
         ("10.5281/zenodo.2651343", "n"),
@@ -115,9 +112,9 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after):
         ("10.5281/zenodo.3239996", "n"),
         ("10.5281/zenodo.3239256", "n"),
         ("10.5281/zenodo.3237813", "n"),
-        ("10.5281/zenodo.3239988", "y"),
-        ("10.5281/zenodo.1175627", "y"),
-        ("10.5281/zenodo.3490468", "y"),
+        ("10.5281/zenodo.3239988", "n"),
+        ("10.5281/zenodo.1175627", "n"),
+        ("10.5281/zenodo.3490468", "n"),
     ],
 )
 @pytest.mark.integration
@@ -1363,6 +1360,24 @@ def test_immutability_after_import(runner, client):
 
 
 @pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_immutability_after_update(client, runner):
+    """Test dataset is mutated after an update."""
+    url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "my-data", "--ref", "0.3.0", "-s", "README.md", url])
+    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+
+    old_dataset = client.load_dataset("my-data")
+
+    assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
+
+    dataset = client.load_dataset("my-data")
+    mutator = Person.from_git(client.repo)
+    assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "url",
     [
@@ -1383,3 +1398,46 @@ def test_import_returns_last_dataset_version(runner, client, url):
     latest_identifier = "0dc3a120-e4af-4a4c-a888-70d1719c4631"
     assert dataset.identifier not in [initial_identifier, latest_identifier]
     assert f"https://dev.renku.ch/datasets/{latest_identifier}" == dataset.same_as.url["@id"]
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_datasets_provenance_after_import(runner, client_with_datasets_provenance):
+    """Test dataset provenance is updated after importing a dataset."""
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", "10.7910/DVN/F4NUMR"]).exit_code
+
+    dataset = client_with_datasets_provenance.datasets_provenance.get_by_name("my-data")
+
+    assert dataset is not None
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_datasets_provenance_after_git_update(client_with_datasets_provenance, runner):
+    """Test dataset provenance is updated after an update."""
+    url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "my-data", "--ref", "0.3.0", "-s", "README.md", url])
+    assert 0 == result.exit_code, result.output + str(result.stderr_bytes)
+
+    assert 0 == runner.invoke(cli, ["dataset", "update"], catch_exceptions=False).exit_code
+
+    dataset = client_with_datasets_provenance.load_dataset("my-data")
+    current_version = client_with_datasets_provenance.datasets_provenance.get(dataset.identifier)
+
+    assert current_version.identifier != current_version.original_identifier
+
+
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_datasets_provenance_after_external_provider_update(client_with_datasets_provenance, runner):
+    """Test dataset provenance is updated after an update from an external provider."""
+    doi = "10.5281/zenodo.2658634"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", doi]).exit_code
+
+    assert 0 == runner.invoke(cli, ["dataset", "update", "my-data"]).exit_code
+
+    dataset = client_with_datasets_provenance.load_dataset("my-data")
+    current_version = client_with_datasets_provenance.datasets_provenance.get(dataset.identifier)
+
+    assert current_version.identifier != current_version.original_identifier

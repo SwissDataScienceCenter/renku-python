@@ -86,6 +86,7 @@ def migrate(
     skip_docker_update=False,
     skip_migrations=False,
     progress_callback=None,
+    project_version=None,
 ):
     """Apply all migration files to the project."""
     template_updated = docker_updated = False
@@ -115,7 +116,7 @@ def migrate(
     if skip_migrations:
         return False, template_updated, docker_updated
 
-    project_version = _get_project_version(client)
+    project_version = project_version or _get_project_version(client)
     n_migrations_executed = 0
 
     for version, path in get_migrations():
@@ -129,7 +130,7 @@ def migrate(
             except (Exception, BaseException) as e:
                 raise MigrationError("Couldn't execute migration") from e
             n_migrations_executed += 1
-    if n_migrations_executed > 0:
+    if n_migrations_executed > 0 and not client.is_using_temporary_datasets_path():
         client._project = None  # NOTE: force reloading of project metadata
         client.project.version = str(version)
         client.project.to_yaml()

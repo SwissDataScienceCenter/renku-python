@@ -51,7 +51,9 @@ from renku.core.models.datasets import (
 )
 from renku.core.models.git import GitURL
 from renku.core.models.provenance.agents import Person
+from renku.core.models.provenance.datasets import DatasetProvenance
 from renku.core.models.refs import LinkReference
+from renku.core.utils import communication
 from renku.core.utils.urls import remove_credentials
 
 
@@ -68,10 +70,36 @@ class DatasetsApiMixin(object):
     CACHE = "cache"
     """Directory to cache transient data."""
 
+    DATASETS_PROVENANCE = "dataset.json"
+    """File for storing datasets' provenance."""
+
+    _temporary_datasets_path = None
+    _datasets_provenance = None
+
     @property
     def renku_datasets_path(self):
         """Return a ``Path`` instance of Renku dataset metadata folder."""
+        if self._temporary_datasets_path:
+            return self._temporary_datasets_path
+
         return self.path / self.renku_home / self.DATASETS
+
+    @property
+    def datasets_provenance_path(self):
+        """Path to store activity files."""
+        return self.renku_path / self.DATASETS_PROVENANCE
+
+    def set_temporary_datasets_path(self, path):
+        """Set path to Renku dataset metadata directory."""
+        self._temporary_datasets_path = path
+
+    def clear_temporary_datasets_path(self):
+        """Clear path to Renku dataset metadata directory."""
+        self._temporary_datasets_path = None
+
+    def is_using_temporary_datasets_path(self):
+        """Return true if temporary datasets path is set."""
+        return bool(self._temporary_datasets_path)
 
     @property
     def renku_pointers_path(self):
@@ -79,6 +107,32 @@ class DatasetsApiMixin(object):
         path = self.path / self.renku_home / self.POINTERS
         path.mkdir(exist_ok=True)
         return path
+
+    @property
+    def datasets_provenance(self):
+        """Return dataset provenance if available."""
+        if not self.has_datasets_provenance_file():
+            return
+        if not self._datasets_provenance:
+            self._datasets_provenance = DatasetProvenance.from_json(self.datasets_provenance_path)
+
+        return self._datasets_provenance
+
+    def update_datasets_provenance(self, dataset, remove=False):
+        """Update datasets provenance for a dataset."""
+        if not self.has_datasets_provenance_file():
+            return
+
+        if remove:
+            self.datasets_provenance.remove_dataset(dataset=dataset, client=self)
+        else:
+            self.datasets_provenance.update_dataset(dataset=dataset, client=self)
+
+        self.datasets_provenance.to_json()
+
+    def has_datasets_provenance_file(self):
+        """Return true if dependency or provenance graph exists."""
+        return self.datasets_provenance_path.exists()
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
@@ -232,11 +286,8 @@ class DatasetsApiMixin(object):
         extract=False,
         all_at_once=False,
         destination_names=None,
-        progress=None,
     ):
         """Import the data into the data directory."""
-        messages = []
-        warning_messages = []
         dataset_datadir = self.path / dataset.data_dir
 
         destination = destination or Path(".")
@@ -251,11 +302,7 @@ class DatasetsApiMixin(object):
         files = []
         if all_at_once:  # Importing a dataset
             files = self._add_from_urls(
-                urls=urls,
-                destination_names=destination_names,
-                destination=destination,
-                extract=extract,
-                progress=progress,
+                urls=urls, destination_names=destination_names, destination=destination, extract=extract,
             )
         else:
             for url in urls:
@@ -270,7 +317,7 @@ class DatasetsApiMixin(object):
 
                     if not is_remote:  # Local path, might be git
                         if is_git:
-                            warning_messages.append(
+                            communication.warn(
                                 "Adding data from local Git repository: "
                                 + "Use remote's Git URL instead to enable "
                                 + "lineage information and updates."
@@ -280,9 +327,7 @@ class DatasetsApiMixin(object):
                             dataset=dataset, path=u.path, external=external, destination=destination
                         )
                     else:  # Remote URL
-                        new_files = self._add_from_url(
-                            url=url, destination=destination, extract=extract, progress=progress
-                        )
+                        new_files = self._add_from_url(url=url, destination=destination, extract=extract)
 
                 files.extend(new_files)
 
@@ -290,7 +335,7 @@ class DatasetsApiMixin(object):
         paths_to_avoid = [f["path"] for f in files if ".git" in str(f["path"]).split(os.path.sep)]
         if paths_to_avoid:
             files = [f for f in files if f["path"] not in paths_to_avoid]
-            warning_messages.append(
+            communication.warn(
                 "Ignored adding paths under a .git directory:\n  " + "\n  ".join(str(p) for p in paths_to_avoid)
             )
 
@@ -312,7 +357,7 @@ class DatasetsApiMixin(object):
                             ignored_sources.append(file_["path"])
 
                 files = [f for f in files if str(self.path / f["path"]) in files_to_commit]
-                warning_messages.append(
+                communication.warn(
                     "Theses paths are ignored by one of your .gitignore "
                     + 'files (use "--force" flag if you really want to add '
                     + "them):\n  "
@@ -326,7 +371,7 @@ class DatasetsApiMixin(object):
             if existing_files:
                 files_to_commit = files_to_commit.difference(existing_files)
                 files = [f for f in files if str(self.path / f["path"]) in files_to_commit]
-                warning_messages.append(
+                communication.warn(
                     "These existing files were not overwritten "
                     + '(use "--overwrite" flag to overwrite them):\n  '
                     + "\n  ".join([str(p) for p in existing_files])
@@ -358,7 +403,7 @@ class DatasetsApiMixin(object):
             lfs_paths = self.track_paths_in_storage(*files_to_commit)
             show_message = self.get_value("renku", "show_lfs_message")
             if lfs_paths and (show_message is None or show_message == "True"):
-                messages.append(
+                communication.info(
                     (
                         "Adding these files to Git LFS:\n"
                         + "\t{}".format("\n\t".join(lfs_paths))
@@ -377,7 +422,7 @@ class DatasetsApiMixin(object):
             skip_hooks = not self.external_storage_requested
             self.repo.index.commit(msg, skip_hooks=skip_hooks)
         else:
-            warning_messages.append("No new file was added to project")
+            communication.warn("No new file was added to project")
 
         # Generate the DatasetFiles
         dataset_files = []
@@ -391,8 +436,6 @@ class DatasetsApiMixin(object):
             dataset_files.append(dataset_file)
 
         dataset.update_files(dataset_files)
-
-        return warning_messages, messages
 
     def _check_protected_path(self, path):
         """Checks if a path is a protected path."""
@@ -460,18 +503,29 @@ class DatasetsApiMixin(object):
             }
         ]
 
-    def _add_from_urls(self, urls, destination, destination_names, extract, progress):
+    def _add_from_urls(self, urls, destination, destination_names, extract):
+        listeners = communication.get_listeners()
+
+        def subscribe_communication_listeners(function, **kwargs):
+            try:
+                for communicator in listeners:
+                    communication.subscribe(communicator)
+                return function(**kwargs)
+            finally:
+                for communicator in listeners:
+                    communication.unsubscribe(communicator)
+
         files = []
         max_workers = min(os.cpu_count() - 1, 4) or 1
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             futures = {
                 executor.submit(
+                    subscribe_communication_listeners,
                     self._add_from_url,
                     url=url,
                     destination=destination,
                     extract=extract,
                     filename=name,
-                    progress=progress,
                 )
                 for url, name in zip(urls, destination_names)
             }
@@ -481,13 +535,13 @@ class DatasetsApiMixin(object):
 
         return files
 
-    def _add_from_url(self, url, destination, extract, filename=None, progress=None):
+    def _add_from_url(self, url, destination, extract, filename=None):
         """Process adding from url and return the location on disk."""
         url = self._provider_check(url)
 
         try:
             start = time.time() * 1e3
-            tmp_root, paths = self._download(url=url, filename=filename, extract=extract, progress_class=progress)
+            tmp_root, paths = self._download(url=url, filename=filename, extract=extract)
 
             exec_time = (time.time() * 1e3 - start) // 1e3
             # If execution time was less or equal to zero seconds,
@@ -762,8 +816,6 @@ class DatasetsApiMixin(object):
 
         dataset.tags.append(tag)
 
-        return dataset
-
     def remove_dataset_tags(self, dataset, tags):
         """Removes tags from a dataset."""
         tag_names = {t.name for t in dataset.tags}
@@ -772,8 +824,6 @@ class DatasetsApiMixin(object):
         if len(not_found) > 0:
             raise errors.ParameterError("Tags {} not found".format(", ".join(not_found)))
         dataset.tags = [t for t in dataset.tags if t.name not in tags]
-
-        return dataset
 
     def update_dataset_git_files(self, files, ref, delete=False):
         """Update files and dataset metadata according to their remotes.
@@ -789,53 +839,60 @@ class DatasetsApiMixin(object):
         updated_files = []
         deleted_files = []
 
-        for file_ in files:
-            if not file_.based_on:
-                continue
+        progress_text = "Checking files for updates"
 
-            file_.based_on = DatasetFile.from_jsonld(file_.based_on)
-            based_on = file_.based_on
-            url = based_on.source
-            if url in visited_repos:
-                repo, repo_path, remote_client = visited_repos[url]
-            else:
-                repo, repo_path = self.prepare_git_repo(url, ref)
-                remote_client = LocalClient(repo_path)
-                visited_repos[url] = repo, repo_path, remote_client
+        try:
+            communication.start_progress(progress_text, len(files))
+            for file_ in files:
+                communication.update_progress(progress_text, 1)
+                if not file_.based_on:
+                    continue
 
-            remote_file = self._fetch_file_metadata(remote_client, based_on.path)
-
-            if not remote_file:
-                try:
-                    remote_file = DatasetFile.from_revision(
-                        remote_client, path=based_on.path, source=None, added=based_on.added
-                    )
-                except KeyError:
-                    raise errors.ParameterError("Cannot find file {} in the repo {}".format(based_on.source, url))
-
-            commit_sha = self._get_commit_sha_from_label(based_on)
-            remote_commit_sha = self._get_commit_sha_from_label(remote_file)
-            if commit_sha != remote_commit_sha:
-                src = Path(repo.working_dir) / based_on.path
-                dst = self.renku_path.parent / file_.path
-
-                if src.exists():
-                    # Fetch file if it is tracked by Git LFS
-                    self._fetch_lfs_files(repo_path, {based_on.path})
-                    if remote_client._is_external_file(src):
-                        self.remove_file(dst)
-                        self._create_external_file(src.resolve(), dst)
-                    else:
-                        shutil.copy(src, dst)
-                    file_.based_on.commit = remote_file.commit
-                    file_.based_on._label = file_.based_on.default_label()
-                    file_.based_on._id = file_.based_on.default_id()
-                    updated_files.append(file_)
+                file_.based_on = DatasetFile.from_jsonld(file_.based_on)
+                based_on = file_.based_on
+                url = based_on.source
+                if url in visited_repos:
+                    repo, repo_path, remote_client = visited_repos[url]
                 else:
-                    # File was removed or renamed
-                    if delete:
-                        self.remove_file(dst)
-                    deleted_files.append(file_)
+                    repo, repo_path = self.prepare_git_repo(url, ref)
+                    remote_client = LocalClient(repo_path)
+                    visited_repos[url] = repo, repo_path, remote_client
+
+                remote_file = self._fetch_file_metadata(remote_client, based_on.path)
+
+                if not remote_file:
+                    try:
+                        remote_file = DatasetFile.from_revision(
+                            remote_client, path=based_on.path, source=None, added=based_on.added
+                        )
+                    except KeyError:
+                        raise errors.ParameterError("Cannot find file {} in the repo {}".format(based_on.source, url))
+
+                commit_sha = self._get_commit_sha_from_label(based_on)
+                remote_commit_sha = self._get_commit_sha_from_label(remote_file)
+                if commit_sha != remote_commit_sha:
+                    src = Path(repo.working_dir) / based_on.path
+                    dst = self.renku_path.parent / file_.path
+
+                    if src.exists():
+                        # Fetch file if it is tracked by Git LFS
+                        self._fetch_lfs_files(repo_path, {based_on.path})
+                        if remote_client._is_external_file(src):
+                            self.remove_file(dst)
+                            self._create_external_file(src.resolve(), dst)
+                        else:
+                            shutil.copy(src, dst)
+                        file_.based_on.commit = remote_file.commit
+                        file_.based_on._label = file_.based_on.default_label()
+                        file_.based_on._id = file_.based_on.default_id()
+                        updated_files.append(file_)
+                    else:
+                        # File was removed or renamed
+                        if delete:
+                            self.remove_file(dst)
+                        deleted_files.append(file_)
+        finally:
+            communication.finalize_progress(progress_text)
 
         if not updated_files and (not delete or not deleted_files):
             # Nothing to commit or update
@@ -870,6 +927,7 @@ class DatasetsApiMixin(object):
 
         for dataset in modified_datasets.values():
             dataset.to_yaml()
+            self.update_datasets_provenance(dataset)
 
         return updated_files, deleted_files
 
@@ -936,9 +994,10 @@ class DatasetsApiMixin(object):
         for dataset in updated_datasets.values():
             for file_ in dataset.files:
                 if str(self.path / file_.path) in updated_files_paths:
-                    file_.commit = commit
-                    file_._label = file_.default_label()
+                    file_.update_commit(commit)
+            dataset.mutate()
             dataset.to_yaml()
+            self.update_datasets_provenance(dataset)
 
     def _update_pointer_file(self, pointer_file_path):
         """Update a pointer file."""
@@ -1075,7 +1134,7 @@ class DatasetsApiMixin(object):
             return label.split("@")[1]
         return label
 
-    def _download(self, url, filename, extract, progress_class=None, chunk_size=16384):
+    def _download(self, url, filename, extract, chunk_size=16384):
         def extract_dataset(filepath):
             """Extract downloaded file."""
             try:
@@ -1103,33 +1162,19 @@ class DatasetsApiMixin(object):
             download_to = Path(tmp) / filename
             with open(str(download_to), "wb") as file_:
                 total_size = int(request.headers.get("content-length", 0))
-                progress_class = progress_class or DownloadProgressCallback
-                progress = progress_class(description=filename, total_size=total_size)
 
+                communication.start_progress(name=filename, total=total_size)
                 try:
                     for chunk in request.iter_content(chunk_size=chunk_size):
                         if chunk:  # ignore keep-alive chunks
                             file_.write(chunk)
-                            progress.update(size=len(chunk))
+                            communication.update_progress(name=filename, amount=len(chunk))
                 finally:
-                    progress.finalize()
+                    communication.finalize_progress(name=filename)
         if extract:
             return extract_dataset(download_to)
 
         return download_to.parent, [download_to]
-
-
-class DownloadProgressCallback:
-    """Interface to report various stages of a download."""
-
-    def __init__(self, description, total_size):
-        """Default initializer."""
-
-    def update(self, size):
-        """Update the status."""
-
-    def finalize(self):
-        """Called once when the download is finished."""
 
 
 def _check_url(url):
@@ -1160,8 +1205,9 @@ def _check_url(url):
 
 
 DATASET_METADATA_PATHS = [
-    Path(RENKU_HOME) / Path(DatasetsApiMixin.DATASETS),
-    Path(RENKU_HOME) / Path(DatasetsApiMixin.POINTERS),
-    Path(RENKU_HOME) / Path(LinkReference.REFS),
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
+    Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,
+    Path(RENKU_HOME) / LinkReference.REFS,
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
     ".gitattributes",
 ]

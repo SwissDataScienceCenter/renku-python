@@ -51,10 +51,12 @@ CACHE_PROJECTS_PATH.mkdir(parents=True, exist_ok=True)
 
 TAR_ARCHIVE_CONTENT_TYPE = "application/x-tar"
 ZIP_ARCHIVE_CONTENT_TYPE = "application/zip"
+GZ_ARCHIVE_CONTENT_TYPE = "application/x-gzip"
 
 SUPPORTED_ARCHIVES = [
     TAR_ARCHIVE_CONTENT_TYPE,
     ZIP_ARCHIVE_CONTENT_TYPE,
+    GZ_ARCHIVE_CONTENT_TYPE,
 ]
 
 SERVICE_PREFIX = os.getenv("CORE_SERVICE_PREFIX", "/")

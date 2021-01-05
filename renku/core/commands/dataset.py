@@ -28,27 +28,24 @@ import patoolib
 import requests
 
 from renku.core import errors
+from renku.core.commands.format.dataset_files import DATASET_FILES_FORMATS
 from renku.core.commands.format.dataset_tags import DATASET_TAGS_FORMATS
+from renku.core.commands.format.datasets import DATASETS_FORMATS
 from renku.core.commands.providers import ProviderFactory
-from renku.core.compat import contextlib
 from renku.core.errors import DatasetNotFound, InvalidAccessToken, OperationError, ParameterError, UsageError
+from renku.core.incubation.command import Command
 from renku.core.management.datasets import DATASET_METADATA_PATHS
-from renku.core.models.datasets import Url, generate_default_name
+from renku.core.models.datasets import DatasetDetailsJson, Url, generate_default_name
 from renku.core.models.provenance.agents import Person
 from renku.core.models.refs import LinkReference
 from renku.core.models.tabulate import tabulate
+from renku.core.utils import communication
 from renku.core.utils.doi import is_doi
 from renku.core.utils.urls import remove_credentials
 
-from .client import pass_local_client
-from .echo import INFO, WARNING
-from .format.dataset_files import DATASET_FILES_FORMATS
-from .format.datasets import DATASETS_FORMATS
 
-
-@pass_local_client(clean=False, commit=False)
-def list_datasets(client, revision=None, format=None, columns=None):
-    """Handle datasets sub commands."""
+def _list_datasets(client, revision=None, format=None, columns=None):
+    """List all datasets."""
     if revision is None:
         datasets = client.datasets.values()
     else:
@@ -63,28 +60,33 @@ def list_datasets(client, revision=None, format=None, columns=None):
     return DATASETS_FORMATS[format](client, datasets, columns=columns)
 
 
-@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS)
-def create_dataset(client, name, title=None, description="", creators=None, keywords=None, commit_message=None):
-    """Create an empty dataset in the current repo.
+def list_datasets():
+    """Command for listing datasets."""
+    return Command().command(_list_datasets).lock_dataset()
 
-    :raises: ``renku.core.errors.ParameterError``
-    """
+
+def _create_dataset(client, name, title=None, description="", creators=None, keywords=None):
     if not creators:
         creators = [Person.from_git(client.repo)]
     else:
         creators, _ = _construct_creators(creators)
 
-    dataset, _, __ = client.create_dataset(
+    dataset, _, _ = client.create_dataset(
         name=name, title=title, description=description, creators=creators, keywords=keywords
     )
+
+    client.update_datasets_provenance(dataset)
 
     return dataset
 
 
-@pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_empty=False, commit_only=DATASET_METADATA_PATHS
-)
-def edit_dataset(client, name, title, description, creators, keywords=None, commit_message=None):
+def create_dataset():
+    """Return a command for creating an empty dataset in the current repo."""
+    command = Command().command(_create_dataset).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+
+
+def _edit_dataset(client, name, title, description, creators, keywords=None):
     """Edit dataset metadata."""
     creators, no_email_warnings = _construct_creators(creators, ignore_email=True)
     title = title.strip() if isinstance(title, str) else ""
@@ -98,7 +100,26 @@ def edit_dataset(client, name, title, description, creators, keywords=None, comm
     with client.with_dataset(name=name) as dataset:
         dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
 
+    client.update_datasets_provenance(dataset)
+
     return updated, no_email_warnings
+
+
+def edit_dataset():
+    """Command for editing dataset metadata."""
+    command = Command().command(_edit_dataset).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+
+
+def _show_dataset(client, name):
+    """Show detailed dataset information."""
+    dataset = client.load_dataset(name)
+    return DatasetDetailsJson().dump(dataset)
+
+
+def show_dataset():
+    """Command for showing detailed dataset information."""
+    return Command().command(_show_dataset)
 
 
 def _construct_creators(creators, ignore_email=False):
@@ -135,48 +156,6 @@ def _construct_creators(creators, ignore_email=False):
     return people, no_email_warnings
 
 
-@pass_local_client(
-    clean=False,
-    requires_migration=True,
-    commit=True,
-    commit_only=DATASET_METADATA_PATHS,
-    commit_empty=False,
-    raise_if_empty=True,
-)
-def add_file(
-    client,
-    urls,
-    name,
-    external=False,
-    force=False,
-    overwrite=False,
-    create=False,
-    sources=(),
-    destination="",
-    ref=None,
-    urlscontext=contextlib.nullcontext,
-    commit_message=None,
-    progress=None,
-    interactive=False,
-):
-    """Add data file to a dataset."""
-    _add_to_dataset(
-        client=client,
-        urls=urls,
-        name=name,
-        external=external,
-        force=force,
-        overwrite=overwrite,
-        create=create,
-        sources=sources,
-        destination=destination,
-        ref=ref,
-        urlscontext=urlscontext,
-        progress=progress,
-        interactive=interactive,
-    )
-
-
 def _add_to_dataset(
     client,
     urls,
@@ -189,13 +168,9 @@ def _add_to_dataset(
     destination="",
     ref=None,
     with_metadata=None,
-    urlscontext=contextlib.nullcontext,
-    commit_message=None,
     extract=False,
     all_at_once=False,
     destination_names=None,
-    progress=None,
-    interactive=False,
     total_size=None,
 ):
     """Add data to a dataset."""
@@ -204,50 +179,38 @@ def _add_to_dataset(
     if sources and len(urls) > 1:
         raise UsageError('Cannot use "--source" with multiple URLs.')
 
-    if interactive:
-        if total_size is None:
-            total_size = 0
-            for url in urls:
-                try:
-                    with requests.get(url, stream=True, allow_redirects=True) as r:
-                        total_size += int(r.headers.get("content-length", 0))
-                except requests.exceptions.RequestException:
-                    pass
-        usage = shutil.disk_usage(client.path)
+    if total_size is None:
+        total_size = 0
+        for url in urls:
+            try:
+                with requests.get(url, stream=True, allow_redirects=True) as r:
+                    total_size += int(r.headers.get("content-length", 0))
+            except requests.exceptions.RequestException:
+                pass
+    usage = shutil.disk_usage(client.path)
 
-        if total_size > usage.free:
-            mb = 2 ** 20
-            message = "Insufficient disk space (required: {:.2f} MB" "/available: {:.2f} MB). ".format(
-                total_size / mb, usage.free / mb
-            )
-            raise OperationError(message)
+    if total_size > usage.free:
+        mb = 2 ** 20
+        message = "Insufficient disk space (required: {:.2f} MB" "/available: {:.2f} MB). ".format(
+            total_size / mb, usage.free / mb
+        )
+        raise OperationError(message)
 
     try:
         with client.with_dataset(name=name, create=create) as dataset:
-            with urlscontext(urls) as bar:
-                warning_messages, messages = client.add_data_to_dataset(
-                    dataset,
-                    bar,
-                    external=external,
-                    force=force,
-                    overwrite=overwrite,
-                    sources=sources,
-                    destination=destination,
-                    ref=ref,
-                    extract=extract,
-                    all_at_once=all_at_once,
-                    destination_names=destination_names,
-                    progress=progress,
-                )
-
-            if messages:
-                for msg in messages:
-                    click.echo(INFO + msg)
-
-            if warning_messages:
-                for msg in warning_messages:
-                    click.echo(WARNING + msg)
-
+            client.add_data_to_dataset(
+                dataset,
+                urls=urls,
+                external=external,
+                force=force,
+                overwrite=overwrite,
+                sources=sources,
+                destination=destination,
+                ref=ref,
+                extract=extract,
+                all_at_once=all_at_once,
+                destination_names=destination_names,
+            )
             if with_metadata:
                 # dataset has the correct list of files
                 with_metadata.files = dataset.files
@@ -255,6 +218,7 @@ def _add_to_dataset(
 
                 dataset.update_metadata_from(with_metadata)
 
+        client.update_datasets_provenance(dataset)
     except DatasetNotFound:
         raise DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -266,9 +230,14 @@ def _add_to_dataset(
         raise ParameterError("Could not find paths/URLs: \n{0}".format("\n".join(urls))) from e
 
 
-@pass_local_client(clean=False, commit=False)
-def list_files(client, datasets=None, creators=None, include=None, exclude=None, format=None, columns=None):
-    """List files in dataset."""
+def add_to_dataset():
+    """Create a command for adding data to datasets."""
+    command = Command().command(_add_to_dataset).lock_dataset()
+    return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
+
+
+def _list_files(client, datasets=None, creators=None, include=None, exclude=None, format=None, columns=None):
+    """List dataset files."""
     records = _filter(client, names=datasets, creators=creators, include=include, exclude=exclude)
     for record in records:
         record.title = record.dataset.title
@@ -285,10 +254,12 @@ def list_files(client, datasets=None, creators=None, include=None, exclude=None,
     return DATASET_FILES_FORMATS[format](client, records, columns=columns)
 
 
-@pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
-)
-def file_unlink(client, name, include, exclude, interactive=False, yes=False, commit_message=None):
+def list_files():
+    """Command for listing dataset files."""
+    return Command().command(_list_files).lock_dataset()
+
+
+def _file_unlink(client, name, include, exclude, yes=False):
     """Remove matching files from a dataset."""
     if not include and not exclude:
         raise ParameterError(
@@ -308,29 +279,36 @@ def file_unlink(client, name, include, exclude, interactive=False, yes=False, co
     if not records:
         raise ParameterError("No records found.")
 
-    if interactive and not yes:
+    if not yes:
         prompt_text = (
             f'You are about to remove following from "{name}" dataset.'
             + "\n"
             + "\n".join([str(record.full_path) for record in records])
             + "\nDo you wish to continue?"
         )
-        click.confirm(WARNING + prompt_text, abort=True)
+        communication.confirm(prompt_text, abort=True, warning=True)
 
     for item in records:
         dataset.unlink_file(item.path)
 
     dataset.to_yaml()
+    client.update_datasets_provenance(dataset)
 
     return records
 
 
-@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS)
-def dataset_remove(client, name, commit_message=None):
+def file_unlink():
+    """Command for removing matching files from a dataset."""
+    command = Command().command(_file_unlink).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+
+
+def _remove_dataset(client, name):
     """Delete a dataset."""
     dataset = client.load_dataset(name=name, strict=True)
     dataset.mutate()
     dataset.to_yaml()
+    client.update_datasets_provenance(dataset, remove=True)
 
     client.repo.git.add(dataset.path)
     client.repo.index.commit("renku dataset rm: final mutation")
@@ -346,34 +324,29 @@ def dataset_remove(client, name, commit_message=None):
             ref.delete()
 
 
-@pass_local_client(clean=True, requires_migration=True, commit=False)
-def export_dataset(
-    client,
-    name,
-    provider,
-    publish,
-    tag,
-    handle_access_token_fn=None,
-    handle_tag_selection_fn=None,
-    commit_message=None,
-    dataverse_server_url=None,
-    dataverse_name=None,
+def remove_dataset():
+    """Command for deleting a dataset."""
+    command = Command().command(_remove_dataset).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+
+
+def _export_dataset(
+    client, name, provider_name, publish, tag, dataverse_server_url=None, dataverse_name=None,
 ):
     """Export data to 3rd party provider.
 
     :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
              ``DatasetNotFound``
     """
+    provider_name = provider_name.lower()
+
     # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = "access_token"
-    provider_id = provider.lower()
 
-    dataset_ = client.load_dataset(name)
-    if not dataset_:
-        raise DatasetNotFound(name=name)
+    dataset_ = client.load_dataset(name, strict=True)
 
     try:
-        provider = ProviderFactory.from_id(provider_id)
+        provider = ProviderFactory.from_id(provider_name)
     except KeyError:
         raise ParameterError("Unknown provider.")
 
@@ -389,8 +362,8 @@ def export_dataset(
             raise ValueError("Tag {} not found".format(tag))
 
         selected_commit = selected_tag.commit
-    elif dataset_.tags and len(dataset_.tags) > 0 and handle_tag_selection_fn:
-        tag_result = handle_tag_selection_fn(dataset_.tags)
+    elif dataset_.tags and len(dataset_.tags) > 0:
+        tag_result = _prompt_tag_selection(dataset_.tags)
 
         if tag_result:
             selected_tag = tag_result
@@ -414,69 +387,34 @@ def export_dataset(
         if not dataset_:
             raise DatasetNotFound(name=name)
 
-        access_token = client.get_value(provider_id, config_key_secret)
+        access_token = client.get_value(provider_name, config_key_secret)
         exporter = provider.get_exporter(dataset_, access_token=access_token)
 
         if access_token is None:
-            if handle_access_token_fn:
-                access_token = handle_access_token_fn(exporter)
+            access_token = _prompt_access_token(exporter)
 
             if access_token is None or len(access_token) == 0:
                 raise InvalidAccessToken()
 
-            client.set_value(provider_id, config_key_secret, access_token, global_only=True)
+            client.set_value(provider_name, config_key_secret, access_token, global_only=True)
             exporter.set_access_token(access_token)
 
         try:
             destination = exporter.export(publish=publish, tag=selected_tag)
         except errors.AuthenticationError:
-            client.remove_value(provider_id, config_key_secret, global_only=True)
+            client.remove_value(provider_name, config_key_secret, global_only=True)
             raise
 
-    result = "Exported to: {0}".format(destination)
-    return result
+    communication.echo(f"Exported to: {destination}")
 
 
-@pass_local_client(clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS)
-def import_dataset(
-    client,
-    uri,
-    name="",
-    extract=False,
-    with_prompt=False,
-    yes=False,
-    commit_message=None,
-    progress=None,
-    previous_dataset=None,
-    delete=False,
-):
-    """Import data from a 3rd party provider or another renku project."""
-    import_dataset_with_client(
-        client,
-        uri,
-        name=name,
-        extract=extract,
-        with_prompt=with_prompt,
-        yes=yes,
-        commit_message=commit_message,
-        progress=progress,
-        previous_dataset=previous_dataset,
-        delete=delete,
-    )
+def export_dataset():
+    """Command for exporting a dataset to 3rd party provider."""
+    command = Command().command(_export_dataset).lock_dataset()
+    return command.require_migration().require_clean()
 
 
-def import_dataset_with_client(
-    client,
-    uri,
-    name="",
-    extract=False,
-    with_prompt=False,
-    yes=False,
-    commit_message=None,
-    progress=None,
-    previous_dataset=None,
-    delete=False,
-):
+def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dataset=None, delete=False):
     """Import data from a 3rd party provider or another renku project."""
     provider, err = ProviderFactory.from_uri(uri)
     if err and provider is None:
@@ -488,8 +426,8 @@ def import_dataset_with_client(
         files = dataset.files
         total_size = 0
 
-        if with_prompt and not yes:
-            click.echo(
+        if not yes:
+            communication.echo(
                 tabulate(
                     files,
                     headers=OrderedDict(
@@ -501,11 +439,9 @@ def import_dataset_with_client(
 
             text_prompt = "Do you wish to download this version?"
             if not record.is_last_version(uri):
-                text_prompt = (
-                    WARNING + "Newer version found at {}\n".format(record.links.get("latest_html")) + text_prompt
-                )
+                text_prompt = "Newer version found at {}\n".format(record.links.get("latest_html")) + text_prompt
 
-            click.confirm(text_prompt, abort=True)
+            communication.confirm(text_prompt, abort=True, warning=True)
 
             for file_ in files:
                 if file_.size_in_mb is not None:
@@ -544,8 +480,6 @@ def import_dataset_with_client(
             extract=extract,
             all_at_once=True,
             destination_names=names,
-            progress=progress,
-            interactive=with_prompt,
             total_size=total_size,
         )
 
@@ -554,7 +488,7 @@ def import_dataset_with_client(
 
         if dataset.version:
             tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", dataset.version)
-            tag_dataset(client, name, tag_name, "Tag {} created by renku import".format(dataset.version))
+            _tag_dataset(client, name, tag_name, "Tag {} created by renku import".format(dataset.version))
     else:
         name = name or dataset.name
 
@@ -581,6 +515,12 @@ def import_dataset_with_client(
             _update_previous_dataset(client, dataset, previous_dataset, new_files, delete)
 
 
+def import_dataset():
+    """Create a command for importing datasets."""
+    command = Command().command(_import_dataset).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+
+
 def _update_previous_dataset(client, new_dataset, current_dataset, new_files, delete=False):
     """Update ``previous_dataset`` with changes made to ``new_dataset``."""
     current_dataset.update_metadata_from(new_dataset)
@@ -599,20 +539,8 @@ def _update_previous_dataset(client, new_dataset, current_dataset, new_files, de
     return current_dataset
 
 
-@pass_local_client(
-    clean=True, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS, commit_empty=False
-)
-def update_datasets(
-    client,
-    names,
-    creators,
-    include,
-    exclude,
-    ref,
-    delete,
-    external=False,
-    progress_context=contextlib.nullcontext,
-    commit_message=None,
+def _update_datasets(
+    client, names, creators, include, exclude, ref, delete, external=False,
 ):
     """Update files from a remote Git repo."""
     ignored_datasets = []
@@ -654,11 +582,11 @@ def update_datasets(
                     extract = False
                     break
 
-            import_dataset_with_client(
+            _import_dataset(
                 client, uri, name=dataset.name, extract=extract, yes=True, previous_dataset=dataset, delete=delete
             )
 
-            click.echo("Updated dataset {} from remote provider".format(dataset.name))
+            communication.echo(f"Updated dataset {dataset.name} from remote provider")
 
             if names:
                 names.remove(dataset.name)
@@ -697,17 +625,25 @@ def update_datasets(
         if external:
             client.update_external_files(external_files)
         else:
-            click.echo("To update external files run update command with '--external' flag.")
+            communication.echo("To update external files run update command with '--external' flag.")
 
-    with progress_context(possible_updates, item_show_func=lambda x: x.path if x else None) as progressbar:
-        updated_files, deleted_files = client.update_dataset_git_files(files=progressbar, ref=ref, delete=delete)
+    if not possible_updates:
+        return
+
+    updated_files, deleted_files = client.update_dataset_git_files(files=possible_updates, ref=ref, delete=delete)
 
     if deleted_files and not delete:
-        click.echo(
+        communication.echo(
             "Some files are deleted from remote. To also delete them locally "
             "run update command with `--delete` flag."
         )
-    click.echo("Updated {} files".format(len(updated_files)))
+    communication.echo("Updated {} files".format(len(updated_files)))
+
+
+def update_datasets():
+    """Command for updating datasets."""
+    command = Command().command(_update_datasets).lock_dataset()
+    return command.require_migration().require_clean().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
 def _include_exclude(file_path, include=None, exclude=None):
@@ -772,53 +708,82 @@ def _filter(client, names=None, creators=None, include=None, exclude=None, ignor
     return sorted(records, key=lambda r: r.added)
 
 
-@pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
-)
-def tag_dataset_with_client(client, name, tag, description, force=False, commit_message=None):
-    """Creates a new tag for a dataset and injects a LocalClient."""
-    tag_dataset(client, name, tag, description, force)
-
-
-def tag_dataset(client, name, tag, description, force=False):
+def _tag_dataset(client, name, tag, description, force=False):
     """Creates a new tag for a dataset."""
-    dataset_ = client.load_dataset(name)
-    if not dataset_:
-        raise ParameterError("Dataset not found.")
+    dataset = client.load_dataset(name, strict=True)
 
     try:
-        dataset = client.add_dataset_tag(dataset_, tag, description, force)
+        client.add_dataset_tag(dataset, tag, description, force)
     except ValueError as e:
         raise ParameterError(e)
+    else:
+        dataset.to_yaml()
+        client.update_datasets_provenance(dataset)
 
-    dataset.to_yaml()
+
+def tag_dataset():
+    """Command for creating a new tag for a dataset."""
+    command = Command().command(_tag_dataset).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-@pass_local_client(
-    clean=False, requires_migration=True, commit=True, commit_only=DATASET_METADATA_PATHS,
-)
-def remove_dataset_tags(client, name, tags, commit_message=True):
+def _remove_dataset_tags(client, name, tags):
     """Removes tags from a dataset."""
-    dataset = client.load_dataset(name)
-    if not dataset:
-        raise ParameterError("Dataset not found.")
+    dataset = client.load_dataset(name, strict=True)
 
     try:
-        dataset = client.remove_dataset_tags(dataset, tags)
+        client.remove_dataset_tags(dataset, tags)
     except ValueError as e:
         raise ParameterError(e)
+    else:
+        dataset.to_yaml()
+        client.update_datasets_provenance(dataset)
 
-    dataset.to_yaml()
+
+def remove_dataset_tags():
+    """Command for removing tags from a dataset."""
+    command = Command().command(_remove_dataset_tags).lock_dataset()
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-@pass_local_client(clean=False, commit=False)
-def list_tags(client, name, format):
+def _list_tags(client, name, format):
     """List all tags for a dataset."""
-    dataset_ = client.load_dataset(name)
+    dataset = client.load_dataset(name, strict=True)
 
-    if not dataset_:
-        raise ParameterError("Dataset not found.")
-
-    tags = sorted(dataset_.tags, key=lambda t: t.created)
+    tags = sorted(dataset.tags, key=lambda t: t.created)
 
     return DATASET_TAGS_FORMATS[format](client, tags)
+
+
+def list_tags():
+    """Command for listing a dataset's tags."""
+    return Command().command(_list_tags).lock_dataset()
+
+
+def _prompt_access_token(exporter):
+    """Prompt user for an access token for a provider.
+
+    :return: The new access token
+    """
+    text_prompt = "You must configure an access token\n"
+    text_prompt += "Create one at: {0}\n".format(exporter.access_token_url())
+    text_prompt += "Access token"
+
+    return communication.prompt(text_prompt, type=str)
+
+
+def _prompt_tag_selection(tags):
+    """Prompt user to chose a tag or <HEAD>."""
+    # Prompt user to select a tag to export
+    tags = sorted(tags, key=lambda t: t.created)
+
+    text_prompt = "Tag to export: \n\n<HEAD>\t[1]\n"
+
+    text_prompt += "\n".join("{}\t[{}]".format(t.name, i) for i, t in enumerate(tags, start=2))
+
+    text_prompt += "\n\nTag"
+    selection = communication.prompt(text_prompt, type=click.IntRange(1, len(tags) + 1), default=1)
+
+    if selection > 1:
+        return tags[selection - 2]
+    return None

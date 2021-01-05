@@ -123,7 +123,10 @@ class CWLConverter(object):
                     continue
 
                 for previous_process in previous_output_dirs[key]:
-                    previous_process.outputs.append(CommandOutput(produces=entity, create_folder=False))
+                    new_output = CommandOutput(
+                        id=CommandOutput.generate_id(subprocess._id), produces=entity, create_folder=False
+                    )
+                    previous_process.outputs.append(new_output)
 
             for output in subprocess.outputs:
                 entity = output.produces
