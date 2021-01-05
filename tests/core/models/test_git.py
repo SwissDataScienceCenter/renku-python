@@ -18,6 +18,7 @@
 """Git regex tests."""
 
 import os
+
 import pytest
 
 from renku.core import errors
