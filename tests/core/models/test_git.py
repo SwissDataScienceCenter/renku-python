@@ -17,6 +17,7 @@
 # limitations under the License.
 """Git regex tests."""
 
+import os
 import pytest
 
 from renku.core import errors
@@ -227,9 +228,62 @@ from renku.core.models.git import GitURL
             "pathname": "1234/prefix/owner/repo.git",
             "owner": "1234/prefix/owner",
         },
+        {
+            "href": "https://example.com:1234/gitlab/owner/repo.git",
+            "protocol": "https",
+            "hostname": "example.com",
+            "name": "repo",
+            "pathname": "gitlab/owner/repo.git",
+            "owner": "owner",
+            "port": "1234",
+            "env": "https://example.com:1234/gitlab/",
+        },
+        {
+            "href": "https://example.com:1234/gitlab/owner/repo.git",
+            "protocol": "https",
+            "hostname": "example.com",
+            "name": "repo",
+            "pathname": "gitlab/owner/repo.git",
+            "owner": "owner",
+            "port": "1234",
+            "env": "https://example.com/gitlab/",
+        },
+        {
+            "href": "https://example.com/gitlab/owner/repo.git",
+            "protocol": "https",
+            "hostname": "example.com",
+            "name": "repo",
+            "pathname": "gitlab/owner/repo.git",
+            "owner": "owner",
+            "env": "https://example.com/gitlab/",
+        },
+        {
+            "href": "https://gitlab.example.com/owner/repo.git",
+            "protocol": "https",
+            "hostname": "gitlab.example.com",
+            "name": "repo",
+            "pathname": "owner/repo.git",
+            "owner": "owner",
+            "env": "https://gitlab.example.com/",
+        },
+        {
+            "href": "https://gitlab.example.com:1234/owner/repo.git",
+            "protocol": "https",
+            "hostname": "gitlab.example.com",
+            "name": "repo",
+            "pathname": "owner/repo.git",
+            "owner": "owner",
+            "port": "1234",
+            "env": "https://gitlab.example.com:1234/",
+        },
     ],
 )
 def test_valid_href(fields):
     """Test the various repo regexes."""
     fields.pop("protocols", None)
+    gitlab_env = fields.pop("env", None)
+
+    if gitlab_env:
+        os.environ["GITLAB_BASE_URL"] = gitlab_env
+
     assert GitURL(**fields) == GitURL.parse(fields["href"])
