@@ -50,8 +50,10 @@ spec:
                   --timeout 600 \
                   --workers $(RENKU_SVC_NUM_WORKERS) \
                   --worker-class gthread \
-                  --threads $(RENKU_SVC_NUM_THREADS)"
+                  --threads $(RENKU_SVC_NUM_THREADS) "
                 ]
+          securityContext:
+            runAsGroup: 2000
           {{ end }}
           env:
             - name: REDIS_HOST
