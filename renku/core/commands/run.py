@@ -148,8 +148,10 @@ def _run_command(
 
     finally:
         if system_stdout:
+            system_stdout.flush()
             sys.stdout = old_stdout
             system_stdout.close()
         if system_stderr:
+            system_stderr.flush()
             sys.stderr = old_stderr
             system_stderr.close()
