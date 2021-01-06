@@ -24,8 +24,8 @@ from typing import Dict
 
 from git import NULL_TREE, GitCommandError
 
-from renku.cli.update import execute_workflow
 from renku.core import errors
+from renku.core.commands.update import execute_workflow
 from renku.core.incubation.command import Command
 from renku.core.management.config import RENKU_HOME
 from renku.core.management.datasets import DatasetsApiMixin
