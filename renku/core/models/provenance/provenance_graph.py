@@ -18,6 +18,7 @@
 """Represent dependency graph."""
 
 import json
+import os
 from collections import deque
 from pathlib import Path
 from typing import Union
@@ -36,10 +37,12 @@ class ProvenanceGraph:
         """Set uninitialized properties."""
         self._activities = activities or []
         self._path = None
-        self._order = 1 if len(self._activities) == 0 else max([a.order for a in self._activities]) + 1
+        self._order = 0 if len(self._activities) == 0 else max([a.order for a in self._activities])
         self._graph = None
         self._loaded = False
         self._custom_bindings = {}
+        self._provenance_paths = None
+        self._split_load = False
 
     @property
     def activities(self):
@@ -47,6 +50,16 @@ class ProvenanceGraph:
         assert self._loaded
 
         return self._activities
+
+    @property
+    def order(self):
+        """Return current order value."""
+        return self._order
+
+    @property
+    def read_only(self):
+        """Return true if graph is writable."""
+        return self._split_load
 
     @property
     def custom_bindings(self):
@@ -64,10 +77,10 @@ class ProvenanceGraph:
 
         activity_collection = node if isinstance(node, ActivityCollection) else ActivityCollection(activities=[node])
 
-        for activity in activity_collection._activities:
+        for activity in activity_collection.activities:
             assert not any([a for a in self._activities if a.id_ == activity.id_]), f"Identifier exists {activity.id_}"
-            activity.order = self._order
             self._order += 1
+            activity.order = self._order
             self._activities.append(activity)
 
     @classmethod
@@ -92,6 +105,31 @@ class ProvenanceGraph:
         return self
 
     @classmethod
+    def from_provenance_paths(cls, paths, lazy=False):
+        """Return an instance from a set of ActivityCollection JSON file."""
+        if paths:
+            if not lazy:
+                activities = []
+                for path in paths:
+                    activity_collection = ActivityCollection.from_json(path)
+                    activities.extend(activity_collection.activities)
+
+                self = ProvenanceGraph(activities=activities)
+                self._activities.sort(key=lambda e: e.order)
+                self._loaded = True
+            else:
+                self = ProvenanceGraph(activities=[])
+                self._loaded = False
+        else:
+            self = ProvenanceGraph(activities=[])
+            self._loaded = True
+
+        self._provenance_paths = paths
+        self._split_load = True
+
+        return self
+
+    @classmethod
     def from_jsonld(cls, data):
         """Create an instance from JSON-LD data."""
         if isinstance(data, cls):
@@ -110,6 +148,9 @@ class ProvenanceGraph:
 
     def to_json(self, path=None):
         """Write an instance to file."""
+        if self._split_load and not path:
+            raise RuntimeError("No path provided to write a split provenance graph.")
+
         path = path or self._path
         data = self.to_jsonld()
         with open(path, "w", encoding="utf-8") as file_:
@@ -125,13 +166,17 @@ class ProvenanceGraph:
         if self._graph:
             return
 
-        self._graph = self._create_graph(path=str(self._path))
+        paths = self._provenance_paths if self._split_load else [self._path]
+        self._graph = self._create_graph(paths=paths)
 
-    def _create_graph(self, path=None, activities=None):
+    def _create_graph(self, paths=None, activities=None):
         graph = ConjunctiveGraph()
 
-        if path:
-            graph.parse(location=str(path), format="json-ld")
+        if paths:
+            if isinstance(paths, str):
+                paths = [paths]
+            for path in paths:
+                graph.parse(location=str(path), format="json-ld")
 
         activities = activities or []
         for activity in activities:

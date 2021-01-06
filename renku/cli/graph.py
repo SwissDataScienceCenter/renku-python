@@ -115,14 +115,15 @@ def save(path):
 
 @graph.command()
 @click.option("--format", type=CaseInsensitiveChoice(FORMATS), default="json-ld", help="Choose an output format.")
+@click.option("--revision", default=None, help="The git revision to generate the graph for, default: HEAD")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
 @click.option("--workflows-only", is_flag=True, help="Exclude datasets metadata from export.")
 @click.argument("paths", type=click.Path(exists=False), nargs=-1)
-def export(format, strict, workflows_only, paths):
+def export(format, revision, strict, workflows_only, paths):
     r"""Equivalent of `renku log --format json-ld`."""
     communicator = ClickCallback()
     export_graph().with_communicator(communicator).build().execute(
-        format=format, workflows_only=workflows_only, strict=strict, paths=paths
+        format=format, revision=revision, strict=strict, workflows_only=workflows_only, paths=paths
     )
 
 

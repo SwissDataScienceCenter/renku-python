@@ -105,7 +105,7 @@ def test_graph_export_with_revision(runner, client, directory_tree, run):
     commit_sha = client.repo.head.object.hexsha
     assert 0 == run(["run", "tail", str(file2)], stdout="out2")
 
-    result = runner.invoke(cli, ["graph", "export", "--revision", commit_sha])
+    result = runner.invoke(cli, ["graph", "export", "--workflows-only", "--revision", commit_sha])
 
     assert "file1" in result.output
     assert "out1" in result.output

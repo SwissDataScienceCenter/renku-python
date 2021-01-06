@@ -68,6 +68,7 @@ def test_safe_class_attributes(tmpdir):
         "LOCK_SUFFIX",
         "METADATA",
         "POINTERS",
+        "PROVENANCE",
         "PROVENANCE_GRAPH",
         "RENKU_LFS_IGNORE_PATH",
         "RENKU_PROTECTED_PATHS",

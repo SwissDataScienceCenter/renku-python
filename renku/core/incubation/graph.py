@@ -52,6 +52,7 @@ GRAPH_METADATA_PATHS = [
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,
     Path(RENKU_HOME) / RepositoryApiMixin.DEPENDENCY_GRAPH,
     Path(RENKU_HOME) / RepositoryApiMixin.PROVENANCE_GRAPH,
+    Path(RENKU_HOME) / RepositoryApiMixin.PROVENANCE,
 ]
 
 
@@ -79,6 +80,11 @@ def _generate_graph(client, force=False):
             activity_collection = ActivityCollection.from_activity_run(workflow, client.dependency_graph, client)
 
             provenance_graph.add(activity_collection)
+
+            # NOTE: we serialize activity_collection after adding it to the provenance graph so that its activities have
+            # their order set
+            new_path = client.provenance_path / f"{Path(path).stem}.json"
+            activity_collection.to_json(new_path)
 
     def process_datasets(commit):
         files_diff = list(commit.diff(commit.parents or NULL_TREE, paths=".renku/datasets/*/*.yml"))
@@ -220,19 +226,22 @@ def export_graph():
     return Command().command(_export_graph)
 
 
-def _export_graph(client, format, workflows_only, strict, paths=None):
+def _export_graph(client, format, workflows_only, revision, strict, paths=None):
     """Output graph in specific format."""
     if not client.provenance_graph_path.exists():
         raise errors.ParameterError("Graph is not generated.")
 
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=True)
     format = format.lower()
     if strict and format not in ["json-ld", "jsonld"]:
         raise errors.SHACLValidationError(f"'--strict' not supported for '{format}'")
 
     lazy = not bool(paths)
-    pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=lazy)
 
+    provenance_paths = client.get_provenance_paths(revision=revision)
+    if provenance_paths:
+        pg = ProvenanceGraph.from_provenance_paths(provenance_paths, lazy=lazy)
+    else:
+        pg = ProvenanceGraph.from_json(client.provenance_graph_path, lazy=lazy)
 
     if not workflows_only:
         pg.rdf_graph.parse(location=str(client.datasets_provenance_path), format="json-ld")
