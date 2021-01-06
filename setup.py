@@ -90,7 +90,7 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==19.10b0",
-    "check-manifest>=0.37,<0.46",
+    "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.4",
     "fakeredis>=1.4.1,<1.4.6",
     "flake8>=3.8,<3.9",
@@ -161,7 +161,7 @@ install_requires = [
     "cwltool>=3.0.20200724003302,<=3.0.20200807132242",
     "environ_config>=18.2.0,<=20.1.0",
     "filelock>=3.0.0,<=3.0.12",
-    "gitpython==3.1.11",
+    "gitpython==3.1.12",
     "humanize>=2.5.0,<2.7.0",
     "jinja2>=2.10.3,<=2.11.2",
     "pathspec>=0.7.0,<=0.8.0",
