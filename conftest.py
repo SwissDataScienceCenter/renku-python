@@ -433,6 +433,16 @@ def client_with_datasets(client, directory_tree):
     yield client
 
 
+@pytest.fixture()
+def client_with_datasets_provenance(client):
+    """A client with dataset provenance."""
+    from renku.core.incubation.graph import generate_datasets_provenance
+
+    generate_datasets_provenance().build().execute()
+
+    yield client
+
+
 @pytest.fixture(params=[".", "some/sub/directory"])
 def subdirectory(project, request):
     """Runs tests in root directory and a subdirectory."""

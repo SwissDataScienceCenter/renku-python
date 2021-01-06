@@ -120,12 +120,12 @@ class GitURL(object):
                 _RE_PROTOCOL,
                 _RE_USERNAME_PASSWORD,
                 r"(?P<hostname>" + re.escape(gitlab_url.hostname) + ")",
-                r":(?P<port>" + gitlab_url.port + ")" if gitlab_url.port else None,
+                r":(?P<port>" + str(gitlab_url.port) + ")" if gitlab_url.port else "",
                 r"/",
-                re.escape(gitlab_url.path) + r"/" if gitlab_url.path else None,
+                re.escape(gitlab_url.path) + r"/" if gitlab_url.path else "",
                 _RE_PATHNAME,
             )
-            url_regexes = (gitlab_re) + url_regexes
+            url_regexes = (gitlab_re,) + url_regexes
 
         for regex in url_regexes:
             matches = re.search(regex, href)

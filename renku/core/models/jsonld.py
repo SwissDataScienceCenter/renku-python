@@ -60,7 +60,7 @@ NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 def read_yaml(path):
     """Load YAML file and return its content as a dict."""
     with Path(path).open(mode="r") as fp:
-        return yaml.load(fp, Loader=NoDatesSafeLoader) or {}
+        return load_yaml(fp)
 
 
 def write_yaml(path, data):
@@ -70,3 +70,8 @@ def write_yaml(path, data):
 
     with Path(path).open("w") as fp:
         yaml.dump(data, fp, default_flow_style=False, Dumper=Dumper)
+
+
+def load_yaml(data):
+    """Load YAML data and return its content as a dict."""
+    return yaml.load(data, Loader=NoDatesSafeLoader) or {}
