@@ -90,7 +90,7 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==19.10b0",
-    "check-manifest>=0.37,<0.46",
+    "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.4",
     "fakeredis>=1.4.1,<1.4.6",
     "flake8>=3.8,<3.9",
@@ -102,7 +102,7 @@ tests_require = [
     "pytest-cache==1.0",
     "pytest-cov>=2.5.1,<2.11.0",
     "pytest-flake8>=1.0.6,<1.0.8",
-    "pytest-mock>=3.2.0,<3.5.0",
+    "pytest-mock>=3.2.0,<3.6.0",
     "pytest-timeout==1.4.2",
     "pytest-pep8==1.0.6",
     "pytest-xdist>=1.34.0,<2.3.0",
