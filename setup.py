@@ -90,7 +90,7 @@ history = open("CHANGES.rst").read()
 
 tests_require = [
     "black==19.10b0",
-    "check-manifest>=0.37,<0.46",
+    "check-manifest>=0.37,<0.47",
     "coverage>=4.5.3,<5.4",
     "fakeredis>=1.4.1,<1.4.6",
     "flake8>=3.8,<3.9",
@@ -123,7 +123,7 @@ service_requires = [
 ]
 
 extras_require = {
-    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.3.2", "sphinx-rtd-theme==0.5.1",],
+    "docs": ["Jinja2>=2.10.1,<=2.11.2", "Sphinx>=1.6.3,<3.4.3", "sphinx-rtd-theme==0.5.1",],
     "runner": ["cwlref-runner==1.0",],
     "notebook": [],
     "tests": tests_require,
