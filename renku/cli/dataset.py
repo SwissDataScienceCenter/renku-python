@@ -510,16 +510,12 @@ def show(name):
     """Handle datasets."""
     result = show_dataset().build().execute(name=name)
     ds = result.output
-    click.secho(ds["title"], bold=True)
-    click.echo("-" * min(len(ds["title"]), click.get_terminal_size()[0]))
 
-    Console().print(Markdown(ds["description"]))
-    click.echo()
     click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(ds["name"], bold=True))
-    click.echo(click.style("Created: ", bold=True, fg="magenta") + ds["created_at"])
+    click.echo(click.style("Created: ", bold=True, fg="magenta") + (ds.get("created_at", "") or ""))
 
     creators = []
-    for creator in ds["creators"]:
+    for creator in ds.get("creators", []):
         if creator["affiliation"]:
             creators.append(f"{creator['name']} <{creator['email']}> [{creator['affiliation']}]")
         else:
@@ -527,10 +523,15 @@ def show(name):
 
     click.echo(click.style("Creator(s): ", bold=True, fg="magenta") + ", ".join(creators))
     if ds["keywords"]:
-        click.echo(click.style("Keywords: ", bold=True, fg="magenta") + ", ".join(ds["keywords"]))
+        click.echo(click.style("Keywords: ", bold=True, fg="magenta") + ", ".join(ds.get("keywords", "")))
 
     if ds["version"]:
-        click.echo(click.style("Version: ", bold=True, fg="magenta") + ds["version"])
+        click.echo(click.style("Version: ", bold=True, fg="magenta") + ds.get("version", ""))
+
+    click.echo(click.style("Title: ", bold=True, fg="magenta") + click.style(ds.get("title", ""), bold=True))
+
+    click.echo(click.style("Description: ", bold=True, fg="magenta"))
+    Console().print(Markdown(ds.get("description", "") or ""))
 
 
 @dataset.command()
