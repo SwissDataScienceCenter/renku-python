@@ -982,7 +982,7 @@ def identity_headers():
         "iat": 1595317694,
         "iss": "https://stable.dev.renku.ch/auth/realms/Renku",
         "aud": ["renku"],
-        "sub": "12345",
+        "sub": "9ab2fc80-3a5c-426d-ae78-56de01d214df",
         "typ": "ID",
         "azp": "renku",
         "nonce": "12345",
@@ -1057,7 +1057,7 @@ def svc_client_with_user(svc_client_cache):
 
     svc_client, headers, cache = svc_client_cache
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
     yield svc_client, headers, cache, user
