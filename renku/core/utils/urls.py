@@ -49,5 +49,10 @@ def get_host(client):
 
     Default is localhost. If RENKU_DOMAIN is set, it overrides the host from remote.
     """
-    host = client.remote.get("host") or "localhost"
+    host = "localhost"
+
+    if not client:
+        return host
+
+    host = client.remote.get("host") or host
     return os.environ.get("RENKU_DOMAIN") or host

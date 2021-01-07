@@ -42,14 +42,6 @@ def _migrate_submodule_based_datasets(client):
     if not submodules:
         return
 
-    for s in submodules:
-        try:
-            s.update()
-        except GitError:
-            pass
-
-    submodules_urls = {s.path: s.url for s in submodules}
-
     repo_paths = []
     symlinks = []
 
@@ -73,6 +65,14 @@ def _migrate_submodule_based_datasets(client):
 
     if not symlinks:
         return
+
+    for s in submodules:
+        try:
+            s.update()
+        except GitError:
+            pass
+
+    submodules_urls = {s.path: s.url for s in submodules}
 
     remote_clients = {p: LocalClient(p) for p in repo_paths}
 

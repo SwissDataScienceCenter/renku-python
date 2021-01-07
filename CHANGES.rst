@@ -18,6 +18,23 @@
 Changes
 =======
 
+` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.2...v0.12.3>`__ (2021-01-05)
+----------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix gitlab ID parsing when GITLAB_BASE_URL is set without
+   port
+   (`#1823 <https://github.com/SwissDataScienceCenter/renku-python/pull/1823>`__)
+   (`4f94165 <https://github.com/SwissDataScienceCenter/renku-python/commit/4f94165bbc84b1afd01e1ffcd6cf8a2a9ea25fb3>`__)
+-  **service:** add datasets.remove to swagger docs
+   (`#1778 <https://github.com/SwissDataScienceCenter/renku-python/issues/1778>`__)
+   (`631e6f5 <https://github.com/SwissDataScienceCenter/renku-python/commit/631e6f594c87f028d4f904ee74310f252db49ce7>`__)
+-  **service:** correctly handle cloning of project with no commits
+   (`#1790 <https://github.com/SwissDataScienceCenter/renku-python/issues/1790>`__)
+   (`440b238 <https://github.com/SwissDataScienceCenter/renku-python/commit/440b238ccb87f034f0cc6f1ea57b1f46d5213750>`__)
+
 ` <https://github.com/SwissDataScienceCenter/renku-python/compare/v0.12.1...v0.12.2>`__ (2020-12-02)
 ----------------------------------------------------------------------------------------------------
 

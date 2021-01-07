@@ -25,7 +25,7 @@ import click
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
 from renku.core.incubation.command import Command
-from renku.core.incubation.graph import export_graph, generate_graph
+from renku.core.incubation.graph import export_graph, generate_datasets_provenance, generate_graph
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
 from renku.core.models.workflow.dependency_graph import DependencyGraph
@@ -166,7 +166,18 @@ _FORMATS = {
 
 @graph.command()
 @click.option("--format", type=CaseInsensitiveChoice(_FORMATS), default="json-ld", help="Choose an output format.")
-def export(format):
+@click.option("-d", "--dataset", is_flag=True, help="Include datasets.")
+def export(format, dataset):
     r"""Equivalent of `renku log --format json-ld`."""
     communicator = ClickCallback()
-    (export_graph().with_communicator(communicator).build().execute(format=_FORMATS[format]))
+    (export_graph().with_communicator(communicator).build().execute(format=_FORMATS[format], dataset=dataset))
+
+
+@graph.command()
+@click.option("-f", "--force", is_flag=True, help="Delete existing metadata and regenerate all.")
+def generate_dataset(force):
+    """Create new graph metadata for datasets."""
+    communicator = ClickCallback()
+    (generate_datasets_provenance().with_communicator(communicator).build().execute(force=force))
+
+    click.secho("\nOK", fg="green")
