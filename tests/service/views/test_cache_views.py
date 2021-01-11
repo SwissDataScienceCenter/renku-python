@@ -189,6 +189,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
         "family_name": "user one",
         "name": "User One",
         "email": "user1@platform2.com",
+        "sub": "8d1f08e2-b136-4c93-a38f-d5f36a5919d9",
     }
 
     headers_user2 = {

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "acc98573c6b59e3c4bbe25a9b75ff747630def10dbb9bcbe5eac491b235f0aa2"
+            "sha256": "3fd1ae58738199468d6030cc88a478132830192c96331db1514aa4d38fc83e82"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -41,10 +41,14 @@
         },
         "backrefs": {
             "hashes": [
-                "sha256:a1bbb68f103cf514bcc481b86c40965478d779422fed7cabc5aade318d506df8"
+                "sha256:6a5f6f8b141abb64a74e95bbc36487b013c5cc3aca29139f462701ef7440a923",
+                "sha256:867a6d066d9a13a889a7901e5913c7cb4bc87b08f0ec51a1d5079e562863f4a8",
+                "sha256:89cb63ad84919b8a259c693a1e169ebfb847316f4e5457d1d76d039d8e172139",
+                "sha256:a24d74ee9e7ba178c893211377774c37093be58466ed3f9b031a6f27eb2d7aa8",
+                "sha256:c6ede024bcbbf5a3fc42c27a8ca2e1e962ad1f7073f611fffdf3a3932a812ab0"
             ],
-            "markers": "python_version >= '3.5'",
-            "version": "==4.5"
+            "markers": "python_version >= '3.6'",
+            "version": "==4.6"
         },
         "bagit": {
             "hashes": [
@@ -260,11 +264,11 @@
         },
         "gitpython": {
             "hashes": [
-                "sha256:6eea89b655917b500437e9668e4a12eabdcf00229a0df1762aabd692ef9b746b",
-                "sha256:befa4d101f91bad1b632df4308ec64555db684c360bd7d2130b4807d49ce86b8"
+                "sha256:42dbefd8d9e2576c496ed0059f3103dcef7125b9ce16f9d5f9c834aed44a1dac",
+                "sha256:867ec3dfb126aac0f8296b19fb63b8c4a399f32b4b6fafe84c4b10af5fa9f7b5"
             ],
             "markers": "python_version >= '3.4'",
-            "version": "==3.1.11"
+            "version": "==3.1.12"
         },
         "humanfriendly": {
             "hashes": [
@@ -292,11 +296,11 @@
         },
         "importlib-metadata": {
             "hashes": [
-                "sha256:5c5a2720817414a6c41f0a49993908068243ae02c1635a228126519b509c8aed",
-                "sha256:bf792d480abbd5eda85794e4afb09dd538393f7d6e6ffef6e9f03d2014cf9450"
+                "sha256:ace61d5fc652dc280e7b6b4ff732a9c2d40db2c0f92bc6cb74e07b73d53a1771",
+                "sha256:fa5daa4477a7414ae34e95942e4dd07f62adf589143c875c133c1e53c4eff38d"
             ],
             "markers": "python_version < '3.8'",
-            "version": "==3.3.0"
+            "version": "==3.4.0"
         },
         "isodate": {
             "hashes": [
@@ -645,9 +649,9 @@
         },
         "rdflib-jsonld": {
             "hashes": [
-                "sha256:144774786a2fc7de09b24a9309cbcccc78bc48b152536d2ea1c1df2ad715bc2d"
+                "sha256:4f7d55326405071c7bce9acf5484643bcb984eadb84a6503053367da207105ed"
             ],
-            "version": "==0.4.0"
+            "version": "==0.5.0"
         },
         "redis": {
             "hashes": [
@@ -851,11 +855,11 @@
         },
         "chartpress": {
             "hashes": [
-                "sha256:9deda1f79c828eb2d4ada54ddaac3d54b7752f03cb3a26be9a589d55a7b138b7",
-                "sha256:cbdc6a6b598413bc90eb6e41f6151e85358da442786d6f1c871aeb3827303300"
+                "sha256:47c1b5eebd1616f433f20ee6242dbb213e97f84ecbd8647189268115cc2dea29",
+                "sha256:8d1dfa6e87b82ac6b6aecc4e914f1a1bed396c597898dfa7826cf5768380b8f8"
             ],
             "index": "pypi",
-            "version": "==0.7.0"
+            "version": "==1.0.3"
         },
         "docker": {
             "hashes": [
