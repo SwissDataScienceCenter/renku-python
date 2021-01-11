@@ -95,14 +95,13 @@ Showing dataset details:
 . code-block:: console
 
     $ renku dataset show some-dataset
-    Some Dataset
-    ---------------
-    Just some dataset
-
     Name: some-dataset
     Created: 2020-12-09 13:52:06.640778+00:00
     Creator(s): John Doe<john.doe@example.com> [SDSC]
     Keywords: Dataset, Data
+    Title: Some Dataset
+    Description:
+    Just some dataset
 
 Deleting a dataset:
 
