@@ -49,6 +49,15 @@ def test_migrate_project(isolated_runner, old_project):
 
 
 @pytest.mark.migration
+@pytest.mark.parametrize("old_project", ["old-workflows-v0.10.0.git"], indirect=["old_project"])
+def test_migrate_duplicated_input_binding(isolated_runner, old_project):
+    """Check migrating CWLs with multiple outputs binding to the same input."""
+    result = isolated_runner.invoke(cli, ["migrate", "--no-commit"])
+
+    assert 0 == result.exit_code, result.output
+
+
+@pytest.mark.migration
 def test_migration_check(isolated_runner, project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrationscheck"])
