@@ -281,6 +281,9 @@ class DatasetFile(Entity):
         """Set the property "name" after initialization."""
         super().__attrs_post_init__()
 
+        if not self.filename:
+            self.filename = self.default_filename()
+
         if not self.name:
             self.name = self.filename
 

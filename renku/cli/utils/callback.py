@@ -118,7 +118,7 @@ class ClickCallback(StandardOutput):
 
     def error(self, msg):
         """Write an error message."""
-        click.echo(self.ERROR + msg)
+        click.echo(self.ERROR + msg, err=True)
 
     def has_prompt(self):
         """Return True if communicator provides a direct prompt to users."""

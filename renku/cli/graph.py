@@ -22,7 +22,7 @@ import click
 from renku.cli.utils.callback import ClickCallback
 from renku.cli.utils.click import CaseInsensitiveChoice
 from renku.core.incubation.command import Command
-from renku.core.incubation.graph import FORMATS, export_graph, generate_graph
+from renku.core.incubation.graph import FORMATS, add_to_dataset, create_dataset, export_graph, generate_graph
 from renku.core.incubation.graph import status as get_status
 from renku.core.incubation.graph import update as perform_update
 from renku.core.models.workflow.dependency_graph import DependencyGraph
@@ -40,7 +40,7 @@ def generate(force):
     """Create new graph metadata."""
 
     communicator = ClickCallback()
-    (generate_graph().with_communicator(communicator).build().execute(force=force))
+    generate_graph().with_communicator(communicator).build().execute(force=force)
 
     click.secho("\nOK", fg="green")
 
@@ -62,9 +62,8 @@ def status(ctx):
     if stales:
         click.echo(
             f"Outdated outputs({len(stales)}):\n"
-            '  (use "renku log [<file>...]" to see the full lineage)\n'
-            '  (use "renku update [<file>...]" to '
-            "generate the file from its latest inputs)\n"
+            "  (use `renku log [<file>...]` to see the full lineage)\n"
+            "  (use `renku update [<file>...]` to generate the file from its latest inputs)\n"
         )
         for k, v in stales.items():
             paths = click.style(", ".join(sorted(v)), fg="red", bold=True)
@@ -76,8 +75,7 @@ def status(ctx):
     if modified:
         click.echo(
             f"Modified inputs({len(modified)}):\n"
-            '  (use "renku log --revision <sha1> <file>" to see a lineage '
-            "for the given revision)\n"
+            "  (use `renku log --revision <sha1> <file>` to see a lineage for the given revision)\n"
         )
         for v in modified:
             click.echo(click.style(f"\t{v}", fg="blue", bold=True))
@@ -86,8 +84,7 @@ def status(ctx):
     if deleted:
         click.echo(
             "Deleted files used to generate outputs:\n"
-            '  (use "git show <sha1>:<file>" to see the file content '
-            "for the given revision)\n"
+            "  (use `git show <sha1>:<file>` to see the file content for the given revision)\n"
         )
         for v in deleted:
             click.echo(click.style(f"\t{v}", fg="blue", bold=True))
@@ -129,3 +126,66 @@ def export(format, strict, workflows_only):
     export_graph().with_communicator(communicator).build().execute(
         format=format, workflows_only=workflows_only, strict=strict
     )
+
+
+@graph.group()
+def dataset():
+    """Proof-of-Concept command for dataset operations using new metadata."""
+
+
+@dataset.command()
+@click.argument("name")
+@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
+@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
+@click.option(
+    "-c",
+    "--creator",
+    "creators",
+    default=None,
+    multiple=True,
+    help="Creator's name, email, and affiliation. Accepted format is ``Forename Surname <email> [affiliation]``.",
+)
+@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
+def create(name, title, description, creators, keyword):
+    """Create a new dataset."""
+    communicator = ClickCallback()
+
+    result = (
+        create_dataset()
+        .with_communicator(communicator)
+        .build()
+        .execute(name=name, title=title, description=description, creators=creators, keywords=keyword)
+    )
+
+    new_dataset = result.output
+
+    click.echo(f"Use the name ``{new_dataset.name}`` to refer to this dataset.")
+    click.secho("OK", fg="green")
+
+
+@dataset.command()
+@click.argument("name")
+@click.argument("urls", nargs=-1)
+@click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
+@click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
+@click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
+@click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
+@click.option("-s", "--source", "sources", default=None, multiple=True, help="Paths within remote git repo to be added")
+@click.option("-d", "--destination", "destination", default="", help="Destination directory within the dataset path")
+@click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
+def add(name, urls, external, force, overwrite, create, sources, destination, ref):
+    """Add data to a dataset."""
+    communicator = ClickCallback()
+
+    add_to_dataset().with_communicator(communicator).build().execute(
+        urls=urls,
+        name=name,
+        external=external,
+        force=force,
+        overwrite=overwrite,
+        create=create,
+        sources=sources,
+        destination=destination,
+        ref=ref,
+    )
+    click.secho("OK", fg="green")
