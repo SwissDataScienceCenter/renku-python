@@ -36,6 +36,7 @@ from renku.core.utils.contexts import chdir
 from tests.utils import assert_dataset_is_mutated, raises
 
 
+@pytest.mark.serial
 @pytest.mark.parametrize(
     "scheme, path, overwrite, error",
     [

@@ -76,11 +76,11 @@
         },
         "calamus": {
             "hashes": [
-                "sha256:406fbecd8f2e7d703ca89115f4fe027019344c16b74604891b296283467e2f8b",
-                "sha256:86df8d249db27707c40f29b3a60e96206b8196b4f9fc1832c9cf2285ee22132d"
+                "sha256:485c8b1fe4be99b5759a1803d5ce68e920852a03e25f4b59361b776af81f6f6b",
+                "sha256:7ecd0b6160aef854793c1e890732a95d311f21a540ac9b63a655ef7c562330d9"
             ],
             "markers": "python_version < '4' and python_full_version >= '3.6.1'",
-            "version": "==0.3.3"
+            "version": "==0.3.6"
         },
         "certifi": {
             "hashes": [
@@ -260,11 +260,11 @@
         },
         "gitpython": {
             "hashes": [
-                "sha256:6eea89b655917b500437e9668e4a12eabdcf00229a0df1762aabd692ef9b746b",
-                "sha256:befa4d101f91bad1b632df4308ec64555db684c360bd7d2130b4807d49ce86b8"
+                "sha256:42dbefd8d9e2576c496ed0059f3103dcef7125b9ce16f9d5f9c834aed44a1dac",
+                "sha256:867ec3dfb126aac0f8296b19fb63b8c4a399f32b4b6fafe84c4b10af5fa9f7b5"
             ],
             "markers": "python_version >= '3.4'",
-            "version": "==3.1.11"
+            "version": "==3.1.12"
         },
         "humanfriendly": {
             "hashes": [

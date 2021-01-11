@@ -45,6 +45,8 @@ def set_git_isolation(value):
     ctx = click.get_current_context()
     ctx.meta[GIT_ISOLATION] = value
 
+    return value
+
 
 def get_git_isolation():
     """Get Git isolation from the current context."""

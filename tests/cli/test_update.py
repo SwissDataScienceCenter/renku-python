@@ -324,7 +324,7 @@ def test_relative_path_for_directory_input(client, run, renku_cli):
 
 
 def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
-    """Test calling update with no args does nothing."""
+    """Test calling update with no args raises ParameterError."""
     cwd = Path(project)
     data = cwd / DATA_DIR
     data.mkdir(exist_ok=True, parents=True)
@@ -349,6 +349,6 @@ def test_update_no_args(runner, project, renku_cli, no_lfs_warning):
     before_commit = repo.head.commit
 
     exit_code, run = renku_cli("update")
-    assert 0 == exit_code
+    assert 2 == exit_code
 
     assert before_commit == repo.head.commit
