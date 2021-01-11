@@ -41,10 +41,14 @@
         },
         "backrefs": {
             "hashes": [
-                "sha256:a1bbb68f103cf514bcc481b86c40965478d779422fed7cabc5aade318d506df8"
+                "sha256:6a5f6f8b141abb64a74e95bbc36487b013c5cc3aca29139f462701ef7440a923",
+                "sha256:867a6d066d9a13a889a7901e5913c7cb4bc87b08f0ec51a1d5079e562863f4a8",
+                "sha256:89cb63ad84919b8a259c693a1e169ebfb847316f4e5457d1d76d039d8e172139",
+                "sha256:a24d74ee9e7ba178c893211377774c37093be58466ed3f9b031a6f27eb2d7aa8",
+                "sha256:c6ede024bcbbf5a3fc42c27a8ca2e1e962ad1f7073f611fffdf3a3932a812ab0"
             ],
-            "markers": "python_version >= '3.5'",
-            "version": "==4.5"
+            "markers": "python_version >= '3.6'",
+            "version": "==4.6"
         },
         "bagit": {
             "hashes": [
@@ -292,11 +296,11 @@
         },
         "importlib-metadata": {
             "hashes": [
-                "sha256:5c5a2720817414a6c41f0a49993908068243ae02c1635a228126519b509c8aed",
-                "sha256:bf792d480abbd5eda85794e4afb09dd538393f7d6e6ffef6e9f03d2014cf9450"
+                "sha256:ace61d5fc652dc280e7b6b4ff732a9c2d40db2c0f92bc6cb74e07b73d53a1771",
+                "sha256:fa5daa4477a7414ae34e95942e4dd07f62adf589143c875c133c1e53c4eff38d"
             ],
             "markers": "python_version < '3.8'",
-            "version": "==3.3.0"
+            "version": "==3.4.0"
         },
         "isodate": {
             "hashes": [
