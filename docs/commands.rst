@@ -27,6 +27,13 @@ Renku Command Line
 
 .. automodule:: renku.cli.init
 
+.. _cli-clone:
+
+``renku clone``
+---------------
+
+.. automodule:: renku.cli.clone
+
 .. _cli-config:
 
 ``renku config``
