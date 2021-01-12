@@ -193,6 +193,9 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             if listing.entry == '$({"listing": [], "class": "Directory"})':
                 created_outputs.append(listing.entryname)
 
+    # NOTE: multiple outputs might bind to the same input; we use this copy to find output bindings
+    all_inputs = inputs.copy()
+
     for o in outputs:
         prefix = None
         position = None
@@ -203,8 +206,11 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             if name.endswith(")"):
                 name = name[:-1]
 
-            matched_input = next(i for i in inputs if i.id == name)
-            inputs.remove(matched_input)
+            matched_input = next(i for i in all_inputs if i.id == name)
+            try:
+                inputs.remove(matched_input)
+            except ValueError:
+                pass
 
             if isinstance(matched_input.default, dict):
                 path = client.workflow_path / Path(matched_input.default["path"])
