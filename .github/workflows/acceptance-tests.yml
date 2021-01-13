@@ -17,26 +17,47 @@ jobs:
   deploy-pr:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    environment:
+      name: ci-renku-${{ github.event.number }}
     steps:
     - uses: actions/checkout@v2
-    - run: echo $REPO_NAME
-      env:
-        REPO_NAME: ${{ github.event.repository.name }}
+    - id: deploy-comment
+      uses: ./actions/check-pr-description
+      with:
+        string: /deploy
+        pr_ref: ${{ github.event.number }}
+    - name: Check existing renkubot comment
+      if: ${{ steps.deploy-comment.outputs.pr-contains-string }}
+      uses: peter-evans/find-comment@v1
+      id: findcomment
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'RenkuBot'
+    - name: Create comment pre deploy
+      if: "steps.findcomment.outputs.comment-id == 0 && steps.deploy-comment.outputs.pr-contains-string"
+      uses: peter-evans/create-or-update-comment@v1
+      with:
+        token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body: |
+          You can access the deployment of this PR at https://ci-renku-${{ github.event.number }}.dev.renku.ch
     - name: renku build and deploy
+      if: ${{ steps.deploy-comment.outputs.pr-contains-string }}
       uses: SwissDataScienceCenter/renku/actions/deploy-renku@000-deploy-action
       env:
-        RANCHER_PROJECT_ID: ${{ secrets.CI_RANCHER_PROJECT }}
         DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
         GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}
         KUBECONFIG: "${{ github.workspace }}/renkubot-kube.config"
-        RENKU_NAMESPACE: ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku
-        RENKU_TMP_NAMESPACE: ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku-tmp
-        RENKU_RELEASE: ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku
+        RANCHER_PROJECT_ID: ${{ secrets.CI_RANCHER_PROJECT }}
+        RENKU_RELEASE: ci-renku-${{ github.event.number }}
         RENKU_VALUES_FILE: "${{ github.workspace }}/values.yaml"
         RENKU_VALUES: ${{ secrets.CI_RENKU_VALUES }}
         RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
         RENKUBOT_RANCHER_BEARER_TOKEN: ${{ secrets.RENKUBOT_RANCHER_BEARER_TOKEN }}
+        RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
+        RENKU_ANONYMOUS_SESSIONS: false
+        RENKU_TESTS_ENABLED: true
         renku: "@development"
         renku_core: "@${{ github.head_ref }}"
   test-pr:
@@ -71,7 +92,7 @@ jobs:
                            -e RENKU_TEST_REGISTER="1" \
                            -e RENKU_TEST_USERNAME="renku-test" \
                            -e RENKU_TEST_PASSWORD="$RENKU_BOT_DEV_PASSWORD" \
-                           -e RENKU_TEST_ANON_AVAILABLE="true" sbt
+                           -e RENKU_TEST_ANON_AVAILABLE="false" sbt
     - name: Prepare artifact for packaging on failure
       if: failure()
       run: |
