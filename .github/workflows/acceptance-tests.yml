@@ -58,7 +58,7 @@ jobs:
         RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
         RENKU_ANONYMOUS_SESSIONS: false
         RENKU_TESTS_ENABLED: true
-        renku: "@development"
+        renku: "@000-deploy-action"
         renku_core: "@${{ github.head_ref }}"
   test-pr:
     runs-on: ubuntu-latest
