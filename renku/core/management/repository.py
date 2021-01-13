@@ -34,7 +34,7 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku.core import errors
 from renku.core.compat import Path
-from renku.core.management.config import RENKU_HOME
+from renku.core.management.config import RENKU_HOME, ConfigFilter
 from renku.core.models.projects import Project
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph
@@ -144,7 +144,7 @@ class RepositoryApiMixin(GitCore):
         path.relative_to(path)
         self.renku_path = path
 
-        data_dir = self.get_value("renku", self.DATA_DIR_CONFIG_KEY, local_only=True)
+        data_dir = self.get_value("renku", self.DATA_DIR_CONFIG_KEY, config_filter=ConfigFilter.LOCAL_ONLY)
         self.data_dir = data_dir or self.data_dir
 
         self._subclients = {}

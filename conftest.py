@@ -359,14 +359,15 @@ def project_metadata(project):
 def client(project):
     """Return a Renku repository."""
     from renku.core.management import LocalClient
+    from renku.core.management.config import ConfigFilter
 
     original_get_value = LocalClient.get_value
 
-    def mocked_get_value(self, section, key, local_only=False, global_only=False):
+    def mocked_get_value(self, section, key, config_filter=ConfigFilter.ALL):
         """We don't want lfs warnings in tests."""
         if key == "show_lfs_message":
             return "False"
-        return original_get_value(self, section, key, local_only, global_only)
+        return original_get_value(self, section, key, config_filter=config_filter)
 
     LocalClient.get_value = mocked_get_value
 

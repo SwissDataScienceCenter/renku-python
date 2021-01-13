@@ -18,12 +18,14 @@
 """Client for handling a configuration."""
 import configparser
 import os
+from enum import Enum
 from io import StringIO
 from pathlib import Path
 
 import attr
 import click
 import filelock
+from pkg_resources import resource_filename
 
 APP_NAME = "Renku"
 """Application name for storing configuration."""
@@ -35,6 +37,15 @@ RENKU_HOME = ".renku"
 def _get_global_config_dir():
     """Return user's config directory."""
     return click.get_app_dir(APP_NAME, force_posix=True)
+
+
+class ConfigFilter(Enum):
+    """Enum of filters over which config files to load. Note: Defaulta always get applied."""
+
+    ALL = 1
+    LOCAL_ONLY = 2
+    GLOBAL_ONLY = 3
+    DEFAULT_ONLY = 4
 
 
 @attr.s
@@ -77,21 +88,32 @@ class ConfigManagerMixin:
 
         return filelock.FileLock(lock_file, timeout=0)
 
-    def load_config(self, local_only, global_only):
+    def load_config(self, config_filter=ConfigFilter.ALL):
         """Loads local, global or both configuration object."""
         config = configparser.ConfigParser()
-        if local_only:
-            config_files = [self.local_config_path]
-        elif global_only:
-            config_files = [self.global_config_path]
-        else:
-            config_files = [self.global_config_path, self.local_config_path]
+        config_files = [resource_filename("renku", "data/defaults.ini")]
 
-        if not local_only:
+        if config_filter == ConfigFilter.LOCAL_ONLY:
+            config_files += [self.local_config_path]
+        elif config_filter == ConfigFilter.GLOBAL_ONLY:
+            config_files += [self.global_config_path]
+        elif config_filter == ConfigFilter.ALL:
+            config_files += [self.global_config_path, self.local_config_path]
+
+        if config_filter != ConfigFilter.LOCAL_ONLY:
             with self.global_config_lock:
                 config.read(config_files)
         else:
             config.read(config_files)
+
+        # transform config section for backwards compatibility
+        for s in config.sections():
+            if not s.startswith('renku "'):
+                continue
+
+            config[s[7:-1]] = dict(config.items(s))
+            config.pop(s)
+
         return config
 
     def store_config(self, config, global_only):
@@ -112,28 +134,30 @@ class ConfigManagerMixin:
             with open(filepath, "w+") as file:
                 config.write(file)
 
-        return self.load_config(local_only=True, global_only=True)
-
-    def get_config(self, local_only=False, global_only=False):
+    def get_config(self, config_filter=ConfigFilter.ALL, as_string=True):
         """Read all configurations."""
-        config = self.load_config(local_only=local_only, global_only=global_only)
-        with StringIO() as output:
-            config.write(output)
-            return output.getvalue()
+        config = self.load_config(config_filter=config_filter)
+        if as_string:
+            with StringIO() as output:
+                config.write(output)
+                return output.getvalue()
+        else:
+            return {f"{s}.{k}": v for s in config.sections() for k, v in config.items(s)}
 
-    def get_value(self, section, key, local_only=False, global_only=False):
+    def get_value(self, section, key, config_filter=ConfigFilter.ALL):
         """Get value from specified section and key."""
-        config = self.load_config(local_only=local_only, global_only=global_only)
+        config = self.load_config(config_filter=config_filter)
         return config.get(section, key, fallback=None)
 
     def set_value(self, section, key, value, global_only=False):
         """Set value to specified section and key."""
-        local_only = not global_only
+        config_filter = ConfigFilter.GLOBAL_ONLY
 
-        if local_only:
+        if not global_only:
+            config_filter = ConfigFilter.LOCAL_ONLY
             self._check_config_is_not_readonly(section, key)
 
-        config = self.load_config(local_only=local_only, global_only=global_only)
+        config = self.load_config(config_filter=config_filter)
         if section in config:
             config[section][key] = value
         else:
@@ -143,12 +167,13 @@ class ConfigManagerMixin:
 
     def remove_value(self, section, key, global_only=False):
         """Remove key from specified section."""
-        local_only = not global_only
+        config_filter = ConfigFilter.GLOBAL_ONLY
 
-        if local_only:
+        if not global_only:
+            config_filter = ConfigFilter.LOCAL_ONLY
             self._check_config_is_not_readonly(section, key)
 
-        config = self.load_config(local_only=local_only, global_only=global_only)
+        config = self.load_config(config_filter=config_filter)
         if section in config:
             value = config[section].pop(key, None)
 
@@ -163,7 +188,7 @@ class ConfigManagerMixin:
 
         readonly_configs = {"renku": [self.DATA_DIR_CONFIG_KEY]}
 
-        value = self.get_value(section, key, local_only=True)
+        value = self.get_value(section, key, config_filter=ConfigFilter.LOCAL_ONLY)
         if not value:
             return
 
