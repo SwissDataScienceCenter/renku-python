@@ -27,14 +27,14 @@ jobs:
         string: /deploy
         pr_ref: ${{ github.event.number }}
     - name: Check existing renkubot comment
-      if: ${{ steps.deploy-comment.outputs.pr-contains-string }}
+      if: steps.deploy-comment.outputs.pr-contains-string
       uses: peter-evans/find-comment@v1
       id: findcomment
       with:
         issue-number: ${{ github.event.pull_request.number }}
         comment-author: 'RenkuBot'
     - name: Create comment pre deploy
-      if: "steps.findcomment.outputs.comment-id == 0 && steps.deploy-comment.outputs.pr-contains-string"
+      if: "steps.findcomment.outputs.comment-id == 0 && steps.deploy-comment.outputs.pr-contains-string == true"
       uses: peter-evans/create-or-update-comment@v1
       with:
         token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
@@ -42,7 +42,7 @@ jobs:
         body: |
           You can access the deployment of this PR at https://ci-renku-${{ github.event.number }}.dev.renku.ch
     - name: renku build and deploy
-      if: ${{ steps.deploy-comment.outputs.pr-contains-string }}
+      if: steps.deploy-comment.outputs.pr-contains-string == true
       uses: SwissDataScienceCenter/renku/actions/deploy-renku@000-deploy-action
       env:
         DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
@@ -50,7 +50,7 @@ jobs:
         GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}
         KUBECONFIG: "${{ github.workspace }}/renkubot-kube.config"
         RANCHER_PROJECT_ID: ${{ secrets.CI_RANCHER_PROJECT }}
-        RENKU_RELEASE: ci-renku-${{ github.event.number }}
+        RENKU_RELEASE: ci-rp-${{ github.event.number }}
         RENKU_VALUES_FILE: "${{ github.workspace }}/values.yaml"
         RENKU_VALUES: ${{ secrets.CI_RENKU_VALUES }}
         RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
@@ -74,6 +74,7 @@ jobs:
         sudo apt-get update -y && sudo apt-get install -y grep
         pip install yq
     - name: Test the PR
+      if: steps.deploy-comment.outputs.pr-contains-string == true
       env:
         RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
         RENKU_RELEASE: "ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku"
