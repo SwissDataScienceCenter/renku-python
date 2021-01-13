@@ -22,7 +22,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - id: deploy-comment
-      uses: SwissDataScienceCenter/actions/check-pr-description@000-deploy-action
+      uses: SwissDataScienceCenter/renku/actions/check-pr-description@000-deploy-action
       with:
         string: /deploy
         pr_ref: ${{ github.event.number }}
