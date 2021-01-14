@@ -32,7 +32,7 @@ class ShowConfigCtrl(ServiceCtrl, ReadOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct controller."""
         self.ctx = ShowConfigCtrl.REQUEST_SERIALIZER.load(request_data)
-        super(ShowConfigCtrl, self).__init__(cache, user_data, {})
+        super(ShowConfigCtrl, self).__init__(cache, user_data, request_data)
 
     @property
     def context(self):

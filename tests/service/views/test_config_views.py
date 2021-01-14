@@ -22,6 +22,8 @@ import json
 import pytest
 from flaky import flaky
 
+from conftest import IT_REMOTE_REPO_URL
+
 
 @pytest.mark.service
 @pytest.mark.integration
@@ -45,7 +47,25 @@ def test_config_view_show(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=1, min_passes=1)
+@flaky(max_runs=30, min_passes=1)
+def test_config_view_show_remote(svc_client_with_repo, it_remote_repo):
+    """Check config show view."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    params = dict(git_url=it_remote_repo)
+
+    response = svc_client.get("/config.show", query_string=params, headers=headers,)
+
+    assert {"result"} == set(response.json.keys())
+    keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.lfs_threshold"}
+    assert keys == set(response.json["result"]["config"].keys())
+    assert keys == set(response.json["result"]["default"].keys())
+    assert 200 == response.status_code
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=30, min_passes=1)
 def test_config_view_set(svc_client_with_repo):
     """Check config set view."""
     svc_client, headers, project_id, _ = svc_client_with_repo
