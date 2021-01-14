@@ -117,10 +117,18 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
         result = origin.push(repo.active_branch)
         if result and "[remote rejected] (pre-receive hook declined)" in result[0].summary:
-            # NOTE: Push to new remote branch if original one is protected.
+            # NOTE: Push to new remote branch if original one is protected and reset the cache.
+            old_pushed_branch = pushed_branch
+            old_active_branch = repo.active_branch
             pushed_branch = uuid4().hex
-            repo.create_head(pushed_branch)
-            repo.remote().push(pushed_branch)
+            try:
+                repo.create_head(pushed_branch)
+                repo.remote().push(pushed_branch)
+            finally:
+                # Reset cache
+                repo.chechout(old_active_branch)
+                ref = f"{origin}/{old_pushed_branch}"
+                repo.index.reset(commit=ref, head=True, working_tree=True)
 
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot push changes") from e

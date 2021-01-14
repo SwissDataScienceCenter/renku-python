@@ -675,3 +675,28 @@ def test_check_no_migrations(svc_client_with_repo):
     assert not response.json["result"]["template_update_possible"]
     assert not response.json["result"]["docker_update_possible"]
     assert response.json["result"]["project_supported"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+def test_migrating_protected_branch(svc_client_setup):
+    """Check migrating on a protected branch does not change cache state."""
+    svc_client, headers, project_id, _ = svc_client_setup
+
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    assert 200 == response.status_code
+    assert response.json["result"]["migration_required"]
+
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
+
+    assert 200 == response.status_code
+    assert response.json["result"]["was_migrated"]
+    assert any(
+        m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
+    )
+
+    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    assert 200 == response.status_code
+    assert response.json["result"]["migration_required"]
