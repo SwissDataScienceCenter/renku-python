@@ -24,6 +24,7 @@ import git
 
 from renku.core import errors
 from renku.core.utils.scm import git_unicode_unescape
+from renku.service.logger import worker_log
 
 from .client import pass_local_client
 
@@ -60,7 +61,9 @@ def repo_sync(repo, message=None, remote=None, paths=None):
 
     # get branch that's pushed
     if repo.active_branch.tracking_branch():
-        pushed_branch = repo.active_branch.tracking_branch().name
+        ref = repo.active_branch.tracking_branch().name
+        pushed_branch = ref.split("/")[-1]
+        worker_log.debug(f"PUSHING TO {pushed_branch}")
     else:
         pushed_branch = repo.active_branch.name
 
@@ -116,7 +119,9 @@ def repo_sync(repo, message=None, remote=None, paths=None):
             origin.pull(repo.active_branch)
 
         result = origin.push(repo.active_branch)
+
         if result and "[remote rejected] (pre-receive hook declined)" in result[0].summary:
+            worker_log.debug("SYNC REJECTED")
             # NOTE: Push to new remote branch if original one is protected and reset the cache.
             old_pushed_branch = pushed_branch
             old_active_branch = repo.active_branch
@@ -124,11 +129,17 @@ def repo_sync(repo, message=None, remote=None, paths=None):
             try:
                 repo.create_head(pushed_branch)
                 repo.remote().push(pushed_branch)
+            except Exception as e:
+                worker_log.debug(f"SYNC FAILED, {str(e)}")
             finally:
                 # Reset cache
-                repo.chechout(old_active_branch)
-                ref = f"{origin}/{old_pushed_branch}"
-                repo.index.reset(commit=ref, head=True, working_tree=True)
+                try:
+                    repo.git.checkout(old_active_branch)
+                    ref = f"{origin}/{old_pushed_branch}"
+                    worker_log.debug(f"RESETTING to {ref}         {origin}    {old_pushed_branch}")
+                    repo.index.reset(commit=ref, head=True, working_tree=True)
+                except Exception as e:
+                    worker_log.debug(f"RESET FAILED, {str(e)}")
 
     except git.exc.GitCommandError as e:
         raise errors.GitError("Cannot push changes") from e
