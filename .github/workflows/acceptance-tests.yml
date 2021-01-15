@@ -10,20 +10,24 @@ on:
     - closed
 
 jobs:
+  check-deploy:
+    runs-on: ubuntu-20.04
+    outputs:
+      pr-contains-string: ${{ steps.deploy-comment.outputs.pr-contains-string }}
+    steps:
+      - id: deploy-comment
+        uses: SwissDataScienceCenter/renku/actions/check-pr-description@000-deploy-action
+        with:
+          string: /deploy
+          pr_ref: ${{ github.event.number }}
   deploy-pr:
-    if: github.event.action != 'closed'
-    runs-on: ubuntu-latest
+    needs: check-deploy
+    if: github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true'
+    runs-on: ubuntu-20.04
     environment:
       name: ci-rp-${{ github.event.number }}
     steps:
-    - uses: actions/checkout@v2
-    - id: deploy-comment
-      uses: SwissDataScienceCenter/renku/actions/check-pr-description@000-deploy-action
-      with:
-        string: /deploy
-        pr_ref: ${{ github.event.number }}
     - name: deploy-pr
-      if: steps.deploy-comment.outputs.pr-contains-string == 'true'
       uses: SwissDataScienceCenter/renku/actions/deploy-renku@000-deploy-action
       env:
         DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
@@ -42,14 +46,12 @@ jobs:
         renku: "@000-deploy-action"
         renku_core: "@${{ github.head_ref }}"
     - name: Check existing renkubot comment
-      if: steps.deploy-comment.outputs.pr-contains-string
       uses: peter-evans/find-comment@v1
       id: findcomment
       with:
         issue-number: ${{ github.event.pull_request.number }}
         comment-author: 'RenkuBot'
     - name: Create comment pre deploy
-      if: steps.findcomment.outputs.comment-id == 0 && steps.deploy-comment.outputs.pr-contains-string == 'true'
       uses: peter-evans/create-or-update-comment@v1
       with:
         token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
@@ -60,7 +62,7 @@ jobs:
   test-pr:
     runs-on: ubuntu-latest
     if: github.event.action != 'closed'
-    needs: deploy-pr
+    needs: [check-deploy, deploy-pr]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v1
@@ -71,7 +73,7 @@ jobs:
         sudo apt-get update -y && sudo apt-get install -y grep
         pip install yq
     - name: Test the PR
-      if: steps.deploy-comment.outputs.pr-contains-string == 'true'
+      if: needs.check-deploy.outputs.pr-contains-string == 'true'
       env:
         RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
         RENKU_RELEASE: "ci-${{ github.event.repository.name }}-${{ github.event.number }}-renku"
