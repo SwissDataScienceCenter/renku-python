@@ -16,7 +16,7 @@ jobs:
       pr-contains-string: ${{ steps.deploy-comment.outputs.pr-contains-string }}
     steps:
       - id: deploy-comment
-        uses: SwissDataScienceCenter/renku/actions/check-pr-description@000-deploy-action
+        uses: SwissDataScienceCenter/renku/actions/check-pr-description
         with:
           string: /deploy
           pr_ref: ${{ github.event.number }}
@@ -28,7 +28,7 @@ jobs:
       name: ci-rp-${{ github.event.number }}
     steps:
     - name: deploy-pr
-      uses: SwissDataScienceCenter/renku/actions/deploy-renku@000-deploy-action
+      uses: SwissDataScienceCenter/renku/actions/deploy-renku
       env:
         DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
@@ -43,7 +43,6 @@ jobs:
         RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
         RENKU_ANONYMOUS_SESSIONS: false
         RENKU_TESTS_ENABLED: true
-        renku: "@000-deploy-action"
         renku_core: "@${{ github.head_ref }}"
     - name: Check existing renkubot comment
       uses: peter-evans/find-comment@v1
@@ -113,7 +112,7 @@ jobs:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-    - uses: SwissDataScienceCenter/renku/actions/teardown-renku@000-deploy-action
+    - uses: SwissDataScienceCenter/renku/actions/teardown-renku
       env:
         GITLAB_TOKEN: ${{ secrets.GITLAB_DEV_TOKEN }}
         KUBECONFIG: ${{ github.workspace }}/renkubot-kube.config
