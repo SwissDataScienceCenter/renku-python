@@ -683,8 +683,7 @@ def test_check_no_migrations(svc_client_with_repo):
 @flaky(max_runs=10, min_passes=1)
 def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
-    svc_client, headers, _, response = svc_protected_old_repo
-    project_id = response.json["result"]["project_id"]
+    svc_client, headers, project_id = svc_protected_old_repo
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code

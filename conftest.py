@@ -881,12 +881,16 @@ def datapack_gz(directory_tree):
 @pytest.fixture(scope="module")
 def mock_redis():
     """Monkey patch service cache with mocked redis."""
+    from renku.core.commands import save
     from renku.service.cache.base import BaseCache
     from renku.service.cache.models.file import File
     from renku.service.cache.models.job import Job
     from renku.service.cache.models.project import Project
     from renku.service.cache.models.user import User
     from renku.service.jobs.queues import WorkerQueues
+
+    def repo_sync_mock(p, remote=None):
+        return None, "origin"
 
     monkey_patch = MonkeyPatch()
     with monkey_patch.context() as m:
@@ -902,50 +906,28 @@ def mock_redis():
         m.setattr(File, "__database__", fake_model_db)
         m.setattr(Project, "__database__", fake_model_db)
 
+        save.repo_sync = repo_sync_mock
+
         yield
 
     monkey_patch.undo()
 
 
-@pytest.fixture(scope="module")
-def mock_sync():
-    """Mocked redis with mocked sync."""
-    from renku.core.commands import save
-
-    def repo_sync_mock(p, remote=None):
-        return None, "origin"
-
-    save.repo_sync = repo_sync_mock
-
-
-@pytest.fixture(scope="module")
-def svc_client(mock_redis, mock_sync):
-    """Renku service client."""
-    from renku.service.entrypoint import create_app
-
-    flask_app = create_app()
-
-    testing_client = flask_app.test_client()
-    testing_client.testing = True
-
-    ctx = flask_app.app_context()
-    ctx.push()
-
-    yield testing_client
-
-    ctx.pop()
-
-
 @pytest.fixture
-def svc_client_with_sync(mock_redis):
-    """Renku service client."""
+def real_sync():
+    """Enable remote sync."""
     import importlib
 
     from renku.core.commands import save
-    from renku.service.entrypoint import create_app
 
     # NOTE: Use this fixture only in serial tests. save.repo_sync is mocked; reloading the save module to undo the mock.
     importlib.reload(save)
+
+
+@pytest.fixture(scope="module")
+def svc_client(mock_redis):
+    """Renku service client."""
+    from renku.service.entrypoint import create_app
 
     flask_app = create_app()
 
@@ -961,7 +943,7 @@ def svc_client_with_sync(mock_redis):
 
 
 @pytest.fixture()
-def svc_client_cache(mock_redis, mock_sync, identity_headers):
+def svc_client_cache(mock_redis, identity_headers):
     """Service jobs fixture."""
     from renku.service.entrypoint import create_app
 
@@ -1036,7 +1018,7 @@ def identity_headers():
 
 
 @pytest.fixture(scope="module")
-def integration_lifecycle(svc_client, mock_redis, mock_sync, identity_headers):
+def integration_lifecycle(svc_client, mock_redis, identity_headers):
     """Setup and teardown steps for integration tests."""
     from renku.core.models.git import GitURL
 
@@ -1106,7 +1088,13 @@ def svc_client_with_repo(svc_client_setup):
 
 
 @pytest.fixture
-def svc_client_with_templates(svc_client, mock_redis, mock_sync, identity_headers, template):
+def svc_synced_client(svc_client_with_user, real_sync):
+    """Renku service client with remote sync."""
+    yield svc_client_with_user
+
+
+@pytest.fixture
+def svc_client_with_templates(svc_client, mock_redis, identity_headers, template):
     """Setup and teardown steps for templates tests."""
 
     yield svc_client, identity_headers, template
@@ -1150,44 +1138,36 @@ def svc_client_templates_creation(svc_client_with_templates):
 
 @pytest.fixture
 def svc_protected_repo(svc_client, identity_headers):
-    """Service client with remote protected repository."""
+    """Service client with migrated remote protected repository."""
     payload = {
         "git_url": IT_PROTECTED_REMOTE_REPO_URL,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
-    project_id = response.json["result"]["project_id"]
-    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=identity_headers)
+    data = {
+        "project_id": response.json["result"]["project_id"],
+        "skip_template_update": True,
+        "skip_docker_update": True,
+    }
+    svc_client.post("/cache.migrate", data=json.dumps(data), headers=identity_headers)
 
     yield svc_client, identity_headers, payload, response
 
 
 @pytest.fixture
-def svc_protected_old_repo(svc_client_with_sync, identity_headers):
+def svc_protected_old_repo(svc_synced_client):
     """Service client with remote protected repository."""
-    svc_client = svc_client_with_sync
-    # from renku.core.management import LocalClient
-    # from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+    svc_client, identity_headers, cache, user = svc_synced_client
 
-    # svc_client, identity_headers, cache, user = svc_client_with_user
     payload = {
         "git_url": IT_PROTECTED_REMOTE_REPO_URL,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    project_id = response.json["result"]["project_id"]
 
-    # project_id = response.json["result"]["project_id"]
-    # project = cache.get_project(user, project_id)
-    # client = LocalClient(path=project.abs_path)
-    # with client.with_metadata() as project:
-    #     old_version = SUPPORTED_PROJECT_VERSION - 1
-    #     project.version = old_version
-    #
-    # client.repo.git.add(".renku")
-    # client.repo.index.commit("Downgrade project version", skip_hooks=True)
-
-    yield svc_client, identity_headers, payload, response
+    yield svc_client, identity_headers, project_id
 
 
 @pytest.fixture(
@@ -1230,7 +1210,7 @@ def svc_protected_old_repo(svc_client_with_sync, identity_headers):
         },
     ]
 )
-def service_allowed_endpoint(request, svc_client, mock_redis, mock_sync):
+def service_allowed_endpoint(request, svc_client, mock_redis):
     """Ensure allowed methods and correct headers."""
     methods = {
         "GET": svc_client.get,
@@ -1247,7 +1227,7 @@ def service_allowed_endpoint(request, svc_client, mock_redis, mock_sync):
 
 
 @pytest.fixture
-def service_job(svc_client, mock_redis, mock_sync):
+def service_job(svc_client, mock_redis):
     """Ensure correct environment during testing of service jobs."""
     old_environ = dict(os.environ)
 
@@ -1367,7 +1347,7 @@ def ctrl_init(svc_client_cache):
 
 
 @pytest.fixture
-def reset_environment(svc_client, mock_redis, mock_sync):
+def reset_environment(svc_client, mock_redis):
     """Restore environment variable to their values before test execution."""
     current_environment = os.environ.copy()
 
