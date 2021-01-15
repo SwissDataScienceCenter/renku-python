@@ -1157,12 +1157,8 @@ def svc_protected_repo(svc_client, identity_headers):
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
-    payload = {
-        "project_id": response.json["result"]["project_id"],
-        "skip_template_update": True,
-        "skip_docker_update": True,
-    }
-    svc_client.post("/cache.migrate", data=json.dumps(payload), headers=identity_headers)
+    project_id = response.json["result"]["project_id"]
+    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=identity_headers)
 
     yield svc_client, identity_headers, payload, response
 
