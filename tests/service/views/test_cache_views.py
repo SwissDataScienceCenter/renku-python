@@ -24,6 +24,7 @@ import uuid
 import jwt
 import pytest
 from flaky import flaky
+from git import Repo
 
 from conftest import IT_REMOTE_REPO_URL
 from renku.core.models.git import GitURL
@@ -681,9 +682,35 @@ def test_check_no_migrations(svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.serial
 @flaky(max_runs=10, min_passes=1)
+def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
+    """Check cache state is reset after pushing to a protected branch fails."""
+    svc_client, headers, project_id, cache, user = svc_protected_old_repo
+
+    project = cache.get_project(user, project_id)
+    repo = Repo(path=project.abs_path)
+    commit_sha_before = repo.head.object.hexsha
+    active_branch_before = repo.active_branch.name
+
+    response = svc_client.post(
+        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+    )
+    assert 200 == response.status_code
+    assert response.json["result"]["was_migrated"]
+
+    project = cache.get_project(user, project_id)
+    repo = Repo(path=project.abs_path)
+
+    assert commit_sha_before == repo.head.object.hexsha
+    assert active_branch_before == repo.active_branch.name
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@pytest.mark.serial
+@flaky(max_runs=10, min_passes=1)
 def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
-    svc_client, headers, project_id = svc_protected_old_repo
+    svc_client, headers, project_id, _, _ = svc_protected_old_repo
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code

@@ -1167,7 +1167,7 @@ def svc_protected_old_repo(svc_synced_client):
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
     project_id = response.json["result"]["project_id"]
 
-    yield svc_client, identity_headers, project_id
+    yield svc_client, identity_headers, project_id, cache, user
 
 
 @pytest.fixture(
