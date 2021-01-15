@@ -10,13 +10,20 @@ on:
     - closed
 
 jobs:
+  cleanup-previous-runs:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    steps:
+    - uses: rokroskar/workflow-run-cleanup-action@master
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
   check-deploy:
     runs-on: ubuntu-20.04
     outputs:
       pr-contains-string: ${{ steps.deploy-comment.outputs.pr-contains-string }}
     steps:
       - id: deploy-comment
-        uses: SwissDataScienceCenter/renku/actions/check-pr-description
+        uses: SwissDataScienceCenter/renku/actions/check-pr-description@master
         with:
           string: /deploy
           pr_ref: ${{ github.event.number }}
@@ -28,7 +35,7 @@ jobs:
       name: ci-rp-${{ github.event.number }}
     steps:
     - name: deploy-pr
-      uses: SwissDataScienceCenter/renku/actions/deploy-renku
+      uses: SwissDataScienceCenter/renku/actions/deploy-renku@master
       env:
         DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
@@ -112,7 +119,7 @@ jobs:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-    - uses: SwissDataScienceCenter/renku/actions/teardown-renku
+    - uses: SwissDataScienceCenter/renku/actions/teardown-renku@master
       env:
         GITLAB_TOKEN: ${{ secrets.GITLAB_DEV_TOKEN }}
         KUBECONFIG: ${{ github.workspace }}/renkubot-kube.config
