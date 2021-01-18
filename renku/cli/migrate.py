@@ -21,6 +21,7 @@ import os
 
 import click
 
+from renku.cli.utils.callback import ClickCallback
 from renku.core.commands.client import pass_local_client
 from renku.core.commands.echo import WARNING
 from renku.core.commands.migrate import (
@@ -34,6 +35,7 @@ from renku.core.commands.migrate import (
     migrations_versions,
 )
 from renku.core.errors import MigrationRequired, ProjectNotSupported
+from renku.core.utils import communication
 
 
 @click.command()
@@ -51,6 +53,9 @@ def migrate(check, no_commit):
             click.secho(WARNING + "Not a renku project.")
 
         return
+
+    communicator = ClickCallback()
+    communication.subscribe(communicator)
 
     if no_commit:
         result, _, _ = migrate_project_no_commit(

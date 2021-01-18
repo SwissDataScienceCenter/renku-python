@@ -35,6 +35,7 @@ from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
 from renku.core.models.workflow.run import Run
+from renku.core.utils import communication
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
@@ -69,7 +70,7 @@ def _migrate_old_workflows(client):
     cwl_paths = sorted(cwl_paths, key=cmp_to_key(sort_cwl_commits))
 
     for n, element in enumerate(cwl_paths, start=1):
-        print(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
+        communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
 
         cwl_file, commit = element
         path = _migrate_cwl(client, cwl_file, commit)
@@ -437,7 +438,7 @@ def _find_cwl_files_and_commits(client):
     files_commits_map = {}
     wf_paths = f"{client.workflow_path}/*.cwl"
     for n, commit in enumerate(client.repo.iter_commits(paths=wf_paths, full_history=True), start=1):
-        print(f"Collecting CWL files {n}", end="\r")
+        communication.echo(f"Collecting CWL files {n}", end="\r")
 
         files = get_cwl_files(commit)
         if len(files) != 1:
@@ -451,7 +452,7 @@ def _find_cwl_files_and_commits(client):
         elif _compare_commits(client, existing_commit, commit) < 0:  # existing commit is older
             files_commits_map[path] = commit
 
-    print(40 * " ", end="\r")
+    communication.echo(40 * " ", end="\r")
 
     return files_commits_map
 

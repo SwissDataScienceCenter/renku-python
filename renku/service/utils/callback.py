@@ -32,7 +32,7 @@ class ServiceCallback(CommunicationCallback):
         self.errors = []
         self._user_job = user_job
 
-    def echo(self, msg):
+    def echo(self, msg, end="\n"):
         """Write a message."""
         self.messages.append(msg)
 
