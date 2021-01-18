@@ -58,6 +58,7 @@ def test_migrate_duplicated_input_binding(isolated_runner, old_project):
 
 
 @pytest.mark.migration
+@pytest.mark.serial
 def test_migration_check(isolated_runner, project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrationscheck"])
