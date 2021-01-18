@@ -80,7 +80,7 @@ class ConfigManagerMixin:
     @property
     def global_config_lock(self):
         """Create a user-level config lock."""
-        lock_file = "{0}/{1}.lock".format(self.global_config_dir, self.CONFIG_NAME)
+        lock_file = f"{self.global_config_path}.lock"
 
         import logging
 

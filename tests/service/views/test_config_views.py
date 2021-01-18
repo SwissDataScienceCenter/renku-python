@@ -22,8 +22,6 @@ import json
 import pytest
 from flaky import flaky
 
-from conftest import IT_REMOTE_REPO_URL
-
 
 @pytest.mark.service
 @pytest.mark.integration
