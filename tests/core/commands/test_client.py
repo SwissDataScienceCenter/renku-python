@@ -60,6 +60,7 @@ def test_safe_class_attributes(tmpdir):
         "CACHE",
         "CONFIG_NAME",
         "DATASETS",
+        "DATASET_IMAGES",
         "DATASETS_PROVENANCE",
         "DATA_DIR_CONFIG_KEY",
         "DEPENDENCY_GRAPH",

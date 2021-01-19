@@ -30,7 +30,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
 from urllib import error, parse
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, urlparse
 
 import attr
 import patoolib
@@ -46,6 +46,7 @@ from renku.core.models.datasets import (
     Dataset,
     DatasetFile,
     DatasetTag,
+    ImageObject,
     generate_dataset_file_url,
     is_dataset_name_valid,
 )
@@ -70,6 +71,9 @@ class DatasetsApiMixin(object):
     CACHE = "cache"
     """Directory to cache transient data."""
 
+    DATASET_IMAGES = "dataset_images"
+    """Directory for dataset images."""
+
     DATASETS_PROVENANCE = "dataset.json"
     """File for storing datasets' provenance."""
 
@@ -83,6 +87,14 @@ class DatasetsApiMixin(object):
             return self._temporary_datasets_path
 
         return self.path / self.renku_home / self.DATASETS
+
+    @property
+    def renku_dataset_images_path(self):
+        """Return a ``Path`` instance of Renku dataset metadata folder."""
+        if self._temporary_datasets_path:
+            return self._temporary_datasets_path
+
+        return self.path / self.renku_home / self.DATASET_IMAGES
 
     @property
     def datasets_provenance_path(self):
@@ -224,7 +236,7 @@ class DatasetsApiMixin(object):
 
         dataset.to_yaml()
 
-    def create_dataset(self, name=None, title=None, description=None, creators=None, keywords=None):
+    def create_dataset(self, name=None, title=None, description=None, creators=None, keywords=None, images=None):
         """Create a dataset."""
         if not name:
             raise errors.ParameterError("Dataset name must be provided.")
@@ -266,12 +278,78 @@ class DatasetsApiMixin(object):
             immutable=True,  # No mutation required when first creating a dataset
         )
 
+        if images:
+            self.set_dataset_images(dataset, images)
+
         dataset_ref = LinkReference.create(client=self, name="datasets/" + name)
         dataset_ref.set_reference(metadata_path)
 
         dataset.to_yaml(path=metadata_path)
 
         return dataset, metadata_path, dataset_ref
+
+    def set_dataset_images(self, dataset, images):
+        """Set the images on a dataset."""
+
+        from renku.service.config import CACHE_UPLOADS_PATH
+
+        (self.renku_dataset_images_path / dataset.identifier).mkdir(exist_ok=True, parents=True)
+
+        previous_images = dataset.images or []
+
+        dataset.images = []
+
+        images_updated = False
+
+        for img in images:
+            position = img["position"]
+            content_url = img["content_url"]
+
+            if any(i.position == img["position"] for i in dataset.images):
+                raise errors.DatasetImageError(f"Duplicate dataset image specified for position {position}")
+
+            existing = next(
+                (i for i in previous_images if i.position == img["position"] and i.content_url == img["content_url"]),
+                None,
+            )
+
+            if existing:
+                dataset.images.append(existing)
+                continue
+
+            if urlparse(content_url).netloc:
+                # NOTE: absolute url
+                dataset.images.append(ImageObject(content_url, position, id=ImageObject.generate_id(dataset, position)))
+                images_updated = True
+                continue
+
+            path = content_url
+            if not os.path.isabs(path):
+                path = os.path.normpath(os.path.join(self.path, path))
+
+            if not os.path.exists(path) or (
+                not os.path.commonprefix([path, self.path]) == str(self.path)
+                and not os.path.commonprefix([path, CACHE_UPLOADS_PATH]) == str(CACHE_UPLOADS_PATH)
+            ):
+                # NOTE: make sure files exists and prevent path traversal
+                raise errors.DatasetImageError(f"Dataset image with relative path {content_url} not found")
+
+            image_folder = self.renku_dataset_images_path / dataset.identifier
+
+            if not content_url.startswith(str(image_folder)):
+                # NOTE: only copy dataset image if it's not in .renku/datasets/<id>/images/ already
+                _, ext = os.path.splitext(content_url)
+                img_path = image_folder / f"{position}{ext}"
+                shutil.copy(path, img_path)
+
+            dataset.images.append(
+                ImageObject(
+                    str(img_path.relative_to(self.path)), position, id=ImageObject.generate_id(dataset, position)
+                )
+            )
+            images_updated = True
+
+        return images_updated or dataset.images != previous_images
 
     def add_data_to_dataset(
         self,

@@ -18,6 +18,7 @@
 """Renku dataset provider."""
 import os
 import re
+import shutil
 import urllib
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
@@ -114,6 +115,11 @@ class RenkuProvider(ProviderApi):
         """True if provider is git-based."""
         return True
 
+    @property
+    def supports_images(self):
+        """True if provider is a git repository."""
+        return True
+
     def _migrate_project(self, client):
         if is_project_unsupported(client):
             return
@@ -194,6 +200,7 @@ class _RenkuRecordSerializer:
         self._dataset = dataset
         self._project_url = project_url
         self._uri = uri
+        self.remote_client = remote_client
 
         for file_ in dataset.files:
             file_.checksum = remote_client.repo.git.hash_object(file_.path)
@@ -245,6 +252,23 @@ class _RenkuRecordSerializer:
         same_as = self._uri.replace(original_id, self._dataset.identifier)
         self._dataset.same_as = Url(url_id=remove_credentials(same_as))
         return self._dataset
+
+    def import_images(self, client, dataset):
+        """Add images from remote dataset."""
+        if not self._dataset.images:
+            return
+
+        for img in self._dataset.images:
+            if img.is_absolute:
+                continue
+
+            remote_image_path = self.remote_client.path / img.content_url
+            local_image_path = client.path / img.content_url
+            local_image_path.parent.mkdir(exist_ok=True, parents=True)
+
+            shutil.copy(remote_image_path, local_image_path)
+
+        dataset.images = self._dataset.images
 
     def is_last_version(self, uri):
         """Check if dataset is at last possible version."""

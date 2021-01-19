@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Repository datasets management."""
+import os
 import re
 import shutil
 import urllib
@@ -65,14 +66,14 @@ def list_datasets():
     return Command().command(_list_datasets).lock_dataset()
 
 
-def _create_dataset(client, name, title=None, description="", creators=None, keywords=None):
+def _create_dataset(client, name, title=None, description="", creators=None, keywords=None, images=None):
     if not creators:
         creators = [Person.from_git(client.repo)]
     else:
         creators, _ = _construct_creators(creators)
 
     dataset, _, _ = client.create_dataset(
-        name=name, title=title, description=description, creators=creators, keywords=keywords
+        name=name, title=title, description=description, creators=creators, keywords=keywords, images=images
     )
 
     client.update_datasets_provenance(dataset)
@@ -86,19 +87,37 @@ def create_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _edit_dataset(client, name, title, description, creators, keywords=None):
+def _edit_dataset(client, name, title, description, creators, keywords=None, images=[], skip_image_update=False):
     """Edit dataset metadata."""
     creators, no_email_warnings = _construct_creators(creators, ignore_email=True)
     title = title.strip() if isinstance(title, str) else ""
 
-    possible_updates = {"creators": creators, "description": description, "keywords": keywords, "title": title}
-    updated = [k for k, v in possible_updates.items() if v]
+    possible_updates = {
+        "creators": creators,
+        "description": description,
+        "keywords": keywords,
+        "title": title,
+    }
+
+    dataset = client.load_dataset(name=name)
+
+    updated = {k: v for k, v in possible_updates.items() if v}
+
+    if updated:
+        dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
+
+    if skip_image_update:
+        images_updated = False
+    else:
+        images_updated = client.set_dataset_images(dataset, images)
+
+    if images_updated:
+        updated["images"] = [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
 
     if not updated:
         return [], no_email_warnings
 
-    with client.with_dataset(name=name) as dataset:
-        dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
+    dataset.to_yaml()
 
     client.update_datasets_provenance(dataset)
 
@@ -495,7 +514,12 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
         if not dataset.data_dir:
             raise OperationError(f"Data directory for dataset must be set: {dataset.name}")
 
-        sources = [f"{dataset.data_dir}/**"]
+        if os.path.exists(dataset.data_dir):
+            sources = [f"{dataset.data_dir}/**"]
+        else:
+            # NOTE: Sometimes datadir doesn't exist because it doesn't contain files and gets ignored by git
+            sources = []
+
         for file_ in dataset.files:
             try:
                 Path(file_.path).relative_to(dataset.data_dir)
@@ -513,6 +537,10 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
 
         if previous_dataset:
             _update_previous_dataset(client, dataset, previous_dataset, new_files, delete)
+
+    if provider.supports_images:
+        with client.with_dataset(name=name):
+            record.import_images(client, dataset)
 
 
 def import_dataset():

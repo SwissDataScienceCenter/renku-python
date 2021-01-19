@@ -55,6 +55,7 @@ class DatasetsEditCtrl(ServiceCtrl, ReadWithSyncOperation):
                 self.ctx.get("description"),
                 self.ctx.get("creators"),
                 keywords=self.ctx.get("keywords"),
+                images=self.ctx.get("images"),
             )
         )
 
@@ -67,7 +68,7 @@ class DatasetsEditCtrl(ServiceCtrl, ReadWithSyncOperation):
         edited, warnings = op_result
 
         response = {
-            "edited": {field: self.ctx.get(field) for field in edited},
+            "edited": edited,
             "warnings": warnings,
             "remote_branch": remote_branch,
         }

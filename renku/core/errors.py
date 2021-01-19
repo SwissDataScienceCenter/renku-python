@@ -454,3 +454,7 @@ class CommandFinalizedError(RenkuException):
 
 class RenkuSaveError(RenkuException):
     """Raised when renku save doesn't work."""
+
+
+class DatasetImageError(RenkuException):
+    """Raised when a local dataset image is not accessible."""

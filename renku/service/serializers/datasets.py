@@ -21,6 +21,7 @@ from marshmallow import Schema, fields, post_load, pre_load
 
 from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
 from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
+from renku.core.models.datasets import ImageObjectJson as ImageObject
 from renku.service.serializers.rpc import JsonRPCResponse
 
 
@@ -224,6 +225,7 @@ class DatasetEditRequest(Schema):
     description = fields.String(default=None)
     creators = fields.List(fields.Nested(DatasetCreators))
     keywords = fields.List(fields.String())
+    images = fields.List(fields.Nested(ImageObject))
 
     project_id = fields.String()
     git_url = fields.String()
