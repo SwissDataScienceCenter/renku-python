@@ -420,7 +420,7 @@ def _find_cwl_files_and_commits(client):
     def get_cwl_files(commit):
         files = []
 
-        for file in commit.diff(commit.parents or NULL_TREE):
+        for file in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.cwl"):
             # Ignore deleted files (they appear as ADDED in this backwards diff)
             if file.change_type == "A":
                 continue
