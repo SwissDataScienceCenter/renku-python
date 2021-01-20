@@ -32,7 +32,7 @@ jobs:
     if: github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true'
     runs-on: ubuntu-20.04
     environment:
-      name: ci-rp-${{ github.event.number }}
+      name: renku-ci-rp-${{ github.event.number }}
     steps:
     - name: deploy-pr
       uses: SwissDataScienceCenter/renku/actions/deploy-renku@master
@@ -42,7 +42,7 @@ jobs:
         GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}
         KUBECONFIG: "${{ github.workspace }}/renkubot-kube.config"
         RANCHER_PROJECT_ID: ${{ secrets.CI_RANCHER_PROJECT }}
-        RENKU_RELEASE: ci-rp-${{ github.event.number }}
+        RENKU_RELEASE: renku-ci-rp-${{ github.event.number }}
         RENKU_VALUES_FILE: "${{ github.workspace }}/values.yaml"
         RENKU_VALUES: ${{ secrets.CI_RENKU_VALUES }}
         RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
@@ -66,7 +66,7 @@ jobs:
         token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
         issue-number: ${{ github.event.pull_request.number }}
         body: |
-          You can access the deployment of this PR at https://ci-rp-${{ github.event.number }}.dev.renku.ch
+          You can access the deployment of this PR at https://renku-ci-rp-${{ github.event.number }}.dev.renku.ch
 
   test-pr:
     runs-on: ubuntu-latest
@@ -85,7 +85,7 @@ jobs:
       if: needs.check-deploy.outputs.pr-contains-string == 'true'
       env:
         RENKU_BOT_DEV_PASSWORD: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
-        RENKU_RELEASE: "ci-rp-${{ github.event.number }}"
+        RENKU_RELEASE: "renku-ci-rp-${{ github.event.number }}"
       run: |
         RENKU_PYTHON_VERSION=$(git rev-parse HEAD)
         echo "Passing rp version $RENKU_PYTHON_VERSION"
@@ -125,4 +125,4 @@ jobs:
         GITLAB_TOKEN: ${{ secrets.GITLAB_DEV_TOKEN }}
         KUBECONFIG: ${{ github.workspace }}/renkubot-kube.config
         RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
-        RENKU_RELEASE: ci-rp-${{ github.event.number }}
+        RENKU_RELEASE: renku-ci-rp-${{ github.event.number }}
