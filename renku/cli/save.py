@@ -84,7 +84,7 @@ from renku.core.commands.save import save_and_push
         "The git remote to push to. Defaults to the remote set in git, " "automatically set in interactive environments"
     ),
 )
-@click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
+@click.argument("paths", type=click.Path(exists=False, dir_okay=True), nargs=-1)
 @click.pass_context
 def save(ctx, message, destination, paths):
     """Save and push local changes."""

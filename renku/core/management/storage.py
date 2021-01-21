@@ -170,7 +170,7 @@ class StorageApiMixin(RepositoryApiMixin):
                 path = Path(path).relative_to(self.path)
 
             # Do not add files with filter=lfs in .gitattributes
-            if attrs.get(str(path), {}).get("filter") == "lfs":
+            if attrs.get(str(path), {}).get("filter") == "lfs" or not path.exists():
                 continue
 
             if path.is_dir() and not any(self.renku_lfs_ignore.match_tree(str(path))):
