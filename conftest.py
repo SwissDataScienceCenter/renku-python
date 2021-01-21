@@ -434,11 +434,11 @@ def client_with_datasets(client, directory_tree):
 
 
 @pytest.fixture()
-def client_with_datasets_provenance(client):
-    """A client with dataset provenance."""
-    from renku.core.incubation.graph import generate_datasets_provenance
+def client_with_new_graph(client):
+    """A client with new graph metadata."""
+    from renku.core.incubation.graph import generate_graph
 
-    generate_datasets_provenance().build().execute()
+    generate_graph().build().execute(force=True)
 
     yield client
 
