@@ -24,7 +24,7 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 from shutil import move, which
-from subprocess import PIPE, STDOUT, call, check_output, run
+from subprocess import PIPE, STDOUT, check_output, run
 
 import attr
 import pathspec
@@ -133,11 +133,18 @@ class StorageApiMixin(RepositoryApiMixin):
     def init_external_storage(self, force=False):
         """Initialize the external storage for data."""
         try:
-            call(
-                self._CMD_STORAGE_INSTALL + (["--force"] if force else []), stdout=PIPE, stderr=STDOUT, cwd=self.path,
+            result = run(
+                self._CMD_STORAGE_INSTALL + (["--force"] if force else []),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=self.path,
+                universal_newlines=True,
             )
+
+            if result.returncode != 0:
+                raise errors.GitLFSError(f"Error executing 'git lfs install: \n {result.stdout}")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
 
     def init_repository(self, force=False, user=None):
         """Initialize a local Renku repository."""
@@ -182,11 +189,18 @@ class StorageApiMixin(RepositoryApiMixin):
 
         if track_paths:
             try:
-                call(
-                    self._CMD_STORAGE_TRACK + track_paths, stdout=PIPE, stderr=STDOUT, cwd=self.path,
+                result = run(
+                    self._CMD_STORAGE_TRACK + track_paths,
+                    stdout=PIPE,
+                    stderr=STDOUT,
+                    cwd=self.path,
+                    universal_newlines=True,
                 )
+
+                if result.returncode != 0:
+                    raise errors.GitLFSError(f"Error executing 'git lfs track: \n {result.stdout}")
             except (KeyboardInterrupt, OSError) as e:
-                raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+                raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
             return track_paths
         return []
 
@@ -194,11 +208,18 @@ class StorageApiMixin(RepositoryApiMixin):
     def untrack_paths_from_storage(self, *paths):
         """Untrack paths from the external storage."""
         try:
-            call(
-                self._CMD_STORAGE_UNTRACK + list(paths), stdout=PIPE, stderr=STDOUT, cwd=self.path,
+            result = run(
+                self._CMD_STORAGE_UNTRACK + list(paths),
+                stdout=PIPE,
+                stderr=STDOUT,
+                cwd=self.path,
+                universal_newlines=True,
             )
+
+            if result.returncode != 0:
+                raise errors.GitLFSError(f"Error executing 'git lfs untrack: \n {result.stdout}")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
 
     @check_external_storage_wrapper
     def list_tracked_paths(self, client=None):
@@ -207,7 +228,7 @@ class StorageApiMixin(RepositoryApiMixin):
         try:
             files = check_output(self._CMD_STORAGE_LIST, cwd=client.path, encoding="UTF-8")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs ls-files':\n{e}")
         files = [client.path / f for f in files.splitlines()]
         return files
 
@@ -218,7 +239,7 @@ class StorageApiMixin(RepositoryApiMixin):
 
         if len(client.repo.remotes) < 1 or not client.repo.active_branch.tracking_branch():
             raise errors.ConfigurationError(
-                "No git remote is configured for {} branch {}.".format(client.path, client.repo.active_branch.name)
+                f"No git remote is configured for {client.path} branch {client.repo.active_branch.name}."
                 + "Cleaning the storage cache would lead to a loss of data as "
                 + "it is not on a server. Please see "
                 + "https://www.atlassian.com/git/tutorials/syncing for "
@@ -227,7 +248,7 @@ class StorageApiMixin(RepositoryApiMixin):
         try:
             status = check_output(self._CMD_STORAGE_STATUS, cwd=client.path, encoding="UTF-8")
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.ParameterError("Couldn't run 'git lfs':\n{0}".format(e))
+            raise errors.ParameterError(f"Couldn't run 'git lfs status':\n{e}")
 
         files = status.split("Objects to be committed:")[0].splitlines()[2:]
         files = [client.path / f.rsplit("(", 1)[0].strip() for f in files if f.strip()]
@@ -253,13 +274,17 @@ class StorageApiMixin(RepositoryApiMixin):
         for client_path, paths in client_dict.items():
             batch_size = math.ceil(len(paths) / ARGUMENT_BATCH_SIZE)
             for index in range(batch_size):
-                run(
+                result = run(
                     self._CMD_STORAGE_PULL
                     + [shlex.quote(",".join(paths[index * ARGUMENT_BATCH_SIZE : (index + 1) * ARGUMENT_BATCH_SIZE]))],
                     cwd=client_path,
                     stdout=PIPE,
                     stderr=STDOUT,
+                    universal_newlines=True,
                 )
+
+                if result.returncode != 0:
+                    raise errors.GitLFSError(f"Error executing 'git lfs pull: \n {result.stdout}")
 
     @check_external_storage_wrapper
     def clean_storage_cache(self, *paths):
@@ -311,9 +336,12 @@ class StorageApiMixin(RepositoryApiMixin):
                 with tempfile.NamedTemporaryFile(mode="w+t", encoding="utf-8", delete=False) as tmp, open(
                     path, "r+t"
                 ) as input_file:
-                    run(
-                        self._CMD_STORAGE_CLEAN, cwd=client_path, stdin=input_file, stdout=tmp,
+                    result = run(
+                        self._CMD_STORAGE_CLEAN, cwd=client_path, stdin=input_file, stdout=tmp, universal_newlines=True
                     )
+
+                    if result.returncode != 0:
+                        raise errors.GitLFSError(f"Error executing 'git lfs clean: \n {result.stdout}")
 
                     tmp_path = tmp.name
                 move(tmp_path, path)
@@ -338,9 +366,12 @@ class StorageApiMixin(RepositoryApiMixin):
     @check_external_storage_wrapper
     def checkout_paths_from_storage(self, *paths):
         """Checkout a paths from LFS."""
-        run(
-            self._CMD_STORAGE_CHECKOUT + list(paths), cwd=self.path, stdout=PIPE, stderr=STDOUT, check=True,
+        result = run(
+            self._CMD_STORAGE_CHECKOUT + list(paths), cwd=self.path, stdout=PIPE, stderr=STDOUT, universal_newlines=True
         )
+
+        if result.returncode != 0:
+            raise errors.GitLFSError(f"Error executing 'git lfs checkout: \n {result.stdout}")
 
     def check_requires_tracking(self, *paths):
         """Check paths and return a list of those that must be tracked."""
@@ -403,7 +434,10 @@ class StorageApiMixin(RepositoryApiMixin):
         try:
             lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=self.path, universal_newlines=True)
         except (KeyboardInterrupt, OSError) as e:
-            raise errors.GitError("Couldn't run 'git lfs migrate info':\n{0}".format(e))
+            raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
+
+        if lfs_output.returncode != 0:
+            raise errors.GitLFSError(f"Error executing 'git lfs pull: \n {lfs_output.stdout}")
 
         groups = []
         files_re = re.compile(r"(.*\s+[\d.]+\s+\S+).*")
