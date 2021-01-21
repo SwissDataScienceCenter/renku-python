@@ -48,7 +48,7 @@ spec:
                   renku.service.entrypoint:app \
                   -b 0.0.0.0:8080 \
                   --timeout 600 \
-                  --workers $(RENKU_SVC_NUM_WORKERS) \
+                  --workers 1 \
                   --worker-class gthread \
                   --threads $(RENKU_SVC_NUM_THREADS)"
                 ]
