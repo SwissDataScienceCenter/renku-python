@@ -20,8 +20,8 @@ gitLFSSkipSmudge: 1
 
 # Concurrency settings for the main service:
 # the default it 4 workers with 8 threads set in the Dockerfile
-nWorkers:
-nThreads:
+nWorkers: 4
+nThreads: 8
 
 # NOTE: Make sure token secret is greater or equal to 32 bytes.
 jwtTokenSecret: bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn
