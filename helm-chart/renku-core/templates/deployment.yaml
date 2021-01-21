@@ -50,7 +50,7 @@ spec:
                   --timeout 600 \
                   --workers $(RENKU_SVC_NUM_WORKERS) \
                   --worker-class gthread \
-                  --threads $(RENKU_SVC_NUM_THREADS) "
+                  --threads $(RENKU_SVC_NUM_THREADS)"
                 ]
           securityContext:
             runAsGroup: 2000
@@ -81,7 +81,7 @@ spec:
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
             - name: DEBUG_MODE
-              value: {{ .Values.debug | default "false" | quote }}
+              value: {{ .Values.debug | quote }}
             {{ if .Values.nWorkers }}
             - name: RENKU_SVC_NUM_WORKERS
               value: {{ .Values.nWorkers | quote }}
