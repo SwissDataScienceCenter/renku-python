@@ -42,7 +42,7 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{ if .Values.debugMode }}
+          {{ if .Values.debug }}
           args: ["sh", "-c",
                   "gunicorn --reload \
                   renku.service.entrypoint:app \
@@ -81,7 +81,7 @@ spec:
             - name: SENTRY_ENV
               value: {{ .Values.sentry.environment }}
             - name: DEBUG_MODE
-              value: {{ quote .Values.debugMode | default "false"}}
+              value: {{ quote .Values.debug | default "false"}}
             {{ if .Values.nWorkers }}
             - name: RENKU_SVC_NUM_WORKERS
               value: {{ .Values.nWorkers | quote }}

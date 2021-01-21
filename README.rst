@@ -284,11 +284,11 @@ Kubernetes
 ~~~~~~~~~~
 
 To debug a running renku-core service in a Kubernetes cluster, the service has to be deployed with the
- `core.debugMode` flag set to `true`, like:
+ `core.debug` flag set to `true`, like:
  ::
 
     core:
-      debugMode: true
+      debug: true
 
 Then install the `Kubernetes extension <https://github.com/Azure/vscode-kubernetes-tools>`_
 and configure your local kubectl with the credentials needed for your cluster.
