@@ -386,6 +386,10 @@ class GitError(RenkuException):
     """Raised when a remote Git repo cannot be accessed."""
 
 
+class GitLFSError(RenkuException):
+    """Raised when a Git LFS operation fails."""
+
+
 class UrlSchemeNotSupported(RenkuException):
     """Raised when adding data from unsupported URL schemes."""
 
