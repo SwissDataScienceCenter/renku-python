@@ -44,7 +44,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{ if .Values.debug }}
           args: ["sh", "-c",
-                  "gunicorn --reload \
+                  "gunicorn --preload --reload \
                   renku.service.entrypoint:app \
                   -b 0.0.0.0:8080 \
                   --timeout 600 \
