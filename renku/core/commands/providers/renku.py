@@ -294,3 +294,9 @@ class _RenkuRecordSerializer:
     def latest_uri(self):
         """Get uri of latest version."""
         return self._dataset._id
+
+    @property
+    def datadir_exists(self):
+        """Whether the dataset datadir exists (might be missing in git if empty)."""
+
+        return (self.remote_client.path / self._dataset.data_dir).exists()

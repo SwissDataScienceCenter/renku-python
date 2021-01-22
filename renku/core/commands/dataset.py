@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Repository datasets management."""
-import os
 import re
 import shutil
 import urllib
@@ -514,11 +513,10 @@ def _import_dataset(client, uri, name="", extract=False, yes=False, previous_dat
         if not dataset.data_dir:
             raise OperationError(f"Data directory for dataset must be set: {dataset.name}")
 
-        if os.path.exists(dataset.data_dir):
+        sources = []
+
+        if record.datadir_exists:
             sources = [f"{dataset.data_dir}/**"]
-        else:
-            # NOTE: Sometimes datadir doesn't exist because it doesn't contain files and gets ignored by git
-            sources = []
 
         for file_ in dataset.files:
             try:
