@@ -293,6 +293,9 @@ class DatasetsApiMixin(object):
 
         from renku.service.config import CACHE_UPLOADS_PATH
 
+        if not images:
+            images = []
+
         (self.renku_dataset_images_path / dataset.identifier).mkdir(exist_ok=True, parents=True)
 
         previous_images = dataset.images or []
@@ -1284,6 +1287,7 @@ def _check_url(url):
 
 DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS,
+    Path(RENKU_HOME) / DatasetsApiMixin.DATASET_IMAGES,
     Path(RENKU_HOME) / DatasetsApiMixin.POINTERS,
     Path(RENKU_HOME) / LinkReference.REFS,
     Path(RENKU_HOME) / DatasetsApiMixin.DATASETS_PROVENANCE,

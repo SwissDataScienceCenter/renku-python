@@ -582,9 +582,17 @@ def test_list_datasets_view(svc_client_with_repo):
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
 
-    assert {"version", "description", "identifier", "created_at", "name", "title", "creators", "keywords"} == set(
-        response.json["result"]["datasets"][0].keys()
-    )
+    assert {
+        "version",
+        "description",
+        "identifier",
+        "images",
+        "created_at",
+        "name",
+        "title",
+        "creators",
+        "keywords",
+    } == set(response.json["result"]["datasets"][0].keys())
 
 
 @pytest.mark.service
@@ -644,9 +652,17 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo):
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
 
-    assert {"version", "description", "identifier", "created_at", "name", "title", "creators", "keywords"} == set(
-        response.json["result"]["datasets"][0].keys()
-    )
+    assert {
+        "version",
+        "description",
+        "identifier",
+        "images",
+        "created_at",
+        "name",
+        "title",
+        "creators",
+        "keywords",
+    } == set(response.json["result"]["datasets"][0].keys())
 
 
 @pytest.mark.service
@@ -749,9 +765,17 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
     assert_rpc_response(response)
     assert {"datasets"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
-    assert {"creators", "name", "identifier", "version", "title", "description", "created_at", "keywords"} == set(
-        response.json["result"]["datasets"][0].keys()
-    )
+    assert {
+        "creators",
+        "name",
+        "identifier",
+        "images",
+        "version",
+        "title",
+        "description",
+        "created_at",
+        "keywords",
+    } == set(response.json["result"]["datasets"][0].keys())
 
     assert payload["name"] in [ds["name"] for ds in response.json["result"]["datasets"]]
 
