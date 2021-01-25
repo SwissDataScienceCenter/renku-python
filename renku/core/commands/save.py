@@ -93,7 +93,9 @@ def repo_sync(repo, message=None, remote=None, paths=None):
     if paths:
         # commit uncommitted changes
         try:
-            staged_files = {d.a_path for d in repo.index.diff("HEAD")} if repo.head.is_valid() else set()
+            staged_files = (
+                {git_unicode_unescape(d.a_path) for d in repo.index.diff("HEAD")} if repo.head.is_valid() else set()
+            )
 
             path_to_save = set(paths) - staged_files
 
