@@ -433,49 +433,33 @@ class RepositoryCache:
         cache = defaultdict(list)
         cwl_files_commits_map = {}
 
-        def is_file_deleted(stats):
-            return stats["insertions"] == 0 and stats["deletions"] != 0 and stats["deletions"] == stats["lines"]
-
         for n, commit in enumerate(client.repo.iter_commits(full_history=True), start=1):
             communication.echo(f"Caching commit {n}", end="\r")
 
-            for path, stats in commit.stats.files.items():
-                if is_file_deleted(stats):
+            cwl_files = []
+            for file in commit.diff(commit.parents or NULL_TREE):
+                # Ignore deleted files (they appear as ADDED in this backwards diff)
+                if file.change_type == "A":
                     continue
-                path = git_unicode_unescape(path)
+
+                path = git_unicode_unescape(file.a_path)
                 cache[path].append(commit)
 
-            cls._update_cwl_files_and_commits(client, commit, cwl_files_commits_map)
+                if path.startswith(client.cwl_prefix) and path.endswith(".cwl"):
+                    cwl_files.append(os.path.realpath(client.path / path))
+
+            cls._update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files)
 
         communication.echo(40 * " ", end="\r")
 
         return RepositoryCache(client, cache, cwl_files_commits_map)
 
     @staticmethod
-    def _update_cwl_files_and_commits(client, commit, cwl_files_commits_map):
-        def get_cwl_files():
-            files = []
-
-            for file in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.cwl"):
-                # Ignore deleted files (they appear as ADDED in this backwards diff)
-                if file.change_type == "A":
-                    continue
-                path = file.a_path
-                if not path.startswith(client.cwl_prefix) or not path.endswith(".cwl"):
-                    continue
-
-                files.append(os.path.realpath(client.path / path))
-
-                if len(files) > 1:  # The commit is ignored if it has more than one CWL file
-                    break
-
-            return files
-
-        files = get_cwl_files()
-        if len(files) != 1:
+    def _update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files):
+        if len(cwl_files) != 1:
             return
 
-        path = files[0]
+        path = cwl_files[0]
         existing_commit = cwl_files_commits_map.get(path)
 
         if existing_commit is None:
