@@ -20,6 +20,7 @@
 import glob
 import os
 import uuid
+from collections import defaultdict
 from functools import cmp_to_key
 from hashlib import sha1
 from pathlib import Path
@@ -61,6 +62,9 @@ def _migrate_old_workflows(client):
 
     paths_commits_map = _find_cwl_files_and_commits(client)
 
+    cache = RepositoryCache.from_client(client)
+    client.cache = cache
+
     wf_path = f"{client.workflow_path}/*.cwl"
     for path in glob.glob(wf_path):
         if path not in paths_commits_map:
@@ -73,10 +77,12 @@ def _migrate_old_workflows(client):
         communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
 
         cwl_file, commit = element
+        if not Path(cwl_file).exists():
+            continue
         path = _migrate_cwl(client, cwl_file, commit)
         os.remove(cwl_file)
 
-        client.repo.git.add(cwl_file, path)
+        client.repo.git.add(cwl_file, path, client.activity_index_path)
 
         if client.repo.is_dirty():
             commit_msg = "renku migrate: " "committing migrated workflow"
@@ -103,7 +109,7 @@ def _migrate_cwl(client, path, commit):
 def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit=None, persist=False):
     """Migrate a single step workflow."""
     if not commit:
-        commit = client.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
+        commit = client.cache.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
 
     run = Run(client=client, path=path, commit=commit)
     run.command = " ".join(cmd_line_tool.baseCommand)
@@ -298,7 +304,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
 def _migrate_composite_step(client, workflow, path, commit=None):
     """Migrate a composite workflow."""
     if not commit:
-        commit = client.find_previous_commit(path)
+        commit = client.cache.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
     rel_path = Path(path).relative_to(client.path)
     label = f"{rel_path}@{commit.hexsha}"
@@ -335,9 +341,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
 
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
-    client, commit, path = client.resolve_in_submodules(
-        client.find_previous_commit(path, revision=commit.hexsha), path,
-    )
+    client, commit, path = client.resolve_in_submodules(client.cache.find_previous_commit(path, revision=commit), path)
 
     entity_cls = Entity
     if (client.path / path).is_dir():
@@ -452,7 +456,7 @@ def _find_cwl_files_and_commits(client):
         elif _compare_commits(client, existing_commit, commit) < 0:  # existing commit is older
             files_commits_map[path] = commit
 
-    communication.echo(40 * " ", end="\r")
+    communication.echo("")
 
     return files_commits_map
 
@@ -473,8 +477,68 @@ def _compare_commits(client, commit1, commit2):
         return -1
     if commit1.authored_date > commit2.authored_date:
         return 1
-    raise ValueError(
-        f"Cannot order commits {commit1} and {commit2}, there is no "
-        "dependency between them and they have identical commit and "
-        "author dates"
-    )
+
+    # NOTE: There is no ordering between the commits and there is no easy way for users to fix this
+    return 0
+
+
+class RepositoryCache:
+    """Cache for a git repo."""
+
+    def __init__(self, client, cache):
+        self._client = client
+        self._cache = cache
+
+    @classmethod
+    def from_client(cls, client):
+        """Return a cached repo."""
+        cache = defaultdict(list)
+
+        def is_file_deleted(stats):
+            return stats["insertions"] == 0 and stats["deletions"] != 0 and stats["deletions"] == stats["lines"]
+
+        for n, commit in enumerate(client.repo.iter_commits(full_history=True), start=1):
+            communication.echo(f"Caching commit {n}", end="\r")
+
+            for path, stats in commit.stats.files.items():
+                if is_file_deleted(stats):
+                    continue
+                path = git_unicode_unescape(path)
+                cache[path].append(commit)
+
+        communication.echo("")
+
+        return RepositoryCache(client, cache)
+
+    def find_previous_commit(self, path, revision="HEAD"):
+        """Return a previous commit for a given path starting from 'revision'."""
+
+        def find_from_client(path, revision):
+            try:
+                return self._client.find_previous_commit(paths=path, revision=revision, full=True)
+            except KeyError:
+                communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
+                return revision
+
+        try:
+            path = (self._client.path / path).relative_to(self._client.path)
+        except ValueError:
+            pass
+        path = str(path)
+
+        if revision == "HEAD":
+            revision = self._client.head.commit
+
+        commits = self._cache.get(git_unicode_unescape(path))
+        if not commits:
+            return find_from_client(path, revision)
+
+        if revision in commits:
+            return revision
+
+        for commit in commits:
+            if _compare_commits(self._client, commit, revision) <= 0:
+                return commit
+
+        # No commit was found
+        return find_from_client(path, revision)
