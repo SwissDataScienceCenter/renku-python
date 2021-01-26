@@ -80,7 +80,10 @@ def _migrate_old_workflows(client):
         path = _migrate_cwl(client, cwl_file, commit)
         os.remove(cwl_file)
 
-        client.repo.git.add(cwl_file, path, client.activity_index_path)
+        paths = [cwl_file, path]
+        if client.activity_index_path.exists():
+            paths.append(client.activity_index_path)
+        client.repo.git.add(*paths)
 
         if client.repo.is_dirty():
             commit_msg = "renku migrate: " "committing migrated workflow"
