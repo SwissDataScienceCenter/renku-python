@@ -60,17 +60,15 @@ def _migrate_old_workflows(client):
 
         return _compare_commits(client, commit1, commit2)
 
-    paths_commits_map = _find_cwl_files_and_commits(client)
-
     cache = RepositoryCache.from_client(client)
     client.cache = cache
 
     wf_path = f"{client.workflow_path}/*.cwl"
     for path in glob.glob(wf_path):
-        if path not in paths_commits_map:
+        if path not in cache.cwl_files_commits:
             raise ValueError(f"Couldn't find a previous commit for path `{path}`")
 
-    cwl_paths = list(paths_commits_map.items())
+    cwl_paths = list(cache.cwl_files_commits.items())
     cwl_paths = sorted(cwl_paths, key=cmp_to_key(sort_cwl_commits))
 
     for n, element in enumerate(cwl_paths, start=1):
@@ -418,47 +416,102 @@ def parse_cwl_cached(path):
     return cwl
 
 
-def _find_cwl_files_and_commits(client):
-    """Return a dict of paths and last commit that changed them."""
+class RepositoryCache:
+    """Cache for a git repo."""
 
-    def get_cwl_files(commit):
-        files = []
+    def __init__(self, client, cache, cwl_files_commits):
+        self.client = client
+        self.cache = cache
+        self.cwl_files_commits = cwl_files_commits
 
-        for file in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.cwl"):
-            # Ignore deleted files (they appear as ADDED in this backwards diff)
-            if file.change_type == "A":
-                continue
-            path = file.a_path
-            if not path.startswith(client.cwl_prefix) or not path.endswith(".cwl"):
-                continue
+    @classmethod
+    def from_client(cls, client):
+        """Return a cached repo."""
+        cache = defaultdict(list)
+        cwl_files_commits_map = {}
 
-            files.append(os.path.realpath(client.path / path))
+        def is_file_deleted(stats):
+            return stats["insertions"] == 0 and stats["deletions"] != 0 and stats["deletions"] == stats["lines"]
 
-            if len(files) > 1:  # The commit is ignored if it has more than one CWL file
-                break
+        for n, commit in enumerate(client.repo.iter_commits(full_history=True), start=1):
+            communication.echo(f"Caching commit {n}", end="\r")
 
-        return files
+            for path, stats in commit.stats.files.items():
+                if is_file_deleted(stats):
+                    continue
+                path = git_unicode_unescape(path)
+                cache[path].append(commit)
 
-    files_commits_map = {}
-    wf_paths = f"{client.workflow_path}/*.cwl"
-    for n, commit in enumerate(client.repo.iter_commits(paths=wf_paths, full_history=True), start=1):
-        communication.echo(f"Collecting CWL files {n}", end="\r")
+            cls._update_cwl_files_and_commits(client, commit, cwl_files_commits_map)
 
-        files = get_cwl_files(commit)
+        communication.echo(40 * " ", end="\r")
+
+        return RepositoryCache(client, cache, cwl_files_commits_map)
+
+    @staticmethod
+    def _update_cwl_files_and_commits(client, commit, cwl_files_commits_map):
+        def get_cwl_files():
+            files = []
+
+            for file in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.cwl"):
+                # Ignore deleted files (they appear as ADDED in this backwards diff)
+                if file.change_type == "A":
+                    continue
+                path = file.a_path
+                if not path.startswith(client.cwl_prefix) or not path.endswith(".cwl"):
+                    continue
+
+                files.append(os.path.realpath(client.path / path))
+
+                if len(files) > 1:  # The commit is ignored if it has more than one CWL file
+                    break
+
+            return files
+
+        files = get_cwl_files()
         if len(files) != 1:
-            continue
+            return
 
         path = files[0]
-        existing_commit = files_commits_map.get(path)
+        existing_commit = cwl_files_commits_map.get(path)
 
         if existing_commit is None:
-            files_commits_map[path] = commit
+            cwl_files_commits_map[path] = commit
         elif _compare_commits(client, existing_commit, commit) < 0:  # existing commit is older
-            files_commits_map[path] = commit
+            cwl_files_commits_map[path] = commit
 
-    communication.echo("")
+    def find_previous_commit(self, path, revision="HEAD"):
+        """Return a previous commit for a given path starting from 'revision'."""
 
-    return files_commits_map
+        def find_from_client(path, revision):
+            try:
+                return self.client.find_previous_commit(paths=path, revision=revision, full=True)
+            except KeyError:
+                communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
+                return revision
+
+        try:
+            path = (self.client.path / path).relative_to(self.client.path)
+        except ValueError:
+            pass
+        path = str(path)
+
+        if revision == "HEAD":
+            revision = self.client.head.commit
+
+        commits = self.cache.get(git_unicode_unescape(path))
+        if not commits:
+            return find_from_client(path, revision)
+
+        if revision in commits:
+            return revision
+
+        for commit in commits:
+            if _compare_commits(self.client, commit, revision) <= 0:
+                return commit
+
+        # No commit was found
+        return find_from_client(path, revision)
 
 
 def _compare_commits(client, commit1, commit2):
@@ -480,65 +533,3 @@ def _compare_commits(client, commit1, commit2):
 
     # NOTE: There is no ordering between the commits and there is no easy way for users to fix this
     return 0
-
-
-class RepositoryCache:
-    """Cache for a git repo."""
-
-    def __init__(self, client, cache):
-        self._client = client
-        self._cache = cache
-
-    @classmethod
-    def from_client(cls, client):
-        """Return a cached repo."""
-        cache = defaultdict(list)
-
-        def is_file_deleted(stats):
-            return stats["insertions"] == 0 and stats["deletions"] != 0 and stats["deletions"] == stats["lines"]
-
-        for n, commit in enumerate(client.repo.iter_commits(full_history=True), start=1):
-            communication.echo(f"Caching commit {n}", end="\r")
-
-            for path, stats in commit.stats.files.items():
-                if is_file_deleted(stats):
-                    continue
-                path = git_unicode_unescape(path)
-                cache[path].append(commit)
-
-        communication.echo("")
-
-        return RepositoryCache(client, cache)
-
-    def find_previous_commit(self, path, revision="HEAD"):
-        """Return a previous commit for a given path starting from 'revision'."""
-
-        def find_from_client(path, revision):
-            try:
-                return self._client.find_previous_commit(paths=path, revision=revision, full=True)
-            except KeyError:
-                communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
-                return revision
-
-        try:
-            path = (self._client.path / path).relative_to(self._client.path)
-        except ValueError:
-            pass
-        path = str(path)
-
-        if revision == "HEAD":
-            revision = self._client.head.commit
-
-        commits = self._cache.get(git_unicode_unescape(path))
-        if not commits:
-            return find_from_client(path, revision)
-
-        if revision in commits:
-            return revision
-
-        for commit in commits:
-            if _compare_commits(self._client, commit, revision) <= 0:
-                return commit
-
-        # No commit was found
-        return find_from_client(path, revision)
