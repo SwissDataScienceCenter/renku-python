@@ -35,6 +35,7 @@ from renku.core.models.provenance.activities import ProcessRun, WorkflowRun
 from renku.core.models.provenance.agents import Person, SoftwareAgent
 from renku.core.models.workflow.parameters import CommandArgument, CommandInput, CommandOutput, MappedIOStream
 from renku.core.models.workflow.run import Run
+from renku.core.utils import communication
 from renku.core.utils.scm import git_unicode_unescape
 from renku.version import __version__, version_url
 
@@ -50,40 +51,28 @@ def migrate(client):
 
 def _migrate_old_workflows(client):
     """Migrates old cwl workflows to new jsonld format."""
-    wf_path = "{}/*.cwl".format(client.workflow_path)
 
-    cwl_paths = glob.glob(wf_path)
-
-    cwl_paths = [(p, _find_only_cwl_commit(client, p)) for p in cwl_paths]
-
-    def _sort_cwl_commits(e1, e2):
+    def sort_cwl_commits(e1, e2):
         """Sorts cwl commits in order of their creation."""
         commit1 = e1[1]
         commit2 = e2[1]
 
-        if client.repo.is_ancestor(commit1, commit2):
-            return -1
-        if client.repo.is_ancestor(commit2, commit1):
-            return 1
+        return _compare_commits(client, commit1, commit2)
 
-        if commit1.committed_date < commit2.committed_date:
-            return -1
-        if commit1.committed_date > commit2.committed_date:
-            return 1
+    paths_commits_map = _find_cwl_files_and_commits(client)
 
-        if commit1.authored_date < commit2.authored_date:
-            return -1
-        if commit1.authored_date > commit2.authored_date:
-            return 1
-        raise ValueError(
-            f"Cannot order commits {commit1} and {commit2}, there is no "
-            "dependency between them and they have identical commit and "
-            "author dates"
-        )
+    wf_path = f"{client.workflow_path}/*.cwl"
+    for path in glob.glob(wf_path):
+        if path not in paths_commits_map:
+            raise ValueError(f"Couldn't find a previous commit for path `{path}`")
 
-    cwl_paths = sorted(cwl_paths, key=cmp_to_key(_sort_cwl_commits))
+    cwl_paths = list(paths_commits_map.items())
+    cwl_paths = sorted(cwl_paths, key=cmp_to_key(sort_cwl_commits))
 
-    for cwl_file, commit in cwl_paths:
+    for n, element in enumerate(cwl_paths, start=1):
+        communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
+
+        cwl_file, commit = element
         path = _migrate_cwl(client, cwl_file, commit)
         os.remove(cwl_file)
 
@@ -217,7 +206,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             else:
                 path = Path(matched_input.default)
 
-            path = Path(os.path.abspath(client.path / path)).relative_to(client.path)
+            path = Path(os.path.realpath(client.path / path)).relative_to(client.path)
 
             if matched_input.inputBinding:
                 prefix = matched_input.inputBinding.prefix
@@ -260,7 +249,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
 
         if isinstance(i.default, dict) and "class" in i.default and i.default["class"] in ["File", "Directory"]:
             path = client.workflow_path / Path(i.default["path"])
-            path = Path(os.path.abspath(path)).relative_to(client.path)
+            path = Path(os.path.realpath(path)).relative_to(client.path)
 
             run.inputs.append(
                 CommandInput(
@@ -425,16 +414,67 @@ def parse_cwl_cached(path):
     return cwl
 
 
-def _find_only_cwl_commit(client, path, revision="HEAD"):
-    """Find the most recent isolated commit of a cwl file.
+def _find_cwl_files_and_commits(client):
+    """Return a dict of paths and last commit that changed them."""
 
-    Commits with multiple cwl files are disregarded
-    """
-    file_commits = list(client.repo.iter_commits(revision, paths=path, full_history=True))
+    def get_cwl_files(commit):
+        files = []
 
-    for commit in file_commits:
-        cwl_files = [f for f in commit.stats.files.keys() if f.startswith(client.cwl_prefix) and path.endswith(".cwl")]
-        if len(cwl_files) == 1:
-            return commit
+        for file in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.cwl"):
+            # Ignore deleted files (they appear as ADDED in this backwards diff)
+            if file.change_type == "A":
+                continue
+            path = file.a_path
+            if not path.startswith(client.cwl_prefix) or not path.endswith(".cwl"):
+                continue
 
-    raise ValueError("Couldn't find a previous commit for path {}".format(path))
+            files.append(os.path.realpath(client.path / path))
+
+            if len(files) > 1:  # The commit is ignored if it has more than one CWL file
+                break
+
+        return files
+
+    files_commits_map = {}
+    wf_paths = f"{client.workflow_path}/*.cwl"
+    for n, commit in enumerate(client.repo.iter_commits(paths=wf_paths, full_history=True), start=1):
+        communication.echo(f"Collecting CWL files {n}", end="\r")
+
+        files = get_cwl_files(commit)
+        if len(files) != 1:
+            continue
+
+        path = files[0]
+        existing_commit = files_commits_map.get(path)
+
+        if existing_commit is None:
+            files_commits_map[path] = commit
+        elif _compare_commits(client, existing_commit, commit) < 0:  # existing commit is older
+            files_commits_map[path] = commit
+
+    communication.echo(40 * " ", end="\r")
+
+    return files_commits_map
+
+
+def _compare_commits(client, commit1, commit2):
+    """Return -1 if commit1 is made before commit2."""
+    if client.repo.is_ancestor(commit1, commit2):
+        return -1
+    if client.repo.is_ancestor(commit2, commit1):
+        return 1
+
+    if commit1.committed_date < commit2.committed_date:
+        return -1
+    if commit1.committed_date > commit2.committed_date:
+        return 1
+
+    if commit1.authored_date < commit2.authored_date:
+        return -1
+    if commit1.authored_date > commit2.authored_date:
+        return 1
+    raise ValueError(
+        f"Cannot order commits {commit1} and {commit2}, there is no "
+        "dependency between them and they have identical commit and "
+        "author dates"
+    )

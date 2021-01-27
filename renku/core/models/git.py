@@ -20,6 +20,7 @@
 import configparser
 import os
 import re
+from pathlib import Path
 from urllib.parse import urlparse
 
 import attr
@@ -97,11 +98,14 @@ class GitURL(object):
     _regex = attr.ib(default=None, cmp=False)
 
     def __attrs_post_init__(self):
-        """Derive basic informations."""
+        """Derive basic information."""
         if self.protocol:
             protocols = self.protocol.split("+")
             self.protocols = protocols
             self.protocol = protocols[-1]
+
+        if not self.name and self.pathname:
+            self.name = filter_repo_name(Path(self.pathname).name)
 
     @classmethod
     def parse(cls, href):
