@@ -159,7 +159,10 @@
       },
       "tolerations": {
           "description": "Tolerations for deployment",
-          "type": "object"
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
       },
       "affinity": {
           "description": "Affinity for deployment",

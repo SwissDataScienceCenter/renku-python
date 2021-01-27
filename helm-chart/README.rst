@@ -11,7 +11,7 @@ Configuration
 - `projectCloneDepth` git clone depth for standard projects
   (default: `1`)
 - `templateCloneDepth` git clone depth for template projects
-  (default: `0`)
+  (default: `1`)
 
 Usage
 -----
