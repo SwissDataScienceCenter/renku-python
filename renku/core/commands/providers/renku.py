@@ -51,6 +51,11 @@ class RenkuProvider(ProviderApi):
         _, dataset_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
         return dataset_id is not None
 
+    @staticmethod
+    def supports_import():
+        """Whether this provider supports dataset import."""
+        return True
+
     def find_record(self, uri, client=None):
         """Retrieves a dataset from Renku.
 

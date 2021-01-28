@@ -40,6 +40,21 @@ class ProviderApi(abc.ABC):
         """Whether or not this provider supports a given uri."""
         pass
 
+    @staticmethod
+    def supports_export():
+        """Whether this provider supports dataset export."""
+        return False
+
+    @staticmethod
+    def supports_import():
+        """Whether this provider supports dataset import."""
+        return False
+
+    @staticmethod
+    def export_parameters():
+        """Returns parameters that can be set for export."""
+        return {}
+
     @property
     def is_git_based(self):
         """True if provider is a git repository."""

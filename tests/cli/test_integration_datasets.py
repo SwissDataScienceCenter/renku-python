@@ -423,10 +423,14 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
-    [("zenodo", [], "zenodo.org/deposit"), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:")],
+    [
+        ("zenodo", [], "zenodo.org/deposit"),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
+        ("olos", [], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+    ],
 )
 def test_dataset_export_upload_file(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider, params, output
+    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
 ):
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -461,10 +465,14 @@ def test_dataset_export_upload_file(
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
-    [("zenodo", [], "zenodo.org/deposit"), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:")],
+    [
+        ("zenodo", [], "zenodo.org/deposit"),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
+        ("olos", [], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+    ],
 )
 def test_dataset_export_upload_tag(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider, params, output
+    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
 ):
     """Test successful uploading of a file to Zenodo/Dataverse deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -529,10 +537,14 @@ def test_dataset_export_upload_tag(
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
     "provider,params,output",
-    [("zenodo", [], "zenodo.org/deposit"), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:")],
+    [
+        ("zenodo", [], "zenodo.org/deposit"),
+        ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:"),
+        ("olos", [], "sandbox.dlcm.ch/ingestion/preingest/deposits/"),
+    ],
 )
 def test_dataset_export_upload_multiple(
-    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, provider, params, output
+    runner, project, tmpdir, client, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params, output
 ):
     """Test successful uploading of a files to Zenodo deposit."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
@@ -647,14 +659,15 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "unsupported-provider"])
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "Unknown provider." in result.output
+    assert "invalid choice: unsupported-provider. (choose from " in result.output
 
 
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
-def test_dataset_export(runner, client, project):
+@pytest.mark.parametrize("provider", ["zenodo", "dataverse", "renku", "olos"])
+def test_dataset_export(runner, client, project, provider):
     """Check dataset not found exception raised."""
-    result = runner.invoke(cli, ["dataset", "export", "doesnotexists", "somewhere"])
+    result = runner.invoke(cli, ["dataset", "export", "doesnotexists", provider])
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
     assert 'Dataset "doesnotexists" is not found.' in result.output
@@ -663,9 +676,11 @@ def test_dataset_export(runner, client, project):
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 @pytest.mark.parametrize(
-    "provider,params", [("zenodo", []), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"])]
+    "provider,params", [("zenodo", []), ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"]), ("olos", [])]
 )
-def test_export_dataset_unauthorized(runner, project, client, tmpdir, zenodo_sandbox, dataverse_demo, provider, params):
+def test_export_dataset_unauthorized(
+    runner, project, client, tmpdir, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params
+):
     """Test unauthorized exception raised."""
     client.set_value(provider, "access_token", "not-a-token")
     client.repo.git.add(".renku/renku.ini")

@@ -360,9 +360,7 @@ def remove_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _export_dataset(
-    client, name, provider_name, publish, tag, dataverse_server_url=None, dataverse_name=None,
-):
+def _export_dataset(client, name, provider_name, publish, tag, **kwargs):
     """Export data to 3rd party provider.
 
     :raises: ``ValueError``, ``HTTPError``, ``InvalidAccessToken``,
@@ -380,7 +378,7 @@ def _export_dataset(
     except KeyError:
         raise ParameterError("Unknown provider.")
 
-    provider.set_parameters(client, dataverse_server_url=dataverse_server_url, dataverse_name=dataverse_name)
+    provider.set_parameters(client, **kwargs)
 
     selected_tag = None
     selected_commit = client.repo.head.commit

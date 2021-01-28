@@ -19,6 +19,7 @@
 from urllib.parse import urlparse
 
 from renku.core.commands.providers.dataverse import DataverseProvider
+from renku.core.commands.providers.olos import OLOSProvider
 from renku.core.commands.providers.renku import RenkuProvider
 from renku.core.commands.providers.zenodo import ZenodoProvider
 from renku.core.utils.doi import is_doi
@@ -27,7 +28,7 @@ from renku.core.utils.doi import is_doi
 class ProviderFactory:
     """Create a provider type from URI."""
 
-    PROVIDERS = {"dataverse": DataverseProvider, "renku": RenkuProvider, "zenodo": ZenodoProvider}
+    PROVIDERS = {"Dataverse": DataverseProvider, "OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider}
 
     @staticmethod
     def from_uri(uri):
@@ -75,4 +76,9 @@ class ProviderFactory:
     @staticmethod
     def from_id(provider_id):
         """Get provider type based on identifier."""
-        return ProviderFactory.PROVIDERS[provider_id.lower()]()
+        provider = next((p for n, p in ProviderFactory.PROVIDERS.items() if n.lower() == provider_id.lower()), None)
+
+        if not provider:
+            raise KeyError(f"Provider {provider_id} not found.")
+
+        return provider()
