@@ -975,6 +975,13 @@ def generate_dataset_file_url(client, filepath):
 class ImageObjectJson(marshmallow.Schema):
     """ImageObject json schema."""
 
+    content_url = marshmallow.fields.String()
+    position = marshmallow.fields.Integer()
+
+
+class ImageObjectRequestJson(marshmallow.Schema):
+    """ImageObject json schema."""
+
     file_id = marshmallow.fields.String()
     content_url = marshmallow.fields.String()
     position = marshmallow.fields.Integer()
@@ -999,5 +1006,4 @@ class DatasetDetailsJson(marshmallow.Schema):
     creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
-    images = marshmallow.fields.List(marshmallow.fields.Nested(ImageObjectJson))
     identifier = marshmallow.fields.String()
