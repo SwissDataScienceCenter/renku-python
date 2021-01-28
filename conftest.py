@@ -1024,7 +1024,7 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers):
 
     url_components = GitURL.parse(IT_REMOTE_REPO_URL)
 
-    payload = {"git_url": IT_REMOTE_REPO_URL}
+    payload = {"git_url": IT_REMOTE_REPO_URL, "depth": 0}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
@@ -1141,6 +1141,7 @@ def svc_protected_repo(svc_client, identity_headers):
     """Service client with migrated remote protected repository."""
     payload = {
         "git_url": IT_PROTECTED_REMOTE_REPO_URL,
+        "depth": 0,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
@@ -1162,6 +1163,7 @@ def svc_protected_old_repo(svc_synced_client):
 
     payload = {
         "git_url": IT_PROTECTED_REMOTE_REPO_URL,
+        "depth": 0,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
