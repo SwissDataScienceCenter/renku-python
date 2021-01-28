@@ -17,6 +17,8 @@
 # limitations under the License.
 """Test ``save`` command."""
 
+import os
+
 from git import Repo
 
 from renku.cli import cli
@@ -59,6 +61,14 @@ def test_save_with_remote(runner, project, client_with_remote, tmpdir_factory):
 def test_save_with_staged(runner, project, client_with_remote, tmpdir_factory):
     """Test saving local changes."""
     client = client_with_remote["client"]
+    with (client.path / "deleted").open("w") as fp:
+        fp.write("deleted file")
+
+    client.repo.index.add("deleted")
+    client.repo.index.commit("add file for later deletion")
+
+    os.remove(client.path / "deleted")
+
     with (client.path / "tracked").open("w") as fp:
         fp.write("tracked file")
 
@@ -66,8 +76,9 @@ def test_save_with_staged(runner, project, client_with_remote, tmpdir_factory):
         fp.write("modified file")
 
     client.repo.git.add("tracked")
+    client.repo.git.add("deleted")
 
-    result = runner.invoke(cli, ["save", "-m", "save changes", "modified"], catch_exceptions=False)
+    result = runner.invoke(cli, ["save", "-m", "save changes", "modified", "deleted"], catch_exceptions=False)
 
     assert 1 == result.exit_code
     assert "These files are in the git staging area, but " in result.output
@@ -75,7 +86,9 @@ def test_save_with_staged(runner, project, client_with_remote, tmpdir_factory):
     assert "tracked" in [f.a_path for f in client.repo.index.diff("HEAD")]
     assert "modified" in client.repo.untracked_files
 
-    result = runner.invoke(cli, ["save", "-m", "save changes", "tracked", "modified"], catch_exceptions=False)
+    result = runner.invoke(
+        cli, ["save", "-m", "save changes", "tracked", "modified", "deleted"], catch_exceptions=False
+    )
 
     assert 0 == result.exit_code
-    assert {"tracked", "modified"} == {f.a_path for f in client.repo.head.commit.diff("HEAD~1")}
+    assert {"tracked", "modified", "deleted"} == {f.a_path for f in client.repo.head.commit.diff("HEAD~1")}
