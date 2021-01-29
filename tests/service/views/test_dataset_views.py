@@ -1201,21 +1201,94 @@ def test_edit_datasets_view(svc_client_with_repo):
     assert response
     assert_rpc_response(response)
 
-    edit_payload = {"project_id": project_id, "name": name, "title": "my new title", "keywords": ["keyword1"]}
+    edit_payload = {
+        "project_id": project_id,
+        "name": name,
+        "title": "my new title",
+        "keywords": ["keyword1"],
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+    }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert response
     assert_rpc_response(response)
 
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
-    assert {"title": "my new title", "keywords": ["keyword1"]} == response.json["result"]["edited"]
+    assert {
+        "title": "my new title",
+        "keywords": ["keyword1"],
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+    } == response.json["result"]["edited"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@flaky(max_runs=10, min_passes=1)
+def test_edit_datasets_view_without_modification(svc_client_with_repo):
+    """Test editing dataset metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    name = "{0}".format(uuid.uuid4().hex)
+
+    payload = {
+        "project_id": project_id,
+        "name": name,
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "title": "my-title",
+        "description": "my description",
+        "keywords": ["keywords"],
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+
+    edit_payload = {
+        "project_id": project_id,
+        "name": name,
+    }
+    response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert response
+    assert_rpc_response(response)
+
+    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {} == response.json["result"]["edited"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers,)
+
+    assert response
+    assert_rpc_response(response)
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+
+    assert payload["title"] == ds["title"]
+    assert payload["name"] == ds["name"]
+    assert payload["description"] == ds["description"]
+    assert payload["creators"] == ds["creators"]
+    assert payload["keywords"] == ds["keywords"]
 
 
 @pytest.mark.service
 @pytest.mark.integration
 @flaky(max_runs=10, min_passes=1)
 def test_edit_dataset_with_images(svc_client_with_repo):
-    """Create a new dataset with metadata."""
+    """Edit images of a dataset."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     name = "{0}".format(uuid.uuid4().hex)

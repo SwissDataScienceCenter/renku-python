@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets edit controller."""
 from renku.core.commands.dataset import edit_dataset
+from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.serializers.datasets import DatasetEditRequest, DatasetEditResponseRPC
@@ -45,6 +46,8 @@ class DatasetsEditCtrl(ServiceCtrl, ReadWithSyncOperation):
 
     def renku_op(self):
         """Renku operation for the controller."""
+        user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
+
         result = (
             edit_dataset()
             .with_commit_message(self.ctx["commit_message"])
@@ -56,6 +59,7 @@ class DatasetsEditCtrl(ServiceCtrl, ReadWithSyncOperation):
                 self.ctx.get("creators"),
                 keywords=self.ctx.get("keywords"),
                 images=self.ctx.get("images"),
+                safe_image_paths=[user_cache_dir],
             )
         )
 

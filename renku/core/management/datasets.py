@@ -236,7 +236,9 @@ class DatasetsApiMixin(object):
 
         dataset.to_yaml()
 
-    def create_dataset(self, name=None, title=None, description=None, creators=None, keywords=None, images=None):
+    def create_dataset(
+        self, name=None, title=None, description=None, creators=None, keywords=None, images=None, safe_image_paths=[]
+    ):
         """Create a dataset."""
         if not name:
             raise errors.ParameterError("Dataset name must be provided.")
@@ -279,7 +281,8 @@ class DatasetsApiMixin(object):
         )
 
         if images:
-            self.set_dataset_images(dataset, images)
+            safe_image_paths.append(self.path)
+            self.set_dataset_images(dataset, images, safe_image_paths)
 
         dataset_ref = LinkReference.create(client=self, name="datasets/" + name)
         dataset_ref.set_reference(metadata_path)
@@ -288,10 +291,8 @@ class DatasetsApiMixin(object):
 
         return dataset, metadata_path, dataset_ref
 
-    def set_dataset_images(self, dataset, images):
+    def set_dataset_images(self, dataset, images, safe_image_paths=[]):
         """Set the images on a dataset."""
-
-        from renku.service.config import CACHE_UPLOADS_PATH
 
         if not images:
             images = []
@@ -330,16 +331,13 @@ class DatasetsApiMixin(object):
             if not os.path.isabs(path):
                 path = os.path.normpath(os.path.join(self.path, path))
 
-            if not os.path.exists(path) or (
-                not os.path.commonprefix([path, self.path]) == str(self.path)
-                and not os.path.commonprefix([path, CACHE_UPLOADS_PATH]) == str(CACHE_UPLOADS_PATH)
-            ):
+            if not os.path.exists(path) or not any(os.path.commonprefix([path, p]) == str(p) for p in safe_image_paths):
                 # NOTE: make sure files exists and prevent path traversal
                 raise errors.DatasetImageError(f"Dataset image with relative path {content_url} not found")
 
             image_folder = self.renku_dataset_images_path / dataset.identifier
 
-            if not content_url.startswith(str(image_folder)):
+            if not path.startswith(str(image_folder)):
                 # NOTE: only copy dataset image if it's not in .renku/datasets/<id>/images/ already
                 _, ext = os.path.splitext(content_url)
                 img_path = image_folder / f"{position}{ext}"
@@ -351,6 +349,19 @@ class DatasetsApiMixin(object):
                 )
             )
             images_updated = True
+
+        new_urls = [i.content_url for i in dataset.images]
+
+        for prev in previous_images:
+            # NOTE: Delete images if they were removed
+            if prev.content_url in new_urls or urlparse(prev.content_url).netloc:
+                continue
+
+            path = prev.content_url
+            if not os.path.isabs(path):
+                path = os.path.normpath(os.path.join(self.path, path))
+
+            os.remove(path)
 
         return images_updated or dataset.images != previous_images
 

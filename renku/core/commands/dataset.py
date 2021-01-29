@@ -65,14 +65,22 @@ def list_datasets():
     return Command().command(_list_datasets).lock_dataset()
 
 
-def _create_dataset(client, name, title=None, description="", creators=None, keywords=None, images=None):
+def _create_dataset(
+    client, name, title=None, description="", creators=None, keywords=None, images=None, safe_image_paths=[]
+):
     if not creators:
         creators = [Person.from_git(client.repo)]
     else:
         creators, _ = _construct_creators(creators)
 
     dataset, _, _ = client.create_dataset(
-        name=name, title=title, description=description, creators=creators, keywords=keywords, images=images
+        name=name,
+        title=title,
+        description=description,
+        creators=creators,
+        keywords=keywords,
+        images=images,
+        safe_image_paths=safe_image_paths,
     )
 
     client.update_datasets_provenance(dataset)
@@ -86,9 +94,11 @@ def create_dataset():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def _edit_dataset(client, name, title, description, creators, keywords=None, images=[], skip_image_update=False):
+def _edit_dataset(
+    client, name, title, description, creators, keywords=None, images=[], skip_image_update=False, safe_image_paths=[]
+):
     """Edit dataset metadata."""
-    creators, no_email_warnings = _construct_creators(creators, ignore_email=True)
+    creator_objs, no_email_warnings = _construct_creators(creators, ignore_email=True)
     title = title.strip() if isinstance(title, str) else ""
 
     possible_updates = {
@@ -103,12 +113,13 @@ def _edit_dataset(client, name, title, description, creators, keywords=None, ima
     updated = {k: v for k, v in possible_updates.items() if v}
 
     if updated:
-        dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
+        dataset.update_metadata(creators=creator_objs, description=description, keywords=keywords, title=title)
 
     if skip_image_update:
         images_updated = False
     else:
-        images_updated = client.set_dataset_images(dataset, images)
+        safe_image_paths.append(client.path)
+        images_updated = client.set_dataset_images(dataset, images, safe_image_paths)
 
     if images_updated:
         updated["images"] = [{"content_url": i.content_url, "position": i.position} for i in dataset.images]

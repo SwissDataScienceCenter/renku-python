@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service datasets create controller."""
 from renku.core.commands.dataset import create_dataset
+from renku.service.config import CACHE_UPLOADS_PATH
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.serializers.datasets import DatasetCreateRequest, DatasetCreateResponseRPC
@@ -53,6 +54,7 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
     def renku_op(self):
         """Renku operation for the controller."""
         self._handle_uploaded_images()
+        user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
 
         return (
             create_dataset()
@@ -65,6 +67,7 @@ class DatasetsCreateCtrl(ServiceCtrl, ReadWithSyncOperation):
                 description=self.ctx.get("description"),
                 keywords=self.ctx.get("keywords"),
                 images=self.ctx.get("images"),
+                safe_image_paths=[user_cache_dir],
             )
         )
 
