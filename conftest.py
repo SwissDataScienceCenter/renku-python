@@ -277,7 +277,7 @@ def template_update(tmpdir, local_client, mocker, template):
             # TODO: remove this once the renku template contains RENKU_VERSION
             dockerfile_path = template_path / "Dockerfile"
             dockerfile = dockerfile_path.read_text()
-            dockerfile_path.write_text(f"{dockerfile}\nARG RENKU_VERSION=0.0.1")
+            dockerfile_path.write_text(f"ARG RENKU_VERSION=0.0.1\n{dockerfile}")
 
         # NOTE: init project from template
         create_from_template(
