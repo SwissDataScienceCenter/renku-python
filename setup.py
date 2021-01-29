@@ -29,7 +29,7 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools.command.develop import develop as _develop
 
 URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
-REFERENCE = "0.1.11"
+REFERENCE = "0.1.15"
 
 
 class DownloadTemplates(Command):
