@@ -158,7 +158,7 @@ class ConfigManagerMixin:
         self.store_config(config, global_only=global_only)
 
     def remove_value(self, section, key, global_only=False):
-        """Remove key from specified section."""
+        """Remove key from specified section or remove the whole section if key is "*"."""
         config_filter = ConfigFilter.GLOBAL_ONLY
 
         if not global_only:
@@ -167,10 +167,13 @@ class ConfigManagerMixin:
 
         config = self.load_config(config_filter=config_filter)
         if section in config:
-            value = config[section].pop(key, None)
+            if key == "*":
+                value = config.pop(section)
+            else:
+                value = config[section].pop(key, None)
 
-            if not config[section].keys():
-                config.pop(section)
+                if not config[section].keys():
+                    config.pop(section)
 
             self.store_config(config, global_only=global_only)
             return value

@@ -80,6 +80,7 @@ from renku.cli.githooks import githooks as githooks_command
 from renku.cli.graph import graph
 from renku.cli.init import init as init_command
 from renku.cli.log import log
+from renku.cli.login import login, logout
 from renku.cli.migrate import check_immutable_template_files, migrate, migrationscheck
 from renku.cli.move import move
 from renku.cli.remove import remove
@@ -103,7 +104,7 @@ from renku.core.management.repository import default_path
 #: Monkeypatch Click application.
 click_completion.init()
 
-WARNING_UNPROTECTED_COMMANDS = ["init", "clone", "service", "help"]
+WARNING_UNPROTECTED_COMMANDS = ["clone", "init", "help", "login", "logout", "service"]
 
 
 def _uuid_representer(dumper, data):
@@ -198,6 +199,8 @@ cli.add_command(githooks_command)
 cli.add_command(graph)
 cli.add_command(init_command)
 cli.add_command(log)
+cli.add_command(login)
+cli.add_command(logout)
 cli.add_command(migrate)
 cli.add_command(migrationscheck)
 cli.add_command(check_immutable_template_files)
