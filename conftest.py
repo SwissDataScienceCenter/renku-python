@@ -1010,7 +1010,7 @@ def identity_headers():
 
     headers = {
         "Content-Type": "application/json",
-        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
         "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
     }
 
