@@ -53,26 +53,6 @@ def test_graph_build_view(svc_client_cache, authentication_headers_raw):
 
 @pytest.mark.service
 @pytest.mark.integration
-@flaky(max_runs=10, min_passes=1)
-def test_graph_build_view(svc_client_cache, authentication_headers_raw):
-    """Create a new graph build job successfully."""
-    svc_client, _, cache = svc_client_cache
-    payload = {"git_url": IT_REMOTE_REPO_URL, "revision": "HEAD", "callback_url": "http://localhost:8080"}
-
-    response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
-
-    assert response
-    assert_rpc_response(response)
-    assert {"result": {"status": "ok"}} == response.json
-
-    # Assure that jobs are enqueued after invoking the endpoint.
-    cache_state = "".join([key.decode("utf-8") for key in cache.cache.keys()])
-    assert "rq:queue:graph.jobs" in cache_state
-    assert "rq:job" in cache_state
-
-
-@pytest.mark.service
-@pytest.mark.integration
 @flaky(max_runs=1, min_passes=1)
 def test_graph_build_no_callback(svc_client_cache, authentication_headers_raw):
     """Try to create a new graph build job."""

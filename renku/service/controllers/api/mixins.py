@@ -28,7 +28,7 @@ from renku.core.management.repository import RepositoryApiMixin
 from renku.core.utils.contexts import click_context
 from renku.service.cache.models.user import User
 from renku.service.controllers.utils.remote_project import RemoteProject
-from renku.service.errors import IdentificationError, AuthenticationTokenMissing, OperationNotSupported
+from renku.service.errors import AuthenticationTokenMissing, IdentificationError, OperationNotSupported
 
 
 def local_identity(method):

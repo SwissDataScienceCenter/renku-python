@@ -18,16 +18,15 @@
 """Renku graph build controller."""
 import os
 
-from renku.core.commands.migrate import migrations_check, migrations_versions
-from renku.core.errors import MigrationRequired, RenkuException
-from renku.service.config import INVALID_PARAMS_ERROR_CODE
+from renku.core.commands.migrate import migrations_check
+from renku.core.errors import RenkuException
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.jobs.contexts import enqueue_retry
 from renku.service.jobs.graph import graph_build_job
 from renku.service.jobs.queues import GRAPH_JOB_QUEUE
 from renku.service.serializers.graph import GraphBuildRequest, GraphBuildResponseRPC
-from renku.service.views import error_response, result_response
+from renku.service.views import result_response
 
 
 class GraphBuildCtrl(ServiceCtrl, ReadOperationMixin):

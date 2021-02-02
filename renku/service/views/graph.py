@@ -22,14 +22,7 @@ from flask_apispec import marshal_with, use_kwargs
 from renku.service.config import SERVICE_PREFIX
 from renku.service.controllers.graph_build import GraphBuildCtrl
 from renku.service.serializers.graph import GraphBuildRequest, GraphBuildResponseRPC
-from renku.service.views.decorators import (
-    accepts_json,
-    handle_common_except,
-    header_doc,
-    optional_identity,
-    requires_cache,
-    requires_identity,
-)
+from renku.service.views.decorators import accepts_json, handle_common_except, header_doc, optional_identity
 
 GRAPH_BLUEPRINT_TAG = "graph"
 graph_blueprint = Blueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
