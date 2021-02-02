@@ -50,3 +50,11 @@ class AuthenticationTokenMissing(RenkuException):
     def __init__(self):
         message = "authentication token is missing"
         super(AuthenticationTokenMissing, self).__init__(message)
+
+
+class RenkuOpTimeoutError(RenkuException):
+    """Renku operation timeout error."""
+
+    def __init__(self):
+        message = "renku operation timed out"
+        super(RenkuOpTimeoutError, self).__init__(message)
