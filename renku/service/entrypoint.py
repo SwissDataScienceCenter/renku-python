@@ -59,7 +59,7 @@ from renku.service.views.datasets import (
     remove_dataset_view,
     unlink_file_view,
 )
-from renku.service.views.graph import graph_blueprint, GRAPH_BLUEPRINT_TAG, graph_build_view
+from renku.service.views.graph import GRAPH_BLUEPRINT_TAG, graph_blueprint, graph_build_view
 from renku.service.views.jobs import JOBS_BLUEPRINT_TAG, jobs_blueprint, list_jobs
 from renku.service.views.templates import (
     TEMPLATES_BLUEPRINT_TAG,
