@@ -30,8 +30,10 @@ from renku.core.commands.migrate import migrate_project
 from renku.core.errors import RenkuException
 from renku.core.utils.contexts import chdir
 from renku.core.utils.requests import retry
+from renku.service.errors import RenkuOpTimeoutError
 from renku.service.serializers.cache import ProjectCloneContext
 from renku.service.serializers.graph import GraphBuildCallbackError, GraphBuildCallbackSuccess
+from renku.service.utils.timeout import timeout
 
 
 def report_recoverable(payload, exception, callback_url):
@@ -75,17 +77,8 @@ def report_success(request_payload, graph_payload, callback_url):
     return data
 
 
-def graph_build_job(revision, git_url, callback_url, token, timeout=None):
-    """Build graph and post triples to callback URL."""
-    if not urlparse(callback_url).geturl():
-        raise RuntimeError("invalid callback_url")
-
-    ctx = ProjectCloneContext().load({"git_url": git_url, "token": token}, unknown=EXCLUDE)
-    callback_payload = {
-        "project_url": git_url,
-        "commit_id": revision or "HEAD",
-    }
-
+def _build_and_report(callback_payload, callback_url, ctx):
+    """Build graph and report on result."""
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             Repo.clone_from(ctx["url_with_auth"], tmpdir)
@@ -108,3 +101,21 @@ def graph_build_job(revision, git_url, callback_url, token, timeout=None):
                 report_unrecoverable(callback_payload, e, callback_url)
 
         return data or callback_payload
+
+
+def graph_build_job(revision, git_url, callback_url, token, timeout_sec=None):
+    """Build graph and post triples to callback URL."""
+    if not urlparse(callback_url).geturl():
+        raise RuntimeError("invalid callback_url")
+
+    ctx = ProjectCloneContext().load({"git_url": git_url, "token": token}, unknown=EXCLUDE)
+    callback_payload = {
+        "project_url": git_url,
+        "commit_id": revision or "HEAD",
+    }
+
+    try:
+        return timeout(_build_and_report(callback_payload, callback_url, ctx))
+    except RenkuOpTimeoutError as e:
+        report_unrecoverable(callback_payload, e, callback_url)
+        return e
