@@ -156,6 +156,14 @@
             ],
             "version": "==0.5.2"
         },
+        "click-option-group": {
+            "hashes": [
+                "sha256:1b4b2ecf87ba8dea78060cffd294b38eea5af81f28a5f9be223c01b8c5ea9ab0",
+                "sha256:743733a0f564438b6b761f49ddf37d845f9a662294ecabe0e832e597208bcf31"
+            ],
+            "markers": "python_version >= '3.6' and python_full_version < '4.0.0'",
+            "version": "==0.5.2"
+        },
         "click-plugins": {
             "hashes": [
                 "sha256:46ab999744a9d831159c3411bb0c79346d94a444df9a3a3742e9ed63645f264b",
