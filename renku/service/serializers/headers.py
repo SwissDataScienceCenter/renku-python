@@ -115,7 +115,7 @@ class UserIdentityHeaders(Schema):
                 "email": decode_b64(data.pop("renku-user-email")),
             }
             renku_user["sub"] = renku_user["email"]
-            data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8")
+            data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256")
 
         return data
 
