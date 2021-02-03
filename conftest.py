@@ -277,7 +277,7 @@ def template_update(tmpdir, local_client, mocker, template):
             # TODO: remove this once the renku template contains RENKU_VERSION
             dockerfile_path = template_path / "Dockerfile"
             dockerfile = dockerfile_path.read_text()
-            dockerfile_path.write_text(f"{dockerfile}\nARG RENKU_VERSION=0.0.1")
+            dockerfile_path.write_text(f"ARG RENKU_VERSION=0.0.1\n{dockerfile}")
 
         # NOTE: init project from template
         create_from_template(
@@ -435,11 +435,11 @@ def client_with_datasets(client, directory_tree):
 
 
 @pytest.fixture()
-def client_with_datasets_provenance(client):
-    """A client with dataset provenance."""
-    from renku.core.incubation.graph import generate_datasets_provenance
+def client_with_new_graph(client):
+    """A client with new graph metadata."""
+    from renku.core.incubation.graph import generate_graph
 
-    generate_datasets_provenance().build().execute()
+    generate_graph().build().execute(force=True)
 
     yield client
 
@@ -914,6 +914,17 @@ def mock_redis():
     monkey_patch.undo()
 
 
+@pytest.fixture
+def real_sync():
+    """Enable remote sync."""
+    import importlib
+
+    from renku.core.commands import save
+
+    # NOTE: Use this fixture only in serial tests. save.repo_sync is mocked; reloading the save module to undo the mock.
+    importlib.reload(save)
+
+
 @pytest.fixture(scope="module")
 def svc_client(mock_redis):
     """Renku service client."""
@@ -1000,7 +1011,7 @@ def identity_headers():
 
     headers = {
         "Content-Type": "application/json",
-        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
         "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
     }
 
@@ -1014,7 +1025,7 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers):
 
     url_components = GitURL.parse(IT_REMOTE_REPO_URL)
 
-    payload = {"git_url": IT_REMOTE_REPO_URL}
+    payload = {"git_url": IT_REMOTE_REPO_URL, "depth": 0}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
@@ -1078,6 +1089,12 @@ def svc_client_with_repo(svc_client_setup):
 
 
 @pytest.fixture
+def svc_synced_client(svc_client_with_user, real_sync):
+    """Renku service client with remote sync."""
+    yield svc_client_with_user
+
+
+@pytest.fixture
 def svc_client_with_templates(svc_client, mock_redis, identity_headers, template):
     """Setup and teardown steps for templates tests."""
 
@@ -1122,17 +1139,38 @@ def svc_client_templates_creation(svc_client_with_templates):
 
 @pytest.fixture
 def svc_protected_repo(svc_client, identity_headers):
-    """Service client with remote protected repository."""
+    """Service client with migrated remote protected repository."""
     payload = {
         "git_url": IT_PROTECTED_REMOTE_REPO_URL,
+        "depth": 0,
     }
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
-    project_id = response.json["result"]["project_id"]
-    _ = svc_client.post("/cache.migrate", data=json.dumps(dict(project_id=project_id)), headers=identity_headers)
+    data = {
+        "project_id": response.json["result"]["project_id"],
+        "skip_template_update": True,
+        "skip_docker_update": True,
+    }
+    svc_client.post("/cache.migrate", data=json.dumps(data), headers=identity_headers)
 
     yield svc_client, identity_headers, payload, response
+
+
+@pytest.fixture
+def svc_protected_old_repo(svc_synced_client):
+    """Service client with remote protected repository."""
+    svc_client, identity_headers, cache, user = svc_synced_client
+
+    payload = {
+        "git_url": IT_PROTECTED_REMOTE_REPO_URL,
+        "depth": 0,
+    }
+
+    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    project_id = response.json["result"]["project_id"]
+
+    yield svc_client, identity_headers, project_id, cache, user
 
 
 @pytest.fixture(
