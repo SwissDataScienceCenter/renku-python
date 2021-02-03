@@ -50,7 +50,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
     def __init__(self, cache, user_data, request_data):
         """Read operation mixin for controllers."""
-        if "user_id" in user_data and cache is not None:
+        if user_data and "user_id" in user_data and cache is not None:
             self.user = cache.ensure_user(user_data)
 
         self.cache = cache
@@ -60,9 +60,6 @@ class ReadOperationMixin(metaclass=ABCMeta):
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
         # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
         self.project_path = None
-
-        if user_data:
-            self.user = cache.ensure_user(user_data)
 
     @property
     @abstractmethod
@@ -102,7 +99,7 @@ class ReadOperationMixin(metaclass=ABCMeta):
 
     def remote(self):
         """Execute renku operation against remote project."""
-        if "token" not in self.user_data:
+        if self.user_data and "token" not in self.user_data:
             raise AuthenticationTokenMissing()
 
         project = RemoteProject(self.user_data, self.request_data)

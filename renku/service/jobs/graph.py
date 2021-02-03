@@ -27,7 +27,7 @@ from sentry_sdk import capture_exception
 from renku.core.commands.format.graph import jsonld
 from renku.core.commands.graph import build_graph
 from renku.core.commands.migrate import migrate_project
-from renku.core.errors import RenkuException
+from renku.core.errors import MigrationError, RenkuException
 from renku.core.utils.contexts import chdir
 from renku.core.utils.requests import retry
 from renku.service.errors import RenkuOpTimeoutError
@@ -87,12 +87,18 @@ def _build_and_report(callback_payload, callback_url, ctx):
 
         with chdir(tmpdir):
             try:
-                migrate_project()
+                command = migrate_project().with_commit().build()
 
-                graph = build_graph(revision=callback_payload["commit_id"])
-                graph_payload = {"payload": jsonld(graph, strict=True, to_stdout=False)}
+                result = command.execute(skip_template_update=True, skip_docker_update=True)
+                result, _, _ = result.output
 
-                data = report_success(callback_payload, graph_payload, callback_url)
+                if result:
+                    graph = build_graph(revision=callback_payload["commit_id"])
+                    graph_payload = {"payload": jsonld(graph, strict=True, to_stdout=False)}
+                else:
+                    report_unrecoverable(callback_payload, MigrationError("migration failed"), callback_url)
+
+                return report_success(callback_payload, graph_payload, callback_url)
 
             except (RequestException, RenkuException, MemoryError) as e:
                 report_recoverable(callback_payload, e, callback_url)
@@ -100,7 +106,7 @@ def _build_and_report(callback_payload, callback_url, ctx):
             except BaseException as e:
                 report_unrecoverable(callback_payload, e, callback_url)
 
-        return data or callback_payload
+        return callback_payload
 
 
 def graph_build_job(revision, git_url, callback_url, token, timeout_sec=None):
@@ -115,7 +121,7 @@ def graph_build_job(revision, git_url, callback_url, token, timeout_sec=None):
     }
 
     try:
-        return timeout(_build_and_report(callback_payload, callback_url, ctx))
+        return timeout(_build_and_report, fn_args=(callback_payload, callback_url, ctx))
     except RenkuOpTimeoutError as e:
         report_unrecoverable(callback_payload, e, callback_url)
         return e

@@ -32,7 +32,7 @@ def test_graph_build_job():
     payload = {
         "git_url": IT_REMOTE_REPO_URL,
         "revision": "HEAD",
-        "callback_url": "http://www.google.com",
+        "callback_url": "https://webhook.site",
         "token": IT_GIT_ACCESS_TOKEN,
     }
 
@@ -62,7 +62,7 @@ def test_graph_build_job_no_revision():
     payload = {
         "git_url": IT_REMOTE_REPO_URL,
         "revision": None,
-        "callback_url": "http://www.google.com",
+        "callback_url": "https://webhook.site",
         "token": IT_GIT_ACCESS_TOKEN,
     }
 

@@ -962,10 +962,10 @@ def svc_client_cache(mock_redis, identity_headers):
 
 def integration_repo_path(headers, project_id, url_components):
     """Constructs integration repo path."""
-    from renku.service.serializers.headers import UserIdentityHeaders
+    from renku.service.serializers.headers import RequiredIdentityHeaders
     from renku.service.utils import make_project_path
 
-    user = UserIdentityHeaders().load(headers)
+    user = RequiredIdentityHeaders().load(headers)
     project = {
         "project_id": project_id,
         "owner": url_components.owner,
@@ -1022,6 +1022,7 @@ def identity_headers():
     return headers
 
 
+@pytest.fixture(scope="module")
 def authentication_headers_raw():
     """Get authentication headers without renku user identification."""
     headers = {
@@ -1364,12 +1365,12 @@ def large_file(tmp_path, client):
 @pytest.fixture()
 def ctrl_init(svc_client_cache):
     """Cache object for controller testing."""
-    from renku.service.serializers.headers import UserIdentityHeaders
+    from renku.service.serializers.headers import RequiredIdentityHeaders
 
     _, headers, cache = svc_client_cache
 
     headers["Authorization"] = "Bearer not-a-token"
-    user_data = UserIdentityHeaders().load(headers)
+    user_data = RequiredIdentityHeaders().load(headers)
 
     return cache, user_data
 

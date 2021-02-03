@@ -112,11 +112,11 @@ class ProjectCloneContext(ProjectCloneRequest):
     # measured in ms
     timestamp = fields.Integer(missing=time.time() * 1e3)
 
-    name = fields.String(required=True)
+    name = fields.String()
     fullname = fields.String()
     email = fields.String()
-    owner = fields.String(required=True)
-    token = fields.String(required=True)
+    owner = fields.String()
+    token = fields.String()
     ref = fields.String(missing="master")
 
     @validates("git_url")

@@ -37,7 +37,11 @@ def test_graph_build_view(svc_client_cache, authentication_headers_raw):
     assert "rq:queue:graph.jobs" not in cache_state
     assert "rq:job" not in cache_state
 
-    payload = {"git_url": IT_REMOTE_REPO_URL, "revision": "HEAD", "callback_url": "http://:8080"}
+    payload = {
+        "git_url": IT_REMOTE_REPO_URL,
+        "revision": "HEAD",
+        "callback_url": "https://webhook.site",
+    }
 
     response = svc_client.post("/graph.build", data=json.dumps(payload), headers=authentication_headers_raw)
 
@@ -63,7 +67,7 @@ def test_graph_build_no_callback(svc_client_cache, authentication_headers_raw):
 
     assert response
     assert {
-        "error": {"code": -32602, "reason": {"callback_url": ["Missing data for required field."]}}
+        "error": {"code": -32602, "reason": "Validation error: `callback_url` - Missing data for required field."}
     } == response.json
 
 
