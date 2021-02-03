@@ -468,7 +468,7 @@ class NewDatasetFileSchema(JsonLDSchema):
     based_on = Nested(schema.isBasedOn, DatasetFileSchema, missing=None, propagate_client=False)
     date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
     date_deleted = fields.DateTime(prov.invalidatedAtTime, missing=None, allow_none=True, format="iso")
-    entity = Nested(renku.entity, EntitySchema)
+    entity = Nested(prov.entity, EntitySchema)
     id = fields.Id()
     is_external = fields.Boolean(renku.external, missing=False)
     source = fields.String(renku.source, missing=None)

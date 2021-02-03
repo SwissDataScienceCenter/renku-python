@@ -194,7 +194,7 @@ def test_file_upload_with_users(svc_client, identity_headers):
     }
 
     headers_user2 = {
-        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8"),
+        "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
         "Authorization": identity_headers["Authorization"],
     }
 

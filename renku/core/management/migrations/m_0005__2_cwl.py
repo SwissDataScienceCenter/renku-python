@@ -20,6 +20,7 @@
 import glob
 import os
 import uuid
+from collections import defaultdict
 from functools import cmp_to_key
 from hashlib import sha1
 from pathlib import Path
@@ -59,24 +60,30 @@ def _migrate_old_workflows(client):
 
         return _compare_commits(client, commit1, commit2)
 
-    paths_commits_map = _find_cwl_files_and_commits(client)
+    cache = RepositoryCache.from_client(client)
+    client.cache = cache
 
     wf_path = f"{client.workflow_path}/*.cwl"
     for path in glob.glob(wf_path):
-        if path not in paths_commits_map:
+        if path not in cache.cwl_files_commits:
             raise ValueError(f"Couldn't find a previous commit for path `{path}`")
 
-    cwl_paths = list(paths_commits_map.items())
+    cwl_paths = list(cache.cwl_files_commits.items())
     cwl_paths = sorted(cwl_paths, key=cmp_to_key(sort_cwl_commits))
 
     for n, element in enumerate(cwl_paths, start=1):
         communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
 
         cwl_file, commit = element
+        if not Path(cwl_file).exists():
+            continue
         path = _migrate_cwl(client, cwl_file, commit)
         os.remove(cwl_file)
 
-        client.repo.git.add(cwl_file, path)
+        paths = [cwl_file, path]
+        if client.activity_index_path.exists():
+            paths.append(client.activity_index_path)
+        client.repo.git.add(*paths)
 
         if client.repo.is_dirty():
             commit_msg = "renku migrate: " "committing migrated workflow"
@@ -103,7 +110,7 @@ def _migrate_cwl(client, path, commit):
 def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit=None, persist=False):
     """Migrate a single step workflow."""
     if not commit:
-        commit = client.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
+        commit = client.cache.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
 
     run = Run(client=client, path=path, commit=commit)
     run.command = " ".join(cmd_line_tool.baseCommand)
@@ -298,7 +305,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
 def _migrate_composite_step(client, workflow, path, commit=None):
     """Migrate a composite workflow."""
     if not commit:
-        commit = client.find_previous_commit(path)
+        commit = client.cache.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
     rel_path = Path(path).relative_to(client.path)
     label = f"{rel_path}@{commit.hexsha}"
@@ -335,9 +342,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
 
 def _entity_from_path(client, path, commit):
     """Gets the entity associated with a path."""
-    client, commit, path = client.resolve_in_submodules(
-        client.find_previous_commit(path, revision=commit.hexsha), path,
-    )
+    client, commit, path = client.resolve_in_submodules(client.cache.find_previous_commit(path, revision=commit), path)
 
     entity_cls = Entity
     if (client.path / path).is_dir():
@@ -414,47 +419,86 @@ def parse_cwl_cached(path):
     return cwl
 
 
-def _find_cwl_files_and_commits(client):
-    """Return a dict of paths and last commit that changed them."""
+class RepositoryCache:
+    """Cache for a git repo."""
 
-    def get_cwl_files(commit):
-        files = []
+    def __init__(self, client, cache, cwl_files_commits):
+        self.client = client
+        self.cache = cache
+        self.cwl_files_commits = cwl_files_commits
 
-        for file in commit.diff(commit.parents or NULL_TREE, paths=f"{client.workflow_path}/*.cwl"):
-            # Ignore deleted files (they appear as ADDED in this backwards diff)
-            if file.change_type == "A":
-                continue
-            path = file.a_path
-            if not path.startswith(client.cwl_prefix) or not path.endswith(".cwl"):
-                continue
+    @classmethod
+    def from_client(cls, client):
+        """Return a cached repo."""
+        cache = defaultdict(list)
+        cwl_files_commits_map = {}
 
-            files.append(os.path.realpath(client.path / path))
+        for n, commit in enumerate(client.repo.iter_commits(full_history=True), start=1):
+            communication.echo(f"Caching commit {n}", end="\r")
 
-            if len(files) > 1:  # The commit is ignored if it has more than one CWL file
-                break
+            cwl_files = []
+            for file in commit.diff(commit.parents or NULL_TREE):
+                # Ignore deleted files (they appear as ADDED in this backwards diff)
+                if file.change_type == "A":
+                    continue
 
-        return files
+                path = git_unicode_unescape(file.a_path)
+                cache[path].append(commit)
 
-    files_commits_map = {}
-    wf_paths = f"{client.workflow_path}/*.cwl"
-    for n, commit in enumerate(client.repo.iter_commits(paths=wf_paths, full_history=True), start=1):
-        communication.echo(f"Collecting CWL files {n}", end="\r")
+                if path.startswith(client.cwl_prefix) and path.endswith(".cwl"):
+                    cwl_files.append(os.path.realpath(client.path / path))
 
-        files = get_cwl_files(commit)
-        if len(files) != 1:
-            continue
+            cls._update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files)
 
-        path = files[0]
-        existing_commit = files_commits_map.get(path)
+        communication.echo(40 * " ", end="\r")
+
+        return RepositoryCache(client, cache, cwl_files_commits_map)
+
+    @staticmethod
+    def _update_cwl_files_and_commits(client, commit, cwl_files_commits_map, cwl_files):
+        if len(cwl_files) != 1:
+            return
+
+        path = cwl_files[0]
+        existing_commit = cwl_files_commits_map.get(path)
 
         if existing_commit is None:
-            files_commits_map[path] = commit
+            cwl_files_commits_map[path] = commit
         elif _compare_commits(client, existing_commit, commit) < 0:  # existing commit is older
-            files_commits_map[path] = commit
+            cwl_files_commits_map[path] = commit
 
-    communication.echo(40 * " ", end="\r")
+    def find_previous_commit(self, path, revision="HEAD"):
+        """Return a previous commit for a given path starting from 'revision'."""
 
-    return files_commits_map
+        def find_from_client(path, revision):
+            try:
+                return self.client.find_previous_commit(paths=path, revision=revision, full=True)
+            except KeyError:
+                communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
+                return revision
+
+        try:
+            path = (self.client.path / path).relative_to(self.client.path)
+        except ValueError:
+            pass
+        path = str(path)
+
+        if revision == "HEAD":
+            revision = self.client.head.commit
+
+        commits = self.cache.get(git_unicode_unescape(path))
+        if not commits:
+            return find_from_client(path, revision)
+
+        if revision in commits:
+            return revision
+
+        for commit in commits:
+            if _compare_commits(self.client, commit, revision) <= 0:
+                return commit
+
+        # No commit was found
+        return find_from_client(path, revision)
 
 
 def _compare_commits(client, commit1, commit2):
@@ -473,8 +517,6 @@ def _compare_commits(client, commit1, commit2):
         return -1
     if commit1.authored_date > commit2.authored_date:
         return 1
-    raise ValueError(
-        f"Cannot order commits {commit1} and {commit2}, there is no "
-        "dependency between them and they have identical commit and "
-        "author dates"
-    )
+
+    # NOTE: There is no ordering between the commits and there is no easy way for users to fix this
+    return 0

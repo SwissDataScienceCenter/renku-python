@@ -143,8 +143,19 @@ class DatasetsApiMixin(object):
         self.datasets_provenance.to_json()
 
     def has_datasets_provenance_file(self):
-        """Return true if dependency or provenance graph exists."""
+        """Return true if dataset provenance exists."""
         return self.datasets_provenance_path.exists()
+
+    def remove_datasets_provenance_file(self):
+        """Remove dataset provenance."""
+        try:
+            self.datasets_provenance_path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def initialize_datasets_provenance(self):
+        """Create empty dataset provenance file."""
+        self.datasets_provenance_path.write_text("[]")
 
     def datasets_from_commit(self, commit=None):
         """Return datasets defined in a commit."""
