@@ -32,6 +32,7 @@ from renku.service.views.decorators import (
     accepts_json,
     handle_common_except,
     header_doc,
+    optional_identity,
     requires_cache,
     requires_identity,
 )
@@ -48,7 +49,7 @@ config_blueprint = Blueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 )
 @handle_common_except
 @requires_cache
-@requires_identity
+@optional_identity
 def show_config(user_data, cache):
     """Show renku config for a project."""
     return ShowConfigCtrl(cache, user_data, dict(request.args)).to_response()

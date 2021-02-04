@@ -16,7 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache list cached projects controller."""
-from renku.core.commands.config import ConfigFilter, read_config
+from renku.core.commands.config import read_config
+from renku.core.models.enums import ConfigFilter
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.serializers.config import ConfigShowRequest, ConfigShowResponseRPC

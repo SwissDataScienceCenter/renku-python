@@ -34,7 +34,8 @@ from werkzeug.utils import cached_property, secure_filename
 
 from renku.core import errors
 from renku.core.compat import Path
-from renku.core.management.config import RENKU_HOME, ConfigFilter
+from renku.core.management.config import RENKU_HOME
+from renku.core.models.enums import ConfigFilter
 from renku.core.models.projects import Project
 from renku.core.models.provenance.activity import ActivityCollection
 from renku.core.models.provenance.provenance_graph import ProvenanceGraph

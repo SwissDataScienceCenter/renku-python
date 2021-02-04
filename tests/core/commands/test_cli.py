@@ -33,9 +33,9 @@ from cwlgen import parse_cwl
 
 from renku import __version__
 from renku.cli import cli
-from renku.core.management.config import ConfigFilter
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
+from renku.core.models.enums import ConfigFilter
 from renku.core.utils.contexts import chdir
 
 

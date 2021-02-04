@@ -359,7 +359,7 @@ def project_metadata(project):
 def client(project):
     """Return a Renku repository."""
     from renku.core.management import LocalClient
-    from renku.core.management.config import ConfigFilter
+    from renku.core.models.enums import ConfigFilter
 
     original_get_value = LocalClient.get_value
 

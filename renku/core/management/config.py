@@ -18,7 +18,6 @@
 """Client for handling a configuration."""
 import configparser
 import os
-from enum import Enum
 from io import StringIO
 from pathlib import Path
 
@@ -26,6 +25,8 @@ import attr
 import click
 import filelock
 from pkg_resources import resource_filename
+
+from renku.core.models.enums import ConfigFilter
 
 APP_NAME = "Renku"
 """Application name for storing configuration."""
@@ -37,15 +38,6 @@ RENKU_HOME = ".renku"
 def _get_global_config_dir():
     """Return user's config directory."""
     return click.get_app_dir(APP_NAME, force_posix=True)
-
-
-class ConfigFilter(Enum):
-    """Enum of filters over which config files to load. Note: Defaulta always get applied."""
-
-    ALL = 1
-    LOCAL_ONLY = 2
-    GLOBAL_ONLY = 3
-    DEFAULT_ONLY = 4
 
 
 @attr.s
@@ -106,13 +98,14 @@ class ConfigManagerMixin:
         else:
             config.read(config_files)
 
-        # transform config section for backwards compatibility
-        for s in config.sections():
-            if not s.startswith('renku "'):
+        # NOTE: transform config section for backwards compatibility. Changes section names like
+        # 'renku "interactive"' to just 'interactive' to be in line with python config conventions.
+        for section in config.sections():
+            if not section.startswith('renku "'):
                 continue
 
-            config[s[7:-1]] = dict(config.items(s))
-            config.pop(s)
+            config[section[7:-1]] = dict(config.items(section))  # NOTE: Drop first 7 and last char
+            config.pop(section)
 
         return config
 

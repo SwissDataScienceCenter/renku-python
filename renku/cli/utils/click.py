@@ -50,10 +50,10 @@ class MutuallyExclusiveOption(click.Option):
                 self.mutually_exclusive.add(mutex)
                 self.mutually_exclusive_names.append(mutex)
 
-        help = kwargs.get("help", "")
+        _help = kwargs.get("help", "")
         if self.mutually_exclusive:
             ex_str = ", ".join(self.mutually_exclusive_names)
-            kwargs["help"] = help + (" NOTE: This argument is mutually exclusive with " " arguments: [" + ex_str + "].")
+            kwargs["help"] = f"{_help} NOTE: This argument is mutually exclusive with arguments: [{ex_str}]."
         super(MutuallyExclusiveOption, self).__init__(*args, **kwargs)
 
     def handle_parse_result(self, ctx, opts, args):

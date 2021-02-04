@@ -18,12 +18,12 @@
 """Renku service cache list cached projects controller."""
 from renku.core.commands.config import update_multiple_config
 from renku.service.controllers.api.abstract import ServiceCtrl
-from renku.service.controllers.api.mixins import ReadOperationMixin
+from renku.service.controllers.api.mixins import ReadWithSyncOperation
 from renku.service.serializers.config import ConfigSetRequest, ConfigSetResponseRPC
 from renku.service.views import result_response
 
 
-class SetConfigCtrl(ServiceCtrl, ReadOperationMixin):
+class SetConfigCtrl(ServiceCtrl, ReadWithSyncOperation):
     """Controller for listing cached projects endpoint."""
 
     REQUEST_SERIALIZER = ConfigSetRequest()
@@ -48,4 +48,4 @@ class SetConfigCtrl(ServiceCtrl, ReadOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(SetConfigCtrl.RESPONSE_SERIALIZER, self.execute_op())
+        return result_response(SetConfigCtrl.RESPONSE_SERIALIZER, self.execute_and_sync())

@@ -104,7 +104,8 @@ The following values are available for the ``renku config`` command:
 import click
 
 from renku.cli.utils.click import MutuallyExclusiveOption
-from renku.core.commands.config import ConfigFilter, read_config, update_config
+from renku.core.commands.config import read_config, update_config
+from renku.core.models.enums import ConfigFilter
 
 
 @click.group()

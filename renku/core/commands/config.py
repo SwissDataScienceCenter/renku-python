@@ -18,7 +18,8 @@
 """Get and set Renku repository or global options."""
 from renku.core import errors
 from renku.core.incubation.command import Command
-from renku.core.management.config import CONFIG_LOCAL_PATH, ConfigFilter
+from renku.core.management.config import CONFIG_LOCAL_PATH
+from renku.core.models.enums import ConfigFilter
 
 
 def _split_section_and_key(key):
