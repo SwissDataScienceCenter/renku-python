@@ -90,6 +90,18 @@ flag for it:
     a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
     c2d80abe  ds1                  ds1
 
+Showing dataset details:
+
+. code-block:: console
+
+    $ renku dataset show some-dataset
+    Name: some-dataset
+    Created: 2020-12-09 13:52:06.640778+00:00
+    Creator(s): John Doe<john.doe@example.com> [SDSC]
+    Keywords: Dataset, Data
+    Title: Some Dataset
+    Description:
+    Just some dataset
 
 Deleting a dataset:
 
@@ -371,6 +383,8 @@ Unlink all files from a dataset:
 
 import click
 import requests
+from rich.console import Console
+from rich.markdown import Markdown
 
 from renku.cli.utils.callback import ClickCallback
 from renku.core import errors
@@ -386,6 +400,7 @@ from renku.core.commands.dataset import (
     list_tags,
     remove_dataset,
     remove_dataset_tags,
+    show_dataset,
     tag_dataset,
     update_datasets,
 )
@@ -486,6 +501,36 @@ def edit(name, title, description, creators, keyword):
         click.echo("Successfully updated: {}.".format(", ".join(updated)))
         if no_email_warnings:
             click.echo(ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
+
+
+@dataset.command("show")
+@click.argument("name")
+def show(name):
+    """Handle datasets."""
+    result = show_dataset().build().execute(name=name)
+    ds = result.output
+
+    click.echo(click.style("Name: ", bold=True, fg="magenta") + click.style(ds["name"], bold=True))
+    click.echo(click.style("Created: ", bold=True, fg="magenta") + (ds.get("created_at", "") or ""))
+
+    creators = []
+    for creator in ds.get("creators", []):
+        if creator["affiliation"]:
+            creators.append(f"{creator['name']} <{creator['email']}> [{creator['affiliation']}]")
+        else:
+            creators.append(f"{creator['name']} <{creator['email']}>")
+
+    click.echo(click.style("Creator(s): ", bold=True, fg="magenta") + ", ".join(creators))
+    if ds["keywords"]:
+        click.echo(click.style("Keywords: ", bold=True, fg="magenta") + ", ".join(ds.get("keywords", "")))
+
+    if ds["version"]:
+        click.echo(click.style("Version: ", bold=True, fg="magenta") + ds.get("version", ""))
+
+    click.echo(click.style("Title: ", bold=True, fg="magenta") + click.style(ds.get("title", ""), bold=True))
+
+    click.echo(click.style("Description: ", bold=True, fg="magenta"))
+    Console().print(Markdown(ds.get("description", "") or ""))
 
 
 @dataset.command()

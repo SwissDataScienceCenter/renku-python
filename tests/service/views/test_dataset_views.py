@@ -855,11 +855,11 @@ def test_add_existing_file(svc_client_with_repo):
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
-def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
+def test_import_dataset_job_enqueue(doi, svc_client_cache, project):
     """Test import a dataset."""
     client, headers, cache = svc_client_cache
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
     project_meta = {
@@ -903,12 +903,12 @@ def test_import_dataset_job_enqueue(doi, svc_client_cache, project, mock_redis):
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
-def test_dataset_add_remote(url, svc_client_cache, project_metadata, mock_redis):
+def test_dataset_add_remote(url, svc_client_cache, project_metadata):
     """Test import a dataset."""
     project, project_meta = project_metadata
     client, headers, cache = svc_client_cache
 
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
     project_obj = cache.make_project(user, project_meta)
 
@@ -937,14 +937,14 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata, mock_redis)
 @pytest.mark.integration
 @pytest.mark.service
 @flaky(max_runs=30, min_passes=1)
-def test_dataset_add_multiple_remote(svc_client_cache, project_metadata, mock_redis):
+def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
     """Test dataset add multiple remote files."""
     project, project_meta = project_metadata
     url_gist = "https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"
     url_dbox = "https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0"
 
     client, headers, cache = svc_client_cache
-    user_id = encode_b64(secure_filename("andi@bleuler.com"))
+    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
     project_obj = cache.make_project(user, project_meta)
 
@@ -1054,7 +1054,7 @@ def test_protected_branch(svc_protected_repo):
 
     assert_rpc_response(response)
     assert {"result"} == set(response.json.keys())
-    assert "master" != response.json["result"]["remote_branch"]
+    assert "master" not in response.json["result"]["remote_branch"]
 
 
 @pytest.mark.integration

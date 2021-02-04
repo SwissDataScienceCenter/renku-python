@@ -19,29 +19,9 @@
 import marshmallow
 from marshmallow import Schema, fields, post_load, pre_load
 
+from renku.core.models.datasets import DatasetCreatorsJson as DatasetCreators
+from renku.core.models.datasets import DatasetDetailsJson as DatasetDetails
 from renku.service.serializers.rpc import JsonRPCResponse
-
-
-class DatasetCreators(Schema):
-    """Schema for the dataset creators."""
-
-    name = fields.String()
-    email = fields.String()
-    affiliation = fields.String()
-
-
-class DatasetDetails(Schema):
-    """Serialize a dataset to a response object."""
-
-    name = fields.String(required=True)
-    version = fields.String(allow_none=True)
-    created_at = fields.String(allow_none=True, attribute="date_created")
-
-    title = fields.String()
-    creators = fields.List(fields.Nested(DatasetCreators))
-    description = fields.String()
-    keywords = fields.List(fields.String())
-    identifier = fields.String()
 
 
 class DatasetCreateRequest(DatasetDetails):

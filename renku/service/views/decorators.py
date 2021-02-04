@@ -96,6 +96,7 @@ def handle_redis_except(f):
         try:
             return f(*args, **kwargs)
         except (RedisError, OSError) as e:
+            # NOTE: Trap the process working directory when internal error occurs.
             try:
                 set_context("pwd", os.readlink(f"/proc/{os.getpid()}/cwd"))
             except (Exception, BaseException):

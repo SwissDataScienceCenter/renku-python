@@ -72,7 +72,7 @@ class UserIdentityToken(Schema):
     @post_load
     def set_user_id(self, data, **kwargs):
         """Sets users id."""
-        data["user_id"] = encode_b64(secure_filename(data["email"]))
+        data["user_id"] = encode_b64(secure_filename(data["sub"]))
         return data
 
 
@@ -114,7 +114,8 @@ class UserIdentityHeaders(Schema):
                 "name": decode_b64(data.pop("renku-user-fullname")),
                 "email": decode_b64(data.pop("renku-user-email")),
             }
-            data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256").decode("utf-8")
+            renku_user["sub"] = renku_user["email"]
+            data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256")
 
         return data
 
