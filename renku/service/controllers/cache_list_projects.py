@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache list cached projects controller."""
+import itertools
+
 from renku.service.controllers.api.abstract import ServiceCtrl
 from renku.service.controllers.api.mixins import ReadOperationMixin
 from renku.service.serializers.cache import ProjectListResponseRPC
@@ -40,7 +42,14 @@ class ListProjectsCtrl(ServiceCtrl, ReadOperationMixin):
     def list_projects(self):
         """List locally cache projects."""
         projects = [project for project in self.cache.get_projects(self.user) if project.abs_path.exists()]
-        return {"projects": projects}
+
+        result = {
+            "projects": [
+                max(g, key=lambda p: p.created_at) for _, g in itertools.groupby(projects, lambda p: p.git_url)
+            ]
+        }
+
+        return result
 
     def renku_op(self):
         """Renku operation for the controller."""
