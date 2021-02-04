@@ -370,6 +370,7 @@ def test_clone_projects_invalid_headers(svc_client, identity_headers):
     assert INVALID_HEADERS_ERROR_CODE == response.json["error"]["code"]
 
     response = svc_client.get("/cache.project_list", headers=identity_headers)
+
     assert response
     assert {"result"} == set(response.json.keys())
     assert 1 == len(response.json["result"]["projects"])

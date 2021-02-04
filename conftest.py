@@ -960,23 +960,28 @@ def svc_client_cache(mock_redis, identity_headers):
     ctx.pop()
 
 
-def integration_repo_path(headers, url_components):
+def integration_repo_path(headers, project_id, url_components):
     """Constructs integration repo path."""
-    from renku.service.config import CACHE_PROJECTS_PATH
     from renku.service.serializers.headers import UserIdentityHeaders
+    from renku.service.utils import make_project_path
 
     user = UserIdentityHeaders().load(headers)
-    project_path = CACHE_PROJECTS_PATH / user["user_id"] / url_components.owner / url_components.name
+    project = {
+        "project_id": project_id,
+        "owner": url_components.owner,
+        "name": url_components.name,
+    }
 
+    project_path = make_project_path(user, project)
     return project_path
 
 
 @contextlib.contextmanager
-def integration_repo(headers, url_components):
+def integration_repo(headers, project_id, url_components):
     """With integration repo helper."""
     from renku.core.utils.contexts import chdir
 
-    with chdir(integration_repo_path(headers, url_components)):
+    with chdir(integration_repo_path(headers, project_id, url_components)):
         repo = Repo(".")
         repo.heads.master.checkout()
 
@@ -1037,8 +1042,7 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers):
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers,)
 
     assert response
-    assert "result" in response.json
-    assert "error" not in response.json
+    assert {"result"} == set(response.json.keys())
 
     project_id = response.json["result"]["project_id"]
     assert isinstance(uuid.UUID(project_id), uuid.UUID)
@@ -1046,8 +1050,8 @@ def integration_lifecycle(svc_client, mock_redis, identity_headers):
     yield svc_client, identity_headers, project_id, url_components
 
     # Teardown step: Delete all branches except master (if needed).
-    if integration_repo_path(identity_headers, url_components).exists():
-        with integration_repo(identity_headers, url_components) as repo:
+    if integration_repo_path(identity_headers, project_id, url_components).exists():
+        with integration_repo(identity_headers, project_id, url_components) as repo:
             try:
                 repo.remote().push(refspec=(":{0}".format(repo.active_branch.name)))
             except GitCommandError:
@@ -1059,7 +1063,7 @@ def svc_client_setup(integration_lifecycle):
     """Service client setup."""
     svc_client, headers, project_id, url_components = integration_lifecycle
 
-    with integration_repo(headers, url_components) as repo:
+    with integration_repo(headers, project_id, url_components) as repo:
         repo.git.checkout("master")
 
         new_branch = uuid.uuid4().hex

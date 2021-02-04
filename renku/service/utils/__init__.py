@@ -25,20 +25,10 @@ from renku.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 def make_project_path(user, project):
     """Construct full path for cached project."""
     valid_user = user and "user_id" in user
-    valid_project = project and "owner" in project and "name" in project
+    valid_project = project and "owner" in project and "name" in project and "project_id" in project
 
     if valid_user and valid_project:
-        return CACHE_PROJECTS_PATH / user["user_id"] / project["owner"] / project["name"]
-
-
-def make_new_project_path(user, project):
-    """Adjust parameters new project path."""
-    new_project = {
-        "owner": project["project_namespace"],
-        "name": project["project_name_stripped"],
-    }
-
-    return make_project_path(user, new_project)
+        return CACHE_PROJECTS_PATH / user["user_id"] / project["project_id"] / project["owner"] / project["name"]
 
 
 def make_file_path(user, cached_file):
