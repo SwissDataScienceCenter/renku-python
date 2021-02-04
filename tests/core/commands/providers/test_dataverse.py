@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# 2021Swiss Data Science Center (SDSC)
+# Copyright 2020-2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
