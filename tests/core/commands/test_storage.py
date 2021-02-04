@@ -95,3 +95,130 @@ def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
 
     assert 0 == result.exit_code
     assert "These paths were ignored as they are not pushed" in result.output
+
+
+def test_lfs_fix(runner, project, client):
+    """Test ``renku storage fix`` command for large files in git."""
+
+    with (client.path / "dataset_file").open("w") as fp:
+        fp.write("dataset file")
+
+    with (client.path / "workflow_file").open("w") as fp:
+        fp.write("workflow file")
+
+    with (client.path / "regular_file").open("w") as fp:
+        fp.write("regular file")
+
+    client.repo.git.add("*")
+    client.repo.index.commit("add files")
+    dataset_checksum = client.repo.head.commit.tree["dataset_file"].hexsha
+    workflow_checksum = client.repo.head.commit.tree["workflow_file"].hexsha
+
+    result = runner.invoke(cli, ["graph", "generate"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
+    assert 0 == result.exit_code
+
+    previous_head = client.repo.head.commit.hexsha
+
+    result = runner.invoke(cli, ["storage", "fix"], input="y")
+    assert 0 == result.exit_code
+    assert "dataset_file" in result.output
+    assert "workflow_file" in result.output
+    assert "regular_file" in result.output
+    assert "*.ini" not in result.output
+
+    assert previous_head != client.repo.head.commit.hexsha
+    changed_files = client.repo.head.commit.stats.files.keys()
+    assert ".renku/dataset.json" in changed_files
+    assert ".renku/provenance.json" in changed_files
+
+    with (client.path / ".renku" / "dataset.json").open("r") as fp:
+        assert dataset_checksum not in fp.read()
+
+    with (client.path / ".renku" / "provenance.json").open("r") as fp:
+        assert workflow_checksum not in fp.read()
+
+
+def test_lfs_fix_no_changes(runner, project, client):
+    """Test ``renku storage fix`` command without broken files."""
+
+    with (client.path / "dataset_file").open("w") as fp:
+        fp.write("dataset file")
+
+    with (client.path / "workflow_file").open("w") as fp:
+        fp.write("workflow file")
+
+    with (client.path / "regular_file").open("w") as fp:
+        fp.write("regular file")
+
+    client.repo.git.add("*")
+    client.repo.index.commit("add files")
+
+    result = runner.invoke(cli, ["graph", "generate"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
+    assert 0 == result.exit_code
+
+    previous_head = client.repo.head.commit.hexsha
+
+    result = runner.invoke(cli, ["storage", "fix"], input="y")
+    assert 0 == result.exit_code
+    assert "All files are already in LFS" in result.output
+
+    assert previous_head == client.repo.head.commit.hexsha
+
+
+def test_lfs_fix_explicit_path(runner, project, client):
+    """Test ``renku storage fix`` command explicit path."""
+
+    with (client.path / "dataset_file").open("w") as fp:
+        fp.write("dataset file")
+
+    with (client.path / "workflow_file").open("w") as fp:
+        fp.write("workflow file")
+
+    regular_file = client.path / "regular_file"
+    with regular_file.open("w") as fp:
+        fp.write("regular file")
+
+    client.repo.git.add("*")
+    client.repo.index.commit("add files")
+    dataset_checksum = client.repo.head.commit.tree["dataset_file"].hexsha
+    workflow_checksum = client.repo.head.commit.tree["workflow_file"].hexsha
+
+    result = runner.invoke(cli, ["graph", "generate"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    assert 0 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
+    assert 0 == result.exit_code
+
+    previous_head = client.repo.head.commit.hexsha
+
+    result = runner.invoke(cli, ["storage", "fix", "regular_file"])
+    assert 0 == result.exit_code
+
+    assert previous_head != client.repo.head.commit.hexsha
+
+    with (client.path / ".renku" / "dataset.json").open("r") as fp:
+        assert dataset_checksum in fp.read()
+
+    with (client.path / ".renku" / "provenance.json").open("r") as fp:
+        assert workflow_checksum in fp.read()
+
+    with regular_file.open("r") as fp:
+        assert "oid sha256:" in fp.read()

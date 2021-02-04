@@ -78,6 +78,7 @@ def test_safe_class_attributes(tmpdir):
         "_CMD_STORAGE_INSTALL",
         "_CMD_STORAGE_LIST",
         "_CMD_STORAGE_MIGRATE_INFO",
+        "_CMD_STORAGE_MIGRATE_IMPORT",
         "_CMD_STORAGE_PULL",
         "_CMD_STORAGE_STATUS",
         "_CMD_STORAGE_TRACK",
