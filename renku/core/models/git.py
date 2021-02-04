@@ -95,7 +95,7 @@ class GitURL(object):
     port = attr.ib(default=None)
     owner = attr.ib(default=None)
     name = attr.ib(default=None, converter=filter_repo_name)
-    _regex = attr.ib(default=None, cmp=False)
+    _regex = attr.ib(default=None, eq=False, order=False)
 
     def __attrs_post_init__(self):
         """Derive basic information."""
