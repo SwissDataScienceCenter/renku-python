@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -34,3 +34,27 @@ class IdentificationError(RenkuException):
     def __init__(self, message):
         """Build a custom message."""
         super(IdentificationError, self).__init__(message)
+
+
+class OperationNotSupported(RenkuException):
+    """Operation not supported exception."""
+
+    def __init__(self, reason):
+        message = f'operation not supported: "{reason}"'
+        super(OperationNotSupported, self).__init__(message)
+
+
+class AuthenticationTokenMissing(RenkuException):
+    """Authentication token is missing."""
+
+    def __init__(self):
+        message = "authentication token is missing"
+        super(AuthenticationTokenMissing, self).__init__(message)
+
+
+class RenkuOpTimeoutError(RenkuException):
+    """Renku operation timeout error."""
+
+    def __init__(self):
+        message = "renku operation timed out"
+        super(RenkuOpTimeoutError, self).__init__(message)
