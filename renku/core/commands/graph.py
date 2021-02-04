@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -522,7 +522,7 @@ class Graph(object):
 
 
 @pass_local_client(requires_migration=True)
-def build_graph(client, revision="HEAD", no_output=False, paths=()):
+def build_graph(client, revision, no_output, paths):
     """Build graph structure."""
     graph = Graph(client)
     if not paths:

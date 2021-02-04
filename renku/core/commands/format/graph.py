@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2021- Swiss Data Science Center (SDSC)
+# Copyright 2018-2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -333,21 +333,16 @@ def makefile(graph, strict=False):
             click.echo("\t@" + " ".join(plan.to_argv()) + " " + " ".join(plan.to_stream_repr()))
 
 
-def jsonld(graph, strict=False, to_stdout=True):
+def jsonld(graph, strict=False):
     """Format graph as JSON-LD file."""
-    ld = _jsonld(graph, "expand", to_stdout=to_stdout)
+    ld = _jsonld(graph, "expand")
 
     if strict:
         r, _, t = validate_graph(ld, format="json-ld")
 
         if not r:
             raise SHACLValidationError("{}\nCouldn't get log: Invalid Knowledge Graph data".format(t))
-
-    if to_stdout:
-        click.echo(ld)
-        return
-
-    return ld
+    click.echo(ld)
 
 
 def jsonld_graph(graph, strict=False):
