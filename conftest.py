@@ -987,7 +987,7 @@ def integration_repo(headers, project_id, url_components):
 
         yield repo
 
-        if integration_repo_path(headers, url_components).exists():
+        if integration_repo_path(headers, project_id, url_components).exists():
             repo.git.reset("--hard")
             repo.heads.master.checkout()
             repo.git.reset("--hard")
@@ -1072,7 +1072,7 @@ def svc_client_setup(integration_lifecycle):
 
         yield svc_client, deepcopy(headers), project_id, url_components
 
-        if integration_repo_path(headers, url_components).exists():
+        if integration_repo_path(headers, project_id, url_components).exists():
             # NOTE: Some tests delete the repo
             repo.git.checkout("master")
             repo.git.branch("-D", current)
