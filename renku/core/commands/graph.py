@@ -53,7 +53,7 @@ def _safe_path(filepath, can_be_cwl=False):
     return True
 
 
-@attr.s(cmp=False)
+@attr.s(eq=False, order=False)
 class Graph(object):
     """Represent the provenance graph."""
 
